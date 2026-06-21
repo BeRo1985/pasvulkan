@@ -1823,6 +1823,11 @@ int main(int argc, char **argv) {
   if (use_bframes && !bframe_mode_set) {
     g_bframe_dct = g_spatial_dct;
   }
+  // --gpu-encode=0 means "CPU-encode everything": route B-frames to the CPU oracle too. Without this the dispatch
+  // would enter the GPU bidi loop while the GPU pipelines were never created (gpu_encode == 0) -> a NULL-pipeline crash.
+  if (use_bframes && !gpu_encode) {
+    cpu_bframes = 1;
+  }
   if (use_bframes) {
     if (bframes > 15) {
       bframes = 15;   // period <= 16: keeps the per-pair DPB / hierarchy depth sane
@@ -2668,7 +2673,16 @@ int main(int argc, char **argv) {
   }
   double encode_start = now_milliseconds();
 
-  if ((g_spatial_dct && !use_bframes) && !mode_3ddwt) {   // DCT-mode I/P (incl. lossless via the reversible integer DCT, Phase A3) + HDR; B-frames/3D-DWT keep their paths
+  // Stage 2: plain DCT I/P (lossy, no quadtree/deblock/HDR/Q0/alpha) is GPU-encoded by routing it through the
+  // GPU bidi loop (use_bframes == 0), exactly like wavelet I/P. The CPU oracle (the loop just below) stays the
+  // --gpu-encode=0 path and the home of the features the GPU bidi loop does not yet cover (those are later stages).
+  int dct_ip_gpu = ((((((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless && !g_has_alpha;
+  // The bidi loop picks the spatial transform per frame: DCT for B-frames that use DCT (g_bframe_dct) OR for
+  // routed plain DCT I/P. This is DECOUPLED from container bit6 (set only for g_bframe_dct), so a plain DCT I/P
+  // stream stays bit7-only and the decoder uses its existing GPU I/P path unchanged.
+  int bidi_use_dct = g_bframe_dct || (g_spatial_dct && !use_bframes);
+
+  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0) + the features the GPU bidi loop doesn't cover yet (HDR/quadtree/deblock/Q0/alpha)
     // ---- DCT fork encode (Stage 1): the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
     // frame, into the container — the comparison reference; the GPU dct_fwd + GPU-rANS encode is the next step.
     // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT, HDR, Q0 keep their existing paths). ----
@@ -3551,6 +3565,9 @@ int main(int argc, char **argv) {
              joint_mv ? "joint" : "independent",
              per_block_mode ? ", per-block L0/L1/BI" : "",
              (qp_cascade && !lossless) ? ", QP-cascade" : "");
+    } else if (bidi_use_dct) {
+      printf("  DCT encode: GPU (colour/DCT/quant/rANS + motion all on GPU) | gop=%d chroma=%s\n",
+             gop, (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
     }
     for (;;) {
       int b_slide_from = -1;
@@ -3771,15 +3788,16 @@ int main(int argc, char **argv) {
       // DCT-B (GPU motion path): the residual is coded with the block DCT + rANS, so override the wavelet step
       // builds above with the JPEG-style DCT quant matrix per plane at this frame's (QP-cascaded) quality —
       // exactly the matrix the I/P GPU DCT encode and the decoder use. Uniform 8x8 only (no AQ/PRDO on this path).
-      if ((g_bframe_dct && use_bframes) && !lossless) {
+      if (bidi_use_dct && !lossless) {   // DCT-B AND routed plain DCT I/P: build the JPEG DCT quant matrix (the wavelet step build above is overridden)
         for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_width(plane, width), ph = plane_height(plane, height);
+          int ph_q = ((ph + 7) / 8) * 8;   // pad height to a multiple of 8: the forward 8x8 DCT writes coeffs for the full partial bottom block (e.g. 4:2:0 chroma 540 -> 544), so quant/dequant must cover those rows too
           if (plane == 0) {
-            build_dct_quant_matrix(step, pw, ph, frame_quality);
+            build_dct_quant_matrix(step, pw, ph_q, frame_quality);
           } else {
-            build_dct_quant_matrix_chroma(step, pw, ph, frame_quality);
+            build_dct_quant_matrix_chroma(step, pw, ph_q, frame_quality);
           }
-          memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
+          memcpy(step_map[plane], step, (size_t)(pw * ph_q) * 4);
         }
       }
 
@@ -4192,7 +4210,7 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
         }
-        if (g_bframe_dct) {
+        if (bidi_use_dct) {   // DCT-B AND routed plain DCT I/P: forward block DCT + quant (else the wavelet path below)
           // DCT-B (GPU motion path): for the UNIFORM 8x8 path do the forward block DCT + quant on the residual
           // here. For the QUADTREE path leave the residual in coeff_buffer untouched — the partition is decided on
           // the CPU from the read-back residual after this pass's submit, then the forward quadtree DCT + quant run.
@@ -4205,14 +4223,15 @@ int main(int argc, char **argv) {
             vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
             memory_barrier();
             if (!lossless) {
+              int dct_quant_pixels = plane_w * (((plane_h + 7) / 8) * 8);   // pad to /8: quantise the full partial bottom block (4:2:0 chroma 540 -> 544), matching the forward DCT's block-aligned output
               int32_t dct_quant_push[2];
-              dct_quant_push[0] = plane_pixels;
+              dct_quant_push[0] = dct_quant_pixels;
               float dct_chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
               memcpy(&dct_quant_push[1], &dct_chroma_multiplier, sizeof(float));
               vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
               vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
               vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_quant_push);
-              vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+              vkCmdDispatch(command_buffer, (dct_quant_pixels + 255) / 256, 1, 1);
               memory_barrier();
             }
           }
@@ -4405,7 +4424,7 @@ int main(int argc, char **argv) {
       int alpha_block_count = block_count_x(width) * block_count_y(height);
       uint8_t *dct_b_table[MAX_PLANES] = { NULL };    // DCT-B: per-plane rANS entropy-table blobs (appended after assemble)
       uint32_t dct_b_table_len[MAX_PLANES] = { 0 };
-      if (g_bframe_dct && !g_quadtree) {
+      if (bidi_use_dct && !g_quadtree) {   // DCT-B AND routed plain DCT I/P (uniform): GPU rANS encode
         // ---- DCT-B GPU rANS encode (uniform 8x8): per plane histogram -> normalize -> table -> rANS
         // size -> CPU prefix-sum -> pack, exactly like the I/P GPU DCT encode but on the (motion) residual. ----
         uint32_t running_offset = 0;
@@ -4477,14 +4496,15 @@ int main(int argc, char **argv) {
           int plane_pixels = plane_w * plane_h;
           int pixel_workgroups = (plane_pixels + 255) / 256;
           if (!lossless) {
+            int dequant_pixels = plane_w * (((plane_h + 7) / 8) * 8);   // pad to /8: dequantise the full partial bottom block so the inverse DCT of block (h/8) doesn't mix raw quantised coeffs into its valid rows
             int32_t dequant_push[2];
-            dequant_push[0] = plane_pixels;
+            dequant_push[0] = dequant_pixels;
             float dq_chroma = (plane == 0) ? 1.0f : g_chroma_quant;
             memcpy(&dequant_push[1], &dq_chroma, sizeof(float));
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant_inverse);
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[plane], 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
-            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            vkCmdDispatch(command_buffer, (dequant_pixels + 255) / 256, 1, 1);
             memory_barrier();
           }
           int32_t dct_inv_push[2] = { plane_w, plane_h };
@@ -4503,13 +4523,13 @@ int main(int argc, char **argv) {
           }
           int32_t add_push[2] = { plane_pixels, is_predicted };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
-          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add_bidi[plane], 0, 0);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, use_bframes ? &set_motion_add_bidi[plane] : &set_motion_add[plane], 0, 0);   // B reconstructs into the DPB slot; plain DCT I/P into previous_buffer (like wavelet I/P)
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
         }
         submit_and_wait();
-      } else if (g_bframe_dct) {
+      } else if (bidi_use_dct) {   // DCT + quadtree (DCT-B today; DCT I/P quadtree is a later stage, currently CPU-routed)
         // ---- DCT-B adaptive QUADTREE (Voll-GPU): CPU partition decision on the read-back residual, then GPU
         // forward quadtree DCT + quant + partition-aware rANS encode + inverse-quadtree-DCT (+deblock) reconstruct. ----
         // 1) read back the motion-compensated residual (coeff_buffer, int) per plane and decide the partition on the CPU.
@@ -4969,7 +4989,7 @@ int main(int argc, char **argv) {
       size_t tight_color_length = 0;
       size_t tight_total = compact_block_data(tight, (const uint8_t *)data_map, offset_map, (void *const *)frame_sizes, block_counts, g_num_planes, (g_has_alpha && !g_spatial_dct) ? alpha_block_count : 0, &tight_color_length);
       size_t total = assemble_frame(block_counts, frame_sizes, mv_bytes, mv_length, tight, tight_color_length, &frame);
-      if (g_bframe_dct) {   // DCT-B: append the per-plane rANS frequency tables (the decoder rebuilds the GPU tables from them)
+      if (bidi_use_dct) {   // DCT-B AND routed plain DCT I/P: append the per-plane rANS frequency tables (the decoder rebuilds the GPU tables from them via g_spatial_dct)
         total = append_entropy_section(&frame, total, dct_b_table, dct_b_table_len, g_num_planes);
         for (int plane = 0; plane < g_num_planes; plane++) {
           free(dct_b_table[plane]);

@@ -1583,14 +1583,19 @@ static void dct_1d_inverse(const float *input, float *output, const float *basis
 }
 
 // Forward 2D DCT of a single n x n block at (block_x, block_y), in place: separable rows-then-columns.
-static void forward_dct_one(float *plane, int width, int block_x, int block_y, int n) {
+// Reads edge-replicate when the block runs past the plane's right/bottom edge (dims not a multiple of n,
+// e.g. 4:2:0 chroma 960x540), mirroring the GPU dct_fwd.comp clamp; the full n x n coefficients are still
+// written (the extra rows/cols land in the pixel_count-sized buffer tail). The clamp is a no-op for full blocks.
+static void forward_dct_one(float *plane, int width, int height, int block_x, int block_y, int n) {
   const float *basis = dct_basis_for(n);
   float block[DCT_MAX_SIZE * DCT_MAX_SIZE];
   float line_in[DCT_MAX_SIZE];
   float line_out[DCT_MAX_SIZE];
   for (int y = 0; y < n; y++) {
+    int sample_y = ((block_y + y) < height) ? (block_y + y) : (height - 1);
     for (int x = 0; x < n; x++) {
-      line_in[x] = plane[(((size_t)(block_y + y) * width) + block_x) + x];
+      int sample_x = ((block_x + x) < width) ? (block_x + x) : (width - 1);
+      line_in[x] = plane[(((size_t)sample_y * width) + sample_x)];
     }
     dct_1d_forward(line_in, line_out, basis, n);
     for (int x = 0; x < n; x++) {
@@ -1634,18 +1639,22 @@ static void inverse_dct_one(float *plane, int width, int block_x, int block_y, i
   }
 }
 
-// Forward 2D block DCT in place over every full n x n block (n in {8,16,32}): separable rows-then-columns.
-// Partial edge blocks (a dimension not a multiple of n) are left untouched.
+// Forward 2D block DCT in place over every n x n block (n in {8,16,32}): separable rows-then-columns.
+// Partial edge blocks (a dimension not a multiple of n, e.g. 4:2:0 chroma height 540) ARE transformed:
+// forward_dct_one edge-replicates the out-of-range reads, exactly like the GPU dct_fwd.comp, so the CPU
+// and GPU encode produce the same partial-block coefficients.
 static void forward_dct_blocks(float *plane, int width, int height, int n) {
   dct_init_basis();
-  for (int block_y = 0; (block_y + n) <= height; block_y += n) {
-    for (int block_x = 0; (block_x + n) <= width; block_x += n) {
-      forward_dct_one(plane, width, block_x, block_y, n);
+  for (int block_y = 0; block_y < height; block_y += n) {
+    for (int block_x = 0; block_x < width; block_x += n) {
+      forward_dct_one(plane, width, height, block_x, block_y, n);
     }
   }
 }
 
-// Inverse 2D block DCT in place (composes back to identity for orthonormal bases).
+// Inverse 2D block DCT in place (composes back to identity for orthonormal bases). The caller pads the height to
+// /n (reconstruct_plane's h_eff) when a partial bottom block must be reconstructed, so iterating full blocks here
+// already covers it; callers that pass the exact (unpadded) height intentionally leave a non-/n edge untouched.
 static void inverse_dct_blocks(float *plane, int width, int height, int n) {
   dct_init_basis();
   for (int block_y = 0; (block_y + n) <= height; block_y += n) {
@@ -1728,7 +1737,11 @@ static void build_dct_quant_matrix_table(int *step, int width, int height, int b
   dct_quant_table_n(table_n, table, n);
   // Scale Q to reference white so a given Q means the same coarseness at any bit depth (SDR x1, HDR-12 x16).
   base_quality = base_quality * (g_sample_white / 256);
-  for (int y = 0; y < height; y++) {
+  // Build steps for the /n-padded height: a height not a multiple of n (e.g. 4:2:0 chroma 540) has a partial bottom
+  // block whose rows the forward/inverse DCT still cover (edge-extended), so the dequant needs valid steps there too.
+  // The matrix is periodic in y (v = y % n), so the padded rows are well-defined; callers' step buffers are pixel_count-sized.
+  int padded_height = ((height + (n - 1)) / n) * n;
+  for (int y = 0; y < padded_height; y++) {
     int v = y % n;
     for (int x = 0; x < width; x++) {
       int u = x % n;
@@ -2453,6 +2466,7 @@ static void decode_motion_vectors(BitReader *reader, int *mv, int blocks_x, int 
 #define MOTION_LEAF 8    // finest leaf (px) = the fine MV-field cell
 
 static int g_motion_variable = 0;   // 1 = variable quadtree motion (root 32 -> 8); 0 = the fixed g_motion_block grid
+static int g_per_block_mode = 0;    // 1 = B-frame MV blobs carry a per-block L0/L1/BI mode array (Phase 2); the player sets it from the container header (reserved2[3]). The zero-MV CPU-oracle B-encode never writes it.
 static int g_motion_mode = 5;       // sub-pel mode: bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]). Default 5 = 6-tap + quarter. Old files = 0 = bilinear + half. Mirrors the MOTION_MODE shader spec constant.
 static int g_cdef = 0;              // --cdef: AV1-style in-loop directional deringing on the reconstructed YCoCg reference (encoder GPU search + apply; lossy-only). 0 = off (default).
 // Decode-side CDEF state: set per frame by the decode driver from the container (color_flags has_cdef + the per-frame
@@ -4775,7 +4789,7 @@ static void forward_dct_quadtree(float *plane, int width, int height, const uint
       uint8_t code = qt[((ry / QT_REGION) * regions_x) + (rx / QT_REGION)];
       int n = qt_leaves(rx, ry, code, width, height, lx, ly, ls);
       for (int i = 0; i < n; i++) {
-        forward_dct_one(plane, width, lx[i], ly[i], ls[i]);
+        forward_dct_one(plane, width, height, lx[i], ly[i], ls[i]);
       }
     }
   }
@@ -4853,7 +4867,7 @@ static double qt_block_cost(const float *plane, int width, int bx, int by, int n
       buf[(yy * n) + xx] = plane[((size_t)(by + yy) * width) + (bx + xx)];
     }
   }
-  forward_dct_one(buf, n, 0, 0, n);
+  forward_dct_one(buf, n, n, 0, 0, n);
   int table_n[DCT_MAX_SIZE * DCT_MAX_SIZE];
   dct_quant_table_n(table_n, table8, n);
   const int *zigzag = dct_zigzag_for(n);
@@ -6183,9 +6197,17 @@ static void reconstruct_plane(int32_t *coefficients, float *float_plane, const i
   if (base_quality == 0) {
     inverse_spatial_int(coefficients, width, height, levels);
   } else {
-    dequantize(coefficients, float_plane, step, width * height, chroma_multiplier);
-    inverse_spatial(float_plane, width, height, levels);
-    for (int i = 0; i < width * height; i++) {
+    // Uniform DCT: dequantise + inverse-transform the /n-padded height so the partial bottom block (e.g. 4:2:0 chroma
+    // 540 -> 544) is reconstructed exactly like the GPU (which edge-extends it). The step matrix is padded to match;
+    // the extra rows land in the pixel_count-sized buffer and are ignored by the caller (the plane is `height` tall).
+    // Wavelet (g_spatial_dct == 0) and the adaptive quadtree (g_active_qt) keep the exact height.
+    int h_eff = height;
+    if (g_spatial_dct && (g_active_qt == NULL)) {
+      h_eff = ((height + (g_dct_size - 1)) / g_dct_size) * g_dct_size;
+    }
+    dequantize(coefficients, float_plane, step, width * h_eff, chroma_multiplier);
+    inverse_spatial(float_plane, width, h_eff, levels);
+    for (int i = 0; i < (width * h_eff); i++) {
       coefficients[i] = (int)lrintf(float_plane[i]);
     }
   }
@@ -6322,6 +6344,13 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     int plane_w = plane_width(plane, width);
     int plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
+    // Uniform DCT codes a partial bottom block when the height is not a multiple of 8 (e.g. 4:2:0 chroma 540 -> 544):
+    // quantise + reconstruct those rows too so the CPU encode matches the GPU (which edge-extends the block). The
+    // step matrix is already padded; wavelet/quadtree/lossless keep the exact pixel count.
+    int plane_pixels_q = plane_pixels;
+    if ((g_spatial_dct && (base_quality > 0)) && !use_qt) {
+      plane_pixels_q = plane_w * (((plane_h + DCT_BLOCK - 1) / DCT_BLOCK) * DCT_BLOCK);
+    }
     int plane_motion_blocks_x = ((plane_w + MOTION_BLOCK) - 1) / MOTION_BLOCK;
     block_counts[plane] = block_count_x(plane_w) * block_count_y(plane_h);
     build_spatial_quant_steps(step, plane_w, plane_h, levels, base_quality);
@@ -6355,7 +6384,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
         quantize(float_plane, source, step, plane_pixels, chroma_multiplier);
       } else {
         forward_spatial(float_plane, plane_w, plane_h, levels);
-        quantize(float_plane, source, step, plane_pixels, (plane == 0) ? 1.0f : g_chroma_quant);
+        quantize(float_plane, source, step, plane_pixels_q, (plane == 0) ? 1.0f : g_chroma_quant);
         if (g_spatial_dct && (g_rdoq_lambda > 0.0)) {
           // Pass 2: build the real rANS rate model from the plain-quant levels, then re-quantize R-D-optimally.
           uint32_t dc_hist[RANS_DC_SYMBOLS], ac_hist[RANS_AC_SYMBOLS];
@@ -6377,7 +6406,7 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
       encode_plane(&writer, source, plane_w, plane_h, offsets[plane]);
     }
     // Closed loop: reconstruct exactly what the decoder will, save it as the next reference.
-    memcpy(recon, source, (size_t)plane_pixels * 4);
+    memcpy(recon, source, (size_t)plane_pixels_q * 4);   // copy the /8-padded coeffs so reconstruct_plane's partial bottom block has valid quantised input
     reconstruct_plane(recon, float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);
     if (is_predicted) {
       for (int i = 0; i < plane_pixels; i++) {
@@ -6682,6 +6711,12 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
   for (int plane = 0; plane < g_num_planes; plane++) {
     int plane_w = plane_width(plane, width), plane_h = plane_height(plane, height);
     int plane_pixels = plane_w * plane_h;
+    // Uniform DCT-B codes a partial bottom block for non-/8 heights (4:2:0 chroma 540 -> 544); quantise + reconstruct
+    // those rows so the CPU encode matches the GPU edge-extended block. The step matrix is padded; quadtree/lossless exact.
+    int plane_pixels_q = plane_pixels;
+    if ((g_bframe_dct && (base_quality > 0)) && !use_qt) {
+      plane_pixels_q = plane_w * (((plane_h + DCT_BLOCK - 1) / DCT_BLOCK) * DCT_BLOCK);
+    }
     block_counts[plane] = block_count_x(plane_w) * block_count_y(plane_h);
     build_spatial_quant_steps(step, plane_w, plane_h, levels, base_quality);
     if (g_bframe_dct && (plane > 0)) {
@@ -6720,7 +6755,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
         quantize(float_plane, source, step, plane_pixels, chroma_multiplier);
       } else {
         forward_spatial(float_plane, plane_w, plane_h, levels);
-        quantize(float_plane, source, step, plane_pixels, (plane == 0) ? 1.0f : g_chroma_quant);
+        quantize(float_plane, source, step, plane_pixels_q, (plane == 0) ? 1.0f : g_chroma_quant);
         if (g_spatial_dct && (g_rdoq_lambda > 0.0)) {
           // Pass 2: build the real rANS rate model from the plain-quant levels, then re-quantize R-D-optimally.
           uint32_t dc_hist[RANS_DC_SYMBOLS], ac_hist[RANS_AC_SYMBOLS];
@@ -6741,7 +6776,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
     } else {
       encode_plane(&writer, source, plane_w, plane_h, offsets[plane]);
     }
-    memcpy(recon, source, (size_t)plane_pixels * 4);
+    memcpy(recon, source, (size_t)plane_pixels_q * 4);   // copy the /8-padded coeffs so reconstruct_plane's partial bottom block has valid quantised input
     reconstruct_plane(recon, float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);
     if (has_prediction) {
       for (int i = 0; i < plane_pixels; i++) {
@@ -6815,9 +6850,53 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
   if (!data) {
     die("corrupt bidi frame header");
   }
-  (void)mv_data;
-  (void)mv_length;
   int has_prediction = (ref0 != NULL);
+  // Stage B2: decode the motion field — a per-block L0/L1/BI mode array (Phase 2 B-frames only) + the L0 MVs
+  // [+ the L1 MVs for a B-frame], mirroring the GPU bidi decode. The CPU-oracle zero-MV B-encode carries no blob
+  // (mv_length == 0): the MVs stay all-zero, so OBMC is the identity and the prediction reduces to the plain
+  // weighted reference blend (the prior behaviour). The GPU-motion stream (mv_length > 0) is now fully decoded.
+  int motion_blocks_x = ((width + MOTION_BLOCK) - 1) / MOTION_BLOCK, motion_blocks_y = ((height + MOTION_BLOCK) - 1) / MOTION_BLOCK;
+  int mv_block_count = motion_blocks_x * motion_blocks_y;
+  int has_mv1 = (ref1 != NULL);
+  int has_mode = (g_per_block_mode && has_mv1) && (mv_length > 0);   // per-block mode only on a GPU-motion B-frame
+  int *mv0 = checked_malloc((size_t)(mv_block_count * 2) * sizeof(int));
+  int *mv1 = checked_malloc((size_t)(mv_block_count * 2) * sizeof(int));
+  int *mode_map = checked_malloc((size_t)mv_block_count * sizeof(int));
+  memset(mv0, 0, (size_t)(mv_block_count * 2) * sizeof(int));
+  memset(mv1, 0, (size_t)(mv_block_count * 2) * sizeof(int));
+  memset(mode_map, 0, (size_t)mv_block_count * sizeof(int));
+  if (has_prediction && (mv_length > 0)) {
+    if (g_mv_codec == 1) {   // range codec: one stream for mode + mv0 [+ mv1]
+      mv_blob_decode_range(mv_data, mv_length, has_mode, mode_map, g_motion_variable,
+                           mv0, has_mv1, mv1, g_motion_variable, motion_blocks_x, motion_blocks_y);
+    } else {
+      BitReader mv_reader;
+      bitreader_init(&mv_reader, mv_data, mv_length);
+      if (has_mode) {
+        if (g_motion_variable) {
+          decode_mode_quadtree(&mv_reader, mode_map, motion_blocks_x, motion_blocks_y);
+        } else {
+          for (int blk = 0; blk < mv_block_count; blk++) {
+            mode_map[blk] = (int)bitreader_get_bits(&mv_reader, 2);
+          }
+        }
+      }
+      if (g_motion_variable) {
+        decode_motion_quadtree(&mv_reader, mv0, motion_blocks_x, motion_blocks_y);
+      } else {
+        decode_motion_vectors(&mv_reader, mv0, motion_blocks_x, motion_blocks_y);
+      }
+      if (has_mv1) {
+        if (g_motion_variable) {
+          decode_motion_quadtree(&mv_reader, mv1, motion_blocks_x, motion_blocks_y);
+        } else {
+          decode_motion_vectors(&mv_reader, mv1, motion_blocks_x, motion_blocks_y);
+        }
+      }
+    }
+  }
+  int32_t *mc0 = has_prediction ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *mc1 = (has_prediction && has_mv1) ? checked_malloc((size_t)pixel_count * 4) : NULL;
   // DCT-B: the entropy section (and quadtree partition section) follow the block data, exactly like colordiff.
   const uint8_t *plane_table[MAX_PLANES] = { NULL };
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
@@ -6852,13 +6931,33 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     }
     reconstruct_plane(planes[plane], float_plane, step, plane_w, plane_h, levels, base_quality, (plane == 0) ? 1.0f : g_chroma_quant);
     if (has_prediction) {
+      // Motion-compensate the reference(s) with OBMC (mc0 = MC(ref0, mv0); for a B-frame mc1 = MC(ref1, mv1)),
+      // then add the prediction. The MV / mode field is indexed on THIS plane's own block grid (chroma subsampled),
+      // exactly like the GPU mc.comp / blend_mode dispatch. Zero MVs -> mc == reference -> plain weighted blend.
+      int plane_motion_blocks_x = ((plane_w + MOTION_BLOCK) - 1) / MOTION_BLOCK;
+      motion_compensate(ref0[plane], mv0, mc0, plane_w, plane_h, plane_motion_blocks_x);
       if (ref1 != NULL) {
-        for (int i = 0; i < plane_pixels; i++) {
-          planes[plane][i] += ((((weight0 * ref0[plane][i]) + (weight1 * ref1[plane][i])) + 128) >> 8);
+        motion_compensate(ref1[plane], mv1, mc1, plane_w, plane_h, plane_motion_blocks_x);
+        if (has_mode) {
+          // Phase 2 per-block mode: mc0 holds L0; pick per block (0 = L0, 1 = L1, 2 = BI weighted), mirroring blend_mode.comp.
+          for (int y = 0; y < plane_h; y++) {
+            int by = y / MOTION_BLOCK;
+            for (int x = 0; x < plane_w; x++) {
+              int idx = (y * plane_w) + x;
+              int mode = mode_map[(by * plane_motion_blocks_x) + (x / MOTION_BLOCK)];
+              int pred = (mode == 1) ? mc1[idx]
+                       : ((mode == 2) ? ((((weight0 * mc0[idx]) + (weight1 * mc1[idx])) + 128) >> 8) : mc0[idx]);
+              planes[plane][idx] += pred;
+            }
+          }
+        } else {
+          for (int i = 0; i < plane_pixels; i++) {
+            planes[plane][i] += ((((weight0 * mc0[i]) + (weight1 * mc1[i])) + 128) >> 8);
+          }
         }
       } else {
         for (int i = 0; i < plane_pixels; i++) {
-          planes[plane][i] += ref0[plane][i];
+          planes[plane][i] += mc0[i];   // P-anchor: weight0 == 256 -> the blend reduces to mc0
         }
       }
     }
@@ -6886,6 +6985,11 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     free(cg_temp);
   }
   free(cdef_scratch);
+  free(mv0);
+  free(mv1);
+  free(mode_map);
+  free(mc0);
+  free(mc1);
   free(luma);
   free(chroma_orange);
   free(chroma_green);

@@ -1173,6 +1173,7 @@ int main(int argc, char **argv) {
     g_motion_variable = 1;   // variable quadtree motion (root 32 -> 8); the fine grid is 8, the blob is a quadtree
     g_motion_block = 8;
   }
+  g_per_block_mode = (header.reserved2[3] != 0);   // Phase 2: B MV blobs carry a per-block L0/L1/BI mode array (the CPU decode_frame_bidi oracle reads it too)
   if (mode_3ddwt) {
     g_temporal_levels = header.reserved2[0] ? header.reserved2[0] : 2;
     g_temporal_wavelet = header.reserved2[1];
@@ -2877,16 +2878,18 @@ int main(int argc, char **argv) {
           int q = (int)entry->quality;
           for (int plane = 0; plane < g_num_planes; plane++) {
             int pw = plane_width(plane, width), ph = plane_height(plane, height);
+            int ph_q = ((ph + 7) / 8) * 8;   // uniform DCT: pad to /8 so the partial bottom block (e.g. 4:2:0 chroma 540 -> 544) is fully dequantised, exactly like the encoder
             if (b_use_qt) {
               const int *quant_table = (plane == 0) ? JPEG_LUMA_QUANT : JPEG_CHROMA_QUANT;
               build_quant_quadtree(step, pw, ph, (const uint8_t *)partition_map + ((size_t)plane * qt_regions_per_plane), q, quant_table);
+              memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
             } else {
-              build_spatial_quant_steps(step, pw, ph, levels, q);
+              build_spatial_quant_steps(step, pw, ph_q, levels, q);
               if (plane > 0) {
-                build_dct_quant_matrix_chroma(step, pw, ph, q);
+                build_dct_quant_matrix_chroma(step, pw, ph_q, q);
               }
+              memcpy(step_map[plane], step, (size_t)(pw * ph_q) * 4);
             }
-            memcpy(step_map[plane], step, (size_t)(pw * ph) * 4);
             bind_storage_buffers(set_dequant[plane], (VkBuffer[]){ coeff_buffer[plane], step_buffer[plane] }, 2);
           }
           gdec_step_idx = -1;
@@ -2963,8 +2966,12 @@ int main(int argc, char **argv) {
           }
           memory_barrier();
           if (!lossless) {
+            // Uniform DCT-B: dequantise the /8-padded height so the partial bottom block's rows (4:2:0 chroma 540 -> 544)
+            // are dequantised before the inverse DCT, matching the encoder. Wavelet + quadtree stay at the exact pixel count.
+            int dequant_pixels = (g_bframe_dct && !b_use_qt) ? (plane_w * (((plane_h + 7) / 8) * 8)) : plane_pixels;
+            int dequant_workgroups = (dequant_pixels + 255) / 256;
             int32_t dequant_push[2];
-            dequant_push[0] = plane_pixel_count_push;
+            dequant_push[0] = dequant_pixels;
             float chroma_multiplier = (plane == 0) ? 1.0f : g_chroma_quant;
             memcpy(&dequant_push[1], &chroma_multiplier, sizeof(float));
             if (g_aq_enabled) {   // GPU AQ: modulate the cached base step by this frame's tile map into step_buffer first
@@ -2978,7 +2985,7 @@ int main(int argc, char **argv) {
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant);
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dequant, 0, 1, &set_dequant[plane], 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_dequant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
-            vkCmdDispatch(command_buffer, plane_pixel_workgroups, 1, 1);
+            vkCmdDispatch(command_buffer, dequant_workgroups, 1, 1);
             memory_barrier();
           }
           if (g_bframe_dct && b_use_qt) {
