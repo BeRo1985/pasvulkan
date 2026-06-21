@@ -24,7 +24,7 @@ SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv 
       shaders/color_hdr_alpha.spv shaders/color_hdr_scrgb_alpha.spv shaders/fvd_composite_present.spv \
       shaders/dering.spv shaders/apply_tile_aq.spv \
       shaders/cdef.spv shaders/cdef_sse.spv \
-      shaders/dct_fwd.spv shaders/dct_inv.spv shaders/dct_inv_int.spv shaders/rans_unpack.spv \
+      shaders/dct_fwd.spv shaders/dct_inv.spv shaders/dct_inv_int.spv shaders/dct_fwd_int.spv shaders/rans_unpack.spv \
       shaders/rans_hist.spv shaders/rans_size.spv shaders/rans_pack.spv \
       shaders/rans_unpack_qt.spv shaders/dct_inv_qt.spv shaders/deblock.spv \
       shaders/dct_fwd_qt.spv shaders/rans_hist_qt.spv shaders/rans_size_qt.spv

@@ -6851,7 +6851,7 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     die("corrupt bidi frame header");
   }
   int has_prediction = (ref0 != NULL);
-  // Stage B2: decode the motion field — a per-block L0/L1/BI mode array (Phase 2 B-frames only) + the L0 MVs
+  // Decode the motion field — a per-block L0/L1/BI mode array (Phase 2 B-frames only) + the L0 MVs
   // [+ the L1 MVs for a B-frame], mirroring the GPU bidi decode. The CPU-oracle zero-MV B-encode carries no blob
   // (mv_length == 0): the MVs stay all-zero, so OBMC is the identity and the prediction reduces to the plain
   // weighted reference blend (the prior behaviour). The GPU-motion stream (mv_length > 0) is now fully decoded.

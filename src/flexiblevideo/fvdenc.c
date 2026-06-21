@@ -1171,7 +1171,7 @@ static void hdr_ingest_inplace(uint8_t *frame, int pixel_count) {
   }
 }
 
-// B-frame encode (Stage A: the validated CPU encode_frame_bidi oracle wired into the real
+// B-frame encode (the validated CPU encode_frame_bidi oracle wired into the real
 // container, so a B-stream actually plays; the GPU bidirectional path validates against this). OPEN-GOP
 // hierarchical B: one leading I-frame, then P-anchors every `period` frames that chain across segment
 // boundaries (with a periodic I-refresh every key_interval frames for seeking), and the dyadic B
@@ -1310,7 +1310,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
   *b_count_out = b_count;
 }
 
-// Stage B1a: GPU coding-order driver. Yields one coding step per call (open-GOP hierarchical B,
+// GPU coding-order driver. Yields one coding step per call (open-GOP hierarchical B,
 // the SAME structure as encode_bframe_stream), filling rgb_dest with the step's source frame and reporting
 // its references as DPB pool-slot indices (the local position within the current anchor pair: slot 0 = lo
 // anchor, slot `hi` = hi anchor) PLUS the global coding index of each reference (for the explicit container
@@ -1513,7 +1513,7 @@ int main(int argc, char **argv) {
   int method = 1;   // P-frame method default: colordiff (B); --pmode=coefdiff selects A (coefficient diff)
   int mode_3ddwt = 0;   // --mode=3ddwt: open-loop temporal 3D-DWT GOP mode
   int bframes = 0;      // --bframes N: N hierarchical B-frames between anchors (0 = off, I/P only)
-  int cpu_bframes = 0;  // --cpu-bframes: force the CPU encode_frame_bidi oracle path (Stage A) instead of the GPU bidi path
+  int cpu_bframes = 0;  // --cpu-bframes: force the CPU encode_frame_bidi oracle path instead of the GPU bidi path
   int gpu_encode = 1;   // --gpu-encode[=0|1]: GPU intra DCT path (then CPU rANS) is the DEFAULT; --gpu-encode=0 forces the CPU encode
   int bframe_mode_set = 0;   // 1 once --bframe-dct or --bframe-dwt is given; else B-frames follow the spatial mode (g_bframe_dct = g_spatial_dct)
   int joint_mv = 0;     // --joint: B2b joint/iterative bidirectional motion (EXPERIMENTAL, currently regresses vs independent); default = B2a independent
@@ -1551,7 +1551,7 @@ int main(int argc, char **argv) {
         g_alpha_bleed_max_passes = atoi(argv[i] + 14);   // --alpha-bleed=N : cap the dilation at N passes (default 0 = fill until done)
       }
     } else if (!strcmp(argv[i], "--cpu-bframes")) {
-      cpu_bframes = 1;             // force the CPU encode_frame_bidi oracle (Stage A) instead of the GPU bidi path
+      cpu_bframes = 1;             // force the CPU encode_frame_bidi oracle instead of the GPU bidi path
     } else if (!strncmp(argv[i], "--bframe-dct", 12)) {   // B-frames use DCT+rANS. Default = the GPU bidi DCT path (motion); +--quadtree/--deblock or --cpu-bframes route to the CPU oracle (zero-motion) below.
       g_bframe_dct = 1;
       bframe_mode_set = 1;        // explicit B-mode -> don't override with the spatial-mode default (gpu_encode already defaults to 1)
@@ -1814,7 +1814,7 @@ int main(int argc, char **argv) {
   if (lossless) {
     g_chroma_format = 0;   // lossless stays 4:4:4 (the codec only subsamples chroma in the lossy path)
   }
-  // hierarchical B-frames (--bframes N). Stage A wires the validated CPU encode_frame_bidi
+  // hierarchical B-frames (--bframes N). The CPU oracle wires the validated CPU encode_frame_bidi
   // oracle into the real container (SDR colordiff only; mutually exclusive with the 3D-DWT GOP mode).
   int use_bframes = (bframes >= 1) && !mode_3ddwt;
   // B-frame default: unless the user explicitly picked a B-mode (--bframe-dct/--bframe-dwt), B-frames follow the
@@ -2068,7 +2068,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  // Stage B1a: the GPU DPB — a bounded pool of reconstructed-YCoCg reference buffer sets, one
+  // The GPU DPB — a bounded pool of reconstructed-YCoCg reference buffer sets, one
   // per position within the current anchor pair (slot 0 = lo anchor, slot `period` = hi anchor). The
   // coding-order driver reconstructs each frame into its slot; the bidi blend reads two slots.
   int dpb_slots = use_bframes ? (bframes + 2) : 0;   // period + 1, with one spare
@@ -2079,7 +2079,7 @@ int main(int argc, char **argv) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &dpb_buffer[slot][plane], &dpb_memory[slot][plane]);
     }
   }
-  // Stage B2: bidirectional motion. mv1 = the L1 motion vectors (mv_buffer is L0); mv_zero is a
+  // Bidirectional motion. mv1 = the L1 motion vectors (mv_buffer is L0); mv_zero is a
   // zeroed temporal predictor for the B searches; mc1 holds the L1 motion-compensated prediction (the L0
   // mc reuses difference_buffer, then bidi_blend combines them in place).
   VkBuffer mv1_buffer = 0, mv_zero_buffer = 0, mv_snap_buffer = 0, mode_buffer = 0, mc1_buffer[MAX_PLANES] = { 0, 0, 0 };
@@ -2164,6 +2164,8 @@ int main(int argc, char **argv) {
   VkPipelineLayout pipeline_layout_dct = create_pipeline_layout(layout_1_buffer, 8);   // DCT --gpu-encode: { width, height }
   VkPipeline pipeline_dct_fwd = gpu_encode ? create_compute_pipeline("shaders/dct_fwd.spv", pipeline_layout_dct) : 0;   // forward block DCT (validates the GPU forward transform)
   VkPipeline pipeline_dct_inv = gpu_encode ? create_compute_pipeline("shaders/dct_inv.spv", pipeline_layout_dct) : 0;   // inverse block DCT for the DCT-B closed-loop reconstruct (mirror of the decoder)
+  VkPipeline pipeline_dct_fwd_int = (gpu_encode && lossless) ? create_compute_pipeline("shaders/dct_fwd_int.spv", pipeline_layout_dct) : 0;   // Q0 lossless: reversible integer forward block DCT (bit-exact mirror of forward_int_dct_blocks)
+  VkPipeline pipeline_dct_inv_int = (gpu_encode && lossless) ? create_compute_pipeline("shaders/dct_inv_int.spv", pipeline_layout_dct) : 0;   // Q0 lossless: reversible integer inverse for the closed-loop reconstruct
   VkPipelineLayout pipeline_layout_rans_hist = create_pipeline_layout(layout_2_buffers, 12);   // { width, height, block_size }
   VkPipelineLayout pipeline_layout_rans_size = create_pipeline_layout(layout_4_buffers, 16);   // { width, height, block_size, scratch_stride }
   VkPipelineLayout pipeline_layout_rans_pack = create_pipeline_layout(layout_4_buffers, 12);   // { tile_count, block_size, scratch_stride }
@@ -2389,7 +2391,7 @@ int main(int argc, char **argv) {
   VkDescriptorSet set_row_scratch = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
   bind_storage_buffers(set_row_scratch, (VkBuffer[]){ scratch_buffer }, 1);
 
-  // Stage B1a: bidi sets, REBOUND per coding step to the chosen DPB slots. bidi_blend reads two
+  // Bidi sets, REBOUND per coding step to the chosen DPB slots. bidi_blend reads two
   // references + writes the prediction into difference_buffer (the existing prediction slot, consumed by
   // ycocg_diff via set_ycocg_mc); the reconstruct's motion_add writes the recon into the frame's DPB slot.
   VkDescriptorSet set_bidi_blend[MAX_PLANES], set_motion_add_bidi[MAX_PLANES];
@@ -2397,7 +2399,7 @@ int main(int argc, char **argv) {
     set_bidi_blend[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     set_motion_add_bidi[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
   }
-  // Stage B2: motion sets, REBOUND per coding step (two separate search sets so no rebind happens
+  // Motion sets, REBOUND per coding step (two separate search sets so no rebind happens
   // within a command buffer). set_me_b0/b1 search current vs ref0/ref1 into mv_buffer/mv1_buffer; set_mc_b0
   // mc's ref0 by mv0 into difference_buffer; set_mc_b1 mc's ref1 by mv1 into mc1_buffer; then set_bidi_blend
   // combines {difference, mc1} -> difference in place.
@@ -2418,7 +2420,7 @@ int main(int argc, char **argv) {
     set_merge = allocate_descriptor_set(descriptor_pool, layout_7_buffers);
     bind_storage_buffers(set_merge, (VkBuffer[]){ mv8_buffer, sad_buffer, mv16_buffer, sad16_buffer, mv32_buffer, sad32_buffer, mv_buffer }, 7);
   }
-  // Variable-motion B path (Stage 2b): the L0 (vs ref0 -> mv_buffer) and L1 (vs ref1 -> mv1_buffer) searches each run
+  // Variable-motion B path: the L0 (vs ref0 -> mv_buffer) and L1 (vs ref1 -> mv1_buffer) searches each run
   // the 3-size ME + R-D merge. Six ME sets (rebound per coding step to the DPB ref slots) + a 2nd merge set for L1.
   VkDescriptorSet set_me_var8_b0 = 0, set_me_var16_b0 = 0, set_me_var32_b0 = 0;
   VkDescriptorSet set_me_var8_b1 = 0, set_me_var16_b1 = 0, set_me_var32_b1 = 0;
@@ -2677,16 +2679,15 @@ int main(int argc, char **argv) {
   }
   double encode_start = now_milliseconds();
 
-  // Stage 2: plain DCT I/P (lossy, no quadtree/deblock/HDR/Q0/alpha) is GPU-encoded by routing it through the
-  // GPU bidi loop (use_bframes == 0), exactly like wavelet I/P. The CPU oracle (the loop just below) stays the
-  // --gpu-encode=0 path and the home of the features the GPU bidi loop does not yet cover (those are later stages).
-  // Stage 3: +alpha. Stage 4a: +quadtree. Stage 4b: +deblock BUT only with quadtree (the encoder deblock is
-  // quadtree-coupled — the uniform path never deblocked, even for DCT-B; uniform+deblock stays on the CPU oracle,
-  // which deblocks correctly). HDR + Q0-lossless still CPU-routed.
-  int dct_ip_gpu = ((((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && !lossless) && (!g_deblock || g_quadtree);   // Stage 5: +HDR (the bidi loop's use_bframes==0 path already does the rgb48le->12-bit ingest, like DCT-B). Only Q0-lossless still CPU-routed.
+  // Plain DCT I/P is GPU-encoded by routing it through the GPU bidi loop (use_bframes == 0), exactly like wavelet
+  // I/P: colour/DCT/quant/rANS + motion all run on the GPU, for SDR/HDR, 4:4:4/4:2:2/4:2:0, with optional alpha,
+  // quadtree and lossless (reversible integer DCT). The one combo kept on the CPU oracle is uniform + deblock: the
+  // encoder deblock is quadtree-coupled (the uniform reconstruct never deblocks), so deblock here requires quadtree;
+  // uniform + deblock falls back to the CPU oracle, which deblocks correctly. --gpu-encode=0 also forces the CPU oracle.
+  int dct_ip_gpu = (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && gpu_encode) && (!g_deblock || g_quadtree);
 
-  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0) + the features the GPU bidi loop doesn't cover yet (HDR/Q0/uniform-deblock)
-    // ---- DCT fork encode (Stage 1): the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
+  if (((g_spatial_dct && !use_bframes) && !mode_3ddwt) && !dct_ip_gpu) {   // DCT-mode I/P CPU oracle (--gpu-encode=0, or uniform + deblock)
+    // ---- DCT fork encode: the validated CPU oracle (RGB -> YCoCg -> block DCT -> quant -> rANS) per
     // frame, into the container — the comparison reference; the GPU dct_fwd + GPU-rANS encode is the next step.
     // The DECODER is full-GPU (fvdplay / fvddec). I/P only (B-frames, 3D-DWT, HDR, Q0 keep their existing paths). ----
     printf("  DCT encode: CPU oracle (colour/DCT/quant/rANS) -> container, GPU decode | gop=%d chroma=%s\n",
@@ -2888,7 +2889,7 @@ int main(int argc, char **argv) {
     free(frame_rgb);
     free(recon_rgb);
   } else if (use_bframes && cpu_bframes) {
-    // ---- hierarchical B-frame encode (Stage A CPU oracle: --cpu-bframes; the GPU bidi path below is the default) ----
+    // ---- hierarchical B-frame encode (CPU oracle: --cpu-bframes; the GPU bidi path below is the default) ----
     printf("  B-frame mode: %d B between anchors (period %d), keyframe interval %d, chroma=%s (CPU oracle)\n",
            bframes, bframes + 1, (gop > (bframes + 1)) ? (((int)(gop / (bframes + 1))) * (bframes + 1)) : 0,
            (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
@@ -3544,7 +3545,7 @@ int main(int argc, char **argv) {
     free(gop_encoded_length);
     free(mctf_frame_mv);
   } else {
-    // Stage B1a: GPU hierarchical-B encode shares this (display-order I/P) loop in CODING order.
+    // GPU hierarchical-B encode shares this (display-order I/P) loop in CODING order.
     // The driver yields one coding step per iteration into rgb_map; the bidi sets are rebound to the DPB
     // slots; the per-plane transform/quant/pack/reconstruct below is reused verbatim (I/P = use_bframes==0).
     BGpuDriver bgpu = { 0 };
@@ -3841,7 +3842,7 @@ int main(int argc, char **argv) {
       memory_barrier();
 
       // colordiff (B) P-frame: search for per-16x16-block motion vectors (luma) into mv_buffer, before
-      // mc.comp uses them. One workgroup per block. (Skipped for the B-stream: Stage B1 is zero-MV.)
+      // mc.comp uses them. One workgroup per block. (Skipped for the B-stream: the zero-MV B path.)
       if ((((!use_bframes) && (method == 1)) && is_predicted) && (!g_motion_variable)) {
         // Snapshot the previous frame's MVs (still in mv_buffer from the last frame) into mv_prev as this
         // frame's temporal predictor, before the search overwrites mv_buffer.
@@ -3917,7 +3918,7 @@ int main(int argc, char **argv) {
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &snap_barrier, 0, 0, 0, 0);
       }
 
-      // Stage B2: bidirectional motion search — current vs ref0 -> mv_buffer (L0), and for a
+      // Bidirectional motion search — current vs ref0 -> mv_buffer (L0), and for a
       // B-frame current vs ref1 -> mv1_buffer (L1). Independent searches with a zero temporal predictor.
       if ((use_bframes && is_predicted) && (!(g_motion_variable && g_motion_split_bidi))) {   // fast single-ref 2-ME L0/L1 (fixed, or the default variable B)
         int32_t me_push[4] = { width, height, motion_blocks_x, lossless };
@@ -3940,7 +3941,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      // Stage 2b: variable-motion B path. P-anchor (no ref1) = single-ref L0 merge -> mv_buffer (like the P path).
+      // Variable-motion B path. P-anchor (no ref1) = single-ref L0 merge -> mv_buffer (like the P path).
       // True B-frame = 3-size L0 (vs ref0 -> mv8/16/32) AND L1 (vs ref1 -> mv1_8/16/32) searches, then bidi_mode_sad
       // gives the per-block [L0,L1,BI] SADs at each size, and motion_merge_bidi picks the partition + the per-leaf mode
       // (mode-aware, bidirectional R-D) and writes mv0 (-> mv_buffer), mv1 (-> mv1_buffer) and the mode (-> mode_buffer).
@@ -4014,7 +4015,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      // Stage B2b: joint/iterative refinement (B-frames only) — minimise the BLENDED residual.
+      // Joint/iterative refinement (B-frames only) — minimise the BLENDED residual.
       // Re-search mv0 vs ref0 with MC_other = MC(ref1, mv1) (mc1_buffer); then re-search mv1 vs ref1 with
       // MC_other = MC(ref0, mv0_refined) (difference_buffer). One iteration each; the per-plane loop and the
       // MV payload below then use the refined mv_buffer / mv1_buffer.
@@ -4157,7 +4158,7 @@ int main(int argc, char **argv) {
         // colordiff (B) P-frame: subtract the previous reconstructed YCoCg BEFORE the wavelet, so the
         // transform sees the spatial residual (current - previous), in place.
         if (use_bframes) {
-          // B-stream (Stage B2, bidirectional motion): mc0 = MC(ref0, mv0) -> difference_buffer; for a
+          // B-stream (bidirectional motion): mc0 = MC(ref0, mv0) -> difference_buffer; for a
           // B-frame also mc1 = MC(ref1, mv1) -> mc1_buffer, then bidi_blend combines {difference, mc1} ->
           // difference (the weighted prediction); finally ycocg_diff subtracts it (the single-ref path).
           if (is_predicted) {
@@ -4220,7 +4221,7 @@ int main(int argc, char **argv) {
           // Either way the rANS encode + per-tile sizing + the inverse-DCT closed-loop reconstruct run post-submit.
           if (!g_quadtree) {
             int32_t dct_fwd_push[2] = { plane_w, plane_h };
-            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_fwd);
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, lossless ? pipeline_dct_fwd_int : pipeline_dct_fwd);   // Q0 -> reversible integer forward DCT (no quant); else float DCT + quant
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_fwd_push);
             vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
@@ -4511,7 +4512,7 @@ int main(int argc, char **argv) {
             memory_barrier();
           }
           int32_t dct_inv_push[2] = { plane_w, plane_h };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_inv);
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, lossless ? pipeline_dct_inv_int : pipeline_dct_inv);   // Q0 -> reversible integer inverse (closed loop bit-exact); else float inverse
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
           vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_inv_push);
           vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
@@ -4906,7 +4907,7 @@ int main(int argc, char **argv) {
       for (int plane = 0; plane < g_num_planes; plane++) {
         frame_sizes[plane] = (method == 0 && is_predicted) ? (uint32_t *)size_map_diff[plane] : (uint32_t *)size_map[plane];
       }
-      // Code the motion vectors. I/P: one L0 set. B-stream (Stage B2): the L0 set, plus the L1 set for a
+      // Code the motion vectors. I/P: one L0 set. B-stream (bidirectional motion): the L0 set, plus the L1 set for a
       // B-frame — concatenated in one blob (the decoder reads 1 or 2 sets per the frame's ref1 in the index).
       uint8_t *mv_bytes = NULL;
       size_t mv_length = 0;

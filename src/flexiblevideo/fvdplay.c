@@ -1074,7 +1074,7 @@ int main(int argc, char **argv) {
   float exposure_override = -1.0f;   // <0 = keep the default
   int output_mode = 0;               // 0 = auto = SDR tonemap (scRGB opt-in), 1 = force scRGB FP16, 2 = force SDR tonemap
   int verify = 0;                    // --verify: GPU-decode vs CPU-decode PSNR check, no window
-  int cpu_decode = 0;                // --cpu-decode: force the Stage A CPU B-decode / quadtree oracle (fallback); default is the GPU decode
+  int cpu_decode = 0;                // --cpu-decode: force the CPU B-decode / quadtree oracle (fallback); default is the GPU decode
   int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fvd_frame0.ppm (.f16 when scRGB)
   int dump_alpha = 0;                // --dump-alpha: write the CPU-decoded alpha lane of frame 0 to /tmp/fvd_alpha0.gray (implies --verify)
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
@@ -1092,7 +1092,7 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[a], "--verify") == 0) {
       verify = 1;
     } else if (strcmp(argv[a], "--cpu-decode") == 0) {
-      cpu_decode = 1;   // force the Stage A CPU B-decode (the GPU bidi decode is the default)
+      cpu_decode = 1;   // force the CPU B-decode (the GPU bidi decode is the default)
     } else if (strcmp(argv[a], "--gpu-decode") == 0) {
       cpu_decode = 0;   // accepted for compatibility; GPU bidi decode is now the default for a B-stream
     } else if (strcmp(argv[a], "--dump") == 0) {
@@ -1842,7 +1842,7 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_row[3], (VkBuffer[]){ coeff_buffer[3] }, 1);
   }
 
-  // Stage B1b: GPU bidi decode — DPB pool + bidi_blend + per-frame-rebound sets (mirror of the
+  // GPU bidi decode — DPB pool + bidi_blend + per-frame-rebound sets (mirror of the
   // encoder). bidi_blend reuses pipeline_layout_unpack (3 buffers + 12-byte push); the reconstruct's
   // motion_add reuses pipeline_motion_add. Allocated only for --gpu-decode on a B-stream.
   int use_gpu_bdecode = has_bframes && !cpu_decode;   // 4b: the GPU bidi path now decodes DCT-B too (rANS + inverse DCT + quadtree + deblock); --cpu-decode forces the CPU oracle
@@ -1872,7 +1872,7 @@ int main(int argc, char **argv) {
   VkDeviceMemory gdpb_memory[64][MAX_PLANES];
   VkDescriptorSet set_gblend[MAX_PLANES], set_gadd[MAX_PLANES];
   VkFence bdecode_fence = 0;
-  // Stage B2 decode: L1 motion vectors + the two motion-compensated predictions (gmc0/gmc1),
+  // Decode: L1 motion vectors + the two motion-compensated predictions (gmc0/gmc1),
   // blended into scratch_buffer (consumed by the reconstruct's motion_add). mv_buffer/mv_map = L0.
   VkBuffer mv1_buffer = 0, mode_buffer = 0, gmc_buffer[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
   VkDeviceMemory mv1_memory = 0, mode_memory = 0, gmc_memory[2][MAX_PLANES] = { { 0, 0, 0 }, { 0, 0, 0 } };
@@ -2330,7 +2330,7 @@ int main(int argc, char **argv) {
   VkBuffer bf_upload_buffer = 0;
   VkDeviceMemory bf_upload_memory = 0;
   void *bf_upload_map = 0;
-  // Stage B1b GPU-decode state: a coding-order GPU decode-ahead into the DPB pool, keyed like
+  // GPU-decode state: a coding-order GPU decode-ahead into the DPB pool, keyed like
   // the CPU BStream (last_use eviction) but the reconstructed YCoCg lives in GPU slots; poc_to_slot maps
   // each display POC to its slot for the color pass. gframe_buffer is the per-frame payload read scratch.
   int *gdpb_last_use = NULL, *gdpb_poc_to_slot = NULL, *gdpb_coding_to_slot = NULL, gdpb_slot_coding[40], gcursor = 0;
@@ -2658,7 +2658,7 @@ int main(int argc, char **argv) {
         continue;
       }
     }
-    // Stage B1b: GPU decode-ahead. Decode coding frames into the DPB pool until the frame at the
+    // GPU decode-ahead. Decode coding frames into the DPB pool until the frame at the
     // display POC is reconstructed, mirroring the encoder (unpack -> dequant -> inverse -> bidi_blend ->
     // motion_add into dpb[dst]). Runs on the shared command_buffer (free after the in-flight wait above)
     // with its own fence; the present recording below then re-records command_buffer for the color pass.
@@ -2755,7 +2755,7 @@ int main(int argc, char **argv) {
           }
         }
         double bdec_tp1 = fvd_time ? now_milliseconds() : 0.0;   // split: fread + header + data-memcpy done; MV/mode decode follows
-        // Stage B2: decode the L0 MVs (and the L1 MVs for a B-frame) from the single blob into the
+        // Decode the L0 MVs (and the L1 MVs for a B-frame) from the single blob into the
         // host-visible mv_buffer / mv1_buffer for mc.comp.
         if ((entry->ref0 >= 0) && (mv_length > 0)) {
           int mv_block_count = motion_blocks_x * motion_blocks_y;
@@ -3180,7 +3180,7 @@ int main(int argc, char **argv) {
 
     int is_predicted = (index[frame_index].type != 0);   // 3D-DWT: also marks GOP continuation frames (type 2)
     if (has_bframes && !use_gpu_bdecode) {
-      // Stage A: decode (in coding order) up to this display POC on the CPU, expand its
+      // Decode (in coding order) up to this display POC on the CPU, expand its
       // reconstructed RGB into the staging buffer and upload it into decode_image; the existing letterbox
       // blit / readback path below then runs unchanged (present / verify / decode-to all consume decode_image).
       is_predicted = 0;
@@ -3208,7 +3208,7 @@ int main(int argc, char **argv) {
     image_barrier(decode_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, VK_ACCESS_SHADER_WRITE_BIT,
                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     if (use_gpu_bdecode) {
-      // Stage B1b: the decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
+      // The decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
       // stage it into coeff_buffer (already rounded int) for the color pass below.
       int dslot = gdpb_poc_to_slot[frame_index];
       if (g_has_alpha) {   // B-frame: CPU-decode this display frame's alpha (intra) — its container entry is the coding index held in this slot
