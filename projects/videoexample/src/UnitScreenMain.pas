@@ -60,6 +60,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fOutputImageLayout:TVkImageLayout; // tracked layout of the player's OutputImage between passes
        fPlayerInitPending:boolean; // defer the heavy CreatePlayer (~0.5 s of compute-pipeline compiling) out of Show
        fBlackFramePresented:boolean; // set once Draw has cleared the swapchain to black while no player exists yet
+       fAudioStartPending:boolean; // A/V start-sync: audio is opened but held until the FIRST video frame is decoded, then started together (no startup lag)
        // present path A (fullscreen textured quad sampling the decoded image)
        fSampler:TpvVulkanSampler;
        fVertexShaderModule:TpvVulkanShaderModule;
@@ -138,6 +139,7 @@ begin
  fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
  fPlayerInitPending:=false;
  fBlackFramePresented:=false;
+ fAudioStartPending:=false;
 end;
 
 destructor TScreenMain.Destroy;
@@ -163,7 +165,8 @@ begin
   // FP16 for true HDR display; otherwise (SDR swapchain) the decoder stays on the rgba8 SDR / SDR-tonemap path.
   fPlayer:=TpvFlexibleVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
                                                 TpvFlexibleVideoPlayer.TDecoderChoice.Auto,
-                                                (pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or ForceSCRGB);
+                                                (pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or ForceSCRGB,
+                                                pvApplication.VulkanPipelineCache); // engine's disk-persisted cache -> warm-start the ~2 s pipeline build
   fPlaybackTime:=0.0;
   fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
   // wire the container audio into the engine audio system as the A/V master clock
@@ -171,7 +174,10 @@ begin
    fPlayer.OpenAudio(pvApplication.Audio);
    if fPlayer.HasAudio then begin
     pvApplication.Audio.OutputLatencyFrames:=pvApplication.Audio.BufferSamples; // ~one device buffer past our ring
-    fPlayer.StartAudio;
+    // Don't start the audio clock yet: the first frame's compute-pipeline warmup + GOP decode-ahead burst takes ~0.5 s,
+    // and starting audio now would leave the video that far behind. Hold it until the first frame is actually decoded
+    // (Draw), then start audio + video together -> no startup A/V lag.
+    fAudioStartPending:=true;
    end;
   end;
   writeln(Format('videoexample: playing %s  %dx%d  %d frames  %.3f fps  %.2fs  hdr=%d  h264=%d/using=%d  audio=%d ch=%d/%dHz',
@@ -696,7 +702,9 @@ begin
  end;
 
  if assigned(fPlayer) then begin
-  if fPlayer.HasAudio and (not fPlayer.AudioFinished) then begin
+  if fAudioStartPending then begin
+   fPlaybackTime:=0.0; // pre-roll: hold on frame 0 (decode + pipeline warmup over black) until Draw starts the audio
+  end else if fPlayer.HasAudio and (not fPlayer.AudioFinished) then begin
    fPlaybackTime:=fPlayer.MasterClockSeconds; // A/V sync: the audio playback clock drives the video while audio plays (freezes on pause)
   end else if (not fPaused) and (fPlayer.Duration>0.0) and (fPlaybackTime<fPlayer.Duration) then begin
    // no audio, OR the audio finished before the video: advance on the wall clock so the video still plays out to its
@@ -755,6 +763,11 @@ begin
  // GPU decode the frame Update staged (leaves the decoded image in TRANSFER_SRC_OPTIMAL when it records one)
  if assigned(fPlayer) and fPlayer.Decode(CommandBuffer) then begin
   fOutputImageLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  if fAudioStartPending then begin
+   // first frame is decoded -> start the audio clock now so audio + video begin together (no startup lag)
+   fPlayer.StartAudio;
+   fAudioStartPending:=false;
+  end;
  end;
 
  // No valid frame to show when: the player does not exist yet (deferred creation, see Show/Update) or it has not decoded

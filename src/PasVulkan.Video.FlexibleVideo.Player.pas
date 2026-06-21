@@ -91,7 +91,7 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        function GetPlaybackFinished:boolean; // True only when the LAST video frame has been decoded AND the audio has finished
        function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
       public
-       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false);
+       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false;const aPipelineCache:TpvVulkanPipelineCache=nil);
        destructor Destroy; override;
        // map a presentation time to a display-order frame index (clamped to the stream)
        function TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;
@@ -137,7 +137,7 @@ implementation
 
 { TpvFlexibleVideoPlayer }
 
-constructor TpvFlexibleVideoPlayer.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice;const aPreferSCRGBForHDR:boolean);
+constructor TpvFlexibleVideoPlayer.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice;const aPreferSCRGBForHDR:boolean;const aPipelineCache:TpvVulkanPipelineCache);
 begin
  inherited Create;
 
@@ -207,7 +207,7 @@ begin
  // the wavelet backend is the default + the fallback; only built when the H.264 backend is not active
  if not fUsingH264 then begin
   fStream.Seek(0,soBeginning);
-  fDecoder:=TpvFlexibleVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1); // submit mode B: whole decode-ahead into ONE caller CB
+  fDecoder:=TpvFlexibleVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1,aPipelineCache); // submit mode B: whole decode-ahead into ONE caller CB; shared pipeline cache warm-starts the build
  end;
 
 end;

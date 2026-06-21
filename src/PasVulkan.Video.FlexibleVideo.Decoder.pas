@@ -252,6 +252,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fUseSCRGB:boolean;
        fOutputFormat:TVkFormat;
        fPipelineCache:TpvVulkanPipelineCache;
+       fOwnsPipelineCache:boolean; // True = we created fPipelineCache (free it); False = the caller's shared cache (don't free)
        fDSL1:TpvVulkanDescriptorSetLayout; // 1 storage buffer
        fDSL2:TpvVulkanDescriptorSetLayout; // 2 storage buffers
        fDSL3:TpvVulkanDescriptorSetLayout; // 3 storage buffers
@@ -503,7 +504,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // SDR-tonemapped sRGB8 fallback. Ignored for SDR streams (always R8G8B8A8). The output format is fixed here.
        // aBSubmitMode: 0 = the decoder self-submits the B-frame decode-ahead (reference/debug; uses its own queue/fence),
        // 1 = engine-friendly (the decode-ahead is recorded into the caller's command buffer; no self-submit).
-       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean=false;const aBSubmitMode:TpvInt32=0);
+       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean=false;const aBSubmitMode:TpvInt32=0;const aPipelineCache:TpvVulkanPipelineCache=nil);
        destructor Destroy; override;
        // Record a decode of aFrameIndex (I or P) into the caller's command buffer; on submit it leaves the
        // reconstructed RGB in OutputImage (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL). The CPU upload (read /
@@ -4697,7 +4698,7 @@ begin
 
 end;
 
-constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32);
+constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache);
 begin
  inherited Create;
 
@@ -4720,7 +4721,16 @@ begin
 
  ParseContainer;
 
- fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
+ // Compute-pipeline cache: building the ~29 pipelines from SPIR-V costs ~2 s on a cold driver. The caller (the app)
+ // passes its shared, disk-persisted cache (pvApplication.VulkanPipelineCache) so subsequent runs reuse the driver's
+ // compiled binaries and the build drops to ~tens of ms. When none is supplied (e.g. the headless harness) own a fresh one.
+ if assigned(aPipelineCache) then begin
+  fPipelineCache:=aPipelineCache;
+  fOwnsPipelineCache:=false;
+ end else begin
+  fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
+  fOwnsPipelineCache:=true;
+ end;
 
  BuildPipelines;
  BuildBuffersAndImage;
@@ -4956,7 +4966,11 @@ begin
  FreeAndNil(fDSL2);
  FreeAndNil(fDSL1);
 
- FreeAndNil(fPipelineCache);
+ if fOwnsPipelineCache then begin // only free a cache we created; the caller's shared cache (pvApplication.VulkanPipelineCache) is theirs
+  FreeAndNil(fPipelineCache);
+ end else begin
+  fPipelineCache:=nil;
+ end;
 
  inherited Destroy;
 end;
