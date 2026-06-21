@@ -385,6 +385,12 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // Without this the per-pixel rebuild every frame is the CPU bottleneck at 1080p.
        fStepCacheQuality:array of TpvInt32;       // quality value held by each cache slot
        fStepCacheData:array of array of TpvInt32; // [(slot*3)+plane] -> the prebuilt step map for that quality/plane
+       // DCT uniform-mode step cache: the JPEG DCT quant matrix depends only on the quality (+ luma/chroma), so build it
+       // ONCE per distinct quality (the QP-cascade cycles a handful) and memcpy per frame — the per-pixel Trunc rebuild
+       // every frame is the 1080p CPU bottleneck (the GOP-boundary decode-ahead burst rebuilds ~9 frames' worth at once).
+       // The cached map is /8-padded (the inverse DCT + dequant cover the partial bottom block). Quad-tree stays per-frame (partition-dependent).
+       fDCTStepCacheQuality:array of TpvInt32;
+       fDCTStepCacheData:array of array of TpvInt32; // [(slot*numplanes)+plane] -> the prebuilt /8-padded DCT step matrix
        // AQ (per-tile QP): the per-frame per-tile QP maps (qpmap container section, coding order). When present the
        // base (per-quality) step is modulated by the current frame's map in-place AFTER the cache Move, so the cache
        // stays the content-independent base and the GPU dequant is untouched (matches the C fwvplay decoder).
@@ -424,6 +430,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        procedure RecordImageBarrier(const aCommandBuffer:TpvVulkanCommandBuffer;const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
        procedure RecordDispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aPipeline:TpvVulkanComputePipeline;const aLayout:TpvVulkanPipelineLayout;const aSet:TpvVulkanDescriptorSet;const aPushConstants:Pointer;const aPushSize:TpvUInt32;const aGroupsX,aGroupsY,aGroupsZ:TpvUInt32);
        function EnsureStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the step-map cache slot for a quality
+       function EnsureDCTStepCacheSlot(const aQuality:TpvInt32):TpvInt32; // build (once) + return the /8-padded DCT step-matrix cache slot for a quality
        procedure SetAQCurrentMap(const aCodingIndex:TpvInt32); // AQ: select this coding frame's per-tile QP map (no-op if AQ off)
        class function CdefDampingFromQuality(const aQuality:TpvInt32):TpvInt32; static; // AV1 CDEF damping derived from the frame's quality
        procedure SetCDEFFrame(const aCodingIndex:TpvInt32); // CDEF: load this coding frame's strengths + damping (no-op if CDEF off / lossless)
@@ -1645,6 +1652,32 @@ begin
  result:=Slot;
 end;
 
+function TpvFlexibleVideoDecoder.EnsureDCTStepCacheSlot(const aQuality:TpvInt32):TpvInt32;
+var Slot,Plane,PaddedPixels:TpvInt32;
+begin
+
+ // already built for this quality -> reuse (the DCT quant matrix is content-independent, identical every frame)
+ for Slot:=0 to length(fDCTStepCacheQuality)-1 do begin
+  if fDCTStepCacheQuality[Slot]=aQuality then begin
+   result:=Slot;
+   exit;
+  end;
+ end;
+
+ // first time this quality appears -> build all planes once (the /8-padded JPEG DCT quant matrix, luma vs chroma)
+ Slot:=length(fDCTStepCacheQuality);
+ SetLength(fDCTStepCacheQuality,Slot+1);
+ SetLength(fDCTStepCacheData,(Slot+1)*fNumPlanes);
+ fDCTStepCacheQuality[Slot]:=aQuality;
+ for Plane:=0 to fNumPlanes-1 do begin
+  PaddedPixels:=PlaneWidth(Plane)*(((PlaneHeight(Plane)+7) div 8)*8);
+  SetLength(fDCTStepCacheData[(Slot*fNumPlanes)+Plane],PaddedPixels);
+  TpvFlexibleVideo.BuildDCTQuantMatrix(PpvInt32Array(@fDCTStepCacheData[(Slot*fNumPlanes)+Plane][0]),PlaneWidth(Plane),PlaneHeight(Plane),aQuality,fSampleWhite,Plane in [1,2]);
+ end;
+
+ result:=Slot;
+end;
+
 procedure TpvFlexibleVideoDecoder.SetAQCurrentMap(const aCodingIndex:TpvInt32);
 begin
  if fAQEnabled and ((aCodingIndex>=0) and (((aCodingIndex+1)*fAQMapBytes)<=length(fAQMaps))) then begin
@@ -1991,11 +2024,14 @@ begin
   if fSpatialDCT and fQuadtree then begin
    // Quad-tree: the per-leaf quant step depends on the partition, which is parsed after the block data -> built below.
   end else if fSpatialDCT then begin
-   // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma table) per plane, not the wavelet step.
+   // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma) per plane. Built once per quality + memcpy'd
+   // (the per-pixel rebuild every frame is the 1080p CPU bottleneck — the GOP-boundary decode-ahead bursts ~9 frames at once).
+   StepSlot:=EnsureDCTStepCacheSlot(Entry^.Quality);
    for Plane:=0 to fNumPlanes-1 do begin
+    PlanePixels:=PlaneWidth(Plane)*(((PlaneHeight(Plane)+7) div 8)*8); // /8-padded (matches the cached matrix)
     DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
     try
-     TpvFlexibleVideo.BuildDCTQuantMatrix(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane),Entry^.Quality,fSampleWhite,Plane in [1,2]);
+     Move(fDCTStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
     finally
      ActiveStepBuffer(Plane).Memory.UnmapMemory;
     end;
@@ -2542,9 +2578,11 @@ begin
  // quant matrix at alpha_qp, and wavelet mode reuses the per-quality luma step cache. The alpha is NOT AQ-modulated.
  if not fAlphaLossless then begin
   if fAlphaIsRANS then begin
+   // DCT alpha is luma-like -> the cached luma (plane 0) DCT matrix at alpha_qp; built once per quality + memcpy'd (not per frame).
+   StepSlot:=EnsureDCTStepCacheSlot(fAlphaQP);
    DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
    try
-    TpvFlexibleVideo.BuildDCTQuantMatrix(PpvInt32Array(@DataPointer^[0]),fWidth,fHeight,fAlphaQP,fSampleWhite,false);
+    Move(fDCTStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(((fHeight+7) div 8)*8)*4);
    finally
     fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
    end;
@@ -3156,11 +3194,14 @@ begin
   if fSpatialDCT and fQuadtree then begin
    // Quad-tree: the per-leaf quant step depends on the partition, which is parsed after the block data -> built below.
   end else if fSpatialDCT then begin
-   // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma table) per plane, not the wavelet step.
+   // DCT mode: the dequant reads the JPEG DCT quant matrix (luma vs chroma) per plane. Built once per quality + memcpy'd
+   // (the per-pixel rebuild every frame is the 1080p CPU bottleneck — the GOP-boundary decode-ahead bursts ~9 frames at once).
+   StepSlot:=EnsureDCTStepCacheSlot(Entry^.Quality);
    for Plane:=0 to fNumPlanes-1 do begin
+    PlanePixels:=PlaneWidth(Plane)*(((PlaneHeight(Plane)+7) div 8)*8); // /8-padded (matches the cached matrix)
     DataPointer:=PpvUInt8Array(ActiveStepBuffer(Plane).Memory.MapMemory);
     try
-     TpvFlexibleVideo.BuildDCTQuantMatrix(PpvInt32Array(@DataPointer^[0]),PlaneWidth(Plane),PlaneHeight(Plane),Entry^.Quality,fSampleWhite,Plane in [1,2]);
+     Move(fDCTStepCacheData[(StepSlot*fNumPlanes)+Plane][0],DataPointer^[0],TpvSizeUInt(PlanePixels)*4);
     finally
      ActiveStepBuffer(Plane).Memory.UnmapMemory;
     end;
