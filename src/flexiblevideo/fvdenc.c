@@ -1237,7 +1237,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
     }
     // ---- the stream's leading I-frame (poc 0, no references) ----
     uint8_t *payload;
-    size_t length = encode_frame_bidi(rgb_slot[0], width, height, levels, quality, NULL, NULL, 0, 0, dpb[0], &payload);
+    size_t length = encode_frame_bidi(rgb_slot[0], width, height, levels, quality, NULL, NULL, 0, 0, dpb[0], &payload, NULL);   // own-alpha-MV wiring = step 5
     dpb_coding[0] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
                                   0, -1, -1, 0, (uint8_t)quality, 0);
     free(payload);
@@ -1270,12 +1270,12 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
 
       // ---- the hi anchor: an I-refresh (seek point) or a P from the lo anchor ----
       if (is_key) {
-        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, NULL, NULL, 0, 0, dpb[hi], &payload);
+        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, NULL, NULL, 0, 0, dpb[hi], &payload, NULL);   // own-alpha-MV wiring = step 5
         dpb_coding[hi] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
                                        (uint32_t)hi_poc, -1, -1, 0, (uint8_t)quality, 0);
         i_count++;
       } else {
-        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, dpb[0], NULL, 256, 0, dpb[hi], &payload);
+        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, dpb[0], NULL, 256, 0, dpb[hi], &payload, NULL);   // own-alpha-MV wiring = step 5
         dpb_coding[hi] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
                                        (uint32_t)hi_poc, (int32_t)dpb_coding[0], -1, 1, (uint8_t)quality, 0);
         p_count++;
@@ -1290,7 +1290,7 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
       for (int s = 0; s < count; s++) {
         int lp = steps[s].poc, r0 = steps[s].ref0, r1 = steps[s].ref1;
         length = encode_frame_bidi(rgb_slot[lp], width, height, levels, quality,
-                                   dpb[r0], dpb[r1], steps[s].weight0, steps[s].weight1, dpb[lp], &payload);
+                                   dpb[r0], dpb[r1], steps[s].weight0, steps[s].weight1, dpb[lp], &payload, NULL);   // own-alpha-MV wiring = step 5
         dpb_coding[lp] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
                                        (uint32_t)(lo + lp), (int32_t)dpb_coding[r0], (int32_t)dpb_coding[r1],
                                        2, (uint8_t)quality, (uint8_t)steps[s].temporal_id);
@@ -2927,7 +2927,7 @@ int main(int argc, char **argv) {
           free(gpu_table[plane]);
         }
       } else {
-        total = encode_frame_colordiff(frame_rgb, width, height, levels, quality, &frame_payload, prev_ycocg, is_predicted);
+        total = encode_frame_colordiff(frame_rgb, width, height, levels, quality, &frame_payload, prev_ycocg, is_predicted, NULL);   // own-alpha-MV wiring = step 5
       }
       if (output) {
         if (frame_index >= index_capacity) {
@@ -2948,7 +2948,7 @@ int main(int argc, char **argv) {
         index[frame_index].size = (uint32_t)fwrite_frame(container_file, frame_payload, total);
         predicted_frames += is_predicted;
       } else {
-        decode_frame_colordiff(frame_payload, total, width, height, levels, quality, recon_rgb, decode_prev, is_predicted);
+        decode_frame_colordiff(frame_payload, total, width, height, levels, quality, recon_rgb, decode_prev, is_predicted, 0);
         double mean_squared_error = 0;
         for (size_t i = 0; i < frame_bytes; i++) {
           if ((i % (size_t)g_channels) >= 3) {
@@ -3549,7 +3549,7 @@ int main(int argc, char **argv) {
           int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
                                        NULL, 0,   // 3D-DWT is wavelet-mode -> alpha is bit-plane (no rANS table)
-                                       tight + tight_color_length, tight_total - tight_color_length);
+                                       tight + tight_color_length, tight_total - tight_color_length, NULL, 0);   // shared luma MVs (own-alpha-MV TODO for GPU enc)
         }
         free(tight);
         free(mv_blob);
@@ -5429,7 +5429,7 @@ int main(int argc, char **argv) {
           uint32_t alpha_table_len = 0;
           dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
           total = append_alpha_section(&frame, total, alpha_qp, alpha_offsets, alpha_blocks,
-                                       alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
+                                       alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length, NULL, 0);   // shared luma MVs (own-alpha-MV TODO for GPU enc)
           free(alpha);
           free(alpha_writer.bytes);
           free(alpha_offsets);
@@ -5438,7 +5438,7 @@ int main(int argc, char **argv) {
           // wavelet mode: the GPU bit-plane pack above wrote the alpha into the tight buffer after the color planes
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
                                        NULL, 0,
-                                       tight + tight_color_length, tight_total - tight_color_length);
+                                       tight + tight_color_length, tight_total - tight_color_length, NULL, 0);   // shared luma MVs
         }
       }
       free(tight);
@@ -5501,7 +5501,7 @@ int main(int argc, char **argv) {
         // Self-test: CPU-decode the GPU stream and measure PSNR against the original frame. Tracks the
         // P-frame reference (matching the active method) so gop>1 round-trips correctly here too.
         if (method == 1) {
-          decode_frame_colordiff(frame, total, width, height, levels, quality, reconstructed, predictive ? self_previous : NULL, is_predicted);
+          decode_frame_colordiff(frame, total, width, height, levels, quality, reconstructed, predictive ? self_previous : NULL, is_predicted, 0);
         } else {
           decode_frame_coefdiff(frame, total, width, height, levels, quality, reconstructed, predictive ? self_previous : NULL, is_predicted);
         }

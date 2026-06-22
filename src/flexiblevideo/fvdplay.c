@@ -867,7 +867,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
     int alpha_qp;
     const uint8_t *alpha_table;
     uint32_t alpha_table_length, alpha_data_length;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_section, frame_len - (size_t)(alpha_section - *frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, frame_len - (size_t)(alpha_section - *frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
     if (!alpha_data) {
       die("corrupt alpha section (3D-DWT subband)");
     }
@@ -920,7 +920,7 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   int alpha_qp;
   const uint8_t *alpha_table;
   uint32_t alpha_table_length, alpha_data_length;
-  const uint8_t *alpha_data = parse_alpha_section(alpha_section_ptr, frame_len - (size_t)(alpha_section_ptr - fb), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+  const uint8_t *alpha_data = parse_alpha_section(alpha_section_ptr, frame_len - (size_t)(alpha_section_ptr - fb), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
   if (!alpha_data) {
     die("corrupt alpha section");
   }
@@ -1147,7 +1147,7 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
     cdef_load_frame((uint32_t)c);   // coding-order strengths so the CPU B-decode deringes bit-exactly like the GPU
     decode_frame_bidi(bs->payload, payload_length, bs->width, bs->height, bs->levels, entry->quality,
-                      ref0, ref1, weight0, weight1, &bs->dpb[c * MAX_PLANES], bs->rgb[entry->poc]);
+                      ref0, ref1, weight0, weight1, &bs->dpb[c * MAX_PLANES], bs->rgb[entry->poc], (int)entry->pad);   // pad = alpha_mv_mode
     bs->cursor++;
     // Evict DPB entries no longer referenced by any future frame (the RGB display copy is separate).
     for (int x = bs->evict_low; x < bs->cursor; x++) {
@@ -2824,7 +2824,7 @@ int main(int argc, char **argv) {
         int alpha_qp;
         const uint8_t *alpha_table;
         uint32_t alpha_table_length, alpha_data_length;
-        const uint8_t *alpha_data = parse_alpha_section(alpha_section_start, ip_frame_len - (size_t)(alpha_section_start - frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+        const uint8_t *alpha_data = parse_alpha_section(alpha_section_start, ip_frame_len - (size_t)(alpha_section_start - frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
         if (!alpha_data) {
           die("corrupt alpha section");
         }
@@ -4051,7 +4051,7 @@ int main(int argc, char **argv) {
         // verify) from the CPU oracle, which parses + walks the partition section. Windowed present + a real
         // GPU quadtree decoder are the follow-up (sub-step 4b).
         cdef_load_frame(frame_index);
-        decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
+        decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, 0);   // alpha_mv_mode: FrameEntry.pad wiring = step 5
         memcpy(gpu_rgba, cpu_rgb, frame_bytes);
       }
       if (dump_first_frame && (frame_index == 0)) {   // dump GPU-decoded frame 0 (--dump): raw RGBA16F when scRGB, else 8-bit PPM
@@ -4092,7 +4092,7 @@ int main(int argc, char **argv) {
           memcpy(cpu_rgb, cpu_gop_rgb[frame_index - cur_gop_start], frame_bytes);   // CPU reference from the per-GOP decode above
         } else if (header.prediction_method == 1) {
           cdef_load_frame(frame_index);   // load this frame's CDEF strengths so the CPU decode deringes bit-exactly like the GPU
-          decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
+          decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, 0);   // alpha_mv_mode: FrameEntry.pad wiring = step 5
         } else {
           decode_frame_coefdiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         }

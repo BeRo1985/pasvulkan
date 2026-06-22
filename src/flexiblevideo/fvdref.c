@@ -5961,10 +5961,14 @@ static const uint8_t *parse_frame_header(const uint8_t *frame, size_t frame_leng
 // Returns the new total frame size (the color payload before it is byte-identical to the non-alpha stream).
 // Layout: [alpha_qp:1][size_blob_length:4][size_blob][table_length:4][rANS table][data_length:4][alpha_data].
 // table_length > 0 => DCT-mode alpha (rANS, the table follows); table_length == 0 => wavelet-mode alpha (bit-plane, no table).
+// alpha_mv_blob (only when own-alpha-MV; pass NULL/0 for the shared-luma-MV default → byte-identical section). When
+// present it is written right after alpha_qp as [mv_blob_length:u32][mv_blob]; the decoder reads it iff the per-frame
+// alpha_mv_mode (FrameEntry.pad) says own. The own-MV blob is coded like luma MVs (encode_motion_vectors / range).
 static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha_qp,
                                    const uint32_t *alpha_sizes, int block_count,
                                    const uint8_t *alpha_table, uint32_t alpha_table_length,
-                                   const uint8_t *alpha_data, size_t alpha_data_length) {
+                                   const uint8_t *alpha_data, size_t alpha_data_length,
+                                   const uint8_t *alpha_mv_blob, uint32_t alpha_mv_blob_length) {
   BitWriter size_writer;
   bitwriter_init(&size_writer);
   for (int block = 0; block < block_count; block++) {
@@ -5972,7 +5976,8 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
   }
   bitwriter_flush(&size_writer);
   uint32_t size_blob_length = (uint32_t)size_writer.length;
-  size_t section_size = (((((1 + 4) + size_blob_length) + 4) + alpha_table_length) + 4) + alpha_data_length;
+  size_t mv_section = (alpha_mv_blob_length > 0) ? ((size_t)4 + alpha_mv_blob_length) : 0;   // [mv_blob_length:u32][mv_blob], only when own-MV
+  size_t section_size = ((((((1 + mv_section) + 4) + size_blob_length) + 4) + alpha_table_length) + 4) + alpha_data_length;
   uint8_t *grown = realloc(*frame, frame_size + section_size);
   if (!grown) {
     die("alpha section realloc");
@@ -5980,6 +5985,12 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
   size_t cursor = frame_size;
   grown[cursor] = (uint8_t)alpha_qp;
   cursor += 1;
+  if (alpha_mv_blob_length > 0) {   // own-alpha-MV: the MV blob sits right after alpha_qp (the decoder reads it iff alpha_mv_mode=1)
+    memcpy(grown + cursor, &alpha_mv_blob_length, 4);
+    cursor += 4;
+    memcpy(grown + cursor, alpha_mv_blob, alpha_mv_blob_length);
+    cursor += alpha_mv_blob_length;
+  }
   memcpy(grown + cursor, &size_blob_length, 4);
   cursor += 4;
   memcpy(grown + cursor, size_writer.bytes, size_blob_length);
@@ -6003,14 +6014,45 @@ static size_t append_alpha_section(uint8_t **frame, size_t frame_size, int alpha
 // Prefix-sums the block sizes into alpha_offsets, returns alpha_qp via out_alpha_qp, and returns the alpha block data.
 // `section_length` is the byte length of the appended alpha section (pass SIZE_MAX to skip the bounds checks for trusted
 // just-built data). Returns NULL if any field would read past section_length (corrupt / truncated alpha section).
-static const uint8_t *parse_alpha_section(const uint8_t *section, size_t section_length, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp, const uint8_t **out_table, uint32_t *out_table_length, uint32_t *out_data_length) {
+// alpha_has_own_mv (from the per-frame alpha_mv_mode in FrameEntry.pad): when set, the section carries an own-alpha-MV
+// blob [mv_blob_length:u32][mv_blob] right after alpha_qp; it is returned via out_mv_blob / out_mv_blob_length (NULL/0 when
+// shared). Pass alpha_has_own_mv=0 (and out_mv_blob=NULL) for the shared-luma-MV default → reads the byte-identical section.
+static const uint8_t *parse_alpha_section(const uint8_t *section, size_t section_length, uint32_t *alpha_offsets, int block_count, int *out_alpha_qp, const uint8_t **out_table, uint32_t *out_table_length, uint32_t *out_data_length,
+                                          int alpha_has_own_mv, const uint8_t **out_mv_blob, uint32_t *out_mv_blob_length) {
   if (section_length < 5) {   // alpha_qp (1) + size_blob_length (4)
     return NULL;
   }
   size_t cursor = 0;
   *out_alpha_qp = section[cursor];
   cursor += 1;
+  if (out_mv_blob) {
+    *out_mv_blob = NULL;
+  }
+  if (out_mv_blob_length) {
+    *out_mv_blob_length = 0;
+  }
+  if (alpha_has_own_mv) {   // own-alpha-MV: read the [mv_blob_length:u32][mv_blob] that sits right after alpha_qp
+    if ((cursor + 4) > section_length) {
+      return NULL;
+    }
+    uint32_t mv_blob_length;
+    memcpy(&mv_blob_length, section + cursor, 4);
+    cursor += 4;
+    if ((cursor + (size_t)mv_blob_length) > section_length) {
+      return NULL;
+    }
+    if (out_mv_blob) {
+      *out_mv_blob = section + cursor;
+    }
+    if (out_mv_blob_length) {
+      *out_mv_blob_length = mv_blob_length;
+    }
+    cursor += mv_blob_length;
+  }
   uint32_t size_blob_length;
+  if ((cursor + 4) > section_length) {
+    return NULL;
+  }
   memcpy(&size_blob_length, section + cursor, 4);
   cursor += 4;
   if ((cursor + (size_t)size_blob_length) > section_length) {
@@ -6054,6 +6096,10 @@ static const uint8_t *parse_alpha_section(const uint8_t *section, size_t section
   }
   return section + cursor;
 }
+
+// Forward declaration: reconstruct_plane is defined below (after the coefdiff functions), but the coefdiff
+// alpha decode needs it (the alpha section's inverse transform mirrors the color reconstruct).
+static void reconstruct_plane(int32_t *coefficients, float *float_plane, const int *step, int width, int height, int levels, int base_quality, float chroma_multiplier);
 
 // previous_coefficients (3 planes) is the reference for a P-frame: if is_predicted, the coefficient-
 // domain difference (current - previous) is coded; either way this frame's (un-diffed) coefficients
@@ -6105,8 +6151,52 @@ static size_t encode_frame_coefdiff(const uint8_t *rgb, int width, int height, i
     }
   }
 
+  // Alpha plane 3 (inter via COEFFICIENT-domain diff, exactly like the color planes in this mode — CoefDiff has no
+  // motion). Full-res; its own spatial decision (alpha_qp) + own previous-coefficients reference (saved un-diffed).
+  BitWriter alpha_writer;
+  uint32_t *alpha_offsets = NULL;
+  int alpha_qp = 0;
+  if (g_has_alpha) {
+    alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    for (int i = 0; i < pixel_count; i++) {
+      alpha[i] = rgb[(i * 4) + 3];
+    }
+    build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // alpha keeps its own quant steps (alpha_qp); `step` is rebuilt here (color already coded)
+    maybe_apply_tile_aq(step, width, height, levels);
+    if (alpha_qp == 0) {
+      forward_spatial_int(alpha, width, height, levels);
+    } else {
+      for (int i = 0; i < pixel_count; i++) {
+        float_plane[i] = (float)alpha[i];
+      }
+      forward_spatial(float_plane, width, height, levels);
+      quantize(float_plane, alpha, step, pixel_count, 1.0f);
+    }
+    int alpha_predicted = is_predicted && previous_coefficients;
+    const int32_t *alpha_encode_source = alpha;
+    if (alpha_predicted) {   // coefficient-domain difference against the previous frame's alpha coefficients
+      for (int i = 0; i < pixel_count; i++) {
+        diff_buffer[i] = alpha[i] - previous_coefficients[3][i];
+      }
+      alpha_encode_source = diff_buffer;
+    }
+    if (previous_coefficients) {   // save this frame's (un-diffed) alpha coefficients as the next frame's reference
+      memcpy(previous_coefficients[3], alpha, (size_t)pixel_count * 4);
+    }
+    bitwriter_init(&alpha_writer);
+    alpha_offsets = checked_malloc((size_t)block_count * 4);
+    encode_plane(&alpha_writer, alpha_encode_source, width, height, alpha_offsets);   // bit-plane entropy, like the CoefDiff color planes (table_length = 0)
+    free(alpha);
+  }
+
   uint8_t *output;
   size_t total_size = assemble_frame((int[3]){ block_count, block_count, block_count }, offsets, NULL, 0, writer.bytes, writer.length, &output);   // coefdiff: 4:4:4 only
+  if (g_has_alpha) {   // append the alpha section (coefficient-diff residual, bit-plane -> no rANS table) after the color payload
+    total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, block_count, NULL, 0, alpha_writer.bytes, alpha_writer.length, NULL, 0);
+    free(alpha_writer.bytes);
+    free(alpha_offsets);
+  }
 
   free(luma);
   free(chroma_orange);
@@ -6178,6 +6268,40 @@ static void decode_frame_coefdiff(const uint8_t *frame, size_t length, int width
     }
   }
   ycocg_to_rgb(luma, chroma_orange, chroma_green, rgb, pixel_count);
+
+  // Alpha plane 3 (inter via coefficient-domain diff): parse the appended section, add back the previous alpha
+  // coefficients (P-frame), save the un-diffed reference, then inverse-transform (uses alpha_qp + g_spatial_dct, like color).
+  if (g_has_alpha) {
+    int alpha_block_count = block_count;   // alpha is full-res 4:4:4 -> the luma block count
+    uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
+    int alpha_qp;
+    const uint8_t *alpha_table;
+    uint32_t alpha_table_length, alpha_data_length;
+    const uint8_t *alpha_section = data + data_length;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, length - (size_t)(alpha_section - frame), alpha_offsets, alpha_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
+    if (!alpha_data) {
+      die("corrupt alpha section");
+    }
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);   // bit-plane (CoefDiff alpha has no rANS table)
+    if (is_predicted && previous_coefficients) {
+      for (int i = 0; i < pixel_count; i++) {
+        alpha[i] += previous_coefficients[3][i];
+      }
+    }
+    if (previous_coefficients) {   // save the reconstructed alpha coefficients before the in-place inverse transform
+      memcpy(previous_coefficients[3], alpha, (size_t)pixel_count * 4);
+    }
+    build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_tile_aq(step, width, height, levels);
+    reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+    for (int i = 0; i < pixel_count; i++) {
+      int a = alpha[i];
+      rgb[(i * 4) + 3] = (uint8_t)((a < 0) ? 0 : ((a > 255) ? 255 : a));
+    }
+    free(alpha);
+    free(alpha_offsets);
+  }
 
   free(luma);
   free(chroma_orange);
@@ -6308,8 +6432,56 @@ static void deblock_plane(int32_t *plane, int width, int height, int base_qualit
   free(cell_leaf);
 }
 
+// Byte length of the exp-golomb-coded per-block size blob (matches append_alpha_section's size_writer), for the
+// own-vs-shared-MV RD comparison (actual coded size). The `sizes` array is what encode_plane / dct_encode_plane fills.
+static uint32_t alpha_size_blob_length(const uint32_t *sizes, int block_count) {
+  BitWriter w;
+  bitwriter_init(&w);
+  for (int b = 0; b < block_count; b++) {
+    bitwriter_put_unsigned_exp_golomb(&w, sizes[b]);
+  }
+  bitwriter_flush(&w);
+  uint32_t len = (uint32_t)w.length;
+  free(w.bytes);
+  return len;
+}
+
+// Encode one alpha residual variant (post-MC; transformed IN PLACE to coefficients): forward + quant + entropy into
+// (writer, offsets, table). Returns the comparable coded byte cost = size_blob + table + data (the MV blob is added by
+// the caller for the own variant). float_plane / step are scratch the caller owns.
+// use_dct_entropy: 1 = rANS (dct_encode_plane), 0 = bit-plane (encode_plane). The spatial TRANSFORM stays g_spatial_dct
+// (forward_spatial_int/forward_spatial); only the ENTROPY back-end is selectable (colordiff passes g_spatial_dct, B passes g_bframe_dct).
+static uint32_t encode_alpha_payload(int32_t *residual, int width, int height, int levels, int alpha_qp,
+                                     const int *step, float *float_plane,
+                                     BitWriter *writer, uint32_t *offsets, uint8_t **table, uint32_t *table_len, int use_dct_entropy) {
+  int pixel_count = width * height;
+  if (alpha_qp == 0) {
+    forward_spatial_int(residual, width, height, levels);
+  } else {
+    for (int i = 0; i < pixel_count; i++) {
+      float_plane[i] = (float)residual[i];
+    }
+    forward_spatial(float_plane, width, height, levels);
+    quantize(float_plane, residual, step, pixel_count, 1.0f);
+  }
+  bitwriter_init(writer);
+  *table = NULL;
+  *table_len = 0;
+  if (use_dct_entropy) {
+    dct_encode_plane(writer, residual, width, height, offsets, table, table_len);
+  } else {
+    encode_plane(writer, residual, width, height, offsets);
+  }
+  int block_count = block_count_x(width) * block_count_y(height);
+  return (alpha_size_blob_length(offsets, block_count) + *table_len) + (uint32_t)writer->length;
+}
+
+// out_alpha_mv_mode (or NULL): when non-NULL AND the frame is predicted, the encoder ALSO motion-estimates the alpha
+// plane independently and probe-encodes both the shared-luma-MV and the own-alpha-MV residual, keeping whichever codes
+// to fewer actual bytes (the own variant pays for its MV blob). *out_alpha_mv_mode receives 0 (shared) or 1 (own). The
+// own MV blob is appended in the alpha section. Pass NULL for the shared-luma-MV-only path (no extra search / no probe).
 static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, int levels, int base_quality, uint8_t **out,
-                             int32_t **previous_ycocg, int is_predicted) {
+                             int32_t **previous_ycocg, int is_predicted, int *out_alpha_mv_mode) {
   int pixel_count = width * height;
   int32_t *luma = checked_malloc(pixel_count * 4);
   int32_t *chroma_orange = checked_malloc(pixel_count * 4);
@@ -6466,60 +6638,112 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     free(qt_map[plane]);
   }
 
-  // Optional alpha plane (full-res like luma): its own writer + appended section; the 3-plane color payload above is unchanged.
+  // Optional alpha plane (full-res like luma): inter-predicted (shared luma MVs by default; own alpha MVs when they code
+  // smaller — RD by actual coded bytes), its own appended section; the 3-plane color payload above is unchanged.
   if (g_has_alpha) {
     int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
     int alpha_block_count = block_counts[0];   // alpha is full-res, so its block count == the luma block count
-    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    int alpha_predicted = is_predicted && previous_ycocg;
+    int32_t *alpha_orig = checked_malloc((size_t)pixel_count * 4);
     for (int i = 0; i < pixel_count; i++) {
-      alpha[i] = rgb[(i * 4) + 3];   // the alpha lane of the rgba ingest buffer
+      alpha_orig[i] = rgb[(i * 4) + 3];   // the alpha lane of the rgba ingest buffer (pre-residual)
     }
     build_spatial_quant_steps(step, width, height, levels, alpha_qp);
     maybe_apply_tile_aq(step, width, height, levels);
-    // Inter alpha: motion-compensate the previous reconstructed alpha (shares the luma MVs — alpha is full-res, so they
-    // apply directly, no scaling), then code the pixel-domain residual. Mirrors the color planes; I-frames stay intra.
-    int alpha_predicted = is_predicted && previous_ycocg;
+
+    // SHARED variant: residual = alpha - MC(previous reconstructed alpha, the LUMA MVs) — alpha is full-res, no scaling.
+    int32_t *mc_shared = checked_malloc((size_t)pixel_count * 4);
     if (alpha_predicted) {
-      motion_compensate(previous_ycocg[3], mv, mc_previous, width, height, motion_blocks_x);
-      for (int i = 0; i < pixel_count; i++) {
-        alpha[i] -= mc_previous[i];
-      }
-    }
-    if (alpha_qp == 0) {
-      forward_spatial_int(alpha, width, height, levels);   // lossless alpha
+      motion_compensate(previous_ycocg[3], mv, mc_shared, width, height, motion_blocks_x);
     } else {
+      memset(mc_shared, 0, (size_t)pixel_count * 4);
+    }
+    int32_t *res_shared = checked_malloc((size_t)pixel_count * 4);
+    for (int i = 0; i < pixel_count; i++) {
+      res_shared[i] = alpha_predicted ? (alpha_orig[i] - mc_shared[i]) : alpha_orig[i];
+    }
+    BitWriter w_shared;
+    uint32_t *off_shared = checked_malloc((size_t)alpha_block_count * 4);
+    uint8_t *tab_shared = NULL;
+    uint32_t tab_shared_len = 0;
+    uint32_t cost_shared = encode_alpha_payload(res_shared, width, height, levels, alpha_qp, step, float_plane, &w_shared, off_shared, &tab_shared, &tab_shared_len, g_spatial_dct);
+
+    // OWN variant (predicted + caller opted in via out_alpha_mv_mode): independent alpha ME, probe-encode, compare bytes.
+    int alpha_mv_mode = 0;
+    int do_own = alpha_predicted && (out_alpha_mv_mode != NULL);
+    int *alpha_mv = NULL;
+    int32_t *mc_own = NULL, *res_own = NULL;
+    uint32_t *off_own = NULL;
+    uint8_t *tab_own = NULL, *mv_blob = NULL;
+    uint32_t tab_own_len = 0;
+    size_t mv_blob_len = 0;
+    BitWriter w_own;
+    bitwriter_init(&w_own);   // so free(w_own.bytes) is safe even when !do_own
+    if (do_own) {
+      alpha_mv = checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int));
+      motion_estimate_cpu(alpha_orig, previous_ycocg[3], alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
+      mc_own = checked_malloc((size_t)pixel_count * 4);
+      motion_compensate(previous_ycocg[3], alpha_mv, mc_own, width, height, motion_blocks_x);
+      res_own = checked_malloc((size_t)pixel_count * 4);
       for (int i = 0; i < pixel_count; i++) {
-        float_plane[i] = (float)alpha[i];
+        res_own[i] = alpha_orig[i] - mc_own[i];
       }
-      forward_spatial(float_plane, width, height, levels);
-      quantize(float_plane, alpha, step, pixel_count, 1.0f);
+      off_own = checked_malloc((size_t)alpha_block_count * 4);
+      free(w_own.bytes);   // encode_alpha_payload re-inits the writer
+      uint32_t pay_own = encode_alpha_payload(res_own, width, height, levels, alpha_qp, step, float_plane, &w_own, off_own, &tab_own, &tab_own_len, g_spatial_dct);
+      if (g_mv_codec == 1) {
+        mv_blob_len = mv_blob_encode_range(&mv_blob, 0, NULL, 0, alpha_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+      } else {
+        BitWriter mvw;
+        bitwriter_init(&mvw);
+        encode_motion_vectors(&mvw, alpha_mv, motion_blocks_x, motion_blocks_y);
+        bitwriter_flush(&mvw);
+        mv_blob = mvw.bytes;
+        mv_blob_len = mvw.length;
+      }
+      uint32_t cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;   // the own variant pays for its MV blob ([len:u32]+blob)
+      if (cost_own < cost_shared) {
+        alpha_mv_mode = 1;
+      }
     }
-    BitWriter alpha_writer;
-    bitwriter_init(&alpha_writer);
-    uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
-    uint8_t *alpha_table = NULL;
-    uint32_t alpha_table_len = 0;
-    if (g_spatial_dct) {   // DCT mode: alpha on the rANS coder (lossy float-DCT / lossless integer-DCT), exactly like the color planes
-      dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
-    } else {   // wavelet mode: bit-plane (FWV parity)
-      encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
+
+    // Append the chosen variant; closed-loop reconstruct it (+ its MC) as the next alpha reference.
+    int32_t *chosen_coeffs = (alpha_mv_mode == 1) ? res_own : res_shared;
+    int32_t *chosen_mc = (alpha_mv_mode == 1) ? mc_own : mc_shared;
+    if (alpha_mv_mode == 1) {
+      total_size = append_alpha_section(&output, total_size, alpha_qp, off_own, alpha_block_count, tab_own, tab_own_len, w_own.bytes, w_own.length, mv_blob, (uint32_t)mv_blob_len);
+    } else {
+      total_size = append_alpha_section(&output, total_size, alpha_qp, off_shared, alpha_block_count, tab_shared, tab_shared_len, w_shared.bytes, w_shared.length, NULL, 0);
     }
-    total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, alpha_block_count, alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
-    // Closed loop: reconstruct exactly what the decoder will and save it as the next alpha reference.
     if (previous_ycocg) {
-      memcpy(recon, alpha, (size_t)pixel_count * 4);
+      memcpy(recon, chosen_coeffs, (size_t)pixel_count * 4);
       reconstruct_plane(recon, float_plane, step, width, height, levels, alpha_qp, 1.0f);
       if (alpha_predicted) {
         for (int i = 0; i < pixel_count; i++) {
-          recon[i] += mc_previous[i];
+          recon[i] += chosen_mc[i];
         }
       }
       memcpy(previous_ycocg[3], recon, (size_t)pixel_count * 4);
     }
-    free(alpha);
-    free(alpha_writer.bytes);
-    free(alpha_offsets);
-    free(alpha_table);
+    if (out_alpha_mv_mode) {
+      *out_alpha_mv_mode = alpha_mv_mode;
+    }
+
+    free(alpha_orig);
+    free(mc_shared);
+    free(res_shared);
+    free(w_shared.bytes);
+    free(off_shared);
+    free(tab_shared);
+    if (do_own) {
+      free(mc_own);
+      free(res_own);
+      free(w_own.bytes);
+      free(off_own);
+      free(tab_own);
+      free(alpha_mv);
+      free(mv_blob);
+    }
   }
 
   free(luma);
@@ -6539,8 +6763,10 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
   return total_size;
 }
 
+// alpha_mv_mode (per-frame, from FrameEntry.pad): 0 = the alpha used the shared luma MVs; 1 = the alpha carries its OWN
+// MV blob in its section (decoded here and used for the alpha MC instead of the luma MVs). Pass 0 for the default path.
 static void decode_frame_colordiff(const uint8_t *frame, size_t length, int width, int height, int levels, int base_quality, uint8_t *rgb,
-                           int32_t **previous_ycocg, int is_predicted) {
+                           int32_t **previous_ycocg, int is_predicted, int alpha_mv_mode) {
   (void)length;
   int pixel_count = width * height;
   int32_t *luma = checked_malloc(pixel_count * 4);
@@ -6662,7 +6888,9 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
     int alpha_qp;
     const uint8_t *alpha_table;
     uint32_t alpha_table_length, alpha_data_length;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_section, length - (size_t)(alpha_section - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+    const uint8_t *alpha_mv_blob = NULL;
+    uint32_t alpha_mv_blob_length = 0;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, length - (size_t)(alpha_section - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, (alpha_mv_mode == 1), &alpha_mv_blob, &alpha_mv_blob_length);
     if (!alpha_data) {
       die("corrupt alpha section");
     }
@@ -6675,11 +6903,27 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
       decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);
     }
     reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
-    // Inter alpha: add the motion-compensated previous reconstructed alpha (shared luma MVs). Mirrors the color planes.
+    // Inter alpha: add the motion-compensated previous reconstructed alpha. Shared luma MVs by default; OWN alpha MVs
+    // (decoded from the section's MV blob) when alpha_mv_mode == 1. Mirrors the color planes (full-res, no scaling).
     if (is_predicted && previous_ycocg) {
-      motion_compensate(previous_ycocg[3], mv, mc_previous, width, height, motion_blocks_x);
+      int *amv = mv;   // default: the shared luma MVs
+      int own_alpha_mv = (alpha_mv_mode == 1) && (alpha_mv_blob != NULL);
+      if (own_alpha_mv) {
+        amv = checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int));
+        if (g_mv_codec == 1) {
+          mv_blob_decode_range(alpha_mv_blob, (size_t)alpha_mv_blob_length, 0, NULL, 0, amv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+        } else {
+          BitReader mvr;
+          bitreader_init(&mvr, alpha_mv_blob, (size_t)alpha_mv_blob_length);
+          decode_motion_vectors(&mvr, amv, motion_blocks_x, motion_blocks_y);
+        }
+      }
+      motion_compensate(previous_ycocg[3], amv, mc_previous, width, height, motion_blocks_x);
       for (int i = 0; i < pixel_count; i++) {
         alpha[i] += mc_previous[i];
+      }
+      if (own_alpha_mv) {
+        free(amv);
       }
     }
     if (previous_ycocg) {
@@ -6712,9 +6956,12 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
 //   neither      -> I-frame  (pred = 0)
 // recon_out[3] receives this frame's reconstruction so the caller can keep it in the DPB (hierarchical B
 // are references). This CPU reference uses ZERO motion (MC == identity); the GPU encoder adds real motion.
+// out_alpha_mv_mode (or NULL): own-alpha-MV RD for B-frames — independent alpha ME on EACH reference (L0/L1), probe both
+// the shared (zero-MV-CPU-ref / luma-MV-GPU) blend and the own-alpha-MV blend, keep whichever codes to fewer bytes.
+// *out_alpha_mv_mode = 0 (shared) or 1 (own; the alpha section then carries the own L0(+L1) MV blob).
 static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int levels, int base_quality,
                                 int32_t **ref0, int32_t **ref1, int weight0, int weight1,
-                                int32_t **recon_out, uint8_t **out) {
+                                int32_t **recon_out, uint8_t **out, int *out_alpha_mv_mode) {
   int pixel_count = width * height;
   int32_t *luma = checked_malloc(pixel_count * 4);
   int32_t *chroma_orange = checked_malloc(pixel_count * 4);
@@ -6847,61 +7094,139 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
   if (g_has_alpha) {
     int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
     int alpha_block_count = block_counts[0];
-    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    int alpha_predicted = has_prediction && (ref0[3] != NULL);
+    int has_ref1 = (alpha_predicted && (ref1 != NULL)) && (ref1[3] != NULL);
+    int motion_blocks_x = ((width + MOTION_BLOCK) - 1) / MOTION_BLOCK, motion_blocks_y = ((height + MOTION_BLOCK) - 1) / MOTION_BLOCK;
+    int32_t *alpha_orig = checked_malloc((size_t)pixel_count * 4);
     for (int i = 0; i < pixel_count; i++) {
-      alpha[i] = rgb[(i * 4) + 3];
+      alpha_orig[i] = rgb[(i * 4) + 3];
     }
     build_spatial_quant_steps(step, width, height, levels, alpha_qp);
     maybe_apply_tile_aq(step, width, height, levels);
-    int alpha_predicted = has_prediction && (ref0[3] != NULL);
+
+    // SHARED variant: the existing prediction (weighted blend of the references at the shared MVs; the CPU ref is zero-MV).
+    int32_t *pred_shared = checked_malloc((size_t)pixel_count * 4);
     if (alpha_predicted) {
-      if ((ref1 != NULL) && (ref1[3] != NULL)) {
+      if (has_ref1) {
         for (int i = 0; i < pixel_count; i++) {
-          prediction[i] = (((weight0 * ref0[3][i]) + (weight1 * ref1[3][i])) + 128) >> 8;
+          pred_shared[i] = (((weight0 * ref0[3][i]) + (weight1 * ref1[3][i])) + 128) >> 8;
         }
       } else {
         for (int i = 0; i < pixel_count; i++) {
-          prediction[i] = ref0[3][i];
+          pred_shared[i] = ref0[3][i];
         }
       }
-      for (int i = 0; i < pixel_count; i++) {
-        alpha[i] -= prediction[i];
-      }
-    }
-    if (alpha_qp == 0) {
-      forward_spatial_int(alpha, width, height, levels);
     } else {
-      for (int i = 0; i < pixel_count; i++) {
-        float_plane[i] = (float)alpha[i];
+      memset(pred_shared, 0, (size_t)pixel_count * 4);
+    }
+    int32_t *res_shared = checked_malloc((size_t)pixel_count * 4);
+    for (int i = 0; i < pixel_count; i++) {
+      res_shared[i] = alpha_predicted ? (alpha_orig[i] - pred_shared[i]) : alpha_orig[i];
+    }
+    BitWriter w_shared;
+    uint32_t *off_shared = checked_malloc((size_t)alpha_block_count * 4);
+    uint8_t *tab_shared = NULL;
+    uint32_t tab_shared_len = 0;
+    uint32_t cost_shared = encode_alpha_payload(res_shared, width, height, levels, alpha_qp, step, float_plane, &w_shared, off_shared, &tab_shared, &tab_shared_len, g_bframe_dct);
+
+    // OWN variant (predicted + caller opted in): independent alpha ME per reference (L0 + L1), MC, weighted blend.
+    int alpha_mv_mode = 0;
+    int do_own = alpha_predicted && (out_alpha_mv_mode != NULL);
+    int *amv0 = NULL, *amv1 = NULL;
+    int32_t *pred_own = NULL, *res_own = NULL;
+    uint32_t *off_own = NULL;
+    uint8_t *tab_own = NULL, *mv_blob = NULL;
+    uint32_t tab_own_len = 0;
+    size_t mv_blob_len = 0;
+    BitWriter w_own;
+    bitwriter_init(&w_own);
+    if (do_own) {
+      size_t mv_bytes = (((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int);
+      amv0 = checked_malloc(mv_bytes);
+      motion_estimate_cpu(alpha_orig, ref0[3], amv0, width, height, motion_blocks_x, motion_blocks_y);
+      int32_t *mc0 = checked_malloc((size_t)pixel_count * 4);
+      motion_compensate(ref0[3], amv0, mc0, width, height, motion_blocks_x);
+      int32_t *mc1 = NULL;
+      if (has_ref1) {
+        amv1 = checked_malloc(mv_bytes);
+        motion_estimate_cpu(alpha_orig, ref1[3], amv1, width, height, motion_blocks_x, motion_blocks_y);
+        mc1 = checked_malloc((size_t)pixel_count * 4);
+        motion_compensate(ref1[3], amv1, mc1, width, height, motion_blocks_x);
       }
-      forward_spatial(float_plane, width, height, levels);
-      quantize(float_plane, alpha, step, pixel_count, 1.0f);
+      pred_own = checked_malloc((size_t)pixel_count * 4);
+      if (has_ref1) {
+        for (int i = 0; i < pixel_count; i++) {
+          pred_own[i] = (((weight0 * mc0[i]) + (weight1 * mc1[i])) + 128) >> 8;
+        }
+      } else {
+        for (int i = 0; i < pixel_count; i++) {
+          pred_own[i] = mc0[i];
+        }
+      }
+      res_own = checked_malloc((size_t)pixel_count * 4);
+      for (int i = 0; i < pixel_count; i++) {
+        res_own[i] = alpha_orig[i] - pred_own[i];
+      }
+      off_own = checked_malloc((size_t)alpha_block_count * 4);
+      free(w_own.bytes);
+      uint32_t pay_own = encode_alpha_payload(res_own, width, height, levels, alpha_qp, step, float_plane, &w_own, off_own, &tab_own, &tab_own_len, g_bframe_dct);
+      if (g_mv_codec == 1) {   // dual-MV blob (L0 + optional L1) via the range coder
+        mv_blob_len = mv_blob_encode_range(&mv_blob, 0, NULL, 0, amv0, has_ref1, amv1, 0, motion_blocks_x, motion_blocks_y);
+      } else {   // exp-golomb: L0 then (optional) L1 in one writer (the decoder reads them in the same order)
+        BitWriter mvw;
+        bitwriter_init(&mvw);
+        encode_motion_vectors(&mvw, amv0, motion_blocks_x, motion_blocks_y);
+        if (has_ref1) {
+          encode_motion_vectors(&mvw, amv1, motion_blocks_x, motion_blocks_y);
+        }
+        bitwriter_flush(&mvw);
+        mv_blob = mvw.bytes;
+        mv_blob_len = mvw.length;
+      }
+      uint32_t cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;
+      if (cost_own < cost_shared) {
+        alpha_mv_mode = 1;
+      }
+      free(mc0);
+      free(mc1);
     }
-    BitWriter alpha_writer;
-    bitwriter_init(&alpha_writer);
-    uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
-    uint8_t *alpha_table = NULL;
-    uint32_t alpha_table_len = 0;
-    if (g_bframe_dct) {
-      dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
+
+    int32_t *chosen_coeffs = (alpha_mv_mode == 1) ? res_own : res_shared;
+    int32_t *chosen_pred = (alpha_mv_mode == 1) ? pred_own : pred_shared;
+    if (alpha_mv_mode == 1) {
+      total_size = append_alpha_section(&output, total_size, alpha_qp, off_own, alpha_block_count, tab_own, tab_own_len, w_own.bytes, w_own.length, mv_blob, (uint32_t)mv_blob_len);
     } else {
-      encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
+      total_size = append_alpha_section(&output, total_size, alpha_qp, off_shared, alpha_block_count, tab_shared, tab_shared_len, w_shared.bytes, w_shared.length, NULL, 0);
     }
-    total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, alpha_block_count, alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
     if (recon_out && recon_out[3]) {   // the alpha DPB slot exists only when the caller allocated a 4th (alpha) plane
-      memcpy(recon, alpha, (size_t)pixel_count * 4);
+      memcpy(recon, chosen_coeffs, (size_t)pixel_count * 4);
       reconstruct_plane(recon, float_plane, step, width, height, levels, alpha_qp, 1.0f);
       if (alpha_predicted) {
         for (int i = 0; i < pixel_count; i++) {
-          recon[i] += prediction[i];
+          recon[i] += chosen_pred[i];
         }
       }
       memcpy(recon_out[3], recon, (size_t)pixel_count * 4);
     }
-    free(alpha);
-    free(alpha_writer.bytes);
-    free(alpha_offsets);
-    free(alpha_table);
+    if (out_alpha_mv_mode) {
+      *out_alpha_mv_mode = alpha_mv_mode;
+    }
+    free(alpha_orig);
+    free(pred_shared);
+    free(res_shared);
+    free(w_shared.bytes);
+    free(off_shared);
+    free(tab_shared);
+    if (do_own) {
+      free(pred_own);
+      free(res_own);
+      free(w_own.bytes);
+      free(off_own);
+      free(tab_own);
+      free(amv0);
+      free(amv1);
+      free(mv_blob);
+    }
   }
 
   free(luma);
@@ -6922,9 +7247,11 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
 
 // Decode a bidi/colordiff frame: rebuild the same weighted prediction from ref0/ref1, add the decoded
 // residual. recon_out[3] receives the reconstructed YCoCg (for the DPB); rgb (if non-NULL) gets the frame.
+// alpha_mv_mode (per-frame, FrameEntry.pad): 0 = the alpha used the shared luma MVs; 1 = own L0(+L1) alpha MVs (decoded
+// from the section blob and used for the alpha mc0/mc1 instead of the luma MVs; the blend is otherwise identical).
 static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, int height, int levels, int base_quality,
                               int32_t **ref0, int32_t **ref1, int weight0, int weight1,
-                              int32_t **recon_out, uint8_t *rgb) {
+                              int32_t **recon_out, uint8_t *rgb, int alpha_mv_mode) {
   int pixel_count = width * height;
   int32_t *luma = checked_malloc(pixel_count * 4);
   int32_t *chroma_orange = checked_malloc(pixel_count * 4);
@@ -7093,7 +7420,9 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     int alpha_qp;
     const uint8_t *alpha_table;
     uint32_t alpha_table_length, alpha_data_length;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_base, length - (size_t)(alpha_base - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+    const uint8_t *alpha_mv_blob = NULL;
+    uint32_t alpha_mv_blob_length = 0;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_base, length - (size_t)(alpha_base - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, (alpha_mv_mode == 1), &alpha_mv_blob, &alpha_mv_blob_length);
     if (!alpha_data) {
       die("corrupt alpha section (bidi)");
     }
@@ -7108,9 +7437,28 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
     int alpha_predicted = has_prediction && (ref0[3] != NULL);
     if (alpha_predicted) {
-      motion_compensate(ref0[3], mv0, mc0, width, height, motion_blocks_x);
-      if ((ref1 != NULL) && (ref1[3] != NULL)) {
-        motion_compensate(ref1[3], mv1, mc1, width, height, motion_blocks_x);
+      int has_ref1d = (ref1 != NULL) && (ref1[3] != NULL);
+      // Default: the shared luma MVs. Own-alpha-MV (mode 1): decode L0(+L1) from the section blob.
+      int *am0 = mv0, *am1 = mv1;
+      int own_alpha_mv = (alpha_mv_mode == 1) && (alpha_mv_blob != NULL);
+      if (own_alpha_mv) {
+        size_t mv_bytes = (((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int);
+        am0 = checked_malloc(mv_bytes);
+        am1 = has_ref1d ? checked_malloc(mv_bytes) : NULL;
+        if (g_mv_codec == 1) {
+          mv_blob_decode_range(alpha_mv_blob, (size_t)alpha_mv_blob_length, 0, NULL, 0, am0, has_ref1d, am1, 0, motion_blocks_x, motion_blocks_y);
+        } else {
+          BitReader mvr;
+          bitreader_init(&mvr, alpha_mv_blob, (size_t)alpha_mv_blob_length);
+          decode_motion_vectors(&mvr, am0, motion_blocks_x, motion_blocks_y);
+          if (has_ref1d) {
+            decode_motion_vectors(&mvr, am1, motion_blocks_x, motion_blocks_y);
+          }
+        }
+      }
+      motion_compensate(ref0[3], am0, mc0, width, height, motion_blocks_x);
+      if (has_ref1d) {
+        motion_compensate(ref1[3], am1, mc1, width, height, motion_blocks_x);
         if (has_mode) {
           for (int y = 0; y < height; y++) {
             int by = y / MOTION_BLOCK;
@@ -7131,6 +7479,10 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
         for (int i = 0; i < pixel_count; i++) {
           alpha[i] += mc0[i];   // P-anchor: weight0 == 256 -> the blend reduces to mc0
         }
+      }
+      if (own_alpha_mv) {
+        free(am0);
+        free(am1);
       }
     }
     if (recon_out && recon_out[3]) {
@@ -7440,7 +7792,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     }
     out_len[f] = assemble_frame(plane_blocks, offsets, mv_blob, mv_blob_length, writer.bytes, writer.length, &out[f]);
     if (g_has_alpha) {   // append the alpha section (graceful-ignore for color-only decoders; 3D-DWT is wavelet -> no rANS table)
-      out_len[f] = append_alpha_section(&out[f], out_len[f], alpha_qp, alpha_offsets, plane_blocks[3], NULL, 0, alpha_writer.bytes, alpha_writer.length);
+      out_len[f] = append_alpha_section(&out[f], out_len[f], alpha_qp, alpha_offsets, plane_blocks[3], NULL, 0, alpha_writer.bytes, alpha_writer.length, NULL, 0);
       free(alpha_writer.bytes);
       free(alpha_offsets);
     }
@@ -7582,7 +7934,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       int frame_alpha_qp;
       const uint8_t *alpha_table;
       uint32_t alpha_table_length, alpha_data_length;
-      const uint8_t *alpha_data = parse_alpha_section(data + cdl, frame_len[f] - (size_t)((data + cdl) - frames[f]), alpha_offsets, a_block_count, &frame_alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+      const uint8_t *alpha_data = parse_alpha_section(data + cdl, frame_len[f] - (size_t)((data + cdl) - frames[f]), alpha_offsets, a_block_count, &frame_alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
       if (!alpha_data) {
         die("corrupt alpha section");
       }
@@ -7807,12 +8159,12 @@ static int hdr_selftest(void) {
     }
   }
   set_sample_mode(1);   // PQ-12
-  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 0, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 0, (uint8_t *)output, NULL, 0);
+  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 0, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, (uint8_t *)output, NULL, 0, 0);
   int pq_lossless = (memcmp(source, output, (size_t)sample_count * sizeof(int16_t)) == 0);
   free(encoded);
-  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 8, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 8, (uint8_t *)output, NULL, 0);
+  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 8, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 8, (uint8_t *)output, NULL, 0, 0);
   double pq_q8_rmse = hdr_rmse_16(source, output, sample_count);
   printf("PQ-12    mode: Q0 %s | Q8 RMSE %.1f code (range 0..4095) | %zu bytes Q8\n",
          pq_lossless ? "LOSSLESS" : "MISMATCH", pq_q8_rmse, length);
@@ -7829,12 +8181,12 @@ static int hdr_selftest(void) {
     }
   }
   set_sample_mode(2);   // signed 16-bit
-  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 0, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 0, (uint8_t *)output, NULL, 0);
+  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 0, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, (uint8_t *)output, NULL, 0, 0);
   int signed_lossless = (memcmp(source, output, (size_t)sample_count * sizeof(int16_t)) == 0);
   free(encoded);
-  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 8, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 8, (uint8_t *)output, NULL, 0);
+  length = encode_frame_colordiff((const uint8_t *)source, width, height, 5, 8, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 8, (uint8_t *)output, NULL, 0, 0);
   double signed_q8_rmse = hdr_rmse_16(source, output, sample_count);
   printf("signed-16-bit: Q0 %s | Q8 RMSE %.1f code (signed, with negatives) | %zu bytes Q8\n",
          signed_lossless ? "LOSSLESS" : "MISMATCH", signed_q8_rmse, length);
@@ -7880,8 +8232,8 @@ static int alpha_selftest(void) {
   g_alpha_qp = -1;    // alpha follows the color QP
 
   // Q0: lossless round-trip — both RGB and the alpha lane must be bit-exact.
-  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, NULL, 0);
+  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, NULL, 0, 0);
   int alpha_mismatch = 0, rgb_mismatch = 0;
   for (int i = 0; i < pixel_count; i++) {
     if (output[(i * 4) + 3] != source[(i * 4) + 3]) {
@@ -7896,8 +8248,8 @@ static int alpha_selftest(void) {
   free(encoded);
 
   // Q8: lossy — the alpha lane should still be high-PSNR (sanity, not bit-exact).
-  length = encode_frame_colordiff(source, width, height, 5, 8, &encoded, NULL, 0);
-  decode_frame_colordiff(encoded, length, width, height, 5, 8, output, NULL, 0);
+  length = encode_frame_colordiff(source, width, height, 5, 8, &encoded, NULL, 0, NULL);
+  decode_frame_colordiff(encoded, length, width, height, 5, 8, output, NULL, 0, 0);
   double alpha_mse = 0.0;
   for (int i = 0; i < pixel_count; i++) {
     int d = (int)output[(i * 4) + 3] - (int)source[(i * 4) + 3];
@@ -7925,11 +8277,11 @@ static int alpha_selftest(void) {
       source2[idx + 3] = (uint8_t)(((x + y) + 11) & 255);   // alpha differs from frame 0 -> a genuine residual
     }
   }
-  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, enc_prev, 0);   // frame 0 = I
-  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, dec_prev, 0);
+  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, enc_prev, 0, NULL);   // frame 0 = I
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, dec_prev, 0, 0);
   free(encoded);
-  length = encode_frame_colordiff(source2, width, height, 5, 0, &encoded, enc_prev, 1);  // frame 1 = P (alpha inter)
-  decode_frame_colordiff(encoded, length, width, height, 5, 0, output2, dec_prev, 1);
+  length = encode_frame_colordiff(source2, width, height, 5, 0, &encoded, enc_prev, 1, NULL);  // frame 1 = P (alpha inter, shared luma MVs)
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output2, dec_prev, 1, 0);
   free(encoded);
   int inter_alpha_mismatch = 0, inter_rgb_mismatch = 0;
   for (int i = 0; i < pixel_count; i++) {
@@ -7965,14 +8317,14 @@ static int alpha_selftest(void) {
     }
   }
   int bidi_alpha_mismatch = 0, bidi_rgb_mismatch = 0;
-  length = encode_frame_bidi(source, width, height, 5, 0, NULL, NULL, 0, 0, b_enc_dpb[0], &encoded);          // I anchor
-  decode_frame_bidi(encoded, length, width, height, 5, 0, NULL, NULL, 0, 0, b_dec_dpb[0], output);
+  length = encode_frame_bidi(source, width, height, 5, 0, NULL, NULL, 0, 0, b_enc_dpb[0], &encoded, NULL);          // I anchor
+  decode_frame_bidi(encoded, length, width, height, 5, 0, NULL, NULL, 0, 0, b_dec_dpb[0], output, 0);
   free(encoded);
-  length = encode_frame_bidi(source2, width, height, 5, 0, b_enc_dpb[0], NULL, 256, 0, b_enc_dpb[1], &encoded); // P anchor (ref0=I)
-  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], NULL, 256, 0, b_dec_dpb[1], output2);
+  length = encode_frame_bidi(source2, width, height, 5, 0, b_enc_dpb[0], NULL, 256, 0, b_enc_dpb[1], &encoded, NULL); // P anchor (ref0=I)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], NULL, 256, 0, b_dec_dpb[1], output2, 0);
   free(encoded);
-  length = encode_frame_bidi(source_b, width, height, 5, 0, b_enc_dpb[0], b_enc_dpb[1], 128, 128, b_enc_dpb[2], &encoded); // B (ref0=I, ref1=P)
-  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], b_dec_dpb[1], 128, 128, b_dec_dpb[2], output_b);
+  length = encode_frame_bidi(source_b, width, height, 5, 0, b_enc_dpb[0], b_enc_dpb[1], 128, 128, b_enc_dpb[2], &encoded, NULL); // B (ref0=I, ref1=P)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], b_dec_dpb[1], 128, 128, b_dec_dpb[2], output_b, 0);
   free(encoded);
   for (int i = 0; i < pixel_count; i++) {
     if (output_b[(i * 4) + 3] != source_b[(i * 4) + 3]) {
@@ -7992,6 +8344,155 @@ static int alpha_selftest(void) {
   }
   free(source_b);
   free(output_b);
+
+  // CoefDiff (method 0) round-trip: I + P, coefficient-domain alpha diff (no motion). At Q0 the P-frame alpha must be
+  // bit-exact (the diff of the integer reversible coefficients is exact). Uses its own 4-plane previous-coefficients ref.
+  int32_t *cd_enc_prev[4], *cd_dec_prev[4];
+  for (int p = 0; p < 4; p++) {
+    cd_enc_prev[p] = checked_malloc((size_t)pixel_count * 4);
+    cd_dec_prev[p] = checked_malloc((size_t)pixel_count * 4);
+  }
+  uint8_t *cd_out0 = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *cd_out1 = checked_malloc((size_t)pixel_count * 4);
+  int cd_alpha_mismatch = 0, cd_rgb_mismatch = 0;
+  length = encode_frame_coefdiff(source, width, height, 5, 0, &encoded, cd_enc_prev, 0);   // I
+  decode_frame_coefdiff(encoded, length, width, height, 5, 0, cd_out0, cd_dec_prev, 0);
+  free(encoded);
+  length = encode_frame_coefdiff(source2, width, height, 5, 0, &encoded, cd_enc_prev, 1);  // P (coefficient-diff alpha)
+  decode_frame_coefdiff(encoded, length, width, height, 5, 0, cd_out1, cd_dec_prev, 1);
+  free(encoded);
+  for (int i = 0; i < pixel_count; i++) {
+    if (cd_out1[(i * 4) + 3] != source2[(i * 4) + 3]) {
+      cd_alpha_mismatch++;
+    }
+    for (int c = 0; c < 3; c++) {
+      if (cd_out1[(i * 4) + c] != source2[(i * 4) + c]) {
+        cd_rgb_mismatch++;
+      }
+    }
+  }
+  for (int p = 0; p < 4; p++) {
+    free(cd_enc_prev[p]);
+    free(cd_dec_prev[p]);
+  }
+  free(cd_out0);
+  free(cd_out1);
+
+  // Own-alpha-MV round-trip: the ALPHA translates (a clean shift) while the COLOR stays static (the CPU-ref luma MVs are
+  // zero), so the shared-luma-MV alpha residual is large but an independent alpha ME finds the shift -> the encoder
+  // RD-picks own alpha MVs (alpha_mv_mode = 1). At Q0 the P-frame alpha must be bit-exact, decoded via the own-MV path.
+  int32_t *omv_enc_prev[4], *omv_dec_prev[4];
+  for (int p = 0; p < 4; p++) {
+    omv_enc_prev[p] = checked_malloc((size_t)pixel_count * 4);
+    omv_dec_prev[p] = checked_malloc((size_t)pixel_count * 4);
+  }
+  uint8_t *omv_src0 = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *omv_src1 = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *omv_out0 = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *omv_out1 = checked_malloc((size_t)pixel_count * 4);
+  const int omv_shift = 8;   // alpha translates 8 px right; within the ME search range, one checkerboard cell
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int idx = (((y * width) + x) * 4);
+      omv_src0[idx + 0] = omv_src1[idx + 0] = (uint8_t)x;                  // static color (luma MV stays 0)
+      omv_src0[idx + 1] = omv_src1[idx + 1] = (uint8_t)y;
+      omv_src0[idx + 2] = omv_src1[idx + 2] = (uint8_t)((x + y) >> 1);
+      int cell = (((x >> 3) & 1) ^ ((y >> 3) & 1));   // 8x8 checkerboard alpha (sharp edges -> a shift makes a big shared residual)
+      omv_src0[idx + 3] = (uint8_t)(cell ? 220 : 30);
+    }
+  }
+  for (int y = 0; y < height; y++) {   // frame 1 alpha = frame 0 alpha sampled shifted right by omv_shift (edge-clamped)
+    for (int x = 0; x < width; x++) {
+      int sx = x - omv_shift;
+      if (sx < 0) {
+        sx = 0;
+      }
+      omv_src1[(((y * width) + x) * 4) + 3] = omv_src0[(((y * width) + sx) * 4) + 3];
+    }
+  }
+  int omv_mode_i = 0, omv_mode_p = 0;
+  length = encode_frame_colordiff(omv_src0, width, height, 5, 0, &encoded, omv_enc_prev, 0, &omv_mode_i);   // I anchor
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, omv_out0, omv_dec_prev, 0, omv_mode_i);
+  free(encoded);
+  length = encode_frame_colordiff(omv_src1, width, height, 5, 0, &encoded, omv_enc_prev, 1, &omv_mode_p);   // P (own-MV RD)
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, omv_out1, omv_dec_prev, 1, omv_mode_p);
+  free(encoded);
+  int omv_alpha_mismatch = 0;
+  for (int i = 0; i < pixel_count; i++) {
+    if (omv_out1[(i * 4) + 3] != omv_src1[(i * 4) + 3]) {
+      omv_alpha_mismatch++;
+    }
+  }
+  for (int p = 0; p < 4; p++) {
+    free(omv_enc_prev[p]);
+    free(omv_dec_prev[p]);
+  }
+  free(omv_src0);
+  free(omv_src1);
+  free(omv_out0);
+  free(omv_out1);
+
+  // Own-alpha-MV B-frame round-trip: I + P anchors with a STATIC alpha, then a B whose alpha is SHIFTED relative to both
+  // anchors. The shared (zero-MV) blend mispredicts (large residual) but an independent per-ref alpha ME finds the shift
+  // -> the encoder RD-picks own L0/L1 alpha MVs (alpha_mv_mode = 1). At Q0 the B-frame alpha must be bit-exact.
+  int32_t *bmv_enc_dpb[3][4], *bmv_dec_dpb[3][4];
+  for (int f = 0; f < 3; f++) {
+    for (int p = 0; p < 4; p++) {
+      bmv_enc_dpb[f][p] = checked_malloc((size_t)pixel_count * 4);
+      bmv_dec_dpb[f][p] = checked_malloc((size_t)pixel_count * 4);
+    }
+  }
+  uint8_t *bmv_a = checked_malloc((size_t)pixel_count * 4);   // anchors' frame (static alpha)
+  uint8_t *bmv_b = checked_malloc((size_t)pixel_count * 4);   // the B frame (shifted alpha)
+  uint8_t *bmv_oa = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *bmv_ob = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *bmv_obo = checked_malloc((size_t)pixel_count * 4);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int idx = (((y * width) + x) * 4);
+      bmv_a[idx + 0] = bmv_b[idx + 0] = (uint8_t)x;
+      bmv_a[idx + 1] = bmv_b[idx + 1] = (uint8_t)y;
+      bmv_a[idx + 2] = bmv_b[idx + 2] = (uint8_t)((x + y) >> 1);
+      int cell = (((x >> 3) & 1) ^ ((y >> 3) & 1));
+      bmv_a[idx + 3] = (uint8_t)(cell ? 210 : 40);   // anchors: checkerboard alpha at base
+    }
+  }
+  for (int y = 0; y < height; y++) {   // B alpha = anchors' alpha shifted right by 8 (one checkerboard cell)
+    for (int x = 0; x < width; x++) {
+      int sx = x - 8;
+      if (sx < 0) {
+        sx = 0;
+      }
+      bmv_b[(((y * width) + x) * 4) + 3] = bmv_a[(((y * width) + sx) * 4) + 3];
+    }
+  }
+  int bmv_mode_p = 0, bmv_mode_b = 0;
+  length = encode_frame_bidi(bmv_a, width, height, 5, 0, NULL, NULL, 0, 0, bmv_enc_dpb[0], &encoded, NULL);            // I anchor
+  decode_frame_bidi(encoded, length, width, height, 5, 0, NULL, NULL, 0, 0, bmv_dec_dpb[0], bmv_oa, 0);
+  free(encoded);
+  length = encode_frame_bidi(bmv_a, width, height, 5, 0, bmv_enc_dpb[0], NULL, 256, 0, bmv_enc_dpb[1], &encoded, &bmv_mode_p);   // P anchor (static -> shared wins)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, bmv_dec_dpb[0], NULL, 256, 0, bmv_dec_dpb[1], bmv_ob, bmv_mode_p);
+  free(encoded);
+  length = encode_frame_bidi(bmv_b, width, height, 5, 0, bmv_enc_dpb[0], bmv_enc_dpb[1], 128, 128, bmv_enc_dpb[2], &encoded, &bmv_mode_b);   // B (shifted -> own L0/L1 win)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, bmv_dec_dpb[0], bmv_dec_dpb[1], 128, 128, bmv_dec_dpb[2], bmv_obo, bmv_mode_b);
+  free(encoded);
+  int bmv_alpha_mismatch = 0;
+  for (int i = 0; i < pixel_count; i++) {
+    if (bmv_obo[(i * 4) + 3] != bmv_b[(i * 4) + 3]) {
+      bmv_alpha_mismatch++;
+    }
+  }
+  for (int f = 0; f < 3; f++) {
+    for (int p = 0; p < 4; p++) {
+      free(bmv_enc_dpb[f][p]);
+      free(bmv_dec_dpb[f][p]);
+    }
+  }
+  free(bmv_a);
+  free(bmv_b);
+  free(bmv_oa);
+  free(bmv_ob);
+  free(bmv_obo);
 
   for (int p = 0; p < 4; p++) {
     free(enc_prev[p]);
@@ -8077,10 +8578,19 @@ static int alpha_selftest(void) {
          (dwt_mctf_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", dwt_mctf_alpha_mismatch,
          (dwt_ol_rgb_mismatch == 0) ? "lossless" : "MISMATCH", dwt_ol_rgb_mismatch,
          (dwt_mctf_rgb_mismatch == 0) ? "lossless" : "MISMATCH", dwt_mctf_rgb_mismatch);
+  printf("alpha selftest: Q0 CoefDiff inter-P alpha %s (%d mismatches) | Q0 CoefDiff inter-P RGB %s (%d)\n",
+         (cd_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", cd_alpha_mismatch,
+         (cd_rgb_mismatch == 0) ? "lossless" : "MISMATCH", cd_rgb_mismatch);
+  printf("alpha selftest: Q0 own-alpha-MV inter-P alpha %s (%d mismatches) | mode chosen = %s (I=%d P=%d)\n",
+         (omv_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", omv_alpha_mismatch,
+         (omv_mode_p == 1) ? "OWN (RD won)" : "shared", omv_mode_i, omv_mode_p);
+  printf("alpha selftest: Q0 own-alpha-MV bidi-B alpha %s (%d mismatches) | B mode chosen = %s (P=%d B=%d)\n",
+         (bmv_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", bmv_alpha_mismatch,
+         (bmv_mode_b == 1) ? "OWN (RD won)" : "shared", bmv_mode_p, bmv_mode_b);
 
   free(source);
   free(output);
-  return ((((((((((alpha_mismatch == 0) && (rgb_mismatch == 0)) && (inter_alpha_mismatch == 0)) && (inter_rgb_mismatch == 0)) && (bidi_alpha_mismatch == 0)) && (bidi_rgb_mismatch == 0)) && (dwt_ol_alpha_mismatch == 0)) && (dwt_mctf_alpha_mismatch == 0)) && (dwt_ol_rgb_mismatch == 0)) && (dwt_mctf_rgb_mismatch == 0)) ? 0 : 1;
+  return ((((((((((((((((alpha_mismatch == 0) && (rgb_mismatch == 0)) && (inter_alpha_mismatch == 0)) && (inter_rgb_mismatch == 0)) && (bidi_alpha_mismatch == 0)) && (bidi_rgb_mismatch == 0)) && (dwt_ol_alpha_mismatch == 0)) && (dwt_mctf_alpha_mismatch == 0)) && (dwt_ol_rgb_mismatch == 0)) && (dwt_mctf_rgb_mismatch == 0)) && (cd_alpha_mismatch == 0)) && (cd_rgb_mismatch == 0)) && (omv_alpha_mismatch == 0)) && (omv_mode_p == 1)) && (bmv_alpha_mismatch == 0)) && (bmv_mode_b == 1)) ? 0 : 1;
 }
 
 // HDR transcode demo: ingest a real HDR (PQ/bt2020) video, push it through the fvd codec at 12-bit,
@@ -8118,8 +8628,8 @@ static int hdr_transcode(const char *input, const char *output, int quality, lon
       code[i] = (int16_t)(rgb48[i] >> 4);   // 16-bit (10-bit<<6) -> 12-bit PQ code
     }
     uint8_t *encoded;
-    size_t length = encode_frame_colordiff((const uint8_t *)code, width, height, 5, base_quality, &encoded, NULL, 0);
-    decode_frame_colordiff(encoded, length, width, height, 5, base_quality, (uint8_t *)decoded, NULL, 0);
+    size_t length = encode_frame_colordiff((const uint8_t *)code, width, height, 5, base_quality, &encoded, NULL, 0, NULL);
+    decode_frame_colordiff(encoded, length, width, height, 5, base_quality, (uint8_t *)decoded, NULL, 0, 0);
     free(encoded);
     encoded_bytes += length;
     hdr_to_srgb8(decoded, srgb, pixel_count, exposure, 16);   // transcode ingests PQ/bt2020
@@ -8273,9 +8783,10 @@ static int bframe_selftest(const char *input, int quality, int levels, int max_f
       int32_t **r0 = (steps[s].ref0 >= 0) ? dpb[steps[s].ref0] : NULL;
       int32_t **r1 = (steps[s].ref1 >= 0) ? dpb[steps[s].ref1] : NULL;
       uint8_t *payload;
+      int bframe_alpha_mv_mode = 0;
       size_t length = encode_frame_bidi(frames[steps[s].poc], width, height, levels, quality, r0, r1,
-                                        steps[s].weight0, steps[s].weight1, dpb[steps[s].poc], &payload);
-      decode_frame_bidi(payload, length, width, height, levels, quality, r0, r1, steps[s].weight0, steps[s].weight1, NULL, decoded);
+                                        steps[s].weight0, steps[s].weight1, dpb[steps[s].poc], &payload, &bframe_alpha_mv_mode);
+      decode_frame_bidi(payload, length, width, height, levels, quality, r0, r1, steps[s].weight0, steps[s].weight1, NULL, decoded, bframe_alpha_mv_mode);
       total_bytes += length;
       double mse = 0;
       for (size_t i = 0; i < frame_bytes; i++) {
@@ -8878,14 +9389,15 @@ int main(int argc, char **argv) {
       int is_predicted = ((gop > 1) && (frame_index % gop != 0)) && allow_predict;
       uint8_t *encoded;
       double t0 = now_milliseconds();
+      int frame_alpha_mv_mode = 0;   // colordiff own-alpha-MV: RD-chosen by the encoder, threaded to the decoder (CPU round-trip)
       size_t encoded_length = (method == 0)
                             ? encode_frame_coefdiff(rgb, width, height, levels, quality, &encoded, previous_encode, is_predicted)
-                            : encode_frame_colordiff(rgb, width, height, levels, quality, &encoded, previous_encode, is_predicted);
+                            : encode_frame_colordiff(rgb, width, height, levels, quality, &encoded, previous_encode, is_predicted, &frame_alpha_mv_mode);
       double t1 = now_milliseconds();
       if (method == 0) {
         decode_frame_coefdiff(encoded, encoded_length, width, height, levels, quality, reconstructed, previous_decode, is_predicted);
       } else {
-        decode_frame_colordiff(encoded, encoded_length, width, height, levels, quality, reconstructed, previous_decode, is_predicted);
+        decode_frame_colordiff(encoded, encoded_length, width, height, levels, quality, reconstructed, previous_decode, is_predicted, frame_alpha_mv_mode);
       }
       double t2 = now_milliseconds();
 
