@@ -161,11 +161,11 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fTemporalWavelet:TpvInt32;
        fGOPCapacity:TpvInt32;
        fCur3DGopStart:TpvInt32; // display index of the GOP currently being presented (-1 = none)
-       fGopBuffer:array[0..1,0..2] of TpvVulkanBuffer; // double-buffered reconstructed GOP (cur vs prefetched), device-local
+       fGopBuffer:array[0..1,0..3] of TpvVulkanBuffer; // double-buffered reconstructed GOP (cur vs prefetched), device-local; plane 3 = alpha (inter, full-res)
        fPipeTDWTInt:TpvVulkanComputePipeline;
        fPipeTDWTFloat:TpvVulkanComputePipeline;
        fPLTemporal:TpvVulkanPipelineLayout; // DSL1 + 20-byte push
-       fSetTemporal:array[0..1,0..2] of TpvVulkanDescriptorSet; // per GOP buffer: {gop_buffer[buf][plane]}
+       fSetTemporal:array[0..1,0..3] of TpvVulkanDescriptorSet; // per GOP buffer: {gop_buffer[buf][plane]}; plane 3 = alpha
        fMCTFPred:array[0..3] of TpvVulkanBuffer; // MCTF: the per-pair MC-warped low frame, device-local
        fMCTFScratch:array[0..3] of TpvVulkanBuffer; // MCTF: the per-level interleaved frame workspace, device-local
        fMCTFMVScratch:array of TpvInt32; // MCTF: every GOP frame's luma MV field (CPU side), by deinterleaved slot
@@ -176,7 +176,9 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // The prefetch spatial inverse writes its own fPrefetchCoeff (the present's display only touches fCoeffBuffer, so
        // data/offset/step/scratch stay free for the prefetch to reuse).
        fPrefetchCoeff:array[0..3] of TpvVulkanBuffer;
-       fSetUnpackPF:array[0..3] of TpvVulkanDescriptorSet; // {data, offset, prefetch_coeff}
+       fAlpha3DData:TpvVulkanBuffer; // 3D-DWT temporal alpha: the per-subband alpha block bytes (own buffer; fDataBuffer is color-sized) feeding fSetUnpackPF[3]
+       fAlphaLossless3D:boolean; // 3D-DWT alpha's own lossless decision (alpha_qp==0, GOP-constant) — selects idwt53 vs idwt97 + the temporal int/float domain
+       fSetUnpackPF:array[0..3] of TpvVulkanDescriptorSet; // {data, offset, prefetch_coeff} (plane 3 alpha = {fAlpha3DData, offset[3], prefetch_coeff[3]})
        fSetDequantPF:array[0..3] of TpvVulkanDescriptorSet; // {prefetch_coeff, step}
        fSetCoeffToScratchPF:array[0..3] of TpvVulkanDescriptorSet; // {prefetch_coeff, scratch}
        fSetScratchToCoeffPF:array[0..3] of TpvVulkanDescriptorSet; // {scratch, prefetch_coeff}
@@ -1147,6 +1149,8 @@ begin
   end;
   fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff'); // decoded alpha plane (device-local, GPU-written -> shared, like coeff[0..2])
   fPreviousBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphaprevious'); // inter-alpha: GPU-resident reconstructed-alpha reference (colordiff I/P, shared luma MVs)
+  fOffsetBuffer[3]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset'); // 3D-DWT temporal alpha: the subband's block offsets (the I/P/B path uses the alpha ring instead)
+  fStepBuffer[3]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep'); // 3D-DWT temporal alpha: the (lossy) full-res quant step map
   SetLength(fAlphaRingData,fAlphaRingSize);
   SetLength(fAlphaRingOffset,fAlphaRingSize);
   SetLength(fAlphaRingStep,fAlphaRingSize);
@@ -1215,12 +1219,24 @@ begin
    fGopBuffer[1][Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop1');
    fPrefetchCoeff[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.pfcoeff');
   end;
+  if fHasAlpha then begin // alpha plane 3 (inter): full-res GOP slots + prefetch coeff + a dedicated subband-data buffer (fDataBuffer is color-sized)
+   PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+   fGopBuffer[0][3]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop0.alpha');
+   fGopBuffer[1][3]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.gop1.alpha');
+   fPrefetchCoeff[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.pfcoeff.alpha');
+   fAlpha3DData:=CreateStorageBuffer((TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4)+(TVkDeviceSize(BlockCountX(fWidth)*BlockCountY(fHeight))*16),false,'FWV.alpha3d.data');
+  end;
   // MCTF: the per-pair MC prediction + the per-level interleaved-frame workspace + the GOP's luma MV fields
   if fMCTF then begin
    for Plane:=0 to fNumPlanes-1 do begin
     PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
     fMCTFPred[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.mctfpred');
     fMCTFScratch[Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.mctfscratch');
+   end;
+   if fHasAlpha then begin // alpha plane 3 rides the MC-Haar (full-res, shared luma MVs)
+    PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+    fMCTFPred[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.mctfpred.alpha');
+    fMCTFScratch[3]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.mctfscratch.alpha');
    end;
    SetLength(fMCTFMVScratch,fGOPCapacity*MotionBlocksX(fWidth)*MotionBlocksY(fHeight)*2);
   end;
@@ -1321,6 +1337,10 @@ begin
  if fMode3DDWT then begin // + the GOP-prefetch spatial sets (5/plane) + the second gop buffer's temporal sets
   MaxSets:=MaxSets+24;
   MaxBuffers:=MaxBuffers+48;
+  if fHasAlpha then begin // alpha plane 3: 2 temporal + 5 prefetch-spatial + 2 MCTF mc/add sets
+   MaxSets:=MaxSets+9;
+   MaxBuffers:=MaxBuffers+20;
+  end;
  end;
  if fSpatialDCT then begin // DCT rANS unpack sets: one per plane {data, offset, coeff, table}, 4 buffers each (+ ring slots for the B-frame ring)
   MaxSets:=MaxSets+fNumPlanes;
@@ -1599,6 +1619,44 @@ begin
    if fMCTF then begin
     fSetMCTFMC[Plane]:=AllocateSet(fDSL3);
     fSetMCTFAdd[Plane]:=AllocateSet(fDSL2);
+   end;
+  end;
+  if fHasAlpha then begin // alpha plane 3: temporal + prefetch spatial sets (unpack from the dedicated fAlpha3DData buffer)
+   fSetTemporal[0][3]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetTemporal[0][3],0,fGopBuffer[0][3]);
+   fSetTemporal[0][3].Flush;
+   fSetTemporal[1][3]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetTemporal[1][3],0,fGopBuffer[1][3]);
+   fSetTemporal[1][3].Flush;
+
+   fSetUnpackPF[3]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fSetUnpackPF[3],0,fAlpha3DData);
+   BindStorageBuffer(fSetUnpackPF[3],1,fOffsetBuffer[3]);
+   BindStorageBuffer(fSetUnpackPF[3],2,fPrefetchCoeff[3]);
+   fSetUnpackPF[3].Flush;
+
+   fSetDequantPF[3]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetDequantPF[3],0,fPrefetchCoeff[3]);
+   BindStorageBuffer(fSetDequantPF[3],1,fStepBuffer[3]);
+   fSetDequantPF[3].Flush;
+
+   fSetCoeffToScratchPF[3]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetCoeffToScratchPF[3],0,fPrefetchCoeff[3]);
+   BindStorageBuffer(fSetCoeffToScratchPF[3],1,fScratchBuffer);
+   fSetCoeffToScratchPF[3].Flush;
+
+   fSetScratchToCoeffPF[3]:=AllocateSet(fDSL2);
+   BindStorageBuffer(fSetScratchToCoeffPF[3],0,fScratchBuffer);
+   BindStorageBuffer(fSetScratchToCoeffPF[3],1,fPrefetchCoeff[3]);
+   fSetScratchToCoeffPF[3].Flush;
+
+   fSetRowPF[3]:=AllocateSet(fDSL1);
+   BindStorageBuffer(fSetRowPF[3],0,fPrefetchCoeff[3]);
+   fSetRowPF[3].Flush;
+
+   if fMCTF then begin
+    fSetMCTFMC[3]:=AllocateSet(fDSL3);
+    fSetMCTFAdd[3]:=AllocateSet(fDSL2);
    end;
   end;
  end;
@@ -4124,6 +4182,9 @@ var Plane,PlanePixels,TemporalLevel,EffectiveQuality,StepSlot:TpvInt32;
     MotionBlockCountX,MotionBlockCountY,LumaBlocks:TpvInt32;
     MVReader:TBitReader;
     MVRangeDecoder:TMVRangeDecoder;
+    AlphaBlockCount,AlphaStepSlot:TpvInt32;
+    AlphaSectionOffset,AlphaTableOffset,AlphaDataOffset:TpvSizeUInt;
+    AlphaTableLength,AlphaDataLength:TpvUInt32;
 begin
 
  Entry:=@fFrameEntries[aCodingIndex];
@@ -4195,6 +4256,44 @@ begin
   Move(fFrameScratch[BlockDataOffset],DataPointer^[0],DataLength);
  finally
   fDataBuffer.Memory.UnmapMemory;
+ end;
+
+ // optional alpha (inter, 3D-DWT): the alpha plane joined the temporal transform, so this subband carries its alpha lane in
+ // the appended section (wavelet -> right after the color block data, no entropy section). Stage it into the dedicated
+ // fAlpha3DData (own buffer -> offsets stay prefix-from-0) + fOffsetBuffer[3] + (lossy) fStepBuffer[3]. fAlphaLossless3D
+ // (GOP-constant) selects 5/3 vs 9/7 + the temporal int/float domain downstream.
+ if fHasAlpha then begin
+  AlphaBlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight);
+  AlphaSectionOffset:=BlockDataOffset+DataLength;
+  if not ParseAlphaSection(PpvUInt8Array(@fFrameScratch[0]),RawLength,AlphaSectionOffset,AlphaBlockCount,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
+   raise EpvFlexibleVideoDecoder.Create('Corrupt alpha section (3D-DWT subband)');
+  end;
+  fAlphaLossless3D:=fAlphaQP=0;
+  DataPointer:=PpvUInt8Array(fOffsetBuffer[3].Memory.MapMemory);
+  try
+   Move(fAlphaOffsetScratch[0],DataPointer^[0],TpvSizeUInt(AlphaBlockCount)*4);
+  finally
+   fOffsetBuffer[3].Memory.UnmapMemory;
+  end;
+  DataPointer:=PpvUInt8Array(fAlpha3DData.Memory.MapMemory);
+  try
+   Move(fFrameScratch[AlphaDataOffset],DataPointer^[0],AlphaDataLength);
+  finally
+   fAlpha3DData.Memory.UnmapMemory;
+  end;
+  if not fAlphaLossless3D then begin
+   if not fGainsComputed then begin
+    MeasureSynthesisGains(fLevels,fHFGain,fLLGain);
+    fGainsComputed:=true;
+   end;
+   AlphaStepSlot:=EnsureStepCacheSlot(fAlphaQP);
+   DataPointer:=PpvUInt8Array(fStepBuffer[3].Memory.MapMemory);
+   try
+    Move(fStepCacheData[(AlphaStepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
+   finally
+    fStepBuffer[3].Memory.UnmapMemory;
+   end;
+  end;
  end;
 
  // MCTF: a high-pass subband frame carries the luma MV field for its MC-Haar temporal pair. Decode it into this
@@ -4364,6 +4463,119 @@ begin
 
  end;
 
+ // alpha plane 3 (inter): full-res, its OWN lossless decision (no AQ); unpack this subband from fAlpha3DData -> [dequant] ->
+ // iDWT (5/3 or 9/7 by fAlphaLossless3D) -> fPrefetchCoeff[3] -> fGopBuffer[buf][3]@slot (joins the temporal inverse below).
+ if fHasAlpha then begin
+
+  if fAlphaLossless3D then begin
+   RowPipeline:=fPipeIDWT53;
+  end else begin
+   RowPipeline:=fPipeIDWT97;
+  end;
+  PlaneW:=fWidth;
+  PlaneH:=fHeight;
+  if PlaneW>PlaneH then begin
+   ScratchStride:=PlaneW;
+  end else begin
+   ScratchStride:=PlaneH;
+  end;
+  PlanePixels:=PlaneW*PlaneH;
+  PlaneBlocksX:=BlockCountX(PlaneW);
+  PlaneBlocksY:=BlockCountY(PlaneH);
+  PlaneBlockCount:=PlaneBlocksX*PlaneBlocksY;
+  PlanePixelWorkgroups:=(PlanePixels+255) div 256;
+  if fBlockSize=128 then begin
+   PlaneUnpackWorkgroups:=PlaneBlockCount;
+  end else begin
+   PlaneUnpackWorkgroups:=(PlaneBlockCount+63) div 64;
+  end;
+
+  aCommandBuffer.CmdFillBuffer(fPrefetchCoeff[3].Handle,0,TVkDeviceSize(PlanePixels)*4,0);
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
+  UnpackPush[0]:=PlaneW;
+  UnpackPush[1]:=PlaneH;
+  UnpackPush[2]:=PlaneBlocksX;
+  UnpackPush[3]:=PlaneBlocksY;
+  RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpackPF[3],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+
+  if not fAlphaLossless3D then begin // lossy alpha: dequant (alpha is never AQ-modulated, chroma_multiplier 1.0)
+   DequantPush[0]:=PlanePixels;
+   ChromaMultiplier:=1.0;
+   DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
+   RecordDispatch(aCommandBuffer,fPipeDequant,fPLDequant,fSetDequantPF[3],@DequantPush[0],8,PlanePixelWorkgroups,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
+
+  LevelCount:=0;
+  CurrentWidth:=PlaneW;
+  CurrentHeight:=PlaneH;
+  Level:=0;
+  while ((Level<fLevels) and (CurrentWidth>=2)) and (CurrentHeight>=2) do begin
+   LevelWidth[LevelCount]:=CurrentWidth;
+   LevelHeight[LevelCount]:=CurrentHeight;
+   inc(LevelCount);
+   CurrentWidth:=(CurrentWidth+1) div 2;
+   CurrentHeight:=(CurrentHeight+1) div 2;
+   inc(Level);
+  end;
+  for Level:=LevelCount-1 downto 0 do begin
+   LevelW:=LevelWidth[Level];
+   LevelH:=LevelHeight[Level];
+   TransposePush1[0]:=PlaneW;
+   TransposePush1[1]:=LevelW;
+   TransposePush1[2]:=LevelH;
+   TransposePush1[3]:=ScratchStride;
+   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetCoeffToScratchPF[3],@TransposePush1[0],16,(LevelW+15) div 16,(LevelH+15) div 16,1);
+   RecordComputeBarrier(aCommandBuffer);
+   RowPush1[0]:=ScratchStride;
+   RowPush1[1]:=LevelH;
+   RowPush1[2]:=LevelW;
+   RowPush1[3]:=1;
+   RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRowScratch,@RowPush1[0],16,LevelW,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+   TransposePush2[0]:=ScratchStride;
+   TransposePush2[1]:=LevelH;
+   TransposePush2[2]:=LevelW;
+   TransposePush2[3]:=PlaneW;
+   RecordDispatch(aCommandBuffer,fPipeTranspose,fPLTranspose,fSetScratchToCoeffPF[3],@TransposePush2[0],16,(LevelH+15) div 16,(LevelW+15) div 16,1);
+   RecordComputeBarrier(aCommandBuffer);
+   RowPush2[0]:=PlaneW;
+   RowPush2[1]:=LevelW;
+   RowPush2[2]:=LevelH;
+   RowPush2[3]:=1;
+   RecordDispatch(aCommandBuffer,RowPipeline,fPLRow,fSetRowPF[3],@RowPush2[0],16,LevelH,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
+
+  // MCTF lossy alpha: round the float 9/7 result to int before the integer MC-Haar inverse (open-loop stays float)
+  if fMCTF and not fAlphaLossless3D then begin
+   PixelCountPush:=PlanePixels;
+   RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRowPF[3],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
+
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
+  FillChar(BufferCopy,SizeOf(BufferCopy),#0);
+  BufferCopy.srcOffset:=0;
+  BufferCopy.dstOffset:=TVkDeviceSize(aSlot)*TVkDeviceSize(PlanePixels)*4;
+  BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
+  aCommandBuffer.CmdCopyBuffer(fPrefetchCoeff[3].Handle,fGopBuffer[aBuf][3].Handle,1,@BufferCopy);
+
+ end;
+
 end;
 
 procedure TpvFlexibleVideoDecoder.RecordTemporal3D(const aCommandBuffer:TpvVulkanCommandBuffer;const aBuf,aGOPCount:TpvInt32);
@@ -4393,10 +4605,30 @@ begin
   RecordComputeBarrier(aCommandBuffer);
  end;
 
+ if fHasAlpha then begin // alpha plane 3: its OWN temporal domain (int if alpha_lossless, else float) + its own temporal wavelet
+  PlanePixels:=fWidth*fHeight;
+  Wavelet:=fTemporalWavelet;
+  if fAlphaLossless3D and (Wavelet=2) then begin
+   Wavelet:=1;
+  end;
+  if fAlphaLossless3D then begin
+   Pipeline:=fPipeTDWTInt;
+  end else begin
+   Pipeline:=fPipeTDWTFloat;
+  end;
+  TemporalPush[0]:=PlanePixels;
+  TemporalPush[1]:=aGOPCount;
+  TemporalPush[2]:=fTemporalLevels;
+  TemporalPush[3]:=Wavelet;
+  TemporalPush[4]:=1; // inverse
+  RecordDispatch(aCommandBuffer,Pipeline,fPLTemporal,fSetTemporal[aBuf][3],@TemporalPush[0],20,(PlanePixels+255) div 256,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
+
 end;
 
 procedure TpvFlexibleVideoDecoder.DecodeMCTFInverse(const aBuf,aGOPCount:TpvInt32);
-var LumaBlocks,Plane,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
+var LumaBlocks,Plane,PlaneCount,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
     PlaneW,PlaneH,PlanePP,PlaneMBX:array[0..3] of TpvInt32;
     Lengths:array[0..15] of TpvInt32;
     PlanePixels:TpvInt32;
@@ -4409,9 +4641,19 @@ var LumaBlocks,Plane,Level,Count,Len,LevelLen,LowCount,k,Even,Odd:TpvInt32;
 begin
 
  LumaBlocks:=MotionBlocksX(fWidth)*MotionBlocksY(fHeight);
- for Plane:=0 to fNumPlanes-1 do begin
-  PlaneW[Plane]:=PlaneWidth(Plane);
-  PlaneH[Plane]:=PlaneHeight(Plane);
+ if fHasAlpha then begin // alpha plane 3 rides the MC-Haar inverse (full-res, shared luma MVs)
+  PlaneCount:=fNumPlanes+1;
+ end else begin
+  PlaneCount:=fNumPlanes;
+ end;
+ for Plane:=0 to PlaneCount-1 do begin
+  if Plane=3 then begin
+   PlaneW[Plane]:=fWidth;
+   PlaneH[Plane]:=fHeight;
+  end else begin
+   PlaneW[Plane]:=PlaneWidth(Plane);
+   PlaneH[Plane]:=PlaneHeight(Plane);
+  end;
   PlanePP[Plane]:=PlaneW[Plane]*PlaneH[Plane];
   PlaneMBX[Plane]:=((PlaneW[Plane]+fMotionBlock)-1) div fMotionBlock;
  end;
@@ -4445,7 +4687,7 @@ begin
     finally
      fMVBuffer.Memory.UnmapMemory;
     end;
-    for Plane:=0 to fNumPlanes-1 do begin
+    for Plane:=0 to PlaneCount-1 do begin
      PlanePixels:=PlanePP[Plane];
      LowOff:=TVkDeviceSize(k)*PlanePixels*4;
      HighOff:=TVkDeviceSize(LowCount+k)*PlanePixels*4;
@@ -4486,7 +4728,7 @@ begin
      RecordDispatch(fPrefetchCommandBuffer,fPipeCoeffAdd,fPLCoeffAdd,fSetMCTFAdd[Plane],@AddPush[0],8,(PlanePixels+255) div 256,1,1);
     end;
    end else begin // odd tail (no partner): even = low passthrough -> scratch@even
-    for Plane:=0 to fNumPlanes-1 do begin
+    for Plane:=0 to PlaneCount-1 do begin
      PlanePixels:=PlanePP[Plane];
      FillChar(BufferCopy,SizeOf(BufferCopy),#0);
      BufferCopy.srcOffset:=TVkDeviceSize(k)*PlanePixels*4;
@@ -4502,7 +4744,7 @@ begin
   // copy scratch[0..level_len) back into gop_buffer (the interleaved frames for this level)
   PrefetchWait;
   fPrefetchCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-  for Plane:=0 to fNumPlanes-1 do begin
+  for Plane:=0 to PlaneCount-1 do begin
    FillChar(BufferCopy,SizeOf(BufferCopy),#0);
    BufferCopy.srcOffset:=0;
    BufferCopy.dstOffset:=0;
@@ -4567,10 +4809,27 @@ begin
   end;
  end;
 
- // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged by PrepareFrame3D).
- // 3D-DWT / MCTF alpha stays intra (-1); inter temporal alpha is a later stage.
+ // optional alpha (inter, temporal): this display frame's alpha = fGopBuffer[buf][3]@slot (already spatial+temporal
+ // inverse-transformed in the prefetch); copy it into coeff[3] (+round for open-loop lossy; MCTF gop is already int).
  if fHasAlpha then begin
-  RecordAlphaDecode(aCommandBuffer,-1);
+  PlanePixels:=fWidth*fHeight;
+  FillChar(BufferCopy,SizeOf(BufferCopy),#0);
+  BufferCopy.srcOffset:=TVkDeviceSize(aSlot)*TVkDeviceSize(PlanePixels)*4;
+  BufferCopy.dstOffset:=0;
+  BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
+  aCommandBuffer.CmdCopyBuffer(fGopBuffer[aBuf][3].Handle,fCoeffBuffer[3].Handle,1,@BufferCopy);
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+  Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,1,@Barrier,0,nil,0,nil);
+  if (not fAlphaLossless3D) and (not fMCTF) then begin // open-loop lossy alpha: the gop holds float -> round to int for color_alpha (fSetRow[3] = fCoeffBuffer[3])
+   PixelCountPush:=PlanePixels;
+   RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[3],@PixelCountPush,4,(PlanePixels+255) div 256,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
  end;
 
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
@@ -4727,11 +4986,9 @@ begin
   end;
  end;
 
- // optional alpha: re-read + stage the displayed frame's appended alpha section (3D-DWT container entries are
- // positional, so the display index IS the coding index). RecordDisplay3D's RecordAlphaDecode GPU-decodes it.
- if fHasAlpha then begin
-  UploadAlphaForDisplayedFrame(aDisplayIndex);
- end;
+ // optional alpha is INTER (temporal) now: each subband's alpha was decoded into the alpha GOP buffer in the prefetch
+ // (Upload3DFrame + RecordSpatial3D + the temporal/MCTF inverse), so RecordDisplay3D just copies this frame's alpha
+ // GOP slot into coeff[3]. No per-display-frame alpha re-read here anymore.
 
 end;
 

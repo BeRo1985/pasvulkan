@@ -621,10 +621,19 @@ Audio is a self-contained blob at `audio_offset` (length `audio_size`), identifi
 ## 14. Alpha Channel (`color_flags` bit 2)
 
 An optional 8-bit, full-resolution alpha plane (plane 3), always full size regardless of
-chroma subsampling. Alpha is **intra-only** (no motion / no inter difference). It is
-transformed like luma: reversible 5/3 (Q0) or float 9/7 (lossy) in wavelet mode, or
-rANS+DCT in DCT mode (`table_length > 0` distinguishes the two on decode). The alpha section
-(appended per frame, §5.2) is:
+chroma subsampling. Alpha is **inter-predicted exactly like the color planes** — it reuses
+the luma motion vectors (shared, no separate MV stream) and is coded as a per-frame residual:
+in ColorDiff P-frames it is motion-compensated against the previous reconstructed alpha; in
+B-frames it is bidirectionally motion-compensated (the same L0/L1 weights / per-block mode as
+color); in the temporal modes (open-loop 3D-DWT and MCTF) it **joins the temporal transform**
+(the same per-pixel-column wavelet / motion-compensated MC-Haar over the GOP as the color
+planes). It is **intra** only in I-frames and in the CoefDiff (`prediction_method` 0) mode
+(whose color is itself a coefficient-domain diff without motion). The alpha keeps its **own**
+spatial decision (`alpha_qp == 0` ⇒ reversible 5/3, else float 9/7 in wavelet mode, or
+rANS+DCT in DCT mode; `table_length > 0` distinguishes the two on decode) **and its own
+temporal domain** in the GOP modes (a lossless alpha matte stays bit-exact even on a lossy
+open-loop color GOP), independent of the color quality. The transform is otherwise luma-like.
+The alpha section (appended per frame, §5.2) is:
 
 ```
 [u8  alpha_qp]

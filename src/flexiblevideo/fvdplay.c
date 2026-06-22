@@ -418,6 +418,11 @@ typedef struct {
   VkPipeline apply_aq;
   VkPipelineLayout layout_apply_aq;
   VkDescriptorSet apply_aq_pf[MAX_PLANES];
+  // Alpha plane 3 (INTER, joins the temporal transform). It is full-res and has its OWN lossless decision / temporal
+  // wavelet (alpha_int_temporal = alpha_lossless || mctf), which may differ from the color planes — so its spatial
+  // inverse-row pipeline (5/3 vs 9/7) and temporal int/float pipeline are chosen independently. No AQ on alpha.
+  int has_alpha, alpha_lossless, alpha_temporal_wavelet;
+  VkPipeline alpha_inverse_row;   // idwt53row (alpha_lossless) or idwt97row
 } Decode3D;
 
 // The caller must vkWaitForFences + vkResetFences on d->fence (and, for a spatial step, upload the
@@ -540,6 +545,80 @@ static void decode3d_spatial(const Decode3D *d, int buf, int slot) {
     VkBufferCopy copy = { 0, (VkDeviceSize)slot * pp * 4, (VkDeviceSize)pp * 4 };
     vkCmdCopyBuffer(d->cmd, d->prefetch_coeff[plane], d->gop_buffer[buf][plane], 1, &copy);
   }
+  if (d->has_alpha) {   // alpha plane 3: full-res, its own lossless decision (no AQ); the alpha section's block data was
+    int pw = d->width, ph = d->height, pp = pw * ph;   // uploaded into data_buffer after the color data (offset_pf[3] is absolute)
+    int plane_blocks = block_count_x(pw) * block_count_y(ph);
+    int block_workgroups = (g_block_size == 128) ? plane_blocks : ((plane_blocks + 63) / 64);
+    int pixel_workgroups = (pp + 255) / 256;
+    int level_width[16], level_height[16], level_count = 0, cw = pw, ch = ph;
+    for (int level = 0; (level < d->levels) && (cw >= 2) && (ch >= 2); level++) {
+      level_width[level_count] = cw;
+      level_height[level_count] = ch;
+      level_count++;
+      cw = (cw + 1) / 2;
+      ch = (ch + 1) / 2;
+    }
+    vkCmdFillBuffer(d->cmd, d->prefetch_coeff[3], 0, (VkDeviceSize)pp * 4, 0);
+    VkMemoryBarrier fill_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
+    vkCmdPipelineBarrier(d->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &fill_barrier, 0, 0, 0, 0);
+    int32_t unpack_push[4] = { pw, ph, block_count_x(pw), block_count_y(ph) };
+    vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->unpack);
+    vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_unpack, 0, 1, &d->unpack_pf[3], 0, 0);
+    vkCmdPushConstants(d->cmd, d->layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, unpack_push);
+    vkCmdDispatch(d->cmd, block_workgroups, 1, 1);
+    compute_barrier(d->cmd);
+    if (!d->alpha_lossless) {   // lossy alpha: dequant (alpha is never AQ-modulated, chroma_multiplier 1.0)
+      int32_t dequant_push[2] = { pp, 0 };
+      float chroma_multiplier = 1.0f;
+      memcpy(&dequant_push[1], &chroma_multiplier, sizeof(float));
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->dequant);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_dequant, 0, 1, &d->dequant_pf[3], 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_dequant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
+      vkCmdDispatch(d->cmd, pixel_workgroups, 1, 1);
+      compute_barrier(d->cmd);
+    }
+    for (int level_i = level_count - 1; level_i >= 0; level_i--) {
+      int level_w = level_width[level_i], level_h = level_height[level_i];
+      int32_t transpose_push_1[4] = { pw, level_w, level_h, scratch_stride };
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->transpose);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_transpose, 0, 1, &d->coeff_to_scratch_pf[3], 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_1);
+      vkCmdDispatch(d->cmd, (level_w + 15) / 16, (level_h + 15) / 16, 1);
+      compute_barrier(d->cmd);
+      int32_t row_push_1[4] = { scratch_stride, level_h, level_w, 1 };
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->alpha_inverse_row);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_row, 0, 1, &d->row_scratch, 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
+      vkCmdDispatch(d->cmd, level_w, 1, 1);
+      compute_barrier(d->cmd);
+      int32_t transpose_push_2[4] = { scratch_stride, level_h, level_w, pw };
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->transpose);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_transpose, 0, 1, &d->scratch_to_coeff_pf[3], 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_2);
+      vkCmdDispatch(d->cmd, (level_h + 15) / 16, (level_w + 15) / 16, 1);
+      compute_barrier(d->cmd);
+      int32_t row_push_2[4] = { pw, level_w, level_h, 1 };
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->alpha_inverse_row);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_row, 0, 1, &d->row_pf[3], 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
+      vkCmdDispatch(d->cmd, level_h, 1, 1);
+      compute_barrier(d->cmd);
+    }
+    if (d->mctf && !d->alpha_lossless) {   // MCTF lossy alpha: round the float 9/7 result to int before the integer MC-Haar inverse
+      int32_t pixel_count_push = pp;
+      vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->round);
+      vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_round, 0, 1, &d->row_pf[3], 0, 0);
+      vkCmdPushConstants(d->cmd, d->layout_round, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &pixel_count_push);
+      vkCmdDispatch(d->cmd, pixel_workgroups, 1, 1);
+      compute_barrier(d->cmd);
+    }
+    VkMemoryBarrier a_to_copy = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    a_to_copy.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    a_to_copy.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    vkCmdPipelineBarrier(d->cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &a_to_copy, 0, 0, 0, 0);
+    VkBufferCopy a_copy = { 0, (VkDeviceSize)slot * pp * 4, (VkDeviceSize)pp * 4 };
+    vkCmdCopyBuffer(d->cmd, d->prefetch_coeff[3], d->gop_buffer[buf][3], 1, &a_copy);
+  }
   decode3d_submit(d);
 }
 
@@ -559,6 +638,19 @@ static void decode3d_temporal(const Decode3D *d, int buf, int gop_count) {
     vkCmdPushConstants(d->cmd, d->layout_temporal, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, temporal_push);
     vkCmdDispatch(d->cmd, (pp + 255) / 256, 1, 1);
   }
+  if (d->has_alpha) {   // alpha plane 3: its OWN temporal domain (int if alpha_lossless, else float) + its own temporal wavelet
+    int pp = d->width * d->height;
+    int alpha_wavelet = d->alpha_temporal_wavelet;
+    if (d->alpha_lossless && (alpha_wavelet == 2)) {
+      alpha_wavelet = 1;
+    }
+    VkPipeline alpha_pipeline = d->alpha_lossless ? d->temporal_int : d->temporal_float;
+    int32_t temporal_push[5] = { pp, gop_count, d->temporal_levels, alpha_wavelet, 1 };
+    vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_pipeline);
+    vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_temporal, 0, 1, &d->temporal[buf][3], 0, 0);
+    vkCmdPushConstants(d->cmd, d->layout_temporal, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, temporal_push);
+    vkCmdDispatch(d->cmd, (pp + 255) / 256, 1, 1);
+  }
   decode3d_submit(d);
 }
 
@@ -569,12 +661,13 @@ static void decode3d_temporal(const Decode3D *d, int buf, int gop_count) {
 // decode3d_temporal's contract; the LAST submit is left pending for the caller's vkWaitForFences).
 static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, const int *frame_mv) {
   int luma_blocks = d->motion_blocks_x * d->motion_blocks_y;
+  int plane_count = d->has_alpha ? (g_num_planes + 1) : g_num_planes;   // alpha plane 3 rides the MC-Haar (shared luma MVs, full-res grid)
   int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pp[MAX_PLANES], plane_mbx[MAX_PLANES];
-  for (int plane = 0; plane < g_num_planes; plane++) {
-    plane_w[plane] = plane_width(plane, d->width);
-    plane_h[plane] = plane_height(plane, d->height);
+  for (int plane = 0; plane < plane_count; plane++) {
+    plane_w[plane] = (plane == 3) ? d->width : plane_width(plane, d->width);
+    plane_h[plane] = (plane == 3) ? d->height : plane_height(plane, d->height);
     plane_pp[plane] = plane_w[plane] * plane_h[plane];
-    plane_mbx[plane] = ((plane_w[plane] + d->motion_block) - 1) / d->motion_block;   // each plane's motion grid (subsampled chroma is smaller)
+    plane_mbx[plane] = ((plane_w[plane] + d->motion_block) - 1) / d->motion_block;   // each plane's motion grid (subsampled chroma is smaller; alpha = luma's)
   }
   int lengths[16], count = 0, len = gop_count;
   for (int l = 0; (l < d->temporal_levels) && (len >= 2); l++) {
@@ -593,7 +686,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
       if (((2 * k) + 1) < level_len) {
         int odd = (2 * k) + 1;
         memcpy(d->mv_map, &frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], (size_t)luma_blocks * 2 * 4);
-        for (int plane = 0; plane < g_num_planes; plane++) {
+        for (int plane = 0; plane < plane_count; plane++) {
           int pp = plane_pp[plane];
           VkDeviceSize low_off = (VkDeviceSize)k * pp * 4, high_off = (VkDeviceSize)(low_count + k) * pp * 4;
           VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
@@ -623,7 +716,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
           vkCmdDispatch(d->cmd, (pp + 255) / 256, 1, 1);
         }
       } else {
-        for (int plane = 0; plane < g_num_planes; plane++) {   // odd tail (no partner): even = low passthrough -> scratch@even
+        for (int plane = 0; plane < plane_count; plane++) {   // odd tail (no partner): even = low passthrough -> scratch@even
           int pp = plane_pp[plane];
           VkBufferCopy even_copy = { (VkDeviceSize)k * pp * 4, (VkDeviceSize)even * pp * 4, (VkDeviceSize)pp * 4 };
           vkCmdCopyBuffer(d->cmd, d->gop_buffer[buf][plane], d->mctf_scratch[plane], 1, &even_copy);
@@ -634,7 +727,7 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
     }
     decode3d_wait(d);   // copy scratch[0..level_len) back into gop_buffer (the interleaved frames for this level)
     decode3d_begin(d);
-    for (int plane = 0; plane < g_num_planes; plane++) {
+    for (int plane = 0; plane < plane_count; plane++) {
       VkBufferCopy back = { 0, 0, (VkDeviceSize)level_len * plane_pp[plane] * 4 };
       vkCmdCopyBuffer(d->cmd, d->mctf_scratch[plane], d->gop_buffer[buf][plane], 1, &back);
     }
@@ -728,7 +821,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
                            const int *block_count_plane, void **offset_map, void *data_map, void **step_map, int *step,
                            void **aq_base_map, void *tile_codes_map, const uint8_t *all_qpmaps, size_t aq_map_bytes,
                            int width, int height, int levels, int quality, int lossless,
-                           int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out) {
+                           int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out, int *out_alpha_qp) {
   size_t frame_len = read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
   uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
   int parsed_block_count;
@@ -765,6 +858,27 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
     }
     if (g_aq_enabled) {   // upload THIS subband's transmitted tile codes for the GPU AQ pass (its coding index == source_index)
       memcpy(tile_codes_map, all_qpmaps + ((size_t)source_index * aq_map_bytes), aq_map_bytes);
+    }
+  }
+  if (g_has_alpha && out_alpha_qp) {   // parse + upload the appended alpha section: its block data goes right after the
+    int a_block_count = block_count_x(width) * block_count_y(height);   // color data in data_buffer (offset_map[3] = absolute)
+    uint32_t *a_off = (uint32_t *)offset_map[3];
+    const uint8_t *alpha_section = frame_data + data_length;   // 3D-DWT is wavelet -> no entropy section between the color data and the alpha
+    int alpha_qp;
+    const uint8_t *alpha_table;
+    uint32_t alpha_table_length, alpha_data_length;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, frame_len - (size_t)(alpha_section - *frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+    if (!alpha_data) {
+      die("corrupt alpha section (3D-DWT subband)");
+    }
+    memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
+    for (int block = 0; block < a_block_count; block++) {
+      a_off[block] += data_length;   // absolute byte offset in data_buffer (alpha block data starts after the color data)
+    }
+    *out_alpha_qp = alpha_qp;
+    if (alpha_qp != 0) {   // lossy alpha: build its (full-res, non-AQ) wavelet quant steps for the dequant (alpha_qp is GOP-constant)
+      build_quantization_steps(step, width, height, levels, alpha_qp);
+      memcpy(step_map[3], step, (size_t)(width * height) * 4);
     }
   }
 }
@@ -1787,11 +1901,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 277 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 297 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3); + 3D-DWT alpha prefetch (unpack/dequant/2 transpose/row = 10) + temporal[2][3] (2) + MCTF mc/add[3] (5)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 145;   // +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3])   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 155;   // +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3]) + 3D-DWT alpha (5 prefetch + 2 temporal + 2 MCTF = 9)   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -2059,6 +2173,12 @@ int main(int argc, char **argv) {
       set_mctf_mc[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       set_mctf_add[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     }
+    if (g_has_alpha) {   // alpha plane 3 rides the MC-Haar inverse (full-res, shared luma MVs); MCTF gop is integer
+      create_buffer((size_t)pixel_count * 4, DEVICE_LOCAL, &mctf_pred[3], &mctf_pred_memory[3]);
+      create_buffer((size_t)gop_capacity * pixel_count * 4, DEVICE_LOCAL, &mctf_scratch[3], &mctf_scratch_memory[3]);
+      set_mctf_mc[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_mctf_add[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+    }
     for (int buffer = 0; buffer < 2; buffer++) {
       mctf_mv[buffer] = checked_malloc(((size_t)gop_capacity * motion_blocks_x * motion_blocks_y * 2) * sizeof(int));
     }
@@ -2069,9 +2189,15 @@ int main(int argc, char **argv) {
         int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
         create_buffer((size_t)gop_capacity * plane_pixels * 4, DEVICE_LOCAL, &gop_buffer[buffer][plane], &gop_memory[buffer][plane]);
       }
+      if (g_has_alpha) {   // alpha plane 3: full-res GOP-resident slot (the alpha joins the temporal transform)
+        create_buffer((size_t)gop_capacity * pixel_count * 4, DEVICE_LOCAL, &gop_buffer[buffer][3], &gop_memory[buffer][3]);
+      }
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &prefetch_coeff[plane], &prefetch_coeff_memory[plane]);
+    }
+    if (g_has_alpha) {
+      create_buffer(plane_bytes, DEVICE_LOCAL, &prefetch_coeff[3], &prefetch_coeff_memory[3]);
     }
     pipeline_layout_temporal = create_pipeline_layout(layout_1_buffer, 20);   // { pixel_count, num_frames, levels, wavelet, inverse }
     pipeline_temporal_int = create_compute_pipeline("shaders/tdwt_int.spv", pipeline_layout_temporal);
@@ -2080,6 +2206,10 @@ int main(int argc, char **argv) {
       for (int plane = 0; plane < g_num_planes; plane++) {
         set_temporal[buffer][plane] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
         bind_storage_buffers(set_temporal[buffer][plane], (VkBuffer[]){ gop_buffer[buffer][plane] }, 1);
+      }
+      if (g_has_alpha) {
+        set_temporal[buffer][3] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
+        bind_storage_buffers(set_temporal[buffer][3], (VkBuffer[]){ gop_buffer[buffer][3] }, 1);
       }
     }
     // Prefetch decode sets: identical to the present's decode sets but bound to prefetch_coeff (data /
@@ -2095,6 +2225,18 @@ int main(int argc, char **argv) {
       bind_storage_buffers(set_scratch_to_coeff_pf[plane], (VkBuffer[]){ scratch_buffer, prefetch_coeff[plane] }, 2);
       set_row_pf[plane] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
       bind_storage_buffers(set_row_pf[plane], (VkBuffer[]){ prefetch_coeff[plane] }, 1);
+    }
+    if (g_has_alpha) {   // alpha plane 3 prefetch sets: the alpha section's block data is uploaded into data_buffer after
+      set_unpack_pf[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // the color data; offset_buffer[3] holds absolute offsets
+      bind_storage_buffers(set_unpack_pf[3], (VkBuffer[]){ data_buffer, offset_buffer[3], prefetch_coeff[3] }, 3);
+      set_dequant_pf[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_dequant_pf[3], (VkBuffer[]){ prefetch_coeff[3], step_buffer[3] }, 2);
+      set_coeff_to_scratch_pf[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_coeff_to_scratch_pf[3], (VkBuffer[]){ prefetch_coeff[3], scratch_buffer }, 2);
+      set_scratch_to_coeff_pf[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
+      bind_storage_buffers(set_scratch_to_coeff_pf[3], (VkBuffer[]){ scratch_buffer, prefetch_coeff[3] }, 2);
+      set_row_pf[3] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
+      bind_storage_buffers(set_row_pf[3], (VkBuffer[]){ prefetch_coeff[3] }, 1);
     }
   }
 
@@ -2324,6 +2466,12 @@ int main(int argc, char **argv) {
     d3d.temporal_wavelet = g_temporal_wavelet;
     d3d.lossless = lossless;
     d3d.plane_bytes = plane_bytes;
+    // Alpha plane 3 (inter, joins the temporal transform). alpha_lossless / alpha_inverse_row are refined from the
+    // first subband's alpha_qp (GOP-constant) at upload time; default to lossless 5/3 until then.
+    d3d.has_alpha = g_has_alpha;
+    d3d.alpha_temporal_wavelet = g_temporal_wavelet;
+    d3d.alpha_lossless = 1;
+    d3d.alpha_inverse_row = pipeline_inverse_row_53;
     // AQ: the GPU apply pass + its tile grid. set_apply_aq is bound to { aq_base_buffer, tile_codes,
     // weight_lut, step_buffer } (the I/P path's set, unused in 3D-DWT mode) — exactly what the prefetch apply needs.
     d3d.aq_enabled = g_aq_enabled && !lossless;
@@ -2362,6 +2510,22 @@ int main(int argc, char **argv) {
         d3d.gop_buffer[buffer][plane] = gop_buffer[buffer][plane];
       }
     }
+    if (g_has_alpha) {   // alpha plane 3 sets/buffers (full-res; the alpha section feeds set_unpack_pf[3] via data_buffer)
+      d3d.unpack_pf[3] = set_unpack_pf[3];
+      d3d.dequant_pf[3] = set_dequant_pf[3];
+      d3d.coeff_to_scratch_pf[3] = set_coeff_to_scratch_pf[3];
+      d3d.scratch_to_coeff_pf[3] = set_scratch_to_coeff_pf[3];
+      d3d.row_pf[3] = set_row_pf[3];
+      d3d.prefetch_coeff[3] = prefetch_coeff[3];
+      d3d.mctf_pred[3] = mctf_pred[3];
+      d3d.mctf_scratch[3] = mctf_scratch[3];
+      d3d.mctf_mc[3] = set_mctf_mc[3];
+      d3d.mctf_add[3] = set_mctf_add[3];
+      for (int buffer = 0; buffer < 2; buffer++) {
+        d3d.temporal[buffer][3] = set_temporal[buffer][3];
+        d3d.gop_buffer[buffer][3] = gop_buffer[buffer][3];
+      }
+    }
     if (verify) {
       cpu_gop_rgb = checked_malloc((size_t)gop_capacity * sizeof(uint8_t *));
       for (int g = 0; g < gop_capacity; g++) {
@@ -2372,9 +2536,14 @@ int main(int argc, char **argv) {
     cur_gop_count = gop_count_from(index, 0, header.frame_count);
     for (int g = 0; g < cur_gop_count; g++) {
       decode3d_wait(&d3d);
+      int a_qp = 0;
       upload_subband(file, index, (uint32_t)g, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                      width, height, levels, quality, lossless, g, cur_gop_count, g_temporal_levels,
-                     g_mctf ? &mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL);
+                     g_mctf ? &mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+      if (g_has_alpha) {   // alpha_qp is GOP-constant -> set the alpha's own lossless / inverse-row choice (5/3 vs 9/7) before the spatial inverse
+        d3d.alpha_lossless = (a_qp == 0);
+        d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
+      }
       decode3d_spatial(&d3d, 0, g);
     }
     decode3d_wait(&d3d);
@@ -2492,9 +2661,14 @@ int main(int argc, char **argv) {
     if (mode_3ddwt && (frame_index >= cur_gop_start + (uint32_t)cur_gop_count)) {
       while (!pf_done) {   // the prefetch didn't keep up (rare): finish it now
         decode3d_wait(&d3d);
+        int a_qp = 0;
         upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
+                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+        if (g_has_alpha) {
+          d3d.alpha_lossless = (a_qp == 0);
+          d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
+        }
         decode3d_spatial(&d3d, pf_buf, pf_step);
         pf_step++;
         if (pf_step >= pf_gop_count) {
@@ -3358,8 +3532,22 @@ int main(int argc, char **argv) {
       // The GOP was already spatial+temporal inverse-transformed above; just fetch this frame's slot
       // into coeff_buffer (and round the float result for the lossy path) for the color pass below.
       int slot = (int)(frame_index - cur_gop_start);
-      if (g_has_alpha) {   // 3D-DWT: CPU-decode this display frame's alpha section into coeff[3] (intra, positional; color_alpha reads it)
-        cpu_decode_alpha_section(file, index, frame_index, block_count_plane, width, height, levels, step, coeff_map3);
+      if (g_has_alpha) {   // 3D-DWT: this display frame's alpha = gop_buffer[cur_buf][3]@slot (already spatial+temporal inverse-transformed); copy -> coeff[3]
+        int pp = pixel_count;   // alpha is full-res
+        VkBufferCopy a_copy = { (VkDeviceSize)slot * pp * 4, 0, (VkDeviceSize)pp * 4 };
+        vkCmdCopyBuffer(command_buffer, gop_buffer[cur_buf][3], coeff_buffer[3], 1, &a_copy);
+        VkMemoryBarrier a_to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        a_to_shader.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        a_to_shader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &a_to_shader, 0, 0, 0, 0);
+        if (!d3d.alpha_lossless && !g_mctf) {   // open-loop lossy alpha: the gop holds float -> round to int for color_alpha (MCTF already int)
+          int32_t pixel_count_push = pp;
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_round, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_round, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &pixel_count_push);
+          vkCmdDispatch(command_buffer, (pp + 255) / 256, 1, 1);
+          memory_barrier();
+        }
       }
       for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
@@ -3950,9 +4138,14 @@ int main(int argc, char **argv) {
       }
       if (mode_3ddwt && !pf_done) {   // advance the prefetch one subband (so verify exercises that path too)
         decode3d_wait(&d3d);
+        int a_qp = 0;
         upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
+                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+        if (g_has_alpha) {
+          d3d.alpha_lossless = (a_qp == 0);
+          d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
+        }
         decode3d_spatial(&d3d, pf_buf, pf_step);
         pf_step++;
         if (pf_step >= pf_gop_count) {
@@ -4031,9 +4224,14 @@ int main(int argc, char **argv) {
     // 3D-DWT: prefetch one subband of the next GOP — its decode overlaps the next frame's pacing.
     if (mode_3ddwt && !pf_done) {
       decode3d_wait(&d3d);
+      int a_qp = 0;
       upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                      width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                     g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
+                     g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+      if (g_has_alpha) {
+        d3d.alpha_lossless = (a_qp == 0);
+        d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
+      }
       decode3d_spatial(&d3d, pf_buf, pf_step);
       pf_step++;
       if (pf_step >= pf_gop_count) {
