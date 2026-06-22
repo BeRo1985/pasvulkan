@@ -656,8 +656,8 @@ int main(int argc, char **argv) {
       for (int g = 0; g < filled; g++) {   // --alpha-bleed each just-read GOP frame
         apply_alpha_bleed(gop_rgb[g], width, height);
       }
-      encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length);
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, cpu_gop_rgb, NULL, NULL, 0, 0, 0);
+      encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length, NULL);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, cpu_gop_rgb, NULL, NULL, 0, 0, 0, NULL);
 
       // Phase 1: each subband frame -> GPU spatial inverse -> GOP buffer slot (no round; keep float/int).
       for (int g = 0; g < filled; g++) {
@@ -843,7 +843,7 @@ int main(int argc, char **argv) {
       // CPU-encode this frame, then split the payload into the block bytes and the offset tables. colordiff
       // (used when chroma is subsampled) carries the down/upsampled Co/Cg; coefdiff is the 4:4:4-only default.
       uint8_t *encoded;
-      size_t encoded_length = use_colordiff ? encode_frame_colordiff(rgb, width, height, levels, quality, &encoded, NULL, 0)
+      size_t encoded_length = use_colordiff ? encode_frame_colordiff(rgb, width, height, levels, quality, &encoded, NULL, 0, NULL)
                                             : encode_frame_coefdiff(rgb, width, height, levels, quality, &encoded, NULL, 0);
       // Prefix-sum the u16 sizes straight into the (host-visible) GPU offset buffers.
       uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
@@ -874,7 +874,7 @@ int main(int argc, char **argv) {
       // metric). colordiff (subsampled): compare the GPU against the ORIGINAL frame instead, so the number
       // reflects true codec quality (~38 dB for 4:2:0) — the CPU decode here is only for parity / debug.
       if (use_colordiff) {
-        decode_frame_colordiff(encoded, encoded_length, width, height, levels, quality, cpu_rgb, NULL, 0);
+        decode_frame_colordiff(encoded, encoded_length, width, height, levels, quality, cpu_rgb, NULL, 0, 0);
       } else {
         decode_frame_coefdiff(encoded, encoded_length, width, height, levels, quality, cpu_rgb, NULL, 0);
       }

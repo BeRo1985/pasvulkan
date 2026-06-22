@@ -961,7 +961,7 @@ static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_sta
     payload_length[g] = read_frame(file, &index[source_index], &payload[g], &payload_capacity);
   }
   decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb, NULL,
-                   qpmaps, aq_cols, aq_rows, (long)gop_start);
+                   qpmaps, aq_cols, aq_rows, (long)gop_start, NULL);
   for (int g = 0; g < gop_count; g++) {
     free(payload[g]);
   }

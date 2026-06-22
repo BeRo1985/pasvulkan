@@ -3569,7 +3569,7 @@ int main(int argc, char **argv) {
           for (int plane = 0; plane < g_num_planes; plane++) {
             recon_ycocg[plane] = checked_malloc(((size_t)filled * plane_pixels[plane]) * 4);
           }
-          decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, recon_ycocg, NULL, 0, 0, 0);
+          decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, recon_ycocg, NULL, 0, 0, 0, NULL);
           int32_t *original_luma = checked_malloc((size_t)pixel_count * 4);
           int32_t *original_orange = checked_malloc((size_t)pixel_count * 4);
           int32_t *original_green = checked_malloc((size_t)pixel_count * 4);
@@ -3637,7 +3637,7 @@ int main(int argc, char **argv) {
         if (debug) {   // --debug: compare the GPU stream byte-for-byte with the CPU encode_gop_3ddwt
           uint8_t *cpu_encoded[MAX_GOP];
           size_t cpu_encoded_length[MAX_GOP];
-          encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, cpu_encoded, cpu_encoded_length);
+          encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, cpu_encoded, cpu_encoded_length, NULL);
           for (int f = 0; f < filled; f++) {
             int same = (cpu_encoded_length[f] == gop_encoded_length[f]) && (memcmp(cpu_encoded[f], gop_encoded[f], cpu_encoded_length[f]) == 0);
             fprintf(stderr, "  [debug] frame %d stream: GPU %zu bytes vs CPU %zu bytes -> %s\n", f, gop_encoded_length[f], cpu_encoded_length[f], same ? "IDENTICAL" : "DIFFER");
@@ -3645,7 +3645,7 @@ int main(int argc, char **argv) {
           }
         }
         // Self-test: CPU-decode the whole GOP (decode_gop_3ddwt) and score PSNR per frame vs the source.
-        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0);
+        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL);
         for (int f = 0; f < filled; f++) {
           double mean_squared_error = 0;
           size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;

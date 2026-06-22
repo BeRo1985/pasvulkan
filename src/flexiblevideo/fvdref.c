@@ -3768,6 +3768,51 @@ static void mctf_inverse(int32_t *gop[MAX_PLANES], int num_frames, const int pla
   }
 }
 
+// Dedicated single-plane (alpha, full-res) MC-Haar inverse for the own-alpha-MV case. Each high-pass frame is warped
+// either with the shared luma MVs (alpha_mv_modes[f] == 0) or with the frame's own decoded alpha MVs (== 1). When all
+// modes are 0 this performs exactly the same operations as riding plane 3 in mctf_inverse, so the shared path stays
+// bit-identical. alpha_gop is [frame * pixel_count + pixel]; luma_blocks_x/y is the (full-res) motion grid the MV
+// fields are indexed on (alpha is full-res, so its own grid matches the luma one).
+static void mctf_inverse_alpha(int32_t *alpha_gop, int num_frames, int width, int height, int pixel_count,
+                               int levels_temporal, const int *luma_frame_mv, const int *alpha_frame_mv,
+                               const int *alpha_mv_modes, int luma_blocks_x, int luma_blocks_y) {
+  int blocks = luma_blocks_x * luma_blocks_y;
+  int mbx = ((width + MOTION_BLOCK) - 1) / MOTION_BLOCK;   // alpha is full-res, so this == luma_blocks_x
+  int lengths[16], count = 0, len = num_frames;
+  for (int l = 0; (l < levels_temporal) && (len >= 2); l++) {
+    lengths[count++] = len;
+    len = (len + 1) / 2;
+  }
+  int32_t *mc = checked_malloc((size_t)pixel_count * 4);
+  int32_t *scratch = checked_malloc(((size_t)num_frames * pixel_count) * 4);
+  for (int l = count - 1; l >= 0; l--) {
+    int level_len = lengths[l], low_count = (level_len + 1) / 2;
+    for (int k = 0; k < low_count; k++) {
+      int even = 2 * k;
+      if (((2 * k) + 1) < level_len) {
+        int odd = (2 * k) + 1;
+        int f = low_count + k;   // final position of this high-pass frame (== the MV-field / mode index)
+        const int *mv = ((alpha_mv_modes != NULL) && (alpha_mv_modes[f] == 1))
+                          ? &alpha_frame_mv[((size_t)f * blocks) * 2]
+                          : &luma_frame_mv[((size_t)f * blocks) * 2];
+        const int32_t *low = alpha_gop + ((size_t)k * pixel_count);
+        memcpy(scratch + ((size_t)even * pixel_count), low, (size_t)pixel_count * 4);                 // even = low
+        motion_compensate(low, mv, mc, width, height, mbx);
+        const int32_t *high = alpha_gop + ((size_t)(low_count + k) * pixel_count);
+        int32_t *odd_frame = scratch + ((size_t)odd * pixel_count);
+        for (int i = 0; i < pixel_count; i++) {
+          odd_frame[i] = high[i] + mc[i];                                                             // odd = high + OBMC(even)
+        }
+      } else {
+        memcpy(scratch + ((size_t)even * pixel_count), alpha_gop + ((size_t)k * pixel_count), (size_t)pixel_count * 4);
+      }
+    }
+    memcpy(alpha_gop, scratch, ((size_t)level_len * pixel_count) * 4);
+  }
+  free(mc);
+  free(scratch);
+}
+
 /* The image is coded in independent 32x32 coefficient blocks. Each block is byte-aligned and its
  * start offset recorded, so every block can be decoded in parallel (no serial dependency) — that
  * is what lets the GPU decode them all at once. */
@@ -6735,10 +6780,10 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     free(w_shared.bytes);
     free(off_shared);
     free(tab_shared);
+    free(w_own.bytes);   // always inited at bitwriter_init above (re-inited by encode_alpha_payload when do_own)
     if (do_own) {
       free(mc_own);
       free(res_own);
-      free(w_own.bytes);
       free(off_own);
       free(tab_own);
       free(alpha_mv);
@@ -7217,10 +7262,10 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
     free(w_shared.bytes);
     free(off_shared);
     free(tab_shared);
+    free(w_own.bytes);   // always inited at bitwriter_init above (re-inited by encode_alpha_payload when do_own)
     if (do_own) {
       free(pred_own);
       free(res_own);
-      free(w_own.bytes);
       free(off_own);
       free(tab_own);
       free(amv0);
@@ -7545,8 +7590,13 @@ static void build_b_range(CodeStep *steps, int *count, int lo, int hi, int depth
  * out[]/out_len[]. The caller writes them to the container in order. GOP is 4:4:4 only for now
  * (chroma subsampling is ignored), keeping the first cut simple. */
 #define MAX_GOP 64
+// out_alpha_mv_modes (or NULL): when non-NULL AND --mctf, the encoder ALSO motion-estimates the alpha plane
+// independently per high-pass temporal pair and probe-encodes both the shared-luma-MV and the own-alpha-MV residual,
+// keeping whichever codes to fewer actual bytes (the own variant pays for its MV blob). out_alpha_mv_modes[f] receives
+// 0 (shared) or 1 (own) per subband frame; the own MV blob is appended in that frame's alpha section. Pass NULL for the
+// shared-luma-MV-only path (no extra search / no probe → the alpha sections stay byte-identical to the shared stream).
 static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, int height,
-                             int levels, int base_quality, uint8_t **out, size_t *out_len) {
+                             int levels, int base_quality, uint8_t **out, size_t *out_len, int *out_alpha_mv_modes) {
   int pixel_count = width * height;
   int lossless = (base_quality == 0);
   int temporal_wavelet = g_temporal_wavelet;
@@ -7654,6 +7704,49 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   free(chroma_orange);
   free(chroma_green);
 
+  // Own-alpha-MV (MCTF only, caller opted in via out_alpha_mv_modes): before the shared MC-Haar overwrites the alpha
+  // GOP, capture the original alpha frames and run a SEPARATE alpha decimation with per-high-pass-pair independent motion
+  // estimation. This yields, per high-pass frame, an OWN-MV residual candidate (alpha_gop_own) plus its MV field
+  // (alpha_frame_mv); step 3 RD-picks shared vs own by actual coded bytes. The shared candidate stays in alpha_gop_int
+  // (filled by mctf_forward below, plane 3), so the shared-only path is byte-identical to the prior stream. The MC-Haar
+  // is predict-only (low = even passthrough, unaffected by motion), so each high-pass frame's MV choice is independent.
+  int do_alpha_own = g_has_alpha && g_mctf && (out_alpha_mv_modes != NULL);
+  int32_t *alpha_gop_own = NULL;
+  int *alpha_frame_mv = NULL;
+  if (do_alpha_own) {
+    alpha_gop_own = checked_malloc(((size_t)num_frames * pixel_count) * 4);
+    memcpy(alpha_gop_own, alpha_gop_int, ((size_t)num_frames * pixel_count) * 4);   // original alpha (pre-temporal), decimated in place below
+    alpha_frame_mv = checked_malloc((((size_t)num_frames * motion_blocks) * 2) * sizeof(int));
+    int32_t *alpha_scratch = checked_malloc(((size_t)num_frames * pixel_count) * 4);
+    int32_t *alpha_mc = checked_malloc((size_t)pixel_count * 4);
+    int alen = num_frames;
+    for (int l = 0; (l < g_temporal_levels) && (alen >= 2); l++) {
+      int low_count = (alen + 1) / 2;
+      for (int k = 0; k < low_count; k++) {
+        int even = 2 * k;
+        if (((2 * k) + 1) < alen) {
+          int odd = (2 * k) + 1;
+          int *amv = &alpha_frame_mv[((size_t)(low_count + k) * motion_blocks) * 2];   // own MV lives with the high frame
+          motion_estimate_cpu(alpha_gop_own + ((size_t)odd * pixel_count), alpha_gop_own + ((size_t)even * pixel_count), amv,
+                              width, height, motion_blocks_x, motion_blocks_y);
+          motion_compensate(alpha_gop_own + ((size_t)even * pixel_count), amv, alpha_mc, width, height, motion_blocks_x);
+          memcpy(alpha_scratch + ((size_t)k * pixel_count), alpha_gop_own + ((size_t)even * pixel_count), (size_t)pixel_count * 4);   // low = even
+          int32_t *high = alpha_scratch + ((size_t)(low_count + k) * pixel_count);
+          const int32_t *odd_frame = alpha_gop_own + ((size_t)odd * pixel_count);
+          for (int i = 0; i < pixel_count; i++) {
+            high[i] = odd_frame[i] - alpha_mc[i];                                       // own residual = odd - OBMC(even, own MV)
+          }
+        } else {
+          memcpy(alpha_scratch + ((size_t)k * pixel_count), alpha_gop_own + ((size_t)even * pixel_count), (size_t)pixel_count * 4);
+        }
+      }
+      memcpy(alpha_gop_own, alpha_scratch, ((size_t)alen * pixel_count) * 4);
+      alen = low_count;
+    }
+    free(alpha_scratch);
+    free(alpha_mc);
+  }
+
   // 2) temporal transform across the frames. MCTF = integer frame-level MC-Haar (motion-aligned); otherwise the
   // open-loop per-pixel-column wavelet (no motion). MCTF stores each high-pass frame's MV field in frame_mv.
   if (g_mctf) {
@@ -7750,30 +7843,87 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
       encode_plane(&writer, coefficients, pw, ph, offsets[plane]);
     }
     // Alpha temporal-subband frame f: spatial transform + quant + bit-plane (wavelet) into the appended alpha section.
+    // MCTF high-pass frames (level > 0) RD-pick OWN alpha MVs vs the shared luma MVs when the caller opted in (the
+    // alpha_int_temporal subband is integer; encode_alpha_payload uses g_spatial_dct=0 = wavelet transform, bit-plane
+    // entropy). Low-pass / open-loop / opted-out stays shared and byte-identical to the prior alpha section.
     BitWriter alpha_writer;
     uint32_t *alpha_offsets = NULL;
+    uint8_t *alpha_table = NULL;
+    uint32_t alpha_table_len = 0;
+    uint8_t *alpha_own_mv_blob = NULL;
+    uint32_t alpha_own_mv_blob_len = 0;
+    int alpha_mode = 0;
     if (g_has_alpha) {
       int saved_spatial_dct = g_spatial_dct;
       g_spatial_dct = 0;   // 3D-DWT alpha is wavelet-spatial (matches the GPU + the color planes), regardless of the fork default
-      bitwriter_init(&alpha_writer);
       alpha_offsets = checked_malloc((size_t)plane_blocks[3] * 4);
-      if (alpha_lossless) {
-        memcpy(coefficients, alpha_gop_int + ((size_t)f * pixel_count), (size_t)pixel_count * 4);
-        forward_spatial_int(coefficients, width, height, levels);
-      } else {
-        if (alpha_int_temporal) {   // MCTF lossy: the alpha temporal-subband frames are integer
-          for (int i = 0; i < pixel_count; i++) {
-            float_plane[i] = (float)alpha_gop_int[((size_t)f * pixel_count) + i];
-          }
+      build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // alpha is never AQ-modulated (no maybe_apply_tile_aq)
+      int do_own_here = do_alpha_own && (level > 0);
+      if (!do_own_here) {   // shared-only: residual already in alpha_gop_int (plane 3 of the shared MC-Haar); no extra MV blob
+        int32_t *res = checked_malloc((size_t)pixel_count * 4);
+        memcpy(res, alpha_gop_int + ((size_t)f * pixel_count), (size_t)pixel_count * 4);
+        encode_alpha_payload(res, width, height, levels, alpha_qp, step, float_plane, &alpha_writer, alpha_offsets, &alpha_table, &alpha_table_len, 0);   // inits alpha_writer
+        free(res);
+      } else {   // RD probe: shared (luma MVs, no blob) vs own (independent alpha MVs + MV blob); keep the fewer total bytes
+        int32_t *res_shared = checked_malloc((size_t)pixel_count * 4);
+        memcpy(res_shared, alpha_gop_int + ((size_t)f * pixel_count), (size_t)pixel_count * 4);
+        BitWriter w_shared;
+        uint32_t *off_shared = checked_malloc((size_t)plane_blocks[3] * 4);
+        uint8_t *tab_shared = NULL;
+        uint32_t tab_shared_len = 0;
+        uint32_t cost_shared = encode_alpha_payload(res_shared, width, height, levels, alpha_qp, step, float_plane, &w_shared, off_shared, &tab_shared, &tab_shared_len, 0);
+
+        int32_t *res_own = checked_malloc((size_t)pixel_count * 4);
+        memcpy(res_own, alpha_gop_own + ((size_t)f * pixel_count), (size_t)pixel_count * 4);
+        BitWriter w_own;
+        uint32_t *off_own = checked_malloc((size_t)plane_blocks[3] * 4);
+        uint8_t *tab_own = NULL;
+        uint32_t tab_own_len = 0;
+        uint32_t pay_own = encode_alpha_payload(res_own, width, height, levels, alpha_qp, step, float_plane, &w_own, off_own, &tab_own, &tab_own_len, 0);
+        const int *amv = &alpha_frame_mv[((size_t)f * motion_blocks) * 2];
+        uint8_t *own_mv = NULL;
+        size_t own_mv_len = 0;
+        if (g_mv_codec == 1) {
+          own_mv_len = mv_blob_encode_range(&own_mv, 0, NULL, 0, amv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
         } else {
-          memcpy(float_plane, alpha_gop_float + ((size_t)f * pixel_count), (size_t)pixel_count * sizeof(float));
+          BitWriter mvw;
+          bitwriter_init(&mvw);
+          encode_motion_vectors(&mvw, amv, motion_blocks_x, motion_blocks_y);
+          bitwriter_flush(&mvw);
+          own_mv = mvw.bytes;
+          own_mv_len = mvw.length;
         }
-        build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // alpha is never AQ-modulated (no maybe_apply_tile_aq)
-        forward_spatial(float_plane, width, height, levels);
-        quantize(float_plane, coefficients, step, pixel_count, 1.0f);
+        uint32_t cost_own = (pay_own + 4) + (uint32_t)own_mv_len;   // the own variant pays for its MV blob ([len:u32]+blob)
+        if (cost_own < cost_shared) {   // transfer ownership of the own writer/offsets/table into the chosen ones
+          alpha_mode = 1;
+          alpha_writer = w_own;
+          free(alpha_offsets);
+          alpha_offsets = off_own;
+          alpha_table = tab_own;
+          alpha_table_len = tab_own_len;
+          alpha_own_mv_blob = own_mv;
+          alpha_own_mv_blob_len = (uint32_t)own_mv_len;
+          free(w_shared.bytes);
+          free(off_shared);
+          free(tab_shared);
+        } else {
+          alpha_writer = w_shared;
+          free(alpha_offsets);
+          alpha_offsets = off_shared;
+          alpha_table = tab_shared;
+          alpha_table_len = tab_shared_len;
+          free(w_own.bytes);
+          free(off_own);
+          free(tab_own);
+          free(own_mv);
+        }
+        free(res_shared);
+        free(res_own);
       }
-      encode_plane(&alpha_writer, coefficients, width, height, alpha_offsets);
       g_spatial_dct = saved_spatial_dct;
+    }
+    if (out_alpha_mv_modes) {
+      out_alpha_mv_modes[f] = alpha_mode;
     }
     uint8_t *mv_blob = NULL;
     size_t mv_blob_length = 0;
@@ -7792,9 +7942,10 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
     }
     out_len[f] = assemble_frame(plane_blocks, offsets, mv_blob, mv_blob_length, writer.bytes, writer.length, &out[f]);
     if (g_has_alpha) {   // append the alpha section (graceful-ignore for color-only decoders; 3D-DWT is wavelet -> no rANS table)
-      out_len[f] = append_alpha_section(&out[f], out_len[f], alpha_qp, alpha_offsets, plane_blocks[3], NULL, 0, alpha_writer.bytes, alpha_writer.length, NULL, 0);
+      out_len[f] = append_alpha_section(&out[f], out_len[f], alpha_qp, alpha_offsets, plane_blocks[3], alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length, alpha_own_mv_blob, alpha_own_mv_blob_len);
       free(alpha_writer.bytes);
       free(alpha_offsets);
+      free(alpha_own_mv_blob);
     }
     free(mv_blob);
     free(writer.bytes);
@@ -7807,6 +7958,8 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   free(float_plane);
   free(coefficients);
   free(frame_mv);
+  free(alpha_gop_own);
+  free(alpha_frame_mv);
   for (int plane = 0; plane < g_num_planes; plane++) {
     free(gop_int[plane]);
     free(gop_float[plane]);
@@ -7820,9 +7973,13 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 // qpmaps (or NULL): the transmitted per-subband per-tile AQ maps, indexed by coding index. When non-NULL each subband
 // f applies its map (coding index base_coding_index + f) to the color-plane quant steps exactly as the GPU decode
 // does — so --verify (GPU vs CPU) holds for --aq 3D-DWT. Alpha is never AQ-modulated. NULL = no AQ (self-test callers).
+// alpha_mv_modes (or NULL): the per-subband-frame alpha_mv_mode (0 = shared luma MVs, 1 = own alpha MVs; from
+// FrameEntry.pad in the container, or the self-test array). NULL = all shared → the prior plane-3 MC-Haar ride; non-NULL
+// → color rides plane_count = g_num_planes and alpha is inverted separately (per high-pass frame: own or shared MVs).
 static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames, int width, int height,
                              int levels, int base_quality, uint8_t **rgb_out, int32_t **recon_ycocg_out,
-                             const uint8_t *qpmaps, int aq_cols, int aq_rows, long base_coding_index) {
+                             const uint8_t *qpmaps, int aq_cols, int aq_rows, long base_coding_index,
+                             const int *alpha_mv_modes) {
   (void)frame_len;
   int pixel_count = width * height;
   int lossless = (base_quality == 0);
@@ -7835,6 +7992,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   int motion_blocks_y = ((height + MOTION_BLOCK) - 1) / MOTION_BLOCK;
   int motion_blocks = motion_blocks_x * motion_blocks_y;
   int *frame_mv = g_mctf ? checked_malloc(((size_t)num_frames * motion_blocks * 2) * sizeof(int)) : NULL;
+  // Own-alpha-MV: the decoded per-high-pass-frame alpha MV field (only when --mctf + has_alpha + caller passes modes;
+  // filled per frame from each alpha section's MV blob where alpha_mv_modes[f] == 1). Used by mctf_inverse_alpha.
+  int *alpha_frame_mv = (g_mctf && g_has_alpha && alpha_mv_modes) ? checked_malloc(((size_t)num_frames * motion_blocks * 2) * sizeof(int)) : NULL;
 
   // Per-plane dimensions: luma full-res, chroma subsampled when g_chroma_format != 0.
   int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pixels[MAX_PLANES], plane_blocks[MAX_PLANES];
@@ -7934,9 +8094,22 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
       int frame_alpha_qp;
       const uint8_t *alpha_table;
       uint32_t alpha_table_length, alpha_data_length;
-      const uint8_t *alpha_data = parse_alpha_section(data + cdl, frame_len[f] - (size_t)((data + cdl) - frames[f]), alpha_offsets, a_block_count, &frame_alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
+      int frame_alpha_own = (alpha_mv_modes && (alpha_mv_modes[f] == 1)) ? 1 : 0;   // own-alpha-MV high-pass frame: its section carries an MV blob
+      const uint8_t *alpha_mv_data = NULL;
+      uint32_t alpha_mv_length = 0;
+      const uint8_t *alpha_data = parse_alpha_section(data + cdl, frame_len[f] - (size_t)((data + cdl) - frames[f]), alpha_offsets, a_block_count, &frame_alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, frame_alpha_own, &alpha_mv_data, &alpha_mv_length);
       if (!alpha_data) {
         die("corrupt alpha section");
+      }
+      if (frame_alpha_own && (alpha_mv_length > 0)) {   // decode this frame's own alpha MV field for the temporal inverse warp
+        int *amv = &alpha_frame_mv[((size_t)f * motion_blocks) * 2];
+        if (g_mv_codec == 1) {
+          mv_blob_decode_range(alpha_mv_data, (size_t)alpha_mv_length, 0, NULL, 0, amv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+        } else {
+          BitReader alpha_mv_reader;
+          bitreader_init(&alpha_mv_reader, alpha_mv_data, (size_t)alpha_mv_length);
+          decode_motion_vectors(&alpha_mv_reader, amv, motion_blocks_x, motion_blocks_y);
+        }
       }
       if (f == 0) {   // alpha_qp is GOP-constant -> the first subband decides the temporal domain + buffer
         alpha_qp = frame_alpha_qp;
@@ -7985,11 +8158,18 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   free(coefficients);
 
   // 2) inverse temporal transform across the frames. MCTF = integer frame-level MC-Haar inverse (motion); else per-pixel.
-  if (g_has_alpha && g_mctf) {
-    gop_int[3] = alpha_gop_int;   // MCTF: alpha rides the color MC-Haar inverse (shared luma MVs), plane 3
-  }
   if (g_mctf) {
-    mctf_inverse(gop_int, num_frames, plane_w, plane_h, plane_pixels, g_temporal_levels, frame_mv, motion_blocks_x, motion_blocks_y, alpha_plane_count);
+    if (g_has_alpha && alpha_mv_modes) {
+      // own-alpha-MV: color rides the shared MC-Haar inverse (plane_count = g_num_planes); the alpha plane is inverted
+      // separately, each high-pass frame warped with its own decoded MVs (mode 1) or the shared luma MVs (mode 0).
+      mctf_inverse(gop_int, num_frames, plane_w, plane_h, plane_pixels, g_temporal_levels, frame_mv, motion_blocks_x, motion_blocks_y, g_num_planes);
+      mctf_inverse_alpha(alpha_gop_int, num_frames, width, height, pixel_count, g_temporal_levels, frame_mv, alpha_frame_mv, alpha_mv_modes, motion_blocks_x, motion_blocks_y);
+    } else {
+      if (g_has_alpha) {
+        gop_int[3] = alpha_gop_int;   // shared luma MVs: alpha rides the color MC-Haar inverse (plane 3)
+      }
+      mctf_inverse(gop_int, num_frames, plane_w, plane_h, plane_pixels, g_temporal_levels, frame_mv, motion_blocks_x, motion_blocks_y, alpha_plane_count);
+    }
   } else if (lossless) {
     int32_t temporal_line[MAX_GOP];
     for (int plane = 0; plane < g_num_planes; plane++) {
@@ -8100,6 +8280,7 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   free(co_full);
   free(cg_full);
   free(frame_mv);
+  free(alpha_frame_mv);
   for (int plane = 0; plane < g_num_planes; plane++) {
     free(gop_int[plane]);
     free(gop_float[plane]);
@@ -8528,8 +8709,8 @@ static int alpha_selftest(void) {
   int dwt_ol_alpha_mismatch = 0, dwt_ol_rgb_mismatch = 0, dwt_mctf_alpha_mismatch = 0, dwt_mctf_rgb_mismatch = 0;
   for (int pass = 0; pass < 2; pass++) {
     g_mctf = pass;   // pass 0 = open-loop Haar, pass 1 = MCTF (motion-compensated MC-Haar, shared luma MVs)
-    encode_gop_3ddwt(gop_src, dwt_frames, width, height, 5, 0, gop_enc, gop_enc_len);
-    decode_gop_3ddwt(gop_enc, gop_enc_len, dwt_frames, width, height, 5, 0, gop_rec, NULL, NULL, 0, 0, 0);
+    encode_gop_3ddwt(gop_src, dwt_frames, width, height, 5, 0, gop_enc, gop_enc_len, NULL);   // shared luma MVs (regression baseline)
+    decode_gop_3ddwt(gop_enc, gop_enc_len, dwt_frames, width, height, 5, 0, gop_rec, NULL, NULL, 0, 0, 0, NULL);
     int *am = pass ? &dwt_mctf_alpha_mismatch : &dwt_ol_alpha_mismatch;
     int *rm = pass ? &dwt_mctf_rgb_mismatch : &dwt_ol_rgb_mismatch;
     for (int g = 0; g < dwt_frames; g++) {
@@ -8559,6 +8740,76 @@ static int alpha_selftest(void) {
   free(gop_enc);
   free(gop_enc_len);
 
+  // MCTF own-alpha-MV round-trip: the alpha matte translates over time while the color is static, so the shared luma
+  // MVs (≈0 on static color) predict the moving alpha poorly and the per-high-pass-frame RD must pick OWN alpha MVs for
+  // at least one subband. At Q0 the reconstruction must still be bit-exact (the chosen MVs invert the MC-Haar exactly).
+  int mctf_omv_alpha_mismatch = 0, mctf_omv_rgb_mismatch = 0, mctf_omv_own_count = 0;
+  {
+    int gn = 8;
+    uint8_t **src = checked_malloc((size_t)gn * sizeof(uint8_t *));
+    uint8_t **rec = checked_malloc((size_t)gn * sizeof(uint8_t *));
+    uint8_t **enc = checked_malloc((size_t)gn * sizeof(uint8_t *));
+    size_t *enc_len = checked_malloc((size_t)gn * sizeof(size_t));
+    int *enc_modes = checked_malloc((size_t)gn * sizeof(int));
+    int *dec_modes = checked_malloc((size_t)gn * sizeof(int));
+    for (int g = 0; g < gn; g++) {
+      src[g] = checked_malloc((size_t)pixel_count * 4);
+      rec[g] = checked_malloc((size_t)pixel_count * 4);
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int idx = (((y * width) + x) * 4);
+          src[g][idx + 0] = (uint8_t)x;             // static color over time -> shared luma MVs are ~0
+          src[g][idx + 1] = (uint8_t)y;
+          src[g][idx + 2] = (uint8_t)((x + y) >> 1);
+          int sx = x - (g * 8);                     // alpha checkerboard translating right 8 px/frame (its own motion)
+          if (sx < 0) {
+            sx = 0;
+          }
+          int cell = (((sx >> 3) & 1) ^ ((y >> 3) & 1));
+          src[g][idx + 3] = (uint8_t)(cell ? 210 : 40);
+        }
+      }
+    }
+    int sv_sdct = g_spatial_dct, sv_mctf = g_mctf, sv_tl = g_temporal_levels, sv_tw = g_temporal_wavelet;
+    g_spatial_dct = 0;
+    g_mctf = 1;
+    g_temporal_levels = 2;
+    g_temporal_wavelet = 0;
+    encode_gop_3ddwt(src, gn, width, height, 5, 0, enc, enc_len, enc_modes);
+    for (int g = 0; g < gn; g++) {
+      dec_modes[g] = enc_modes[g];   // the container carries these in FrameEntry.pad; the self-test hands them straight through
+    }
+    decode_gop_3ddwt(enc, enc_len, gn, width, height, 5, 0, rec, NULL, NULL, 0, 0, 0, dec_modes);
+    g_spatial_dct = sv_sdct;
+    g_mctf = sv_mctf;
+    g_temporal_levels = sv_tl;
+    g_temporal_wavelet = sv_tw;
+    for (int g = 0; g < gn; g++) {
+      if (enc_modes[g] == 1) {
+        mctf_omv_own_count++;
+      }
+      for (int i = 0; i < pixel_count; i++) {
+        if (rec[g][(i * 4) + 3] != src[g][(i * 4) + 3]) {
+          mctf_omv_alpha_mismatch++;
+        }
+        for (int c = 0; c < 3; c++) {
+          if (rec[g][(i * 4) + c] != src[g][(i * 4) + c]) {
+            mctf_omv_rgb_mismatch++;
+          }
+        }
+      }
+      free(enc[g]);
+      free(src[g]);
+      free(rec[g]);
+    }
+    free(src);
+    free(rec);
+    free(enc);
+    free(enc_len);
+    free(enc_modes);
+    free(dec_modes);
+  }
+
   g_has_alpha = 0;    // restore defaults
   g_channels = 3;
   g_alpha_qp = -1;
@@ -8587,10 +8838,13 @@ static int alpha_selftest(void) {
   printf("alpha selftest: Q0 own-alpha-MV bidi-B alpha %s (%d mismatches) | B mode chosen = %s (P=%d B=%d)\n",
          (bmv_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", bmv_alpha_mismatch,
          (bmv_mode_b == 1) ? "OWN (RD won)" : "shared", bmv_mode_p, bmv_mode_b);
+  printf("alpha selftest: Q0 own-alpha-MV MCTF alpha %s (%d mismatches) | RGB %s (%d) | own-MV subbands chosen = %d\n",
+         (mctf_omv_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", mctf_omv_alpha_mismatch,
+         (mctf_omv_rgb_mismatch == 0) ? "lossless" : "MISMATCH", mctf_omv_rgb_mismatch, mctf_omv_own_count);
 
   free(source);
   free(output);
-  return ((((((((((((((((alpha_mismatch == 0) && (rgb_mismatch == 0)) && (inter_alpha_mismatch == 0)) && (inter_rgb_mismatch == 0)) && (bidi_alpha_mismatch == 0)) && (bidi_rgb_mismatch == 0)) && (dwt_ol_alpha_mismatch == 0)) && (dwt_mctf_alpha_mismatch == 0)) && (dwt_ol_rgb_mismatch == 0)) && (dwt_mctf_rgb_mismatch == 0)) && (cd_alpha_mismatch == 0)) && (cd_rgb_mismatch == 0)) && (omv_alpha_mismatch == 0)) && (omv_mode_p == 1)) && (bmv_alpha_mismatch == 0)) && (bmv_mode_b == 1)) ? 0 : 1;
+  return ((((((((((((((((((alpha_mismatch == 0) && (rgb_mismatch == 0)) && (inter_alpha_mismatch == 0)) && (inter_rgb_mismatch == 0)) && (bidi_alpha_mismatch == 0)) && (bidi_rgb_mismatch == 0)) && (dwt_ol_alpha_mismatch == 0)) && (dwt_mctf_alpha_mismatch == 0)) && (dwt_ol_rgb_mismatch == 0)) && (dwt_mctf_rgb_mismatch == 0)) && (cd_alpha_mismatch == 0)) && (cd_rgb_mismatch == 0)) && (omv_alpha_mismatch == 0)) && (omv_mode_p == 1)) && (bmv_alpha_mismatch == 0)) && (bmv_mode_b == 1)) && (mctf_omv_alpha_mismatch == 0)) && (mctf_omv_own_count > 0)) ? 0 : 1;
 }
 
 // HDR transcode demo: ingest a real HDR (PQ/bt2020) video, push it through the fvd codec at 12-bit,
@@ -9346,9 +9600,9 @@ int main(int argc, char **argv) {
         }
       }
       double t0 = now_milliseconds();
-      encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length);
+      encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length, NULL);
       double t1 = now_milliseconds();
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL);
       double t2 = now_milliseconds();
       for (int g = 0; g < filled; g++) {
         double mean_squared_error = 0;
