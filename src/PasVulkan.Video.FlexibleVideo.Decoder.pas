@@ -110,6 +110,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
              DataLength:TpvUInt32;
              QuadTreeLeafCount:array[0..3] of TpvInt32;
              DeblockDQ:TpvInt32;
+             AlphaSlot:TpvInt32;        // inter B alpha: this frame's alpha ring slot (the replay's RecordAlphaDecode reads it; single fAlphaCurrentSlot would be clobbered across the plan phase)
+             AlphaDataLength:TpvUInt32; // inter B alpha: this frame's alpha block-data length (the rANS unpack push)
             end;
             TBidiPlans=array of TBidiPlan;
       private
@@ -816,6 +818,11 @@ begin
  if fIPInputRing then begin
   fBufferRingSize:=4; // MaxInFlightFrames (3) + 1: frame N's slot is not reused until frame N+4, by when N's decode is done
  end;
+ // inter B alpha: the mode-B decode-ahead plans up to fBufferRingSize coding frames before the GPU replay, each staging
+ // its alpha section into a distinct alpha ring slot — so the alpha ring must be at least as deep as the buffer ring.
+ if fHasAlpha and (fBufferRingSize>fAlphaRingSize) then begin
+  fAlphaRingSize:=fBufferRingSize;
+ end;
 
 end;
 
@@ -1183,11 +1190,19 @@ begin
     PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
     fDPBBuffer[SlotIndex][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.dpb');
    end;
+   if fHasAlpha then begin // inter B alpha: the 4th (full-res) DPB plane per slot, holding the reconstructed alpha reference
+    fDPBBuffer[SlotIndex][3]:=CreateStorageBuffer(TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4,true,'FWV.dpb.alpha');
+   end;
   end;
   for Plane:=0 to fNumPlanes-1 do begin
    PlaneBytes:=TVkDeviceSize(PlaneWidth(Plane))*TVkDeviceSize(PlaneHeight(Plane))*4;
    fGMCBuffer[0][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc0');
    fGMCBuffer[1][Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc1');
+  end;
+  if fHasAlpha then begin // inter B alpha: full-res L0/L1 motion-compensated reference scratch (plane 3)
+   PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+   fGMCBuffer[0][3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc0.alpha');
+   fGMCBuffer[1][3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.gmc1.alpha');
   end;
  end;
 
@@ -1294,10 +1309,14 @@ begin
    MaxSets:=MaxSets+fAlphaRingSize;
    MaxBuffers:=MaxBuffers+(fAlphaRingSize*4);
   end;
+  if fHasBFrames then begin // inter B alpha: the 5 plane-3 bidi sets (gmc0/gmc1/gblend/gblendmode/gadd)
+   MaxSets:=MaxSets+5;
+   MaxBuffers:=MaxBuffers+15;
+  end;
  end;
- if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot) + the inter-alpha ring mc set (+1 set / +3 buffers per slot)
-  MaxSets:=MaxSets+(fBufferRingSize*31);
-  MaxBuffers:=MaxBuffers+(fBufferRingSize*99);
+ if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot) + the inter-alpha ring mc set (+1/+3 per slot) + the 5 inter-alpha B bidi ring sets (+5/+15 per slot)
+  MaxSets:=MaxSets+(fBufferRingSize*36);
+  MaxBuffers:=MaxBuffers+(fBufferRingSize*114);
  end;
  if fMode3DDWT then begin // + the GOP-prefetch spatial sets (5/plane) + the second gop buffer's temporal sets
   MaxSets:=MaxSets+24;
@@ -1527,6 +1546,15 @@ begin
    fSetGAdd[Plane]:=AllocateSet(fDSL3);
    if fHasPerBlockMode then begin
     fSetGBlendMode[Plane]:=AllocateSet(fDSL3);
+   end;
+  end;
+  if fHasAlpha then begin // inter B alpha (plane 3): the 5 bidi sets, rebound per coding frame to the alpha DPB slots
+   fSetGMC0[3]:=AllocateSet(fDSL3);
+   fSetGMC1[3]:=AllocateSet(fDSL3);
+   fSetGBlend[3]:=AllocateSet(fDSL3);
+   fSetGAdd[3]:=AllocateSet(fDSL3);
+   if fHasPerBlockMode then begin
+    fSetGBlendMode[3]:=AllocateSet(fDSL3);
    end;
   end;
  end;
@@ -3216,6 +3244,15 @@ begin
    BindStorageBuffer(fRingSetMCPlay[Slot][3],1,fRingMVBuffer[Slot]);
    BindStorageBuffer(fRingSetMCPlay[Slot][3],2,fScratchBuffer);
    fRingSetMCPlay[Slot][3].Flush;
+   if fHasBFrames then begin // inter B alpha: the 5 plane-3 bidi ring sets (rebound per coding frame to the alpha DPB slots in PrepareBidiFrame)
+    fRingSetGMC0[Slot][3]:=AllocateSet(fDSL3);
+    fRingSetGMC1[Slot][3]:=AllocateSet(fDSL3);
+    fRingSetGBlend[Slot][3]:=AllocateSet(fDSL3);
+    fRingSetGAdd[Slot][3]:=AllocateSet(fDSL3);
+    if fHasPerBlockMode then begin
+     fRingSetGBlendMode[Slot][3]:=AllocateSet(fDSL3);
+    end;
+   end;
   end;
  end;
 end;
@@ -3490,6 +3527,7 @@ var Plane,Level,LevelCount:TpvInt32;
     AddPush:array[0..1] of TpvInt32;
     BlendPush:array[0..2] of TpvInt32;
     ModeBlendPush:array[0..4] of TpvInt32;
+    AlphaW,AlphaH,AlphaPixels,AlphaPixelWorkgroups,AlphaMotionBlocksX:TpvInt32;
 begin
 
  if fLossless then begin
@@ -3696,6 +3734,48 @@ begin
 
  end;
 
+ // inter B alpha (plane 3): decode the residual into coeff[3] (RecordAlphaDecode -1, the alpha section was staged in
+ // PrepareBidiFrame), then bidi mc0/mc1/blend(blend_mode)/motion_add -> fDPBBuffer[dst][3] (mirror of the color; shares
+ // the luma MVs; alpha is NOT deblocked). The P-anchor self-blend (blend_r1=0) runs via the same gblend, like the color.
+ if fHasAlpha then begin
+  RecordAlphaDecode(aCommandBuffer,-1);   // residual into coeff[3] (no I/P single-ref MC)
+  AlphaW:=fWidth;
+  AlphaH:=fHeight;
+  AlphaPixels:=AlphaW*AlphaH;
+  AlphaPixelWorkgroups:=(AlphaPixels+255) div 256;
+  AlphaMotionBlocksX:=MotionBlocksX(AlphaW);
+  if aIsPredicted<>0 then begin
+   MCPush[0]:=AlphaW;
+   MCPush[1]:=AlphaH;
+   MCPush[2]:=AlphaMotionBlocksX;
+   RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetGMC0(3),@MCPush[0],12,AlphaPixelWorkgroups,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+   if aRef1Slot>=0 then begin
+    RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetGMC1(3),@MCPush[0],12,AlphaPixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
+   if fHasPerBlockMode and (aRef1Slot>=0) then begin
+    ModeBlendPush[0]:=AlphaW;
+    ModeBlendPush[1]:=AlphaH;
+    ModeBlendPush[2]:=AlphaMotionBlocksX;
+    ModeBlendPush[3]:=aWeight0;
+    ModeBlendPush[4]:=aWeight1;
+    RecordDispatch(aCommandBuffer,fPipeBlendMode,fPLBlendMode,ActiveSetGBlendMode(3),@ModeBlendPush[0],20,AlphaPixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end else begin
+    BlendPush[0]:=AlphaPixels;
+    BlendPush[1]:=aWeight0;
+    BlendPush[2]:=aWeight1;
+    RecordDispatch(aCommandBuffer,fPipeBidiBlend,fPLUnpack,ActiveSetGBlend(3),@BlendPush[0],12,AlphaPixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
+  end;
+  AddPush[0]:=AlphaPixels;
+  AddPush[1]:=aIsPredicted;
+  RecordDispatch(aCommandBuffer,fPipeMotionAdd,fPLUnpack,ActiveSetGAdd(3),@AddPush[0],8,AlphaPixelWorkgroups,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
+
  if assigned(fBreadcrumb) then begin
   fBreadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
   fBreadcrumb.PopZone;
@@ -3713,6 +3793,9 @@ begin
  Entry:=@fFrameEntries[CodingIndex];
 
  UploadBidiFrame(CodingIndex); // uses the Active* buffers (the per-frame ring slot for mode B, set by the caller)
+ if fHasAlpha then begin // inter B alpha: stage THIS coding frame's appended alpha section into the alpha ring (RecordBidiDecode then GPU-decodes the residual + bidi-MC it)
+  UploadAlphaForDisplayedFrame(CodingIndex);
+ end;
 
  // evict slots no longer referenced (last_use passed) AND already displayed (poc < this display POC)
  for SlotIndex:=0 to fGDPBSlots-1 do begin
@@ -3812,6 +3895,44 @@ begin
    ActiveSetDeblock(Plane).Flush;
   end;
  end;
+ if fHasAlpha then begin // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots (shares the luma ActiveMVBuffer/MV1/Mode; alpha NOT deblocked)
+  if aIsPredicted<>0 then begin
+   BindStorageBuffer(ActiveSetGMC0(3),0,fDPBBuffer[Ref0Slot][3]);
+   BindStorageBuffer(ActiveSetGMC0(3),1,ActiveMVBuffer);
+   BindStorageBuffer(ActiveSetGMC0(3),2,fGMCBuffer[0][3]);
+   ActiveSetGMC0(3).Flush;
+   if aRef1Slot>=0 then begin
+    BindStorageBuffer(ActiveSetGMC1(3),0,fDPBBuffer[aRef1Slot][3]);
+    BindStorageBuffer(ActiveSetGMC1(3),1,ActiveMV1Buffer);
+    BindStorageBuffer(ActiveSetGMC1(3),2,fGMCBuffer[1][3]);
+    ActiveSetGMC1(3).Flush;
+   end;
+   if IsPhase2<>0 then begin
+    BindStorageBuffer(ActiveSetGBlendMode(3),0,fGMCBuffer[0][3]);
+    BindStorageBuffer(ActiveSetGBlendMode(3),1,fGMCBuffer[1][3]);
+    BindStorageBuffer(ActiveSetGBlendMode(3),2,ActiveModeBuffer);
+    ActiveSetGBlendMode(3).Flush;
+   end else begin
+    if aRef1Slot>=0 then begin
+     BlendR1:=1;
+    end else begin
+     BlendR1:=0;
+    end;
+    BindStorageBuffer(ActiveSetGBlend(3),0,fGMCBuffer[0][3]);
+    BindStorageBuffer(ActiveSetGBlend(3),1,fGMCBuffer[BlendR1][3]);
+    BindStorageBuffer(ActiveSetGBlend(3),2,fScratchBuffer);
+    ActiveSetGBlend(3).Flush;
+   end;
+  end;
+  BindStorageBuffer(ActiveSetGAdd(3),0,fCoeffBuffer[3]);
+  if IsPhase2<>0 then begin
+   BindStorageBuffer(ActiveSetGAdd(3),1,fGMCBuffer[0][3]);
+  end else begin
+   BindStorageBuffer(ActiveSetGAdd(3),1,fScratchBuffer);
+  end;
+  BindStorageBuffer(ActiveSetGAdd(3),2,fDPBBuffer[DstSlot][3]);
+  ActiveSetGAdd(3).Flush;
+ end;
  fActiveBidiDstSlot:=DstSlot; // RecordBidiDecode derings this slot after the reconstruct
 
  // register this frame in the DPB (CPU bookkeeping; the GPU writes dpb[dst] on the upcoming submit)
@@ -3839,11 +3960,8 @@ begin
  end;
  Crumb(aCommandBuffer,'disp:copy');
 
- // optional alpha: re-read + stage the displayed frame's appended alpha section. Its container entry is the coding
- // index occupying this display POC's DPB slot (fGDPBSlotCoding[slot]) — the SAME map the color copy below uses.
- if fHasAlpha then begin
-  UploadAlphaForDisplayedFrame(fGDPBSlotCoding[DisplaySlot]);
- end;
+ // optional alpha: the inter B alpha was reconstructed into fDPBBuffer[DisplaySlot][3] during the decode-ahead
+ // (RecordBidiDecode) — it is copied into coeff[3] alongside the color planes below, no re-decode at display.
 
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
@@ -3858,6 +3976,11 @@ begin
   BufferCopy.size:=TVkDeviceSize(PlanePixels)*4;
   aCommandBuffer.CmdCopyBuffer(fDPBBuffer[DisplaySlot][Plane].Handle,fCoeffBuffer[Plane].Handle,1,@BufferCopy);
  end;
+ if fHasAlpha then begin // inter B alpha: stage the reconstructed alpha DPB slot into coeff[3] for the color_alpha pass
+  FillChar(BufferCopy,SizeOf(BufferCopy),#0);
+  BufferCopy.size:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
+  aCommandBuffer.CmdCopyBuffer(fDPBBuffer[DisplaySlot][3].Handle,fCoeffBuffer[3].Handle,1,@BufferCopy);
+ end;
  FillChar(Barrier,SizeOf(Barrier),#0);
  Barrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
  Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -3866,11 +3989,7 @@ begin
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,1,@Barrier,0,nil,0,nil);
 
- // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged above for this POC).
- // B-frame alpha stays intra for now (-1); inter B alpha is a later stage.
- if fHasAlpha then begin
-  RecordAlphaDecode(aCommandBuffer,-1);
- end;
+ // (inter B alpha already copied into coeff[3] from the DPB above — no intra alpha re-decode here)
 
  Crumb(aCommandBuffer,'disp:color');
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;
@@ -4673,6 +4792,8 @@ begin
   fBidiPlan[fBidiPlanCount].DataLength:=fCurrentDataLength; // DCT: this frame's rANS unpack data length (the GPU replay needs it per frame)
   Move(fQuadTreeLeafCount[0],fBidiPlan[fBidiPlanCount].QuadTreeLeafCount[0],4*SizeOf(TpvInt32)); // DCT quad-tree: this frame's per-plane leaf counts (inverse dispatch sizes)
   fBidiPlan[fBidiPlanCount].DeblockDQ:=fCurrentDeblockDQ; // deblock: this frame's filter-strength quality
+  fBidiPlan[fBidiPlanCount].AlphaSlot:=fAlphaCurrentSlot; // inter B alpha: this frame's alpha ring slot + data length (UploadAlphaForDisplayedFrame set them in PrepareBidiFrame)
+  fBidiPlan[fBidiPlanCount].AlphaDataLength:=fAlphaCurrentDataLength;
   inc(fBidiPlanCount);
   inc(RingIndex);
   inc(fBidiRingCursor);
@@ -4705,6 +4826,8 @@ begin
   fCurrentDataLength:=fBidiPlan[PlanIndex].DataLength; // DCT: restore this frame's rANS unpack data length
   Move(fBidiPlan[PlanIndex].QuadTreeLeafCount[0],fQuadTreeLeafCount[0],4*SizeOf(TpvInt32)); // DCT quad-tree: restore this frame's per-plane leaf counts
   fCurrentDeblockDQ:=fBidiPlan[PlanIndex].DeblockDQ; // deblock: restore this frame's filter-strength quality
+  fAlphaCurrentSlot:=fBidiPlan[PlanIndex].AlphaSlot; // inter B alpha: restore this frame's alpha ring slot + data length (RecordBidiDecode's RecordAlphaDecode reads them)
+  fAlphaCurrentDataLength:=fBidiPlan[PlanIndex].AlphaDataLength;
   RecordBidiDecode(aCommandBuffer,fBidiPlan[PlanIndex].IsPredicted,fBidiPlan[PlanIndex].Ref1Slot,fBidiPlan[PlanIndex].Weight0,fBidiPlan[PlanIndex].Weight1);
   if assigned(fBreadcrumb) then begin
    fBreadcrumb.PopZone;

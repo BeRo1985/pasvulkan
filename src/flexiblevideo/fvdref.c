@@ -6836,6 +6836,70 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
       free(qt_map[plane]);
     }
   }
+
+  // Optional alpha plane (full-res): bidirectional inter prediction sharing the luma MVs — the SAME ref0/ref1 the color
+  // planes use, but their alpha slot [3]. Mirrors the color blend (weighted L0/L1, or L0-only) + closed loop; appended as
+  // its own section. ref0[3]/ref1[3] may be NULL (a caller without an alpha DPB) -> the alpha falls back to intra.
+  if (g_has_alpha) {
+    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : base_quality;
+    int alpha_block_count = block_counts[0];
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    for (int i = 0; i < pixel_count; i++) {
+      alpha[i] = rgb[(i * 4) + 3];
+    }
+    build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_tile_aq(step, width, height, levels);
+    int alpha_predicted = has_prediction && (ref0[3] != NULL);
+    if (alpha_predicted) {
+      if ((ref1 != NULL) && (ref1[3] != NULL)) {
+        for (int i = 0; i < pixel_count; i++) {
+          prediction[i] = (((weight0 * ref0[3][i]) + (weight1 * ref1[3][i])) + 128) >> 8;
+        }
+      } else {
+        for (int i = 0; i < pixel_count; i++) {
+          prediction[i] = ref0[3][i];
+        }
+      }
+      for (int i = 0; i < pixel_count; i++) {
+        alpha[i] -= prediction[i];
+      }
+    }
+    if (alpha_qp == 0) {
+      forward_spatial_int(alpha, width, height, levels);
+    } else {
+      for (int i = 0; i < pixel_count; i++) {
+        float_plane[i] = (float)alpha[i];
+      }
+      forward_spatial(float_plane, width, height, levels);
+      quantize(float_plane, alpha, step, pixel_count, 1.0f);
+    }
+    BitWriter alpha_writer;
+    bitwriter_init(&alpha_writer);
+    uint32_t *alpha_offsets = checked_malloc((size_t)alpha_block_count * 4);
+    uint8_t *alpha_table = NULL;
+    uint32_t alpha_table_len = 0;
+    if (g_bframe_dct) {
+      dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
+    } else {
+      encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
+    }
+    total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, alpha_block_count, alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
+    if (recon_out && recon_out[3]) {   // the alpha DPB slot exists only when the caller allocated a 4th (alpha) plane
+      memcpy(recon, alpha, (size_t)pixel_count * 4);
+      reconstruct_plane(recon, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+      if (alpha_predicted) {
+        for (int i = 0; i < pixel_count; i++) {
+          recon[i] += prediction[i];
+        }
+      }
+      memcpy(recon_out[3], recon, (size_t)pixel_count * 4);
+    }
+    free(alpha);
+    free(alpha_writer.bytes);
+    free(alpha_offsets);
+    free(alpha_table);
+  }
+
   free(luma);
   free(chroma_orange);
   free(chroma_green);
@@ -6932,10 +6996,11 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
   uint32_t plane_table_len[MAX_PLANES] = { 0 };
   const uint8_t *qt_map[MAX_PLANES] = { NULL };
   int use_qt = (((g_bframe_dct && g_quadtree) && (base_quality > 0)) && ((width % DCT_BLOCK) == 0)) && ((height % DCT_BLOCK) == 0);   // per-plane partition -> subsampled chroma allowed
+  const uint8_t *alpha_base = data + data_length;   // the optional alpha section follows the color block data (+ the DCT entropy / quadtree partition sections)
   if (g_bframe_dct) {
-    const uint8_t *after_entropy = parse_entropy_section(data + data_length, g_num_planes, plane_table, plane_table_len);
+    alpha_base = parse_entropy_section(data + data_length, g_num_planes, plane_table, plane_table_len);
     if (use_qt) {
-      parse_partition_section(after_entropy, qt_region_count(width) * qt_region_count(height), g_num_planes, qt_map);
+      alpha_base = parse_partition_section(alpha_base, qt_region_count(width) * qt_region_count(height), g_num_planes, qt_map);
     }
   }
   int32_t *planes[MAX_PLANES] = { luma, chroma_orange, chroma_green };
@@ -7014,6 +7079,69 @@ static void decode_frame_bidi(const uint8_t *frame, size_t length, int width, in
     free(co_temp);
     free(cg_temp);
   }
+
+  // Optional alpha plane: bidirectional inter prediction sharing the luma MVs (mc0=MC(ref0[3],mv0), mc1=MC(ref1[3],mv1)),
+  // blended exactly like the color planes (per-block L0/L1/BI or weighted), into recon_out[3] + the rgba A lane. Zero MVs
+  // (the CPU-oracle B-encode) -> mc == reference -> the plain weighted blend, matching encode_frame_bidi. ref0[3]/ref1[3]
+  // NULL (a caller without an alpha DPB) -> the alpha is intra.
+  if (g_has_alpha) {
+    uint32_t *alpha_offsets = checked_malloc((size_t)block_counts[0] * 4);
+    int alpha_qp;
+    const uint8_t *alpha_table;
+    uint32_t alpha_table_length, alpha_data_length;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_base, length - (size_t)(alpha_base - frame), alpha_offsets, block_counts[0], &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length);
+    if (!alpha_data) {
+      die("corrupt alpha section (bidi)");
+    }
+    build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_tile_aq(step, width, height, levels);
+    int32_t *alpha = checked_malloc((size_t)pixel_count * 4);
+    if (alpha_table_length) {   // DCT mode: rANS entropy
+      dct_decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length, alpha_table, alpha_table_length);
+    } else {   // wavelet mode: bit-plane entropy
+      decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);
+    }
+    reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+    int alpha_predicted = has_prediction && (ref0[3] != NULL);
+    if (alpha_predicted) {
+      motion_compensate(ref0[3], mv0, mc0, width, height, motion_blocks_x);
+      if ((ref1 != NULL) && (ref1[3] != NULL)) {
+        motion_compensate(ref1[3], mv1, mc1, width, height, motion_blocks_x);
+        if (has_mode) {
+          for (int y = 0; y < height; y++) {
+            int by = y / MOTION_BLOCK;
+            for (int x = 0; x < width; x++) {
+              int idx = (y * width) + x;
+              int mode = mode_map[(by * motion_blocks_x) + (x / MOTION_BLOCK)];
+              int pred = (mode == 1) ? mc1[idx]
+                       : ((mode == 2) ? ((((weight0 * mc0[idx]) + (weight1 * mc1[idx])) + 128) >> 8) : mc0[idx]);
+              alpha[idx] += pred;
+            }
+          }
+        } else {
+          for (int i = 0; i < pixel_count; i++) {
+            alpha[i] += ((((weight0 * mc0[i]) + (weight1 * mc1[i])) + 128) >> 8);
+          }
+        }
+      } else {
+        for (int i = 0; i < pixel_count; i++) {
+          alpha[i] += mc0[i];   // P-anchor: weight0 == 256 -> the blend reduces to mc0
+        }
+      }
+    }
+    if (recon_out && recon_out[3]) {
+      memcpy(recon_out[3], alpha, (size_t)pixel_count * 4);   // un-clamped reconstruction = the next alpha reference
+    }
+    if (rgb) {
+      for (int i = 0; i < pixel_count; i++) {
+        int a = alpha[i];
+        rgb[(i * 4) + 3] = (uint8_t)((a < 0) ? 0 : ((a > 255) ? 255 : a));
+      }
+    }
+    free(alpha);
+    free(alpha_offsets);
+  }
+
   free(cdef_scratch);
   free(mv0);
   free(mv1);
@@ -7643,6 +7771,57 @@ static int alpha_selftest(void) {
       }
     }
   }
+
+  // Bidi (B-frame) round-trip: I anchor, P anchor (ref0=I), B between them (ref0=I, ref1=P, w0=w1=128). At Q0 the
+  // B-frame alpha (bidirectional, shared luma MVs) must be bit-exact. Exercises encode/decode_frame_bidi's alpha block
+  // with a real 4-plane DPB (zero MVs -> the prediction is the plain weighted reference blend).
+  int32_t *b_enc_dpb[3][4], *b_dec_dpb[3][4];
+  for (int f = 0; f < 3; f++) {
+    for (int p = 0; p < 4; p++) {
+      b_enc_dpb[f][p] = checked_malloc((size_t)pixel_count * 4);
+      b_dec_dpb[f][p] = checked_malloc((size_t)pixel_count * 4);
+    }
+  }
+  uint8_t *source_b = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *output_b = checked_malloc((size_t)pixel_count * 4);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int idx = (((y * width) + x) * 4);
+      source_b[idx + 0] = (uint8_t)((x + 3) & 255);
+      source_b[idx + 1] = (uint8_t)((y + 9) & 255);
+      source_b[idx + 2] = (uint8_t)(((x + y) + 2) >> 1);
+      source_b[idx + 3] = (uint8_t)((((x * 2) + y) + 4) & 255);   // a 3rd distinct alpha so the B residual is non-trivial
+    }
+  }
+  int bidi_alpha_mismatch = 0, bidi_rgb_mismatch = 0;
+  length = encode_frame_bidi(source, width, height, 5, 0, NULL, NULL, 0, 0, b_enc_dpb[0], &encoded);          // I anchor
+  decode_frame_bidi(encoded, length, width, height, 5, 0, NULL, NULL, 0, 0, b_dec_dpb[0], output);
+  free(encoded);
+  length = encode_frame_bidi(source2, width, height, 5, 0, b_enc_dpb[0], NULL, 256, 0, b_enc_dpb[1], &encoded); // P anchor (ref0=I)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], NULL, 256, 0, b_dec_dpb[1], output2);
+  free(encoded);
+  length = encode_frame_bidi(source_b, width, height, 5, 0, b_enc_dpb[0], b_enc_dpb[1], 128, 128, b_enc_dpb[2], &encoded); // B (ref0=I, ref1=P)
+  decode_frame_bidi(encoded, length, width, height, 5, 0, b_dec_dpb[0], b_dec_dpb[1], 128, 128, b_dec_dpb[2], output_b);
+  free(encoded);
+  for (int i = 0; i < pixel_count; i++) {
+    if (output_b[(i * 4) + 3] != source_b[(i * 4) + 3]) {
+      bidi_alpha_mismatch++;
+    }
+    for (int c = 0; c < 3; c++) {
+      if (output_b[(i * 4) + c] != source_b[(i * 4) + c]) {
+        bidi_rgb_mismatch++;
+      }
+    }
+  }
+  for (int f = 0; f < 3; f++) {
+    for (int p = 0; p < 4; p++) {
+      free(b_enc_dpb[f][p]);
+      free(b_dec_dpb[f][p]);
+    }
+  }
+  free(source_b);
+  free(output_b);
+
   for (int p = 0; p < 4; p++) {
     free(enc_prev[p]);
     free(dec_prev[p]);
@@ -7661,10 +7840,13 @@ static int alpha_selftest(void) {
   printf("alpha selftest: Q0 inter-P alpha %s (%d mismatches) | Q0 inter-P RGB %s (%d)\n",
          (inter_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", inter_alpha_mismatch,
          (inter_rgb_mismatch == 0) ? "lossless" : "MISMATCH", inter_rgb_mismatch);
+  printf("alpha selftest: Q0 bidi-B alpha %s (%d mismatches) | Q0 bidi-B RGB %s (%d)\n",
+         (bidi_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", bidi_alpha_mismatch,
+         (bidi_rgb_mismatch == 0) ? "lossless" : "MISMATCH", bidi_rgb_mismatch);
 
   free(source);
   free(output);
-  return ((alpha_mismatch == 0) && (rgb_mismatch == 0) && (inter_alpha_mismatch == 0) && (inter_rgb_mismatch == 0)) ? 0 : 1;
+  return ((((((alpha_mismatch == 0) && (rgb_mismatch == 0)) && (inter_alpha_mismatch == 0)) && (inter_rgb_mismatch == 0)) && (bidi_alpha_mismatch == 0)) && (bidi_rgb_mismatch == 0)) ? 0 : 1;
 }
 
 // HDR transcode demo: ingest a real HDR (PQ/bt2020) video, push it through the fvd codec at 12-bit,
@@ -7825,10 +8007,11 @@ static int bframe_selftest(const char *input, int quality, int levels, int max_f
   }
   int32_t ***dpb = checked_malloc((size_t)n * sizeof(void *));
   for (int f = 0; f < n; f++) {
-    dpb[f] = checked_malloc(g_num_planes * sizeof(int32_t *));
+    dpb[f] = checked_malloc(MAX_PLANES * sizeof(int32_t *));   // MAX_PLANES so encode/decode_frame_bidi can index the alpha slot [3]
     for (int p = 0; p < g_num_planes; p++) {
       dpb[f][p] = checked_malloc((size_t)plane_pixels[p] * 4);
     }
+    dpb[f][3] = NULL;   // this self-test has no alpha -> the bidi alpha block (g_has_alpha) is skipped; NULL is the safe sentinel
   }
   CodeStep *steps = checked_malloc((size_t)n * sizeof(CodeStep));
   uint8_t *decoded = checked_malloc(frame_bytes);

@@ -985,13 +985,13 @@ static void bstream_init(BStream *bs, FILE *file, const FrameEntry *index, int f
     bs->plane_pixels[p] = plane_width(p, width) * plane_height(p, height);
   }
   bs->last_use = checked_malloc((size_t)frame_count * sizeof(int));
-  bs->dpb = checked_malloc((size_t)frame_count * g_num_planes * sizeof(int32_t *));
+  bs->dpb = checked_malloc((size_t)frame_count * MAX_PLANES * sizeof(int32_t *));   // 4-wide stride: plane 3 = the inter-B alpha reference (decode_frame_bidi indexes ref0[3]/recon_out[3])
   bs->rgb = checked_malloc((size_t)frame_count * sizeof(uint8_t *));
   for (int c = 0; c < frame_count; c++) {
     bs->last_use[c] = c;   // a frame is at least live until it is itself decoded
     bs->rgb[c] = NULL;
-    for (int p = 0; p < g_num_planes; p++) {
-      bs->dpb[(c * g_num_planes) + p] = NULL;
+    for (int p = 0; p < MAX_PLANES; p++) {
+      bs->dpb[(c * MAX_PLANES) + p] = NULL;
     }
   }
   for (int c = 0; c < frame_count; c++) {   // last_use[ref] = the latest coding index referencing it
@@ -1014,8 +1014,8 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
     int c = bs->cursor;
     const FrameEntry *entry = &bs->index[c];
     size_t payload_length = read_frame(bs->file, entry, &bs->payload, &bs->payload_cap);
-    int32_t **ref0 = (entry->ref0 >= 0) ? &bs->dpb[entry->ref0 * g_num_planes] : NULL;
-    int32_t **ref1 = (entry->ref1 >= 0) ? &bs->dpb[entry->ref1 * g_num_planes] : NULL;
+    int32_t **ref0 = (entry->ref0 >= 0) ? &bs->dpb[entry->ref0 * MAX_PLANES] : NULL;
+    int32_t **ref1 = (entry->ref1 >= 0) ? &bs->dpb[entry->ref1 * MAX_PLANES] : NULL;
     int weight0 = 0, weight1 = 0;   // weights derived from the temporal (POC) distances, as in build_b_range
     if (ref0 && ref1) {
       int poc_self = (int)entry->poc, poc0 = (int)bs->index[entry->ref0].poc, poc1 = (int)bs->index[entry->ref1].poc;
@@ -1025,23 +1025,26 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
       weight0 = 256;
     }
     for (int p = 0; p < g_num_planes; p++) {
-      bs->dpb[(c * g_num_planes) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
+      bs->dpb[(c * MAX_PLANES) + p] = checked_malloc((size_t)bs->plane_pixels[p] * 4);
+    }
+    if (g_has_alpha) {   // inter-B alpha reference slot (full-res, plane 3)
+      bs->dpb[(c * MAX_PLANES) + 3] = checked_malloc((size_t)bs->width * bs->height * 4);
     }
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
     cdef_load_frame((uint32_t)c);   // coding-order strengths so the CPU B-decode deringes bit-exactly like the GPU
     decode_frame_bidi(bs->payload, payload_length, bs->width, bs->height, bs->levels, entry->quality,
-                      ref0, ref1, weight0, weight1, &bs->dpb[c * g_num_planes], bs->rgb[entry->poc]);
+                      ref0, ref1, weight0, weight1, &bs->dpb[c * MAX_PLANES], bs->rgb[entry->poc]);
     bs->cursor++;
     // Evict DPB entries no longer referenced by any future frame (the RGB display copy is separate).
     for (int x = bs->evict_low; x < bs->cursor; x++) {
-      if (bs->dpb[x * g_num_planes] && (bs->last_use[x] < bs->cursor)) {
-        for (int p = 0; p < g_num_planes; p++) {
-          free(bs->dpb[(x * g_num_planes) + p]);
-          bs->dpb[(x * g_num_planes) + p] = NULL;
+      if (bs->dpb[x * MAX_PLANES] && (bs->last_use[x] < bs->cursor)) {
+        for (int p = 0; p < MAX_PLANES; p++) {
+          free(bs->dpb[(x * MAX_PLANES) + p]);
+          bs->dpb[(x * MAX_PLANES) + p] = NULL;
         }
       }
     }
-    while ((bs->evict_low < bs->cursor) && !bs->dpb[bs->evict_low * g_num_planes]) {
+    while ((bs->evict_low < bs->cursor) && !bs->dpb[bs->evict_low * MAX_PLANES]) {
       bs->evict_low++;
     }
   }
@@ -1050,8 +1053,8 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
 static void bstream_free(BStream *bs) {
   for (int c = 0; c < bs->frame_count; c++) {
     free(bs->rgb[c]);
-    for (int p = 0; p < g_num_planes; p++) {
-      free(bs->dpb[(c * g_num_planes) + p]);
+    for (int p = 0; p < MAX_PLANES; p++) {
+      free(bs->dpb[(c * MAX_PLANES) + p]);
     }
   }
   free(bs->rgb);
@@ -1784,11 +1787,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 262 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha set_mc_play[3]/set_motion_add_play[3] (2x3)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 277 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 140;   // +7 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff/rans_unpack[3] + set_color_alpha) + 1 for set_composite + 2 for inter-alpha (set_mc_play[3]/set_motion_add_play[3])   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 145;   // +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3])   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1869,7 +1872,7 @@ int main(int argc, char **argv) {
   // GPU bidi decode — DPB pool + bidi_blend + per-frame-rebound sets (mirror of the
   // encoder). bidi_blend reuses pipeline_layout_unpack (3 buffers + 12-byte push); the reconstruct's
   // motion_add reuses pipeline_motion_add. Allocated only for --gpu-decode on a B-stream.
-  int use_gpu_bdecode = has_bframes && !cpu_decode;   // 4b: the GPU bidi path now decodes DCT-B too (rANS + inverse DCT + quadtree + deblock); --cpu-decode forces the CPU oracle
+  int use_gpu_bdecode = has_bframes && !cpu_decode;   // 4b: GPU bidi decodes DCT-B (rANS + inverse DCT + quadtree + deblock) + inter B alpha (gdpb[3]); --cpu-decode forces the CPU oracle (decode_frame_bidi, also inter-alpha)
   int has_per_block_mode = use_gpu_bdecode && (header.per_block_mode != 0);   // B MV blobs carry a per-block L0/L1/BI mode array
   VkPipeline pipeline_bidi_blend = use_gpu_bdecode ? create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_unpack) : 0;
   VkPipelineLayout pipeline_layout_blend_mode = has_per_block_mode ? create_pipeline_layout(layout_3_buffers, 20) : 0;   // {prediction, mc1, modes}, push {5 ints}
@@ -1913,6 +1916,9 @@ int main(int argc, char **argv) {
       for (int plane = 0; plane < g_num_planes; plane++) {
         create_buffer(plane_bytes, DEVICE_LOCAL, &gdpb_buffer[slot][plane], &gdpb_memory[slot][plane]);
       }
+      if (g_has_alpha) {   // inter B alpha: the 4th (full-res) DPB plane per slot, holding the reconstructed alpha reference
+        create_buffer(plane_bytes, DEVICE_LOCAL, &gdpb_buffer[slot][3], &gdpb_memory[slot][3]);
+      }
     }
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv1_buffer, &mv1_memory);
     VK_CHECK(vkMapMemory(device, mv1_memory, 0, VK_WHOLE_SIZE, 0, &mv1_map));
@@ -1928,6 +1934,15 @@ int main(int argc, char **argv) {
       set_gmc0[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       set_gmc1[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       set_blend_mode[plane] = has_per_block_mode ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
+    }
+    if (g_has_alpha) {   // inter B alpha: full-res MC scratch + the 5 bidi sets (plane 3), rebound per coding frame to the alpha DPB slots
+      create_buffer(plane_bytes, DEVICE_LOCAL, &gmc_buffer[0][3], &gmc_memory[0][3]);
+      create_buffer(plane_bytes, DEVICE_LOCAL, &gmc_buffer[1][3], &gmc_memory[1][3]);
+      set_gblend[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_gadd[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_gmc0[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_gmc1[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_blend_mode[3] = has_per_block_mode ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     }
     VkFenceCreateInfo bf = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
     vkCreateFence(device, &bf, 0, &bdecode_fence);
@@ -2927,6 +2942,21 @@ int main(int argc, char **argv) {
             bind_storage_buffers(set_deblock[plane], (VkBuffer[]){ gdpb_buffer[dst][plane], cell_leaf_buffer[plane] }, 2);
           }
         }
+        if (g_has_alpha) {   // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots; shares the luma mv_buffer/mv1_buffer/mode_buffer (alpha is NOT deblocked)
+          if (is_pred) {
+            bind_storage_buffers(set_gmc0[3], (VkBuffer[]){ gdpb_buffer[ref0_slot][3], mv_buffer, gmc_buffer[0][3] }, 3);
+            if (ref1_slot >= 0) {
+              bind_storage_buffers(set_gmc1[3], (VkBuffer[]){ gdpb_buffer[ref1_slot][3], mv1_buffer, gmc_buffer[1][3] }, 3);
+            }
+            if (is_phase2_b) {
+              bind_storage_buffers(set_blend_mode[3], (VkBuffer[]){ gmc_buffer[0][3], gmc_buffer[1][3], mode_buffer }, 3);
+            } else {
+              int blend_r1 = (ref1_slot >= 0) ? 1 : 0;
+              bind_storage_buffers(set_gblend[3], (VkBuffer[]){ gmc_buffer[0][3], gmc_buffer[blend_r1][3], scratch_buffer }, 3);
+            }
+          }
+          bind_storage_buffers(set_gadd[3], (VkBuffer[]){ coeff_buffer[3], is_phase2_b ? gmc_buffer[0][3] : scratch_buffer, gdpb_buffer[dst][3] }, 3);
+        }
         // Pick this frame's dequant step map by its stored (temporal-id-cascaded) quality. Lazily
         // build + cache one GPU step buffer set per distinct quality, then rebind the dequant set only when
         // the quality changes — no per-frame O(width*height) rebuild (the 4K CPU bottleneck).
@@ -3145,6 +3175,46 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, plane_pixel_workgroups, 1, 1);
           memory_barrier();
         }
+        if (g_has_alpha) {   // inter B alpha: CPU-decode this coding frame's alpha residual into coeff[3] (host-visible), then GPU mc0/mc1/blend/motion_add -> gdpb[dst][3] (mirror of the color; shares the luma MVs)
+          cpu_decode_alpha_section(file, index, (uint32_t)c, block_count_plane, width, height, levels, step, coeff_map3);
+          int a_pixels = width * height, a_pixel_workgroups = (a_pixels + 255) / 256;
+          int a_motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block;
+          if (is_pred) {   // mirror the color (mc0; mc1 if a B-frame; then blend_mode OR gblend — the gblend ALSO runs for a P-anchor as a self-blend -> scratch)
+            int32_t mc_push[3] = { width, height, a_motion_blocks_x };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_gmc0[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+            vkCmdDispatch(command_buffer, a_pixel_workgroups, 1, 1);
+            memory_barrier();
+            if (ref1_slot >= 0) {
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_gmc1[3], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+              vkCmdDispatch(command_buffer, a_pixel_workgroups, 1, 1);
+              memory_barrier();
+            }
+            if (is_phase2_b) {   // per-block L0/L1/BI -> gmc0[3] in place
+              int32_t mode_blend_push[5] = { width, height, a_motion_blocks_x, w0, w1 };
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_blend_mode);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_blend_mode, 0, 1, &set_blend_mode[3], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_blend_mode, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, mode_blend_push);
+              vkCmdDispatch(command_buffer, a_pixel_workgroups, 1, 1);
+              memory_barrier();
+            } else {   // weighted blend (B) or self-blend (P-anchor, w0=256/w1=0 via blend_r1=0) -> scratch_buffer
+              int32_t blend_push[3] = { a_pixels, w0, w1 };
+              vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_bidi_blend);
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_gblend[3], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, blend_push);
+              vkCmdDispatch(command_buffer, a_pixel_workgroups, 1, 1);
+              memory_barrier();
+            }
+          }
+          int32_t a_add_push[2] = { a_pixels, is_pred };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_gadd[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, a_add_push);
+          vkCmdDispatch(command_buffer, a_pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
         // DCT-B in-loop deblock (--deblock): filter this frame's reconstructed YCoCg slot (gdpb_buffer[dst]) at leaf
         // boundaries (the per-frame cell_leaf map) before CDEF — exactly like the I/P path and the CPU decode_frame_bidi.
         // The DPB slot is both the reference and the display source, so the in-place filter keeps them in sync (no copy-back).
@@ -3269,9 +3339,6 @@ int main(int argc, char **argv) {
       // The decode-ahead above reconstructed this display POC's YCoCg into a DPB slot;
       // stage it into coeff_buffer (already rounded int) for the color pass below.
       int dslot = gdpb_poc_to_slot[frame_index];
-      if (g_has_alpha) {   // B-frame: CPU-decode this display frame's alpha (intra) — its container entry is the coding index held in this slot
-        cpu_decode_alpha_section(file, index, (uint32_t)gdpb_slot_coding[dslot], block_count_plane, width, height, levels, step, coeff_map3);
-      }
       for (int plane = 0; plane < g_num_planes; plane++) {
         int pp = plane_width(plane, width) * plane_height(plane, height);   // chroma slot is smaller when subsampled
         VkBufferCopy copy = { 0, 0, (VkDeviceSize)pp * 4 };
@@ -3279,6 +3346,12 @@ int main(int argc, char **argv) {
         VkMemoryBarrier to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
         to_shader.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         to_shader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &to_shader, 0, 0, 0, 0);
+      }
+      if (g_has_alpha) {   // the inter B alpha was reconstructed into gdpb[dslot][3] in the decode-ahead -> stage it into coeff[3] for the color_alpha pass
+        VkBufferCopy copy = { 0, 0, (VkDeviceSize)width * height * 4 };
+        vkCmdCopyBuffer(command_buffer, gdpb_buffer[dslot][3], coeff_buffer[3], 1, &copy);
+        VkMemoryBarrier to_shader = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT };
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &to_shader, 0, 0, 0, 0);
       }
     } else if (mode_3ddwt) {

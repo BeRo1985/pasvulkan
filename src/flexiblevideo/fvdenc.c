@@ -1214,13 +1214,14 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
   }
   // Per-position state for the current anchor pair (slots 0..period).
   uint8_t *rgb_slot[period + 1];
-  int32_t *dpb[period + 1][MAX_PLANES];   // reconstructed YCoCg per slot (the prediction references)
+  int32_t *dpb[period + 1][MAX_PLANES];   // reconstructed YCoCg per slot (the prediction references); [3]=NULL (set below) keeps the CPU-oracle B alpha intra
   long dpb_coding[period + 1];   // coding-order index of the frame currently held in each slot
   for (int s = 0; s <= period; s++) {
     rgb_slot[s] = checked_malloc(frame_bytes);
     for (int p = 0; p < g_num_planes; p++) {
       dpb[s][p] = checked_malloc((size_t)plane_pixels[p] * 4);
     }
+    dpb[s][3] = NULL;   // no alpha DPB in the CPU oracle -> encode_frame_bidi codes the B alpha intra (matches the intra B-alpha decoders)
     dpb_coding[s] = -1;
   }
   CodeStep steps[period + 1];
@@ -2124,6 +2125,9 @@ int main(int argc, char **argv) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &dpb_buffer[slot][plane], &dpb_memory[slot][plane]);
     }
+    if (g_has_alpha) {   // inter B alpha: a 4th (full-res) DPB plane per slot, holding the reconstructed alpha reference
+      create_buffer(plane_bytes, DEVICE_LOCAL, &dpb_buffer[slot][3], &dpb_memory[slot][3]);
+    }
   }
   // Bidirectional motion. mv1 = the L1 motion vectors (mv_buffer is L0); mv_zero is a
   // zeroed temporal predictor for the B searches; mc1 holds the L1 motion-compensated prediction (the L0
@@ -2142,6 +2146,9 @@ int main(int argc, char **argv) {
     memset(mv_zero_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // zero L1/L0 temporal predictor for B
     for (int plane = 0; plane < g_num_planes; plane++) {
       create_buffer(plane_bytes, DEVICE_LOCAL, &mc1_buffer[plane], &mc1_memory[plane]);
+    }
+    if (g_has_alpha) {   // inter B alpha: the L1 motion-compensated alpha prediction scratch (plane 3)
+      create_buffer(plane_bytes, DEVICE_LOCAL, &mc1_buffer[3], &mc1_memory[3]);
     }
   }
 
@@ -2296,9 +2303,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 768 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers)
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 783 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha I/P set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers) + inter-alpha B set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] (15 buffers)
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 203;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha (set_mc[3]/set_ycocg_mc[3]/set_motion_add[3])
+  pool_info.maxSets = 208;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha I/P (3 sets) + inter-alpha B (set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] = 5 sets)
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -2446,10 +2453,14 @@ int main(int argc, char **argv) {
   // Bidi sets, REBOUND per coding step to the chosen DPB slots. bidi_blend reads two
   // references + writes the prediction into difference_buffer (the existing prediction slot, consumed by
   // ycocg_diff via set_ycocg_mc); the reconstruct's motion_add writes the recon into the frame's DPB slot.
-  VkDescriptorSet set_bidi_blend[MAX_PLANES], set_motion_add_bidi[MAX_PLANES];
+  VkDescriptorSet set_bidi_blend[MAX_PLANES] = { 0 }, set_motion_add_bidi[MAX_PLANES] = { 0 };
   for (int plane = 0; plane < g_num_planes; plane++) {
     set_bidi_blend[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     set_motion_add_bidi[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
+  }
+  if (use_bframes && g_has_alpha) {   // inter B alpha (plane 3): rebound per coding step to the alpha DPB slots
+    set_bidi_blend[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+    set_motion_add_bidi[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
   }
   // Motion sets, REBOUND per coding step (two separate search sets so no rebind happens
   // within a command buffer). set_me_b0/b1 search current vs ref0/ref1 into mv_buffer/mv1_buffer; set_mc_b0
@@ -2500,7 +2511,7 @@ int main(int argc, char **argv) {
   // mode to the prediction slot per plane. Rebound per coding step (the DPB slots / MC buffers are fixed but
   // re-bound for clarity). set_mode_decide is bound once (fixed buffers); set_blend_mode[plane] per plane.
   VkDescriptorSet set_mode_decide = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_10_buffers) : 0;
-  VkDescriptorSet set_blend_mode[MAX_PLANES];
+  VkDescriptorSet set_blend_mode[MAX_PLANES] = { 0 };
   if (use_bframes) {
     bind_storage_buffers(set_mode_decide, (VkBuffer[]){ coeff_buffer[0], coeff_buffer[1], coeff_buffer[2],
                          difference_buffer[0], difference_buffer[1], difference_buffer[2],
@@ -2509,11 +2520,19 @@ int main(int argc, char **argv) {
       set_blend_mode[plane] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       bind_storage_buffers(set_blend_mode[plane], (VkBuffer[]){ difference_buffer[plane], mc1_buffer[plane], mode_buffer }, 3);
     }
+    if (g_has_alpha) {   // inter B alpha per-block mode: pick L0(difference[3])/L1(mc1[3])/BI into difference[3] (shares the luma mode_buffer)
+      set_blend_mode[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      bind_storage_buffers(set_blend_mode[3], (VkBuffer[]){ difference_buffer[3], mc1_buffer[3], mode_buffer }, 3);
+    }
   }
-  VkDescriptorSet set_mc_b0[MAX_PLANES], set_mc_b1[MAX_PLANES];
+  VkDescriptorSet set_mc_b0[MAX_PLANES] = { 0 }, set_mc_b1[MAX_PLANES] = { 0 };
   for (int plane = 0; plane < g_num_planes; plane++) {
     set_mc_b0[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
     set_mc_b1[plane] = use_bframes ? allocate_descriptor_set(descriptor_pool, layout_3_buffers) : 0;
+  }
+  if (use_bframes && g_has_alpha) {   // inter B alpha: mc_b0 (ref0[3] by mv0 -> difference[3]) + mc_b1 (ref1[3] by mv1 -> mc1[3]), rebound per step
+    set_mc_b0[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+    set_mc_b1[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
   }
 
   // 3D-DWT: per-plane GOP-resident coefficient buffers + the temporal-DWT pipeline. The
@@ -3702,6 +3721,16 @@ int main(int argc, char **argv) {
           }
           bind_storage_buffers(set_motion_add_bidi[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane], dpb_buffer[b_dst_slot][plane] }, 3);
         }
+        if (g_has_alpha) {   // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots; shares the luma mv_buffer/mv1_buffer/mode_buffer
+          if (b_ref0_slot >= 0) {
+            bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], mv_buffer, difference_buffer[3] }, 3);
+            if (b_ref1_slot >= 0) {
+              bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], mv1_buffer, mc1_buffer[3] }, 3);
+              bind_storage_buffers(set_bidi_blend[3], (VkBuffer[]){ difference_buffer[3], mc1_buffer[3], difference_buffer[3] }, 3);
+            }
+          }
+          bind_storage_buffers(set_motion_add_bidi[3], (VkBuffer[]){ coeff_buffer[3], difference_buffer[3], dpb_buffer[b_dst_slot][3] }, 3);
+        }
       } else {
         if (!((fread(rgb, 1, frame_bytes, input_pipe) == frame_bytes) && (!max_frames || (frame_index < max_frames)))) {
           break;
@@ -3888,10 +3917,10 @@ int main(int argc, char **argv) {
         if (debug) fprintf(stderr, "  frame %ld: avg_residual=%.1f -> %s\n", frame_index, average_residual, is_predicted ? "P" : "I (cut)");
       }
 
-      // Inter alpha applies ONLY to the plain I/P colordiff path (single previous_buffer[3] reference, shared luma MVs):
-      // B-frames (bidi, need an alpha DPB), CoefDiff (method 0) and all-intra (gop 1) keep the alpha intra — the decoders
-      // gate the alpha mc/motion_add the same way (prediction_method 1, non-B), so this keeps encoder<->decoder in lock-step.
-      int alpha_inter = (predictive && (method == 1)) && !use_bframes;
+      // Inter alpha applies to the colordiff path (method 1): I/P uses the single previous_buffer[3] reference, B-frames
+      // the alpha DPB (bidirectional, mc0/mc1/blend) — both with the SHARED luma MVs. CoefDiff (method 0) and all-intra
+      // (gop 1) keep the alpha intra; the decoders gate the alpha mc/motion_add the same way, so encoder<->decoder stay in lock-step.
+      int alpha_inter = predictive && (method == 1);
 
       // ---- GPU pass 1: color transform + forward wavelet + quant + per-block size ----
       begin_recording();
@@ -4431,14 +4460,43 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
         memory_barrier();
-        if (is_predicted && alpha_inter) {   // inter alpha (I/P colordiff only): motion-compensate the previous reconstructed alpha (shared luma MVs) -> difference[3]; residual = alpha - mc, BEFORE the wavelet
+        if (is_predicted && alpha_inter) {   // inter alpha: motion-compensate the alpha reference(s) with the SHARED luma MVs -> difference[3]; residual = alpha - prediction, BEFORE the wavelet
           int a_motion_blocks_x = ((plane_w + g_motion_block) - 1) / g_motion_block;
           int32_t mc_push[3] = { plane_w, plane_h, a_motion_blocks_x };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
-          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
-          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
-          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
-          memory_barrier();
+          if (use_bframes) {   // B: mc0(ref0[3])->difference[3]; if a B-frame mc1(ref1[3])->mc1[3] then per-block-mode or weighted blend -> difference[3]
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc_b0[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+            if (b_ref1_slot >= 0) {
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc_b1[3], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+              vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+              memory_barrier();
+              if (per_block_mode) {
+                int32_t mode_blend_push[5] = { plane_w, plane_h, a_motion_blocks_x, b_w0, b_w1 };
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_blend_mode);
+                vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_blend_mode, 0, 1, &set_blend_mode[3], 0, 0);
+                vkCmdPushConstants(command_buffer, pipeline_layout_blend_mode, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, mode_blend_push);
+                vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+                memory_barrier();
+              } else {
+                int32_t blend_push[3] = { plane_pixels, b_w0, b_w1 };
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_bidi_blend);
+                vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_bidi_blend[3], 0, 0);
+                vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, blend_push);
+                vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+                memory_barrier();
+              }
+            }
+          } else {   // I/P single reference
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+          }
           int32_t diff_push[2] = { plane_pixels, alpha_lossless };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_ycocg_diff);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_add, 0, 1, &set_ycocg_mc[3], 0, 0);
@@ -4507,13 +4565,42 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
         memory_barrier();
-        if (is_predicted && alpha_inter) {   // inter alpha (I/P colordiff only): motion-compensate the previous reconstructed alpha (shared luma MVs) -> difference[3]; residual = alpha - mc
+        if (is_predicted && alpha_inter) {   // inter alpha: motion-compensate the alpha reference(s) with the SHARED luma MVs -> difference[3]; residual = alpha - prediction
           int32_t mc_push[3] = { plane_w, plane_h, a_motion_blocks_x };
-          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
-          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
-          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
-          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
-          memory_barrier();
+          if (use_bframes) {   // B: mc0(ref0[3],mv0)->difference[3]; if a B-frame mc1(ref1[3],mv1)->mc1[3] then per-block-mode or weighted blend -> difference[3]
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc_b0[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+            if (b_ref1_slot >= 0) {
+              vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc_b1[3], 0, 0);
+              vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+              vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+              memory_barrier();
+              if (per_block_mode) {   // per-block L0/L1/BI -> difference[3] (shares the color-decided mode_buffer)
+                int32_t mode_blend_push[5] = { plane_w, plane_h, a_motion_blocks_x, b_w0, b_w1 };
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_blend_mode);
+                vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_blend_mode, 0, 1, &set_blend_mode[3], 0, 0);
+                vkCmdPushConstants(command_buffer, pipeline_layout_blend_mode, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, mode_blend_push);
+                vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+                memory_barrier();
+              } else {   // unconditional weighted bidi blend -> difference[3]
+                int32_t blend_push[3] = { plane_pixels, b_w0, b_w1 };
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_bidi_blend);
+                vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_bidi_blend[3], 0, 0);
+                vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, blend_push);
+                vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+                memory_barrier();
+              }
+            }
+          } else {   // I/P single reference: mc(previous[3],mv) -> difference[3]
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+          }
           int32_t diff_push[2] = { plane_pixels, alpha_lossless };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_ycocg_diff);
           vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_add, 0, 1, &set_ycocg_mc[3], 0, 0);
@@ -4722,7 +4809,7 @@ int main(int argc, char **argv) {
           }
           int32_t add_push[2] = { plane_pixels, is_predicted };
           vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
-          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add[3], 0, 0);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, use_bframes ? &set_motion_add_bidi[3] : &set_motion_add[3], 0, 0);   // B reconstructs into the alpha DPB slot; I/P into previous_buffer[3]
           vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
           vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
           memory_barrier();
@@ -5384,6 +5471,10 @@ int main(int argc, char **argv) {
         for (int plane = 0; plane < g_num_planes; plane++) {
           VkBufferCopy slide = { 0, 0, plane_bytes };
           vkCmdCopyBuffer(command_buffer, dpb_buffer[b_slide_from][plane], dpb_buffer[0][plane], 1, &slide);
+        }
+        if (g_has_alpha) {   // slide the alpha DPB plane in lock-step with the color planes
+          VkBufferCopy slide = { 0, 0, plane_bytes };
+          vkCmdCopyBuffer(command_buffer, dpb_buffer[b_slide_from][3], dpb_buffer[0][3], 1, &slide);
         }
         submit_and_wait();
       }
