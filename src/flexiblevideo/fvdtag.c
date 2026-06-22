@@ -30,20 +30,23 @@ typedef struct {
   uint8_t  transfer_function;
   uint8_t  matrix;
   uint8_t  full_range;
-  uint8_t  color_flags;
   uint16_t gop;
+  uint32_t color_flags;
   uint16_t mastering_primaries_x[3], mastering_primaries_y[3];
   uint16_t mastering_white_x, mastering_white_y;
   uint32_t mastering_max_luminance, mastering_min_luminance;
   uint16_t max_content_light_level;
   uint16_t max_frame_avg_light_level;
-  uint64_t audio_offset, audio_size, index_offset;
   uint8_t  prediction_method;
   uint8_t  chroma_quant_x16;
   uint8_t  chroma_format;
-  uint8_t  reserved2[6];
-  uint8_t  audio_codec[4];
-  uint8_t  mv_codec;
+  uint8_t  temporal_levels;
+  uint8_t  temporal_wavelet;
+  uint8_t  bframe_period;
+  uint8_t  per_block_mode;
+  uint8_t  coding_block_size;
+  uint8_t  motion_block_size;
+  uint32_t mv_codec;            // now u32; offsetof(mv_codec) is its low byte (LE) — the mode bits live there
 } ContainerHeaderPrefix;
 
 // Writes the human-readable mode into the caller's buffer and returns it. The caller supplies the buffer so

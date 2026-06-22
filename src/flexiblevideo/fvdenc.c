@@ -620,29 +620,37 @@ typedef struct {
   uint8_t  transfer_function;   // CICP: 13=sRGB (default), 1=BT.709, 16=PQ, 18=HLG, 8=linear
   uint8_t  matrix;              // CICP: 8=YCgCo (== our reversible YCoCg-R)
   uint8_t  full_range;          // 1 (YCoCg-R is full-range)
-  uint8_t  color_flags;        // bit0 = HDR, bit1 = HDR10 static metadata present
   uint16_t gop;                 // max keyframe interval (seek hint); actual I/P type is per-frame
+  uint32_t color_flags;         // feature/HDR bitmask (u32 = room for future bits, no version bump): bit0=HDR, bit1=HDR10 metadata, bit2=alpha, bit3=quadtree, bit4=CDEF, bit5=deblock, bit6=bframe_dct, bit7=spatial_dct
   // ---- HDR10 static metadata (valid iff color_flags bit1) ----
   uint16_t mastering_primaries_x[3], mastering_primaries_y[3];   // ST 2086 R/G/B chromaticity, x50000
   uint16_t mastering_white_x, mastering_white_y;
   uint32_t mastering_max_luminance, mastering_min_luminance;     // x10000 cd/m^2
   uint16_t max_content_light_level;     // MaxCLL (cd/m^2)
   uint16_t max_frame_avg_light_level;   // MaxFALL (cd/m^2)
-  // ---- payload ----
-  uint64_t audio_offset, audio_size, index_offset;
-  // ---- codec config (appended in v4) ----
-  uint8_t  prediction_method;   // 0 = coefdiff (A: coefficient diff), 1 = colordiff (B: YCoCg/pixel diff)
+  // ---- codec config (formerly reserved2[6] + scattered bytes, now named) ----
+  uint8_t  prediction_method;   // 0 = coefdiff (coefficient diff), 1 = colordiff (YCoCg/pixel diff), 2 = open-loop 3D-DWT, 3 = MCTF
   uint8_t  chroma_quant_x16;    // chroma quant multiplier x16 (16 = 1.0 = off); 0 (old files) -> treated as 16
   uint8_t  chroma_format;       // 0 = 4:4:4 (default), 1 = 4:2:2 (chroma W/2 x H), 2 = 4:2:0 (chroma W/2 x H/2)
-  uint8_t  reserved2[6];        // [0] = temporal levels, [1] = temporal wavelet; [2] = bframes gop; [3] = per-block mode; [4] = coding block size; [5] = motion block size
-  // ---- audio (appended) ----
+  uint8_t  temporal_levels;     // 3D-DWT/MCTF temporal decomposition levels
+  uint8_t  temporal_wavelet;    // 3D-DWT temporal wavelet: 0 = Haar, 1 = LeGall 5/3, 2 = CDF 9/7
+  uint8_t  bframe_period;       // hierarchical B-frames per anchor pair (0 = no B-frames)
+  uint8_t  per_block_mode;      // 1 = B-frame MV blobs carry a per-block L0/L1/BI mode array
+  uint8_t  coding_block_size;   // bit-plane / rANS coding block size in luma pixels: 32 / 64 / 128
+  uint8_t  motion_block_size;   // motion block size: 8 / 16 / 32 fixed grid, or 1 = variable quadtree (root 32, leaf 8)
+  uint32_t mv_codec;            // MV coding bitfield (u32 = room for future bits): bit0 = entropy (0=exp-golomb, 1=range), bits1-2 = interp filter, bits3-4 = MV precision
   uint8_t  audio_codec[4];      // sub-FOURCC: "OGGV" = OGG/Vorbis, "QOAL" = little-endian QOA, "RPCM" = raw PCM, "FWAC" = wavelet audio (fwa)
-  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder.
-  // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
-  uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
-  uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
+  // ---- payload offsets ----
+  uint64_t audio_offset, audio_size;
+  uint64_t h264_offset;         // byte offset of the optional H.264 Annex-B blob (full-res); 0 = wavelet/DCT-only
+  uint64_t h264_size;           // 0 = no H.264 stream
   uint64_t qpmap_offset;        // AQ: byte offset of the per-frame per-tile QP-map section
-  uint64_t qpmap_size;          // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
+  uint64_t qpmap_size;          // total qpmap bytes (frame_count * tile_cols * tile_rows u8); 0 = no AQ
+  uint64_t index_offset;        // byte offset of the FrameEntry index (coding order)
+  // ---- future-proofing (extend here within version 1, no bump) ----
+  uint64_t keyvalue_offset;     // optional extensible key-value store for additional header values; 0 = none
+  uint64_t keyvalue_size;       // bytes of the key-value store
+  uint32_t reserved[16];        // zero-filled; future fixed fields claim slots here
 } ContainerHeader;
 
 // Per-frame index entry. The on-disk index is in
@@ -5231,15 +5239,15 @@ int main(int argc, char **argv) {
     header.prediction_method = mode_3ddwt ? (g_mctf ? (uint8_t)3 : (uint8_t)2) : (uint8_t)method;   // 3 = MCTF 3D-DWT, 2 = open-loop 3D-DWT GOP
     header.chroma_quant_x16 = (uint8_t)(g_chroma_quant * 16.0f + 0.5f);   // chroma quant weighting (16 = 1.0 = off)
     header.chroma_format = (uint8_t)g_chroma_format;
-    header.reserved2[4] = (uint8_t)g_block_size;   // coding block size (32/64/128); the decoder builds the matching bitplane pipeline
-    header.reserved2[5] = g_motion_variable ? (uint8_t)1 : (uint8_t)g_motion_block;   // 8/16/32 = fixed motion grid; 1 = variable quadtree (root 32, fine grid 8)
+    header.coding_block_size = (uint8_t)g_block_size;   // coding block size (32/64/128); the decoder builds the matching bitplane pipeline
+    header.motion_block_size = g_motion_variable ? (uint8_t)1 : (uint8_t)g_motion_block;   // 8/16/32 = fixed motion grid; 1 = variable quadtree (root 32, fine grid 8)
     if (mode_3ddwt) {   // 3D-DWT params for the decoder (stashed in the reserved bytes)
-      header.reserved2[0] = (uint8_t)g_temporal_levels;
-      header.reserved2[1] = (uint8_t)g_temporal_wavelet;
+      header.temporal_levels = (uint8_t)g_temporal_levels;
+      header.temporal_wavelet = (uint8_t)g_temporal_wavelet;
     }
     if (use_bframes) {   // B-stream marker + period hint (the player decodes in coding order, reorders by POC)
-      header.reserved2[2] = (uint8_t)bframes;
-      header.reserved2[3] = (uint8_t)per_block_mode;   // B-frame MV blobs carry a per-block L0/L1/BI mode array
+      header.bframe_period = (uint8_t)bframes;
+      header.per_block_mode = (uint8_t)per_block_mode;   // B-frame MV blobs carry a per-block L0/L1/BI mode array
     }
     header.width = width;
     header.height = height;

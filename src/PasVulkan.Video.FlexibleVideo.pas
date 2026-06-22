@@ -110,7 +110,7 @@ type EpvFlexibleVideo=class(Exception);
             TFrameType=(Intra=0,Predicted=1,Bidirectional=2);
             PHeader=^THeader;
             { THeader }
-            THeader=packed record // 142 bytes, byte-for-byte the packed C ContainerHeader (ReadBuffer-compatible, little-endian)
+            THeader=packed record // packed, byte-for-byte the C ContainerHeader (ReadBuffer-compatible, little-endian)
              Magic:array[0..3] of AnsiChar;
              Version:TpvUInt16;
              HeaderSize:TpvUInt16;
@@ -126,8 +126,8 @@ type EpvFlexibleVideo=class(Exception);
              TransferFunction:TpvUInt8;
              Matrix:TpvUInt8;
              FullRange:TpvUInt8;
-             ColorFlags:TpvUInt8;
              GOP:TpvUInt16;
+             ColorFlags:TpvUInt32; // feature/HDR bitmask (u32 = room for future bits, no version bump)
              MasteringPrimariesX:array[0..2] of TpvUInt16;
              MasteringPrimariesY:array[0..2] of TpvUInt16;
              MasteringWhiteX:TpvUInt16;
@@ -136,19 +136,27 @@ type EpvFlexibleVideo=class(Exception);
              MasteringMinLuminance:TpvUInt32;
              MaxContentLightLevel:TpvUInt16;
              MaxFrameAvgLightLevel:TpvUInt16;
-             AudioOffset:TpvUInt64;
-             AudioSize:TpvUInt64;
-             IndexOffset:TpvUInt64;
              PredictionMethod:TpvUInt8;
              ChromaQuantX16:TpvUInt8;
              ChromaFormat:TpvUInt8;
-             Reserved2:array[0..5] of TpvUInt8;
+             TemporalLevels:TpvUInt8;    // was Reserved2[0]
+             TemporalWavelet:TpvUInt8;   // was Reserved2[1]
+             BFramePeriod:TpvUInt8;      // was Reserved2[2]
+             PerBlockMode:TpvUInt8;      // was Reserved2[3]
+             CodingBlockSize:TpvUInt8;   // was Reserved2[4]
+             MotionBlockSize:TpvUInt8;   // was Reserved2[5]
+             MVCodec:TpvUInt32; // MV coding bitfield (u32 = room for future bits)
              AudioCodec:array[0..3] of AnsiChar;
-             MVCodec:TpvUInt8;
+             AudioOffset:TpvUInt64;
+             AudioSize:TpvUInt64;
              H264Offset:TpvUInt64;
              H264Size:TpvUInt64;
              QPMapOffset:TpvUInt64; // AQ (per-tile QP): byte offset of the per-frame per-tile QP-map section
              QPMapSize:TpvUInt64; // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
+             IndexOffset:TpvUInt64;
+             KeyValueOffset:TpvUInt64; // optional extensible key-value store for additional header values; 0 = none
+             KeyValueSize:TpvUInt64;
+             Reserved:array[0..15] of TpvUInt32; // zero-filled; future fixed fields claim slots here
             end;
             PFrameEntry=^TFrameEntry;
             { TFrameEntry }

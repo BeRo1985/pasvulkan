@@ -107,29 +107,37 @@ typedef struct {
   uint8_t  transfer_function;   // CICP: 13=sRGB (default), 1=BT.709, 16=PQ, 18=HLG, 8=linear
   uint8_t  matrix;              // CICP: 8=YCgCo (== our reversible YCoCg-R)
   uint8_t  full_range;          // 1 (YCoCg-R is full-range)
-  uint8_t  color_flags;        // bit0 = HDR, bit1 = HDR10 static metadata present
   uint16_t gop;                 // max keyframe interval (seek hint); actual I/P type is per-frame
+  uint32_t color_flags;         // feature/HDR bitmask (u32 = room for future bits, no version bump): bit0=HDR, bit1=HDR10 metadata, bit2=alpha, bit3=quadtree, bit4=CDEF, bit5=deblock, bit6=bframe_dct, bit7=spatial_dct
   // ---- HDR10 static metadata (valid iff color_flags bit1) ----
   uint16_t mastering_primaries_x[3], mastering_primaries_y[3];   // ST 2086 R/G/B chromaticity, x50000
   uint16_t mastering_white_x, mastering_white_y;
   uint32_t mastering_max_luminance, mastering_min_luminance;     // x10000 cd/m^2
   uint16_t max_content_light_level;     // MaxCLL (cd/m^2)
   uint16_t max_frame_avg_light_level;   // MaxFALL (cd/m^2)
-  // ---- payload ----
-  uint64_t audio_offset, audio_size, index_offset;
-  // ---- codec config (appended in v4) ----
-  uint8_t  prediction_method;   // 0 = coefdiff (A: coefficient diff), 1 = colordiff (B: YCoCg/pixel diff)
+  // ---- codec config (formerly reserved2[6] + scattered bytes, now named) ----
+  uint8_t  prediction_method;   // 0 = coefdiff (coefficient diff), 1 = colordiff (YCoCg/pixel diff), 2 = open-loop 3D-DWT, 3 = MCTF
   uint8_t  chroma_quant_x16;    // chroma quant multiplier x16 (16 = 1.0 = off); 0 (old files) -> treated as 16
   uint8_t  chroma_format;       // 0 = 4:4:4 (default), 1 = 4:2:2 (chroma W/2 x H), 2 = 4:2:0 (chroma W/2 x H/2)
-  uint8_t  reserved2[6];        // [0] = temporal levels, [1] = temporal wavelet; [2] = bframes gop; [3] = per-block mode; [4] = coding block size; [5] = motion block size
-  // ---- audio (appended) ----
+  uint8_t  temporal_levels;     // 3D-DWT/MCTF temporal decomposition levels
+  uint8_t  temporal_wavelet;    // 3D-DWT temporal wavelet: 0 = Haar, 1 = LeGall 5/3, 2 = CDF 9/7
+  uint8_t  bframe_period;       // hierarchical B-frames per anchor pair (0 = no B-frames)
+  uint8_t  per_block_mode;      // 1 = B-frame MV blobs carry a per-block L0/L1/BI mode array
+  uint8_t  coding_block_size;   // bit-plane / rANS coding block size in luma pixels: 32 / 64 / 128
+  uint8_t  motion_block_size;   // motion block size: 8 / 16 / 32 fixed grid, or 1 = variable quadtree (root 32, leaf 8)
+  uint32_t mv_codec;            // MV coding bitfield (u32 = room for future bits): bit0 = entropy (0=exp-golomb, 1=range), bits1-2 = interp filter, bits3-4 = MV precision
   uint8_t  audio_codec[4];      // sub-FOURCC: "OGGV" = OGG/Vorbis, "QOAL" = little-endian QOA, "RPCM" = raw PCM, "FWAC" = wavelet audio (fwa)
-  uint8_t  mv_codec;            // motion-vector entropy coder. 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder.
-  // ---- optional parallel H.264 elementary stream (Annex-B) for HW decode ----
-  uint64_t h264_offset;         // byte offset of the H.264 Annex-B blob (full-res; the wavelet width/height may be down-scaled)
-  uint64_t h264_size;           // 0 = no H.264 stream (wavelet-only container)
+  // ---- payload offsets ----
+  uint64_t audio_offset, audio_size;
+  uint64_t h264_offset;         // byte offset of the optional H.264 Annex-B blob (full-res); 0 = wavelet/DCT-only
+  uint64_t h264_size;           // 0 = no H.264 stream
   uint64_t qpmap_offset;        // AQ: byte offset of the per-frame per-tile QP-map section
-  uint64_t qpmap_size;          // total bytes of the qpmap section (frame_count * tile_cols * tile_rows u8); 0 = no AQ
+  uint64_t qpmap_size;          // total qpmap bytes (frame_count * tile_cols * tile_rows u8); 0 = no AQ
+  uint64_t index_offset;        // byte offset of the FrameEntry index (coding order)
+  // ---- future-proofing (extend here within version 1, no bump) ----
+  uint64_t keyvalue_offset;     // optional extensible key-value store for additional header values; 0 = none
+  uint64_t keyvalue_size;       // bytes of the key-value store
+  uint32_t reserved[16];        // zero-filled; future fixed fields claim slots here
 } ContainerHeader;
 
 // Per-frame index entry. The on-disk
@@ -1173,21 +1181,21 @@ int main(int argc, char **argv) {
     g_aq_enabled = 1;   // turn AQ on in the shared step path; aq_set_current_map picks the frame's map per coding index
   }
   int mode_3ddwt = (header.prediction_method == 2) || (header.prediction_method == 3);   // 2 = open-loop 3D-DWT, 3 = MCTF 3D-DWT
-  g_mctf = (header.prediction_method == 3);   // MCTF: the temporal transform is predict-only MC-Haar (motion), g_motion_block from reserved2[5]
-  int has_bframes = (header.prediction_method == 1) && (header.reserved2[2] > 0);   // hierarchical B-stream (coding-order index + POC reorder)
-  if (((header.reserved2[4] == 32 || header.reserved2[4] == 64) || header.reserved2[4] == 128)) {
-    g_block_size = header.reserved2[4];   // coding block size (32/64/128) — the bitplane_unpack pipeline is built for it
+  g_mctf = (header.prediction_method == 3);   // MCTF: the temporal transform is predict-only MC-Haar (motion), g_motion_block from motion_block_size
+  int has_bframes = (header.prediction_method == 1) && (header.bframe_period > 0);   // hierarchical B-stream (coding-order index + POC reorder)
+  if (((header.coding_block_size == 32 || header.coding_block_size == 64) || header.coding_block_size == 128)) {
+    g_block_size = header.coding_block_size;   // coding block size (32/64/128) — the bitplane_unpack pipeline is built for it
   }
-  if (((header.reserved2[5] == 8 || header.reserved2[5] == 16) || header.reserved2[5] == 32)) {
-    g_motion_block = header.reserved2[5];   // motion block size (8/16/32) — the mc/blend_mode pipelines are built for it
-  } else if (header.reserved2[5] == 1) {
+  if (((header.motion_block_size == 8 || header.motion_block_size == 16) || header.motion_block_size == 32)) {
+    g_motion_block = header.motion_block_size;   // motion block size (8/16/32) — the mc/blend_mode pipelines are built for it
+  } else if (header.motion_block_size == 1) {
     g_motion_variable = 1;   // variable quadtree motion (root 32 -> 8); the fine grid is 8, the blob is a quadtree
     g_motion_block = 8;
   }
-  g_per_block_mode = (header.reserved2[3] != 0);   // B MV blobs carry a per-block L0/L1/BI mode array (the CPU decode_frame_bidi oracle reads it too)
+  g_per_block_mode = (header.per_block_mode != 0);   // B MV blobs carry a per-block L0/L1/BI mode array (the CPU decode_frame_bidi oracle reads it too)
   if (mode_3ddwt) {
-    g_temporal_levels = header.reserved2[0] ? header.reserved2[0] : 2;
-    g_temporal_wavelet = header.reserved2[1];
+    g_temporal_levels = header.temporal_levels ? header.temporal_levels : 2;
+    g_temporal_wavelet = header.temporal_wavelet;
     // chroma_format from the header (4:4:4 / 4:2:2 / 4:2:0); lossless was forced 4:4:4 at encode.
   }
   int blocks_x = block_count_x(width);
@@ -1857,14 +1865,14 @@ int main(int argc, char **argv) {
   // encoder). bidi_blend reuses pipeline_layout_unpack (3 buffers + 12-byte push); the reconstruct's
   // motion_add reuses pipeline_motion_add. Allocated only for --gpu-decode on a B-stream.
   int use_gpu_bdecode = has_bframes && !cpu_decode;   // 4b: the GPU bidi path now decodes DCT-B too (rANS + inverse DCT + quadtree + deblock); --cpu-decode forces the CPU oracle
-  int has_per_block_mode = use_gpu_bdecode && (header.reserved2[3] != 0);   // B MV blobs carry a per-block L0/L1/BI mode array
+  int has_per_block_mode = use_gpu_bdecode && (header.per_block_mode != 0);   // B MV blobs carry a per-block L0/L1/BI mode array
   VkPipeline pipeline_bidi_blend = use_gpu_bdecode ? create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_unpack) : 0;
   VkPipelineLayout pipeline_layout_blend_mode = has_per_block_mode ? create_pipeline_layout(layout_3_buffers, 20) : 0;   // {prediction, mc1, modes}, push {5 ints}
   VkPipeline pipeline_blend_mode = has_per_block_mode ? create_compute_pipeline_motion("shaders/blend_mode.spv", pipeline_layout_blend_mode, g_motion_block) : 0;
   // Decode-Lead: hold a ~2*period lead of pre-decoded frames so the bursty coding-order decode becomes a
   // steady ~1 decode per displayed frame (smooth playback under Vsync). The pool holds the lead + the live
   // references, so size it 3*period + spare.
-  int gdecode_period = header.reserved2[2] + 1;
+  int gdecode_period = header.bframe_period + 1;
   // Step-map cache: deeper B-frames use a coarser (temporal-id-cascaded) quant. Rather than rebuild
   // the full per-pixel step map every frame (O(width*height) CPU — ~50 ms/frame at 4K, the decode bottleneck),
   // cache one GPU step buffer set per distinct quality (only a few exist) and just rebind the dequant set.
@@ -2398,13 +2406,13 @@ int main(int argc, char **argv) {
         gdpb_slot_coding[slot] = -1;
       }
       printf("B-stream: %d frames, %d B/anchor, GPU bidi decode + POC reorder (%d DPB slots)\n",
-             header.frame_count, header.reserved2[2], gdpb_slots);
+             header.frame_count, header.bframe_period, gdpb_slots);
     } else {
       bstream_init(&bstream, file, index, (int)header.frame_count, width, height, levels, frame_bytes);
       create_buffer((size_t)pixel_count * 4, HOST_VISIBLE_COHERENT, &bf_upload_buffer, &bf_upload_memory);   // rgba8
       VK_CHECK(vkMapMemory(device, bf_upload_memory, 0, VK_WHOLE_SIZE, 0, &bf_upload_map));
       printf("B-stream: %d frames, %d B/anchor, coding-order CPU decode + POC reorder\n",
-             header.frame_count, header.reserved2[2]);
+             header.frame_count, header.bframe_period);
     }
   }
 

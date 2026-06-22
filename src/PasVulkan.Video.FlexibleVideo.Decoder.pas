@@ -586,7 +586,7 @@ procedure TpvFlexibleVideoDecoder.ParseContainer;
 var BFrameIndex,SlotIndex:TpvInt32;
 begin
 
- // The 142-byte packed header (ReadBuffer-compatible, little-endian)
+ // The packed header (ReadBuffer-compatible, little-endian)
  fStream.ReadBuffer(fHeader,SizeOf(fHeader));
  if (not CompareMem(@fHeader.Magic[0],@Magic[0],4)) or (fHeader.Version<>FormatVersion) then begin
   raise EpvFlexibleVideoDecoder.Create('Not a FVDC stream');
@@ -661,9 +661,9 @@ begin
  fMotionMode:=(fHeader.MVCodec shr 1) and 15;   // bits0-1 = interpolation filter (0 bilinear, 1 6-tap, 2 8-tap DCTIF), bits2-3 = MV precision (0 half, 1 quarter, 2 eighth [reserved], 3 amvr [reserved]); mirrors the MOTION_MODE shader spec constant
  fMotionVariable:=false;
  fMotionBlock:=16;
- if (fHeader.Reserved2[5]=8) or (fHeader.Reserved2[5]=16) or (fHeader.Reserved2[5]=32) then begin
-  fMotionBlock:=fHeader.Reserved2[5];
- end else if fHeader.Reserved2[5]=1 then begin
+ if (fHeader.MotionBlockSize=8) or (fHeader.MotionBlockSize=16) or (fHeader.MotionBlockSize=32) then begin
+  fMotionBlock:=fHeader.MotionBlockSize;
+ end else if fHeader.MotionBlockSize=1 then begin
   fMotionVariable:=true; // variable quadtree motion (root 32 -> 8); the fine grid is 8
   fMotionBlock:=8;
  end;
@@ -713,7 +713,7 @@ begin
  end;
  fLossless:=fQuality=0;
  fGainsComputed:=false;
- fBlockSize:=fHeader.Reserved2[4];
+ fBlockSize:=fHeader.CodingBlockSize;
  if not ((fBlockSize=32) or (fBlockSize=64) or (fBlockSize=128)) then begin
   fBlockSize:=32;
  end;
@@ -737,14 +737,14 @@ begin
  // Hierarchical B-frames: the colordiff stream carries a coding-order B-hierarchy when reserved2[2] > 0; the
  // DPB pool holds the decode-lead + the live references (3*period + spare). Initialise the slot-management
  // arrays (each frame's last-use coding index drives DPB eviction).
- fHasBFrames:=(fPredictionMethod=1) and (fHeader.Reserved2[2]>0);
- fHasPerBlockMode:=fHasBFrames and (fHeader.Reserved2[3]<>0);
+ fHasBFrames:=(fPredictionMethod=1) and (fHeader.BFramePeriod>0);
+ fHasPerBlockMode:=fHasBFrames and (fHeader.PerBlockMode<>0);
  fGCursor:=0;
  fGDecStepIndex:=-1;
  fBufferRingSlot:=-1; // default = the shared input buffers/sets (modes A + C)
  fBufferRingSize:=0;
  if fHasBFrames then begin
-  fGDecodePeriod:=fHeader.Reserved2[2]+1;
+  fGDecodePeriod:=fHeader.BFramePeriod+1;
   fGDecodeLead:=2*fGDecodePeriod;
   fGDPBSlots:=(3*fGDecodePeriod)+6;
   if fGDPBSlots>64 then begin
@@ -792,12 +792,12 @@ begin
  f3DPfStep:=0;
  f3DPfDone:=true;
  if fMode3DDWT then begin
-  if fHeader.Reserved2[0]<>0 then begin
-   fTemporalLevels:=fHeader.Reserved2[0];
+  if fHeader.TemporalLevels<>0 then begin
+   fTemporalLevels:=fHeader.TemporalLevels;
   end else begin
    fTemporalLevels:=2;
   end;
-  fTemporalWavelet:=fHeader.Reserved2[1];
+  fTemporalWavelet:=fHeader.TemporalWavelet;
   fGOPCapacity:=fGOP;
   if fGOPCapacity<16 then begin
    fGOPCapacity:=16;
