@@ -1086,7 +1086,7 @@ int main(int argc, char **argv) {
   const char *decode_to_path = NULL; // --decode-to=<file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
   int eval_mode = 0;                 // --eval: 1 = vs embedded H.264; --eval-with-reference: 2 = vs external file
   const char *eval_ref_path = NULL;  // --eval-with-reference=<file>: the external reference video
-  FvdEval *eval = NULL;              // the active evaluation run (FVD spatial path vs the reference)
+  FVDEval *eval = NULL;              // the active evaluation run (FVD spatial path vs the reference)
   int dering = 0;   // --dering: smartblur post-pass (lossy SDR). Default = the validated edge-sharpen winner
   float dering_strength = -0.5f, dering_threshold = -15.0f / 255.0f, dering_radius = 1.5f;   // <0 strength = sharpen, <0 thr = edge mode
   for (int a = 2; a < argc; a++) {
@@ -2158,7 +2158,7 @@ int main(int argc, char **argv) {
     if (fread(h264_blob, 1, header.h264_size, file) != header.h264_size) {
       die("h264 stream read");
     }
-    FvdH264Context h264 = { 0 };
+    FVDH264Context h264 = { 0 };
     h264.instance = instance;
     h264.physical_device = physical_device;
     h264.device = device;

@@ -714,7 +714,7 @@ static void present_one(int pool_index) {
   vkQueuePresentKHR(graphics_queue, &present_info);
 }
 
-int run_h264_player(const FvdH264Context *ctx) {
+int run_h264_player(const FVDH264Context *ctx) {
   // ---- shared handles from fvdplay (ONE device; the two video paths are separate after init) ----
   VkInstance instance = ctx->instance;
   physical_device = ctx->physical_device;

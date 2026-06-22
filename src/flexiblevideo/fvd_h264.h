@@ -87,8 +87,8 @@ typedef struct {
   uint32_t total_audio_bytes;
   int audio_channels;
   int audio_rate;
-} FvdH264Context;
+} FVDH264Context;
 
-int run_h264_player(const FvdH264Context *ctx);
+int run_h264_player(const FVDH264Context *ctx);
 
 #endif

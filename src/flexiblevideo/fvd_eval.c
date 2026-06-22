@@ -1,6 +1,6 @@
 // fvd_eval.c — see fvd_eval.h.
 //
-// PSNR (luma) is always built. VMAF is built only with -DFVD_VMAF, and even then
+// PSNR/MSE/SSIM (per Y/U/V plane) are always built. VMAF is built only with -DFVD_VMAF, and even then
 // libvmaf is resolved at runtime via dlopen("libvmaf.so.3"); if the library is
 // absent the run still reports PSNR.
 
@@ -18,12 +18,6 @@
 
 // ---- BT.709 full-range RGB -> luma / chroma (both distorted and reference use the
 //      same conversion, so the comparison is consistent regardless of the choice). ----
-static inline int rgb_to_y(int r, int g, int b) {
-  int y = (int)lrintf(0.2126f * r + 0.7152f * g + 0.0722f * b);
-  return y < 0 ? 0 : (y > 255 ? 255 : y);
-}
-
-#ifdef FVD_VMAF
 static inline void rgb_to_yuv(int r, int g, int b, int *yy, int *uu, int *vv) {
   float y = 0.2126f * r + 0.7152f * g + 0.0722f * b;
   int u = (int)lrintf((b - y) / 1.8556f + 128.0f);
@@ -33,7 +27,11 @@ static inline void rgb_to_yuv(int r, int g, int b, int *yy, int *uu, int *vv) {
   *uu = u < 0 ? 0 : (u > 255 ? 255 : u);
   *vv = v < 0 ? 0 : (v > 255 ? 255 : v);
 }
-#endif
+
+// access the y/u/v member of an FVDEvalValue by plane index (0=Y, 1=U, 2=V)
+static inline double *ev_at(FVDEvalValue *val, int plane) {
+  return (plane == 0) ? &val->y : (plane == 1) ? &val->u : &val->v;
+}
 
 #ifdef FVD_VMAF
 // libvmaf entry points resolved via dlsym (no static link).
@@ -64,20 +62,20 @@ typedef struct {
 } VmafState;
 #endif
 
-struct FvdEval {
+struct FVDEval {
   FILE *pipe;          // ffmpeg rgb24 reference stream
   int width, height;
   uint8_t *ref_rgb;    // one reference frame, width*height*3
   int ref_eof;
   char dist_label[64];
   char ref_label[160];
-  uint8_t *dist_y, *ref_y;   // per-frame luma planes (width*height), for MSE / PSNR / SSIM
-  // per-frame metrics, averaged over the compared frames
-  double mse_sum;
-  double psnr_sum;
-  double psnr_min;
-  double ssim_sum;
-  double ssim_min;
+  uint8_t *dist_p[3], *ref_p[3];   // per-frame Y,U,V planes (width*height each), for MSE / PSNR / SSIM
+  // per-frame metrics per plane (Y/U/V), averaged over the compared frames
+  FVDEvalValue mse_sum;
+  FVDEvalValue psnr_sum;
+  FVDEvalValue psnr_min;
+  FVDEvalValue ssim_sum;
+  FVDEvalValue ssim_min;
   unsigned count;      // frames actually compared
 #ifdef FVD_VMAF
   VmafState vmaf;
@@ -86,7 +84,7 @@ struct FvdEval {
 
 // ---------------------------------------------------------------------- VMAF setup
 #ifdef FVD_VMAF
-static void vmaf_setup(FvdEval *e) {
+static void vmaf_setup(FVDEval *e) {
   VmafState *v = &e->vmaf;
   memset(v, 0, sizeof *v);
   v->lib = dlopen("libvmaf.so.3", RTLD_NOW | RTLD_LOCAL);
@@ -126,28 +124,24 @@ static void vmaf_setup(FvdEval *e) {
   v->active = 1;
 }
 
-// fill one allocated YUV444P picture from a packed buffer (stride = bytes/pixel: 4 = RGBA, 3 = RGB)
-static int vmaf_fill(FvdEval *e, VmafPicture *pic, const uint8_t *src, int stride) {
+// fill one allocated YUV444P picture from the already-converted Y,U,V planes
+static int vmaf_fill(FVDEval *e, VmafPicture *pic, uint8_t *const planes[3]) {
   if (e->vmaf.picture_alloc(pic, VMAF_PIX_FMT_YUV444P, 8, e->width, e->height) != 0) return -1;
-  for (int y = 0; y < e->height; y++) {
-    uint8_t *yr = (uint8_t *)pic->data[0] + (size_t)y * pic->stride[0];
-    uint8_t *ur = (uint8_t *)pic->data[1] + (size_t)y * pic->stride[1];
-    uint8_t *vr = (uint8_t *)pic->data[2] + (size_t)y * pic->stride[2];
-    const uint8_t *p = src + (size_t)y * e->width * stride;
-    for (int x = 0; x < e->width; x++, p += stride) {
-      int yy, uu, vv; rgb_to_yuv(p[0], p[1], p[2], &yy, &uu, &vv);
-      yr[x] = (uint8_t)yy; ur[x] = (uint8_t)uu; vr[x] = (uint8_t)vv;
+  for (int pl = 0; pl < 3; pl++) {
+    for (int y = 0; y < e->height; y++) {
+      memcpy((uint8_t *)pic->data[pl] + (size_t)y * pic->stride[pl],
+             planes[pl] + (size_t)y * e->width, e->width);
     }
   }
   return 0;
 }
 
-static void vmaf_push(FvdEval *e, const uint8_t *dist_rgba) {
+static void vmaf_push(FVDEval *e) {
   VmafState *v = &e->vmaf;
   if (!v->active) return;
   VmafPicture ref_pic, dist_pic;
-  if (vmaf_fill(e, &ref_pic, e->ref_rgb, 3) != 0) return;
-  if (vmaf_fill(e, &dist_pic, dist_rgba, 4) != 0) { v->picture_unref(&ref_pic); return; }
+  if (vmaf_fill(e, &ref_pic, e->ref_p) != 0) return;
+  if (vmaf_fill(e, &dist_pic, e->dist_p) != 0) { v->picture_unref(&ref_pic); return; }
   // index = count (already incremented for this frame by the caller, so use count-1)
   if (v->read_pictures(v->ctx, &ref_pic, &dist_pic, e->count - 1) != 0) {
     v->picture_unref(&ref_pic); v->picture_unref(&dist_pic);
@@ -190,7 +184,7 @@ static double ssim_plane(const uint8_t *a, const uint8_t *b, int w, int h) {
 }
 
 // ---------------------------------------------------------------------- public API
-FvdEval *fvd_eval_open(const char *reference_path, int width, int height,
+FVDEval *fvd_eval_open(const char *reference_path, int width, int height,
                        const char *dist_label, const char *ref_label) {
   char cmd[2048];
   // ffmpeg as a CLI tool only (never linked): decode + scale the reference to rgb24.
@@ -200,15 +194,17 @@ FvdEval *fvd_eval_open(const char *reference_path, int width, int height,
   FILE *pipe = popen(cmd, "r");
   if (!pipe) { fprintf(stderr, "fvd_eval: cannot start ffmpeg for reference '%s'\n", reference_path); return NULL; }
 
-  FvdEval *e = (FvdEval *)calloc(1, sizeof *e);
+  FVDEval *e = (FVDEval *)calloc(1, sizeof *e);
   e->pipe = pipe;
   e->width = width;
   e->height = height;
   e->ref_rgb = (uint8_t *)malloc((size_t)width * height * 3);
-  e->dist_y = (uint8_t *)malloc((size_t)width * height);
-  e->ref_y = (uint8_t *)malloc((size_t)width * height);
-  e->psnr_min = 1e30;
-  e->ssim_min = 1e30;
+  for (int pl = 0; pl < 3; pl++) {
+    e->dist_p[pl] = (uint8_t *)malloc((size_t)width * height);
+    e->ref_p[pl]  = (uint8_t *)malloc((size_t)width * height);
+  }
+  e->psnr_min.y = e->psnr_min.u = e->psnr_min.v = 1e30;
+  e->ssim_min.y = e->ssim_min.u = e->ssim_min.v = 1e30;
   snprintf(e->dist_label, sizeof e->dist_label, "%s", dist_label ? dist_label : "stream");
   snprintf(e->ref_label, sizeof e->ref_label, "%s", ref_label ? ref_label : reference_path);
 #ifdef FVD_VMAF
@@ -217,40 +213,45 @@ FvdEval *fvd_eval_open(const char *reference_path, int width, int height,
   return e;
 }
 
-void fvd_eval_push_rgba(FvdEval *e, const uint8_t *rgba) {
+void fvd_eval_push_rgba(FVDEval *e, const uint8_t *rgba) {
   if (!e || e->ref_eof) return;
   size_t need = (size_t)e->width * e->height * 3;
   if (fread(e->ref_rgb, 1, need, e->pipe) != need) { e->ref_eof = 1; return; }
 
-  // build the luma planes once, then derive MSE / PSNR / SSIM from them
+  // convert both frames to Y,U,V planes once, then derive MSE / PSNR / SSIM per plane
   size_t n = (size_t)e->width * e->height;
   const uint8_t *d = rgba, *r = e->ref_rgb;
   for (size_t i = 0; i < n; i++, d += 4, r += 3) {
-    e->dist_y[i] = (uint8_t)rgb_to_y(d[0], d[1], d[2]);
-    e->ref_y[i]  = (uint8_t)rgb_to_y(r[0], r[1], r[2]);
+    int dy, du, dv, ry, ru, rv;
+    rgb_to_yuv(d[0], d[1], d[2], &dy, &du, &dv);
+    rgb_to_yuv(r[0], r[1], r[2], &ry, &ru, &rv);
+    e->dist_p[0][i] = (uint8_t)dy; e->dist_p[1][i] = (uint8_t)du; e->dist_p[2][i] = (uint8_t)dv;
+    e->ref_p[0][i]  = (uint8_t)ry; e->ref_p[1][i]  = (uint8_t)ru; e->ref_p[2][i]  = (uint8_t)rv;
   }
-  double mse = 0.0;
-  for (size_t i = 0; i < n; i++) {
-    int e0 = (int)e->dist_y[i] - (int)e->ref_y[i];
-    mse += (double)e0 * e0;
+  for (int pl = 0; pl < 3; pl++) {
+    double mse = 0.0;
+    for (size_t i = 0; i < n; i++) {
+      int e0 = (int)e->dist_p[pl][i] - (int)e->ref_p[pl][i];
+      mse += (double)e0 * e0;
+    }
+    mse /= (double)n;
+    double psnr = (mse <= 0.0) ? 99.0 : 10.0 * log10((255.0 * 255.0) / mse);
+    if (psnr > 99.0) psnr = 99.0;
+    double ssim = ssim_plane(e->dist_p[pl], e->ref_p[pl], e->width, e->height);
+    *ev_at(&e->mse_sum, pl)  += mse;
+    *ev_at(&e->psnr_sum, pl) += psnr;
+    if (psnr < *ev_at(&e->psnr_min, pl)) *ev_at(&e->psnr_min, pl) = psnr;
+    *ev_at(&e->ssim_sum, pl) += ssim;
+    if (ssim < *ev_at(&e->ssim_min, pl)) *ev_at(&e->ssim_min, pl) = ssim;
   }
-  mse /= (double)n;
-  double psnr = (mse <= 0.0) ? 99.0 : 10.0 * log10((255.0 * 255.0) / mse);
-  if (psnr > 99.0) psnr = 99.0;
-  double ssim = ssim_plane(e->dist_y, e->ref_y, e->width, e->height);
-  e->mse_sum += mse;
-  e->psnr_sum += psnr;
-  if (psnr < e->psnr_min) e->psnr_min = psnr;
-  e->ssim_sum += ssim;
-  if (ssim < e->ssim_min) e->ssim_min = ssim;
   e->count++;
 
 #ifdef FVD_VMAF
-  vmaf_push(e, rgba);
+  vmaf_push(e);
 #endif
 }
 
-void fvd_eval_finish(FvdEval *e) {
+void fvd_eval_finish(FVDEval *e) {
   if (!e) return;
 #ifdef FVD_VMAF
   double vmaf_score = -1.0;
@@ -268,12 +269,17 @@ void fvd_eval_finish(FvdEval *e) {
   if (e->count == 0) {
     printf("  no frames compared (reference shorter than the stream, or read error)\n");
   } else {
+    static const char *const plane_name[3] = { "Y", "U", "V" };
     printf("  frames compared : %u\n", e->count);
-    printf("  MSE-Y  (mean)   : %8.4f\n", e->mse_sum / e->count);
-    printf("  PSNR-Y (mean)   : %6.3f dB\n", e->psnr_sum / e->count);
-    printf("  PSNR-Y (min)    : %6.3f dB\n", e->psnr_min);
-    printf("  SSIM-Y (mean)   : %7.5f\n", e->ssim_sum / e->count);
-    printf("  SSIM-Y (min)    : %7.5f\n", e->ssim_min);
+    printf("  plane    MSE       PSNR(mean)   PSNR(min)    SSIM(mean)  SSIM(min)\n");
+    for (int pl = 0; pl < 3; pl++) {
+      printf("  %-5s  %9.4f  %8.3f dB  %8.3f dB  %9.5f  %9.5f\n", plane_name[pl],
+             *ev_at(&e->mse_sum, pl) / e->count,
+             *ev_at(&e->psnr_sum, pl) / e->count,
+             *ev_at(&e->psnr_min, pl),
+             *ev_at(&e->ssim_sum, pl) / e->count,
+             *ev_at(&e->ssim_min, pl));
+    }
 #ifdef FVD_VMAF
     if (vmaf_score >= 0.0)
       printf("  VMAF (mean)     : %6.3f\n", vmaf_score);
@@ -294,7 +300,6 @@ void fvd_eval_finish(FvdEval *e) {
 #endif
   if (e->pipe) pclose(e->pipe);
   free(e->ref_rgb);
-  free(e->dist_y);
-  free(e->ref_y);
+  for (int pl = 0; pl < 3; pl++) { free(e->dist_p[pl]); free(e->ref_p[pl]); }
   free(e);
 }
