@@ -70,6 +70,7 @@
 #include <SDL2/SDL_vulkan.h>
 #include "fvd_h264.h"   // the H.264 HW-decode path (separate TU)
 #include "avi_writer.h"  // --decode-to OpenDML/AVI export
+#include "fvd_eval.h"    // --eval / --eval-with-reference quality measurement (PSNR, optional VMAF)
 #include "fwa_audio.h"  // the "FWA" wavelet-audio sub-codec (separate TU, linked via the Makefile)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -1065,6 +1066,9 @@ int main(int argc, char **argv) {
       "    --gpu-decode                   force the GPU bidi decode (default; accepted for compatibility)\n"
       "  offline / debug (no window):\n"
       "    --decode-to=<file.avi>         decode the whole stream to an OpenDML AVI (RGB + PCM16) and exit\n"
+      "    --eval                         PSNR/VMAF of the FVD stream vs the embedded H.264 stream, then exit\n"
+      "    --eval-with-reference=<file>   PSNR/VMAF of the FVD stream vs an external reference (mp4/mov/mkv), then exit\n"
+      "                                   (VMAF only when built with 'make fvdplay VMAF=1'; PSNR always)\n"
       "    --verify                       GPU-decode vs CPU-decode PSNR self-check, then exit\n"
       "    --dump                         dump the first decoded frame and exit\n"
       "    --force-scrgb                  force the scRGB FP16 decode path headless (--dump then writes raw RGBA16F)\n",
@@ -1080,6 +1084,9 @@ int main(int argc, char **argv) {
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
   int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
   const char *decode_to_path = NULL; // --decode-to=<file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
+  int eval_mode = 0;                 // --eval: 1 = vs embedded H.264; --eval-with-reference: 2 = vs external file
+  const char *eval_ref_path = NULL;  // --eval-with-reference=<file>: the external reference video
+  FvdEval *eval = NULL;              // the active evaluation run (FVD spatial path vs the reference)
   int dering = 0;   // --dering: smartblur post-pass (lossy SDR). Default = the validated edge-sharpen winner
   float dering_strength = -0.5f, dering_threshold = -15.0f / 255.0f, dering_radius = 1.5f;   // <0 strength = sharpen, <0 thr = edge mode
   for (int a = 2; a < argc; a++) {
@@ -1107,6 +1114,10 @@ int main(int argc, char **argv) {
       decoder_choice = strstr(value, "h264") ? 1 : (strstr(value, "wav") ? 2 : 0);
     } else if (strncmp(argv[a], "--decode-to=", 12) == 0) {
       decode_to_path = argv[a] + 12;
+    } else if (strcmp(argv[a], "--eval") == 0) {
+      eval_mode = 1; decoder_choice = 2;   // FVD spatial path vs the embedded H.264 stream (reference decoded via ffmpeg)
+    } else if (strncmp(argv[a], "--eval-with-reference=", 22) == 0) {
+      eval_mode = 2; eval_ref_path = argv[a] + 22; decoder_choice = 2;   // FVD spatial path vs an external reference file
     } else if (strncmp(argv[a], "--dering", 8) == 0) {
       dering = 1;
       if (argv[a][8] == '=') {   // --dering=strength,threshold255,radius (bare --dering = the -0.5,-15,1.5 winner)
@@ -1116,8 +1127,8 @@ int main(int argc, char **argv) {
       }
     }
   }
-  if (decode_to_path && !force_scrgb) {
-    output_mode = 2;   // export is RGB32 8-bit SDR -> force the SDR (HDR-tonemapped) output path (unless --force-scrgb)
+  if ((decode_to_path || eval_mode) && !force_scrgb) {
+    output_mode = 2;   // export/eval is RGB32 8-bit SDR -> force the SDR (HDR-tonemapped) output path (unless --force-scrgb)
   }
   FILE *file = fopen(argv[1], "rb");
   if (!file) {
@@ -2188,6 +2199,35 @@ int main(int argc, char **argv) {
     printf("decode-to: writing %s (OpenDML AVI, RGB32 + PCM16)\n", decode_to_path);
   }
 
+  // --eval / --eval-with-reference: compare each decoded FVD frame against a reference
+  // (an external file, or the embedded H.264 stream decoded via ffmpeg) — no AVI detour.
+  char eval_tmp_h264[64] = {0};
+  if (eval_mode) {
+    const char *ref_path;
+    char ref_label[256];
+    if (eval_mode == 1) {   // reference = the embedded H.264 stream, extracted to a temp file for ffmpeg
+      if (header.h264_size == 0) {
+        die("--eval needs an embedded H.264 stream (this container has none); use --eval-with-reference=<file>");
+      }
+      snprintf(eval_tmp_h264, sizeof eval_tmp_h264, "/tmp/fvdeval_ref.h264");
+      FILE *hf = fopen(eval_tmp_h264, "wb");
+      if (!hf) die("--eval: cannot create temp H.264 file");
+      uint8_t *hb = checked_malloc(header.h264_size);
+      fseeko(file, (off_t)header.h264_offset, SEEK_SET);
+      if (fread(hb, 1, header.h264_size, file) != header.h264_size) die("--eval: H.264 stream read");
+      fwrite(hb, 1, header.h264_size, hf);
+      free(hb);
+      fclose(hf);
+      ref_path = eval_tmp_h264;
+      snprintf(ref_label, sizeof ref_label, "embedded H.264");
+    } else {                // reference = external file
+      ref_path = eval_ref_path;
+      snprintf(ref_label, sizeof ref_label, "%s", eval_ref_path);
+    }
+    eval = fvd_eval_open(ref_path, width, height, "fvd (dct/wavelet)", ref_label);
+    if (!eval) die("--eval: cannot open the reference");
+  }
+
   // ---- headless verify setup (--verify) ----
   VkBuffer readback_buffer = 0;
   VkDeviceMemory readback_memory = 0;
@@ -2197,7 +2237,7 @@ int main(int argc, char **argv) {
   int32_t *cpu_previous[MAX_PLANES] = { 0, 0, 0 };   // CPU P-frame coefficient reference (mirrors the GPU's)
   double verify_sum = 0;
   int verify_low = 0, verify_count = 0;
-  if (verify || decode_to_path) {   // both need the per-frame readback of the decoded image
+  if (verify || decode_to_path || eval_mode) {   // verify/decode-to/eval all need the per-frame readback of the decoded image
     create_buffer((size_t)pixel_count * (use_scrgb_output ? 8 : 4), HOST_VISIBLE_COHERENT, &readback_buffer, &readback_memory);   // rgba16f vs rgba8
     VK_CHECK(vkMapMemory(device, readback_memory, 0, VK_WHOLE_SIZE, 0, &readback_map));
   }
@@ -2637,7 +2677,7 @@ int main(int argc, char **argv) {
     }
 
     uint32_t swapchain_index = 0;
-    if (!verify && !decode_to_path) {   // decode-to is headless too: no swapchain acquire / present
+    if (!verify && !decode_to_path && !eval_mode) {   // decode-to/eval are headless too: no swapchain acquire / present
       if (need_recreate) {   // window was resized / surface went out of date: rebuild the swapchain
         extent = recreate_swapchain(device, physical_device, surface, surface_format,
                                     &swapchain, &swapchain_images, &swapchain_image_count);
@@ -3650,7 +3690,7 @@ int main(int argc, char **argv) {
     // optional alpha: composite the decoded alpha over a checkerboard / solid color IN-PLACE in decode_image, while it
     // is STILL in GENERAL (just written by the color shader -> a clean SHADER_WRITE -> SHADER_READ barrier). rgba8 only,
     // WINDOW present only (the --verify / --decode-to / --dump headless paths keep the raw decode). 'G' toggles the bg.
-    if (g_has_alpha && !use_scrgb_output && !(verify || decode_to_path)) {
+    if (g_has_alpha && !use_scrgb_output && !(verify || decode_to_path || eval_mode)) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
       struct { int32_t width, height, mode, premultiplied; float checker_size, color_r, color_g, color_b; } comp_push = {
@@ -3695,7 +3735,7 @@ int main(int argc, char **argv) {
     }
     }   // end of the non-B (GPU wavelet decode + color) path; the B-stream upload above already left decode_image in TRANSFER_SRC
 
-    if (verify || decode_to_path) {
+    if (verify || decode_to_path || eval_mode) {
       // Headless: copy the decoded image out; verify compares to the CPU ref, decode-to writes the AVI; no present.
       VkBufferImageCopy copy = { 0 };
       copy.imageSubresource = (VkImageSubresourceLayers){ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
@@ -3746,6 +3786,9 @@ int main(int argc, char **argv) {
       }
       if (decode_to_path) {   // --decode-to: write this decoded frame (RGBA8 SDR) to the OpenDML AVI
         avi_video_frame(avi, gpu_rgba);
+      }
+      if (eval) {   // --eval / --eval-with-reference: compare this decoded frame against the reference
+        fvd_eval_push_rgba(eval, gpu_rgba);
       }
       if (verify && !has_bframes) {   // B-stream: decode_image already IS the CPU decode_frame_bidi output -> validate via --decode-to + external PSNR
         if (mode_3ddwt) {
@@ -3908,6 +3951,11 @@ int main(int argc, char **argv) {
     double n = (double)loop_count;
     printf("present-loop over %ld frames: total %.2f ms/f [fence-wait %.2f + pace-wait/idle %.2f + acquire %.2f + queue-drain/GPU+vsync %.2f] | slowest fence frame %d (type %d) %.2f ms\n",
            loop_count, loop_total_ms / n, loop_fence_ms / n, loop_pace_ms / n, loop_acquire_ms / n, loop_drain_ms / n, loop_max_frame, loop_max_type, loop_max_ms);
+  }
+  if (eval) {
+    fvd_eval_finish(eval);
+    if (eval_tmp_h264[0]) remove(eval_tmp_h264);
+    return 0;
   }
   if (decode_to_path) {
     avi_close(avi);

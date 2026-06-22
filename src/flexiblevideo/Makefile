@@ -6,6 +6,15 @@ CC     ?= cc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-function -std=c11 -ftrivial-auto-var-init=zero
 GLSLC  ?= glslc
 
+# VMAF in fvdplay's --eval / --eval-with-reference: build with 'make fvdplay VMAF=1'.
+# libvmaf is loaded at runtime via dlopen (never statically linked) — this only adds the
+# headers (for the structs) + -ldl, so fvdplay still builds and runs (PSNR only) without
+# the libvmaf development package.
+ifdef VMAF
+EVAL_CFLAGS = -DFVD_VMAF $(shell pkg-config --cflags libvmaf 2>/dev/null)
+EVAL_LIBS   = -ldl
+endif
+
 SPV = shaders/bitplane_unpack.spv shaders/dequant97.spv shaders/transpose_f.spv \
       shaders/pthresh.spv \
       shaders/idwt97row.spv shaders/round97.spv shaders/color.spv \
@@ -59,8 +68,8 @@ fvddec: fvddec.c fvdref.c $(SPV)
 fvdenc: fvdenc.c fvdref.c fwa_audio.c fwa_audio.h $(SPV)
 	$(CC) $(CFLAGS) -DFWA_NO_MAIN -Wno-missing-field-initializers -o $@ fvdenc.c fwa_audio.c -lvulkan -lm
 
-fvdplay: fvdplay.c fvdref.c fwa_audio.c fwa_audio.h fvd_h264.c fvd_h264.h avi_writer.c avi_writer.h stb_vorbis.c $(SPV)
-	$(CC) $(CFLAGS) -DFWA_NO_MAIN -Wno-missing-field-initializers $(shell pkg-config --cflags sdl2) -o $@ fvdplay.c fvd_h264.c avi_writer.c fwa_audio.c $(shell pkg-config --libs sdl2) -lvulkan -lm
+fvdplay: fvdplay.c fvdref.c fwa_audio.c fwa_audio.h fvd_h264.c fvd_h264.h fvd_eval.c fvd_eval.h avi_writer.c avi_writer.h stb_vorbis.c $(SPV)
+	$(CC) $(CFLAGS) -DFWA_NO_MAIN -Wno-missing-field-initializers $(EVAL_CFLAGS) $(shell pkg-config --cflags sdl2) -o $@ fvdplay.c fvd_h264.c avi_writer.c fwa_audio.c fvd_eval.c $(shell pkg-config --libs sdl2) -lvulkan -lm $(EVAL_LIBS)
 
 # standalone FWA audio CLI (test/enc/dec) — built WITHOUT -DFWA_NO_MAIN so fwa_audio.c's own main() is active
 fwa: fwa_audio.c fwa_audio.h
