@@ -153,7 +153,7 @@ typedef struct {
   uint8_t  type;        // 0 = I, 1 = P, 2 = B
   uint8_t  quality;
   uint8_t  temporal_id; // hierarchy level (QP-cascading / temporal scalability)
-  uint8_t  pad;
+  uint8_t  alpha_mv_mode; // per-frame: 0 = alpha used the shared luma MVs, 1 = alpha carries its OWN MVs (in the alpha section)
 } FrameEntry;           // 28 bytes
 #pragma pack(pop)
 
@@ -1147,7 +1147,7 @@ static void bstream_decode_until(BStream *bs, int target_poc) {
     bs->rgb[entry->poc] = checked_malloc(bs->frame_bytes);
     cdef_load_frame((uint32_t)c);   // coding-order strengths so the CPU B-decode deringes bit-exactly like the GPU
     decode_frame_bidi(bs->payload, payload_length, bs->width, bs->height, bs->levels, entry->quality,
-                      ref0, ref1, weight0, weight1, &bs->dpb[c * MAX_PLANES], bs->rgb[entry->poc], (int)entry->pad);   // pad = alpha_mv_mode
+                      ref0, ref1, weight0, weight1, &bs->dpb[c * MAX_PLANES], bs->rgb[entry->poc], (int)entry->alpha_mv_mode);
     bs->cursor++;
     // Evict DPB entries no longer referenced by any future frame (the RGB display copy is separate).
     for (int x = bs->evict_low; x < bs->cursor; x++) {
@@ -1603,8 +1603,9 @@ int main(int argc, char **argv) {
   VkBuffer data_buffer, offset_buffer[MAX_PLANES], coeff_buffer[MAX_PLANES], scratch_buffer, step_buffer[MAX_PLANES];   // step is per-plane (chroma subsampled -> its own subband layout)
   VkBuffer previous_buffer[MAX_PLANES];   // P-frame coefficient reference, GPU-resident across frames
   VkBuffer mv_buffer;            // motion: per-16x16-block [mv_x, mv_y] (half-pel); all-zero when there is no motion
+  VkBuffer alpha_mv_buffer = 0;  // own-alpha-MV: the alpha plane's OWN per-block MV field (used instead of mv_buffer when FrameEntry.alpha_mv_mode == 1)
   VkDeviceMemory data_memory, offset_memory[MAX_PLANES], coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES];
-  VkDeviceMemory previous_memory[MAX_PLANES], mv_memory;
+  VkDeviceMemory previous_memory[MAX_PLANES], mv_memory, alpha_mv_memory = 0;
   VkBuffer table_buffer[MAX_PLANES];        // DCT path: per-plane flattened rANS frequency table (norm+cum+slot)
   VkDeviceMemory table_memory[MAX_PLANES];
   create_buffer(data_capacity, HOST_VISIBLE_COHERENT, &data_buffer, &data_memory);
@@ -1664,6 +1665,9 @@ int main(int argc, char **argv) {
   create_buffer(((scratch_side * scratch_side) * 4), DEVICE_LOCAL, &scratch_buffer, &scratch_memory);
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
+  if (g_has_alpha) {   // own-alpha-MV: a parallel host-visible MV buffer for the alpha plane's own MVs (full-res -> same block grid as luma)
+    create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv_buffer, &alpha_mv_memory);
+  }
 
   // Adaptive quadtree (g_quadtree from the header color_flags bit3): per-plane partition map, one byte per 32x32
   // region (ceil grid), uploaded per frame for the GPU quadtree decode path. 4:4:4 only, so all planes share the
@@ -1708,9 +1712,13 @@ int main(int argc, char **argv) {
     }
   }
 
-  void *data_map, *offset_map[MAX_PLANES], *step_map[MAX_PLANES], *table_map[MAX_PLANES], *mv_map;
+  void *data_map, *offset_map[MAX_PLANES], *step_map[MAX_PLANES], *table_map[MAX_PLANES], *mv_map, *alpha_mv_map = 0;
   VK_CHECK(vkMapMemory(device, mv_memory, 0, VK_WHOLE_SIZE, 0, &mv_map));
   memset(mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // all-zero MVs (mc_prev == prev when there is no motion)
+  if (g_has_alpha) {   // own-alpha-MV host map (filled per frame from the alpha section's MV blob when alpha_mv_mode == 1)
+    VK_CHECK(vkMapMemory(device, alpha_mv_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv_map));
+    memset(alpha_mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
+  }
   VK_CHECK(vkMapMemory(device, data_memory, 0, VK_WHOLE_SIZE, 0, &data_map));
   for (int plane = 0; plane < g_num_planes; plane++) {
     VK_CHECK(vkMapMemory(device, offset_memory[plane], 0, VK_WHOLE_SIZE, 0, &offset_map[plane]));
@@ -1901,11 +1909,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 297 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3); + 3D-DWT alpha prefetch (unpack/dequant/2 transpose/row = 10) + temporal[2][3] (2) + MCTF mc/add[3] (5)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 300 },   // +3 for the own-alpha-MV I/P set_mc_play_alpha_own; raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3); + 3D-DWT alpha prefetch (unpack/dequant/2 transpose/row = 10) + temporal[2][3] (2) + MCTF mc/add[3] (5)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 155;   // +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3]) + 3D-DWT alpha (5 prefetch + 2 temporal + 2 MCTF = 9)   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 156;   // +1 own-alpha-MV I/P set_mc_play_alpha_own; +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3]) + 3D-DWT alpha (5 prefetch + 2 temporal + 2 MCTF = 9)   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1913,6 +1921,7 @@ int main(int argc, char **argv) {
 
   VkDescriptorSet set_unpack[MAX_PLANES], set_rans_unpack[MAX_PLANES], set_dequant[MAX_PLANES], set_add[MAX_PLANES], set_coeff_to_scratch[MAX_PLANES], set_scratch_to_coeff[MAX_PLANES], set_row[MAX_PLANES];
   VkDescriptorSet set_mc_play[MAX_PLANES], set_motion_add_play[MAX_PLANES];   // motion (mc_prev reuses scratch_buffer, transient per plane)
+  VkDescriptorSet set_mc_play_alpha_own = 0;   // own-alpha-MV: alpha mc bound to alpha_mv_buffer (selected at dispatch when alpha_mv_mode == 1)
   VkDescriptorSet set_cdef_play[MAX_PLANES] = { 0 };   // --cdef: in-loop dering of previous_buffer[plane] (mirrors the encoder)
   VkDescriptorSet set_apply_aq[MAX_PLANES] = { 0 };   // AQ (GPU): { base_step, tile_codes, weight_lut, modulated_step = step_buffer }
   VkDescriptorSet set_rans_unpack_qt[MAX_PLANES] = { 0 };   // quadtree rANS: { data, offset, coeff, table, partition }
@@ -1979,6 +1988,8 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_row[3], (VkBuffer[]){ coeff_buffer[3] }, 1);
     set_mc_play[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // inter-alpha: motion-compensate the previous alpha with the SHARED luma MVs -> scratch
     bind_storage_buffers(set_mc_play[3], (VkBuffer[]){ previous_buffer[3], mv_buffer, scratch_buffer }, 3);
+    set_mc_play_alpha_own = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // own-alpha-MV: same mc, but bound to alpha_mv_buffer (the alpha's own MVs)
+    bind_storage_buffers(set_mc_play_alpha_own, (VkBuffer[]){ previous_buffer[3], alpha_mv_buffer, scratch_buffer }, 3);
     set_motion_add_play[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // inter-alpha: coeff[3] (residual) += scratch (mc pred); recon -> previous_buffer[3] (next ref)
     bind_storage_buffers(set_motion_add_play[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer, previous_buffer[3] }, 3);
   }
@@ -2824,9 +2835,22 @@ int main(int argc, char **argv) {
         int alpha_qp;
         const uint8_t *alpha_table;
         uint32_t alpha_table_length, alpha_data_length;
-        const uint8_t *alpha_data = parse_alpha_section(alpha_section_start, ip_frame_len - (size_t)(alpha_section_start - frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
+        int alpha_own = (index[frame_index].alpha_mv_mode == 1);   // own-alpha-MV frame: the section carries an MV blob right after alpha_qp
+        const uint8_t *alpha_mv_blob = NULL;
+        uint32_t alpha_mv_blob_length = 0;
+        const uint8_t *alpha_data = parse_alpha_section(alpha_section_start, ip_frame_len - (size_t)(alpha_section_start - frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, alpha_own, &alpha_mv_blob, &alpha_mv_blob_length);
         if (!alpha_data) {
           die("corrupt alpha section");
+        }
+        if (alpha_own && alpha_mv_blob_length) {   // decode the alpha's OWN MVs -> alpha_mv_map (full grid, non-variable, like the encoder); bound via set_mc_play_alpha_own
+          if (g_mv_codec == 1) {
+            mv_blob_decode_range(alpha_mv_blob, alpha_mv_blob_length, 0, NULL, 0, mv0_scratch, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+          } else {
+            BitReader alpha_mv_reader;
+            bitreader_init(&alpha_mv_reader, alpha_mv_blob, alpha_mv_blob_length);
+            decode_motion_vectors(&alpha_mv_reader, mv0_scratch, motion_blocks_x, motion_blocks_y);
+          }
+          memcpy(alpha_mv_map, mv0_scratch, (size_t)((motion_blocks_x * motion_blocks_y) * 2) * 4);
         }
         memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
         alpha_section_data_length = alpha_data_length;
@@ -3941,8 +3965,10 @@ int main(int argc, char **argv) {
         if (predictive && (header.prediction_method == 1)) {
           if (is_predicted) {
             int32_t a_mc_push[3] = { aw, ah, motion_blocks_x };
+            // own-alpha-MV (alpha_mv_mode == 1): warp the previous alpha with the alpha's OWN MVs (alpha_mv_buffer); else the shared luma mv_buffer.
+            VkDescriptorSet a_mc_set = (index[frame_index].alpha_mv_mode == 1) ? set_mc_play_alpha_own : set_mc_play[3];
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
-            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_mc_play[3], 0, 0);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &a_mc_set, 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, a_mc_push);
             vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
             memory_barrier();
@@ -4051,7 +4077,7 @@ int main(int argc, char **argv) {
         // verify) from the CPU oracle, which parses + walks the partition section. Windowed present + a real
         // GPU quadtree decoder are the follow-up (sub-step 4b).
         cdef_load_frame(frame_index);
-        decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, 0);   // alpha_mv_mode: FrameEntry.pad wiring = step 5
+        decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, (int)index[frame_index].alpha_mv_mode);   // own-alpha-MV: shared (0) or own (1) per the FrameEntry
         memcpy(gpu_rgba, cpu_rgb, frame_bytes);
       }
       if (dump_first_frame && (frame_index == 0)) {   // dump GPU-decoded frame 0 (--dump): raw RGBA16F when scRGB, else 8-bit PPM
@@ -4092,7 +4118,7 @@ int main(int argc, char **argv) {
           memcpy(cpu_rgb, cpu_gop_rgb[frame_index - cur_gop_start], frame_bytes);   // CPU reference from the per-GOP decode above
         } else if (header.prediction_method == 1) {
           cdef_load_frame(frame_index);   // load this frame's CDEF strengths so the CPU decode deringes bit-exactly like the GPU
-          decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, 0);   // alpha_mv_mode: FrameEntry.pad wiring = step 5
+          decode_frame_colordiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted, (int)index[frame_index].alpha_mv_mode);   // own-alpha-MV: shared (0) or own (1) per the FrameEntry
         } else {
           decode_frame_coefdiff(frame_buffer, ip_frame_len, width, height, levels, current_quality, cpu_rgb, predictive ? cpu_previous : NULL, is_predicted);
         }

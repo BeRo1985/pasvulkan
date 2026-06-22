@@ -671,7 +671,7 @@ typedef struct {
   uint8_t  type;        // 0 = I, 1 = P, 2 = B
   uint8_t  quality;
   uint8_t  temporal_id; // hierarchy level (QP-cascading / temporal scalability) — future-proof
-  uint8_t  pad;
+  uint8_t  alpha_mv_mode; // per-frame: 0 = alpha used the shared luma MVs, 1 = alpha carries its OWN MVs (in the alpha section)
 } FrameEntry;           // 28 bytes
 #pragma pack(pop)
 
@@ -1156,7 +1156,7 @@ static size_t fwrite_frame(FILE *file, const uint8_t *payload, size_t length) {
 // coding order). Returns the coding index used; grows *index as needed; the caller frees the payload.
 static long bframe_append(FILE *file, FrameEntry **index, long *capacity, long coding_index,
                           const uint8_t *payload, size_t length, uint32_t poc,
-                          int32_t ref0, int32_t ref1, uint8_t type, uint8_t quality, uint8_t temporal_id) {
+                          int32_t ref0, int32_t ref1, uint8_t type, uint8_t quality, uint8_t temporal_id, int alpha_mv_mode) {
   if (coding_index >= *capacity) {
     *capacity = (*capacity) ? (*capacity * 2) : 256;
     *index = realloc(*index, (size_t)(*capacity) * sizeof(FrameEntry));
@@ -1172,7 +1172,7 @@ static long bframe_append(FILE *file, FrameEntry **index, long *capacity, long c
   entry->type = type;
   entry->quality = quality;
   entry->temporal_id = temporal_id;
-  entry->pad = 0;
+  entry->alpha_mv_mode = (uint8_t)alpha_mv_mode;   // 0 = shared luma MVs, 1 = own alpha MVs (in the alpha section)
   entry->size = (uint32_t)fwrite_frame(file, payload, length);
   return coding_index;
 }
@@ -1237,9 +1237,10 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
     }
     // ---- the stream's leading I-frame (poc 0, no references) ----
     uint8_t *payload;
-    size_t length = encode_frame_bidi(rgb_slot[0], width, height, levels, quality, NULL, NULL, 0, 0, dpb[0], &payload, NULL);   // own-alpha-MV wiring = step 5
+    int b_alpha_mode = 0;   // own-alpha-MV: encode_frame_bidi RD-picks 0=shared / 1=own per frame (0 for the intra I anchor)
+    size_t length = encode_frame_bidi(rgb_slot[0], width, height, levels, quality, NULL, NULL, 0, 0, dpb[0], &payload, &b_alpha_mode);
     dpb_coding[0] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
-                                  0, -1, -1, 0, (uint8_t)quality, 0);
+                                  0, -1, -1, 0, (uint8_t)quality, 0, b_alpha_mode);
     free(payload);
     total_bytes += length;
     frame_index++;
@@ -1270,14 +1271,14 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
 
       // ---- the hi anchor: an I-refresh (seek point) or a P from the lo anchor ----
       if (is_key) {
-        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, NULL, NULL, 0, 0, dpb[hi], &payload, NULL);   // own-alpha-MV wiring = step 5
+        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, NULL, NULL, 0, 0, dpb[hi], &payload, &b_alpha_mode);
         dpb_coding[hi] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
-                                       (uint32_t)hi_poc, -1, -1, 0, (uint8_t)quality, 0);
+                                       (uint32_t)hi_poc, -1, -1, 0, (uint8_t)quality, 0, b_alpha_mode);
         i_count++;
       } else {
-        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, dpb[0], NULL, 256, 0, dpb[hi], &payload, NULL);   // own-alpha-MV wiring = step 5
+        length = encode_frame_bidi(rgb_slot[hi], width, height, levels, quality, dpb[0], NULL, 256, 0, dpb[hi], &payload, &b_alpha_mode);
         dpb_coding[hi] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
-                                       (uint32_t)hi_poc, (int32_t)dpb_coding[0], -1, 1, (uint8_t)quality, 0);
+                                       (uint32_t)hi_poc, (int32_t)dpb_coding[0], -1, 1, (uint8_t)quality, 0, b_alpha_mode);
         p_count++;
       }
       free(payload);
@@ -1290,10 +1291,10 @@ static void encode_bframe_stream(FILE *input_pipe, FILE *container_file, FrameEn
       for (int s = 0; s < count; s++) {
         int lp = steps[s].poc, r0 = steps[s].ref0, r1 = steps[s].ref1;
         length = encode_frame_bidi(rgb_slot[lp], width, height, levels, quality,
-                                   dpb[r0], dpb[r1], steps[s].weight0, steps[s].weight1, dpb[lp], &payload, NULL);   // own-alpha-MV wiring = step 5
+                                   dpb[r0], dpb[r1], steps[s].weight0, steps[s].weight1, dpb[lp], &payload, &b_alpha_mode);
         dpb_coding[lp] = bframe_append(container_file, index, index_capacity, frame_index, payload, length,
                                        (uint32_t)(lo + lp), (int32_t)dpb_coding[r0], (int32_t)dpb_coding[r1],
-                                       2, (uint8_t)quality, (uint8_t)steps[s].temporal_id);
+                                       2, (uint8_t)quality, (uint8_t)steps[s].temporal_id, b_alpha_mode);
         free(payload);
         total_bytes += length;
         frame_index++;
@@ -2812,6 +2813,7 @@ int main(int argc, char **argv) {
       int is_predicted = !is_key;   // keyframes reset the prediction chain (is_predicted = 0)
       uint8_t *frame_payload = NULL;
       size_t total;
+      int cpu_alpha_mv_mode = 0;   // own-alpha-MV: the CPU oracle (encode_frame_colordiff) RD-picks 0=shared / 1=own per frame
       if (((((((gpu_encode && !is_predicted) && (g_chroma_format == 0)) && !hdr_mode) && !g_quadtree) && !g_deblock) && !lossless) && !g_has_alpha) {   // GPU encode has no partition/deblock/lossless/alpha path -> quadtree+deblock+Q0+alpha use the CPU encoder (lossless = bit-plane, the GPU all-intra path is rANS-only + appends no alpha section)
         // ---- GPU forward path: color -> dct_fwd -> quant on the GPU, then CPU rANS ----
         memcpy(rgb_map, frame_rgb, frame_bytes);
@@ -2927,7 +2929,7 @@ int main(int argc, char **argv) {
           free(gpu_table[plane]);
         }
       } else {
-        total = encode_frame_colordiff(frame_rgb, width, height, levels, quality, &frame_payload, prev_ycocg, is_predicted, NULL);   // own-alpha-MV wiring = step 5
+        total = encode_frame_colordiff(frame_rgb, width, height, levels, quality, &frame_payload, prev_ycocg, is_predicted, &cpu_alpha_mv_mode);   // CPU oracle: RD-pick shared vs own alpha MVs
       }
       if (output) {
         if (frame_index >= index_capacity) {
@@ -2945,10 +2947,11 @@ int main(int argc, char **argv) {
         index[frame_index].ref0 = is_predicted ? ((int32_t)frame_index - 1) : -1;
         index[frame_index].ref1 = -1;
         index[frame_index].temporal_id = 0;
+        index[frame_index].alpha_mv_mode = (uint8_t)cpu_alpha_mv_mode;   // 0 = shared luma MVs, 1 = own alpha MVs
         index[frame_index].size = (uint32_t)fwrite_frame(container_file, frame_payload, total);
         predicted_frames += is_predicted;
       } else {
-        decode_frame_colordiff(frame_payload, total, width, height, levels, quality, recon_rgb, decode_prev, is_predicted, 0);
+        decode_frame_colordiff(frame_payload, total, width, height, levels, quality, recon_rgb, decode_prev, is_predicted, cpu_alpha_mv_mode);
         double mean_squared_error = 0;
         for (size_t i = 0; i < frame_bytes; i++) {
           if ((i % (size_t)g_channels) >= 3) {
@@ -3622,7 +3625,7 @@ int main(int argc, char **argv) {
           index[frame_index].ref0 = -1;                            // open-loop GOP — no inter-frame references
           index[frame_index].ref1 = -1;
           index[frame_index].temporal_id = 0;
-          index[frame_index].pad = 0;
+          index[frame_index].alpha_mv_mode = 0;   // GPU-native 3D-DWT alpha = shared luma MVs (own-MV = step 5e)
           index[frame_index].size = (uint32_t)fwrite_frame(container_file, gop_encoded[f], gop_encoded_length[f]);
           if (g_cdef) {   // the per-frame CDEF strengths chosen by the search, in coding order
             cdef_table[(frame_index * 4) + 0] = gop_cdef[f][0];
@@ -5447,7 +5450,7 @@ int main(int argc, char **argv) {
       if (output && use_bframes) {
         // B-stream: write the explicit coding-order index entry (poc + L0/L1 coding-order refs + temporal_id).
         bframe_append(container_file, &index, &index_capacity, frame_index, frame, total,
-                      b_poc, b_ref0_coding, b_ref1_coding, (uint8_t)b_type, (uint8_t)frame_quality, (uint8_t)b_tid);
+                      b_poc, b_ref0_coding, b_ref1_coding, (uint8_t)b_type, (uint8_t)frame_quality, (uint8_t)b_tid, 0);   // GPU-native B alpha = shared luma MVs (own-MV = step 5e)
         if (g_cdef) {   // store this B-frame's chosen CDEF strengths in coding order (bframe_append grew index_capacity if needed)
           cdef_table = realloc(cdef_table, (size_t)index_capacity * 4);
           if (!cdef_table) {
@@ -5489,7 +5492,7 @@ int main(int argc, char **argv) {
         index[frame_index].ref0 = is_predicted ? ((int32_t)frame_index - 1) : -1;   // P predicts from the previous frame
         index[frame_index].ref1 = -1;                                    // single forward reference (no L1)
         index[frame_index].temporal_id = 0;
-        index[frame_index].pad = 0;
+        index[frame_index].alpha_mv_mode = 0;   // GPU-native I/P alpha = shared luma MVs (own-MV = step 5e)
         if (g_cdef) {   // the per-frame CDEF strengths chosen by the search after this frame's reconstruct
           cdef_table[(frame_index * 4) + 0] = cdef_strengths[0];
           cdef_table[(frame_index * 4) + 1] = cdef_strengths[1];
