@@ -1498,6 +1498,8 @@ int main(int argc, char **argv) {
       "  alpha (optional 8-bit plane, from an RGBA source):\n"
       "    --alpha                        encode the alpha plane (appended per frame; non-alpha streams stay byte-identical)\n"
       "    --alpha-qp=<N>                 alpha quant step (-1 = follow the color quality; default -1)\n"
+      "    --alpha-mv=<luma|cpu-rd|sad|own>  alpha motion: luma=share luma MVs (default); cpu-rd=per-frame own/shared by actual bytes; sad=own by MC-SAD heuristic; own=always own alpha MVs\n"
+      "    --alpha-sad-lambda=<N>         --alpha-mv=sad tuning: each own-MV-blob byte costs N residual-SAD units (default 16)\n"
       "    --alpha-bleed[=<N>]            dilate opaque RGB into the transparent pixels before the transform (less fringing; =N caps the passes, 0 = until done)\n"
       "  audio:\n"
       "    --audio=vorbis|qoa|rpcm|fwa    audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
@@ -1569,6 +1571,25 @@ int main(int argc, char **argv) {
       g_has_alpha = 1;             // encode the optional alpha plane (ColorFlags bit2, appended section per frame)
     } else if (!strncmp(argv[i], "--alpha-qp=", 11)) {
       g_alpha_qp = atoi(argv[i] + 11);   // alpha quant (-1 = follow the color QP)
+    } else if (!strncmp(argv[i], "--alpha-mv=", 11)) {   // own-alpha-MV strategy: luma (default) | cpu-rd | sad | own
+      const char *v = argv[i] + 11;
+      if (!strcmp(v, "luma")) {
+        g_alpha_mv_strategy = ALPHA_MV_LUMA;
+      } else if ((!strcmp(v, "cpu-rd")) || (!strcmp(v, "cpurd"))) {
+        g_alpha_mv_strategy = ALPHA_MV_CPURD;
+      } else if (!strcmp(v, "sad")) {
+        g_alpha_mv_strategy = ALPHA_MV_SAD;
+        const char *lambda_env = getenv("FVD_ALPHA_SAD_LAMBDA");   // optional fallback; --alpha-sad-lambda overrides
+        if (lambda_env) {
+          g_alpha_mv_sad_lambda = atoi(lambda_env);
+        }
+      } else if (!strcmp(v, "own")) {
+        g_alpha_mv_strategy = ALPHA_MV_OWN;
+      } else {
+        die("--alpha-mv expects luma | cpu-rd | sad | own");
+      }
+    } else if (!strncmp(argv[i], "--alpha-sad-lambda=", 19)) {
+      g_alpha_mv_sad_lambda = atoi(argv[i] + 19);   // --alpha-mv=sad tuning: each own-MV-blob byte costs this many residual-SAD units (overrides FVD_ALPHA_SAD_LAMBDA)
     } else if (!strncmp(argv[i], "--alpha-bleed", 13)) {
       g_alpha_bleed = 1;              // dilate opaque RGB into the transparent pixels before the transform (no fringing / cheaper edge blocks)
       if (argv[i][13] == '=') {
@@ -2085,6 +2106,15 @@ int main(int argc, char **argv) {
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_prev_buffer, &mv_prev_memory);
+  // own-alpha-MV (GPU-native --alpha-mv != luma): the alpha plane's OWN MV field, uploaded host-side and bound into the
+  // alpha mc instead of the shared luma mv_buffer when the frame chooses own. (CPU alpha-ME on source alphas decides.)
+  VkBuffer alpha_mv_buffer = 0;
+  VkDeviceMemory alpha_mv_memory = 0;
+  void *alpha_mv_map = 0;
+  if (g_has_alpha) {
+    create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv_buffer, &alpha_mv_memory);
+    VK_CHECK(vkMapMemory(device, alpha_mv_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv_map));
+  }
   if (g_mv_predict_spatial) {
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_refine_buffer, &mv_refine_memory);
   }
@@ -2304,9 +2334,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 793 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha I/P set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers) + inter-alpha B set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] (15 buffers) + 3D-DWT alpha set_temporal[3] (1) + MCTF alpha set_mctf_mc[3]/set_mctf_diff[3] (6)
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 796 };   // +3 own-alpha-MV set_mc_alpha_own; + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha I/P set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers) + inter-alpha B set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] (15 buffers) + 3D-DWT alpha set_temporal[3] (1) + MCTF alpha set_mctf_mc[3]/set_mctf_diff[3] (6)
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 212;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha I/P (3 sets) + inter-alpha B (set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] = 5 sets) + 3D-DWT alpha (set_temporal[3] + MCTF set_mctf_mc[3]/set_mctf_diff[3] = 3 sets)
+  pool_info.maxSets = 213;   // +1 own-alpha-MV set_mc_alpha_own; + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha I/P (3 sets) + inter-alpha B (set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] = 5 sets) + 3D-DWT alpha (set_temporal[3] + MCTF set_mctf_mc[3]/set_mctf_diff[3] = 3 sets)
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -2383,11 +2413,14 @@ int main(int argc, char **argv) {
   // Alpha plane 3: the extract set (rgb -> coeff[3]) + the same intra sets as the color planes, plus the motion sets
   // for inter alpha (P-frames). Alpha is full-res, so it reuses the SHARED luma mv_buffer directly (no scaling).
   VkDescriptorSet set_extract_alpha = 0;
+  VkDescriptorSet set_mc_alpha_own = 0;   // own-alpha-MV: same as set_mc[3] but bound to alpha_mv_buffer (the alpha's own MVs)
   if (g_has_alpha) {
     set_extract_alpha = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_extract_alpha, (VkBuffer[]){ rgb_buffer, coeff_buffer[3] }, 2);
     set_mc[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // mc(previous_alpha, shared luma MVs) -> difference_buffer[3]
     bind_storage_buffers(set_mc[3], (VkBuffer[]){ previous_buffer[3], mv_buffer, difference_buffer[3] }, 3);
+    set_mc_alpha_own = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // mc(previous_alpha, OWN alpha MVs) -> difference_buffer[3]
+    bind_storage_buffers(set_mc_alpha_own, (VkBuffer[]){ previous_buffer[3], alpha_mv_buffer, difference_buffer[3] }, 3);
     set_ycocg_mc[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);   // residual = alpha - mc (coeff[3] -= difference[3])
     bind_storage_buffers(set_ycocg_mc[3], (VkBuffer[]){ coeff_buffer[3], difference_buffer[3] }, 2);
     set_motion_add[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // closed loop: recon = residual + mc -> coeff[3] AND previous_buffer[3]
@@ -2623,6 +2656,12 @@ int main(int argc, char **argv) {
   size_t frame_bytes = (size_t)pixel_count * g_channels * (hdr_mode ? 2 : 1);   // rgba8 (SDR) / rgba64le (HDR)
   uint8_t *rgb = checked_malloc(frame_bytes);
   uint8_t *reconstructed = checked_malloc(frame_bytes);
+  // own-alpha-MV (GPU-native): CPU-side source alpha planes + the searched own MV field. The decision (which MVs the
+  // alpha mc uses) is made CPU-side on the SOURCE alphas; the chosen MVs are uploaded to alpha_mv_buffer and the GPU
+  // encodes/reconstructs as usual (Q0 bit-exact). gpu_alpha_prev holds the previous frame's source alpha for the ME.
+  int32_t *gpu_alpha_cur = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *gpu_alpha_prev = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int *gpu_alpha_mv = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
   int32_t *self_previous[MAX_PLANES];
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -3983,6 +4022,22 @@ int main(int argc, char **argv) {
       // (gop 1) keep the alpha intra; the decoders gate the alpha mc/motion_add the same way, so encoder<->decoder stay in lock-step.
       int alpha_inter = predictive && (method == 1);
 
+      // own-alpha-MV (GPU-native, I/P): maintain the source alpha across frames; when --alpha-mv=own picks own for a
+      // predicted frame, search the alpha's OWN MVs (CPU, on the source alphas) and upload them so the alpha mc warps the
+      // reconstructed previous alpha with these instead of the shared luma MVs. (cpu-rd / sad on GPU-native = step C2.)
+      int alpha_own_frame = 0;
+      if (g_has_alpha && !use_bframes) {
+        for (int i = 0; i < pixel_count; i++) {
+          gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)rgb)[(i * 4) + 3] : rgb[(i * 4) + 3];
+        }
+        if (((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) {
+          motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
+          memcpy(alpha_mv_map, gpu_alpha_mv, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
+          alpha_own_frame = 1;
+        }
+        memcpy(gpu_alpha_prev, gpu_alpha_cur, (size_t)pixel_count * 4);   // this frame's source alpha = the next frame's ME reference
+      }
+
       // ---- GPU pass 1: color transform + forward wavelet + quant + per-block size ----
       begin_recording();
       int32_t color_push[2] = { width, height };
@@ -4553,7 +4608,7 @@ int main(int argc, char **argv) {
             }
           } else {   // I/P single reference
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
-            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, (alpha_own_frame ? &set_mc_alpha_own : &set_mc[3]), 0, 0);   // own-alpha-MV: warp with the alpha's own MVs when chosen
             vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
             vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
             memory_barrier();
@@ -4657,7 +4712,7 @@ int main(int argc, char **argv) {
             }
           } else {   // I/P single reference: mc(previous[3],mv) -> difference[3]
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
-            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, (alpha_own_frame ? &set_mc_alpha_own : &set_mc[3]), 0, 0);   // own-alpha-MV: warp with the alpha's own MVs when chosen
             vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
             vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
             memory_barrier();
@@ -5415,6 +5470,22 @@ int main(int argc, char **argv) {
       }
       if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
         int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+        // own-alpha-MV: when this frame chose own, code its alpha MV field into a blob the alpha section carries (like the
+        // luma MV blob). gpu_alpha_mv was searched + uploaded above; the alpha mc already used it (set_mc_alpha_own).
+        uint8_t *alpha_own_blob = NULL;
+        uint32_t alpha_own_blob_len = 0;
+        if (alpha_own_frame) {
+          if (g_mv_codec == 1) {
+            alpha_own_blob_len = (uint32_t)mv_blob_encode_range(&alpha_own_blob, 0, NULL, 0, gpu_alpha_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+          } else {
+            BitWriter mvw;
+            bitwriter_init(&mvw);
+            encode_motion_vectors(&mvw, gpu_alpha_mv, motion_blocks_x, motion_blocks_y);
+            bitwriter_flush(&mvw);
+            alpha_own_blob = mvw.bytes;
+            alpha_own_blob_len = (uint32_t)mvw.length;
+          }
+        }
         if (g_spatial_dct) {
           // DCT mode: the alpha forward DCT + quant ran GPU-native in pass-1 (inter-predicted, shared luma MVs); its
           // quantized coeffs were staged into coeff_readback_buffer before the closed loop overwrote coeff[3]. rANS-code
@@ -5432,7 +5503,7 @@ int main(int argc, char **argv) {
           uint32_t alpha_table_len = 0;
           dct_encode_plane(&alpha_writer, alpha, width, height, alpha_offsets, &alpha_table, &alpha_table_len);
           total = append_alpha_section(&frame, total, alpha_qp, alpha_offsets, alpha_blocks,
-                                       alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length, NULL, 0);   // shared luma MVs (own-alpha-MV TODO for GPU enc)
+                                       alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length, alpha_own_blob, alpha_own_blob_len);   // own-MV blob when chosen (else NULL/0 = shared)
           free(alpha);
           free(alpha_writer.bytes);
           free(alpha_offsets);
@@ -5441,8 +5512,9 @@ int main(int argc, char **argv) {
           // wavelet mode: the GPU bit-plane pack above wrote the alpha into the tight buffer after the color planes
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
                                        NULL, 0,
-                                       tight + tight_color_length, tight_total - tight_color_length, NULL, 0);   // shared luma MVs
+                                       tight + tight_color_length, tight_total - tight_color_length, alpha_own_blob, alpha_own_blob_len);   // own-MV blob when chosen (else NULL/0 = shared)
         }
+        free(alpha_own_blob);
       }
       free(tight);
       free(mv_bytes);
@@ -5492,7 +5564,7 @@ int main(int argc, char **argv) {
         index[frame_index].ref0 = is_predicted ? ((int32_t)frame_index - 1) : -1;   // P predicts from the previous frame
         index[frame_index].ref1 = -1;                                    // single forward reference (no L1)
         index[frame_index].temporal_id = 0;
-        index[frame_index].alpha_mv_mode = 0;   // GPU-native I/P alpha = shared luma MVs (own-MV = step 5e)
+        index[frame_index].alpha_mv_mode = (uint8_t)alpha_own_frame;   // own-alpha-MV: 1 when this I/P frame sent its own alpha MVs (--alpha-mv=own), else 0 (shared)
         if (g_cdef) {   // the per-frame CDEF strengths chosen by the search after this frame's reconstruct
           cdef_table[(frame_index * 4) + 0] = cdef_strengths[0];
           cdef_table[(frame_index * 4) + 1] = cdef_strengths[1];

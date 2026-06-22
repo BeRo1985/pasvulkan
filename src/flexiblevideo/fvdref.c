@@ -1041,6 +1041,18 @@ static int g_num_planes = 3;
 // color-only decoder reads the 3 color planes and stops). g_alpha_qp is per-frame; -1 = use the frame's color QP.
 static int g_has_alpha = 0;
 static int g_alpha_qp = -1;
+// own-alpha-MV strategy (the alpha plane may carry its OWN motion vectors instead of sharing the luma MVs):
+//   0 = luma-only (DEFAULT; alpha always uses the shared luma MVs, no own-MV ever — the prior behavior)
+//   1 = cpu-rd    (per-frame, keep whichever of shared/own codes to fewer ACTUAL bytes — exact, the CPU-oracle sizing)
+//   2 = sad       (cheap heuristic: pick own when its MC-residual SAD beats shared by the MV-bit cost margin)
+//   3 = own       (always send own alpha MVs — no RD compare)
+// The chosen residual is encoded + reconstructed identically (Q0 bit-exact); only the per-frame mode choice differs.
+#define ALPHA_MV_LUMA 0
+#define ALPHA_MV_CPURD 1
+#define ALPHA_MV_SAD 2
+#define ALPHA_MV_OWN 3
+static int g_alpha_mv_strategy = ALPHA_MV_LUMA;
+static int g_alpha_mv_sad_lambda = 16;   // --alpha-mv=sad: each own-MV-blob byte "costs" this many residual-SAD units (env FVD_ALPHA_SAD_LAMBDA); tunable heuristic
 static int g_premultiplied = 0;
 // --alpha-bleed: an encode-time preprocess that dilates the opaque RGB into the fully-transparent (alpha==0) pixels so
 // the invisible areas don't cost bits on their original high-frequency RGB and bilinear sampling never pulls a wrong
@@ -6491,6 +6503,29 @@ static uint32_t alpha_size_blob_length(const uint32_t *sizes, int block_count) {
   return len;
 }
 
+// Sum of absolute residual (MC-prediction error) over a plane — the cheap SAD metric for the --alpha-mv=sad heuristic.
+static long alpha_residual_sad(const int32_t *residual, int pixel_count) {
+  long sum = 0;
+  for (int i = 0; i < pixel_count; i++) {
+    sum += (residual[i] < 0) ? -residual[i] : residual[i];
+  }
+  return sum;
+}
+
+// Decide own (1) vs shared (0) alpha MVs per g_alpha_mv_strategy. sad_shared/sad_own = pre-transform residual SADs;
+// cost_shared/cost_own = exact coded bytes (own's includes its MV blob); mv_blob_len = the own MV blob byte length.
+// Caller only invokes this on a predicted frame where it actually built an own candidate (strategy != luma).
+static int alpha_mv_pick(long sad_shared, long sad_own, uint32_t cost_shared, uint32_t cost_own, size_t mv_blob_len) {
+  switch (g_alpha_mv_strategy) {
+    case ALPHA_MV_OWN:
+      return 1;   // always own (no RD compare)
+    case ALPHA_MV_SAD:
+      return ((sad_own + ((long)mv_blob_len * g_alpha_mv_sad_lambda)) < sad_shared) ? 1 : 0;   // own wins if its residual beats shared past the MV-blob cost
+    default:   // ALPHA_MV_CPURD
+      return (cost_own < cost_shared) ? 1 : 0;   // own wins if it codes to fewer ACTUAL bytes
+  }
+}
+
 // Encode one alpha residual variant (post-MC; transformed IN PLACE to coefficients): forward + quant + entropy into
 // (writer, offsets, table). Returns the comparable coded byte cost = size_blob + table + data (the MV blob is added by
 // the caller for the own variant). float_plane / step are scratch the caller owns.
@@ -6713,9 +6748,10 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     uint32_t tab_shared_len = 0;
     uint32_t cost_shared = encode_alpha_payload(res_shared, width, height, levels, alpha_qp, step, float_plane, &w_shared, off_shared, &tab_shared, &tab_shared_len, g_spatial_dct);
 
-    // OWN variant (predicted + caller opted in via out_alpha_mv_mode): independent alpha ME, probe-encode, compare bytes.
+    // OWN variant (predicted + caller opted in via out_alpha_mv_mode + a non-luma --alpha-mv strategy): independent alpha
+    // ME, then pick shared/own per g_alpha_mv_strategy (cpu-rd = bytes, sad = MC-SAD, own = always own).
     int alpha_mv_mode = 0;
-    int do_own = alpha_predicted && (out_alpha_mv_mode != NULL);
+    int do_own = (alpha_predicted && (out_alpha_mv_mode != NULL)) && (g_alpha_mv_strategy != ALPHA_MV_LUMA);
     int *alpha_mv = NULL;
     int32_t *mc_own = NULL, *res_own = NULL;
     uint32_t *off_own = NULL;
@@ -6747,9 +6783,14 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
         mv_blob_len = mvw.length;
       }
       uint32_t cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;   // the own variant pays for its MV blob ([len:u32]+blob)
-      if (cost_own < cost_shared) {
-        alpha_mv_mode = 1;
+      long sad_shared = 0, sad_own = 0;   // pre-transform residual SADs (from the intact mc predictions) for --alpha-mv=sad
+      for (int i = 0; i < pixel_count; i++) {
+        int ds = alpha_orig[i] - mc_shared[i];
+        int dn = alpha_orig[i] - mc_own[i];
+        sad_shared += (ds < 0) ? -ds : ds;
+        sad_own += (dn < 0) ? -dn : dn;
       }
+      alpha_mv_mode = alpha_mv_pick(sad_shared, sad_own, cost_shared, cost_own, mv_blob_len);
     }
 
     // Append the chosen variant; closed-loop reconstruct it (+ its MC) as the next alpha reference.
@@ -7176,7 +7217,7 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
 
     // OWN variant (predicted + caller opted in): independent alpha ME per reference (L0 + L1), MC, weighted blend.
     int alpha_mv_mode = 0;
-    int do_own = alpha_predicted && (out_alpha_mv_mode != NULL);
+    int do_own = (alpha_predicted && (out_alpha_mv_mode != NULL)) && (g_alpha_mv_strategy != ALPHA_MV_LUMA);
     int *amv0 = NULL, *amv1 = NULL;
     int32_t *pred_own = NULL, *res_own = NULL;
     uint32_t *off_own = NULL;
@@ -7229,9 +7270,14 @@ static size_t encode_frame_bidi(const uint8_t *rgb, int width, int height, int l
         mv_blob_len = mvw.length;
       }
       uint32_t cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;
-      if (cost_own < cost_shared) {
-        alpha_mv_mode = 1;
+      long sad_shared = 0, sad_own = 0;   // pre-transform residual SADs (from the intact blend predictions) for --alpha-mv=sad
+      for (int i = 0; i < pixel_count; i++) {
+        int ds = alpha_orig[i] - pred_shared[i];
+        int dn = alpha_orig[i] - pred_own[i];
+        sad_shared += (ds < 0) ? -ds : ds;
+        sad_own += (dn < 0) ? -dn : dn;
       }
+      alpha_mv_mode = alpha_mv_pick(sad_shared, sad_own, cost_shared, cost_own, mv_blob_len);
       free(mc0);
       free(mc1);
     }
@@ -7710,7 +7756,7 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
   // (alpha_frame_mv); step 3 RD-picks shared vs own by actual coded bytes. The shared candidate stays in alpha_gop_int
   // (filled by mctf_forward below, plane 3), so the shared-only path is byte-identical to the prior stream. The MC-Haar
   // is predict-only (low = even passthrough, unaffected by motion), so each high-pass frame's MV choice is independent.
-  int do_alpha_own = g_has_alpha && g_mctf && (out_alpha_mv_modes != NULL);
+  int do_alpha_own = (g_has_alpha && g_mctf && (out_alpha_mv_modes != NULL)) && (g_alpha_mv_strategy != ALPHA_MV_LUMA);
   int32_t *alpha_gop_own = NULL;
   int *alpha_frame_mv = NULL;
   if (do_alpha_own) {
@@ -7894,7 +7940,9 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
           own_mv_len = mvw.length;
         }
         uint32_t cost_own = (pay_own + 4) + (uint32_t)own_mv_len;   // the own variant pays for its MV blob ([len:u32]+blob)
-        if (cost_own < cost_shared) {   // transfer ownership of the own writer/offsets/table into the chosen ones
+        long sad_shared = alpha_residual_sad(alpha_gop_int + ((size_t)f * pixel_count), pixel_count);   // pre-transform residual SADs (source buffers) for --alpha-mv=sad
+        long sad_own = alpha_residual_sad(alpha_gop_own + ((size_t)f * pixel_count), pixel_count);
+        if (alpha_mv_pick(sad_shared, sad_own, cost_shared, cost_own, own_mv_len)) {   // transfer ownership of the own writer/offsets/table into the chosen ones
           alpha_mode = 1;
           alpha_writer = w_own;
           free(alpha_offsets);
@@ -8411,6 +8459,8 @@ static int alpha_selftest(void) {
   g_channels = 4;     // rgba ingest + output
   g_has_alpha = 1;    // activate the alpha plane
   g_alpha_qp = -1;    // alpha follows the color QP
+  int saved_alpha_mv_strategy = g_alpha_mv_strategy;
+  g_alpha_mv_strategy = ALPHA_MV_CPURD;   // the own-MV tests below probe shared-vs-own by actual bytes (the default is luma = shared-only)
 
   // Q0: lossless round-trip — both RGB and the alpha lane must be bit-exact.
   length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, NULL, 0, NULL);
@@ -8813,6 +8863,7 @@ static int alpha_selftest(void) {
   g_has_alpha = 0;    // restore defaults
   g_channels = 3;
   g_alpha_qp = -1;
+  g_alpha_mv_strategy = saved_alpha_mv_strategy;
 
   printf("alpha selftest: Q0 alpha %s (%d mismatches) | Q0 RGB %s (%d) | Q8 alpha PSNR %.2f dB (%zu bytes)\n",
          (alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", alpha_mismatch,
