@@ -6472,6 +6472,15 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
     }
     build_spatial_quant_steps(step, width, height, levels, alpha_qp);
     maybe_apply_tile_aq(step, width, height, levels);
+    // Inter alpha: motion-compensate the previous reconstructed alpha (shares the luma MVs — alpha is full-res, so they
+    // apply directly, no scaling), then code the pixel-domain residual. Mirrors the color planes; I-frames stay intra.
+    int alpha_predicted = is_predicted && previous_ycocg;
+    if (alpha_predicted) {
+      motion_compensate(previous_ycocg[3], mv, mc_previous, width, height, motion_blocks_x);
+      for (int i = 0; i < pixel_count; i++) {
+        alpha[i] -= mc_previous[i];
+      }
+    }
     if (alpha_qp == 0) {
       forward_spatial_int(alpha, width, height, levels);   // lossless alpha
     } else {
@@ -6492,6 +6501,17 @@ static size_t encode_frame_colordiff(const uint8_t *rgb, int width, int height, 
       encode_plane(&alpha_writer, alpha, width, height, alpha_offsets);
     }
     total_size = append_alpha_section(&output, total_size, alpha_qp, alpha_offsets, alpha_block_count, alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
+    // Closed loop: reconstruct exactly what the decoder will and save it as the next alpha reference.
+    if (previous_ycocg) {
+      memcpy(recon, alpha, (size_t)pixel_count * 4);
+      reconstruct_plane(recon, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+      if (alpha_predicted) {
+        for (int i = 0; i < pixel_count; i++) {
+          recon[i] += mc_previous[i];
+        }
+      }
+      memcpy(previous_ycocg[3], recon, (size_t)pixel_count * 4);
+    }
     free(alpha);
     free(alpha_writer.bytes);
     free(alpha_offsets);
@@ -6651,6 +6671,16 @@ static void decode_frame_colordiff(const uint8_t *frame, size_t length, int widt
       decode_plane(alpha_data, alpha_offsets, alpha, width, height, alpha_data_length);
     }
     reconstruct_plane(alpha, float_plane, step, width, height, levels, alpha_qp, 1.0f);
+    // Inter alpha: add the motion-compensated previous reconstructed alpha (shared luma MVs). Mirrors the color planes.
+    if (is_predicted && previous_ycocg) {
+      motion_compensate(previous_ycocg[3], mv, mc_previous, width, height, motion_blocks_x);
+      for (int i = 0; i < pixel_count; i++) {
+        alpha[i] += mc_previous[i];
+      }
+    }
+    if (previous_ycocg) {
+      memcpy(previous_ycocg[3], alpha, (size_t)pixel_count * 4);   // un-clamped reconstruction = the next alpha reference
+    }
     for (int i = 0; i < pixel_count; i++) {
       int a = alpha[i];
       rgb[(i * 4) + 3] = (uint8_t)((a < 0) ? 0 : ((a > 255) ? 255 : a));
@@ -7578,6 +7608,48 @@ static int alpha_selftest(void) {
   double alpha_psnr = (alpha_mse > 0.0) ? (10.0 * log10((255.0 * 255.0) / alpha_mse)) : 99.99;
   free(encoded);
 
+  // Inter (I + P) round-trip: a 2nd frame coded as a P-frame; at Q0 the P-frame alpha (and RGB) must stay bit-exact.
+  // The CPU reference uses zero MVs, so this exercises the alpha MC + residual + closed-loop reference path (shared luma MVs).
+  int32_t *enc_prev[4], *dec_prev[4];
+  for (int p = 0; p < 4; p++) {
+    enc_prev[p] = checked_malloc((size_t)pixel_count * 4);
+    dec_prev[p] = checked_malloc((size_t)pixel_count * 4);
+  }
+  uint8_t *source2 = checked_malloc((size_t)pixel_count * 4);
+  uint8_t *output2 = checked_malloc((size_t)pixel_count * 4);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int idx = (((y * width) + x) * 4);
+      source2[idx + 0] = (uint8_t)((x + 7) & 255);
+      source2[idx + 1] = (uint8_t)((y + 3) & 255);
+      source2[idx + 2] = (uint8_t)(((x + y) + 5) >> 1);
+      source2[idx + 3] = (uint8_t)(((x + y) + 11) & 255);   // alpha differs from frame 0 -> a genuine residual
+    }
+  }
+  length = encode_frame_colordiff(source, width, height, 5, 0, &encoded, enc_prev, 0);   // frame 0 = I
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output, dec_prev, 0);
+  free(encoded);
+  length = encode_frame_colordiff(source2, width, height, 5, 0, &encoded, enc_prev, 1);  // frame 1 = P (alpha inter)
+  decode_frame_colordiff(encoded, length, width, height, 5, 0, output2, dec_prev, 1);
+  free(encoded);
+  int inter_alpha_mismatch = 0, inter_rgb_mismatch = 0;
+  for (int i = 0; i < pixel_count; i++) {
+    if (output2[(i * 4) + 3] != source2[(i * 4) + 3]) {
+      inter_alpha_mismatch++;
+    }
+    for (int c = 0; c < 3; c++) {
+      if (output2[(i * 4) + c] != source2[(i * 4) + c]) {
+        inter_rgb_mismatch++;
+      }
+    }
+  }
+  for (int p = 0; p < 4; p++) {
+    free(enc_prev[p]);
+    free(dec_prev[p]);
+  }
+  free(source2);
+  free(output2);
+
   g_has_alpha = 0;    // restore defaults
   g_channels = 3;
   g_alpha_qp = -1;
@@ -7586,10 +7658,13 @@ static int alpha_selftest(void) {
          (alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", alpha_mismatch,
          (rgb_mismatch == 0) ? "lossless" : "MISMATCH", rgb_mismatch,
          alpha_psnr, length);
+  printf("alpha selftest: Q0 inter-P alpha %s (%d mismatches) | Q0 inter-P RGB %s (%d)\n",
+         (inter_alpha_mismatch == 0) ? "LOSSLESS" : "MISMATCH", inter_alpha_mismatch,
+         (inter_rgb_mismatch == 0) ? "lossless" : "MISMATCH", inter_rgb_mismatch);
 
   free(source);
   free(output);
-  return ((alpha_mismatch == 0) && (rgb_mismatch == 0)) ? 0 : 1;
+  return ((alpha_mismatch == 0) && (rgb_mismatch == 0) && (inter_alpha_mismatch == 0) && (inter_rgb_mismatch == 0)) ? 0 : 1;
 }
 
 // HDR transcode demo: ingest a real HDR (PQ/bt2020) video, push it through the fvd codec at 12-bit,
@@ -8281,7 +8356,8 @@ int main(int argc, char **argv) {
   uint8_t *reconstructed = checked_malloc(frame_bytes);
   // Separate encoder + decoder coefficient references (kept in lock-step for Q0 by losslessness).
   int32_t *previous_encode[MAX_PLANES], *previous_decode[MAX_PLANES];
-  for (int plane = 0; plane < g_num_planes; plane++) {
+  int previous_plane_count = g_num_planes + (g_has_alpha ? 1 : 0);   // + plane 3 = the alpha reference (inter alpha)
+  for (int plane = 0; plane < previous_plane_count; plane++) {
     previous_encode[plane] = checked_malloc((size_t)pixel_count * 4);
     previous_decode[plane] = checked_malloc((size_t)pixel_count * 4);
   }
@@ -8447,7 +8523,7 @@ int main(int argc, char **argv) {
 
   free(rgb);
   free(reconstructed);
-  for (int plane = 0; plane < g_num_planes; plane++) {
+  for (int plane = 0; plane < previous_plane_count; plane++) {
     free(previous_encode[plane]);
     free(previous_decode[plane]);
   }

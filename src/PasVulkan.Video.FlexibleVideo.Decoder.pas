@@ -448,7 +448,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section. aAlphaTableLength>0 = DCT-mode rANS table
        procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
        procedure UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
-       procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:TpvInt32); // aIsPredicted: -1 = intra alpha (B / 3D-DWT); 0/1 = colordiff I/P inter alpha (mc+motion_add, shared luma MVs)
        // DCT quad-tree: expand one plane's partition codes into its GPU leaf list ({x,y,size} triples) and return the leaf count.
        procedure BuildQuadTreeLeafList(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aLeafListBuffer:TpvVulkanBuffer;out aLeafCount:TpvInt32);
        // hierarchical B-frames (Stage E3). The Active* helpers return the shared buffer/set (fBufferRingSlot<0,
@@ -1127,9 +1127,10 @@ begin
   fTileCodesBuffer:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.aqcodes');
  end;
 
- // optional alpha plane (index 3): a full-res (luma-sized) intra plane. Its own data buffer keeps the alpha block
- // offsets prefix-sums-from-0 (independent of where the color data lives), so the GPU alpha decode is uniform for
- // every mode (I/P, B, 3D-DWT, MCTF). No previous-buffer: the alpha is intra, never predicted.
+ // optional alpha plane (index 3): a full-res (luma-sized) plane. Its own data buffer keeps the alpha block offsets
+ // prefix-sums-from-0 (independent of where the color data lives), so the GPU alpha decode is uniform for every mode
+ // (I/P, B, 3D-DWT, MCTF). For colordiff I/P it is INTER-predicted (shared luma MVs) -> its own previous-buffer
+ // reference (mirror of the color planes); B / 3D-DWT keep it intra (no mc, no previous feedback).
  if fHasAlpha then begin
   // DCT mode pads the alpha height to /8 (the inverse 8x8 block DCT + rANS write the partial bottom block); no-op for wavelet / heights already /8.
   if fSpatialDCT then begin
@@ -1138,6 +1139,7 @@ begin
    PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
   end;
   fCoeffBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphacoeff'); // decoded alpha plane (device-local, GPU-written -> shared, like coeff[0..2])
+  fPreviousBuffer[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.alphaprevious'); // inter-alpha: GPU-resident reconstructed-alpha reference (colordiff I/P, shared luma MVs)
   SetLength(fAlphaRingData,fAlphaRingSize);
   SetLength(fAlphaRingOffset,fAlphaRingSize);
   SetLength(fAlphaRingStep,fAlphaRingSize);
@@ -1285,17 +1287,17 @@ begin
 
  MaxSets:=64;
  MaxBuffers:=256;
- if fHasAlpha then begin // alpha: per-slot unpack+dequant ring sets (fAlphaRingSize*2) + 4 shared sets (coeff<->scratch/row + color_alpha)
-  MaxSets:=MaxSets+(fAlphaRingSize*2)+6;
-  MaxBuffers:=MaxBuffers+(fAlphaRingSize*5)+12;
+ if fHasAlpha then begin // alpha: per-slot unpack+dequant ring sets (fAlphaRingSize*2) + shared sets (coeff<->scratch/row + color_alpha + inter-alpha mc/motion_add)
+  MaxSets:=MaxSets+(fAlphaRingSize*2)+8;
+  MaxBuffers:=MaxBuffers+(fAlphaRingSize*5)+18;
   if fSpatialDCT then begin // DCT-mode alpha: an extra per-slot rANS unpack set {data, offset, coeff, table}
    MaxSets:=MaxSets+fAlphaRingSize;
    MaxBuffers:=MaxBuffers+(fAlphaRingSize*4);
   end;
  end;
- if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot)
-  MaxSets:=MaxSets+(fBufferRingSize*30);
-  MaxBuffers:=MaxBuffers+(fBufferRingSize*96);
+ if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin // the per-frame input ring (~24 sets / ~80 buffers per slot) + the inter-alpha ring mc set (+1 set / +3 buffers per slot)
+  MaxSets:=MaxSets+(fBufferRingSize*31);
+  MaxBuffers:=MaxBuffers+(fBufferRingSize*99);
  end;
  if fMode3DDWT then begin // + the GOP-prefetch spatial sets (5/plane) + the second gop buffer's temporal sets
   MaxSets:=MaxSets+24;
@@ -1491,6 +1493,20 @@ begin
   fSetRow[3]:=AllocateSet(fDSL1);
   BindStorageBuffer(fSetRow[3],0,fCoeffBuffer[3]);
   fSetRow[3].Flush;
+
+  // inter alpha (colordiff I/P): motion-compensate the previous reconstructed alpha with the SHARED luma MVs, then add
+  // it to the residual and save the reconstruction as the next alpha reference — mirror of the color planes' mc/motion_add.
+  fSetMCPlay[3]:=AllocateSet(fDSL3); // {previous, mv, scratch=mc_prev}
+  BindStorageBuffer(fSetMCPlay[3],0,fPreviousBuffer[3]);
+  BindStorageBuffer(fSetMCPlay[3],1,fMVBuffer);
+  BindStorageBuffer(fSetMCPlay[3],2,fScratchBuffer);
+  fSetMCPlay[3].Flush;
+
+  fSetMotionAddPlay[3]:=AllocateSet(fDSL3); // {coeff, scratch=mc_prev, previous}
+  BindStorageBuffer(fSetMotionAddPlay[3],0,fCoeffBuffer[3]);
+  BindStorageBuffer(fSetMotionAddPlay[3],1,fScratchBuffer);
+  BindStorageBuffer(fSetMotionAddPlay[3],2,fPreviousBuffer[3]);
+  fSetMotionAddPlay[3].Flush;
 
   fSetColorAlpha:=AllocateSet(fDSLColorAlpha);
   BindStorageBuffer(fSetColorAlpha,0,fCoeffBuffer[0]);
@@ -2431,9 +2447,15 @@ begin
   end;
  end;
 
- // optional alpha: GPU-decode the intra alpha plane into coeff[3] (the color pass below then writes it into output A).
+ // optional alpha: GPU-decode the alpha plane into coeff[3] (the color pass below then writes it into output A).
+ // colordiff (method 1) -> inter alpha (mc + residual + reference) with the shared luma MVs; Ord(aIsPredicted) drives the
+ // closed loop (I-frame=0 seeds the reference). CoefDiff (method 0) keeps the alpha intra (-1), mirroring the C decoder.
  if fHasAlpha then begin
-  RecordAlphaDecode(aCommandBuffer);
+  if fPredictionMethod=1 then begin
+   RecordAlphaDecode(aCommandBuffer,Ord(aIsPredicted));
+  end else begin
+   RecordAlphaDecode(aCommandBuffer,-1);
+  end;
  end;
 
  // color: YCoCg(-R) -> RGB into the output image. Chroma upsample params: shift + the stored Co/Cg dims
@@ -2698,7 +2720,7 @@ begin
 
 end;
 
-procedure TpvFlexibleVideoDecoder.RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvFlexibleVideoDecoder.RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:TpvInt32);
 var Level,LevelCount:TpvInt32;
     PlaneW,PlaneH,ScratchStride,PlanePixels:TpvInt32;
     PlaneBlocksX,PlaneBlocksY,PlaneBlockCount:TpvInt32;
@@ -2711,6 +2733,8 @@ var Level,LevelCount:TpvInt32;
     TransposePush1,TransposePush2,RowPush1,RowPush2:array[0..3] of TpvInt32;
     PixelCountPush:TpvInt32;
     ChromaMultiplier:TpvFloat;
+    MCPush:array[0..2] of TpvInt32;
+    AddPush:array[0..1] of TpvInt32;
 begin
 
  // The alpha is intra + full-res (luma dims): the same per-plane decode as a color plane (unpack -> dequant -> iDWT
@@ -2827,6 +2851,24 @@ begin
  if not fAlphaLossless then begin
   PixelCountPush:=PlanePixels;
   RecordDispatch(aCommandBuffer,fPipeRound,fPLRound,fSetRow[3],@PixelCountPush,4,PlanePixelWorkgroups,1,1);
+  RecordComputeBarrier(aCommandBuffer);
+ end;
+
+ // colordiff (I/P) inter alpha: motion-compensate the previous reconstructed alpha (shared luma MVs) and add it to the
+ // residual just produced in coeff[3], saving the reconstruction as the next alpha reference — mirror of the color planes'
+ // closed loop. aIsPredicted<0 (B / 3D-DWT) keeps the alpha intra (no mc, no motion_add). The I-frame (aIsPredicted=0)
+ // runs motion_add only, seeding previous[3] from the intra alpha. Alpha is full-res, so the luma MV grid applies directly.
+ if aIsPredicted>=0 then begin
+  if aIsPredicted>0 then begin
+   MCPush[0]:=PlaneW;
+   MCPush[1]:=PlaneH;
+   MCPush[2]:=MotionBlocksX(PlaneW);
+   RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetMCPlay(3),@MCPush[0],12,PlanePixelWorkgroups,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
+  AddPush[0]:=PlanePixels;
+  AddPush[1]:=aIsPredicted;
+  RecordDispatch(aCommandBuffer,fPipeMotionAdd,fPLUnpack,fSetMotionAddPlay[3],@AddPush[0],8,PlanePixelWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
  end;
 
@@ -3167,6 +3209,13 @@ begin
    BindStorageBuffer(fRingSetMCPlay[Slot][Plane],1,fRingMVBuffer[Slot]);
    BindStorageBuffer(fRingSetMCPlay[Slot][Plane],2,fScratchBuffer);
    fRingSetMCPlay[Slot][Plane].Flush;
+  end;
+  if fHasAlpha then begin // inter-alpha (colordiff I/P): ring mc set for plane 3, sharing this slot's ring MV buffer (the current frame's luma MVs)
+   fRingSetMCPlay[Slot][3]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fRingSetMCPlay[Slot][3],0,fPreviousBuffer[3]);
+   BindStorageBuffer(fRingSetMCPlay[Slot][3],1,fRingMVBuffer[Slot]);
+   BindStorageBuffer(fRingSetMCPlay[Slot][3],2,fScratchBuffer);
+   fRingSetMCPlay[Slot][3].Flush;
   end;
  end;
 end;
@@ -3818,8 +3867,9 @@ begin
                                    0,1,@Barrier,0,nil,0,nil);
 
  // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged above for this POC).
+ // B-frame alpha stays intra for now (-1); inter B alpha is a later stage.
  if fHasAlpha then begin
-  RecordAlphaDecode(aCommandBuffer);
+  RecordAlphaDecode(aCommandBuffer,-1);
  end;
 
  Crumb(aCommandBuffer,'disp:color');
@@ -4399,8 +4449,9 @@ begin
  end;
 
  // optional alpha: GPU-decode the displayed frame's intra alpha plane into coeff[3] (staged by PrepareFrame3D).
+ // 3D-DWT / MCTF alpha stays intra (-1); inter temporal alpha is a later stage.
  if fHasAlpha then begin
-  RecordAlphaDecode(aCommandBuffer);
+  RecordAlphaDecode(aCommandBuffer,-1);
  end;
 
  PixelWorkgroups:=((fWidth*fHeight)+255) div 256;

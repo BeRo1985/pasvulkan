@@ -1978,8 +1978,10 @@ int main(int argc, char **argv) {
       create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &threshold_buffer[plane], &threshold_memory[plane]);   // perceptual RDO: per-coefficient drop thresholds
     }
   }
-  if (g_has_alpha) {   // alpha = plane 3: full-res like luma, intra-only (no previous / difference buffers needed)
+  if (g_has_alpha) {   // alpha = plane 3: full-res like luma; inter-predicted (shared luma MVs) -> its own previous / difference reference buffers, exactly like the color planes
     create_buffer(plane_bytes, DEVICE_LOCAL, &coeff_buffer[3], &coeff_memory[3]);
+    create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[3], &previous_memory[3]);     // GPU-resident reconstructed-alpha reference (closed loop)
+    create_buffer(plane_bytes, DEVICE_LOCAL, &difference_buffer[3], &difference_memory[3]);  // holds the motion-compensated alpha prediction (mc) between forward and closed-loop
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &size_buffer[3], &size_memory[3]);
     create_buffer((size_t)block_count * 4, HOST_VISIBLE_COHERENT, &offset_buffer[3], &offset_memory[3]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
@@ -2294,9 +2296,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 760 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes)
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 768 };   // + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers)
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 200;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets
+  pool_info.maxSets = 203;   // + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha (set_mc[3]/set_ycocg_mc[3]/set_motion_add[3])
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -2370,12 +2372,18 @@ int main(int argc, char **argv) {
     set_ycocg_mc[plane] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_ycocg_mc[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane] }, 2);
   }
-  // Alpha plane 3 (intra-only): the extract set (rgb -> coeff[3]) + the same intra sets as the color planes
-  // (no diff / motion / energy sets — alpha is never predicted).
+  // Alpha plane 3: the extract set (rgb -> coeff[3]) + the same intra sets as the color planes, plus the motion sets
+  // for inter alpha (P-frames). Alpha is full-res, so it reuses the SHARED luma mv_buffer directly (no scaling).
   VkDescriptorSet set_extract_alpha = 0;
   if (g_has_alpha) {
     set_extract_alpha = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_extract_alpha, (VkBuffer[]){ rgb_buffer, coeff_buffer[3] }, 2);
+    set_mc[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // mc(previous_alpha, shared luma MVs) -> difference_buffer[3]
+    bind_storage_buffers(set_mc[3], (VkBuffer[]){ previous_buffer[3], mv_buffer, difference_buffer[3] }, 3);
+    set_ycocg_mc[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);   // residual = alpha - mc (coeff[3] -= difference[3])
+    bind_storage_buffers(set_ycocg_mc[3], (VkBuffer[]){ coeff_buffer[3], difference_buffer[3] }, 2);
+    set_motion_add[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // closed loop: recon = residual + mc -> coeff[3] AND previous_buffer[3]
+    bind_storage_buffers(set_motion_add[3], (VkBuffer[]){ coeff_buffer[3], difference_buffer[3], previous_buffer[3] }, 3);
     set_coeff_to_scratch[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_coeff_to_scratch[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer }, 2);
     set_scratch_to_coeff[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -2609,7 +2617,7 @@ int main(int argc, char **argv) {
   }
   if (g_has_alpha) {   // alpha plane 3: full-res quant map with its own QP (g_alpha_qp, or the color QP if < 0).
     int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // NOT AQ-modulated: alpha keeps plain alpha_qp steps (step_map[3] is
-    build_quantization_steps(step, width, height, levels, alpha_qp);   // built once and never rebuilt per-frame, so no per-tile map applies)
+    build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // built once, never rebuilt per-frame; DCT matrix or wavelet steps per the spatial mode
     memcpy(step_map[3], step, (size_t)(width * height) * 4);
   }
   int current_quality = quality;   // per-GOP working Q (varies under --vbr); written into each FrameEntry
@@ -2741,7 +2749,8 @@ int main(int argc, char **argv) {
            gop, (g_chroma_format == 2) ? "4:2:0" : ((g_chroma_format == 1) ? "4:2:2" : "4:4:4"));
     int32_t *prev_ycocg[MAX_PLANES] = { NULL };
     int32_t *decode_prev[MAX_PLANES] = { NULL };
-    for (int plane = 0; plane < g_num_planes; plane++) {
+    int oracle_plane_count = g_num_planes + (g_has_alpha ? 1 : 0);   // + plane 3 = the alpha reference (inter alpha)
+    for (int plane = 0; plane < oracle_plane_count; plane++) {
       prev_ycocg[plane] = checked_malloc((size_t)pixel_count * 4);
       if (!output) {
         decode_prev[plane] = checked_malloc((size_t)pixel_count * 4);
@@ -2926,7 +2935,7 @@ int main(int argc, char **argv) {
       }
       free(frame_payload);
     }
-    for (int plane = 0; plane < g_num_planes; plane++) {
+    for (int plane = 0; plane < oracle_plane_count; plane++) {   // includes plane 3 (alpha ref) when g_has_alpha; gpu_planes[3]/gpu_offsets[3] stay NULL (free no-op)
       free(prev_ycocg[plane]);
       free(decode_prev[plane]);
       free(gpu_planes[plane]);
@@ -3879,6 +3888,11 @@ int main(int argc, char **argv) {
         if (debug) fprintf(stderr, "  frame %ld: avg_residual=%.1f -> %s\n", frame_index, average_residual, is_predicted ? "P" : "I (cut)");
       }
 
+      // Inter alpha applies ONLY to the plain I/P colordiff path (single previous_buffer[3] reference, shared luma MVs):
+      // B-frames (bidi, need an alpha DPB), CoefDiff (method 0) and all-intra (gop 1) keep the alpha intra — the decoders
+      // gate the alpha mc/motion_add the same way (prediction_method 1, non-B), so this keeps encoder<->decoder in lock-step.
+      int alpha_inter = (predictive && (method == 1)) && !use_bframes;
+
       // ---- GPU pass 1: color transform + forward wavelet + quant + per-block size ----
       begin_recording();
       int32_t color_push[2] = { width, height };
@@ -4417,6 +4431,21 @@ int main(int argc, char **argv) {
         vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
         vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
         memory_barrier();
+        if (is_predicted && alpha_inter) {   // inter alpha (I/P colordiff only): motion-compensate the previous reconstructed alpha (shared luma MVs) -> difference[3]; residual = alpha - mc, BEFORE the wavelet
+          int a_motion_blocks_x = ((plane_w + g_motion_block) - 1) / g_motion_block;
+          int32_t mc_push[3] = { plane_w, plane_h, a_motion_blocks_x };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+          int32_t diff_push[2] = { plane_pixels, alpha_lossless };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_ycocg_diff);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_add, 0, 1, &set_ycocg_mc[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_add, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, diff_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
         for (int level = 0; level < level_count; level++) {
           int level_w = level_width[level], level_h = level_height[level];
           int32_t row_push_1[4] = { plane_w, level_w, level_h, 1 };
@@ -4462,7 +4491,65 @@ int main(int argc, char **argv) {
         vkCmdDispatch(command_buffer, block_workgroups, 1, 1);
         memory_barrier();
       }
+      // Alpha plane 3, DCT mode (GPU-native inter): extract -> [mc + residual when P] -> forward DCT -> quant, in the SAME
+      // pass-1 command buffer. Mirrors the color DCT forward for one full-res plane; reuses the SHARED luma mv_buffer
+      // (alpha is full-res, no scaling). The quantized coeffs are read back after submit for the CPU rANS (Region C); the
+      // GPU closed-loop reconstruct (below) writes previous_buffer[3] so the alpha reference matches the decoder bit-exactly.
+      if (g_has_alpha && g_spatial_dct) {
+        int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);   // alpha has its OWN lossless decision (alpha_qp), independent of the frame
+        int plane_w = width, plane_h = height;   // alpha is always full-res
+        int plane_pixels = plane_w * plane_h;
+        int pixel_workgroups = (plane_pixels + 255) / 256;
+        int a_motion_blocks_x = ((plane_w + g_motion_block) - 1) / g_motion_block;
+        int32_t extract_push[3] = { plane_w, plane_h, alpha_lossless };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, (g_sample_bytes == 2) ? pipeline_extract_alpha16 : pipeline_extract_alpha);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_extract_alpha, 0, 1, &set_extract_alpha, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_extract_alpha, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, extract_push);
+        vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+        memory_barrier();
+        if (is_predicted && alpha_inter) {   // inter alpha (I/P colordiff only): motion-compensate the previous reconstructed alpha (shared luma MVs) -> difference[3]; residual = alpha - mc
+          int32_t mc_push[3] = { plane_w, plane_h, a_motion_blocks_x };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mc[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, mc_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+          int32_t diff_push[2] = { plane_pixels, alpha_lossless };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_ycocg_diff);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_add, 0, 1, &set_ycocg_mc[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_add, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, diff_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        int32_t dct_fwd_push[2] = { plane_w, plane_h };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_dct_fwd_int : pipeline_dct_fwd);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[3], 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_fwd_push);
+        vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
+        memory_barrier();
+        if (!alpha_lossless) {
+          int dct_quant_pixels = plane_w * (((plane_h + 7) / 8) * 8);   // pad to /8, matching the block-aligned forward DCT output
+          int32_t dct_quant_push[2];
+          dct_quant_push[0] = dct_quant_pixels;
+          float alpha_multiplier = 1.0f;   // alpha quantises like luma (no chroma weighting)
+          memcpy(&dct_quant_push[1], &alpha_multiplier, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_quant);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_quant_push);
+          vkCmdDispatch(command_buffer, (dct_quant_pixels + 255) / 256, 1, 1);
+          memory_barrier();
+        }
+      }
       submit_and_wait();
+
+      // DCT alpha (GPU-native): stage the quantized alpha coeffs for the CPU rANS in Region C, BEFORE the closed loop
+      // (below) overwrites coeff[3] with the reconstructed reference. The uniform DCT I/P path leaves coeff_readback free.
+      if (g_has_alpha && g_spatial_dct) {
+        begin_recording();
+        VkBufferCopy alpha_readback = { 0, 0, (VkDeviceSize)pixel_count * 4 };
+        vkCmdCopyBuffer(command_buffer, coeff_buffer[3], coeff_readback_buffer, 1, &alpha_readback);
+        submit_and_wait();
+      }
 
       // Per-plane block counts (chroma fewer when subsampled; 4:4:4 -> all equal the frame block_count).
       int block_counts[MAX_PLANES];
@@ -4600,6 +4687,45 @@ int main(int argc, char **argv) {
               memory_barrier();
             }
           }
+        }
+        // Alpha plane 3 (DCT): closed-loop reconstruct -> previous_buffer[3] so the alpha reference matches the decoder
+        // bit-exactly (mirror of the color closed loop; alpha is NOT deblocked, like the CPU oracle + the decoder).
+        if (g_has_alpha && g_spatial_dct && alpha_inter) {
+          int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
+          int plane_w = width, plane_h = height, plane_pixels = plane_w * plane_h;
+          int pixel_workgroups = (plane_pixels + 255) / 256;
+          if (!alpha_lossless) {
+            int dequant_pixels = plane_w * (((plane_h + 7) / 8) * 8);
+            int32_t dequant_push[2];
+            dequant_push[0] = dequant_pixels;
+            float alpha_multiplier = 1.0f;
+            memcpy(&dequant_push[1], &alpha_multiplier, sizeof(float));
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant_inverse);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
+            vkCmdDispatch(command_buffer, (dequant_pixels + 255) / 256, 1, 1);
+            memory_barrier();
+          }
+          int32_t dct_inv_push[2] = { plane_w, plane_h };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_dct_inv_int : pipeline_dct_inv);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_inv_push);
+          vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
+          memory_barrier();
+          if (!alpha_lossless) {
+            int32_t round_push = plane_pixels;
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &round_push);
+            vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+            memory_barrier();
+          }
+          int32_t add_push[2] = { plane_pixels, is_predicted };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
         }
         submit_and_wait();
       } else if (bidi_use_dct) {   // DCT + quadtree (DCT-B today; DCT I/P quadtree is a later stage, currently CPU-routed)
@@ -4953,6 +5079,74 @@ int main(int argc, char **argv) {
         vkCmdDispatch(command_buffer, block_workgroups, 1, 1);
         memory_barrier();
       }
+      // Alpha plane 3 (wavelet): closed-loop reconstruct -> previous_buffer[3] so the alpha reference matches the decoder
+      // bit-exactly (mirror of the color wavelet closed loop; alpha is NOT deblocked). The pack above consumed the quantized coeffs.
+      if (g_has_alpha && !g_spatial_dct && alpha_inter) {
+        int alpha_lossless = (((g_alpha_qp >= 0) ? g_alpha_qp : quality) == 0);
+        int plane_w = width, plane_h = height, plane_pixels = plane_w * plane_h;
+        int scratch_stride = (plane_w > plane_h) ? plane_w : plane_h;
+        int pixel_workgroups = (plane_pixels + 255) / 256;
+        int level_width[16], level_height[16], level_count = 0, cw = plane_w, ch = plane_h;
+        for (int level = 0; ((level < levels) && (cw >= 2)) && ch >= 2; level++) {
+          level_width[level_count] = cw;
+          level_height[level_count] = ch;
+          level_count++;
+          cw = (cw + 1) / 2;
+          ch = (ch + 1) / 2;
+        }
+        if (!alpha_lossless) {
+          int32_t dequant_push[2];
+          dequant_push[0] = plane_pixels;
+          float alpha_multiplier = 1.0f;
+          memcpy(&dequant_push[1], &alpha_multiplier, sizeof(float));
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dequant_inverse);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_quant, 0, 1, &set_quant[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_quant, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dequant_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        for (int level = level_count - 1; level >= 0; level--) {
+          int level_w = level_width[level], level_h = level_height[level];
+          int32_t transpose_push_1[4] = { plane_w, level_w, level_h, scratch_stride };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_coeff_to_scratch[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_1);
+          vkCmdDispatch(command_buffer, (level_w + 15) / 16, (level_h + 15) / 16, 1);
+          memory_barrier();
+          int32_t row_push_1[4] = { scratch_stride, level_h, level_w, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row_scratch, 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_1);
+          vkCmdDispatch(command_buffer, level_w, 1, 1);
+          memory_barrier();
+          int32_t transpose_push_2[4] = { scratch_stride, level_h, level_w, plane_w };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_transpose);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_transpose, 0, 1, &set_scratch_to_coeff[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_transpose, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, transpose_push_2);
+          vkCmdDispatch(command_buffer, (level_h + 15) / 16, (level_w + 15) / 16, 1);
+          memory_barrier();
+          int32_t row_push_2[4] = { plane_w, level_w, level_h, 1 };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, row_push_2);
+          vkCmdDispatch(command_buffer, level_h, 1, 1);
+          memory_barrier();
+        }
+        if (!alpha_lossless) {
+          int32_t round_push = plane_pixels;
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_round);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_row, 0, 1, &set_row[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_row, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &round_push);
+          vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+          memory_barrier();
+        }
+        int32_t add_push[2] = { plane_pixels, is_predicted };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_motion_add[3], 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_pack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, add_push);
+        vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+        memory_barrier();
+      }
       submit_and_wait();
       }   // end of the wavelet/bitplane residual path (the DCT-B path above replaces it for g_bframe_dct)
 
@@ -5074,37 +5268,15 @@ int main(int argc, char **argv) {
       if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
         int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
         if (g_spatial_dct) {
-          // DCT mode: code the alpha on the CPU rANS+DCT coder (lossy float-DCT / lossless integer-DCT), exactly like
-          // the I/P alpha in encode_frame_colordiff. The alpha plane is intra, so the current coding frame's RGBA in
-          // rgb_map is the source (already alpha-bled + HDR-ingested, matching the GPU extract the wavelet path uses).
+          // DCT mode: the alpha forward DCT + quant ran GPU-native in pass-1 (inter-predicted, shared luma MVs); its
+          // quantized coeffs were staged into coeff_readback_buffer before the closed loop overwrote coeff[3]. rANS-code
+          // them on the CPU here — exactly the 4:4:4-intra GPU-encode fastpath (GPU dct_fwd+quant -> CPU dct_encode_plane,
+          // proven coeff-identical), but on the motion residual. The reference (previous_buffer[3]) was reconstructed on
+          // the GPU (closed loop above), so encoder and decoder stay bit-exact in sync (no CPU-vs-GPU float drift).
           int alpha_pixels = width * height;
           int alpha_blocks = block_count_x(width) * block_count_y(height);
           int32_t *alpha = checked_malloc((size_t)alpha_pixels * 4);
-          if (g_sample_bytes == 2) {
-            const int16_t *src16 = (const int16_t *)rgb_map;
-            for (int i = 0; i < alpha_pixels; i++) {
-              alpha[i] = src16[(i * 4) + 3];
-            }
-          } else {
-            const uint8_t *src8 = (const uint8_t *)rgb_map;
-            for (int i = 0; i < alpha_pixels; i++) {
-              alpha[i] = src8[(i * 4) + 3];
-            }
-          }
-          int *alpha_step = checked_malloc((size_t)alpha_pixels * sizeof(int));
-          build_spatial_quant_steps(alpha_step, width, height, levels, alpha_qp);
-          maybe_apply_tile_aq(alpha_step, width, height, levels);
-          if (alpha_qp == 0) {
-            forward_spatial_int(alpha, width, height, levels);   // lossless: reversible integer-DCT
-          } else {
-            float *alpha_float = checked_malloc((size_t)alpha_pixels * sizeof(float));
-            for (int i = 0; i < alpha_pixels; i++) {
-              alpha_float[i] = (float)alpha[i];
-            }
-            forward_spatial(alpha_float, width, height, levels);   // lossy: float-DCT
-            quantize(alpha_float, alpha, alpha_step, alpha_pixels, 1.0f);
-            free(alpha_float);
-          }
+          memcpy(alpha, coeff_readback_map, (size_t)alpha_pixels * 4);   // GPU-quantized alpha coeffs (intra full alpha on I, motion residual on P)
           BitWriter alpha_writer;
           bitwriter_init(&alpha_writer);
           uint32_t *alpha_offsets = checked_malloc((size_t)alpha_blocks * 4);
@@ -5114,7 +5286,6 @@ int main(int argc, char **argv) {
           total = append_alpha_section(&frame, total, alpha_qp, alpha_offsets, alpha_blocks,
                                        alpha_table, alpha_table_len, alpha_writer.bytes, alpha_writer.length);
           free(alpha);
-          free(alpha_step);
           free(alpha_writer.bytes);
           free(alpha_offsets);
           free(alpha_table);

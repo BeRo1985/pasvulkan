@@ -1537,6 +1537,7 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &coeff_buffer[3], &coeff_memory[3]);
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
     create_buffer((size_t)RANS_GPU_TABLE_UINTS * 4, HOST_VISIBLE_COHERENT, &table_buffer[3], &table_memory[3]);   // DCT-mode alpha: GPU rANS frequency table (mirror of the color planes)
+    create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[3], &previous_memory[3]);   // inter-alpha: GPU-resident reconstructed-alpha reference (P/B reuse the shared luma MVs, like the color planes)
   }
   // DWT transpose scratch (also reused for motion compensation): a W x H plane transposes to H x W
   // stored with row stride max(W,H), spanning max(W,H)^2 elements. pixel_count (W*H) is too small for
@@ -1783,11 +1784,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 256 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 262 },   // raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha set_mc_play[3]/set_motion_add_play[3] (2x3)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 138;   // +7 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff/rans_unpack[3] + set_color_alpha) + 1 for set_composite   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 140;   // +7 for the alpha decode sets (unpack/dequant/row/coeff_to_scratch/scratch_to_coeff/rans_unpack[3] + set_color_alpha) + 1 for set_composite + 2 for inter-alpha (set_mc_play[3]/set_motion_add_play[3])   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (set_mctf_mc[3] + set_mctf_add[3] = 6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -1859,6 +1860,10 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_scratch_to_coeff[3], (VkBuffer[]){ scratch_buffer, coeff_buffer[3] }, 2);
     set_row[3] = allocate_descriptor_set(descriptor_pool, layout_1_buffer);
     bind_storage_buffers(set_row[3], (VkBuffer[]){ coeff_buffer[3] }, 1);
+    set_mc_play[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // inter-alpha: motion-compensate the previous alpha with the SHARED luma MVs -> scratch
+    bind_storage_buffers(set_mc_play[3], (VkBuffer[]){ previous_buffer[3], mv_buffer, scratch_buffer }, 3);
+    set_motion_add_play[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);   // inter-alpha: coeff[3] (residual) += scratch (mc pred); recon -> previous_buffer[3] (next ref)
+    bind_storage_buffers(set_motion_add_play[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer, previous_buffer[3] }, 3);
   }
 
   // GPU bidi decode — DPB pool + bidi_blend + per-frame-rebound sets (mirror of the
@@ -2245,6 +2250,7 @@ int main(int argc, char **argv) {
   int32_t *cpu_previous[MAX_PLANES] = { 0, 0, 0 };   // CPU P-frame coefficient reference (mirrors the GPU's)
   double verify_sum = 0;
   int verify_low = 0, verify_count = 0;
+  long verify_alpha_mismatch = 0;   // inter-alpha: total GPU-vs-CPU-oracle alpha-lane mismatches across all frames (Q0 must be 0)
   if (verify || decode_to_path || eval_mode) {   // verify/decode-to/eval all need the per-frame readback of the decoded image
     create_buffer((size_t)pixel_count * (use_scrgb_output ? 8 : 4), HOST_VISIBLE_COHERENT, &readback_buffer, &readback_memory);   // rgba16f vs rgba8
     VK_CHECK(vkMapMemory(device, readback_memory, 0, VK_WHOLE_SIZE, 0, &readback_map));
@@ -2254,7 +2260,7 @@ int main(int argc, char **argv) {
     if (is_hdr) {
       cpu_sdr = checked_malloc((size_t)pixel_count * g_channels);   // hdr_to_srgb8 now writes rgba (A=255) at g_channels stride
     }
-    for (int plane = 0; plane < g_num_planes; plane++) {
+    for (int plane = 0; plane < g_num_planes + (g_has_alpha ? 1 : 0); plane++) {   // + plane 3 = the alpha reference (the CPU oracle's decode_frame_colordiff now does inter alpha)
       cpu_previous[plane] = checked_malloc((size_t)pixel_count * 4);
     }
   }
@@ -3665,6 +3671,28 @@ int main(int argc, char **argv) {
           vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
           memory_barrier();
         }
+
+        // colordiff (P) alpha inter: motion-compensate the previous reconstructed alpha with the SHARED luma MVs and add
+        // it to the residual (just produced into coeff[3]), saving the result as the next alpha reference — exact mirror
+        // of the color-plane closed loop (mv=0 => mc_prev == prev). I-frames take is_predicted=0, so motion_add only
+        // copies the intra alpha into previous_buffer[3] to seed the reference. Alpha is full-res, so motion_blocks_x
+        // (the luma grid) applies directly with no scaling.
+        if (predictive && (header.prediction_method == 1)) {
+          if (is_predicted) {
+            int32_t a_mc_push[3] = { aw, ah, motion_blocks_x };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_mc_play[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 12, a_mc_push);
+            vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+            memory_barrier();
+          }
+          int32_t a_add_push[2] = { a_pixels, is_predicted };
+          vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_add);
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_unpack, 0, 1, &set_motion_add_play[3], 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, a_add_push);
+          vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+          memory_barrier();
+        }
       }
     }
 
@@ -3833,6 +3861,13 @@ int main(int argc, char **argv) {
         double psnr = (mean_squared_error == 0) ? 99.99 : (10 * log10((255.0 * 255.0) / mean_squared_error));
         verify_sum += psnr;
         verify_count++;
+        if (g_has_alpha && !use_scrgb_output) {   // inter-alpha: GPU alpha lane vs the CPU oracle's (decode_frame_colordiff) — alpha is never tonemapped, so compare cpu_rgb directly
+          for (int i = 0; i < pixel_count; i++) {
+            if (gpu_rgba[(i * 4) + 3] != cpu_rgb[(i * g_channels) + 3]) {
+              verify_alpha_mismatch++;
+            }
+          }
+        }
         if (psnr < 40) {
           if (verify_low < 10) {
             printf("  frame %u: GPU-vs-CPU %.1f dB (LOW)\n", frame_index, psnr);
@@ -3975,6 +4010,17 @@ int main(int argc, char **argv) {
            mode_3ddwt ? "decode_gop_3ddwt" : "decode_frame_coefdiff",
            verify_sum / (verify_count ? verify_count : 1), verify_count, verify_low,
            verify_low ? "=> PLAYER DECODE PATH is the bug (data/parse)" : "=> decode CLEAN -> bug is blit/present");
+    if (g_has_alpha) {
+      // At Q0 the GPU decode and the CPU oracle are integer-identical, so the inter-alpha lane must be bit-exact (0).
+      // At lossy the CPU oracle's float reconstruct diverges from the GPU's (exactly like the RGB dB above, which is < 99.99),
+      // so a small, RGB-proportional mismatch is EXPECTED here and is not an alpha bug — the GPU encode<->decode chain is
+      // bit-identical by construction (same closed-loop shaders). A true lossy alpha-quality number = GPU-decode vs source.
+      const char *verdict = lossless
+        ? ((verify_alpha_mismatch == 0) ? "=> inter-alpha CLEAN (Q0 bit-exact)" : "=> ALPHA DECODE BUG (Q0 must be bit-exact!)")
+        : "(lossy: vs the float-divergent CPU oracle, mirrors the RGB dB above — not a bit-exact check)";
+      printf("VERIFY alpha: GPU-vs-CPU-oracle alpha-lane mismatches = %ld over %d frames %s\n",
+             verify_alpha_mismatch, verify_count, verdict);
+    }
     return 0;
   }
   // The video ran out first but the audio may still be playing (audio slightly longer, or trailing padding):
