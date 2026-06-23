@@ -322,6 +322,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fAlphaRingData:array of TpvVulkanBuffer;   // [slot] packed bitplane bytes (own buffer -> alpha offsets are prefix-sums-from-0, uniform across modes)
        fAlphaRingOffset:array of TpvVulkanBuffer;  // [slot] alpha block offsets
        fAlphaRingStep:array of TpvVulkanBuffer;    // [slot] alpha quant steps (lossy)
+       fAlphaRingTileCodes:array of TpvVulkanBuffer;        // --alpha-aq: [slot] per-frame alpha tile codes (pipelining-safe, like the color fRingTileCodesBuffer)
+       fAlphaRingSetApplyAQ:array of TpvVulkanDescriptorSet; // --alpha-aq: [slot] apply set {ring step, alpha tile codes, weight LUT, ring step (in-place)}
        fAlphaRingSetUnpack:array of TpvVulkanDescriptorSet;  // [slot] {ring data, ring offset, shared coeff[3]}
        fAlphaRingSetDequant:array of TpvVulkanDescriptorSet; // [slot] {shared coeff[3], ring step}
        fAlphaRingTable:array of TpvVulkanBuffer;             // [slot] DCT-mode alpha rANS frequency table (host-visible)
@@ -348,7 +350,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fDeblockCells:TpvInt32; // (width div 8)*(height div 8) — luma cell count, the cell_leaf buffer size for every plane
        fCurrentDeblockDQ:TpvInt32; // deblock: this frame's quality*(white/256); 0 = skip; set by UploadFrame, read by RecordDeblock
        fWeightLUTBuffer:TpvVulkanBuffer;  // AQ (GPU): 256 log-spaced weights (= aq_weight_from_code), uploaded once
-       fTileCodesBuffer:TpvVulkanBuffer;  // AQ (GPU): this frame's raw qpmap tile codes (4 codes per uint), uploaded per frame
+       fTileCodesBuffer:TpvVulkanBuffer;  // AQ (GPU): this frame's raw qpmap color tile codes (4 codes per uint), uploaded per frame
+       fAlphaTileCodesBuffer:TpvVulkanBuffer; // --alpha-aq: this frame's alpha tile codes (separate so color + alpha apply can sit live in one submit)
        fAQPush:array[0..4] of TpvInt32;   // AQ (GPU): apply_tile_aq push {width,height,levels,tile_cols,tile_rows} (recording is sequential)
        fCoeffBuffer:array[0..3] of TpvVulkanBuffer;
        fPreviousBuffer:array[0..3] of TpvVulkanBuffer; // P-frame reference (coefficients / reconstructed YCoCg), GPU-resident across frames
@@ -410,10 +413,14 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // base (per-quality) step is modulated by the current frame's map in-place AFTER the cache Move, so the cache
        // stays the content-independent base and the GPU dequant is untouched (matches the C fwvplay decoder).
        fAQEnabled:boolean;
-       fAQMaps:array of TpvUInt8; // all frames' maps concatenated by coding index (frame_count * fAQCols * fAQRows)
+       fAQMaps:array of TpvUInt8; // all frames' maps concatenated by coding index (frame_count * fQPMapStride)
        fAQCols:TpvInt32;
        fAQRows:TpvInt32;
-       fAQMapBytes:TpvInt32; // fAQCols * fAQRows
+       fAQMapBytes:TpvInt32; // fAQCols * fAQRows (one map)
+       fQPMapStride:TpvInt32; // per-frame slot stride: color tiles (when fAQEnabled) + alpha tiles (when fAlphaAQEnabled), each fAQMapBytes
+       fAlphaQPMapOff:TpvInt32; // byte offset of the alpha tiles within each frame's slot (= fAQMapBytes when color present, else 0)
+       fAlphaAQEnabled:boolean; // color_flags bit8: the alpha plane carries its own per-tile AQ map (after the color tiles)
+       fAlphaAQCurrentMap:PpvUInt8Array; // the current frame's alpha map, or nil
        fAQCurrentMap:PpvUInt8Array; // the current frame's map (set per frame by SetAQCurrentMap), or nil
        fMVScratch:array of TpvInt32; // decoded motion vectors (CPU side) before upload to fMVBuffer
        fMV1Scratch:array of TpvInt32; // B-frames: decoded L1 motion vectors (CPU side)
@@ -669,8 +676,23 @@ begin
  fAQRows:=AQTileRows(fHeight);
  fAQMapBytes:=fAQCols*fAQRows;
  fAQCurrentMap:=nil;
- fAQEnabled:=fHeader.QPMapSize>0;
- if fAQEnabled then begin
+ fAlphaAQCurrentMap:=nil;
+ // --alpha-aq (color_flags bit8): each qpmap slot holds [color tiles when --aq][alpha tiles when --alpha-aq]. Color-AQ
+ // presence is derived from the size (bit8 known), so an alpha-only-AQ stream doesn't wrongly enable color AQ.
+ fAlphaAQEnabled:=(fHeader.ColorFlags and 256)<>0;
+ fQPMapStride:=fAQMapBytes;
+ fAlphaQPMapOff:=0;
+ fAQEnabled:=false;
+ if fHeader.QPMapSize>0 then begin
+  if fAlphaAQEnabled then begin
+   fAQEnabled:=fHeader.QPMapSize>=(TpvInt64(fHeader.FrameCount)*2*fAQMapBytes); // alpha tiles always present; color too only if there is room for two maps/frame
+  end else begin
+   fAQEnabled:=true; // the whole section is color tiles
+  end;
+  fQPMapStride:=(TpvInt32(ord(fAQEnabled))+TpvInt32(ord(fAlphaAQEnabled)))*fAQMapBytes;
+  if fAQEnabled then begin
+   fAlphaQPMapOff:=fAQMapBytes; // alpha tiles follow the color tiles in each slot
+  end;
   SetLength(fAQMaps,fHeader.QPMapSize);
   fStream.Position:=TpvInt64(fHeader.QPMapOffset);
   fStream.ReadBuffer(fAQMaps[0],TpvInt64(fHeader.QPMapSize));
@@ -973,8 +995,8 @@ begin
  fDSL1:=CreateDescriptorSetLayout(1,false);
  fDSL2:=CreateDescriptorSetLayout(2,false);
  fDSL3:=CreateDescriptorSetLayout(3,false);
- if fAQEnabled then begin
-  fDSL4:=CreateDescriptorSetLayout(4,false); // AQ apply: base step, tile codes, weight LUT, modulated step
+ if fAQEnabled or fAlphaAQEnabled then begin
+  fDSL4:=CreateDescriptorSetLayout(4,false); // AQ apply (color and/or alpha): base step, tile codes, weight LUT, modulated step
  end;
  if fSpatialDCT then begin
   fDSLRANS4:=CreateDescriptorSetLayout(4,false); // DCT rANS unpack: {data, offset, coeff, table}
@@ -999,7 +1021,7 @@ begin
  // pipeline layouts (push-constant sizes match the C shaders)
  fPLUnpack:=CreatePipelineLayout(fDSL3,16);
  fPLDequant:=CreatePipelineLayout(fDSL2,8);
- if fAQEnabled then begin
+ if fAQEnabled or fAlphaAQEnabled then begin
   fPLApplyAQ:=CreatePipelineLayout(fDSL4,20); // push {width,height,levels,tile_cols,tile_rows}
  end;
  fPLTranspose:=CreatePipelineLayout(fDSL2,16);
@@ -1041,7 +1063,7 @@ begin
   end;
  end;
  fPipeDequant:=CreateComputePipeline(FlexibleVideoDequant97SPIRVData,FlexibleVideoDequant97SPIRVDataSize,fPLDequant,false);
- if fAQEnabled then begin
+ if fAQEnabled or fAlphaAQEnabled then begin
   fPipeApplyAQ:=CreateComputePipeline(FlexibleVideoApplyTileAqSPIRVData,FlexibleVideoApplyTileAqSPIRVDataSize,fPLApplyAQ,false);
  end;
  fPipeTranspose:=CreateComputePipeline(FlexibleVideoTransposeFSPIRVData,FlexibleVideoTransposeFSPIRVDataSize,fPLTranspose,false);
@@ -1138,8 +1160,8 @@ begin
 
  // AQ (GPU): the one-time weight LUT (code -> log-spaced weight, IDENTICAL to ApplyTileAQ / aq_weight_from_code) + the
  // per-frame raw qpmap tile codes, so apply_tile_aq.comp modulates the base step on the GPU (no per-pixel CPU work).
- if fAQEnabled then begin
-  fWeightLUTBuffer:=CreateStorageBuffer(256*SizeOf(TpvFloat),false,'FWV.aqlut');
+ if fAQEnabled or fAlphaAQEnabled then begin
+  fWeightLUTBuffer:=CreateStorageBuffer(256*SizeOf(TpvFloat),false,'FWV.aqlut'); // shared by the color + alpha apply
   AQLogSpan:=Ln(TpvFlexibleVideo.AQWeightMax/TpvFlexibleVideo.AQWeightMin);
   AQWeightPointer:=PpvFloatArray(fWeightLUTBuffer.Memory.MapMemory);
   try
@@ -1150,7 +1172,12 @@ begin
    fWeightLUTBuffer.Memory.UnmapMemory;
   end;
   // tile codes: rounded up to a multiple of 4 so apply_tile_aq's packed-uint reads (4 codes/uint) stay in bounds
-  fTileCodesBuffer:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.aqcodes');
+  if fAQEnabled then begin
+   fTileCodesBuffer:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.aqcodes');
+  end;
+  if fAlphaAQEnabled then begin // --alpha-aq: the alpha plane's own per-frame tile codes (separate buffer so color + alpha apply can sit live in one submit)
+   fAlphaTileCodesBuffer:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.alphaaqcodes');
+  end;
  end;
 
  // optional alpha plane (index 3): a full-res (luma-sized) plane. Its own data buffer keeps the alpha block offsets
@@ -1171,6 +1198,9 @@ begin
   SetLength(fAlphaRingData,fAlphaRingSize);
   SetLength(fAlphaRingOffset,fAlphaRingSize);
   SetLength(fAlphaRingStep,fAlphaRingSize);
+  if fAlphaAQEnabled then begin
+   SetLength(fAlphaRingTileCodes,fAlphaRingSize); // --alpha-aq: per-slot alpha tile codes
+  end;
   SetLength(fAlphaRingMVBuffer,fAlphaRingSize); // own-alpha-MV L0: I/P colordiff mc + B bidi gmc0
   if fHasBFrames then begin
    SetLength(fAlphaRingMV1Buffer,fAlphaRingSize); // own-alpha-MV L1: B bidi gmc1
@@ -1182,6 +1212,9 @@ begin
    fAlphaRingData[SlotIndex]:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
    fAlphaRingOffset[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
    fAlphaRingStep[SlotIndex]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
+   if fAlphaAQEnabled then begin // --alpha-aq: per-slot alpha tile codes (rounded up to a multiple of 4 for the packed-uint reads)
+    fAlphaRingTileCodes[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(((fAQMapBytes+3) div 4)*4),false,'FWV.alphaaqcodes');
+   end;
    fAlphaRingMVBuffer[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.alphamv');
    if fHasBFrames then begin
     fAlphaRingMV1Buffer[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.alphamv1');
@@ -1398,6 +1431,10 @@ begin
   MaxSets:=MaxSets+3+(fBufferRingSize*3);
   MaxBuffers:=MaxBuffers+12+(fBufferRingSize*12);
  end;
+ if fAlphaAQEnabled then begin // --alpha-aq apply: 1 shared (plane 3, 3D-DWT) + 1 per alpha ring slot (I/P + B), 4 buffers each
+  MaxSets:=MaxSets+1+fAlphaRingSize;
+  MaxBuffers:=MaxBuffers+4+(fAlphaRingSize*4);
+ end;
  if fHasCDEF then begin // CDEF sets: 3 shared {src, cdef_temp} + 3 per B-frame ring slot (mode B), 2 buffers each
   MaxSets:=MaxSets+3;
   MaxBuffers:=MaxBuffers+6;
@@ -1522,6 +1559,9 @@ begin
   // shared coeff[3] / scratch / image, so one shared set each suffices.
   SetLength(fAlphaRingSetUnpack,fAlphaRingSize);
   SetLength(fAlphaRingSetDequant,fAlphaRingSize);
+  if fAlphaAQEnabled then begin
+   SetLength(fAlphaRingSetApplyAQ,fAlphaRingSize); // --alpha-aq: one apply set per alpha ring slot
+  end;
   SetLength(fAlphaRingSetMCPlayOwn,fAlphaRingSize); // own-alpha-MV I/P mc: one set per slot, binding the slot's own MV field
   if fSpatialDCT then begin
    SetLength(fAlphaRingSetRANSUnpack,fAlphaRingSize);
@@ -1537,6 +1577,15 @@ begin
    BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],0,fCoeffBuffer[3]);
    BindStorageBuffer(fAlphaRingSetDequant[SlotIndex],1,fAlphaRingStep[SlotIndex]);
    fAlphaRingSetDequant[SlotIndex].Flush;
+
+   if fAlphaAQEnabled then begin // --alpha-aq: modulate this slot's alpha step by its tile codes in-place before the dequant
+    fAlphaRingSetApplyAQ[SlotIndex]:=AllocateSet(fDSL4);
+    BindStorageBuffer(fAlphaRingSetApplyAQ[SlotIndex],0,fAlphaRingStep[SlotIndex]); // base step (built per frame into the ring slot)
+    BindStorageBuffer(fAlphaRingSetApplyAQ[SlotIndex],1,fAlphaRingTileCodes[SlotIndex]);
+    BindStorageBuffer(fAlphaRingSetApplyAQ[SlotIndex],2,fWeightLUTBuffer);
+    BindStorageBuffer(fAlphaRingSetApplyAQ[SlotIndex],3,fAlphaRingStep[SlotIndex]); // modulated step the dequant reads (in-place)
+    fAlphaRingSetApplyAQ[SlotIndex].Flush;
+   end;
 
    if fSpatialDCT then begin // DCT-mode alpha rANS unpack: {ring data, ring offset, shared coeff[3], ring table}
     fAlphaRingSetRANSUnpack[SlotIndex]:=AllocateSet(fDSLRANS4);
@@ -1569,6 +1618,15 @@ begin
   fSetRow[3]:=AllocateSet(fDSL1);
   BindStorageBuffer(fSetRow[3],0,fCoeffBuffer[3]);
   fSetRow[3].Flush;
+
+  if fAlphaAQEnabled then begin // --alpha-aq (3D-DWT alpha): modulate fStepBuffer[3] by the alpha tile codes in-place before the prefetch dequant (fSetDequantPF[3] reads fStepBuffer[3])
+   fSetApplyAQ[3]:=AllocateSet(fDSL4);
+   BindStorageBuffer(fSetApplyAQ[3],0,fStepBuffer[3]);
+   BindStorageBuffer(fSetApplyAQ[3],1,fAlphaTileCodesBuffer);
+   BindStorageBuffer(fSetApplyAQ[3],2,fWeightLUTBuffer);
+   BindStorageBuffer(fSetApplyAQ[3],3,fStepBuffer[3]);
+   fSetApplyAQ[3].Flush;
+  end;
 
   // inter alpha (colordiff I/P): motion-compensate the previous reconstructed alpha with the SHARED luma MVs, then add
   // it to the residual and save the reconstruction as the next alpha reference — mirror of the color planes' mc/motion_add.
@@ -1832,10 +1890,22 @@ end;
 
 procedure TpvFlexibleVideoDecoder.SetAQCurrentMap(const aCodingIndex:TpvInt32);
 begin
- if fAQEnabled and ((aCodingIndex>=0) and (((aCodingIndex+1)*fAQMapBytes)<=length(fAQMaps))) then begin
-  fAQCurrentMap:=PpvUInt8Array(@fAQMaps[aCodingIndex*fAQMapBytes]);
+ // Per coding frame: select the color tiles (offset 0) and the alpha tiles (after the color tiles) within this frame's
+ // qpmap slot (fQPMapStride). Each is nil when its flag is off; the bounds guard covers the full slot.
+ if (aCodingIndex>=0) and (((aCodingIndex+1)*fQPMapStride)<=length(fAQMaps)) then begin
+  if fAQEnabled then begin
+   fAQCurrentMap:=PpvUInt8Array(@fAQMaps[aCodingIndex*fQPMapStride]);
+  end else begin
+   fAQCurrentMap:=nil;
+  end;
+  if fAlphaAQEnabled then begin
+   fAlphaAQCurrentMap:=PpvUInt8Array(@fAQMaps[(aCodingIndex*fQPMapStride)+fAlphaQPMapOff]);
+  end else begin
+   fAlphaAQCurrentMap:=nil;
+  end;
  end else begin
   fAQCurrentMap:=nil;
+  fAlphaAQCurrentMap:=nil;
  end;
 end;
 
@@ -2794,11 +2864,19 @@ begin
    DataPointer:=PpvUInt8Array(fAlphaRingStep[fAlphaCurrentSlot].Memory.MapMemory);
    try
     Move(fStepCacheData[(StepSlot*fNumPlanes)+0][0],DataPointer^[0],TpvSizeUInt(fWidth)*TpvSizeUInt(fHeight)*4);
-    // NOTE: the alpha plane is intentionally NOT AQ-modulated — the encoder quantises it with plain alpha_qp steps
-    // (step_map[3] is built once, before any per-frame tile map exists, and is never rebuilt under --aq), so the
-    // decode must dequantise alpha with the plain steps too. Applying the tile map here would mismatch the encoder.
+    // Without --alpha-aq this is the final plain alpha step (the encoder quantises with plain alpha_qp steps). With
+    // --alpha-aq it is the BASE step; apply_tile_aq.comp (RecordAlphaDecode) modulates it in-place by the alpha tile
+    // codes below, mirroring the encoder's per-frame alpha map.
    finally
     fAlphaRingStep[fAlphaCurrentSlot].Memory.UnmapMemory;
+   end;
+  end;
+  if fAlphaAQEnabled and (fAlphaAQCurrentMap<>nil) then begin // --alpha-aq: upload this frame's alpha tile codes into the ring slot for the GPU apply
+   DataPointer:=PpvUInt8Array(fAlphaRingTileCodes[fAlphaCurrentSlot].Memory.MapMemory);
+   try
+    Move(fAlphaAQCurrentMap^[0],DataPointer^[0],TpvSizeUInt(fAQMapBytes));
+   finally
+    fAlphaRingTileCodes[fAlphaCurrentSlot].Memory.UnmapMemory;
    end;
   end;
  end;
@@ -2963,6 +3041,16 @@ begin
   end;
  end;
 
+ // --alpha-aq (B path): the B alpha is uploaded out of color coding order, so select THIS coding frame's alpha tile map
+ // (alpha only — leave fAQCurrentMap to the color decode's own per-coding-frame SetAQCurrentMap) before UploadAlphaFromBuffer stages the codes.
+ if fAlphaAQEnabled then begin
+  if (aCodingIndex>=0) and (((aCodingIndex+1)*fQPMapStride)<=length(fAQMaps)) then begin
+   fAlphaAQCurrentMap:=PpvUInt8Array(@fAQMaps[(aCodingIndex*fQPMapStride)+fAlphaQPMapOff]);
+  end else begin
+   fAlphaAQCurrentMap:=nil;
+  end;
+ end;
+
  // B path: pass the frame's alpha mv mode so ParseAlphaSection reads its own-MV blob, and aDualMV so the bidi B-frame's
  // dual L0/L1 alpha field is decoded into the slot's two alpha MV buffers (the gmc0/gmc1 rebind binds them when own). A
  // single-ref P-anchor (Ref1<0) decodes L0 only.
@@ -3032,6 +3120,15 @@ begin
 
  // lossy: dequantize (single luma-like plane -> chroma multiplier 1.0)
  if not fAlphaLossless then begin
+  if fAlphaAQEnabled then begin // --alpha-aq: modulate this slot's alpha base step by its tile codes in-place before the dequant (GPU apply_tile_aq.comp)
+   fAQPush[0]:=PlaneW;
+   fAQPush[1]:=PlaneH;
+   fAQPush[2]:=fLevels;
+   fAQPush[3]:=fAQCols;
+   fAQPush[4]:=fAQRows;
+   RecordDispatch(aCommandBuffer,fPipeApplyAQ,fPLApplyAQ,fAlphaRingSetApplyAQ[fAlphaCurrentSlot],@fAQPush[0],20,PlanePixelWorkgroups,1,1);
+   RecordComputeBarrier(aCommandBuffer);
+  end;
   DequantPush[0]:=PlanePixels;
   ChromaMultiplier:=1.0;
   DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
@@ -4474,6 +4571,14 @@ begin
    finally
     fStepBuffer[3].Memory.UnmapMemory;
    end;
+   if fAlphaAQEnabled and (fAlphaAQCurrentMap<>nil) then begin // --alpha-aq (3D-DWT): upload this subband's alpha tile codes; apply_tile_aq.comp modulates fStepBuffer[3] in-place before the dequant
+    DataPointer:=PpvUInt8Array(fAlphaTileCodesBuffer.Memory.MapMemory);
+    try
+     Move(fAlphaAQCurrentMap^[0],DataPointer^[0],TpvSizeUInt(fAQMapBytes));
+    finally
+     fAlphaTileCodesBuffer.Memory.UnmapMemory;
+    end;
+   end;
   end;
  end;
 
@@ -4707,7 +4812,16 @@ begin
   RecordDispatch(aCommandBuffer,fPipeUnpack,fPLUnpack,fSetUnpackPF[3],@UnpackPush[0],16,PlaneUnpackWorkgroups,1,1);
   RecordComputeBarrier(aCommandBuffer);
 
-  if not fAlphaLossless3D then begin // lossy alpha: dequant (alpha is never AQ-modulated, chroma_multiplier 1.0)
+  if not fAlphaLossless3D then begin // lossy alpha: (optional --alpha-aq GPU modulation, then) dequant, chroma_multiplier 1.0
+   if fAlphaAQEnabled then begin // --alpha-aq: modulate fStepBuffer[3] by this subband's alpha tile codes in-place before the dequant
+    fAQPush[0]:=PlaneW;
+    fAQPush[1]:=PlaneH;
+    fAQPush[2]:=fLevels;
+    fAQPush[3]:=fAQCols;
+    fAQPush[4]:=fAQRows;
+    RecordDispatch(aCommandBuffer,fPipeApplyAQ,fPLApplyAQ,fSetApplyAQ[3],@fAQPush[0],20,PlanePixelWorkgroups,1,1);
+    RecordComputeBarrier(aCommandBuffer);
+   end;
    DequantPush[0]:=PlanePixels;
    ChromaMultiplier:=1.0;
    DequantPush[1]:=PpvInt32(@ChromaMultiplier)^;
@@ -5498,7 +5612,11 @@ begin
   if SlotIndex<length(fAlphaRingSetMCPlayOwn) then begin // own-alpha-MV I/P mc set
    FreeAndNil(fAlphaRingSetMCPlayOwn[SlotIndex]);
   end;
+  if SlotIndex<length(fAlphaRingSetApplyAQ) then begin // --alpha-aq per-slot apply set
+   FreeAndNil(fAlphaRingSetApplyAQ[SlotIndex]);
+  end;
  end;
+ FreeAndNil(fSetApplyAQ[3]); // --alpha-aq shared (3D-DWT) apply set
  FreeAndNil(fSetCoeffToScratch[3]);
  FreeAndNil(fSetScratchToCoeff[3]);
  FreeAndNil(fSetRow[3]);
@@ -5615,6 +5733,9 @@ begin
   FreeAndNil(fAlphaRingData[SlotIndex]);
   FreeAndNil(fAlphaRingOffset[SlotIndex]);
   FreeAndNil(fAlphaRingStep[SlotIndex]);
+  if SlotIndex<length(fAlphaRingTileCodes) then begin // --alpha-aq per-slot alpha tile codes
+   FreeAndNil(fAlphaRingTileCodes[SlotIndex]);
+  end;
   if SlotIndex<length(fAlphaRingMVBuffer) then begin // own-alpha-MV L0 field
    FreeAndNil(fAlphaRingMVBuffer[SlotIndex]);
   end;
@@ -5648,6 +5769,7 @@ begin
  FreeAndNil(fPipeApplyAQ);
  FreeAndNil(fWeightLUTBuffer);
  FreeAndNil(fTileCodesBuffer);
+ FreeAndNil(fAlphaTileCodesBuffer); // --alpha-aq shared (3D-DWT) tile codes
  FreeAndNil(fPipeDeblock); // deblock path (nil otherwise)
  FreeAndNil(fPipeDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
  FreeAndNil(fPipeRANSUnpackQuadTree);

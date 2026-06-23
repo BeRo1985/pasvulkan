@@ -2143,6 +2143,8 @@ static void apply_tile_aq(int *step, int width, int height, int levels,
 // building the base steps, so AQ reaches every code path (I/P, B, 3D-DWT, alpha, CPU oracle) with one line each.
 int g_aq_enabled = 0;            // --aq: spatially-adaptive quantization on (encoder); decoder sets it from qpmap_size>0
 float g_aq_strength = 0.5f;      // activity->weight spread (ratio^strength); 0 = off
+int g_alpha_aq_enabled = 0;      // --alpha-aq: the same spatially-adaptive quant on the ALPHA plane, keyed on its own matte activity
+float g_alpha_aq_strength = 0.5f;   // alpha activity->weight spread (independent of the color --aq strength)
 static const uint8_t *g_aq_current_map = NULL;   // the current frame's per-tile map (cols*rows u8), or NULL
 static int g_aq_current_cols = 0;
 static int g_aq_current_rows = 0;
@@ -2158,6 +2160,27 @@ static void aq_set_current_map(const uint8_t *map, int cols, int rows) {
 static void maybe_apply_tile_aq(int *step, int width, int height, int levels) {
   if ((g_aq_enabled && (g_aq_current_map != NULL)) && ((g_aq_current_cols > 0) && (g_aq_current_rows > 0))) {
     apply_tile_aq(step, width, height, levels, g_aq_current_map, g_aq_current_cols, g_aq_current_rows);
+  }
+}
+
+// The current frame's ALPHA AQ map (separate from the color g_aq_current_map): keyed on the matte's own activity and
+// transmitted as its own block in the qpmap section. The CPU oracle encode + the CPU decode paths set it once per frame
+// (alpha_aq_set_current_map) and call maybe_apply_alpha_tile_aq right after the alpha build_spatial_quant_steps, exactly
+// like maybe_apply_tile_aq does for color. (fvdenc's GPU-native path holds the per-frame map pointer directly and calls
+// apply_tile_aq on the alpha step itself.) The alpha plane is full-res, so its grid is the same 64px tiles as color.
+static const uint8_t *g_alpha_aq_current_map = NULL;
+static int g_alpha_aq_current_cols = 0;
+static int g_alpha_aq_current_rows = 0;
+
+static void alpha_aq_set_current_map(const uint8_t *map, int cols, int rows) {
+  g_alpha_aq_current_map = map;
+  g_alpha_aq_current_cols = cols;
+  g_alpha_aq_current_rows = rows;
+}
+
+static void maybe_apply_alpha_tile_aq(int *step, int width, int height, int levels) {
+  if ((g_alpha_aq_enabled && (g_alpha_aq_current_map != NULL)) && ((g_alpha_aq_current_cols > 0) && (g_alpha_aq_current_rows > 0))) {
+    apply_tile_aq(step, width, height, levels, g_alpha_aq_current_map, g_alpha_aq_current_cols, g_alpha_aq_current_rows);
   }
 }
 
@@ -8191,7 +8214,11 @@ static void encode_gop_3ddwt(uint8_t **rgb_frames, int num_frames, int width, in
 static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames, int width, int height,
                              int levels, int base_quality, uint8_t **rgb_out, int32_t **recon_ycocg_out,
                              const uint8_t *qpmaps, int aq_cols, int aq_rows, long base_coding_index,
-                             const int *alpha_mv_modes) {
+                             const int *alpha_mv_modes, size_t qpmap_stride, const uint8_t *alpha_qpmaps) {
+  // qpmap_stride: per-frame byte stride of the qpmap section ([color][alpha]); when 0, fall back to aq_cols*aq_rows (the
+  // self-test callers pass a single color-only map). alpha_qpmaps (or NULL): --alpha-aq alpha map base (= qpmaps + the
+  // color-tiles offset within each slot), applied to the alpha plane below — keeps --verify valid for --alpha-aq 3D-DWT.
+  size_t qpmap_slot = qpmap_stride ? qpmap_stride : ((size_t)aq_cols * (size_t)aq_rows);
   (void)frame_len;
   int pixel_count = width * height;
   int lossless = (base_quality == 0);
@@ -8274,8 +8301,11 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         decode_motion_vectors(&mv_reader, fmv, motion_blocks_x, motion_blocks_y);
       }
     }
-    if (qpmaps) {   // verify: this subband's transmitted AQ map (coding index base + f), applied to the color planes
-      aq_set_current_map(qpmaps + ((size_t)(base_coding_index + f) * ((size_t)aq_cols * (size_t)aq_rows)), aq_cols, aq_rows);
+    if (qpmaps) {   // verify: this subband's transmitted color AQ map (coding index base + f), applied to the color planes
+      aq_set_current_map(qpmaps + ((size_t)(base_coding_index + f) * qpmap_slot), aq_cols, aq_rows);
+    }
+    if (alpha_qpmaps) {   // --alpha-aq: this subband's alpha AQ map (same per-frame stride, after the color tiles), applied to the alpha plane below
+      alpha_aq_set_current_map(alpha_qpmaps + ((size_t)(base_coding_index + f) * qpmap_slot), aq_cols, aq_rows);
     }
     for (int plane = 0; plane < g_num_planes; plane++) {
       int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
@@ -8344,7 +8374,8 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
         inverse_spatial_int(coefficients, width, height, levels);
         memcpy(alpha_gop_int + ((size_t)f * pixel_count), coefficients, (size_t)pixel_count * 4);
       } else {
-        build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // alpha is never AQ-modulated (no maybe_apply_tile_aq)
+        build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+        maybe_apply_alpha_tile_aq(step, width, height, levels);   // --alpha-aq: modulate the alpha step by its matte-keyed map (no-op when off / alpha_qpmaps NULL)
         dequantize(coefficients, float_plane, step, pixel_count, 1.0f);
         inverse_spatial(float_plane, width, height, levels);
         if (alpha_int_temporal) {   // MCTF lossy: the alpha temporal-subband frames are integer
@@ -8364,6 +8395,9 @@ static void decode_gop_3ddwt(uint8_t **frames, size_t *frame_len, int num_frames
   }
   if (qpmaps) {   // don't leak the last subband's map into any later maybe_apply caller
     aq_set_current_map(NULL, 0, 0);
+  }
+  if (alpha_qpmaps) {
+    alpha_aq_set_current_map(NULL, 0, 0);
   }
   free(step);
   free(float_plane);
@@ -8924,7 +8958,7 @@ static int alpha_selftest(void) {
   for (int pass = 0; pass < 2; pass++) {
     g_mctf = pass;   // pass 0 = open-loop Haar, pass 1 = MCTF (motion-compensated MC-Haar, shared luma MVs)
     encode_gop_3ddwt(gop_src, dwt_frames, width, height, 5, 0, gop_enc, gop_enc_len, NULL);   // shared luma MVs (regression baseline)
-    decode_gop_3ddwt(gop_enc, gop_enc_len, dwt_frames, width, height, 5, 0, gop_rec, NULL, NULL, 0, 0, 0, NULL);
+    decode_gop_3ddwt(gop_enc, gop_enc_len, dwt_frames, width, height, 5, 0, gop_rec, NULL, NULL, 0, 0, 0, NULL, 0, NULL);
     int *am = pass ? &dwt_mctf_alpha_mismatch : &dwt_ol_alpha_mismatch;
     int *rm = pass ? &dwt_mctf_rgb_mismatch : &dwt_ol_rgb_mismatch;
     for (int g = 0; g < dwt_frames; g++) {
@@ -8993,7 +9027,7 @@ static int alpha_selftest(void) {
     for (int g = 0; g < gn; g++) {
       dec_modes[g] = enc_modes[g];   // the container carries these in FrameEntry.pad; the self-test hands them straight through
     }
-    decode_gop_3ddwt(enc, enc_len, gn, width, height, 5, 0, rec, NULL, NULL, 0, 0, 0, dec_modes);
+    decode_gop_3ddwt(enc, enc_len, gn, width, height, 5, 0, rec, NULL, NULL, 0, 0, 0, dec_modes, 0, NULL);
     g_spatial_dct = sv_sdct;
     g_mctf = sv_mctf;
     g_temporal_levels = sv_tl;
@@ -9817,7 +9851,7 @@ int main(int argc, char **argv) {
       double t0 = now_milliseconds();
       encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length, NULL);
       double t1 = now_milliseconds();
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL, 0, NULL);
       double t2 = now_milliseconds();
       for (int g = 0; g < filled; g++) {
         double mean_squared_error = 0;

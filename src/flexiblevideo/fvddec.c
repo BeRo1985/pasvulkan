@@ -657,7 +657,7 @@ int main(int argc, char **argv) {
         apply_alpha_bleed(gop_rgb[g], width, height);
       }
       encode_gop_3ddwt(gop_rgb, filled, width, height, levels, quality, gop_encoded, gop_encoded_length, NULL);
-      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, cpu_gop_rgb, NULL, NULL, 0, 0, 0, NULL);
+      decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, cpu_gop_rgb, NULL, NULL, 0, 0, 0, NULL, 0, NULL);
 
       // Phase 1: each subband frame -> GPU spatial inverse -> GOP buffer slot (no round; keep float/int).
       for (int g = 0; g < filled; g++) {

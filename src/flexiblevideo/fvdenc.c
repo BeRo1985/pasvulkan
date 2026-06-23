@@ -1500,6 +1500,7 @@ int main(int argc, char **argv) {
       "    --alpha-qp=<N>                 alpha quant step (-1 = follow the color quality; default -1)\n"
       "    --alpha-mv=<luma|cpu-rd|sad|own>  alpha motion: luma=share luma MVs (default); cpu-rd=per-frame own/shared by actual bytes; sad=own by MC-SAD heuristic; own=always own alpha MVs\n"
       "    --alpha-sad-lambda=<N>         --alpha-mv=sad tuning: each own-MV-blob byte costs N residual-SAD units (default 16)\n"
+      "    --alpha-aq[=<strength>]        spatially-adaptive quant on the alpha plane, keyed on its own matte activity (default 0.5; bits to the hard matte edges); lossy only\n"
       "    --alpha-bleed[=<N>]            dilate opaque RGB into the transparent pixels before the transform (less fringing; =N caps the passes, 0 = until done)\n"
       "  audio:\n"
       "    --audio=vorbis|qoa|rpcm|fwa    audio codec (default vorbis; fwa = Flexible Wavelet audio)\n"
@@ -1590,6 +1591,11 @@ int main(int argc, char **argv) {
       }
     } else if (!strncmp(argv[i], "--alpha-sad-lambda=", 19)) {
       g_alpha_mv_sad_lambda = atoi(argv[i] + 19);   // --alpha-mv=sad tuning: each own-MV-blob byte costs this many residual-SAD units (overrides FVD_ALPHA_SAD_LAMBDA)
+    } else if (!strncmp(argv[i], "--alpha-aq", 10)) {
+      g_alpha_aq_enabled = 1;          // spatially-adaptive quant on the alpha plane (matte-keyed). Optional strength: --alpha-aq=0.7
+      if (argv[i][10] == '=') {
+        g_alpha_aq_strength = (float)atof(argv[i] + 11);
+      }
     } else if (!strncmp(argv[i], "--alpha-bleed", 13)) {
       g_alpha_bleed = 1;              // dilate opaque RGB into the transparent pixels before the transform (no fringing / cheaper edge blocks)
       if (argv[i][13] == '=') {
@@ -2696,6 +2702,14 @@ int main(int argc, char **argv) {
   int32_t *aq_luma = (g_aq_enabled && !lossless) ? checked_malloc((size_t)pixel_count * sizeof(int32_t)) : NULL;
   long aq_capacity = 0;
   uint8_t *all_qpmaps = NULL;
+  // --alpha-aq: the alpha plane gets its OWN per-tile map (keyed on matte activity, same 64px grid as color), kept in a
+  // parallel store and INTERLEAVED into the qpmap section per frame ([color tiles when --aq][alpha tiles when --alpha-aq]).
+  // Keeping it separate leaves the color qpmap path byte-identical; only the on-disk write loop interleaves the two.
+  int qpmap_color = (g_aq_enabled && !lossless) ? 1 : 0;
+  int qpmap_alpha = ((g_alpha_aq_enabled && g_has_alpha) && !lossless) ? 1 : 0;
+  int32_t *aq_alpha = qpmap_alpha ? checked_malloc((size_t)pixel_count * sizeof(int32_t)) : NULL;   // 3D-DWT alpha subband read-back for the map (I/P keys on gpu_alpha_cur directly)
+  long alpha_aq_capacity = 0;
+  uint8_t *all_alpha_qpmaps = NULL;
   // perceptual RDO (--prdo): per-frame source-luma masking -> per-coefficient drop thresholds, uploaded for pthresh.comp.
   int prdo_cols = prdo_tile_cols(width), prdo_rows = prdo_tile_rows(height);
   int32_t *prdo_luma = (g_prdo_enabled && !lossless) ? checked_malloc((size_t)pixel_count * sizeof(int32_t)) : NULL;
@@ -3426,6 +3440,35 @@ int main(int argc, char **argv) {
           compute_tile_aq_map(aq_luma, width, height, g_aq_strength, frame_map);
           aq_set_current_map(frame_map, aq_cols, aq_rows);
         }
+        // --alpha-aq (3D-DWT): this subband's alpha map from its OWN spatial alpha (read back from gop_buffer[3]@f, the
+        // same buffer the alpha spatial quant reads), modulating step_map[3] so the GPU alpha quant matches the decoder.
+        if (qpmap_alpha) {
+          long coding_index = frame_index + f;
+          if (coding_index >= alpha_aq_capacity) {
+            long want = (alpha_aq_capacity > 0) ? (alpha_aq_capacity * 2) : 256;
+            while (want <= coding_index) {
+              want *= 2;
+            }
+            all_alpha_qpmaps = realloc(all_alpha_qpmaps, (size_t)want * aq_map_bytes);
+            if (!all_alpha_qpmaps) {
+              die("alpha qpmap alloc");
+            }
+            alpha_aq_capacity = want;
+          }
+          begin_recording();   // read subband f's alpha plane back from the GPU temporal output (full-res)
+          VkBufferCopy alpha_copy = { (VkDeviceSize)f * plane_bytes, 0, plane_bytes };
+          vkCmdCopyBuffer(command_buffer, gop_buffer[3], data_buffer, 1, &alpha_copy);
+          submit_and_wait();
+          for (int i = 0; i < pixel_count; i++) {   // alpha temporal subbands are integer when alpha_int_temporal (MCTF / lossless), else float
+            aq_alpha[i] = alpha_int_temporal ? ((const int32_t *)data_map)[i] : (int32_t)((const float *)data_map)[i];
+          }
+          uint8_t *alpha_map = all_alpha_qpmaps + ((size_t)coding_index * aq_map_bytes);
+          compute_tile_aq_map(aq_alpha, width, height, g_alpha_aq_strength, alpha_map);
+          int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // 3D-DWT alpha base step is GOP-constant; only the per-subband map varies
+          build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+          apply_tile_aq(step, width, height, levels, alpha_map, aq_cols, aq_rows);
+          memcpy(step_map[3], step, (size_t)pixel_count * 4);
+        }
         begin_recording();
         for (int plane = 0; plane < g_num_planes; plane++) {
           int pw = plane_w[plane], ph = plane_h[plane], pp = plane_pixels[plane];
@@ -3700,7 +3743,7 @@ int main(int argc, char **argv) {
           for (int plane = 0; plane < g_num_planes; plane++) {
             recon_ycocg[plane] = checked_malloc(((size_t)filled * plane_pixels[plane]) * 4);
           }
-          decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, recon_ycocg, NULL, 0, 0, 0, NULL);
+          decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, recon_ycocg, NULL, 0, 0, 0, NULL, 0, NULL);
           int32_t *original_luma = checked_malloc((size_t)pixel_count * 4);
           int32_t *original_orange = checked_malloc((size_t)pixel_count * 4);
           int32_t *original_green = checked_malloc((size_t)pixel_count * 4);
@@ -3777,7 +3820,7 @@ int main(int argc, char **argv) {
           }
         }
         // Self-test: CPU-decode the whole GOP (decode_gop_3ddwt) and score PSNR per frame vs the source.
-        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL);
+        decode_gop_3ddwt(gop_encoded, gop_encoded_length, filled, width, height, levels, quality, gop_reconstructed, NULL, NULL, 0, 0, 0, NULL, 0, NULL);
         for (int f = 0; f < filled; f++) {
           double mean_squared_error = 0;
           size_t pixel_stride = (size_t)g_channels * g_sample_bytes, rgb_bytes = (size_t)3 * g_sample_bytes;
@@ -4206,6 +4249,25 @@ int main(int argc, char **argv) {
         const void *cur_src = use_bframes ? (const void *)rgb_map : (const void *)rgb;
         for (int i = 0; i < pixel_count; i++) {
           gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)cur_src)[(i * 4) + 3] : ((const uint8_t *)cur_src)[(i * 4) + 3];
+        }
+        if (qpmap_alpha) {   // --alpha-aq: build THIS frame's alpha tile map from the source matte and modulate step_map[3] so the GPU quant matches the decoder's apply_tile_aq
+          if (frame_index >= alpha_aq_capacity) {
+            long want = (alpha_aq_capacity > 0) ? (alpha_aq_capacity * 2) : 256;
+            while (want <= frame_index) {
+              want *= 2;
+            }
+            all_alpha_qpmaps = realloc(all_alpha_qpmaps, (size_t)want * aq_map_bytes);
+            if (!all_alpha_qpmaps) {
+              die("alpha qpmap alloc");
+            }
+            alpha_aq_capacity = want;
+          }
+          uint8_t *alpha_map = all_alpha_qpmaps + ((size_t)frame_index * aq_map_bytes);
+          compute_tile_aq_map(gpu_alpha_cur, width, height, g_alpha_aq_strength, alpha_map);
+          int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // GOP-constant base step; only the per-frame map varies
+          build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+          apply_tile_aq(step, width, height, levels, alpha_map, aq_cols, aq_rows);
+          memcpy(step_map[3], step, (size_t)(width * height) * 4);
         }
         if (!use_bframes) {   // I/P: a single previous reference, maintained sequentially across frames
           if (is_predicted && alpha_inter) {
@@ -5916,6 +5978,9 @@ int main(int argc, char **argv) {
     if (g_spatial_dct) {
       header.color_flags |= 128;    // bit7 = spatial mode: set = DCT + rANS, clear = wavelet + bit-plane (FWV parity)
     }
+    if (((g_alpha_aq_enabled && g_has_alpha) && !lossless) && (all_alpha_qpmaps != NULL)) {
+      header.color_flags |= 256;    // bit8 = alpha plane is spatially-adaptive-quantized (its own tile map in the qpmap section). Only the GPU-native encode builds the maps; the CPU oracle (no AQ, like color) leaves all_alpha_qpmaps NULL -> bit clear, flat alpha
+    }
     header.audio_offset = (uint64_t)ftello(container_file);
     if (audio) {
       fwrite(audio, 1, audio_size, container_file);
@@ -5928,9 +5993,21 @@ int main(int argc, char **argv) {
     }
     header.h264_size = h264_blob ? h264_blob_size : 0;
     header.qpmap_offset = (uint64_t)ftello(container_file);   // AQ: per-frame per-tile QP maps, coding order
-    if ((g_aq_enabled && (all_qpmaps != NULL)) && !lossless) {
-      header.qpmap_size = (uint64_t)frame_index * aq_map_bytes;
-      fwrite(all_qpmaps, 1, (size_t)header.qpmap_size, container_file);
+    // Interleave per frame: [color tiles when --aq][alpha tiles when --alpha-aq]. Base presence on the buffers actually
+    // built (the CPU oracle computes neither map -> both NULL -> qpmap_size 0, AQ silently off), so the on-disk size and
+    // color_flags bit8 always agree with the content the decoder will read.
+    int wrote_color = (qpmap_color && (all_qpmaps != NULL));
+    int wrote_alpha = (qpmap_alpha && (all_alpha_qpmaps != NULL));
+    if (wrote_color || wrote_alpha) {
+      for (long fi = 0; fi < frame_index; fi++) {
+        if (wrote_color) {
+          fwrite(all_qpmaps + ((size_t)fi * aq_map_bytes), 1, aq_map_bytes, container_file);
+        }
+        if (wrote_alpha) {
+          fwrite(all_alpha_qpmaps + ((size_t)fi * aq_map_bytes), 1, aq_map_bytes, container_file);
+        }
+      }
+      header.qpmap_size = (uint64_t)frame_index * (size_t)(wrote_color + wrote_alpha) * aq_map_bytes;
     } else {
       header.qpmap_size = 0;
     }

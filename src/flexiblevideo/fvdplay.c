@@ -416,7 +416,7 @@ typedef struct {
   VkDescriptorSet mctf_mc[MAX_PLANES], mctf_add[MAX_PLANES];
   // AQ: GPU apply pass (apply_tile_aq.comp) modulates the per-subband base step (aq_base_buffer,
   // filled by upload_subband) by the transmitted per-tile map into step_buffer the dequant reads. Bit-exact via the LUT.
-  int aq_enabled, aq_cols, aq_rows;
+  int aq_enabled, alpha_aq_enabled, aq_cols, aq_rows;   // alpha_aq_enabled: --alpha-aq modulates the alpha subband step on the GPU too (apply_aq_pf[3])
   VkPipeline apply_aq;
   VkPipelineLayout layout_apply_aq;
   VkDescriptorSet apply_aq_pf[MAX_PLANES];
@@ -569,7 +569,15 @@ static void decode3d_spatial(const Decode3D *d, int buf, int slot) {
     vkCmdPushConstants(d->cmd, d->layout_unpack, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, unpack_push);
     vkCmdDispatch(d->cmd, block_workgroups, 1, 1);
     compute_barrier(d->cmd);
-    if (!d->alpha_lossless) {   // lossy alpha: dequant (alpha is never AQ-modulated, chroma_multiplier 1.0)
+    if (!d->alpha_lossless) {   // lossy alpha: (optional --alpha-aq GPU modulation, then) dequant, chroma_multiplier 1.0
+      if (d->alpha_aq_enabled) {   // --alpha-aq: modulate the alpha base step (aq_base_buffer[3]) by this subband's alpha tile codes into step_buffer[3] before the dequant
+        int32_t a_aq_push[5] = { pw, ph, d->levels, d->aq_cols, d->aq_rows };
+        vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->apply_aq);
+        vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_apply_aq, 0, 1, &d->apply_aq_pf[3], 0, 0);
+        vkCmdPushConstants(d->cmd, d->layout_apply_aq, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, a_aq_push);
+        vkCmdDispatch(d->cmd, pixel_workgroups, 1, 1);
+        compute_barrier(d->cmd);
+      }
       int32_t dequant_push[2] = { pp, 0 };
       float chroma_multiplier = 1.0f;
       memcpy(&dequant_push[1], &chroma_multiplier, sizeof(float));
@@ -824,7 +832,8 @@ static size_t read_frame(FILE *file, const FrameEntry *entry, uint8_t **buffer, 
 // offsets to the shared upload buffers; (lossy) build its temporally-scaled quant map. Feeds decode3d_spatial.
 static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_index, uint8_t **frame_buffer, size_t *frame_buffer_capacity,
                            const int *block_count_plane, void **offset_map, void *data_map, void **step_map, int *step,
-                           void **aq_base_map, void *tile_codes_map, const uint8_t *all_qpmaps, size_t aq_map_bytes,
+                           void **aq_base_map, void *tile_codes_map, void *alpha_tile_codes_map, const uint8_t *all_qpmaps,
+                           size_t aq_map_bytes, size_t qpmap_stride, size_t alpha_qpmap_off,
                            int width, int height, int levels, int quality, int lossless,
                            int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out, int *out_alpha_qp, int *alpha_mctf_mv_out) {
   size_t frame_len = read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
@@ -861,8 +870,8 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
       // Under --aq the base feeds apply_tile_aq.comp (-> step_buffer) in decode3d_spatial; otherwise the dequant reads it directly.
       memcpy(g_aq_enabled ? aq_base_map[plane] : step_map[plane], step, (size_t)(pw * ph) * 4);
     }
-    if (g_aq_enabled) {   // upload THIS subband's transmitted tile codes for the GPU AQ pass (its coding index == source_index)
-      memcpy(tile_codes_map, all_qpmaps + ((size_t)source_index * aq_map_bytes), aq_map_bytes);
+    if (g_aq_enabled) {   // upload THIS subband's transmitted color tile codes for the GPU AQ pass (its coding index == source_index; color tiles at offset 0 in the slot)
+      memcpy(tile_codes_map, all_qpmaps + ((size_t)source_index * qpmap_stride), aq_map_bytes);
     }
   }
   if (g_has_alpha && out_alpha_qp) {   // parse + upload the appended alpha section: its block data goes right after the
@@ -898,9 +907,14 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
       a_off[block] += data_length;   // absolute byte offset in data_buffer (alpha block data starts after the color data)
     }
     *out_alpha_qp = alpha_qp;
-    if (alpha_qp != 0) {   // lossy alpha: build its (full-res, non-AQ) wavelet quant steps for the dequant (alpha_qp is GOP-constant)
+    if (alpha_qp != 0) {   // lossy alpha: build its full-res wavelet quant steps for the dequant (alpha_qp is GOP-constant)
       build_quantization_steps(step, width, height, levels, alpha_qp);
-      memcpy(step_map[3], step, (size_t)(width * height) * 4);
+      if (g_alpha_aq_enabled) {   // --alpha-aq: the built step is the BASE -> aq_base_buffer[3]; upload this subband's alpha tile codes (apply_tile_aq.comp in decode3d_spatial modulates -> step_buffer[3])
+        memcpy(aq_base_map[3], step, (size_t)(width * height) * 4);
+        memcpy(alpha_tile_codes_map, all_qpmaps + ((size_t)source_index * qpmap_stride) + alpha_qpmap_off, aq_map_bytes);
+      } else {
+        memcpy(step_map[3], step, (size_t)(width * height) * 4);
+      }
     }
   }
 }
@@ -910,7 +924,8 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
 // reads coeff[3] as the alpha plane. The alpha is intra, so one parse + decode_plane + reconstruct_plane per frame.
 static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32_t entry_index,
                                      const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3,
-                                     int alpha_mv_mode, int has_ref1, void *alpha_mv_map, void *alpha_mv1_map, int motion_blocks_x, int motion_blocks_y) {
+                                     int alpha_mv_mode, int has_ref1, void *alpha_mv_map, void *alpha_mv1_map, int motion_blocks_x, int motion_blocks_y,
+                                     const uint8_t *alpha_aq_map) {
   uint8_t *fb = 0;   // own buffer: the shared frame_buffer is in use by the 3D-DWT prefetch / B decode-ahead
   size_t fb_cap = 0;
   size_t frame_len = read_frame(file, &index[entry_index], &fb, &fb_cap);
@@ -975,12 +990,14 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   // The alpha transform follows its entropy: rANS <-> DCT (g_spatial_dct=1), bit-plane <-> wavelet (g_spatial_dct=0).
   int saved_spatial_dct = g_spatial_dct;
   g_spatial_dct = (alpha_table_length > 0);
+  alpha_aq_set_current_map(alpha_aq_map, aq_tile_cols(width), aq_tile_rows(height));   // --alpha-aq: this frame's alpha tile map (NULL = off) for the CPU dequant (B path is CPU reconstruct_plane)
   if (alpha_table_length) {
     build_spatial_quant_steps(step, width, height, levels, alpha_qp);
-    maybe_apply_tile_aq(step, width, height, levels);
+    maybe_apply_alpha_tile_aq(step, width, height, levels);   // --alpha-aq: modulate the alpha step by the matte-keyed map (no-op when off), mirror of the GPU apply_tile_aq.comp
     dct_decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length, alpha_table, alpha_table_length);
   } else {
-    build_quantization_steps(step, width, height, levels, alpha_qp);   // alpha is NOT AQ-modulated: the encoder quantises it with plain alpha_qp steps
+    build_quantization_steps(step, width, height, levels, alpha_qp);
+    maybe_apply_alpha_tile_aq(step, width, height, levels);
     decode_plane(alpha_data, a_off, alpha_coeff, width, height, alpha_data_length);
   }
   reconstruct_plane(alpha_coeff, float_scratch, step, width, height, levels, alpha_qp, 1.0f);
@@ -998,7 +1015,7 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
 // Verify only: CPU-decode a whole GOP (decode_gop_3ddwt) into cpu_gop_rgb to compare the GPU decode against.
 static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_start, int gop_count,
                            int width, int height, int levels, int quality, uint8_t **cpu_gop_rgb,
-                           const uint8_t *qpmaps, int aq_cols, int aq_rows) {
+                           const uint8_t *qpmaps, int aq_cols, int aq_rows, size_t qpmap_stride, const uint8_t *alpha_qpmaps) {
   uint8_t *payload[MAX_GOP];
   size_t payload_length[MAX_GOP];
   for (int g = 0; g < gop_count; g++) {
@@ -1008,7 +1025,7 @@ static void cpu_decode_gop(FILE *file, const FrameEntry *index, uint32_t gop_sta
     payload_length[g] = read_frame(file, &index[source_index], &payload[g], &payload_capacity);
   }
   decode_gop_3ddwt(payload, payload_length, gop_count, width, height, levels, quality, cpu_gop_rgb, NULL,
-                   qpmaps, aq_cols, aq_rows, (long)gop_start, NULL);
+                   qpmaps, aq_cols, aq_rows, (long)gop_start, NULL, qpmap_stride, alpha_qpmaps);
   for (int g = 0; g < gop_count; g++) {
     free(payload[g]);
   }
@@ -1326,15 +1343,26 @@ int main(int argc, char **argv) {
   g_deblock = (header.color_flags & 32) != 0;   // bit5 = in-loop deblocking filter
   g_bframe_dct = (header.color_flags & 64) != 0;   // bit6 = B-frames use DCT+rANS (CPU oracle decode until the GPU bidi DCT path lands)
   g_spatial_dct = (header.color_flags & 128) != 0;   // bit7 = spatial mode: DCT + rANS (set) vs wavelet + bit-plane (clear, FWV parity)
-  // AQ: read the per-frame per-tile QP-map section once. The decode then applies map[coding_index] to
-  // the step before each dequant (aq_set_current_map), identically to the encoder, so the round trip is exact.
+  g_alpha_aq_enabled = (header.color_flags & 256) != 0;   // bit8 = the alpha plane carries its own per-tile AQ map (after the color tiles in each qpmap slot)
+  // AQ: read the per-frame per-tile QP-map section once. Each frame's slot holds [color tiles when --aq][alpha tiles when
+  // --alpha-aq] (qpmap_stride bytes); the decode applies map[coding_index] to the step before each dequant, identically
+  // to the encoder, so the round trip is exact. Color-AQ presence is derived from the size (bit8 known), so an
+  // alpha-only-AQ stream doesn't wrongly enable color AQ.
   uint8_t *all_qpmaps = NULL;
   int aq_cols = aq_tile_cols(width), aq_rows = aq_tile_rows(height);
   size_t aq_map_bytes = (size_t)aq_cols * aq_rows;
+  size_t qpmap_stride = aq_map_bytes;   // per-frame slot stride; widened to 2x when both color + alpha AQ are present (set below)
+  size_t alpha_qpmap_off = 0;           // byte offset of the alpha tiles within each frame's slot (= color tiles size, or 0)
   if (header.qpmap_size > 0) {
-    // the decode indexes aq_map_bytes at coding_index*aq_map_bytes for every frame, so the section must hold a full map
-    // per frame; reject a short / truncated section instead of reading past the buffer.
-    if (header.qpmap_size < ((uint64_t)header.frame_count * aq_map_bytes)) {
+    if (g_alpha_aq_enabled) {   // alpha tiles are always present; color tiles too only if the section is large enough for two maps/frame
+      g_aq_enabled = (header.qpmap_size >= ((uint64_t)header.frame_count * 2 * aq_map_bytes)) ? 1 : 0;
+    } else {
+      g_aq_enabled = 1;   // legacy: the whole section is color tiles
+    }
+    qpmap_stride = ((size_t)(g_aq_enabled ? 1 : 0) + (g_alpha_aq_enabled ? 1 : 0)) * aq_map_bytes;
+    alpha_qpmap_off = g_aq_enabled ? aq_map_bytes : 0;
+    // the decode indexes qpmap_stride per coding frame; reject a short / truncated section instead of reading past the buffer.
+    if (header.qpmap_size < ((uint64_t)header.frame_count * qpmap_stride)) {
       die("qpmap section too small for the frame count");
     }
     all_qpmaps = checked_malloc((size_t)header.qpmap_size);
@@ -1342,7 +1370,6 @@ int main(int argc, char **argv) {
     if (fread(all_qpmaps, 1, (size_t)header.qpmap_size, file) != (size_t)header.qpmap_size) {
       die("qpmap");
     }
-    g_aq_enabled = 1;   // turn AQ on in the shared step path; aq_set_current_map picks the frame's map per coding index
   }
   int mode_3ddwt = (header.prediction_method == 2) || (header.prediction_method == 3);   // 2 = open-loop 3D-DWT, 3 = MCTF 3D-DWT
   g_mctf = (header.prediction_method == 3);   // MCTF: the temporal transform is predict-only MC-Haar (motion), g_motion_block from motion_block_size
@@ -1675,22 +1702,29 @@ int main(int argc, char **argv) {
   VkBuffer weight_lut_buffer = 0, tile_codes_buffer = 0;
   VkDeviceMemory weight_lut_memory = 0, tile_codes_memory = 0;
   void *weight_lut_map = 0, *tile_codes_map = 0;
+  // --alpha-aq: the alpha plane's own per-frame tile codes, kept separate from the color tile_codes so both can sit
+  // live in one submit (color + alpha apply dispatches read different maps). aq_base_buffer[3] holds the alpha base step.
+  VkBuffer alpha_tile_codes_buffer = 0;
+  VkDeviceMemory alpha_tile_codes_memory = 0;
+  void *alpha_tile_codes_map = 0;
   // The I/P + colordiff path has no per-quality step cache, so AQ there reads its (no-AQ) base from a dedicated
   // per-plane buffer the host rebuilds only on a quality change (not per frame). apply_tile_aq.comp then modulates
   // it into step_buffer each frame. (The B-decode path uses the step_cache as its base instead — see below.)
   VkBuffer aq_base_buffer[MAX_PLANES] = { 0 };
   VkDeviceMemory aq_base_memory[MAX_PLANES] = { 0 };
   void *aq_base_map[MAX_PLANES] = { 0 };
-  if (g_aq_enabled) {
+  size_t tile_codes_bytes = (((size_t)aq_map_bytes + 3) / 4) * 4;   // rounded up so apply_tile_aq's packed-uint reads stay in bounds
+  if (tile_codes_bytes < 4) {
+    tile_codes_bytes = 4;
+  }
+  if (g_aq_enabled || g_alpha_aq_enabled) {   // shared weight LUT (code -> log-spaced weight, exactly aq_weight_from_code) for both color + alpha apply
     create_buffer(256 * sizeof(float), HOST_VISIBLE_COHERENT, &weight_lut_buffer, &weight_lut_memory);
     VK_CHECK(vkMapMemory(device, weight_lut_memory, 0, VK_WHOLE_SIZE, 0, &weight_lut_map));
     for (int code = 0; code < 256; code++) {
       ((float *)weight_lut_map)[code] = aq_weight_from_code((uint8_t)code);
     }
-    size_t tile_codes_bytes = (((size_t)aq_map_bytes + 3) / 4) * 4;   // rounded up so apply_tile_aq's packed-uint reads stay in bounds
-    if (tile_codes_bytes < 4) {
-      tile_codes_bytes = 4;
-    }
+  }
+  if (g_aq_enabled) {   // color: per-frame tile codes + a per-plane cached base step
     create_buffer(tile_codes_bytes, HOST_VISIBLE_COHERENT, &tile_codes_buffer, &tile_codes_memory);
     VK_CHECK(vkMapMemory(device, tile_codes_memory, 0, VK_WHOLE_SIZE, 0, &tile_codes_map));
     for (int plane = 0; plane < g_num_planes; plane++) {
@@ -1704,6 +1738,12 @@ int main(int argc, char **argv) {
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &step_buffer[3], &step_memory[3]);
     create_buffer((size_t)RANS_GPU_TABLE_UINTS * 4, HOST_VISIBLE_COHERENT, &table_buffer[3], &table_memory[3]);   // DCT-mode alpha: GPU rANS frequency table (mirror of the color planes)
     create_buffer(plane_bytes, DEVICE_LOCAL, &previous_buffer[3], &previous_memory[3]);   // inter-alpha: GPU-resident reconstructed-alpha reference (P/B reuse the shared luma MVs, like the color planes)
+    if (g_alpha_aq_enabled) {   // --alpha-aq: cached alpha base step (aq_base_buffer[3]) + per-frame alpha tile codes; apply_tile_aq.comp modulates -> step_buffer[3] the alpha dequant reads
+      create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &aq_base_buffer[3], &aq_base_memory[3]);
+      VK_CHECK(vkMapMemory(device, aq_base_memory[3], 0, VK_WHOLE_SIZE, 0, &aq_base_map[3]));
+      create_buffer(tile_codes_bytes, HOST_VISIBLE_COHERENT, &alpha_tile_codes_buffer, &alpha_tile_codes_memory);
+      VK_CHECK(vkMapMemory(device, alpha_tile_codes_memory, 0, VK_WHOLE_SIZE, 0, &alpha_tile_codes_map));
+    }
   }
   // DWT transpose scratch (also reused for motion compensation): a W x H plane transposes to H x W
   // stored with row stride max(W,H), spanning max(W,H)^2 elements. pixel_count (W*H) is too small for
@@ -1876,8 +1916,8 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_color = create_descriptor_set_layout(3, 1);
   VkPipelineLayout pipeline_layout_unpack = create_pipeline_layout(layout_3_buffers, 16);
   VkPipelineLayout pipeline_layout_dequant = create_pipeline_layout(layout_2_buffers, 8);   // { pixel_count, chroma_multiplier }
-  VkDescriptorSetLayout layout_4_buffers = g_aq_enabled ? create_descriptor_set_layout(4, 0) : 0;   // AQ: { base_step, tile_codes, weight_lut, modulated_step }
-  VkPipelineLayout pipeline_layout_apply_aq = g_aq_enabled ? create_pipeline_layout(layout_4_buffers, 20) : 0;   // { width, height, levels, tile_cols, tile_rows }
+  VkDescriptorSetLayout layout_4_buffers = (g_aq_enabled || g_alpha_aq_enabled) ? create_descriptor_set_layout(4, 0) : 0;   // AQ: { base_step, tile_codes, weight_lut, modulated_step }
+  VkPipelineLayout pipeline_layout_apply_aq = (g_aq_enabled || g_alpha_aq_enabled) ? create_pipeline_layout(layout_4_buffers, 20) : 0;   // { width, height, levels, tile_cols, tile_rows }
   VkPipelineLayout pipeline_layout_coeff_add = create_pipeline_layout(layout_2_buffers, 8);
   VkPipelineLayout pipeline_layout_cdef = g_cdef_active ? create_pipeline_layout(layout_2_buffers, 28) : 0;   // cdef.comp: {src, dst} + push {w,h,pri,sec,damping,dir_shift,center}
   VkPipeline pipeline_cdef = g_cdef_active ? create_compute_pipeline("shaders/cdef.spv", pipeline_layout_cdef) : 0;   // in-loop deringing of the reconstructed reference
@@ -1906,7 +1946,7 @@ int main(int argc, char **argv) {
   VkDescriptorSetLayout layout_deblock = g_deblock ? create_descriptor_set_layout(2, 0) : 0;
   VkPipelineLayout pipeline_layout_deblock = g_deblock ? create_pipeline_layout(layout_deblock, 28) : 0;
   VkPipeline pipeline_deblock = g_deblock ? create_compute_pipeline("shaders/deblock.spv", pipeline_layout_deblock) : 0;
-  VkPipeline pipeline_apply_aq = g_aq_enabled ? create_compute_pipeline("shaders/apply_tile_aq.spv", pipeline_layout_apply_aq) : 0;
+  VkPipeline pipeline_apply_aq = (g_aq_enabled || g_alpha_aq_enabled) ? create_compute_pipeline("shaders/apply_tile_aq.spv", pipeline_layout_apply_aq) : 0;
   VkPipeline pipeline_transpose = create_compute_pipeline("shaders/transpose_f.spv", pipeline_layout_transpose);
   VkPipeline pipeline_inverse_row_97 = create_compute_pipeline("shaders/idwt97row.spv", pipeline_layout_row);
   VkPipeline pipeline_round = create_compute_pipeline("shaders/round97.spv", pipeline_layout_round);
@@ -1960,11 +2000,11 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_motion_add = create_compute_pipeline("shaders/motion_add.spv", pipeline_layout_unpack);   // {coeff, mc_prev=scratch, prev}, push 8
 
   VkDescriptorPoolSize pool_sizes[2] = {
-    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 300 },   // +3 for the own-alpha-MV I/P set_mc_play_alpha_own; raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3); + 3D-DWT alpha prefetch (unpack/dequant/2 transpose/row = 10) + temporal[2][3] (2) + MCTF mc/add[3] (5)
+    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 304 },   // +4 for the --alpha-aq set_apply_aq[3] (base/codes/lut/step); +3 for the own-alpha-MV I/P set_mc_play_alpha_own; raised for the 3D-DWT prefetch sets + bidi (B1b) + motion (B2) + mode + MCTF (3 mc + 3 add) sets; + CDEF set_cdef_play[3] = 6; + quadtree rans+dct sets (2x3); + inter-alpha I/P set_mc_play[3]/set_motion_add_play[3] (2x3); + inter-alpha B set_gmc0/gmc1/gblend/gadd/blend_mode[3] (5x3); + 3D-DWT alpha prefetch (unpack/dequant/2 transpose/row = 10) + temporal[2][3] (2) + MCTF mc/add[3] (5)
     { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 5 },   // set_color + set_color_alpha + set_composite (present blend) + set_dering (2: src+dst)
   };
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 156;   // +1 own-alpha-MV I/P set_mc_play_alpha_own; +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3]) + 3D-DWT alpha (5 prefetch + 2 temporal + 2 MCTF = 9)   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
+  pool_info.maxSets = 157;   // +1 --alpha-aq set_apply_aq[3]; +1 own-alpha-MV I/P set_mc_play_alpha_own; +7 alpha decode sets + set_color_alpha + set_composite + 2 inter-alpha I/P (set_mc_play[3]/set_motion_add_play[3]) + 5 inter-alpha B (set_gmc0/gmc1/gblend/gadd/blend_mode[3]) + 3D-DWT alpha (5 prefetch + 2 temporal + 2 MCTF = 9)   // B1b bidi (6) + B2 motion (6) + mode (3) + MCTF (6) + CDEF set_cdef_play[3] + quadtree rans+dct sets (2x3)
   pool_info.poolSizeCount = 2;
   pool_info.pPoolSizes = pool_sizes;
   VkDescriptorPool descriptor_pool;
@@ -2031,6 +2071,10 @@ int main(int argc, char **argv) {
     bind_storage_buffers(set_rans_unpack[3], (VkBuffer[]){ data_buffer, offset_buffer[3], coeff_buffer[3], table_buffer[3] }, 4);
     set_dequant[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_dequant[3], (VkBuffer[]){ coeff_buffer[3], step_buffer[3] }, 2);
+    if (g_alpha_aq_enabled) {   // --alpha-aq: modulate the alpha base step (aq_base_buffer[3]) by this frame's alpha tile codes into step_buffer[3] the alpha dequant reads
+      set_apply_aq[3] = allocate_descriptor_set(descriptor_pool, layout_4_buffers);
+      bind_storage_buffers(set_apply_aq[3], (VkBuffer[]){ aq_base_buffer[3], alpha_tile_codes_buffer, weight_lut_buffer, step_buffer[3] }, 4);
+    }
     set_coeff_to_scratch[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
     bind_storage_buffers(set_coeff_to_scratch[3], (VkBuffer[]){ coeff_buffer[3], scratch_buffer }, 2);
     set_scratch_to_coeff[3] = allocate_descriptor_set(descriptor_pool, layout_2_buffers);
@@ -2541,6 +2585,7 @@ int main(int argc, char **argv) {
     // AQ: the GPU apply pass + its tile grid. set_apply_aq is bound to { aq_base_buffer, tile_codes,
     // weight_lut, step_buffer } (the I/P path's set, unused in 3D-DWT mode) — exactly what the prefetch apply needs.
     d3d.aq_enabled = g_aq_enabled && !lossless;
+    d3d.alpha_aq_enabled = g_alpha_aq_enabled && !lossless;   // --alpha-aq: modulate the alpha subband step on the GPU (apply_aq_pf[3]) too
     d3d.apply_aq = pipeline_apply_aq;
     d3d.layout_apply_aq = pipeline_layout_apply_aq;
     d3d.aq_cols = aq_cols;
@@ -2581,6 +2626,7 @@ int main(int argc, char **argv) {
     if (g_has_alpha) {   // alpha plane 3 sets/buffers (full-res; the alpha section feeds set_unpack_pf[3] via data_buffer)
       d3d.unpack_pf[3] = set_unpack_pf[3];
       d3d.dequant_pf[3] = set_dequant_pf[3];
+      d3d.apply_aq_pf[3] = g_alpha_aq_enabled ? set_apply_aq[3] : 0;   // --alpha-aq: alpha GPU AQ pass set ({ aq_base[3], alpha_tile_codes, weight_lut, step_buffer[3] }); writes step_buffer[3] before the alpha dequant
       d3d.coeff_to_scratch_pf[3] = set_coeff_to_scratch_pf[3];
       d3d.scratch_to_coeff_pf[3] = set_scratch_to_coeff_pf[3];
       d3d.row_pf[3] = set_row_pf[3];
@@ -2605,7 +2651,7 @@ int main(int argc, char **argv) {
     for (int g = 0; g < cur_gop_count; g++) {
       decode3d_wait(&d3d);
       int a_qp = 0;
-      upload_subband(file, index, (uint32_t)g, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
+      upload_subband(file, index, (uint32_t)g, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, alpha_tile_codes_map, all_qpmaps, aq_map_bytes, qpmap_stride, alpha_qpmap_off,
                      width, height, levels, quality, lossless, g, cur_gop_count, g_temporal_levels,
                      g_mctf ? &mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
                      (g_mctf && g_has_alpha) ? &alpha_mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL);
@@ -2619,7 +2665,7 @@ int main(int argc, char **argv) {
     decode3d_finish_gop(&d3d, 0, cur_gop_count, mctf_mv, alpha_mctf_mv);
     vkWaitForFences(device, 1, &prefetch_fence, VK_TRUE, UINT64_MAX);   // GOP 0 fully decoded
     if (verify) {
-      cpu_decode_gop(file, index, 0, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows);
+      cpu_decode_gop(file, index, 0, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows, qpmap_stride, g_alpha_aq_enabled ? (all_qpmaps + alpha_qpmap_off) : NULL);
     }
     // Begin prefetching GOP 1 (one subband per displayed frame, below).
     pf_gop_start = (uint32_t)cur_gop_count;
@@ -2731,7 +2777,7 @@ int main(int argc, char **argv) {
       while (!pf_done) {   // the prefetch didn't keep up (rare): finish it now
         decode3d_wait(&d3d);
         int a_qp = 0;
-        upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
+        upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, alpha_tile_codes_map, all_qpmaps, aq_map_bytes, qpmap_stride, alpha_qpmap_off,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
                        g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
                        (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
@@ -2752,7 +2798,7 @@ int main(int argc, char **argv) {
       cur_gop_start = pf_gop_start;
       cur_gop_count = pf_gop_count;
       if (verify) {
-        cpu_decode_gop(file, index, cur_gop_start, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows);
+        cpu_decode_gop(file, index, cur_gop_start, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows, qpmap_stride, g_alpha_aq_enabled ? (all_qpmaps + alpha_qpmap_off) : NULL);
       }
       pf_buf = 1 - cur_buf;
       pf_gop_start = cur_gop_start + (uint32_t)cur_gop_count;
@@ -2920,9 +2966,14 @@ int main(int argc, char **argv) {
         if (alpha_is_rans) {   // DCT-mode alpha: rebuild the GPU rANS frequency table for set_rans_unpack[3]
           rans_build_gpu_table(alpha_table, alpha_table_length, (uint32_t *)table_map[3]);
         }
-        if (!lossless) {   // alpha quant map (intra; alpha_qp fixed across frames; NOT AQ-modulated). build_spatial_quant_steps -> DCT matrix in DCT mode, wavelet steps in wavelet mode (matches the encoder).
+        if (!lossless) {   // alpha quant map (intra; alpha_qp fixed across frames). build_spatial_quant_steps -> DCT matrix in DCT mode, wavelet steps in wavelet mode (matches the encoder).
           build_spatial_quant_steps(step, width, height, levels, alpha_qp);
-          memcpy(step_map[3], step, (size_t)(width * height) * 4);
+          if (g_alpha_aq_enabled) {   // --alpha-aq: the built step is the BASE -> aq_base_buffer[3]; upload this frame's alpha tile codes; apply_tile_aq.comp (recorded before the alpha dequant) modulates it into step_buffer[3]
+            memcpy(aq_base_map[3], step, (size_t)(width * height) * 4);
+            memcpy(alpha_tile_codes_map, all_qpmaps + ((size_t)frame_index * qpmap_stride) + alpha_qpmap_off, (size_t)aq_map_bytes);
+          } else {
+            memcpy(step_map[3], step, (size_t)(width * height) * 4);
+          }
         }
       }
     }
@@ -3266,7 +3317,7 @@ int main(int argc, char **argv) {
           if (g_aq_enabled) {
             // AQ on the GPU: upload this frame's raw qpmap tile codes once, bind apply_tile_aq { base, codes, lut } ->
             // step_buffer, and the dequant to step_buffer. The command recording dispatches apply_tile_aq before dequant.
-            memcpy(tile_codes_map, all_qpmaps + ((size_t)c * aq_map_bytes), (size_t)aq_map_bytes);
+            memcpy(tile_codes_map, all_qpmaps + ((size_t)c * qpmap_stride), (size_t)aq_map_bytes);   // color tiles sit at offset 0 in each frame's slot (alpha tiles, if any, follow)
             for (int plane = 0; plane < g_num_planes; plane++) {
               bind_storage_buffers(set_apply_aq[plane], (VkBuffer[]){ step_cache_buf[idx][plane], tile_codes_buffer, weight_lut_buffer, step_buffer[plane] }, 4);
               bind_storage_buffers(set_dequant[plane], (VkBuffer[]){ coeff_buffer[plane], step_buffer[plane] }, 2);
@@ -3439,7 +3490,8 @@ int main(int argc, char **argv) {
         }
         if (g_has_alpha) {   // inter B alpha: CPU-decode this coding frame's alpha residual into coeff[3] (host-visible), then GPU mc0/mc1/blend/motion_add -> gdpb[dst][3] (mirror of the color; shares the luma MVs)
           cpu_decode_alpha_section(file, index, (uint32_t)c, block_count_plane, width, height, levels, step, coeff_map3,
-                                   (int)index[c].alpha_mv_mode, (ref1_slot >= 0), alpha_mv_map, alpha_mv1_map, motion_blocks_x, motion_blocks_y);
+                                   (int)index[c].alpha_mv_mode, (ref1_slot >= 0), alpha_mv_map, alpha_mv1_map, motion_blocks_x, motion_blocks_y,
+                                   g_alpha_aq_enabled ? (all_qpmaps + ((size_t)c * qpmap_stride) + alpha_qpmap_off) : NULL);
           int a_pixels = width * height, a_pixel_workgroups = (a_pixels + 255) / 256;
           int a_motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block;
           if (is_pred) {   // mirror the color (mc0; mc1 if a B-frame; then blend_mode OR gblend — the gblend ALSO runs for a P-anchor as a self-blend -> scratch)
@@ -3685,7 +3737,7 @@ int main(int argc, char **argv) {
       // the per-quality base in aq_base_buffer and this map, writing the modulated step into step_buffer the dequant
       // reads — so per frame the host only memcpy-uploads the tiny raw qpmap slice (no per-pixel CPU work).
       if (g_aq_enabled && !lossless) {
-        memcpy(tile_codes_map, all_qpmaps + ((size_t)frame_index * aq_map_bytes), (size_t)aq_map_bytes);
+        memcpy(tile_codes_map, all_qpmaps + ((size_t)frame_index * qpmap_stride), (size_t)aq_map_bytes);   // color tiles at offset 0 in each frame's slot
       }
       // Per-GOP variable Q: when the frame's quality differs from the current one (a GOP boundary in a
       // --vbr stream), rebuild the quant map. The wavelet stays the same here (a --vbr file is all-lossy);
@@ -3963,6 +4015,14 @@ int main(int argc, char **argv) {
         }
         memory_barrier();
         if (!lossless) {
+          if (g_alpha_aq_enabled) {   // --alpha-aq (GPU): modulate the alpha base step (aq_base_buffer[3]) by this frame's alpha tile codes into step_buffer[3] before the dequant
+            int32_t a_aq_push[5] = { aw, ah, levels, aq_cols, aq_rows };
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_apply_aq);
+            vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_apply_aq, 0, 1, &set_apply_aq[3], 0, 0);
+            vkCmdPushConstants(command_buffer, pipeline_layout_apply_aq, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20, a_aq_push);
+            vkCmdDispatch(command_buffer, a_pixel_wg, 1, 1);
+            memory_barrier();
+          }
           int32_t a_dequant_push[2];
           a_dequant_push[0] = a_pixels;
           float a_mult = 1.0f;   // alpha dequantises like luma
@@ -4230,7 +4290,7 @@ int main(int argc, char **argv) {
       if (mode_3ddwt && !pf_done) {   // advance the prefetch one subband (so verify exercises that path too)
         decode3d_wait(&d3d);
         int a_qp = 0;
-        upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
+        upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, alpha_tile_codes_map, all_qpmaps, aq_map_bytes, qpmap_stride, alpha_qpmap_off,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
                        g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
                        (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
@@ -4317,7 +4377,7 @@ int main(int argc, char **argv) {
     if (mode_3ddwt && !pf_done) {
       decode3d_wait(&d3d);
       int a_qp = 0;
-      upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
+      upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, alpha_tile_codes_map, all_qpmaps, aq_map_bytes, qpmap_stride, alpha_qpmap_off,
                      width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
                      g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
                      (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);

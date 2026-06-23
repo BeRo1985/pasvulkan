@@ -104,7 +104,7 @@ sequential. `header_size` guards reads of any future appended fixed fields.
 | 108 | 8 | u64 | `h264_offset` | Byte offset of H.264 Annex-B stream (0 = wavelet/DCT only) |
 | 116 | 8 | u64 | `h264_size` | Byte size of H.264 stream (0 = none) |
 | 124 | 8 | u64 | `qpmap_offset` | Byte offset of per-frame AQ QP-map (0 = no AQ) |
-| 132 | 8 | u64 | `qpmap_size` | `frame_count × tile_cols × tile_rows` bytes (0 = no AQ) |
+| 132 | 8 | u64 | `qpmap_size` | `frame_count × (has_color_aq + has_alpha_aq) × tile_cols × tile_rows` bytes (0 = no AQ); see §6.8 for the per-frame slot layout |
 | 140 | 8 | u64 | `index_offset` | Byte offset of frame index |
 | 148 | 8 | u64 | `keyvalue_offset` | Optional extensible key-value store (0 = none; reserved, not yet emitted) |
 | 156 | 8 | u64 | `keyvalue_size` | Byte size of the key-value store |
@@ -125,8 +125,9 @@ bit 1 is set; otherwise they are zero-filled.
 | 5 | 0x20 | DEBLOCK | In-loop deblocking filter active (§6.6) |
 | 6 | 0x40 | BFRAME_DCT | B-frames use DCT+rANS (else wavelet+bit-plane); requires `prediction_method=1` |
 | 7 | 0x80 | SPATIAL_DCT | Intra/spatial coding is DCT+rANS; **clear = wavelet+bit-plane** (primary FVD-vs-FWV bit) |
+| 8 | 0x100 | ALPHA_AQ | The alpha plane is spatially-adaptive-quantized; the QP-map section carries a second per-tile map per frame for alpha (§6.8, §14). Lossy only |
 
-Bits 8–31 are reserved (zero). Note: premultiplied-alpha signaling is **out of band** — the
+Bits 9–31 are reserved (zero). Note: premultiplied-alpha signaling is **out of band** — the
 encoder writes no premultiply flag bit (the PasVulkan compositor treats alpha as straight).
 
 ### 3.2 `prediction_method` (u8 at offset 75)
@@ -419,9 +420,23 @@ frame by minimizing SSE (luma 6×4 candidates, chroma 4×3).
 When the QP-map section is present (`qpmap_size > 0`), each `AQ_TILE = 64`-pixel tile
 carries one u8 code. A 256-entry weight LUT maps codes to step multipliers:
 `weight = AQ_WMIN * (AQ_WMAX/AQ_WMIN)^(code/255)`, `AQ_WMIN = 0.5`, `AQ_WMAX = 2.0`. The
-per-pixel quant step is modulated as `q = max(1, round(base_step * weight))`. The QP-map is
-stored once per stream (`frame_count × tile_cols × tile_rows` bytes, coding order,
-`tile_cols = ceil(width/64)`, `tile_rows = ceil(height/64)`).
+per-pixel quant step is modulated as `q = max(1, round(base_step * weight))`, with one map
+(`tile_cols × tile_rows` bytes, `tile_cols = ceil(width/64)`, `tile_rows = ceil(height/64)`)
+applied to all color planes (the map is activity-normalized, so the same map fits the
+subsampled chroma planes).
+
+**Per-frame slot layout.** Color AQ and alpha AQ (`color_flags` bit 8, §14) are two
+independent feature flags that share the one QP-map section. Each frame's slot holds, in
+coding order, the color tile map (when color AQ is on) followed by the alpha tile map (when
+alpha AQ is on). The per-frame stride is therefore
+`(has_color_aq + has_alpha_aq) × tile_cols × tile_rows` and `qpmap_size = frame_count × stride`.
+A decoder derives the presence of color AQ from the size: with bit 8 set, color tiles are
+present iff `qpmap_size ≥ frame_count × 2 × tile_cols × tile_rows` (otherwise the whole
+section is alpha tiles); with bit 8 clear the whole section is color tiles. The alpha map is
+keyed on the matte's own activity (not the luma) and modulates the alpha quant step
+identically to the color path; it is full-resolution, so it uses the same 64-pixel grid.
+Both encoder and decoder apply the map with the identical integer math above, so the round
+trip is exact. AQ is lossy-only (skipped at Q0).
 
 ---
 
@@ -647,8 +662,10 @@ over the GOP as the color planes). It is **intra** only in I-frames and in the C
 The alpha keeps its **own** spatial decision (`alpha_qp == 0` ⇒ reversible 5/3, else float 9/7
 in wavelet mode, or rANS+DCT in DCT mode; `table_length > 0` distinguishes the two on decode)
 **and its own temporal domain** in the GOP modes (a lossless alpha matte stays bit-exact even on
-a lossy open-loop color GOP), independent of the color quality. Alpha is never AQ-modulated
-(plain `alpha_qp` steps). The transform is otherwise luma-like.
+a lossy open-loop color GOP), independent of the color quality. By default the alpha uses plain
+`alpha_qp` steps (no AQ); when `color_flags` bit 8 (ALPHA_AQ) is set it is spatially-adaptive-quantized
+by its own matte-keyed per-tile map carried in the QP-map section (§6.8, lossy only). The transform
+is otherwise luma-like.
 
 ### Alpha motion vectors (`FrameEntry.alpha_mv_mode`)
 
