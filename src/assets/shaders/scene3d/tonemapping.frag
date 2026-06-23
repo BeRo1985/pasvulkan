@@ -418,11 +418,43 @@ float agxEVOvershoot(const in vec3 color, const in mat3 insetMatrix){
   return max(0.0, tMax - 1.0) * (AgXMaxEV - AgXMinEV);
 }
 
+// Smooth highlight gain shared by the faithful HDR operators: 1.0 at white, asymptotes to peak,
+// driven by how many stops the scene overshoots white.
+float hdrHighlightBoost(const in float evOvershoot, const in float peak){
+  return 1.0 + ((peak - 1.0) * (1.0 - exp2(-evOvershoot)));
+}
+
 // Open AgX highlight extension: keep the exact SDR AgX result for the diffuse range, then lift only the
 // highlights (which SDR clamped at white) smoothly towards peak, driven by the EV overshoot.
 vec3 agxHDRExtend(const in vec3 sdrLinear, const in float evOvershoot, const in float peak){
-  float boost = 1.0 + ((peak - 1.0) * (1.0 - exp2(-evOvershoot))); // 1 at white, asymptotes to peak
-  return sdrLinear * boost;
+  return sdrLinear * hdrHighlightBoost(evOvershoot, peak);
+}
+
+// Stephen Hill's ACES fit: matrices for the sRGB <-> ACEScg working space plus the combined RRT+ODT tone fit.
+const mat3 ACESInputMat = mat3(
+  0.59719, 0.07600, 0.02840,
+  0.35458, 0.90834, 0.13383,
+  0.04823, 0.01566, 0.83777
+);
+const mat3 ACESOutputMat = mat3(
+   1.60475, -0.10208, -0.00327,
+  -0.53108,  1.10813, -0.07276,
+  -0.07367, -0.00605,  1.07602
+);
+vec3 acesRRTAndODTFit(const in vec3 v){
+  vec3 a = (v * (v + vec3(0.0245786))) - vec3(0.000090537);
+  vec3 b = (v * ((0.983729 * v) + vec3(0.4329510))) + vec3(0.238081);
+  return a / b;
+}
+
+// Color-managed ACES (ACEScg RRT+ODT fit) extended to an HDR display: the tone shapes the diffuse range
+// in the proper ACES color space, and highlights above white are lifted towards peak by the scene-luminance
+// overshoot. This is the color-managed ACES, not the per-channel SDR ACESFilm fit, so its diffuse look differs.
+vec3 acesHDR(const in vec3 color, const in float peak){
+  vec3 c = max(vec3(0.0), color);
+  vec3 toned = max(vec3(0.0), ACESOutputMat * acesRRTAndODTFit(ACESInputMat * c));
+  float evOvershoot = max(0.0, log2(max(lumaRec709(c), 1e-6))); // stops above diffuse white (scene luma 1.0)
+  return toned * hdrHighlightBoost(evOvershoot, peak);
 }
 
 vec3 doToneMapping(vec3 color){
@@ -453,6 +485,12 @@ vec3 doToneMapping(vec3 color){
       case MODE_UCHIMURA:{
         // Uchimura's P is literally "max display brightness" => set it to peak; toe and linear section stay fixed.
         result = uchimura(sceneColor, peak, 1.0, 0.22, 0.4, 1.33, 0.0);
+        break;
+      }
+      case MODE_ACESFILM:
+      case MODE_ACESFILM2:{
+        // Color-managed ACES with a peak-targeted highlight extension (real ACES color space, not the SDR fit).
+        result = acesHDR(sceneColor, peak);
         break;
       }
       case MODE_AGX_REC709:
