@@ -568,6 +568,309 @@ implementation
 
 { TpvFlexibleVideoDecoder }
 
+constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache);
+begin
+ inherited Create;
+
+ fPreparedIndex:=-1;
+
+ fStream:=aStream;
+ fDevice:=aDevice;
+ fPreferSCRGB:=aPreferSCRGBForHDR; // consumed by ParseContainer (output format) below
+ fSubmitMode:=aBSubmitMode;
+
+ // GPU breadcrumbs: only when the engine ran with --breadcrumbs (the device-lost handler then dumps the last-reached
+ // decode stage). nil = no-op; keeps the normal path free of overhead.
+ if assigned(fDevice) and fDevice.UseBreadcrumbs then begin
+  fBreadcrumb:=fDevice.BreadcrumbBuffer;
+ end else begin
+  fBreadcrumb:=nil;
+ end;
+
+ // GPU capability floor: the row IDWT shaders run 256 invocations and cache a full 4096-sample line (16 KiB) in shared
+ // memory. Every desktop GPU clears this (Vulkan's guaranteed minimum is only 128 / 16 KiB), so fail early with a clear
+ // message instead of a cryptic pipeline-creation crash on a strict-minimum mobile / iGPU.
+ if (fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations<256) or
+    (fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize<16384) then begin
+  raise EpvFlexibleVideoDecoder.CreateFmt('GPU below the FWV decode floor: needs >=256 compute invocations and >=16 KiB shared memory (this device: %d invocations / %d bytes)',
+                                                 [fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations,
+                                                  fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize]);
+ end;
+
+ ParseContainer;
+
+ // Compute-pipeline cache: building the ~29 pipelines from SPIR-V costs ~2 s on a cold driver. The caller (the app)
+ // passes its shared, disk-persisted cache (pvApplication.VulkanPipelineCache) so subsequent runs reuse the driver's
+ // compiled binaries and the build drops to ~tens of ms. When none is supplied (e.g. the headless harness) own a fresh one.
+ if assigned(aPipelineCache) then begin
+  fPipelineCache:=aPipelineCache;
+  fOwnsPipelineCache:=false;
+ end else begin
+  fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
+  fOwnsPipelineCache:=true;
+ end;
+
+ BuildPipelines;
+ BuildBuffersAndImage;
+ BuildDescriptorSets;
+
+ // the B-frame mode-A decode-ahead and the 3D-DWT GOP decode self-submit on their own command buffer + fence
+ if (fHasBFrames and (fSubmitMode=0)) or fMode3DDWT then begin
+  fBDecodeCommandPool:=TpvVulkanCommandPool.Create(fDevice,fDevice.UniversalQueueFamilyIndex);
+  fBDecodeCommandBuffer:=TpvVulkanCommandBuffer.Create(fBDecodeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fBDecodeFence:=TpvVulkanFence.Create(fDevice);
+ end;
+
+ // 3D-DWT GOP prefetch: a SECOND command buffer + fence so the next GOP's subbands decode async (overlapping the
+ // present) instead of stalling a single frame with the whole-GOP burst. The fence starts signaled (no prefetch in
+ // flight yet) so the first wait-before-reuse is a no-op.
+ if fMode3DDWT then begin
+  fPrefetchCommandBuffer:=TpvVulkanCommandBuffer.Create(fBDecodeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fPrefetchFence:=TpvVulkanFence.Create(fDevice); // unsignaled; f3DPfPending gates the wait so it is never waited empty
+ end;
+
+ // the per-frame input ring: mode B (the whole decode-ahead in one caller CB) + the intra/I-P path (one slot per frame)
+ if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin
+  BuildBidiRing;
+ end;
+
+end;
+
+destructor TpvFlexibleVideoDecoder.Destroy;
+var Plane,SlotIndex:TpvInt32;
+begin
+
+ // Drain any in-flight 3D-DWT/MCTF GOP-prefetch or B-decode-ahead submit before freeing the fences, command buffers and
+ // GPU resources they may still be reading (closing the player mid-prefetch otherwise frees a buffer under an active read).
+ if assigned(fDevice) then begin
+  fDevice.WaitIdle;
+ end;
+
+ FreeAndNil(fPrefetchFence);
+ FreeAndNil(fPrefetchCommandBuffer); // allocated from fBDecodeCommandPool -> free before it
+ FreeAndNil(fBDecodeFence);
+ FreeAndNil(fBDecodeCommandBuffer);
+ FreeAndNil(fBDecodeCommandPool);
+
+ FreeAndNil(fSetColor);
+ FreeAndNil(fSetColorAlpha);
+ FreeAndNil(fSetRowScratch);
+ // optional alpha decode sets (not covered by the 0..fNumPlanes-1 loop below): the per-slot unpack+dequant ring sets
+ // plus the shared idwt sets bound to coeff[3].
+ for SlotIndex:=0 to length(fAlphaRingSetUnpack)-1 do begin
+  FreeAndNil(fAlphaRingSetUnpack[SlotIndex]);
+  FreeAndNil(fAlphaRingSetDequant[SlotIndex]);
+  if SlotIndex<length(fAlphaRingSetRANSUnpack) then begin // DCT-mode alpha rANS set (allocated only when fSpatialDCT)
+   FreeAndNil(fAlphaRingSetRANSUnpack[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingSetMCPlayOwn) then begin // own-alpha-MV I/P mc set
+   FreeAndNil(fAlphaRingSetMCPlayOwn[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingSetApplyAQ) then begin // --alpha-aq per-slot apply set
+   FreeAndNil(fAlphaRingSetApplyAQ[SlotIndex]);
+  end;
+ end;
+ FreeAndNil(fSetApplyAQ[3]); // --alpha-aq shared (3D-DWT) apply set
+ FreeAndNil(fSetCoeffToScratch[3]);
+ FreeAndNil(fSetScratchToCoeff[3]);
+ FreeAndNil(fSetRow[3]);
+ for Plane:=0 to fNumPlanes-1 do begin
+  FreeAndNil(fSetUnpack[Plane]);
+  FreeAndNil(fSetDequant[Plane]);
+  FreeAndNil(fSetApplyAQ[Plane]);
+  FreeAndNil(fSetAdd[Plane]);
+  if Plane<3 then begin
+   FreeAndNil(fSetCDEF[Plane]);
+  end;
+  FreeAndNil(fSetMCPlay[Plane]);
+  FreeAndNil(fSetMotionAddPlay[Plane]);
+  FreeAndNil(fSetGMC0[Plane]);
+  FreeAndNil(fSetGMC1[Plane]);
+  FreeAndNil(fSetGBlend[Plane]);
+  FreeAndNil(fSetGBlendMode[Plane]);
+  FreeAndNil(fSetGAdd[Plane]);
+  FreeAndNil(fSetTemporal[0][Plane]);
+  FreeAndNil(fSetTemporal[1][Plane]);
+  FreeAndNil(fSetUnpackPF[Plane]);
+  FreeAndNil(fSetDequantPF[Plane]);
+  FreeAndNil(fSetCoeffToScratchPF[Plane]);
+  FreeAndNil(fSetScratchToCoeffPF[Plane]);
+  FreeAndNil(fSetRowPF[Plane]);
+  FreeAndNil(fSetMCTFMC[Plane]);
+  FreeAndNil(fSetMCTFAdd[Plane]);
+  FreeAndNil(fSetCoeffToScratch[Plane]);
+  FreeAndNil(fSetScratchToCoeff[Plane]);
+  FreeAndNil(fSetRow[Plane]);
+ end;
+ for SlotIndex:=0 to length(fRingDataBuffer)-1 do begin // mode B per-frame input ring
+  for Plane:=0 to fNumPlanes-1 do begin
+   FreeAndNil(fRingSetUnpack[SlotIndex][Plane]);
+   FreeAndNil(fRingSetDequant[SlotIndex][Plane]);
+   FreeAndNil(fRingSetApplyAQ[SlotIndex][Plane]);
+   FreeAndNil(fRingSetGMC0[SlotIndex][Plane]);
+   FreeAndNil(fRingSetGMC1[SlotIndex][Plane]);
+   FreeAndNil(fRingSetGBlend[SlotIndex][Plane]);
+   FreeAndNil(fRingSetGBlendMode[SlotIndex][Plane]);
+   FreeAndNil(fRingSetGAdd[SlotIndex][Plane]);
+   if (Plane<3) and (SlotIndex<length(fRingSetCDEF)) then begin
+    FreeAndNil(fRingSetCDEF[SlotIndex][Plane]);
+   end;
+   FreeAndNil(fRingSetMCPlay[SlotIndex][Plane]);
+   FreeAndNil(fRingOffsetBuffer[SlotIndex][Plane]);
+   FreeAndNil(fRingStepBuffer[SlotIndex][Plane]);
+   if SlotIndex<length(fRingRANSTableBuffer) then begin // DCT-B ring rANS table + unpack set (allocated only when fSpatialDCT)
+    FreeAndNil(fRingSetRANSUnpack[SlotIndex][Plane]);
+    FreeAndNil(fRingRANSTableBuffer[SlotIndex][Plane]);
+   end;
+   if SlotIndex<length(fRingLeafListBuffer) then begin // DCT-B quad-tree ring leaf list + the two quad-tree sets (allocated only when fSpatialDCT and fQuadtree)
+    FreeAndNil(fRingSetRANSUnpackQuadTree[SlotIndex][Plane]);
+    FreeAndNil(fRingSetDCTQuadTree[SlotIndex][Plane]);
+    FreeAndNil(fRingLeafListBuffer[SlotIndex][Plane]);
+   end;
+   if SlotIndex<length(fRingCellLeafBuffer) then begin // deblock ring cell_leaf + set (allocated only when fDeblock)
+    FreeAndNil(fRingSetDeblock[SlotIndex][Plane]);
+    FreeAndNil(fRingCellLeafBuffer[SlotIndex][Plane]);
+   end;
+  end;
+  if SlotIndex<length(fRingPartitionBuffer) then begin // DCT-B quad-tree ring partition (per slot)
+   FreeAndNil(fRingPartitionBuffer[SlotIndex]);
+  end;
+  FreeAndNil(fRingDataBuffer[SlotIndex]);
+  FreeAndNil(fRingTileCodesBuffer[SlotIndex]);
+  FreeAndNil(fRingMVBuffer[SlotIndex]);
+  FreeAndNil(fRingMV1Buffer[SlotIndex]);
+  FreeAndNil(fRingModeBuffer[SlotIndex]);
+ end;
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fOutputImageStorageView);
+ FreeAndNil(fOutputImageView);
+ FreeAndNil(fOutputImage);
+ if assigned(fOutputImageMemory) then begin
+  fDevice.MemoryManager.FreeMemoryBlock(fOutputImageMemory);
+  fOutputImageMemory:=nil;
+ end;
+ for Plane:=0 to fNumPlanes-1 do begin
+  FreeAndNil(fGopBuffer[0][Plane]);
+  FreeAndNil(fGopBuffer[1][Plane]);
+  FreeAndNil(fPrefetchCoeff[Plane]);
+  FreeAndNil(fMCTFPred[Plane]);
+  FreeAndNil(fMCTFScratch[Plane]);
+ end;
+ FreeAndNil(fMV1Buffer);
+ FreeAndNil(fModeBuffer);
+ for SlotIndex:=0 to length(fDPBBuffer)-1 do begin
+  for Plane:=0 to fNumPlanes-1 do begin
+   FreeAndNil(fDPBBuffer[SlotIndex][Plane]);
+  end;
+ end;
+ for Plane:=0 to fNumPlanes-1 do begin
+  FreeAndNil(fGMCBuffer[0][Plane]);
+  FreeAndNil(fGMCBuffer[1][Plane]);
+ end;
+ FreeAndNil(fMVBuffer);
+ FreeAndNil(fAlphaMCTFMVBuffer); // own-alpha-MV MCTF per-pair MV upload buffer (nil unless MCTF+alpha)
+ FreeAndNil(fScratchBuffer);
+ FreeAndNil(fCDEFTempBuffer);
+ for Plane:=0 to fNumPlanes-1 do begin
+  FreeAndNil(fPreviousBuffer[Plane]);
+  FreeAndNil(fCoeffBuffer[Plane]);
+  FreeAndNil(fStepBuffer[Plane]);
+  FreeAndNil(fOffsetBuffer[Plane]);
+  FreeAndNil(fRANSTableBuffer[Plane]); // DCT path (nil when wavelet -> FreeAndNil is a no-op)
+  FreeAndNil(fLeafListBuffer[Plane]); // DCT quad-tree path (nil otherwise)
+  FreeAndNil(fCellLeafBuffer[Plane]); // deblock path (nil otherwise)
+ end;
+ FreeAndNil(fPartitionBuffer); // DCT quad-tree (nil otherwise)
+ FreeAndNil(fCoeffBuffer[3]); // the shared decoded-alpha plane (not covered by the loop above)
+ for SlotIndex:=0 to length(fAlphaRingData)-1 do begin // the alpha host-input ring
+  FreeAndNil(fAlphaRingData[SlotIndex]);
+  FreeAndNil(fAlphaRingOffset[SlotIndex]);
+  FreeAndNil(fAlphaRingStep[SlotIndex]);
+  if SlotIndex<length(fAlphaRingTileCodes) then begin // --alpha-aq per-slot alpha tile codes
+   FreeAndNil(fAlphaRingTileCodes[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingMVBuffer) then begin // own-alpha-MV L0 field
+   FreeAndNil(fAlphaRingMVBuffer[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingMV1Buffer) then begin // own-alpha-MV L1 field (B)
+   FreeAndNil(fAlphaRingMV1Buffer[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingTable) then begin // DCT-mode alpha rANS table (allocated only when fSpatialDCT)
+   FreeAndNil(fAlphaRingTable[SlotIndex]);
+  end;
+ end;
+ FreeAndNil(fDataBuffer);
+
+ FreeAndNil(fPipeTDWTFloat);
+ FreeAndNil(fPipeTDWTInt);
+ FreeAndNil(fPipeBlendMode);
+ FreeAndNil(fPipeBidiBlend);
+ FreeAndNil(fPipeColorHDRSCRGBAlpha);
+ FreeAndNil(fPipeColorHDRAlpha);
+ FreeAndNil(fPipeColorHDRSCRGB);
+ FreeAndNil(fPipeColorHDR);
+ FreeAndNil(fPipeColorAlpha);
+ FreeAndNil(fPipeColor);
+ FreeAndNil(fPipeMotionAdd);
+ FreeAndNil(fPipeMC);
+ FreeAndNil(fPipeCDEF);
+ FreeAndNil(fPipeCoeffAdd);
+ FreeAndNil(fPipeRound);
+ FreeAndNil(fPipeIDWT53);
+ FreeAndNil(fPipeIDWT97);
+ FreeAndNil(fPipeTranspose);
+ FreeAndNil(fPipeApplyAQ);
+ FreeAndNil(fWeightLUTBuffer);
+ FreeAndNil(fTileCodesBuffer);
+ FreeAndNil(fAlphaTileCodesBuffer); // --alpha-aq shared (3D-DWT) tile codes
+ FreeAndNil(fPipeDeblock); // deblock path (nil otherwise)
+ FreeAndNil(fPipeDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
+ FreeAndNil(fPipeRANSUnpackQuadTree);
+ FreeAndNil(fPipeDCTInverseInteger); // DCT path (nil when wavelet)
+ FreeAndNil(fPipeDCTInverse);
+ FreeAndNil(fPipeRANSUnpack);
+ FreeAndNil(fPipeDequant);
+ FreeAndNil(fPipeUnpack);
+
+ FreeAndNil(fPLDeblock); // deblock path (nil otherwise)
+ FreeAndNil(fPLDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
+ FreeAndNil(fPLRANSUnpackQuadTree);
+ FreeAndNil(fPLDCTInverse); // DCT path (nil when wavelet)
+ FreeAndNil(fPLRANSUnpack);
+ FreeAndNil(fPLTemporal);
+ FreeAndNil(fPLBlendMode);
+ FreeAndNil(fPLColorHDRAlpha);
+ FreeAndNil(fPLColorHDR);
+ FreeAndNil(fPLColorAlpha);
+ FreeAndNil(fPLColor);
+ FreeAndNil(fPLCDEF);
+ FreeAndNil(fPLCoeffAdd);
+ FreeAndNil(fPLRound);
+ FreeAndNil(fPLRow);
+ FreeAndNil(fPLTranspose);
+ FreeAndNil(fPLApplyAQ);
+ FreeAndNil(fPLDequant);
+ FreeAndNil(fPLUnpack);
+
+ FreeAndNil(fDSLColorAlpha);
+ FreeAndNil(fDSLColor);
+ FreeAndNil(fDSLRANS5); // DCT quad-tree path (nil otherwise)
+ FreeAndNil(fDSLRANS4); // DCT path (nil when wavelet)
+ FreeAndNil(fDSL4);
+ FreeAndNil(fDSL3);
+ FreeAndNil(fDSL2);
+ FreeAndNil(fDSL1);
+
+ if fOwnsPipelineCache then begin // only free a cache we created; the caller's shared cache (pvApplication.VulkanPipelineCache) is theirs
+  FreeAndNil(fPipelineCache);
+ end else begin
+  fPipelineCache:=nil;
+ end;
+
+ inherited Destroy;
+end;
+
 function TpvFlexibleVideoDecoder.PlaneWidth(const aPlane:TpvInt32):TpvInt32;
 var Shift:TpvInt32;
 begin
@@ -5512,309 +5815,6 @@ begin
   end;
  end;
 
-end;
-
-constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache);
-begin
- inherited Create;
-
- fPreparedIndex:=-1;
-
- fStream:=aStream;
- fDevice:=aDevice;
- fPreferSCRGB:=aPreferSCRGBForHDR; // consumed by ParseContainer (output format) below
- fSubmitMode:=aBSubmitMode;
-
- // GPU breadcrumbs: only when the engine ran with --breadcrumbs (the device-lost handler then dumps the last-reached
- // decode stage). nil = no-op; keeps the normal path free of overhead.
- if assigned(fDevice) and fDevice.UseBreadcrumbs then begin
-  fBreadcrumb:=fDevice.BreadcrumbBuffer;
- end else begin
-  fBreadcrumb:=nil;
- end;
-
- // GPU capability floor: the row IDWT shaders run 256 invocations and cache a full 4096-sample line (16 KiB) in shared
- // memory. Every desktop GPU clears this (Vulkan's guaranteed minimum is only 128 / 16 KiB), so fail early with a clear
- // message instead of a cryptic pipeline-creation crash on a strict-minimum mobile / iGPU.
- if (fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations<256) or
-    (fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize<16384) then begin
-  raise EpvFlexibleVideoDecoder.CreateFmt('GPU below the FWV decode floor: needs >=256 compute invocations and >=16 KiB shared memory (this device: %d invocations / %d bytes)',
-                                                 [fDevice.PhysicalDevice.Properties.limits.maxComputeWorkGroupInvocations,
-                                                  fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize]);
- end;
-
- ParseContainer;
-
- // Compute-pipeline cache: building the ~29 pipelines from SPIR-V costs ~2 s on a cold driver. The caller (the app)
- // passes its shared, disk-persisted cache (pvApplication.VulkanPipelineCache) so subsequent runs reuse the driver's
- // compiled binaries and the build drops to ~tens of ms. When none is supplied (e.g. the headless harness) own a fresh one.
- if assigned(aPipelineCache) then begin
-  fPipelineCache:=aPipelineCache;
-  fOwnsPipelineCache:=false;
- end else begin
-  fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
-  fOwnsPipelineCache:=true;
- end;
-
- BuildPipelines;
- BuildBuffersAndImage;
- BuildDescriptorSets;
-
- // the B-frame mode-A decode-ahead and the 3D-DWT GOP decode self-submit on their own command buffer + fence
- if (fHasBFrames and (fSubmitMode=0)) or fMode3DDWT then begin
-  fBDecodeCommandPool:=TpvVulkanCommandPool.Create(fDevice,fDevice.UniversalQueueFamilyIndex);
-  fBDecodeCommandBuffer:=TpvVulkanCommandBuffer.Create(fBDecodeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fBDecodeFence:=TpvVulkanFence.Create(fDevice);
- end;
-
- // 3D-DWT GOP prefetch: a SECOND command buffer + fence so the next GOP's subbands decode async (overlapping the
- // present) instead of stalling a single frame with the whole-GOP burst. The fence starts signaled (no prefetch in
- // flight yet) so the first wait-before-reuse is a no-op.
- if fMode3DDWT then begin
-  fPrefetchCommandBuffer:=TpvVulkanCommandBuffer.Create(fBDecodeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fPrefetchFence:=TpvVulkanFence.Create(fDevice); // unsignaled; f3DPfPending gates the wait so it is never waited empty
- end;
-
- // the per-frame input ring: mode B (the whole decode-ahead in one caller CB) + the intra/I-P path (one slot per frame)
- if (fHasBFrames and (fSubmitMode=1)) or fIPInputRing then begin
-  BuildBidiRing;
- end;
-
-end;
-
-destructor TpvFlexibleVideoDecoder.Destroy;
-var Plane,SlotIndex:TpvInt32;
-begin
-
- // Drain any in-flight 3D-DWT/MCTF GOP-prefetch or B-decode-ahead submit before freeing the fences, command buffers and
- // GPU resources they may still be reading (closing the player mid-prefetch otherwise frees a buffer under an active read).
- if assigned(fDevice) then begin
-  fDevice.WaitIdle;
- end;
-
- FreeAndNil(fPrefetchFence);
- FreeAndNil(fPrefetchCommandBuffer); // allocated from fBDecodeCommandPool -> free before it
- FreeAndNil(fBDecodeFence);
- FreeAndNil(fBDecodeCommandBuffer);
- FreeAndNil(fBDecodeCommandPool);
-
- FreeAndNil(fSetColor);
- FreeAndNil(fSetColorAlpha);
- FreeAndNil(fSetRowScratch);
- // optional alpha decode sets (not covered by the 0..fNumPlanes-1 loop below): the per-slot unpack+dequant ring sets
- // plus the shared idwt sets bound to coeff[3].
- for SlotIndex:=0 to length(fAlphaRingSetUnpack)-1 do begin
-  FreeAndNil(fAlphaRingSetUnpack[SlotIndex]);
-  FreeAndNil(fAlphaRingSetDequant[SlotIndex]);
-  if SlotIndex<length(fAlphaRingSetRANSUnpack) then begin // DCT-mode alpha rANS set (allocated only when fSpatialDCT)
-   FreeAndNil(fAlphaRingSetRANSUnpack[SlotIndex]);
-  end;
-  if SlotIndex<length(fAlphaRingSetMCPlayOwn) then begin // own-alpha-MV I/P mc set
-   FreeAndNil(fAlphaRingSetMCPlayOwn[SlotIndex]);
-  end;
-  if SlotIndex<length(fAlphaRingSetApplyAQ) then begin // --alpha-aq per-slot apply set
-   FreeAndNil(fAlphaRingSetApplyAQ[SlotIndex]);
-  end;
- end;
- FreeAndNil(fSetApplyAQ[3]); // --alpha-aq shared (3D-DWT) apply set
- FreeAndNil(fSetCoeffToScratch[3]);
- FreeAndNil(fSetScratchToCoeff[3]);
- FreeAndNil(fSetRow[3]);
- for Plane:=0 to fNumPlanes-1 do begin
-  FreeAndNil(fSetUnpack[Plane]);
-  FreeAndNil(fSetDequant[Plane]);
-  FreeAndNil(fSetApplyAQ[Plane]);
-  FreeAndNil(fSetAdd[Plane]);
-  if Plane<3 then begin
-   FreeAndNil(fSetCDEF[Plane]);
-  end;
-  FreeAndNil(fSetMCPlay[Plane]);
-  FreeAndNil(fSetMotionAddPlay[Plane]);
-  FreeAndNil(fSetGMC0[Plane]);
-  FreeAndNil(fSetGMC1[Plane]);
-  FreeAndNil(fSetGBlend[Plane]);
-  FreeAndNil(fSetGBlendMode[Plane]);
-  FreeAndNil(fSetGAdd[Plane]);
-  FreeAndNil(fSetTemporal[0][Plane]);
-  FreeAndNil(fSetTemporal[1][Plane]);
-  FreeAndNil(fSetUnpackPF[Plane]);
-  FreeAndNil(fSetDequantPF[Plane]);
-  FreeAndNil(fSetCoeffToScratchPF[Plane]);
-  FreeAndNil(fSetScratchToCoeffPF[Plane]);
-  FreeAndNil(fSetRowPF[Plane]);
-  FreeAndNil(fSetMCTFMC[Plane]);
-  FreeAndNil(fSetMCTFAdd[Plane]);
-  FreeAndNil(fSetCoeffToScratch[Plane]);
-  FreeAndNil(fSetScratchToCoeff[Plane]);
-  FreeAndNil(fSetRow[Plane]);
- end;
- for SlotIndex:=0 to length(fRingDataBuffer)-1 do begin // mode B per-frame input ring
-  for Plane:=0 to fNumPlanes-1 do begin
-   FreeAndNil(fRingSetUnpack[SlotIndex][Plane]);
-   FreeAndNil(fRingSetDequant[SlotIndex][Plane]);
-   FreeAndNil(fRingSetApplyAQ[SlotIndex][Plane]);
-   FreeAndNil(fRingSetGMC0[SlotIndex][Plane]);
-   FreeAndNil(fRingSetGMC1[SlotIndex][Plane]);
-   FreeAndNil(fRingSetGBlend[SlotIndex][Plane]);
-   FreeAndNil(fRingSetGBlendMode[SlotIndex][Plane]);
-   FreeAndNil(fRingSetGAdd[SlotIndex][Plane]);
-   if (Plane<3) and (SlotIndex<length(fRingSetCDEF)) then begin
-    FreeAndNil(fRingSetCDEF[SlotIndex][Plane]);
-   end;
-   FreeAndNil(fRingSetMCPlay[SlotIndex][Plane]);
-   FreeAndNil(fRingOffsetBuffer[SlotIndex][Plane]);
-   FreeAndNil(fRingStepBuffer[SlotIndex][Plane]);
-   if SlotIndex<length(fRingRANSTableBuffer) then begin // DCT-B ring rANS table + unpack set (allocated only when fSpatialDCT)
-    FreeAndNil(fRingSetRANSUnpack[SlotIndex][Plane]);
-    FreeAndNil(fRingRANSTableBuffer[SlotIndex][Plane]);
-   end;
-   if SlotIndex<length(fRingLeafListBuffer) then begin // DCT-B quad-tree ring leaf list + the two quad-tree sets (allocated only when fSpatialDCT and fQuadtree)
-    FreeAndNil(fRingSetRANSUnpackQuadTree[SlotIndex][Plane]);
-    FreeAndNil(fRingSetDCTQuadTree[SlotIndex][Plane]);
-    FreeAndNil(fRingLeafListBuffer[SlotIndex][Plane]);
-   end;
-   if SlotIndex<length(fRingCellLeafBuffer) then begin // deblock ring cell_leaf + set (allocated only when fDeblock)
-    FreeAndNil(fRingSetDeblock[SlotIndex][Plane]);
-    FreeAndNil(fRingCellLeafBuffer[SlotIndex][Plane]);
-   end;
-  end;
-  if SlotIndex<length(fRingPartitionBuffer) then begin // DCT-B quad-tree ring partition (per slot)
-   FreeAndNil(fRingPartitionBuffer[SlotIndex]);
-  end;
-  FreeAndNil(fRingDataBuffer[SlotIndex]);
-  FreeAndNil(fRingTileCodesBuffer[SlotIndex]);
-  FreeAndNil(fRingMVBuffer[SlotIndex]);
-  FreeAndNil(fRingMV1Buffer[SlotIndex]);
-  FreeAndNil(fRingModeBuffer[SlotIndex]);
- end;
- FreeAndNil(fDescriptorPool);
-
- FreeAndNil(fOutputImageStorageView);
- FreeAndNil(fOutputImageView);
- FreeAndNil(fOutputImage);
- if assigned(fOutputImageMemory) then begin
-  fDevice.MemoryManager.FreeMemoryBlock(fOutputImageMemory);
-  fOutputImageMemory:=nil;
- end;
- for Plane:=0 to fNumPlanes-1 do begin
-  FreeAndNil(fGopBuffer[0][Plane]);
-  FreeAndNil(fGopBuffer[1][Plane]);
-  FreeAndNil(fPrefetchCoeff[Plane]);
-  FreeAndNil(fMCTFPred[Plane]);
-  FreeAndNil(fMCTFScratch[Plane]);
- end;
- FreeAndNil(fMV1Buffer);
- FreeAndNil(fModeBuffer);
- for SlotIndex:=0 to length(fDPBBuffer)-1 do begin
-  for Plane:=0 to fNumPlanes-1 do begin
-   FreeAndNil(fDPBBuffer[SlotIndex][Plane]);
-  end;
- end;
- for Plane:=0 to fNumPlanes-1 do begin
-  FreeAndNil(fGMCBuffer[0][Plane]);
-  FreeAndNil(fGMCBuffer[1][Plane]);
- end;
- FreeAndNil(fMVBuffer);
- FreeAndNil(fAlphaMCTFMVBuffer); // own-alpha-MV MCTF per-pair MV upload buffer (nil unless MCTF+alpha)
- FreeAndNil(fScratchBuffer);
- FreeAndNil(fCDEFTempBuffer);
- for Plane:=0 to fNumPlanes-1 do begin
-  FreeAndNil(fPreviousBuffer[Plane]);
-  FreeAndNil(fCoeffBuffer[Plane]);
-  FreeAndNil(fStepBuffer[Plane]);
-  FreeAndNil(fOffsetBuffer[Plane]);
-  FreeAndNil(fRANSTableBuffer[Plane]); // DCT path (nil when wavelet -> FreeAndNil is a no-op)
-  FreeAndNil(fLeafListBuffer[Plane]); // DCT quad-tree path (nil otherwise)
-  FreeAndNil(fCellLeafBuffer[Plane]); // deblock path (nil otherwise)
- end;
- FreeAndNil(fPartitionBuffer); // DCT quad-tree (nil otherwise)
- FreeAndNil(fCoeffBuffer[3]); // the shared decoded-alpha plane (not covered by the loop above)
- for SlotIndex:=0 to length(fAlphaRingData)-1 do begin // the alpha host-input ring
-  FreeAndNil(fAlphaRingData[SlotIndex]);
-  FreeAndNil(fAlphaRingOffset[SlotIndex]);
-  FreeAndNil(fAlphaRingStep[SlotIndex]);
-  if SlotIndex<length(fAlphaRingTileCodes) then begin // --alpha-aq per-slot alpha tile codes
-   FreeAndNil(fAlphaRingTileCodes[SlotIndex]);
-  end;
-  if SlotIndex<length(fAlphaRingMVBuffer) then begin // own-alpha-MV L0 field
-   FreeAndNil(fAlphaRingMVBuffer[SlotIndex]);
-  end;
-  if SlotIndex<length(fAlphaRingMV1Buffer) then begin // own-alpha-MV L1 field (B)
-   FreeAndNil(fAlphaRingMV1Buffer[SlotIndex]);
-  end;
-  if SlotIndex<length(fAlphaRingTable) then begin // DCT-mode alpha rANS table (allocated only when fSpatialDCT)
-   FreeAndNil(fAlphaRingTable[SlotIndex]);
-  end;
- end;
- FreeAndNil(fDataBuffer);
-
- FreeAndNil(fPipeTDWTFloat);
- FreeAndNil(fPipeTDWTInt);
- FreeAndNil(fPipeBlendMode);
- FreeAndNil(fPipeBidiBlend);
- FreeAndNil(fPipeColorHDRSCRGBAlpha);
- FreeAndNil(fPipeColorHDRAlpha);
- FreeAndNil(fPipeColorHDRSCRGB);
- FreeAndNil(fPipeColorHDR);
- FreeAndNil(fPipeColorAlpha);
- FreeAndNil(fPipeColor);
- FreeAndNil(fPipeMotionAdd);
- FreeAndNil(fPipeMC);
- FreeAndNil(fPipeCDEF);
- FreeAndNil(fPipeCoeffAdd);
- FreeAndNil(fPipeRound);
- FreeAndNil(fPipeIDWT53);
- FreeAndNil(fPipeIDWT97);
- FreeAndNil(fPipeTranspose);
- FreeAndNil(fPipeApplyAQ);
- FreeAndNil(fWeightLUTBuffer);
- FreeAndNil(fTileCodesBuffer);
- FreeAndNil(fAlphaTileCodesBuffer); // --alpha-aq shared (3D-DWT) tile codes
- FreeAndNil(fPipeDeblock); // deblock path (nil otherwise)
- FreeAndNil(fPipeDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
- FreeAndNil(fPipeRANSUnpackQuadTree);
- FreeAndNil(fPipeDCTInverseInteger); // DCT path (nil when wavelet)
- FreeAndNil(fPipeDCTInverse);
- FreeAndNil(fPipeRANSUnpack);
- FreeAndNil(fPipeDequant);
- FreeAndNil(fPipeUnpack);
-
- FreeAndNil(fPLDeblock); // deblock path (nil otherwise)
- FreeAndNil(fPLDCTInverseQuadTree); // DCT quad-tree path (nil otherwise)
- FreeAndNil(fPLRANSUnpackQuadTree);
- FreeAndNil(fPLDCTInverse); // DCT path (nil when wavelet)
- FreeAndNil(fPLRANSUnpack);
- FreeAndNil(fPLTemporal);
- FreeAndNil(fPLBlendMode);
- FreeAndNil(fPLColorHDRAlpha);
- FreeAndNil(fPLColorHDR);
- FreeAndNil(fPLColorAlpha);
- FreeAndNil(fPLColor);
- FreeAndNil(fPLCDEF);
- FreeAndNil(fPLCoeffAdd);
- FreeAndNil(fPLRound);
- FreeAndNil(fPLRow);
- FreeAndNil(fPLTranspose);
- FreeAndNil(fPLApplyAQ);
- FreeAndNil(fPLDequant);
- FreeAndNil(fPLUnpack);
-
- FreeAndNil(fDSLColorAlpha);
- FreeAndNil(fDSLColor);
- FreeAndNil(fDSLRANS5); // DCT quad-tree path (nil otherwise)
- FreeAndNil(fDSLRANS4); // DCT path (nil when wavelet)
- FreeAndNil(fDSL4);
- FreeAndNil(fDSL3);
- FreeAndNil(fDSL2);
- FreeAndNil(fDSL1);
-
- if fOwnsPipelineCache then begin // only free a cache we created; the caller's shared cache (pvApplication.VulkanPipelineCache) is theirs
-  FreeAndNil(fPipelineCache);
- end else begin
-  fPipelineCache:=nil;
- end;
-
- inherited Destroy;
 end;
 
 end.
