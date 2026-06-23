@@ -887,7 +887,8 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
 // coeff[3]), for the GPU decode paths (B / 3D-DWT) where the color is GPU-decoded but the alpha is not. color_alpha
 // reads coeff[3] as the alpha plane. The alpha is intra, so one parse + decode_plane + reconstruct_plane per frame.
 static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32_t entry_index,
-                                     const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3) {
+                                     const int *block_count_plane, int width, int height, int levels, int *step, void *coeff_map3,
+                                     int alpha_mv_mode, int has_ref1, void *alpha_mv_map, void *alpha_mv1_map, int motion_blocks_x, int motion_blocks_y) {
   uint8_t *fb = 0;   // own buffer: the shared frame_buffer is in use by the 3D-DWT prefetch / B decode-ahead
   size_t fb_cap = 0;
   size_t frame_len = read_frame(file, &index[entry_index], &fb, &fb_cap);
@@ -920,9 +921,33 @@ static void cpu_decode_alpha_section(FILE *file, const FrameEntry *index, uint32
   int alpha_qp;
   const uint8_t *alpha_table;
   uint32_t alpha_table_length, alpha_data_length;
-  const uint8_t *alpha_data = parse_alpha_section(alpha_section_ptr, frame_len - (size_t)(alpha_section_ptr - fb), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
+  int alpha_own = (alpha_mv_mode == 1);   // own-alpha-MV B/P frame: the section carries an MV blob (L0 [+ L1]) right after alpha_qp
+  const uint8_t *alpha_mv_blob = NULL;
+  uint32_t alpha_mv_blob_length = 0;
+  const uint8_t *alpha_data = parse_alpha_section(alpha_section_ptr, frame_len - (size_t)(alpha_section_ptr - fb), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, alpha_own, &alpha_mv_blob, &alpha_mv_blob_length);
   if (!alpha_data) {
     die("corrupt alpha section");
+  }
+  if (alpha_own && alpha_mv_blob_length) {   // decode the alpha's OWN MVs (L0 + optional B-frame L1) -> alpha_mv_map / alpha_mv1_map; bound via set_gmc0[3]/set_gmc1[3]
+    int mv_count = (motion_blocks_x * motion_blocks_y) * 2;
+    int *amv0 = checked_malloc((size_t)mv_count * sizeof(int));
+    int *amv1 = has_ref1 ? checked_malloc((size_t)mv_count * sizeof(int)) : NULL;
+    if (g_mv_codec == 1) {
+      mv_blob_decode_range(alpha_mv_blob, alpha_mv_blob_length, 0, NULL, 0, amv0, has_ref1, amv1, 0, motion_blocks_x, motion_blocks_y);
+    } else {
+      BitReader mvr;
+      bitreader_init(&mvr, alpha_mv_blob, alpha_mv_blob_length);
+      decode_motion_vectors(&mvr, amv0, motion_blocks_x, motion_blocks_y);
+      if (has_ref1) {
+        decode_motion_vectors(&mvr, amv1, motion_blocks_x, motion_blocks_y);
+      }
+    }
+    memcpy(alpha_mv_map, amv0, (size_t)mv_count * 4);
+    if (has_ref1) {
+      memcpy(alpha_mv1_map, amv1, (size_t)mv_count * 4);
+    }
+    free(amv0);
+    free(amv1);
   }
   int32_t *alpha_coeff = checked_malloc((size_t)width * height * 4);   // decode into a local buffer (like decode_gop_3ddwt), then copy to the host coeff[3]
   // The alpha transform follows its entropy: rANS <-> DCT (g_spatial_dct=1), bit-plane <-> wavelet (g_spatial_dct=0).
@@ -1604,8 +1629,9 @@ int main(int argc, char **argv) {
   VkBuffer previous_buffer[MAX_PLANES];   // P-frame coefficient reference, GPU-resident across frames
   VkBuffer mv_buffer;            // motion: per-16x16-block [mv_x, mv_y] (half-pel); all-zero when there is no motion
   VkBuffer alpha_mv_buffer = 0;  // own-alpha-MV: the alpha plane's OWN per-block MV field (used instead of mv_buffer when FrameEntry.alpha_mv_mode == 1)
+  VkBuffer alpha_mv1_buffer = 0; // own-alpha-MV (B-frame L1): the second-reference alpha MV field (used instead of mv1_buffer when alpha_mv_mode == 1)
   VkDeviceMemory data_memory, offset_memory[MAX_PLANES], coeff_memory[MAX_PLANES], scratch_memory, step_memory[MAX_PLANES];
-  VkDeviceMemory previous_memory[MAX_PLANES], mv_memory, alpha_mv_memory = 0;
+  VkDeviceMemory previous_memory[MAX_PLANES], mv_memory, alpha_mv_memory = 0, alpha_mv1_memory = 0;
   VkBuffer table_buffer[MAX_PLANES];        // DCT path: per-plane flattened rANS frequency table (norm+cum+slot)
   VkDeviceMemory table_memory[MAX_PLANES];
   create_buffer(data_capacity, HOST_VISIBLE_COHERENT, &data_buffer, &data_memory);
@@ -1665,8 +1691,9 @@ int main(int argc, char **argv) {
   create_buffer(((scratch_side * scratch_side) * 4), DEVICE_LOCAL, &scratch_buffer, &scratch_memory);
   int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_buffer, &mv_memory);
-  if (g_has_alpha) {   // own-alpha-MV: a parallel host-visible MV buffer for the alpha plane's own MVs (full-res -> same block grid as luma)
+  if (g_has_alpha) {   // own-alpha-MV: parallel host-visible MV buffers for the alpha plane's own MVs (full-res -> same block grid as luma); alpha_mv1 = the B-frame L1 field
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv_buffer, &alpha_mv_memory);
+    create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv1_buffer, &alpha_mv1_memory);
   }
 
   // Adaptive quadtree (g_quadtree from the header color_flags bit3): per-plane partition map, one byte per 32x32
@@ -1712,12 +1739,14 @@ int main(int argc, char **argv) {
     }
   }
 
-  void *data_map, *offset_map[MAX_PLANES], *step_map[MAX_PLANES], *table_map[MAX_PLANES], *mv_map, *alpha_mv_map = 0;
+  void *data_map, *offset_map[MAX_PLANES], *step_map[MAX_PLANES], *table_map[MAX_PLANES], *mv_map, *alpha_mv_map = 0, *alpha_mv1_map = 0;
   VK_CHECK(vkMapMemory(device, mv_memory, 0, VK_WHOLE_SIZE, 0, &mv_map));
   memset(mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);   // all-zero MVs (mc_prev == prev when there is no motion)
-  if (g_has_alpha) {   // own-alpha-MV host map (filled per frame from the alpha section's MV blob when alpha_mv_mode == 1)
+  if (g_has_alpha) {   // own-alpha-MV host maps (filled per frame from the alpha section's MV blob when alpha_mv_mode == 1); alpha_mv1 = B-frame L1
     VK_CHECK(vkMapMemory(device, alpha_mv_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv_map));
     memset(alpha_mv_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
+    VK_CHECK(vkMapMemory(device, alpha_mv1_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv1_map));
+    memset(alpha_mv1_map, 0, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
   }
   VK_CHECK(vkMapMemory(device, data_memory, 0, VK_WHOLE_SIZE, 0, &data_map));
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -3142,9 +3171,12 @@ int main(int argc, char **argv) {
         }
         if (g_has_alpha) {   // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots; shares the luma mv_buffer/mv1_buffer/mode_buffer (alpha is NOT deblocked)
           if (is_pred) {
-            bind_storage_buffers(set_gmc0[3], (VkBuffer[]){ gdpb_buffer[ref0_slot][3], mv_buffer, gmc_buffer[0][3] }, 3);
+            // own-alpha-MV: this B/P frame carries its own alpha MVs -> bind the alpha mc to alpha_mv_buffer / alpha_mv1_buffer
+            // (decoded from the section in cpu_decode_alpha_section below) instead of the shared luma mv_buffer / mv1_buffer.
+            int b_alpha_own = (index[c].alpha_mv_mode == 1);
+            bind_storage_buffers(set_gmc0[3], (VkBuffer[]){ gdpb_buffer[ref0_slot][3], b_alpha_own ? alpha_mv_buffer : mv_buffer, gmc_buffer[0][3] }, 3);
             if (ref1_slot >= 0) {
-              bind_storage_buffers(set_gmc1[3], (VkBuffer[]){ gdpb_buffer[ref1_slot][3], mv1_buffer, gmc_buffer[1][3] }, 3);
+              bind_storage_buffers(set_gmc1[3], (VkBuffer[]){ gdpb_buffer[ref1_slot][3], b_alpha_own ? alpha_mv1_buffer : mv1_buffer, gmc_buffer[1][3] }, 3);
             }
             if (is_phase2_b) {
               bind_storage_buffers(set_blend_mode[3], (VkBuffer[]){ gmc_buffer[0][3], gmc_buffer[1][3], mode_buffer }, 3);
@@ -3374,7 +3406,8 @@ int main(int argc, char **argv) {
           memory_barrier();
         }
         if (g_has_alpha) {   // inter B alpha: CPU-decode this coding frame's alpha residual into coeff[3] (host-visible), then GPU mc0/mc1/blend/motion_add -> gdpb[dst][3] (mirror of the color; shares the luma MVs)
-          cpu_decode_alpha_section(file, index, (uint32_t)c, block_count_plane, width, height, levels, step, coeff_map3);
+          cpu_decode_alpha_section(file, index, (uint32_t)c, block_count_plane, width, height, levels, step, coeff_map3,
+                                   (int)index[c].alpha_mv_mode, (ref1_slot >= 0), alpha_mv_map, alpha_mv1_map, motion_blocks_x, motion_blocks_y);
           int a_pixels = width * height, a_pixel_workgroups = (a_pixels + 255) / 256;
           int a_motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block;
           if (is_pred) {   // mirror the color (mc0; mc1 if a B-frame; then blend_mode OR gblend — the gblend ALSO runs for a P-anchor as a self-blend -> scratch)

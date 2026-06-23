@@ -2108,12 +2108,15 @@ int main(int argc, char **argv) {
   create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_prev_buffer, &mv_prev_memory);
   // own-alpha-MV (GPU-native --alpha-mv != luma): the alpha plane's OWN MV field, uploaded host-side and bound into the
   // alpha mc instead of the shared luma mv_buffer when the frame chooses own. (CPU alpha-ME on source alphas decides.)
-  VkBuffer alpha_mv_buffer = 0;
-  VkDeviceMemory alpha_mv_memory = 0;
-  void *alpha_mv_map = 0;
+  // alpha_mv1_buffer is the B-frame L1 field (the second reference); I/P/P leave it unused.
+  VkBuffer alpha_mv_buffer = 0, alpha_mv1_buffer = 0;
+  VkDeviceMemory alpha_mv_memory = 0, alpha_mv1_memory = 0;
+  void *alpha_mv_map = 0, *alpha_mv1_map = 0;
   if (g_has_alpha) {
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv_buffer, &alpha_mv_memory);
     VK_CHECK(vkMapMemory(device, alpha_mv_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv_map));
+    create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, HOST_VISIBLE_COHERENT, &alpha_mv1_buffer, &alpha_mv1_memory);
+    VK_CHECK(vkMapMemory(device, alpha_mv1_memory, 0, VK_WHOLE_SIZE, 0, &alpha_mv1_map));
   }
   if (g_mv_predict_spatial) {
     create_buffer((((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4, DEVICE_LOCAL, &mv_refine_buffer, &mv_refine_memory);
@@ -2662,6 +2665,10 @@ int main(int argc, char **argv) {
   int32_t *gpu_alpha_cur = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int32_t *gpu_alpha_prev = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int *gpu_alpha_mv = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
+  // B-frame own-alpha-MV: the two reference source alphas (from the bgpu DPB source slots) + the L1 (ref1) MV field.
+  int32_t *gpu_alpha_ref0 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *gpu_alpha_ref1 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int *gpu_alpha_mv1 = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
   int32_t *self_previous[MAX_PLANES];
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -3822,10 +3829,14 @@ int main(int argc, char **argv) {
           bind_storage_buffers(set_motion_add_bidi[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane], dpb_buffer[b_dst_slot][plane] }, 3);
         }
         if (g_has_alpha) {   // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots; shares the luma mv_buffer/mv1_buffer/mode_buffer
+          // own-alpha-MV: when this B/P frame carries its own alpha MVs, bind the alpha mc to alpha_mv_buffer / alpha_mv1_buffer
+          // instead of the shared luma mv_buffer / mv1_buffer (the field is searched + uploaded in the ME block below; the
+          // blend stages read difference[3]/mc1_buffer[3], not the MVs, so they stay unchanged).
+          int b_alpha_own = ((g_alpha_mv_strategy == ALPHA_MV_OWN) && (b_type != 0)) && (predictive && (method == 1));
           if (b_ref0_slot >= 0) {
-            bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], mv_buffer, difference_buffer[3] }, 3);
+            bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], b_alpha_own ? alpha_mv_buffer : mv_buffer, difference_buffer[3] }, 3);
             if (b_ref1_slot >= 0) {
-              bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], mv1_buffer, mc1_buffer[3] }, 3);
+              bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], b_alpha_own ? alpha_mv1_buffer : mv1_buffer, mc1_buffer[3] }, 3);
               bind_storage_buffers(set_bidi_blend[3], (VkBuffer[]){ difference_buffer[3], mc1_buffer[3], difference_buffer[3] }, 3);
             }
           }
@@ -4022,20 +4033,43 @@ int main(int argc, char **argv) {
       // (gop 1) keep the alpha intra; the decoders gate the alpha mc/motion_add the same way, so encoder<->decoder stay in lock-step.
       int alpha_inter = predictive && (method == 1);
 
-      // own-alpha-MV (GPU-native, I/P): maintain the source alpha across frames; when --alpha-mv=own picks own for a
-      // predicted frame, search the alpha's OWN MVs (CPU, on the source alphas) and upload them so the alpha mc warps the
-      // reconstructed previous alpha with these instead of the shared luma MVs. (cpu-rd / sad on GPU-native = step C2.)
+      // own-alpha-MV (GPU-native): when --alpha-mv=own picks own for a predicted colordiff frame, search the alpha's OWN
+      // MVs (CPU, on the SOURCE alphas) and upload them so the alpha mc warps the reconstructed reference(s) with these
+      // instead of the shared luma MVs. I/P uses the single previous source alpha (gpu_alpha_prev); B uses the two
+      // reference source alphas straight out of the bgpu DPB source slots (L0 -> alpha_mv, L1 -> alpha_mv1). (cpu-rd / sad
+      // on GPU-native = step C2.)
       int alpha_own_frame = 0;
-      if (g_has_alpha && !use_bframes) {
+      if (g_has_alpha) {
+        size_t alpha_mv_bytes = (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4;
+        const void *cur_src = use_bframes ? (const void *)rgb_map : (const void *)rgb;
         for (int i = 0; i < pixel_count; i++) {
-          gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)rgb)[(i * 4) + 3] : rgb[(i * 4) + 3];
+          gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)cur_src)[(i * 4) + 3] : ((const uint8_t *)cur_src)[(i * 4) + 3];
         }
-        if (((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) {
-          motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
-          memcpy(alpha_mv_map, gpu_alpha_mv, (((size_t)motion_blocks_x * motion_blocks_y) * 2) * 4);
+        if (!use_bframes) {   // I/P: a single previous reference, maintained sequentially across frames
+          if (((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) {
+            motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
+            memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
+            alpha_own_frame = 1;
+          }
+          memcpy(gpu_alpha_prev, gpu_alpha_cur, (size_t)pixel_count * 4);   // this frame's source alpha = the next frame's ME reference
+        } else if (((((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) && (b_ref0_slot >= 0))) {
+          // B/P: pull the reference source alphas from the bgpu DPB source slots and search L0 (+ L1) independently.
+          const void *ref0_src = bgpu.rgb_slot[b_ref0_slot];
+          for (int i = 0; i < pixel_count; i++) {
+            gpu_alpha_ref0[i] = (g_sample_bytes == 2) ? ((const uint16_t *)ref0_src)[(i * 4) + 3] : ((const uint8_t *)ref0_src)[(i * 4) + 3];
+          }
+          motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_ref0, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
+          memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
+          if (b_ref1_slot >= 0) {
+            const void *ref1_src = bgpu.rgb_slot[b_ref1_slot];
+            for (int i = 0; i < pixel_count; i++) {
+              gpu_alpha_ref1[i] = (g_sample_bytes == 2) ? ((const uint16_t *)ref1_src)[(i * 4) + 3] : ((const uint8_t *)ref1_src)[(i * 4) + 3];
+            }
+            motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_ref1, gpu_alpha_mv1, width, height, motion_blocks_x, motion_blocks_y);
+            memcpy(alpha_mv1_map, gpu_alpha_mv1, alpha_mv_bytes);
+          }
           alpha_own_frame = 1;
         }
-        memcpy(gpu_alpha_prev, gpu_alpha_cur, (size_t)pixel_count * 4);   // this frame's source alpha = the next frame's ME reference
       }
 
       // ---- GPU pass 1: color transform + forward wavelet + quant + per-block size ----
@@ -5471,16 +5505,21 @@ int main(int argc, char **argv) {
       if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
         int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
         // own-alpha-MV: when this frame chose own, code its alpha MV field into a blob the alpha section carries (like the
-        // luma MV blob). gpu_alpha_mv was searched + uploaded above; the alpha mc already used it (set_mc_alpha_own).
+        // luma MV blob). gpu_alpha_mv (+ gpu_alpha_mv1 for a B-frame's L1) were searched + uploaded above; the alpha mc
+        // already used them. B with two references packs L0 + L1 into one blob (same layout the CPU oracle round-trips).
         uint8_t *alpha_own_blob = NULL;
         uint32_t alpha_own_blob_len = 0;
         if (alpha_own_frame) {
+          int alpha_own_dual = (use_bframes && (b_ref1_slot >= 0));   // a B-frame carries both L0 and L1 alpha MV sets
           if (g_mv_codec == 1) {
-            alpha_own_blob_len = (uint32_t)mv_blob_encode_range(&alpha_own_blob, 0, NULL, 0, gpu_alpha_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+            alpha_own_blob_len = (uint32_t)mv_blob_encode_range(&alpha_own_blob, 0, NULL, 0, gpu_alpha_mv, alpha_own_dual, gpu_alpha_mv1, 0, motion_blocks_x, motion_blocks_y);
           } else {
             BitWriter mvw;
             bitwriter_init(&mvw);
             encode_motion_vectors(&mvw, gpu_alpha_mv, motion_blocks_x, motion_blocks_y);
+            if (alpha_own_dual) {
+              encode_motion_vectors(&mvw, gpu_alpha_mv1, motion_blocks_x, motion_blocks_y);
+            }
             bitwriter_flush(&mvw);
             alpha_own_blob = mvw.bytes;
             alpha_own_blob_len = (uint32_t)mvw.length;
@@ -5522,7 +5561,7 @@ int main(int argc, char **argv) {
       if (output && use_bframes) {
         // B-stream: write the explicit coding-order index entry (poc + L0/L1 coding-order refs + temporal_id).
         bframe_append(container_file, &index, &index_capacity, frame_index, frame, total,
-                      b_poc, b_ref0_coding, b_ref1_coding, (uint8_t)b_type, (uint8_t)frame_quality, (uint8_t)b_tid, 0);   // GPU-native B alpha = shared luma MVs (own-MV = step 5e)
+                      b_poc, b_ref0_coding, b_ref1_coding, (uint8_t)b_type, (uint8_t)frame_quality, (uint8_t)b_tid, alpha_own_frame);   // own-alpha-MV: 1 when this B/P frame sent its own (L0[+L1]) alpha MVs, else 0 (shared)
         if (g_cdef) {   // store this B-frame's chosen CDEF strengths in coding order (bframe_append grew index_capacity if needed)
           cdef_table = realloc(cdef_table, (size_t)index_capacity * 4);
           if (!cdef_table) {
