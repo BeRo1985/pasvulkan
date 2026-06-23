@@ -45,23 +45,27 @@ final. Overall byte map:
 
 | Region | Location | Presence |
 |---|---|---|
-| File header (142 bytes) | offset 0 | always |
+| File header (228 bytes) | offset 0 | always |
 | Frame payloads (coding order) | at each `FrameEntry.offset` | always |
 | Audio blob | `audio_offset`, length `audio_size` | if `audio_size > 0` |
 | H.264 Annex-B blob | `h264_offset`, length `h264_size` | if `h264_size > 0` |
 | AQ QP-map | `qpmap_offset`, length `qpmap_size` | if `qpmap_size > 0` |
+| Key-value store | `keyvalue_offset`, length `keyvalue_size` | if `keyvalue_size > 0` (reserved; not yet emitted) |
 | Frame index (`FrameEntry[frame_count]`) | `index_offset` | always |
 | CDEF strength table | `index_offset + frame_count*28` | if `color_flags` bit 4 |
 
 ---
 
-## 3. File Header (142 bytes)
+## 3. File Header (228 bytes)
+
+The header is `#pragma pack(1)` (byte-exact, no alignment padding); the layout below is
+sequential. `header_size` guards reads of any future appended fixed fields.
 
 | Off | Size | Type | Field | Meaning |
 |----:|----:|------|-------|---------|
 | 0   | 4 | u8[4] | `magic` | ASCII `"FVDC"` (`46 56 44 43`) |
 | 4   | 2 | u16 | `version` | Format version = **1** |
-| 6   | 2 | u16 | `header_size` | `sizeof(header)` = 142 (truncation guard) |
+| 6   | 2 | u16 | `header_size` | `sizeof(header)` = 228 (truncation guard) |
 | 8   | 4 | u32 | `width` | Frame width in pixels |
 | 12  | 4 | u32 | `height` | Frame height in pixels |
 | 16  | 4 | u32 | `fps_num` | Frame-rate numerator |
@@ -74,60 +78,67 @@ final. Overall byte map:
 | 38  | 1 | u8 | `transfer_function` | CICP: 13 = sRGB, 1 = BT.709, 16 = PQ, 18 = HLG, 8 = linear |
 | 39  | 1 | u8 | `matrix` | CICP: always 8 (YCgCo / YCoCg-R) |
 | 40  | 1 | u8 | `full_range` | Always 1 |
-| 41  | 1 | u8 | `color_flags` | Feature / HDR bitfield — see §3.1 |
-| 42  | 2 | u16 | `gop` | Max keyframe interval (seek hint) |
-| 44  | 6 | u16[3] | `mastering_primaries_x[3]` | ST 2086 R/G/B chromaticity X ×50000 |
-| 50  | 6 | u16[3] | `mastering_primaries_y[3]` | ST 2086 R/G/B chromaticity Y ×50000 |
-| 56  | 2 | u16 | `mastering_white_x` | White point X ×50000 |
-| 58  | 2 | u16 | `mastering_white_y` | White point Y ×50000 |
-| 60  | 4 | u32 | `mastering_max_luminance` | MaxMDL cd/m² ×10000 |
-| 64  | 4 | u32 | `mastering_min_luminance` | MinMDL cd/m² ×10000 |
-| 68  | 2 | u16 | `max_content_light_level` | MaxCLL cd/m² |
-| 70  | 2 | u16 | `max_frame_avg_light_level` | MaxFALL cd/m² |
-| 72  | 8 | u64 | `audio_offset` | Byte offset of audio blob (0 = none) |
-| 80  | 8 | u64 | `audio_size` | Byte size of audio blob (0 = none) |
-| 88  | 8 | u64 | `index_offset` | Byte offset of frame index |
-| 96  | 1 | u8 | `prediction_method` | Inter-prediction mode — see §3.2 |
-| 97  | 1 | u8 | `chroma_quant_x16` | Chroma quant multiplier ×16 (16 = 1.0 = off; treat 0 as 16) |
-| 98  | 1 | u8 | `chroma_format` | Chroma subsampling — see §3.3 |
-| 99  | 6 | u8[6] | `reserved2[6]` | Multi-purpose — see §3.4 |
-| 105 | 4 | u8[4] | `audio_codec[4]` | Audio sub-FourCC — see §13 |
-| 109 | 1 | u8 | `mv_codec` | MV entropy + motion flags — see §3.5 |
-| 110 | 8 | u64 | `h264_offset` | Byte offset of H.264 Annex-B stream (0 = wavelet/DCT only) |
-| 118 | 8 | u64 | `h264_size` | Byte size of H.264 stream (0 = none) |
-| 126 | 8 | u64 | `qpmap_offset` | Byte offset of per-frame AQ QP-map (0 = no AQ) |
-| 134 | 8 | u64 | `qpmap_size` | `frame_count × tile_cols × tile_rows` bytes (0 = no AQ) |
+| 41  | 2 | u16 | `gop` | Max keyframe interval (seek hint) |
+| 43  | 4 | u32 | `color_flags` | Feature / HDR bitfield — see §3.1 |
+| 47  | 6 | u16[3] | `mastering_primaries_x[3]` | ST 2086 R/G/B chromaticity X ×50000 |
+| 53  | 6 | u16[3] | `mastering_primaries_y[3]` | ST 2086 R/G/B chromaticity Y ×50000 |
+| 59  | 2 | u16 | `mastering_white_x` | White point X ×50000 |
+| 61  | 2 | u16 | `mastering_white_y` | White point Y ×50000 |
+| 63  | 4 | u32 | `mastering_max_luminance` | MaxMDL cd/m² ×10000 |
+| 67  | 4 | u32 | `mastering_min_luminance` | MinMDL cd/m² ×10000 |
+| 71  | 2 | u16 | `max_content_light_level` | MaxCLL cd/m² |
+| 73  | 2 | u16 | `max_frame_avg_light_level` | MaxFALL cd/m² |
+| 75  | 1 | u8 | `prediction_method` | Inter-prediction mode — see §3.2 |
+| 76  | 1 | u8 | `chroma_quant_x16` | Chroma quant multiplier ×16 (16 = 1.0 = off; treat 0 as 16) |
+| 77  | 1 | u8 | `chroma_format` | Chroma subsampling — see §3.3 |
+| 78  | 1 | u8 | `temporal_levels` | 3D-DWT/MCTF temporal decomposition levels (else 0) — see §3.4 |
+| 79  | 1 | u8 | `temporal_wavelet` | Temporal wavelet: 0 = Haar, 1 = LeGall 5/3, 2 = CDF 9/7 — see §3.4 |
+| 80  | 1 | u8 | `bframe_period` | Hierarchical B-frames per anchor pair (0 = no B-frames) — see §3.4 |
+| 81  | 1 | u8 | `per_block_mode` | Non-zero ⇒ B-frame MV blobs carry an L0/L1/BI mode array — see §3.4 |
+| 82  | 1 | u8 | `coding_block_size` | Bit-plane / rANS tile size in luma pixels: 32 / 64 / 128 (0 ⇒ 32) — see §3.4 |
+| 83  | 1 | u8 | `motion_block_size` | Motion grid: 8 / 16 / 32 fixed, or 1 = variable quadtree (0 ⇒ 8) — see §3.4 |
+| 84  | 4 | u32 | `mv_codec` | MV entropy + motion bitfield — see §3.5 |
+| 88  | 4 | u8[4] | `audio_codec[4]` | Audio sub-FourCC — see §13 |
+| 92  | 8 | u64 | `audio_offset` | Byte offset of audio blob (0 = none) |
+| 100 | 8 | u64 | `audio_size` | Byte size of audio blob (0 = none) |
+| 108 | 8 | u64 | `h264_offset` | Byte offset of H.264 Annex-B stream (0 = wavelet/DCT only) |
+| 116 | 8 | u64 | `h264_size` | Byte size of H.264 stream (0 = none) |
+| 124 | 8 | u64 | `qpmap_offset` | Byte offset of per-frame AQ QP-map (0 = no AQ) |
+| 132 | 8 | u64 | `qpmap_size` | `frame_count × tile_cols × tile_rows` bytes (0 = no AQ) |
+| 140 | 8 | u64 | `index_offset` | Byte offset of frame index |
+| 148 | 8 | u64 | `keyvalue_offset` | Optional extensible key-value store (0 = none; reserved, not yet emitted) |
+| 156 | 8 | u64 | `keyvalue_size` | Byte size of the key-value store |
+| 164 | 64 | u32[16] | `reserved[16]` | Zero-filled; future fixed fields claim slots here within version 1 |
 
-The mastering-display fields (offsets 44–71) are meaningful only when `color_flags`
+The mastering-display fields (offsets 47–74) are meaningful only when `color_flags`
 bit 1 is set; otherwise they are zero-filled.
 
-### 3.1 `color_flags` (u8 at offset 41)
+### 3.1 `color_flags` (u32 at offset 43)
 
 | Bit | Mask | Name | Meaning |
 |----:|------|------|---------|
 | 0 | 0x01 | HDR | HDR stream (typically 12-bit BT.2020 PQ/HLG; `bit_depth=12`) |
-| 1 | 0x02 | HDR10_METADATA | Mastering-display metadata (offsets 44–71) is valid |
+| 1 | 0x02 | HDR10_METADATA | Mastering-display metadata (offsets 47–74) is valid |
 | 2 | 0x04 | HAS_ALPHA | Optional full-resolution 8-bit alpha plane present (§14) |
-| 3 | 0x08 | QUADTREE | Adaptive DCT transform-size partitioning active; partition section present (§7.4) |
-| 4 | 0x10 | HAS_CDEF | CDEF in-loop deringing enabled; per-frame strength table follows the index (§7.7) |
-| 5 | 0x20 | DEBLOCK | In-loop deblocking filter active (§7.6) |
+| 3 | 0x08 | QUADTREE | Adaptive DCT transform-size partitioning active; partition section present (§6.4) |
+| 4 | 0x10 | HAS_CDEF | CDEF in-loop deringing enabled; per-frame strength table follows the index (§6.7) |
+| 5 | 0x20 | DEBLOCK | In-loop deblocking filter active (§6.6) |
 | 6 | 0x40 | BFRAME_DCT | B-frames use DCT+rANS (else wavelet+bit-plane); requires `prediction_method=1` |
 | 7 | 0x80 | SPATIAL_DCT | Intra/spatial coding is DCT+rANS; **clear = wavelet+bit-plane** (primary FVD-vs-FWV bit) |
 
-Note: the PasVulkan compositor historically also reads bit 3 as a "premultiplied alpha"
-hint for blending. The current encoder does not write a separate premultiplied-alpha
-flag; treat premultiply signaling as out of band.
+Bits 8–31 are reserved (zero). Note: premultiplied-alpha signaling is **out of band** — the
+encoder writes no premultiply flag bit (the PasVulkan compositor treats alpha as straight).
 
-### 3.2 `prediction_method` (u8 at offset 96)
+### 3.2 `prediction_method` (u8 at offset 75)
 
 | Value | Name | Meaning |
 |------:|------|---------|
 | 0 | CoefDiff | Wavelet-domain coefficient-difference I/P (no motion; MV blob always empty) |
-| 1 | ColorDiff | Pixel-domain (YCoCg-R) motion-compensated I/P, plus B-frames when `reserved2[2] > 0` |
+| 1 | ColorDiff | Pixel-domain (YCoCg-R) motion-compensated I/P, plus B-frames when `bframe_period > 0` |
 | 2 | OpenLoop3DDWT | Open-loop 3D temporal-wavelet GOP (no motion) |
 | 3 | MCTF3DDWT | Motion-compensated temporal-filtering 3D-DWT GOP (predict-only MC-Haar) |
 
-### 3.3 `chroma_format` (u8 at offset 98)
+### 3.3 `chroma_format` (u8 at offset 77)
 
 | Value | Name | Chroma plane size |
 |------:|------|-------------------|
@@ -138,24 +149,28 @@ flag; treat premultiply signaling as out of band.
 Luma (plane 0) and alpha (plane 3) are always full resolution. Chroma is box-averaged on
 encode and bilinearly upsampled (center-sited) on decode.
 
-### 3.4 `reserved2[6]` (offsets 99–104)
+### 3.4 Codec configuration fields (offsets 78–83)
 
-| Index | Meaning |
-|------:|---------|
-| 0 | Temporal decomposition levels (3D-DWT modes; else 0) |
-| 1 | Temporal wavelet type: 0 = Haar, 1 = LeGall 5/3, 2 = CDF 9/7 (3D-DWT modes) |
-| 2 | B-frame period (B-frames per anchor pair; 0 = no B-frames) |
-| 3 | Per-block-mode flag: non-zero ⇒ B-frame MV blobs carry an L0/L1/BI mode array (§9.3) |
-| 4 | Coding (bit-plane / rANS tile) block size in luma pixels: 32 / 64 / 128 (0 ⇒ 32) |
-| 5 | Motion block size: 8 / 16 / 32 fixed grid, or 1 = variable quadtree (root 32, leaf 8); 0 ⇒ 8 |
+These eight named u8 fields configure the coder; each is `0` when not applicable.
 
-### 3.5 `mv_codec` (u8 at offset 109)
+| Off | Field | Meaning |
+|----:|-------|---------|
+| 78 | `temporal_levels` | Temporal decomposition levels (3D-DWT/MCTF modes; else 0) |
+| 79 | `temporal_wavelet` | Temporal wavelet: 0 = Haar, 1 = LeGall 5/3, 2 = CDF 9/7 (3D-DWT modes) |
+| 80 | `bframe_period` | B-frame period (B-frames per anchor pair; 0 = no B-frames) |
+| 81 | `per_block_mode` | Non-zero ⇒ B-frame MV blobs carry an L0/L1/BI mode array (§8.3) |
+| 82 | `coding_block_size` | Bit-plane / rANS tile size in luma pixels: 32 / 64 / 128 (0 ⇒ 32) |
+| 83 | `motion_block_size` | Motion block size: 8 / 16 / 32 fixed grid, or 1 = variable quadtree (root 32, leaf 8); 0 ⇒ 8 |
+
+### 3.5 `mv_codec` (u32 at offset 84)
 
 | Bits | Meaning |
 |------|---------|
-| 0 | MV entropy coder: 0 = signed Exp-Golomb, 1 = adaptive binary range coder |
+| 0 | MV entropy coder: 0 = signed Exp-Golomb (default), 1 = adaptive binary range coder |
 | 1–2 | Interpolation filter: 0 = bilinear (legacy), 1 = 6-tap half-pel (default), 2 = 8-tap HEVC DCTIF |
 | 3–4 | MV precision: 0 = half-pel, 1 = quarter-pel (default) |
+
+Bits 5–31 are reserved (zero).
 
 ---
 
@@ -174,15 +189,15 @@ The index is an array of `frame_count` `FrameEntry` records (28 bytes each) at
 | 16 | 4 | i32 | `ref0` | Coding-order index of the L0 (forward) reference; -1 = none |
 | 20 | 4 | i32 | `ref1` | Coding-order index of the L1 (backward) reference; -1 = none |
 | 24 | 1 | u8 | `type` | 0 = I, 1 = P, 2 = B |
-| 25 | 1 | u8 | `quality` | Per-frame quality (the QP-cascaded value actually used; §9.5) |
+| 25 | 1 | u8 | `quality` | Per-frame quality (the QP-cascaded value actually used; §8.5) |
 | 26 | 1 | u8 | `temporal_id` | Temporal hierarchy level (0 = anchor) |
-| 27 | 1 | u8 | `pad` | Zero |
+| 27 | 1 | u8 | `alpha_mv_mode` | Per-frame alpha motion mode: 0 = alpha shares the luma MVs, 1 = alpha carries its own MV field (in the alpha section, §14). 0 when no alpha. |
 
 If `color_flags` bit 4 (CDEF) is set, a per-frame strength table immediately follows the
 index at `index_offset + frame_count*28`: `frame_count` records of 4 bytes each
 `{luma_primary, luma_secondary, chroma_primary, chroma_secondary}` (u8), in coding order.
 
-B-frame blend weights are **not** stored; the decoder derives them from POC (§9.3).
+B-frame blend weights are **not** stored; the decoder derives them from POC (§8.3).
 
 ---
 
@@ -214,7 +229,7 @@ After decompression the payload always begins with:
 [u32 size_blob_length]
 [size_blob ...]            // per-block byte sizes, unsigned Exp-Golomb, planes Y,Co,Cg in order
 [u32 mv_length]            // 0 for I-frames and CoefDiff
-[mv_data ...]              // motion vectors (§9.4), present only when mv_length > 0
+[mv_data ...]              // motion vectors (§8.4), present only when mv_length > 0
 [u32 data_length]
 [block_data ...]           // packed bit-plane (wavelet) or rANS (DCT) bytes for all planes
 ```
@@ -226,9 +241,9 @@ Then, depending on the coding mode, the following optional sections are appended
 exact order:
 
 1. **Entropy section** — present iff `color_flags` bit 7 (SPATIAL_DCT) or, for B-frames,
-   bit 6 (BFRAME_DCT). See §7.5.
+   bit 6 (BFRAME_DCT). See §5.3.
 2. **Partition section** — present iff DCT mode **and** `color_flags` bit 3 (QUADTREE)
-   **and** lossy. See §7.4.
+   **and** lossy. See §5.4 and §6.4.
 3. **Alpha section** — present iff `color_flags` bit 2 (HAS_ALPHA). See §14.
    (Exception: on the GPU bidirectional B path the alpha section is re-read by a separate
    CPU pass rather than appended inline.)
@@ -247,7 +262,7 @@ There is no outer length prefix; the plane count is implicit.
 
 Appended after the entropy section. For each plane: `regions_per_plane` raw u8 region
 codes (no length prefix). `regions_per_plane = qt_region_count(plane_w) * qt_region_count(plane_h)`,
-`qt_region_count(extent) = ceil(extent / 32)`. The region code is defined in §7.4.
+`qt_region_count(extent) = ceil(extent / 32)`. The region code is defined in §6.4.
 
 ---
 
@@ -332,7 +347,7 @@ variable. DC prediction (§6.5) runs across leaves in region-raster then leaf or
 
 ### 6.5 rANS Entropy Coding
 
-The DCT coefficients of each coding tile (`reserved2[4]` luma pixels, default 128) are
+The DCT coefficients of each coding tile (`coding_block_size` luma pixels, default 128) are
 entropy-coded with a 32-bit, byte-renormalizing **rANS** coder (ryg-style; encode in
 reverse, decode forward).
 
@@ -453,7 +468,7 @@ multiplies by `chroma_quant`.
 
 ### 7.4 Bit-plane coding
 
-Each `BS × BS` block (`BS` = `reserved2[4]`, 32/64/128) is byte-aligned and independently
+Each `BS × BS` block (`BS` = `coding_block_size`, 32/64/128) is byte-aligned and independently
 decodable. Format, MSB-first within bytes, bytes into 32-bit LE words:
 
 1. **5-bit `bit_plane_count`** = number of planes for the largest magnitude in the block.
@@ -472,10 +487,10 @@ decodable. Format, MSB-first within bytes, bytes into 32-bit LE words:
 
 * **I** (`type=0`): no reference (`ref0=ref1=-1`).
 * **P** (`type=1`): L0 only (`ref1=-1`, `temporal_id=0`).
-* **B** (`type=2`): both references; hierarchical (dyadic midpoint) when `reserved2[2] > 0`.
+* **B** (`type=2`): both references; hierarchical (dyadic midpoint) when `bframe_period > 0`.
 
-B-frame streams (`prediction_method=1` and `reserved2[2] > 0`) have period
-`reserved2[2] + 1`. Within an anchor pair `[lo, hi]`, the hi anchor is coded first (as I or
+B-frame streams (`prediction_method=1` and `bframe_period > 0`) have period
+`bframe_period + 1`. Within an anchor pair `[lo, hi]`, the hi anchor is coded first (as I or
 P), then the B-frames in dyadic midpoint order; coding order ≠ display order. The midpoint
 B at display `mid` has `ref0=lo`, `ref1=hi`, `temporal_id = recursion depth`. The decoder
 reads in coding order, places frames in a DPB indexed by coding index, and recovers
@@ -484,7 +499,7 @@ references it.
 
 ### 8.2 Motion
 
-* Motion block grid: `reserved2[5]` — 8/16/32 fixed (default 16), or 1 = variable quadtree
+* Motion block grid: `motion_block_size` — 8/16/32 fixed (default 16), or 1 = variable quadtree
   (root 32, leaf 8). Minimum motion block 8 (OBMC ramps).
 * Interpolation (`mv_codec` bits 1–2): 6-tap H.264 luma half-pel `(1,-5,20,20,-5,1)`
   (default), or 8-tap HEVC DCTIF, or legacy bilinear. Quarter-pel (default precision,
@@ -498,7 +513,7 @@ references it.
 
 ### 8.3 Per-block modes (B-frames)
 
-When `reserved2[3] != 0`, each motion block carries a 2-bit mode: 0 = L0, 1 = L1, 2 = BI.
+When `per_block_mode != 0`, each motion block carries a 2-bit mode: 0 = L0, 1 = L1, 2 = BI.
 The mode array is coded with its own merge-if-equal quadtree (split flags RLE-coded, leaf
 mode written raw 2 bits). Blend weights are derived from POC, not stored:
 
@@ -544,7 +559,7 @@ entropy/partition section (wavelet only). The alpha section may still be present
 ### 10.1 Open-loop 3D-DWT (`prediction_method` = 2)
 
 A GOP of frames (default 16, max 64) is transformed along the temporal axis with the
-wavelet in `reserved2[1]` for `reserved2[0]` levels:
+wavelet in `temporal_wavelet` for `temporal_levels` levels:
 
 * **Lossless (Q0):** integer Haar S-transform (`high = a-b; low = b + (high>>1)`) or 5/3
   (a 9/7 request falls back to 5/3 at Q0).
@@ -561,7 +576,8 @@ display order; GOP boundaries are detected from frame `type` (0 = GOP start, 2 =
 A motion-compensated, predict-only MC-Haar temporal filter (valid only inside the GOP
 mode). Forward: `low[k] = even; high[k] = odd - OBMC(even)`. Inverse:
 `even = low; odd = high + OBMC(even)`. Exactly invertible (the same forward MV field is
-used). The luma MV field is shared across all planes (scaled per plane). High-pass frames
+used). The luma MV field is shared across all planes (scaled per plane); the alpha plane may
+instead carry its own per-high-pass-frame MV field (`alpha_mv_mode = 1`, §14). High-pass frames
 (temporal level > 0) carry an MV blob; the base level-0 frame carries none. MV entropy
 follows `mv_codec` (§8.4).
 
@@ -621,36 +637,60 @@ Audio is a self-contained blob at `audio_offset` (length `audio_size`), identifi
 ## 14. Alpha Channel (`color_flags` bit 2)
 
 An optional 8-bit, full-resolution alpha plane (plane 3), always full size regardless of
-chroma subsampling. Alpha is **inter-predicted exactly like the color planes** — it reuses
-the luma motion vectors (shared, no separate MV stream) and is coded as a per-frame residual:
-in ColorDiff P-frames it is motion-compensated against the previous reconstructed alpha; in
-B-frames it is bidirectionally motion-compensated (the same L0/L1 weights / per-block mode as
-color); in the temporal modes (open-loop 3D-DWT and MCTF) it **joins the temporal transform**
-(the same per-pixel-column wavelet / motion-compensated MC-Haar over the GOP as the color
-planes). It is **intra** only in I-frames and in the CoefDiff (`prediction_method` 0) mode
-(whose color is itself a coefficient-domain diff without motion). The alpha keeps its **own**
-spatial decision (`alpha_qp == 0` ⇒ reversible 5/3, else float 9/7 in wavelet mode, or
-rANS+DCT in DCT mode; `table_length > 0` distinguishes the two on decode) **and its own
-temporal domain** in the GOP modes (a lossless alpha matte stays bit-exact even on a lossy
-open-loop color GOP), independent of the color quality. The transform is otherwise luma-like.
+chroma subsampling. Alpha is **inter-predicted exactly like the color planes** and coded as a
+per-frame residual: in ColorDiff P-frames it is motion-compensated against the previous
+reconstructed alpha; in B-frames it is bidirectionally motion-compensated (the same L0/L1
+weights / per-block mode as color); in the temporal modes (open-loop 3D-DWT and MCTF) it
+**joins the temporal transform** (the same per-pixel-column wavelet / motion-compensated MC-Haar
+over the GOP as the color planes). It is **intra** only in I-frames and in the CoefDiff
+(`prediction_method` 0) mode (whose color is itself a coefficient-domain diff without motion).
+The alpha keeps its **own** spatial decision (`alpha_qp == 0` ⇒ reversible 5/3, else float 9/7
+in wavelet mode, or rANS+DCT in DCT mode; `table_length > 0` distinguishes the two on decode)
+**and its own temporal domain** in the GOP modes (a lossless alpha matte stays bit-exact even on
+a lossy open-loop color GOP), independent of the color quality. Alpha is never AQ-modulated
+(plain `alpha_qp` steps). The transform is otherwise luma-like.
+
+### Alpha motion vectors (`FrameEntry.alpha_mv_mode`)
+
+By default the alpha rides the **shared luma motion vectors** (`alpha_mv_mode = 0`, no extra MV
+cost). But when the matte moves independently of the color content (transparency edges that
+translate differently from the picture), the encoder may give the alpha its **own** motion
+field for that frame (`alpha_mv_mode = 1`); the decoder uses whichever the per-frame flag
+selects. The own MVs are always coded **full-grid** (never quad-tree), with the same entropy
+coder and predictor as the luma MVs (`mv_codec`, §8.4):
+
+* **ColorDiff P / I:** one MV field (against the single previous reference).
+* **B-frames:** a dual blob — L0 then (when `ref1 ≥ 0`) L1 in one stream — using the same POC
+  blend weights as color; the per-block L0/L1/BI mode stays the shared luma mode.
+* **MCTF:** one MV field per high-pass frame (`temporal_id`/temporal level > 0); low-pass
+  frames carry none. (Open-loop 3D-DWT has no motion, so always `alpha_mv_mode = 0`.)
+
+The encoder chooses shared vs own per frame via the `--alpha-mv=<luma|own|cpu-rd|sad>` setting
+(`luma` = always shared, the default → `alpha_mv_mode` always 0; `own` = always own; `cpu-rd` =
+whichever codes to fewer actual bytes; `sad` = a residual-SAD heuristic incl. the MV-blob cost).
+This is purely an encode-time decision — the bitstream only records the resulting per-frame
+`alpha_mv_mode` plus, when 1, the own MV blob.
+
 The alpha section (appended per frame, §5.2) is:
 
 ```
 [u8  alpha_qp]
+[u32 mv_blob_length][mv_blob ...]        // own alpha MVs — present ONLY when FrameEntry.alpha_mv_mode = 1
 [u32 size_blob_length][size_blob ...]    // Exp-Golomb block sizes, luma block count
 [u32 table_length][table ...]            // rANS table (DCT mode); table_length = 0 ⇒ wavelet
 [u32 data_length][alpha_data ...]
 ```
 
-`alpha_qp` is per-frame (may differ from `FrameEntry.quality`). Decoders without alpha
-support stop after the three color planes and ignore this section.
+The `mv_blob` line is omitted entirely when `alpha_mv_mode = 0` (shared luma MVs). `alpha_qp`
+is per-frame (may differ from `FrameEntry.quality`). Decoders without alpha support stop after
+the three color planes and ignore this section.
 
 ---
 
 ## 15. Decoder Notes
 
-* Validate `magic == "FVDC"` and `version == 1`; use `header_size` to detect truncated
-  older headers.
+* Validate `magic == "FVDC"` and `version == 1`; check `header_size == 228`. `header_size`
+  also guards reads of any future appended fixed fields.
 * The frame index is the authoritative random-access structure; seek by `poc`, then decode
   forward in coding order resolving `ref0`/`ref1` against already-decoded frames.
 * The spatial back-end is chosen by `color_flags` bit 7 (and bit 6 for B-frames); the
