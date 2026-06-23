@@ -29,31 +29,39 @@ beside this document; a Pascal port lives in the PasVulkan engine
 ## 2. Container Layout
 
 ```
-[ 24-byte header ]
+[ 40-byte header ]
 [ pairing plan ]        // only if flags bit 4 (Pairing)
 [ u16 overlap_samples ] // only if flags bit 5 (Overlap)
 [ block 0 ][ block 1 ] ... [ block N-1 ]
+[ block-offset index ]  // only if header.index_offset != 0
 ```
 
-There is **no inline block index / offset table**. A decoder builds an offset table at open
-time by walking the blocks once (each channel payload is length-prefixed, §4).
+The **block-offset index** (§2.5) is an optional table of per-time-block byte offsets that
+lets a decoder seek to any block in O(1) without walking the block-length chain. When it is
+absent (`index_offset == 0`), the decoder builds the table at open time by walking the blocks
+once (each channel payload is length-prefixed, §4).
 
-### 2.1 Header (24 bytes)
+### 2.1 Header (40 bytes, version 1)
+
+All multi-byte fields are little-endian; the on-disk layout is exactly the field order below
+(packed, no padding).
 
 | Off | Size | Type | Field | Meaning |
 |----:|----:|------|-------|---------|
 | 0  | 4 | u32 | `magic` | `0x43415746` = ASCII `"FWAC"` (bytes `46 57 41 43`) |
-| 4  | 4 | u32 | `sample_rate` | PCM sample rate in Hz |
-| 8  | 2 | u16 | `channels` | Channel count, 1–16 |
-| 10 | 2 | u16 | `block_samples` | Samples per block per channel; must equal `BLOCK_SAMPLES` = 8192 |
-| 12 | 2 | u16 | `quality` | 0 = lossless; ≥1 = lossy quant step |
-| 14 | 2 | u16 | `flags` | Mode flags — see §2.2 |
-| 16 | 8 | u64 | `frame_count` | Total PCM frames (samples per channel) |
+| 4  | 2 | u16 | `version` | Format version; currently **1**. Placed right after the magic so an unversioned legacy blob (whose `sample_rate` low half landed here) fails the check |
+| 6  | 2 | u16 | `channels` | Channel count, 1–16 |
+| 8  | 4 | u32 | `sample_rate` | PCM sample rate in Hz |
+| 12 | 2 | u16 | `block_samples` | Samples per block per channel; must equal `BLOCK_SAMPLES` = 8192 |
+| 14 | 2 | u16 | `quality` | 0 = lossless; ≥1 = lossy quant step |
+| 16 | 4 | u32 | `flags` | Mode flags — see §2.2 |
+| 20 | 4 | u32 | `lms_reset_blocks` | LMS predictor reset interval in blocks (0 = global / no periodic reset) — see §5.3 |
+| 24 | 8 | u64 | `frame_count` | Total PCM frames (samples per channel) |
+| 32 | 8 | u64 | `index_offset` | Byte offset (from the blob start) of the block-offset index (§2.5); 0 = none |
 
-There is no integer version field; format identity is the magic plus the `flags` bits and
-the fixed `block_samples = 8192`.
+A decoder must reject a blob whose `version` is not 1 (re-encode).
 
-### 2.2 `flags` (u16 at offset 14)
+### 2.2 `flags` (u32 at offset 16)
 
 | Bit(s) | Mask | Name | Meaning |
 |-------:|------|------|---------|
@@ -64,6 +72,7 @@ the fixed `block_samples = 8192`.
 | 4 | 0x0010 | Pairing | Multichannel pairwise M/S plan present after the header |
 | 5 | 0x0020 | Overlap | Block cross-fade overlap; a `u16 overlap_samples` follows the pairing plan |
 | 8–15 | 0xFF00 | (LMS taps) | When LMS is set, the LMS tap count = `(flags >> 8) & 0xFF` |
+| 16–31 | 0xFFFF0000 | (reserved) | Reserved (zero) |
 
 ### 2.3 Pairing plan (only if bit 4 set)
 
@@ -79,6 +88,15 @@ is made once at encode time (it is not switched per block). Up to `channels/2` �
 
 A single `u16 overlap_samples`, immediately after the pairing plan (or directly after the
 header if there is no pairing plan).
+
+### 2.5 Block-offset index (only if `index_offset != 0`)
+
+A table of `block_count` (= §3) little-endian `u32` entries, located at `index_offset` bytes
+from the blob start. Entry `t` is the **blob-relative byte offset** of time-block `t` (the
+first byte of that block's first channel — the same position the open-time framing scan would
+record). It enables O(1) seek to any block. The index is informational: a decoder may ignore
+it and scan the block-length chain instead, and must fall back to scanning if the offset or an
+entry fails a bounds check.
 
 ---
 
@@ -161,9 +179,23 @@ forward:  residual = sample - predict();  store residual;  adapt(sample, residua
 inverse:  residual = stored;  sample = residual + predict();  adapt(sample, residual)
 ```
 
-`adapt_shift = 4 + log2(taps/4)` (4 at 4 taps, 5 at 8, 6 at 16, 7 at 32). The predictor runs
-sequentially over the whole channel; a decoder seeking backward must replay from block 0
-(state is carried across blocks).
+`adapt_shift = 4 + log2(taps/4)` (4 at 4 taps, 5 at 8, 6 at 16, 7 at 32).
+
+### 5.3 LMS reset interval (seekability)
+
+The predictor runs sequentially over each channel, carrying state across blocks. To bound a
+backward seek, the encoder re-initializes the predictor to its starting state every
+`header.lms_reset_blocks` blocks (i.e. at every time-block index that is a multiple of
+`lms_reset_blocks`, = every `lms_reset_blocks × BLOCK_SAMPLES` samples). `lms_reset_blocks = 0`
+means no periodic reset (one segment over the whole channel — the predictor is re-initialized
+only at block 0). The encoder default is 8 (≈ 64K samples per segment), which costs ≈1 % size
+versus no reset.
+
+A decoder must re-initialize the predictor at the same boundaries. Seeking to block `n` then
+only needs to replay from the nearest boundary `floor(n / lms_reset_blocks) × lms_reset_blocks`
+(at most `lms_reset_blocks` blocks) instead of from block 0. Combined with the block-offset
+index (§2.5), the seek is O(1) lookup + a bounded replay. The reset is transparent to the
+bitstream layout — only the residual values differ at segment starts.
 
 ---
 
