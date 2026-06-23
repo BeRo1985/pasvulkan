@@ -212,6 +212,16 @@ begin
 
 end;
 
+destructor TpvFlexibleVideoPlayer.Destroy;
+begin
+ CloseAudio;
+ FreeAndNil(fDecoder);
+{$ifdef VkVideo}
+ FreeAndNil(fH264);
+{$endif}
+ inherited Destroy;
+end;
+
 {$ifdef VkVideo}
 procedure TpvFlexibleVideoPlayer.TryCreateH264Backend;
 var BlobStream:TMemoryStream;
@@ -243,16 +253,6 @@ begin
  end;
 end;
 {$endif}
-
-destructor TpvFlexibleVideoPlayer.Destroy;
-begin
- CloseAudio;
- FreeAndNil(fDecoder);
-{$ifdef VkVideo}
- FreeAndNil(fH264);
-{$endif}
- inherited Destroy;
-end;
 
 function TpvFlexibleVideoPlayer.GetHasAudio:boolean;
 begin

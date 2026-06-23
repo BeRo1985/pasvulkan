@@ -191,6 +191,61 @@ end;
 
 { TpvFlexibleWaveletAudioDecoder }
 
+constructor TpvFlexibleWaveletAudioDecoder.Create(const aStream:TStream);
+var Channel:TpvInt32;
+begin
+ inherited Create;
+
+ // Reference the caller-owned stream and parse the container header
+ fStream:=aStream;
+ fCursor:=0;
+ ParseHeader;
+
+ // One-time per-block scratch buffers (reused for every block)
+ SetLength(fBlockBuffer,BlockSamples);
+ SetLength(fScratch,BlockSamples);
+ SetLength(fFloatBlock,BlockSamples);
+ SetLength(fFloatScratch,BlockSamples);
+ SetLength(fStepPerCoeff,BlockSamples);
+ SetLength(fPayload,BlockSamples*4);
+ SetLength(fBlockInterleaved,BlockSamples*Max(fChannels,1));
+
+ // Per-channel working planes, the cross-fade tail carry, and the LMS state
+ SetLength(fBlockPlanes,fChannels);
+ SetLength(fPrevTail,fChannels);
+ SetLength(fLMSStates,fChannels);
+ for Channel:=0 to fChannels-1 do begin
+  SetLength(fBlockPlanes[Channel],BlockSamples);
+  if fOverlap>0 then begin
+   SetLength(fPrevTail[Channel],fOverlap);
+  end;
+  fLMSStates[Channel].Init(fLMSTaps);
+ end;
+ fLMSAdaptShift:=LMSAdaptShift(fLMSTaps);
+
+ // Nothing decoded yet; scan the block framing into the offset index
+ fLMSNextBlock:=0;
+ fCurrentBlock:=-1;
+ BuildBlockIndex;
+
+end;
+
+destructor TpvFlexibleWaveletAudioDecoder.Destroy;
+begin
+ fBlockOffsets:=nil; // managed; never frees fStream (caller owns it)
+ fBlockInterleaved:=nil;
+ fBlockPlanes:=nil;
+ fPrevTail:=nil;
+ fLMSStates:=nil;
+ fBlockBuffer:=nil;
+ fScratch:=nil;
+ fFloatBlock:=nil;
+ fFloatScratch:=nil;
+ fStepPerCoeff:=nil;
+ fPayload:=nil;
+ inherited Destroy;
+end;
+
 function TpvFlexibleWaveletAudioDecoder.ReadU8:TpvUInt8;
 begin
  fStream.ReadBuffer(result,SizeOf(TpvUInt8));
@@ -612,61 +667,6 @@ begin
  end;
  EnsureLMSStateAt(aBlockIndex);
  DecodeBlock(aBlockIndex);
-end;
-
-constructor TpvFlexibleWaveletAudioDecoder.Create(const aStream:TStream);
-var Channel:TpvInt32;
-begin
- inherited Create;
-
- // Reference the caller-owned stream and parse the container header
- fStream:=aStream;
- fCursor:=0;
- ParseHeader;
-
- // One-time per-block scratch buffers (reused for every block)
- SetLength(fBlockBuffer,BlockSamples);
- SetLength(fScratch,BlockSamples);
- SetLength(fFloatBlock,BlockSamples);
- SetLength(fFloatScratch,BlockSamples);
- SetLength(fStepPerCoeff,BlockSamples);
- SetLength(fPayload,BlockSamples*4);
- SetLength(fBlockInterleaved,BlockSamples*Max(fChannels,1));
-
- // Per-channel working planes, the cross-fade tail carry, and the LMS state
- SetLength(fBlockPlanes,fChannels);
- SetLength(fPrevTail,fChannels);
- SetLength(fLMSStates,fChannels);
- for Channel:=0 to fChannels-1 do begin
-  SetLength(fBlockPlanes[Channel],BlockSamples);
-  if fOverlap>0 then begin
-   SetLength(fPrevTail[Channel],fOverlap);
-  end;
-  fLMSStates[Channel].Init(fLMSTaps);
- end;
- fLMSAdaptShift:=LMSAdaptShift(fLMSTaps);
-
- // Nothing decoded yet; scan the block framing into the offset index
- fLMSNextBlock:=0;
- fCurrentBlock:=-1;
- BuildBlockIndex;
-
-end;
-
-destructor TpvFlexibleWaveletAudioDecoder.Destroy;
-begin
- fBlockOffsets:=nil; // managed; never frees fStream (caller owns it)
- fBlockInterleaved:=nil;
- fBlockPlanes:=nil;
- fPrevTail:=nil;
- fLMSStates:=nil;
- fBlockBuffer:=nil;
- fScratch:=nil;
- fFloatBlock:=nil;
- fFloatScratch:=nil;
- fStepPerCoeff:=nil;
- fPayload:=nil;
- inherited Destroy;
 end;
 
 procedure TpvFlexibleWaveletAudioDecoder.Seek(const aSamplePosition:TpvUInt64);
