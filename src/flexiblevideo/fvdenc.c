@@ -1510,6 +1510,7 @@ int main(int argc, char **argv) {
       "    --fwa-quality=N                FWA: 0 = lossless (5/3), >= 1 = lossy 9/7 (default 8)\n"
       "    --fwa-mode=<m>                 FWA mode: uniform|psycho|joint|packet|packet-psycho|lms (default: Q0 5/3, lossy joint-psycho)\n"
       "    --fwa-lms-taps=N               FWA lms mode tap count (default 4)\n"
+      "    --fwa-lms-reset=N              FWA lms mode: reset the predictor every N blocks for seekability (default 8; 0 = no reset)\n"
       "    --fwa-no-pair | --fwa-pair-ms  FWA multichannel pairing (default: adaptive pairwise M/S)\n"
       "    --fwa-overlap                  FWA: cross-fade block overlap (lossy only) to soften block-boundary artefacts\n"
       "    --fwa-overlap-amount=N         FWA: shared samples per block boundary (default 1024)\n"
@@ -1553,6 +1554,7 @@ int main(int argc, char **argv) {
   int fwa_quality = 8;            // --fwa-quality (default 8 = lossy joint-psycho; 0 = lossless 5/3)
   const char *fwa_mode = NULL;    // --fwa-mode (NULL -> derive: Q0 = 5/3, Q>0 = joint-psycho)
   int fwa_lms_taps = 4;           // --fwa-lms-taps (lms mode)
+  int fwa_lms_reset = FWA_LMS_RESET_DEFAULT;   // --fwa-lms-reset: LMS state reset interval in blocks (seekability); 0 = no reset (global LMS)
   int fwa_no_pair = 0, fwa_pair_ms = 0;   // multichannel pairing overrides (default: adaptive pairwise M/S)
   int fwa_overlap = 0;            // --fwa-overlap: cross-fade block overlap (lossy only, opt-in); samples via --fwa-overlap-amount (default 1024)
   int fwa_overlap_amount = 1024;
@@ -1699,6 +1701,11 @@ int main(int argc, char **argv) {
       fwa_quality = atoi(argv[i] + 14);   // FWA: 0 = lossless 5/3, >= 1 = lossy 9/7
     } else if (!strncmp(argv[i], "--fwa-mode=", 11)) {
       fwa_mode = argv[i] + 11;            // uniform|psycho|joint|packet|packet-psycho|lms
+    } else if (!strncmp(argv[i], "--fwa-lms-reset=", 16)) {
+      fwa_lms_reset = atoi(argv[i] + 16);   // LMS state reset every N blocks (seekability); 0 = no reset (global)
+      if (fwa_lms_reset < 0) {
+        fwa_lms_reset = 0;
+      }
     } else if (!strncmp(argv[i], "--fwa-lms-taps=", 15)) {
       fwa_lms_taps = atoi(argv[i] + 15);
     } else if (!strcmp(argv[i], "--fwa-no-pair")) {
@@ -2782,6 +2789,7 @@ int main(int argc, char **argv) {
           FwaParams wp = { 0 };   // FWA (wavelet audio): derive the fwa mode from --fwa-quality / --fwa-mode
           wp.quality = fwa_quality;
           wp.lms_taps = fwa_lms_taps;
+          wp.lms_reset_blocks = fwa_lms_reset;
           wp.pair_enabled = fwa_no_pair ? 0 : 1;
           wp.adapt = fwa_pair_ms ? 0 : 1;
           wp.overlap = fwa_overlap ? fwa_overlap_amount : 0;   // cross-fade overlap (A); fwacodec_encode forces 0 at Q0

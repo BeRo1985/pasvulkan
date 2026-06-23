@@ -117,12 +117,14 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
        fPacket:boolean;
        fLMS:boolean;
        fLMSTaps:TpvInt32;
+       fLMSResetBlocks:TpvInt32; // LMS state reset interval in blocks (0 = global); bounds backward-seek predictor replay
        fLMSAdaptShift:TpvInt32;
        fPairing:boolean;
        fPairCount:TpvInt32;
        fPairs:array[0..TpvFlexibleWaveletAudio.MaxChannelPairs-1,0..1] of TpvInt32;
        fPairModes:array[0..TpvFlexibleWaveletAudio.MaxChannelPairs-1] of TpvInt32;
        fBaseStep:TpvFloat;
+       fBlobStart:TpvInt64; // fStream position of the FWA blob's first byte (header magic); index offsets are blob-relative
        fDataStart:TpvInt64;
        fCursor:TpvInt64;
        fBlockCount:TpvInt32;
@@ -163,6 +165,7 @@ type EpvFlexibleWaveletAudioDecoder=class(EpvFlexibleWaveletAudio);
        property Channels:TpvInt32 read fChannels;
        property SampleRate:TpvInt32 read fSampleRate;
        property FrameCount:TpvInt64 read fFrameCount;
+       property LMSResetBlocks:TpvInt32 read fLMSResetBlocks; // 0 = global LMS (no periodic reset); N>0 = predictor reset every N blocks
       end;
 
 implementation
@@ -219,26 +222,45 @@ procedure TpvFlexibleWaveletAudioDecoder.ParseHeader;
 var PairIndex:TpvInt32;
 begin
 
- // The 24-byte container header (little-endian, byte-for-byte the C FwaHeader)
+ // the blob's first byte; the on-disk block index stores blob-relative offsets
+ fBlobStart:=fStream.Position;
+
+ // The 40-byte container header (little-endian, byte-for-byte the C FwaHeader, version 1)
  fHeader.Magic:=ReadU32;
- fHeader.SampleRate:=ReadU32;
- fHeader.Channels:=ReadU16;
- fHeader.BlockSamples:=ReadU16;
- fHeader.Quality:=ReadU16;
- fHeader.Flags:=ReadU16;
- fHeader.FrameCount:=ReadU64;
  if fHeader.Magic<>Magic then begin
   raise EpvFlexibleWaveletAudioDecoder.Create('Not a FWA stream');
  end;
+
+ fHeader.Version:=ReadU16;
+ if fHeader.Version<>Version then begin
+  raise EpvFlexibleWaveletAudioDecoder.Create('FWA: unsupported header version (re-encode)');
+ end;
+
+ fHeader.Channels:=ReadU16;
  if (fHeader.Channels<1) or (fHeader.Channels>MaxChannels) then begin // channels bound the plane loops + index fPairs/planes
   raise EpvFlexibleWaveletAudioDecoder.Create('FWA: channel count out of range');
  end;
+
+ fHeader.SampleRate:=ReadU32;
+
+ fHeader.BlockSamples:=ReadU16;
  if fHeader.BlockSamples<>BlockSamples then begin // the decoder works in fixed BlockSamples-sized blocks
   raise EpvFlexibleWaveletAudioDecoder.Create('FWA: unsupported block size');
  end;
+
+ fHeader.Quality:=ReadU16;
+
+ fHeader.Flags:=ReadU32;
+
+ fHeader.LMSResetBlocks:=ReadU32;
+
+ fHeader.FrameCount:=ReadU64;
  if fHeader.FrameCount>TpvUInt64(High(TpvInt32)) then begin // guard the per-channel plane allocation against a bogus count
   raise EpvFlexibleWaveletAudioDecoder.Create('FWA: implausible frame count');
  end;
+
+ fHeader.IndexOffset:=ReadU64;
+
 
  // Derive the decode parameters from the header + its flag bits
  fSampleRate:=fHeader.SampleRate;
@@ -254,6 +276,7 @@ begin
  end else if fLMSTaps>LMSMaxTaps then begin
   fLMSTaps:=LMSMaxTaps;
  end;
+ fLMSResetBlocks:=TpvInt32(fHeader.LMSResetBlocks); // LMS state reset interval in blocks (0 = global); bounds a backward seek's predictor replay to the nearest reset boundary
  fPairing:=(fHeader.Flags and FlagPairing)<>0;
  if fQuality>0 then begin
   fBaseStep:=fQuality;
@@ -300,6 +323,7 @@ end;
 procedure TpvFlexibleWaveletAudioDecoder.BuildBlockIndex;
 var BlockIndex,Channel:TpvInt32;
     EncodedLength:TpvUInt32;
+    IndexValid:boolean;
 begin
  if fFrameCount>0 then begin
   fBlockCount:=(fFrameCount+(fBlockStride-1)) div fBlockStride; // overlapping blocks advance by fBlockStride, so there are more of them
@@ -307,12 +331,29 @@ begin
   fBlockCount:=0;
  end;
  SetLength(fBlockOffsets,fBlockCount);
- fStream.Seek(fDataStart,soBeginning);
- for BlockIndex:=0 to fBlockCount-1 do begin
-  fBlockOffsets[BlockIndex]:=fStream.Position;
-  for Channel:=0 to fChannels-1 do begin
-   EncodedLength:=ReadU32; // only the framing is read; payloads are skipped
-   fStream.Seek(TpvInt64(EncodedLength),soCurrent);
+ // Prefer the on-disk per-time-block offset index (header IndexOffset, blob-relative u32 entries): O(1) load, no framing
+ // scan. Falls back to scanning the block-length chain when the index is absent (legacy) or fails a bounds check.
+ IndexValid:=false;
+ if (fHeader.IndexOffset>0) and (fBlockCount>0) and
+    ((fBlobStart+TpvInt64(fHeader.IndexOffset)+(TpvInt64(fBlockCount)*4))<=fStream.Size) then begin
+  fStream.Seek(fBlobStart+TpvInt64(fHeader.IndexOffset),soBeginning);
+  IndexValid:=true;
+  for BlockIndex:=0 to fBlockCount-1 do begin
+   fBlockOffsets[BlockIndex]:=fBlobStart+TpvInt64(ReadU32); // entries are offsets from the blob start
+   if (fBlockOffsets[BlockIndex]<fDataStart) or (fBlockOffsets[BlockIndex]>=fStream.Size) then begin
+    IndexValid:=false; // corrupt entry -> fall back to the scan
+    break;
+   end;
+  end;
+ end;
+ if not IndexValid then begin
+  fStream.Seek(fDataStart,soBeginning);
+  for BlockIndex:=0 to fBlockCount-1 do begin
+   fBlockOffsets[BlockIndex]:=fStream.Position;
+   for Channel:=0 to fChannels-1 do begin
+    EncodedLength:=ReadU32; // only the framing is read; payloads are skipped
+    fStream.Seek(TpvInt64(EncodedLength),soCurrent);
+   end;
   end;
  end;
 end;
@@ -469,8 +510,15 @@ begin
   end;
  end;
 
- // Undo the LMS prediction (lossless lms mode), carrying each channel's predictor state across blocks
+ // Undo the LMS prediction (lossless lms mode), carrying each channel's predictor state across blocks. At a reset-segment
+ // boundary (block index a multiple of fLMSResetBlocks) the encoder re-init'd the predictor, so re-init here too — that is
+ // what lets EnsureLMSStateAt rebuild from the nearest boundary instead of from block 0 on a backward seek.
  if fLMS and (fQuality=0) then begin
+  if (fLMSResetBlocks>0) and ((aBlockIndex mod fLMSResetBlocks)=0) then begin
+   for Channel:=0 to fChannels-1 do begin
+    fLMSStates[Channel].Init(fLMSTaps);
+   end;
+  end;
   for Channel:=0 to fChannels-1 do begin
    for Index:=0 to BlockLength-1 do begin
     Residual:=fBlockPlanes[Channel][Index];
@@ -528,7 +576,7 @@ begin
 end;
 
 procedure TpvFlexibleWaveletAudioDecoder.EnsureLMSStateAt(const aBlockIndex:TpvInt32);
-var Channel:TpvInt32;
+var Channel,RebuildStart:TpvInt32;
 begin
  if not ((fLMS and (fQuality=0)) or (fOverlap>0)) then begin
   exit; // only the LMS predictor or the cross-fade overlap tail carry cross-block state that needs sequential decode
@@ -536,11 +584,20 @@ begin
  if fLMSNextBlock=aBlockIndex then begin
   exit; // already positioned at the start of the requested block
  end;
- if fLMSNextBlock>aBlockIndex then begin // seeking backwards -> rebuild from the very start
+ // Earliest block we must replay from. With a periodic LMS reset, the predictor is known-clean at every multiple of
+ // fLMSResetBlocks, so a backward seek rebuilds only from the nearest boundary (<= fLMSResetBlocks blocks) instead of
+ // from block 0. The overlap-only case (no LMS) just needs the previous block's reconstructed tail (fPrevTail).
+ RebuildStart:=0;
+ if (fLMS and (fQuality=0)) and (fLMSResetBlocks>0) then begin
+  RebuildStart:=(aBlockIndex div fLMSResetBlocks)*fLMSResetBlocks;
+ end else if (not (fLMS and (fQuality=0))) and (fOverlap>0) and (aBlockIndex>0) then begin
+  RebuildStart:=aBlockIndex-1;
+ end;
+ if (fLMSNextBlock>aBlockIndex) or (fLMSNextBlock<RebuildStart) then begin // jump back to the rebuild point (DecodeBlock re-inits the LMS at a boundary)
   for Channel:=0 to fChannels-1 do begin
    fLMSStates[Channel].Init(fLMSTaps);
   end;
-  fLMSNextBlock:=0;
+  fLMSNextBlock:=RebuildStart;
   fCurrentBlock:=-1;
  end;
  while fLMSNextBlock<aBlockIndex do begin // replay forward, advancing the predictor (output is discarded)

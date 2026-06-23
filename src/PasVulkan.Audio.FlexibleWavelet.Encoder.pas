@@ -95,6 +95,7 @@ type EpvFlexibleWaveletAudioEncoder=class(EpvFlexibleWaveletAudio);
              Joint:boolean; // joint-stereo intensity (lossy stereo)
              LMS:boolean; // lossless LMS predictor instead of 5/3 (quality 0 only)
              LMSTaps:TpvInt32;
+             LMSResetBlocks:TpvInt32; // LMS state reset interval in blocks (seekability): 0 = no reset (global); N>0 = reset every N blocks
              PairEnabled:boolean; // multichannel (>=3) pairwise Mid/Side
              Adapt:boolean; // per-pair adaptive best-of-both
              Overlap:TpvInt32; // cross-fade block overlap: shared samples per block boundary (0 = off; lossy only)
@@ -478,10 +479,12 @@ end;
 
 procedure TpvFlexibleWaveletAudioEncoder.Encode(const aChannelBuffer:TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
 var Channels,Channel,Quality,PairIndex,Mode,PairCount,BlockLength,Index,MaxDepth,Overlap,BlockStride:TpvInt32;
-    Frames,Start,Frame:TpvInt64;
+    LMSReset,TimeBlock,SegmentLength:TpvInt32;
+    Frames,Start,Frame,Segment,BlobStart,IndexFieldPos,IndexAt:TpvInt64;
+    BlockIndexOffsets:array of TpvUInt32;
     Pairing,JointStereo:boolean;
     Step:TpvFloat;
-    HeaderFlags:TpvUInt16;
+    HeaderFlags:TpvUInt32;
     Left,Right,Side:TpvInt32;
     Interleaved:array of TpvInt16;
     Planes:array of array of TpvInt32;
@@ -567,10 +570,28 @@ begin
   Pairing:=PairCount>0;
  end;
 
- // Optional lossless LMS predictor (replaces the 5/3 wavelet at quality 0)
+ // Optional lossless LMS predictor (replaces the 5/3 wavelet at quality 0). Reset the predictor every LMSReset blocks
+ // (0 = once over the whole channel) so the decoder can seek to a segment boundary and replay < LMSReset blocks instead
+ // of from sample 0. LMS is Q0, so BlockStride == BlockSamples.
+ LMSReset:=aParams.LMSResetBlocks;
+ if (LMSReset<0) or (not (aParams.LMS and (Quality=0))) then begin
+  LMSReset:=0; // no reset (and meaningless outside LMS mode)
+ end;
  if aParams.LMS and (Quality=0) then begin
   for Channel:=0 to Channels-1 do begin
-   LMSForward(PpvInt32Array(@Planes[Channel][0]),Frames,aParams.LMSTaps);
+   if LMSReset>0 then begin
+    Segment:=0;
+    while Segment<Frames do begin
+     SegmentLength:=TpvInt64(LMSReset)*BlockSamples;
+     if (Segment+SegmentLength)>Frames then begin
+      SegmentLength:=Frames-Segment;
+     end;
+     LMSForward(PpvInt32Array(@Planes[Channel][Segment]),SegmentLength,aParams.LMSTaps);
+     inc(Segment,TpvInt64(LMSReset)*BlockSamples);
+    end;
+   end else begin
+    LMSForward(PpvInt32Array(@Planes[Channel][0]),Frames,aParams.LMSTaps);
+   end;
   end;
  end;
 
@@ -605,18 +626,23 @@ begin
   HeaderFlags:=HeaderFlags or FlagPairing;
  end;
  if aParams.LMS and (Quality=0) then begin
-  HeaderFlags:=HeaderFlags or FlagLMS or TpvUInt16((aParams.LMSTaps and $ff) shl 8);
+  HeaderFlags:=HeaderFlags or FlagLMS or TpvUInt32((aParams.LMSTaps and $ff) shl 8);
  end;
  if Overlap>0 then begin
   HeaderFlags:=HeaderFlags or FlagOverlap;
  end;
+ BlobStart:=aStream.Position; // the blob's first byte; index entries are blob-relative
  WriteU32(Magic);
- WriteU32(aSampleRate);
+ WriteU16(Version);
  WriteU16(Channels);
+ WriteU32(aSampleRate);
  WriteU16(BlockSamples);
  WriteU16(Quality);
- WriteU16(HeaderFlags);
+ WriteU32(HeaderFlags);
+ WriteU32(TpvUInt32(LMSReset)); // LMSResetBlocks (0 = global / not LMS)
  WriteU64(Frames);
+ IndexFieldPos:=aStream.Position; // patched with the index byte offset after the blocks
+ WriteU64(0); // IndexOffset placeholder
 
  // The pairing plan: [u8 count] then per pair [u8 a][u8 b][u8 mode]
  if Pairing then begin
@@ -633,9 +659,19 @@ begin
   WriteU16(TpvUInt16(Overlap));
  end;
 
- // Encode every block of every channel
+ // Encode every block of every channel, recording each time-block's byte offset for the on-disk index
+ if Frames>0 then begin
+  SetLength(BlockIndexOffsets,(Frames+(BlockStride-1)) div BlockStride);
+ end else begin
+  SetLength(BlockIndexOffsets,0);
+ end;
+ TimeBlock:=0;
  Start:=0;
  while Start<Frames do begin
+  if TimeBlock<=High(BlockIndexOffsets) then begin
+   BlockIndexOffsets[TimeBlock]:=TpvUInt32(aStream.Position-BlobStart); // blob-relative offset of this time-block's first channel
+   inc(TimeBlock);
+  end;
   if (Start+BlockSamples)<=Frames then begin
    BlockLength:=BlockSamples;
   end else begin
@@ -692,6 +728,17 @@ begin
 
   end;
   inc(Start,BlockStride);
+ end;
+
+ // Append the per-time-block offset index and patch the header's IndexOffset to point at it (blob-relative)
+ if length(BlockIndexOffsets)>0 then begin
+  IndexAt:=aStream.Position-BlobStart;
+  for TimeBlock:=0 to High(BlockIndexOffsets) do begin
+   WriteU32(BlockIndexOffsets[TimeBlock]);
+  end;
+  aStream.Seek(IndexFieldPos,soBeginning);
+  WriteU64(TpvUInt64(IndexAt));
+  aStream.Seek(0,soEnd);
  end;
 
 end;

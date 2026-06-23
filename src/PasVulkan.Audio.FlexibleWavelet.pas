@@ -87,6 +87,8 @@ type EpvFlexibleWaveletAudio=class(Exception);
      TpvFlexibleWaveletAudio=class // plain TObject base, resource-system-independent (NOT TpvResource)
       public
        const Magic=TpvUInt32($43415746); // the FWA blob magic 'FWAC' (low byte first: F,W,A,C)
+             Version=1; // header format version (1 = the first versioned layout; carries LMSResetBlocks + IndexOffset)
+             LMSResetDefault=8; // default LMS-state reset interval in blocks (seekability); 0 = no reset (global LMS)
              BlockSamples=8192; // per-block length per channel (non-overlapping blocks)
              MinBand=4; // stop the dyadic split when the low band gets this small
              MaxChannels=16; // sanity cap on the resolved channel count
@@ -117,14 +119,17 @@ type EpvFlexibleWaveletAudio=class(Exception);
             TAudioBuffers=array of TAudioBuffer; // [channel] of TAudioBuffer
             PHeader=^THeader;
             { THeader }
-            THeader=packed record // 24 bytes, byte-for-byte the C FwaHeader layout
+            THeader=packed record // 40 bytes, byte-for-byte the C FwaHeader layout (version 1)
              Magic:TpvUInt32;
-             SampleRate:TpvUInt32;
+             Version:TpvUInt16; // right after magic so an unversioned legacy stream fails the check
              Channels:TpvUInt16;
+             SampleRate:TpvUInt32;
              BlockSamples:TpvUInt16;
              Quality:TpvUInt16;
-             Flags:TpvUInt16;
+             Flags:TpvUInt32; // widened to u32 (bits 0-5 features, bits 8-15 LMS taps, bits 16-31 reserved)
+             LMSResetBlocks:TpvUInt32; // LMS state reset interval in blocks (0 = global, no periodic reset)
              FrameCount:TpvUInt64;
+             IndexOffset:TpvUInt64; // byte offset of the per-time-block u32 offset index (0 = none)
             end;
             TBandStarts=array[0..MaxBands-1] of TpvInt32;
             TSynthSizes=array[0..MaxSynthesisDepth] of TpvInt32;

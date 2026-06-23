@@ -368,6 +368,68 @@ begin
  end;
 end;
 
+// FWA seek self-test (FVD_FWASEEK=1): full-decode a reference, then Seek+Decode at several positions (incl. hard
+// backward seeks) and confirm the samples match the reference bit-for-bit. Validates the bounded LMS-state rebuild
+// (EnsureLMSStateAt replays only from the nearest reset boundary, not from block 0).
+procedure CheckFWASeek(const aPath:string);
+const Positions:array[0..7] of TpvDouble=(0.97,0.10,0.55,0.02,0.99,0.33,0.80,0.005);
+var Stream:TFileStream;
+    Decoder:TpvFlexibleWaveletAudioDecoder;
+    Reference,Chunk:array of TpvFloat;
+    Total,SeekFrame:TpvInt64;
+    Got,Channels,SampleIndex,WorstDiff,Diff,ChunkFrames,k:TpvSizeInt;
+    WriteCursor:TpvInt64;
+    Verdict:TpvUTF8String;
+begin
+ Stream:=TFileStream.Create(aPath,fmOpenRead);
+ try
+  Decoder:=TpvFlexibleWaveletAudioDecoder.Create(Stream);
+  try
+   Channels:=Decoder.Channels;
+   ChunkFrames:=2000;
+   SetLength(Reference,Decoder.FrameCount*Channels);
+   SetLength(Chunk,ChunkFrames*Channels);
+   // reference = a clean sequential full decode
+   WriteCursor:=0;
+   repeat
+    Got:=Decoder.Decode(@Chunk[0],ChunkFrames);
+    for SampleIndex:=0 to (Got*Channels)-1 do begin
+     Reference[WriteCursor+SampleIndex]:=Chunk[SampleIndex];
+    end;
+    inc(WriteCursor,Got*Channels);
+   until Got<=0;
+   // seek to each position and compare the decoded chunk to the reference there
+   WorstDiff:=0;
+   for k:=0 to High(Positions) do begin
+    SeekFrame:=Trunc(Positions[k]*Decoder.FrameCount);
+    if SeekFrame<0 then begin
+     SeekFrame:=0;
+    end;
+    Decoder.Seek(TpvUInt64(SeekFrame));
+    Got:=Decoder.Decode(@Chunk[0],ChunkFrames);
+    for SampleIndex:=0 to (Got*Channels)-1 do begin
+     Diff:=Round(Abs(Chunk[SampleIndex]-Reference[(SeekFrame*Channels)+SampleIndex])*32768.0);
+     if Diff>WorstDiff then begin
+      WorstDiff:=Diff;
+     end;
+    end;
+   end;
+   Total:=Decoder.FrameCount;
+   if WorstDiff=0 then begin
+    Verdict:='SEEK BIT-EXACT';
+   end else begin
+    Verdict:='MISMATCH';
+   end;
+   writeln(Format('  %-40s fwa-seek ch=%d frames=%d lms-reset=%d -> worst|diff|=%d (%s)',
+                  [aPath,Channels,Total,Decoder.LMSResetBlocks,WorstDiff,Verdict]));
+  finally
+   Decoder.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+end;
+
 // FWA encoder round-trip self-test: synthesize a tone, Pascal-encode (cross-fade overlap from FVD_FWAENC_OVERLAP),
 // write <path>.pas.fwa for an external C `fwa dec` cross-check, then round-trip via the Pascal decoder + report the diff.
 procedure CheckFWAEncode(const aPath:string);
@@ -690,6 +752,8 @@ begin
      CheckH264Frames(ParamStr(Index)); // Stage F3b-1 H.264 frame-list self-test
     end else if GetEnvironmentVariable('FVD_H264PARSE')='1' then begin
      CheckH264Parse(ParamStr(Index)); // Stage F3a H.264 bitstream parse self-test
+    end else if GetEnvironmentVariable('FVD_FWASEEK')='1' then begin
+     CheckFWASeek(ParamStr(Index)); // FWA seek self-test: backward seeks must match the sequential decode (bounded LMS rebuild)
     end else if GetEnvironmentVariable('FVD_FWAENC')='1' then begin
      CheckFWAEncode(ParamStr(Index)); // FWA encoder round-trip self-test (Pascal-encode -> .pas.fwa for a C fwa-dec cross-check)
     end else if Extension='.qoal' then begin

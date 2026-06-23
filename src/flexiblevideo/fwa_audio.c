@@ -69,6 +69,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stddef.h>   // offsetof (block-index patch)
 #include <math.h>
 #include "fwa_audio.h"   // this file is the Flexible Wavelet Audio (FWA) codec linked into FVD as the "FWAC"
                           // sub-codec. It is compiled with -DFWA_NO_MAIN so fwa's own main()/CLI/file-I/O block
@@ -82,6 +83,7 @@
 #define BLOCK_SAMPLES 8192            // per-block length per channel (non-overlapping blocks)
 #define MIN_BAND      4               // stop the dyadic split when the low band gets this small
 #define FWA_MAGIC    0x43415746u     // "FWAC" (low byte first: F,W,A,C)
+#define FWA_VERSION  1u              // header format version (1 = the first versioned layout; carries lms_reset_blocks)
 #define JOINT_TOP_BANDS 2             // joint-stereo intensity: top frequency bands of Side collapsed to mono (>~6 kHz)
 
 static void *checked_malloc(size_t size) {
@@ -1293,22 +1295,26 @@ static void decode_block(const uint8_t *block, size_t block_length, int length, 
 
 // ------------------------------------------------------------------------------ whole-signal codec
 
+#pragma pack(push, 1)
 typedef struct {
   uint32_t magic;
-  uint32_t sample_rate;
+  uint16_t version;        // format version (FWA_VERSION = 1); placed right after magic so an unversioned legacy stream (sample_rate's low u16 here) fails the check
   uint16_t channels;
+  uint32_t sample_rate;
   uint16_t block_samples;
   uint16_t quality;        // 0 = lossless 5/3; >=1 = lossy 9/7 with quant step = quality
-  uint16_t flags;          // bit0 = psychoacoustic per-band quant shaping; bit1 = wavelet-packet best-basis (uniform quant); bit2 = joint-stereo intensity (Side highs dropped); bit4 = multichannel pairwise-M/S plan present
-
+  uint32_t flags;          // bit0 = psychoacoustic per-band quant shaping; bit1 = wavelet-packet best-basis (uniform quant); bit2 = joint-stereo intensity (Side highs dropped); bit4 = multichannel pairwise-M/S plan present; bit5 = cross-fade overlap; bit3 + bits8-15 = LMS. Widened to u32 for headroom (bits 16-31 reserved)
+  uint32_t lms_reset_blocks; // LMS predictor state reset interval in blocks (0 = no periodic reset / global LMS). Bounds a backward seek to < this many blocks of replay instead of from block 0
   uint64_t frame_count;
+  uint64_t index_offset;   // byte offset of the per-time-block offset index (num_time_blocks u32 stream offsets); 0 = none. O(1) seek to any block without scanning the block-length chain
 } FwaHeader;
+#pragma pack(pop)
 
 // Encode interleaved PCM into a malloc'd .fwa byte stream; returns its length. quality 0 = lossless.
 // packet != 0 selects the wavelet-packet best-basis lossy mode (uniform quant; ignores perceptual).
 // The psycho mode (perceptual lossy, non-packet) additionally drops the Side channel's high-frequency
 // bands -- joint-stereo intensity -- recorded in header flags bit2 (decode-side it is a pure no-op).
-static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int channels, int sample_rate, const char *layout, int pair_enabled, int adapt, int quality, int perceptual, int packet, int joint, int lms, int lms_taps, int overlap, uint8_t **out) {
+static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int channels, int sample_rate, const char *layout, int pair_enabled, int adapt, int quality, int perceptual, int packet, int joint, int lms, int lms_taps, int lms_reset_blocks, int overlap, uint8_t **out) {
   // Cross-fade block overlap (lossy only): adjacent blocks share `overlap` samples (stride = BLOCK-overlap); each block
   // is still coded independently and the DECODER raised-cosine cross-fades the shared region to soften the per-block
   // quantisation discontinuities. Q0 (lossless) must stay bit-exact, so it never overlaps.
@@ -1343,8 +1349,18 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
   }
 
   if (lms && (quality == 0)) {                  // lossless LMS: decorrelate each channel in time before blocking
+    // Reset the predictor every lms_reset_blocks blocks (0 = once over the whole channel, legacy global LMS). Each segment
+    // starts from a clean init, so a decoder can seek to any segment boundary and replay only that segment (< K blocks),
+    // instead of running the inverse from sample 0 (the backward-seek bottleneck). LMS is Q0 so block_stride == BLOCK_SAMPLES.
+    long reset_samples = (lms_reset_blocks > 0) ? ((long)lms_reset_blocks * BLOCK_SAMPLES) : frame_count;
+    if (reset_samples < 1) {
+      reset_samples = frame_count;
+    }
     for (int c = 0; c < channels; c++) {
-      lms_forward(planes[c], frame_count, lms_taps);
+      for (long seg = 0; seg < frame_count; seg += reset_samples) {
+        long seg_len = ((seg + reset_samples) <= frame_count) ? reset_samples : (frame_count - seg);
+        lms_forward(planes[c] + seg, seg_len, lms_taps);
+      }
     }
   }
 
@@ -1361,9 +1377,11 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
 
   size_t capacity = (size_t)(frame_count * channels * 2) + 4096;
   uint8_t *stream = checked_malloc(capacity);
-  uint16_t header_flags = (uint16_t)((perceptual ? 1u : 0u) | (packet ? 2u : 0u) | (joint_stereo ? 4u : 0u) | (pairing ? 16u : 0u) | ((overlap > 0) ? 32u : 0u) | ((lms && (quality == 0)) ? (8u | ((uint16_t)(lms_taps & 0xFF) << 8)) : 0u));   // bit5 = cross-fade overlap; bits 8-15 = LMS tap count
-  FwaHeader header = { FWA_MAGIC, (uint32_t)sample_rate, (uint16_t)channels, BLOCK_SAMPLES, (uint16_t)quality, header_flags, (uint64_t)frame_count };
+  uint32_t header_flags = (perceptual ? 1u : 0u) | (packet ? 2u : 0u) | (joint_stereo ? 4u : 0u) | (pairing ? 16u : 0u) | ((overlap > 0) ? 32u : 0u) | ((lms && (quality == 0)) ? (8u | ((uint32_t)(lms_taps & 0xFF) << 8)) : 0u);   // bit5 = cross-fade overlap; bits 8-15 = LMS tap count
+  uint32_t header_lms_reset = ((lms && (quality == 0)) && (lms_reset_blocks > 0)) ? (uint32_t)lms_reset_blocks : 0u;   // 0 = global LMS (also when not in LMS mode)
+  FwaHeader header = { FWA_MAGIC, (uint16_t)FWA_VERSION, (uint16_t)channels, (uint32_t)sample_rate, BLOCK_SAMPLES, (uint16_t)quality, header_flags, header_lms_reset, (uint64_t)frame_count, 0 };   // index_offset patched in after the blocks
   size_t cursor = 0;
+  size_t header_offset = cursor;   // patched at the end with the index offset
   memcpy(&stream[cursor], &header, sizeof header);
   cursor += sizeof header;
   if (pairing) {                                 // channel-pairing plan: [u8 pair_count] then per pair [u8 a][u8 b][u8 mode]
@@ -1380,7 +1398,16 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
     cursor += 2;
   }
 
+  // per-time-block byte-offset index: one u32 per time-block (offset of its first channel's [u32 len][payload]). Appended
+  // after the blocks; lets a decoder jump straight to any block (seek) without walking the block-length chain from the start.
+  long num_time_blocks = (frame_count > 0) ? ((frame_count + (block_stride - 1)) / block_stride) : 0;
+  uint32_t *block_index = (num_time_blocks > 0) ? checked_malloc((size_t)num_time_blocks * 4) : NULL;
+  long time_block = 0;
+
   for (long start = 0; start < frame_count; start += block_stride) {
+    if (block_index) {
+      block_index[time_block++] = (uint32_t)cursor;   // this time-block's first byte (the first channel's length prefix)
+    }
     int length = (int)(((start + BLOCK_SAMPLES) <= frame_count) ? BLOCK_SAMPLES : (frame_count - start));
     for (int channel = 0; channel < channels; channel++) {
       BitWriter tree;
@@ -1435,6 +1462,22 @@ static size_t fwacodec_encode(const int16_t *interleaved, long frame_count, int 
       free(encoded);
     }
   }
+  if (block_index && (num_time_blocks > 0)) {   // append the per-time-block offset index + patch index_offset in the header
+    size_t index_bytes = (size_t)num_time_blocks * 4;
+    if ((cursor + index_bytes) > capacity) {
+      capacity = cursor + index_bytes + 4096;
+      stream = realloc(stream, capacity);
+      if (!stream) {
+        fprintf(stderr, "fwa: out of memory for the block index\n");
+        exit(1);
+      }
+    }
+    uint64_t index_off = (uint64_t)cursor;
+    memcpy(&stream[cursor], block_index, index_bytes);
+    cursor += index_bytes;
+    memcpy(&stream[header_offset + offsetof(FwaHeader, index_offset)], &index_off, sizeof(uint64_t));
+  }
+  free(block_index);
   for (int c = 0; c < channels; c++) {
     free(planes[c]);
   }
@@ -1457,6 +1500,10 @@ static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_
   memcpy(&header, stream, sizeof header);
   if (header.magic != FWA_MAGIC) {
     fprintf(stderr, "not a fwa stream\n");
+    exit(1);
+  }
+  if (header.version != FWA_VERSION) {
+    fprintf(stderr, "fwa: unsupported header version %u (expected %u; re-encode)\n", header.version, FWA_VERSION);
     exit(1);
   }
   if ((header.channels < 1) || (header.channels > MAX_CHANNELS)) {
@@ -1615,9 +1662,16 @@ static int16_t *fwacodec_decode(const uint8_t *stream, size_t size, long *frame_
       }
     }
   }
-  if (lms && (quality == 0)) {                  // undo the LMS prediction over each whole channel before decorrelation
+  if (lms && (quality == 0)) {                  // undo the LMS prediction, per reset segment (mirror of the encoder's segmented lms_forward)
+    long reset_samples = (header.lms_reset_blocks > 0) ? ((long)header.lms_reset_blocks * BLOCK_SAMPLES) : frame_count;
+    if (reset_samples < 1) {
+      reset_samples = frame_count;
+    }
     for (int c = 0; c < channels; c++) {
-      lms_inverse(planes[c], frame_count, lms_taps);
+      for (long seg = 0; seg < frame_count; seg += reset_samples) {
+        long seg_len = ((seg + reset_samples) <= frame_count) ? reset_samples : (frame_count - seg);
+        lms_inverse(planes[c] + seg, seg_len, lms_taps);
+      }
     }
   }
   for (int k = 0; k < pair_count; k++) {        // undo multichannel pairwise M/S before the plain interleave
@@ -1774,6 +1828,12 @@ int main(int argc, char **argv) {
   const char *mode = extract_eq_flag(&argc, argv, "--mode", NULL);         // lossy: uniform|psycho|joint-psycho|packet|packet-psycho; Q0: 5/3|lms
   int lms_taps = atoi(extract_eq_flag(&argc, argv, "--lms-taps", "4"));    // lms-mode tap count
   lms_taps = (lms_taps < 1) ? 1 : ((lms_taps > LMS_MAX_TAPS) ? LMS_MAX_TAPS : lms_taps);
+  char lms_reset_default[16];
+  snprintf(lms_reset_default, sizeof lms_reset_default, "%d", FWA_LMS_RESET_DEFAULT);
+  int lms_reset_blocks = atoi(extract_eq_flag(&argc, argv, "--lms-reset", lms_reset_default));   // LMS state reset every N blocks (seekability); 0 = no reset (global LMS)
+  if (lms_reset_blocks < 0) {
+    lms_reset_blocks = 0;
+  }
   int pair_enabled = !no_pair;
   int adapt = !pair_ms;                                            // N>=3 L/R pairs are adaptive (best-of-both) by default
   int perceptual, packet, joint, lms;
@@ -1788,6 +1848,7 @@ int main(int argc, char **argv) {
             "    --quality=N      0 = lossless (default), >= 1 = lossy 9/7\n"
             "    --mode=M         lossy: uniform | psycho (default) | joint-psycho | packet | packet-psycho ; Q0: 5/3 (default) | lms\n"
             "    --lms-taps=N     lms-mode tap count (default 4)\n"
+            "    --lms-reset=N    lms-mode: reset the predictor every N blocks for seekability (default 8; 0 = no reset / global)\n"
             "    --ac=N           force channel count (else auto-detect via ffprobe)\n"
             "    --sr=HZ          force sample rate (linear resample; else source rate)\n"
             "    --no-pair        multichannel (N>=3): independent channels (no pairwise M/S)\n"
@@ -1806,7 +1867,7 @@ int main(int argc, char **argv) {
     char layout[64] = "";
     int16_t *pcm = ingest(argv[2], forced_channels, forced_rate, &frame_count, &channels, &sample_rate, layout);
     uint8_t *stream;   // quality / mode flags (perceptual / packet / joint / lms / lms_taps) come from the shared --flags above
-    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
+    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, lms_reset_blocks, overlap, &stream);
     long decoded_count = 0;
     int decoded_channels = 0;
     int decoded_rate = 0;
@@ -1860,7 +1921,7 @@ int main(int argc, char **argv) {
     char layout[64] = "";
     int16_t *pcm = ingest(argv[2], forced_channels, forced_rate, &frame_count, &channels, &sample_rate, layout);
     uint8_t *stream;   // quality / mode flags come from the shared --flags above
-    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, overlap, &stream);
+    size_t stream_length = fwacodec_encode(pcm, frame_count, channels, sample_rate, layout, pair_enabled, adapt, quality, perceptual, packet, joint, lms, lms_taps, lms_reset_blocks, overlap, &stream);
     FILE *file = fopen(argv[3], "wb");
     fwrite(stream, 1, stream_length, file);
     fclose(file);
@@ -1898,9 +1959,10 @@ int main(int argc, char **argv) {
 // self-describing stream (channels / rate / frame count in the fwa header). ----
 uint8_t *fwa_encode(const short *pcm, int samples, int channels, int sample_rate, const FwaParams *params, uint64_t *out_size) {
   uint8_t *out = NULL;
+  int lms_reset = (params->lms_reset_blocks > 0) ? params->lms_reset_blocks : 0;   // 0 / negative = no periodic reset (global LMS); the caller picks the default (FWA_LMS_RESET_DEFAULT)
   size_t length = fwacodec_encode(pcm, (long)samples, channels, sample_rate, "",
                               params->pair_enabled, params->adapt, params->quality, params->perceptual,
-                              params->packet, params->joint, params->lms, params->lms_taps, params->overlap, &out);
+                              params->packet, params->joint, params->lms, params->lms_taps, lms_reset, params->overlap, &out);
   *out_size = (uint64_t)length;
   return out;
 }

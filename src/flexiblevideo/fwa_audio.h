@@ -59,6 +59,8 @@
 
 #include <stdint.h>
 
+#define FWA_LMS_RESET_DEFAULT 8   // default LMS-state reset interval in blocks (seekability); 0 = no reset (global LMS)
+
 // Wavelet-audio encode parameters (mirrors the fwa CLI). Derived in fvdenc.c from --fwa-quality / --fwa-mode /
 // --fwa-lms-taps / --fwa-no-pair / --fwa-pair-ms.
 typedef struct {
@@ -68,6 +70,7 @@ typedef struct {
   int joint;         // joint-stereo intensity (collapse the top Side bands to mono; lossy)
   int lms;           // lossless LMS predictor instead of 5/3 (Q0 only)
   int lms_taps;      // LMS tap count (when lms != 0)
+  int lms_reset_blocks; // LMS state reset interval in blocks for seekability: 0 = no periodic reset (global LMS); N>0 = reset every N blocks. The caller sets the default (FWA_LMS_RESET_DEFAULT = 8)
   int pair_enabled;  // multichannel: pairwise L/R Mid/Side (default on)
   int adapt;         // multichannel: per-pair adaptive best-of-both (default on)
   int overlap;       // cross-fade block overlap: shared samples per block boundary (0 = off; lossy only)
