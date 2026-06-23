@@ -2039,6 +2039,9 @@ int main(int argc, char **argv) {
   VkBuffer coeff_readback_buffer = 0;   // --gpu-encode: host-visible staging for reading the GPU-quantized coeffs back for CPU rANS
   VkDeviceMemory coeff_readback_memory = 0;
   void *coeff_readback_map = 0;
+  VkBuffer mv_readback_buffer = 0;   // own-alpha-MV step C2: host-visible staging to read the GPU luma MVs back for the alpha RD decision
+  VkDeviceMemory mv_readback_memory = 0;
+  void *mv_readback_map = 0;
   // Full GPU-rANS-encode buffers: per-plane frequency table (host-built norm+cum, uploaded), the token histogram
   // (GPU atomic-add, read back to normalize), and the big per-tile rANS scratch (sym + rans + raw + out regions).
   VkBuffer rans_table_buffer[MAX_PLANES] = { 0 }, rans_hist_buffer = 0, rans_scratch_buffer = 0;
@@ -2048,6 +2051,10 @@ int main(int argc, char **argv) {
   if (gpu_encode) {
     create_buffer(plane_bytes, HOST_VISIBLE_COHERENT, &coeff_readback_buffer, &coeff_readback_memory);
     VK_CHECK(vkMapMemory(device, coeff_readback_memory, 0, VK_WHOLE_SIZE, 0, &coeff_readback_map));
+    if (g_has_alpha) {   // own-alpha-MV step C2: read the GPU luma MVs back (I/P pre-ME + B bidi) for the alpha shared-vs-own RD decision
+      create_buffer((((VkDeviceSize)((width + 7) / 8) * ((height + 7) / 8)) * 2) * 4, HOST_VISIBLE_COHERENT, &mv_readback_buffer, &mv_readback_memory);   // worst-case 8-grid (>= motion_blocks_x*y), declared before motion_blocks_x
+      VK_CHECK(vkMapMemory(device, mv_readback_memory, 0, VK_WHOLE_SIZE, 0, &mv_readback_map));
+    }
     int subs = (g_block_size / 8) * (g_block_size / 8);
     int sym_words = subs * 65, rans_words = (subs * 33) + 4, raw_words = subs * 33;
     rans_tile_stride = (sym_words + (2 * (rans_words + raw_words))) + 8;   // sym + rans + raw + out(+margin), in uints
@@ -2670,14 +2677,11 @@ int main(int argc, char **argv) {
   int32_t *gpu_alpha_ref0 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int32_t *gpu_alpha_ref1 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int *gpu_alpha_mv1 = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
-  // own-alpha-MV step C2 (--alpha-mv=cpu-rd|sad, GPU-native): a CPU PROXY luma MV field (motion_estimate_cpu on the source
-  // luma) approximates the GPU luma MVs for the shared-vs-own RD decision (alpha_mv_decide_gpu). gpu_luma_prev keeps the
-  // previous source luma for that ME; gpu_luma_co/cg are throwaway chroma scratch for rgb_to_ycocg.
-  int32_t *gpu_luma_cur = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
-  int32_t *gpu_luma_prev = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
-  int32_t *gpu_luma_co = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
-  int32_t *gpu_luma_cg = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  // own-alpha-MV step C2 (--alpha-mv=cpu-rd|sad, GPU-native): the REAL GPU luma MVs (read back from a pre-ME submit, mv_readback
+  // below) drive the alpha shared-vs-own RD decision (alpha_mv_decide_gpu) — a CPU proxy diverges from the GPU ME, so we use the
+  // genuine field. gpu_luma_mv holds the read-back I/P luma MV field.
   int *gpu_luma_mv = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
+  int *gpu_luma_mv1 = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;   // B-frame L1 read-back luma MVs (step C2)
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
   int32_t *self_previous[MAX_PLANES];
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -3099,7 +3103,17 @@ int main(int argc, char **argv) {
     // own-alpha-MV (MCTF, --alpha-mv=own): the alpha plane gets its OWN per-high-pass-frame temporal MV field (searched on
     // gop_buffer[3] alpha, separate from the luma search), used in the alpha MC-Haar instead of the shared luma MVs.
     int mctf_alpha_own = ((g_alpha_mv_strategy == ALPHA_MV_OWN) && g_has_alpha) && g_mctf;
-    int *mctf_alpha_frame_mv = mctf_alpha_own ? checked_malloc(((size_t)gop * motion_blocks_x * motion_blocks_y * 2) * sizeof(int)) : NULL;
+    // cpu-rd / sad (step C2): the alpha temporal ME runs for every high-pass pair too, then a per-pair RD compare (real GPU
+    // luma MVs vs the own alpha MVs, read back) picks own or shared. mctf_alpha_decide = own (force) OR rd.
+    int mctf_alpha_rd = (((g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD)) && g_has_alpha) && g_mctf;
+    int mctf_alpha_decide = mctf_alpha_own || mctf_alpha_rd;
+    int *mctf_alpha_frame_mv = mctf_alpha_decide ? checked_malloc(((size_t)gop * motion_blocks_x * motion_blocks_y * 2) * sizeof(int)) : NULL;
+    int *mctf_alpha_mode = mctf_alpha_decide ? checked_malloc((size_t)gop * sizeof(int)) : NULL;   // per-high-pass-frame: 1 = own alpha MVs, 0 = shared luma MVs
+    int32_t *mctf_alpha_odd = mctf_alpha_rd ? checked_malloc((size_t)pixel_count * 4) : NULL;      // cpu-rd/sad: readback scratch for the per-pair alpha @odd/@even
+    int32_t *mctf_alpha_even = mctf_alpha_rd ? checked_malloc((size_t)pixel_count * 4) : NULL;
+    if (mctf_alpha_mode) {
+      memset(mctf_alpha_mode, 0, (size_t)gop * sizeof(int));   // low-pass frames are never decided (stay shared / mode 0)
+    }
     if (g_mctf) {   // zero the motion_estimate temporal predictor once (never updated across pairs → predict=0, matching the CPU's no-predictor search)
       begin_recording();
       vkCmdFillBuffer(command_buffer, mv_prev_buffer, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4, 0);
@@ -3220,7 +3234,7 @@ int main(int argc, char **argv) {
               // own-alpha-MV (--alpha-mv=own): a SEPARATE alpha motion search on gop_buffer[3] (current = alpha@odd, ref =
               // alpha@even) -> alpha_mv_buffer. Own submit so it doesn't share/alias set_mctf_me or sad_buffer with the luma
               // search above. Stored alongside the high frame, exactly like the luma MVs; the alpha MC-Haar below uses them.
-              if (mctf_alpha_own) {
+              if (mctf_alpha_decide) {
                 begin_recording();
                 VkDeviceSize odd_a = (VkDeviceSize)odd * pixel_count * 4, even_a = (VkDeviceSize)even * pixel_count * 4;
                 bind_storage_buffers_offset(set_mctf_me_alpha,
@@ -3233,6 +3247,26 @@ int main(int argc, char **argv) {
                 vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
                 submit_and_wait();
                 memcpy(&mctf_alpha_frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], alpha_mv_map, (size_t)luma_blocks * 2 * 4);
+                // per-high-pass-frame own/shared decision. own (force) = always 1; cpu-rd/sad reads this pair's alpha @odd/@even
+                // back and RD-compares the real luma MVs vs the own alpha MVs (alpha_mv_decide_gpu, exactly like the CPU oracle).
+                int mctf_slot = low_count + k;
+                if (mctf_alpha_own) {
+                  mctf_alpha_mode[mctf_slot] = 1;
+                } else {
+                  begin_recording();
+                  VkBufferCopy rb = { odd_a, 0, (VkDeviceSize)pixel_count * 4 };
+                  vkCmdCopyBuffer(command_buffer, gop_buffer[3], coeff_readback_buffer, 1, &rb);
+                  submit_and_wait();
+                  memcpy(mctf_alpha_odd, coeff_readback_map, (size_t)pixel_count * 4);
+                  begin_recording();
+                  rb.srcOffset = even_a;
+                  vkCmdCopyBuffer(command_buffer, gop_buffer[3], coeff_readback_buffer, 1, &rb);
+                  submit_and_wait();
+                  memcpy(mctf_alpha_even, coeff_readback_map, (size_t)pixel_count * 4);
+                  mctf_alpha_mode[mctf_slot] = alpha_mv_decide_gpu(mctf_alpha_odd, mctf_alpha_even,
+                                                 &mctf_frame_mv[(size_t)mctf_slot * luma_blocks * 2], &mctf_alpha_frame_mv[(size_t)mctf_slot * luma_blocks * 2],
+                                                 width, height, levels, alpha_qp_3d, motion_blocks_x, motion_blocks_y, 0);
+                }
               }
               // 2) per plane: pred = OBMC(gop@even, mv); high = gop@odd - pred -> scratch@(low_count+k); low = gop@even -> scratch@k
               begin_recording();
@@ -3240,7 +3274,7 @@ int main(int argc, char **argv) {
                 int pp = plane_pixels[plane];
                 VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
                 bind_storage_buffers_offset(set_mctf_mc[plane],
-                  (VkBuffer[]){ gop_buffer[plane], ((mctf_alpha_own && (plane == 3)) ? alpha_mv_buffer : mv_buffer), mctf_pred[plane] }, (VkDeviceSize[]){ even_off, 0, 0 }, 3);
+                  (VkBuffer[]){ gop_buffer[plane], (((mctf_alpha_decide && (plane == 3)) && mctf_alpha_mode[low_count + k]) ? alpha_mv_buffer : mv_buffer), mctf_pred[plane] }, (VkDeviceSize[]){ even_off, 0, 0 }, 3);
                 int32_t mc_push[3] = { plane_w[plane], plane_h[plane], plane_mbx[plane] };
                 vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
                 vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mctf_mc[plane], 0, 0);
@@ -3630,7 +3664,7 @@ int main(int argc, char **argv) {
           // keyframes have none, exactly like the luma MV blob above). Coded like the luma MVs per g_mv_codec.
           uint8_t *alpha_own_blob = NULL;
           uint32_t alpha_own_blob_len = 0;
-          if (mctf_alpha_own && (level > 0)) {
+          if ((mctf_alpha_decide && (level > 0)) && mctf_alpha_mode[f]) {
             const int *a_frame_mv = &mctf_alpha_frame_mv[((size_t)f * motion_blocks_x * motion_blocks_y) * 2];
             if (g_mv_codec == 1) {
               alpha_own_blob_len = (uint32_t)mv_blob_encode_range(&alpha_own_blob, 0, NULL, 0, a_frame_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
@@ -3720,7 +3754,7 @@ int main(int argc, char **argv) {
           index[frame_index].ref1 = -1;
           index[frame_index].temporal_id = 0;
           // own-alpha-MV (MCTF): a high-pass frame (temporal level>0) carries its own alpha MV blob in the alpha section.
-          index[frame_index].alpha_mv_mode = (uint8_t)((mctf_alpha_own && (temporal_quant_level(f, filled, g_temporal_levels) > 0)) ? 1 : 0);
+          index[frame_index].alpha_mv_mode = (uint8_t)(((mctf_alpha_decide && mctf_alpha_mode[f]) && (temporal_quant_level(f, filled, g_temporal_levels) > 0)) ? 1 : 0);
           index[frame_index].size = (uint32_t)fwrite_frame(container_file, gop_encoded[f], gop_encoded_length[f]);
           if (g_cdef) {   // the per-frame CDEF strengths chosen by the search, in coding order
             cdef_table[(frame_index * 4) + 0] = gop_cdef[f][0];
@@ -3879,14 +3913,12 @@ int main(int argc, char **argv) {
           bind_storage_buffers(set_motion_add_bidi[plane], (VkBuffer[]){ coeff_buffer[plane], difference_buffer[plane], dpb_buffer[b_dst_slot][plane] }, 3);
         }
         if (g_has_alpha) {   // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots; shares the luma mv_buffer/mv1_buffer/mode_buffer
-          // own-alpha-MV: when this B/P frame carries its own alpha MVs, bind the alpha mc to alpha_mv_buffer / alpha_mv1_buffer
-          // instead of the shared luma mv_buffer / mv1_buffer (the field is searched + uploaded in the ME block below; the
-          // blend stages read difference[3]/mc1_buffer[3], not the MVs, so they stay unchanged).
-          int b_alpha_own = ((g_alpha_mv_strategy == ALPHA_MV_OWN) && (b_type != 0)) && (predictive && (method == 1));
+          // own-alpha-MV: the alpha mc MV source (shared luma vs own alpha) is bound here SHARED, then re-bound per the FINAL
+          // per-frame decision (alpha_own_frame) at the end of the alpha block below — the decision (own/cpu-rd/sad) isn't known yet.
           if (b_ref0_slot >= 0) {
-            bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], b_alpha_own ? alpha_mv_buffer : mv_buffer, difference_buffer[3] }, 3);
+            bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], mv_buffer, difference_buffer[3] }, 3);
             if (b_ref1_slot >= 0) {
-              bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], b_alpha_own ? alpha_mv1_buffer : mv1_buffer, mc1_buffer[3] }, 3);
+              bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], mv1_buffer, mc1_buffer[3] }, 3);
               bind_storage_buffers(set_bidi_blend[3], (VkBuffer[]){ difference_buffer[3], mc1_buffer[3], difference_buffer[3] }, 3);
             }
           }
@@ -4083,6 +4115,86 @@ int main(int argc, char **argv) {
       // (gop 1) keep the alpha intra; the decoders gate the alpha mc/motion_add the same way, so encoder<->decoder stay in lock-step.
       int alpha_inter = predictive && (method == 1);
 
+      // own-alpha-MV step C2 (I/P, cpu-rd/sad): the alpha shared-vs-own RD decision needs the REAL GPU luma MVs, but pass 1
+      // produces them in one monolithic submit (too late, the alpha mc is recorded in the same submit). So pre-run color + the
+      // fixed-grid luma ME in a throwaway submit and read mv_buffer back into gpu_luma_mv. Pass 1 re-runs color+ME identically
+      // (deterministic); the mv_prev snapshot is taken HERE, so pass 1 skips its own copy (ip_preme_done) to keep the predictor
+      // (else the two ME runs diverge). Variable/quadtree ME is not pre-run (cpu-rd/sad then falls back to shared); own/luma need no pre-ME.
+      int ip_preme_done = 0;
+      if (((((g_has_alpha && !use_bframes) && alpha_inter) && is_predicted)
+           && ((g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD))) && !g_motion_variable) {
+        begin_recording();
+        int32_t pre_color_push[2] = { width, height };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_color);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_color, 0, 1, &set_color, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, pre_color_push);
+        vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+        memory_barrier();
+        VkBufferCopy pre_mv_copy = { 0, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4 };
+        vkCmdCopyBuffer(command_buffer, mv_buffer, mv_prev_buffer, 1, &pre_mv_copy);   // this frame's temporal predictor = the previous frame's MVs (still in mv_buffer)
+        VkMemoryBarrier pre_copy_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        pre_copy_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        pre_copy_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &pre_copy_barrier, 0, 0, 0, 0);
+        int32_t pre_me_push[4] = { width, height, motion_blocks_x, lossless };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_estimate);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_motion_estimate, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, pre_me_push);
+        vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
+        memory_barrier();
+        if (g_mv_predict_spatial) {
+          spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_p, mv_refine_buffer, mv_buffer, pre_me_push, motion_blocks_x, motion_blocks_y);
+        }
+        vkCmdCopyBuffer(command_buffer, mv_buffer, mv_readback_buffer, 1, &pre_mv_copy);
+        submit_and_wait();
+        memcpy(gpu_luma_mv, mv_readback_map, (size_t)motion_blocks_x * motion_blocks_y * 2 * 4);
+        ip_preme_done = 1;
+      }
+
+      // own-alpha-MV step C2 (B-frames, cpu-rd/sad): pre-run color + the bidi luma ME (L0 [+ L1]) so the REAL GPU luma MVs are
+      // available for the alpha bidi RD decision. B uses a zero temporal predictor (mv_zero_buffer) — no mv_prev snapshot to
+      // preserve, so pass 1 re-runs the same ME deterministically. Variable split-bidi is not pre-run (falls back to shared).
+      int b_preme_done = 0;
+      if (((((g_has_alpha && use_bframes) && alpha_inter) && is_predicted) && (b_ref0_slot >= 0))
+          && (((g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD)) && !(g_motion_variable && g_motion_split_bidi))) {
+        VkBufferCopy pre_mv_copy = { 0, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4 };
+        begin_recording();
+        int32_t pre_color_push[2] = { width, height };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_color);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_color, 0, 1, &set_color, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_color, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, pre_color_push);
+        vkCmdDispatch(command_buffer, pixel_workgroups, 1, 1);
+        memory_barrier();
+        int32_t pre_me_push[4] = { width, height, motion_blocks_x, lossless };
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_estimate);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_me_b0, 0, 0);
+        vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, pre_me_push);
+        vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
+        memory_barrier();
+        if (g_mv_predict_spatial && !g_motion_variable) {
+          spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_b0, mv_refine_buffer, mv_buffer, pre_me_push, motion_blocks_x, motion_blocks_y);
+        }
+        if (b_ref1_slot >= 0) {
+          vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_me_b1, 0, 0);
+          vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, pre_me_push);
+          vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
+          memory_barrier();
+          if (g_mv_predict_spatial && !g_motion_variable) {
+            spatial_refine_pass(command_buffer, pipeline_motion_refine, pipeline_layout_motion_estimate, set_refine_b1, mv_refine_buffer, mv1_buffer, pre_me_push, motion_blocks_x, motion_blocks_y);
+          }
+        }
+        vkCmdCopyBuffer(command_buffer, mv_buffer, mv_readback_buffer, 1, &pre_mv_copy);
+        submit_and_wait();
+        memcpy(gpu_luma_mv, mv_readback_map, (size_t)motion_blocks_x * motion_blocks_y * 2 * 4);
+        if (b_ref1_slot >= 0) {
+          begin_recording();
+          vkCmdCopyBuffer(command_buffer, mv1_buffer, mv_readback_buffer, 1, &pre_mv_copy);
+          submit_and_wait();
+          memcpy(gpu_luma_mv1, mv_readback_map, (size_t)motion_blocks_x * motion_blocks_y * 2 * 4);
+        }
+        b_preme_done = 1;
+      }
+
       // own-alpha-MV (GPU-native): when --alpha-mv=own picks own for a predicted colordiff frame, search the alpha's OWN
       // MVs (CPU, on the SOURCE alphas) and upload them so the alpha mc warps the reconstructed reference(s) with these
       // instead of the shared luma MVs. I/P uses the single previous source alpha (gpu_alpha_prev); B uses the two
@@ -4096,18 +4208,13 @@ int main(int argc, char **argv) {
           gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)cur_src)[(i * 4) + 3] : ((const uint8_t *)cur_src)[(i * 4) + 3];
         }
         if (!use_bframes) {   // I/P: a single previous reference, maintained sequentially across frames
-          int proxy_rd = (g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD);
-          if (proxy_rd) {   // step C2: this frame's source luma (Y) for the proxy luma ME (rgb_to_ycocg handles 8/16-bit; chroma = scratch)
-            rgb_to_ycocg((const uint8_t *)cur_src, gpu_luma_cur, gpu_luma_co, gpu_luma_cg, pixel_count);
-          }
           if (is_predicted && alpha_inter) {
             if (g_alpha_mv_strategy == ALPHA_MV_OWN) {   // force own (no RD compare)
               motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
               memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
               alpha_own_frame = 1;
-            } else if (proxy_rd) {   // cpu-rd / sad (step C2): RD-decide shared (proxy luma MVs) vs own (alpha MVs)
+            } else if (ip_preme_done) {   // cpu-rd / sad (step C2): RD-decide shared (REAL GPU luma MVs from the pre-ME) vs own (alpha MVs)
               int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
-              motion_estimate_cpu(gpu_luma_cur, gpu_luma_prev, gpu_luma_mv, width, height, motion_blocks_x, motion_blocks_y);   // proxy for the GPU luma MVs
               motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y); // the own alpha candidate
               if (alpha_mv_decide_gpu(gpu_alpha_cur, gpu_alpha_prev, gpu_luma_mv, gpu_alpha_mv, width, height, levels, alpha_qp, motion_blocks_x, motion_blocks_y, g_spatial_dct)) {
                 memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
@@ -4116,26 +4223,43 @@ int main(int argc, char **argv) {
             }
           }
           memcpy(gpu_alpha_prev, gpu_alpha_cur, (size_t)pixel_count * 4);   // this frame's source alpha = the next frame's ME reference
-          if (proxy_rd) {
-            memcpy(gpu_luma_prev, gpu_luma_cur, (size_t)pixel_count * 4);   // and its source luma for the next frame's proxy luma ME
-          }
-        } else if (((((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) && (b_ref0_slot >= 0))) {
-          // B/P: pull the reference source alphas from the bgpu DPB source slots and search L0 (+ L1) independently.
+        } else if (((((g_alpha_mv_strategy == ALPHA_MV_OWN) || (((g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD)) && b_preme_done)) && is_predicted) && alpha_inter) && (b_ref0_slot >= 0)) {
+          // B/P: pull the reference source alphas from the bgpu DPB source slots and search L0 (+ L1) independently. own forces
+          // own MVs; cpu-rd/sad RD-decide them against the REAL GPU luma MVs (from the bidi pre-ME) via the bidi blend.
           const void *ref0_src = bgpu.rgb_slot[b_ref0_slot];
           for (int i = 0; i < pixel_count; i++) {
             gpu_alpha_ref0[i] = (g_sample_bytes == 2) ? ((const uint16_t *)ref0_src)[(i * 4) + 3] : ((const uint8_t *)ref0_src)[(i * 4) + 3];
           }
           motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_ref0, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
-          memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
           if (b_ref1_slot >= 0) {
             const void *ref1_src = bgpu.rgb_slot[b_ref1_slot];
             for (int i = 0; i < pixel_count; i++) {
               gpu_alpha_ref1[i] = (g_sample_bytes == 2) ? ((const uint16_t *)ref1_src)[(i * 4) + 3] : ((const uint8_t *)ref1_src)[(i * 4) + 3];
             }
             motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_ref1, gpu_alpha_mv1, width, height, motion_blocks_x, motion_blocks_y);
-            memcpy(alpha_mv1_map, gpu_alpha_mv1, alpha_mv_bytes);
           }
-          alpha_own_frame = 1;
+          int b_own = 1;   // own = force; cpu-rd / sad RD-decide own vs shared (real GPU luma MVs)
+          if (g_alpha_mv_strategy != ALPHA_MV_OWN) {
+            int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+            b_own = alpha_mv_decide_bidi_gpu(gpu_alpha_cur, gpu_alpha_ref0, gpu_alpha_ref1, b_ref1_slot >= 0,
+                                             gpu_luma_mv, gpu_luma_mv1, gpu_alpha_mv, gpu_alpha_mv1, b_w0, b_w1,
+                                             width, height, levels, alpha_qp, motion_blocks_x, motion_blocks_y, g_bframe_dct);
+          }
+          if (b_own) {
+            memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
+            if (b_ref1_slot >= 0) {
+              memcpy(alpha_mv1_map, gpu_alpha_mv1, alpha_mv_bytes);
+            }
+            alpha_own_frame = 1;
+          }
+        }
+        // B alpha mc: bind the MV source to the FINAL per-frame decision (own = the alpha's own field, shared = the luma field),
+        // overriding the neutral bind in the B setup. The emit + decode key off alpha_own_frame, so the reconstruction must too.
+        if ((use_bframes && (b_ref0_slot >= 0)) && (predictive && (method == 1))) {
+          bind_storage_buffers(set_mc_b0[3], (VkBuffer[]){ dpb_buffer[b_ref0_slot][3], alpha_own_frame ? alpha_mv_buffer : mv_buffer, difference_buffer[3] }, 3);
+          if (b_ref1_slot >= 0) {
+            bind_storage_buffers(set_mc_b1[3], (VkBuffer[]){ dpb_buffer[b_ref1_slot][3], alpha_own_frame ? alpha_mv1_buffer : mv1_buffer, mc1_buffer[3] }, 3);
+          }
         }
       }
 
@@ -4152,13 +4276,16 @@ int main(int argc, char **argv) {
       // mc.comp uses them. One workgroup per block. (Skipped for the B-stream: the zero-MV B path.)
       if ((((!use_bframes) && (method == 1)) && is_predicted) && (!g_motion_variable)) {
         // Snapshot the previous frame's MVs (still in mv_buffer from the last frame) into mv_prev as this
-        // frame's temporal predictor, before the search overwrites mv_buffer.
-        VkBufferCopy mv_copy = { 0, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4 };
-        vkCmdCopyBuffer(command_buffer, mv_buffer, mv_prev_buffer, 1, &mv_copy);
-        VkMemoryBarrier copy_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        copy_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        copy_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &copy_barrier, 0, 0, 0, 0);
+        // frame's temporal predictor, before the search overwrites mv_buffer. The step-C2 pre-ME already took this
+        // snapshot (ip_preme_done) — repeating it here would copy the pre-ME's result instead, diverging the predictor.
+        if (!ip_preme_done) {
+          VkBufferCopy mv_copy = { 0, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4 };
+          vkCmdCopyBuffer(command_buffer, mv_buffer, mv_prev_buffer, 1, &mv_copy);
+          VkMemoryBarrier copy_barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+          copy_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+          copy_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+          vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &copy_barrier, 0, 0, 0, 0);
+        }
         int32_t me_push[4] = { width, height, motion_blocks_x, lossless };
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_estimate);
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_motion_estimate, 0, 0);

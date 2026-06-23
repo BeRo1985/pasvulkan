@@ -6632,6 +6632,94 @@ static int alpha_mv_decide_gpu(const int32_t *alpha_cur, const int32_t *alpha_pr
   return mode;
 }
 
+// own-alpha-MV RD decision for the GPU-native B-frame encoder (step C2). Bidirectional: the prediction is the weighted blend
+// of the two motion-compensated references (or just L0 when !has_ref1). Compares shared (luma L0/L1 MVs) vs own (alpha L0/L1
+// MVs) by sad (=sad) or actual coded bytes (=cpu-rd, own pays its dual MV blob). Mirrors encode_frame_bidi's blend; the luma
+// MVs are the REAL GPU ones (read back from the bidi pre-ME).
+static int alpha_mv_decide_bidi_gpu(const int32_t *alpha_cur, const int32_t *ref0_alpha, const int32_t *ref1_alpha, int has_ref1,
+                                    const int *luma_mv0, const int *luma_mv1, const int *alpha_mv0, const int *alpha_mv1,
+                                    int weight0, int weight1, int width, int height, int levels, int alpha_qp,
+                                    int motion_blocks_x, int motion_blocks_y, int use_dct_entropy) {
+  int pixel_count = width * height;
+  int block_count = block_count_x(width) * block_count_y(height);
+  int *step = checked_malloc((size_t)pixel_count * sizeof(int));
+  build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+  float *float_plane = checked_malloc((size_t)pixel_count * sizeof(float));
+  int32_t *mc0 = checked_malloc((size_t)pixel_count * 4);
+  int32_t *mc1 = checked_malloc((size_t)pixel_count * 4);
+  int32_t *res = checked_malloc((size_t)pixel_count * 4);
+  uint32_t *off = checked_malloc((size_t)block_count * 4);
+  int need_bytes = (g_alpha_mv_strategy == ALPHA_MV_CPURD);
+
+  // shared variant: weighted blend of MC(ref, luma MVs)
+  motion_compensate(ref0_alpha, (int *)luma_mv0, mc0, width, height, motion_blocks_x);
+  if (has_ref1) {
+    motion_compensate(ref1_alpha, (int *)luma_mv1, mc1, width, height, motion_blocks_x);
+  }
+  for (int i = 0; i < pixel_count; i++) {
+    int pred = has_ref1 ? ((((weight0 * mc0[i]) + (weight1 * mc1[i])) + 128) >> 8) : mc0[i];
+    res[i] = alpha_cur[i] - pred;
+  }
+  long sad_shared = alpha_residual_sad(res, pixel_count);
+  uint32_t cost_shared = 0;
+  if (need_bytes) {
+    BitWriter w_shared;
+    uint8_t *tab_shared = NULL;
+    uint32_t tab_shared_len = 0;
+    cost_shared = encode_alpha_payload(res, width, height, levels, alpha_qp, step, float_plane, &w_shared, off, &tab_shared, &tab_shared_len, use_dct_entropy);
+    free(w_shared.bytes);
+    free(tab_shared);
+  }
+
+  // own variant: weighted blend of MC(ref, own alpha MVs)
+  motion_compensate(ref0_alpha, (int *)alpha_mv0, mc0, width, height, motion_blocks_x);
+  if (has_ref1) {
+    motion_compensate(ref1_alpha, (int *)alpha_mv1, mc1, width, height, motion_blocks_x);
+  }
+  for (int i = 0; i < pixel_count; i++) {
+    int pred = has_ref1 ? ((((weight0 * mc0[i]) + (weight1 * mc1[i])) + 128) >> 8) : mc0[i];
+    res[i] = alpha_cur[i] - pred;
+  }
+  long sad_own = alpha_residual_sad(res, pixel_count);
+
+  // own dual MV blob byte length (mv0 then mv1 when has_ref1) — coded exactly like the emit path
+  uint8_t *mv_blob = NULL;
+  size_t mv_blob_len;
+  if (g_mv_codec == 1) {
+    mv_blob_len = mv_blob_encode_range(&mv_blob, 0, NULL, 0, (int *)alpha_mv0, has_ref1, (int *)alpha_mv1, 0, motion_blocks_x, motion_blocks_y);
+  } else {
+    BitWriter mvw;
+    bitwriter_init(&mvw);
+    encode_motion_vectors(&mvw, (int *)alpha_mv0, motion_blocks_x, motion_blocks_y);
+    if (has_ref1) {
+      encode_motion_vectors(&mvw, (int *)alpha_mv1, motion_blocks_x, motion_blocks_y);
+    }
+    bitwriter_flush(&mvw);
+    mv_blob = mvw.bytes;
+    mv_blob_len = mvw.length;
+  }
+  uint32_t cost_own = 0;
+  if (need_bytes) {
+    BitWriter w_own;
+    uint8_t *tab_own = NULL;
+    uint32_t tab_own_len = 0;
+    uint32_t pay_own = encode_alpha_payload(res, width, height, levels, alpha_qp, step, float_plane, &w_own, off, &tab_own, &tab_own_len, use_dct_entropy);
+    free(w_own.bytes);
+    free(tab_own);
+    cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;
+  }
+  free(mv_blob);
+
+  int mode = alpha_mv_pick(sad_shared, sad_own, cost_shared, cost_own, mv_blob_len);
+  free(step);
+  free(float_plane);
+  free(mc0);
+  free(mc1);
+  free(res);
+  free(off);
+  return mode;
+}
+
 // out_alpha_mv_mode (or NULL): when non-NULL AND the frame is predicted, the encoder ALSO motion-estimates the alpha
 // plane independently and probe-encodes both the shared-luma-MV and the own-alpha-MV residual, keeping whichever codes
 // to fewer actual bytes (the own variant pays for its MV blob). *out_alpha_mv_mode receives 0 (shared) or 1 (own). The
