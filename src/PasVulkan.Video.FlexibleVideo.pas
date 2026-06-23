@@ -169,7 +169,7 @@ type EpvFlexibleVideo=class(Exception);
              FrameType:TpvUInt8; // 0 = I, 1 = P, 2 = B
              Quality:TpvUInt8;
              TemporalID:TpvUInt8;
-             Pad:TpvUInt8;
+             AlphaMVMode:TpvUInt8; // per-frame alpha motion mode: 0 = alpha shares the luma MVs, 1 = alpha carries its own MV field (in the alpha section)
             end;
             TFrameEntries=array of TFrameEntry;
             TBlockCounts=array[0..2] of TpvInt32;

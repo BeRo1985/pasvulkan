@@ -169,6 +169,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fMCTFPred:array[0..3] of TpvVulkanBuffer; // MCTF: the per-pair MC-warped low frame, device-local
        fMCTFScratch:array[0..3] of TpvVulkanBuffer; // MCTF: the per-level interleaved frame workspace, device-local
        fMCTFMVScratch:array of TpvInt32; // MCTF: every GOP frame's luma MV field (CPU side), by deinterleaved slot
+       fAlphaMCTFMVScratch:array of TpvInt32; // own-alpha-MV MCTF: every GOP frame's alpha MV field (own-decoded, or a luma copy for shared high-pass frames), by deinterleaved slot
+       fAlphaMCTFMVBuffer:TpvVulkanBuffer; // own-alpha-MV MCTF: the per-pair upload target the plane-3 MC-Haar binds (host-visible)
        fSetMCTFMC:array[0..3] of TpvVulkanDescriptorSet; // MCTF (rebound per pair, with byte offsets): {gop@low, mv, pred}
        fSetMCTFAdd:array[0..3] of TpvVulkanDescriptorSet; // MCTF: {scratch@odd, pred}
        // 3D-DWT GOP prefetch: the next GOP is decoded one subband per displayed frame on a SEPARATE command buffer +
@@ -326,6 +328,13 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fAlphaRingSetRANSUnpack:array of TpvVulkanDescriptorSet; // [slot] DCT-mode alpha {ring data, ring offset, shared coeff[3], ring table}
        fAlphaIsRANS:boolean;          // DCT-mode alpha (table_length>0): rANS entropy + inverse 8x8 DCT; else wavelet bit-plane
        fAlphaCurrentDataLength:TpvUInt32; // DCT-mode alpha: this frame's block-data byte length (the rANS unpack push needs it)
+       // own-alpha-MV (FrameEntry.AlphaMVMode=1): the alpha plane carries its OWN motion vectors (matte edges that move
+       // independently of the color). The blob sits in the alpha section (between alpha_qp and the size blob) and rides the
+       // alpha ring, so it is decoded in UploadAlphaFromBuffer and consumed by RecordAlphaDecode at the SAME fAlphaCurrentSlot.
+       fAlphaRingMVBuffer:array of TpvVulkanBuffer;             // [slot] own-alpha-MV L0 field (host-visible, full luma grid); I/P colordiff mc + B bidi gmc0
+       fAlphaRingMV1Buffer:array of TpvVulkanBuffer;            // [slot] own-alpha-MV L1 field (B bidi gmc1 only)
+       fAlphaRingSetMCPlayOwn:array of TpvVulkanDescriptorSet;  // [slot] I/P own-alpha-MV mc: {shared previous[3], ring alpha mv, shared scratch}
+       fAlphaCurrentMVMode:TpvUInt8;  // the active frame's alpha mv mode (0 = shared luma MVs, 1 = own); set by UploadAlphaFromBuffer, read by RecordAlphaDecode / the bidi gmc rebind
        fOffsetBuffer:array[0..3] of TpvVulkanBuffer;
        fStepBuffer:array[0..3] of TpvVulkanBuffer;
        fRANSTableBuffer:array[0..3] of TpvVulkanBuffer; // DCT path: per-plane host-visible GPU rANS frequency table (RANSGPUTableUInt32Count uint32)
@@ -449,9 +458,17 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // Optional alpha (color_flags bit2): one intra, full-res 8-bit plane appended per frame. The color is decoded
        // as usual into coeff[0..2]; ParseAlphaSection + UploadAlpha* stage the appended section, RecordAlphaDecode GPU-
        // decodes it into coeff[3], and the color pass swaps to fPipeColorAlpha (which writes coeff[3] into output A).
-       function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section. aAlphaTableLength>0 = DCT-mode rANS table
-       procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
+       // aAlphaHasOwnMV (FrameEntry.AlphaMVMode=1): the alpha section carries an own-MV blob (a u32 length + payload) right
+       // after alpha_qp; when set, ParseAlphaSection reads it and returns its location in aMVBlobOffset/aMVBlobLength.
+       function ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;const aAlphaHasOwnMV:boolean;out aMVBlobOffset:TpvSizeUInt;out aMVBlobLength:TpvUInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean; // False = corrupt / truncated alpha section. aAlphaTableLength>0 = DCT-mode rANS table
+       procedure UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aAlphaMVMode:TpvUInt8;const aDualMV:boolean);
        procedure UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
+       // own-alpha-MV: decode ONE full-grid motion field from the alpha section's MV blob (coded like luma, mv_codec-aware,
+       // never quad-tree) into fMVScratch and upload it to aTargetBuffer. Used by the I/P and MCTF own-MV paths.
+       procedure DecodeAlphaOwnMVField(const aFrameBuffer:PpvUInt8Array;const aMVBlobOffset:TpvSizeUInt;const aMVBlobLength:TpvUInt32;const aTargetBuffer:TpvVulkanBuffer);
+       // own-alpha-MV (B): decode the DUAL L0(+L1) field from one mv blob stream (mv0 then, when aHasRef1, mv1 in the same
+       // range/Exp-Golomb stream — no per-block mode, alpha shares the luma mode) and upload to the two target buffers.
+       procedure DecodeAlphaOwnMVDual(const aFrameBuffer:PpvUInt8Array;const aMVBlobOffset:TpvSizeUInt;const aMVBlobLength:TpvUInt32;const aHasRef1:boolean;const aTargetL0,aTargetL1:TpvVulkanBuffer);
        procedure RecordAlphaDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted:TpvInt32); // aIsPredicted: -1 = intra alpha (B / 3D-DWT); 0/1 = colordiff I/P inter alpha (mc+motion_add, shared luma MVs)
        // DCT quad-tree: expand one plane's partition codes into its GPU leaf list ({x,y,size} triples) and return the leaf count.
        procedure BuildQuadTreeLeafList(const aPlane:TpvInt32;const aPartitionCodes:PpvUInt8Array;const aLeafListBuffer:TpvVulkanBuffer;out aLeafCount:TpvInt32);
@@ -1154,6 +1171,10 @@ begin
   SetLength(fAlphaRingData,fAlphaRingSize);
   SetLength(fAlphaRingOffset,fAlphaRingSize);
   SetLength(fAlphaRingStep,fAlphaRingSize);
+  SetLength(fAlphaRingMVBuffer,fAlphaRingSize); // own-alpha-MV L0: I/P colordiff mc + B bidi gmc0
+  if fHasBFrames then begin
+   SetLength(fAlphaRingMV1Buffer,fAlphaRingSize); // own-alpha-MV L1: B bidi gmc1
+  end;
   if fSpatialDCT then begin
    SetLength(fAlphaRingTable,fAlphaRingSize); // DCT-mode alpha: per-slot rANS frequency table
   end;
@@ -1161,6 +1182,10 @@ begin
    fAlphaRingData[SlotIndex]:=CreateStorageBuffer(DataCapacity,false,'FWV.alphadata');
    fAlphaRingOffset[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(LumaBlockCount)*4,false,'FWV.alphaoffset');
    fAlphaRingStep[SlotIndex]:=CreateStorageBuffer(PlaneBytes,false,'FWV.alphastep');
+   fAlphaRingMVBuffer[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.alphamv');
+   if fHasBFrames then begin
+    fAlphaRingMV1Buffer[SlotIndex]:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.alphamv1');
+   end;
    if fSpatialDCT then begin
     fAlphaRingTable[SlotIndex]:=CreateStorageBuffer(TpvFlexibleVideo.RANSGPUTableUInt32Count*4,false,'FVD.alphatable');
    end;
@@ -1233,10 +1258,13 @@ begin
     fMCTFPred[Plane]:=CreateStorageBuffer(PlaneBytes,true,'FWV.mctfpred');
     fMCTFScratch[Plane]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.mctfscratch');
    end;
-   if fHasAlpha then begin // alpha plane 3 rides the MC-Haar (full-res, shared luma MVs)
+   if fHasAlpha then begin // alpha plane 3 rides the MC-Haar (shared luma MVs by default; OWN per-frame MVs when AlphaMVMode=1)
     PlaneBytes:=TVkDeviceSize(fWidth)*TVkDeviceSize(fHeight)*4;
     fMCTFPred[3]:=CreateStorageBuffer(PlaneBytes,true,'FWV.mctfpred.alpha');
     fMCTFScratch[3]:=CreateStorageBuffer(TVkDeviceSize(fGOPCapacity)*PlaneBytes,true,'FWV.mctfscratch.alpha');
+    // own-alpha-MV: the per-frame alpha MV slab (own or luma-copied) + the per-pair upload buffer the plane-3 MC binds
+    SetLength(fAlphaMCTFMVScratch,fGOPCapacity*MotionBlocksX(fWidth)*MotionBlocksY(fHeight)*2);
+    fAlphaMCTFMVBuffer:=CreateStorageBuffer(TVkDeviceSize(MotionBlocksX(fWidth))*TVkDeviceSize(MotionBlocksY(fHeight))*2*4,false,'FWV.alphamctfmv');
    end;
    SetLength(fMCTFMVScratch,fGOPCapacity*MotionBlocksX(fWidth)*MotionBlocksY(fHeight)*2);
   end;
@@ -1318,9 +1346,9 @@ begin
 
  MaxSets:=64;
  MaxBuffers:=256;
- if fHasAlpha then begin // alpha: per-slot unpack+dequant ring sets (fAlphaRingSize*2) + shared sets (coeff<->scratch/row + color_alpha + inter-alpha mc/motion_add)
-  MaxSets:=MaxSets+(fAlphaRingSize*2)+8;
-  MaxBuffers:=MaxBuffers+(fAlphaRingSize*5)+18;
+ if fHasAlpha then begin // alpha: per-slot unpack+dequant+own-mv-mc ring sets (fAlphaRingSize*3) + shared sets (coeff<->scratch/row + color_alpha + inter-alpha mc/motion_add)
+  MaxSets:=MaxSets+(fAlphaRingSize*3)+8;
+  MaxBuffers:=MaxBuffers+(fAlphaRingSize*8)+18; // +3 descriptors per slot for the own-alpha-MV mc set (DSL3)
   if fSpatialDCT then begin // DCT-mode alpha: an extra per-slot rANS unpack set {data, offset, coeff, table}
    MaxSets:=MaxSets+fAlphaRingSize;
    MaxBuffers:=MaxBuffers+(fAlphaRingSize*4);
@@ -1494,6 +1522,7 @@ begin
   // shared coeff[3] / scratch / image, so one shared set each suffices.
   SetLength(fAlphaRingSetUnpack,fAlphaRingSize);
   SetLength(fAlphaRingSetDequant,fAlphaRingSize);
+  SetLength(fAlphaRingSetMCPlayOwn,fAlphaRingSize); // own-alpha-MV I/P mc: one set per slot, binding the slot's own MV field
   if fSpatialDCT then begin
    SetLength(fAlphaRingSetRANSUnpack,fAlphaRingSize);
   end;
@@ -1517,6 +1546,14 @@ begin
     BindStorageBuffer(fAlphaRingSetRANSUnpack[SlotIndex],3,fAlphaRingTable[SlotIndex]);
     fAlphaRingSetRANSUnpack[SlotIndex].Flush;
    end;
+
+   // own-alpha-MV I/P mc set: identical to fSetMCPlay[3] but its MV source is THIS slot's own alpha MV field instead of
+   // the shared luma MV buffer. Selected at dispatch in RecordAlphaDecode when fAlphaCurrentMVMode=1.
+   fAlphaRingSetMCPlayOwn[SlotIndex]:=AllocateSet(fDSL3);
+   BindStorageBuffer(fAlphaRingSetMCPlayOwn[SlotIndex],0,fPreviousBuffer[3]);
+   BindStorageBuffer(fAlphaRingSetMCPlayOwn[SlotIndex],1,fAlphaRingMVBuffer[SlotIndex]);
+   BindStorageBuffer(fAlphaRingSetMCPlayOwn[SlotIndex],2,fScratchBuffer);
+   fAlphaRingSetMCPlayOwn[SlotIndex].Flush;
   end;
 
   fSetCoeffToScratch[3]:=AllocateSet(fDSL2);
@@ -2259,7 +2296,7 @@ begin
  // optional alpha (I/P colordiff/coefdiff path): the appended alpha section, already in fFrameScratch -> stage it for
  // RecordAlphaDecode (no re-read; the color and alpha are the same frame).
  if fHasAlpha then begin
-  UploadAlphaFromBuffer(PpvUInt8Array(@fFrameScratch[0]),RawLength,AlphaSectionOffset);
+  UploadAlphaFromBuffer(PpvUInt8Array(@fFrameScratch[0]),RawLength,AlphaSectionOffset,fFrameEntries[aFrameIndex].AlphaMVMode,false); // I/P colordiff: single-ref alpha MVs
  end;
 
  // colordiff (B) P-frame: decode the motion-vector field and upload it for mc.comp. mv_length=0 means the
@@ -2598,7 +2635,7 @@ begin
 
 end;
 
-function TpvFlexibleVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean;
+function TpvFlexibleVideoDecoder.ParseAlphaSection(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aBlockCount:TpvInt32;const aAlphaHasOwnMV:boolean;out aMVBlobOffset:TpvSizeUInt;out aMVBlobLength:TpvUInt32;out aAlphaQP:TpvInt32;out aAlphaTableOffset:TpvSizeUInt;out aAlphaTableLength:TpvUInt32;out aAlphaDataOffset:TpvSizeUInt;out aAlphaDataLength:TpvUInt32):boolean;
 var Cursor:TpvSizeUInt;
     SizeBlobLength,Running:TpvUInt32;
     SizeReader:TBitReader;
@@ -2606,22 +2643,40 @@ var Cursor:TpvSizeUInt;
 begin
 
  result:=false;
+ aMVBlobOffset:=0;
+ aMVBlobLength:=0;
  aAlphaQP:=0;
  aAlphaTableOffset:=0;
  aAlphaTableLength:=0;
  aAlphaDataOffset:=0;
  aAlphaDataLength:=0;
 
- // The appended section (mirrors C parse_alpha_section): [u8 alpha_qp][u32 size_blob_length][size blob: unsigned
- // Exp-Golomb per-block sizes][u32 alpha_table_length][rANS table blob (DCT mode; 0 = wavelet)][u32 alpha_data_length]
- // [alpha block data]. The alpha is full-res, so block_count is the luma block count. The per-block sizes prefix-sum
- // into the alpha offset table. Returns False (without dereferencing past the frame) if any field reads beyond aFrameLength.
- if (aSectionOffset+5)>aFrameLength then begin // alpha_qp (1) + size_blob_length (4)
+ // The appended section (mirrors C parse_alpha_section): [u8 alpha_qp][u32 mv_blob_length + own MV blob (only when
+ // AlphaMVMode=1)][u32 size_blob_length][size blob: unsigned Exp-Golomb per-block sizes][u32 alpha_table_length][rANS
+ // table blob (DCT mode; 0 = wavelet)][u32 alpha_data_length][alpha block data]. The alpha is full-res, so block_count is
+ // the luma block count. The per-block sizes prefix-sum into the alpha offset table. Returns False (without dereferencing
+ // past the frame) if any field reads beyond aFrameLength.
+ if (aSectionOffset+5)>aFrameLength then begin // alpha_qp (1) + the next u32 (own mv_blob_length OR size_blob_length)
   exit;
  end;
  Cursor:=aSectionOffset;
  aAlphaQP:=aFrameBuffer^[Cursor];
  inc(Cursor,1);
+
+ // own-alpha-MV blob: the matte-edges-move-independently worst case. The blob (full-grid motion vectors, coded exactly
+ // like the luma field) sits between alpha_qp and the size blob, present iff this frame's AlphaMVMode=1.
+ if aAlphaHasOwnMV then begin
+  aMVBlobLength:=ReadU32LE(aFrameBuffer,Cursor);
+  inc(Cursor,4);
+  if (Cursor+TpvSizeUInt(aMVBlobLength))>aFrameLength then begin
+   exit;
+  end;
+  aMVBlobOffset:=Cursor;
+  inc(Cursor,aMVBlobLength);
+  if (Cursor+4)>aFrameLength then begin // the size_blob_length u32 must still fit
+   exit;
+  end;
+ end;
 
  SizeBlobLength:=ReadU32LE(aFrameBuffer,Cursor);
  inc(Cursor,4);
@@ -2665,10 +2720,10 @@ begin
 
 end;
 
-procedure TpvFlexibleVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt);
+procedure TpvFlexibleVideoDecoder.UploadAlphaFromBuffer(const aFrameBuffer:PpvUInt8Array;const aFrameLength:TpvSizeUInt;const aSectionOffset:TpvSizeUInt;const aAlphaMVMode:TpvUInt8;const aDualMV:boolean);
 var BlockCount,StepSlot:TpvInt32;
-    AlphaTableOffset,AlphaDataOffset:TpvSizeUInt;
-    AlphaTableLength,AlphaDataLength:TpvUInt32;
+    AlphaTableOffset,AlphaDataOffset,MVBlobOffset:TpvSizeUInt;
+    AlphaTableLength,AlphaDataLength,MVBlobLength:TpvUInt32;
     DataPointer:PpvUInt8Array;
 begin
 
@@ -2681,13 +2736,26 @@ begin
   fAlphaRingCursor:=0;
  end;
 
+ fAlphaCurrentMVMode:=aAlphaMVMode; // RecordAlphaDecode picks the own-MV mc set when this is 1
  BlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight); // alpha is full-res -> the luma block count
- if not ParseAlphaSection(aFrameBuffer,aFrameLength,aSectionOffset,BlockCount,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
+ if not ParseAlphaSection(aFrameBuffer,aFrameLength,aSectionOffset,BlockCount,aAlphaMVMode<>0,MVBlobOffset,MVBlobLength,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
   raise EpvFlexibleVideoDecoder.Create('Corrupt alpha section');
  end;
  fAlphaLossless:=fAlphaQP=0;
  fAlphaIsRANS:=AlphaTableLength>0; // DCT-mode alpha = rANS entropy + inverse 8x8 DCT
  fAlphaCurrentDataLength:=AlphaDataLength; // the rANS unpack push (RecordAlphaDecode) needs the block-data length
+
+ // own-alpha-MV: decode this frame's own motion field into the slot's alpha MV buffer(s). The single-ref (I/P colordiff
+ // and B P-anchor) case fills L0 only; the bidi case (aDualMV) fills L0 + L1 from the one blob stream. The I/P mc reads
+ // L0 via fAlphaRingSetMCPlayOwn; the B bidi gmc0/gmc1 rebind reads L0/L1. Shared frames (mode 0) leave the buffers
+ // untouched — the mc/gmc then bind the shared luma MV buffers as before.
+ if aAlphaMVMode<>0 then begin
+  if aDualMV then begin
+   DecodeAlphaOwnMVDual(aFrameBuffer,MVBlobOffset,MVBlobLength,true,fAlphaRingMVBuffer[fAlphaCurrentSlot],fAlphaRingMV1Buffer[fAlphaCurrentSlot]);
+  end else begin
+   DecodeAlphaOwnMVField(aFrameBuffer,MVBlobOffset,MVBlobLength,fAlphaRingMVBuffer[fAlphaCurrentSlot]);
+  end;
+ end;
 
  // alpha block offsets -> this slot's offset buffer
  DataPointer:=PpvUInt8Array(fAlphaRingOffset[fAlphaCurrentSlot].Memory.MapMemory);
@@ -2748,6 +2816,99 @@ begin
 
 end;
 
+procedure TpvFlexibleVideoDecoder.DecodeAlphaOwnMVField(const aFrameBuffer:PpvUInt8Array;const aMVBlobOffset:TpvSizeUInt;const aMVBlobLength:TpvUInt32;const aTargetBuffer:TpvVulkanBuffer);
+var MotionBlockCountX,MotionBlockCountY,MVComponentCount:TpvInt32;
+    MVRangeDecoder:TMVRangeDecoder;
+    MVReader:TBitReader;
+    DataPointer:PpvUInt8Array;
+begin
+
+ // The own-alpha-MV field is FULL-GRID (the encoder always emits the alpha MVs non-quad-tree, even when the luma field
+ // uses quad-tree partitioning) and coded with the stream's mv_codec. Decode into fMVScratch (zero-cleared first so an
+ // empty blob = the identity / zero-MV field), then upload to the plane's MV buffer for mc.comp. Alpha is full-res, so
+ // the luma motion-block grid applies directly (no scaling).
+ MotionBlockCountX:=MotionBlocksX(fWidth);
+ MotionBlockCountY:=MotionBlocksY(fHeight);
+ MVComponentCount:=(MotionBlockCountX*MotionBlockCountY)*2;
+ if TpvSizeUInt(Length(fMVScratch))<TpvSizeUInt(MVComponentCount) then begin
+  SetLength(fMVScratch,MVComponentCount);
+ end;
+ FillChar(fMVScratch[0],TpvSizeUInt(MVComponentCount)*4,#0);
+
+ if aMVBlobLength>0 then begin
+  if fMVCodec=1 then begin // range-coded (mv_codec=1)
+   MVRangeDecoder.Init(PpvUInt8Array(@aFrameBuffer^[aMVBlobOffset]),aMVBlobLength);
+   DecodeMotionVectorsRange(MVRangeDecoder,PpvInt32Array(@fMVScratch[0]),MotionBlockCountX,MotionBlockCountY);
+  end else begin // signed Exp-Golomb (mv_codec=0)
+   MVReader.Init(PpvUInt8Array(@aFrameBuffer^[aMVBlobOffset]),aMVBlobLength);
+   DecodeMotionVectors(MVReader,PpvInt32Array(@fMVScratch[0]),MotionBlockCountX,MotionBlockCountY);
+  end;
+ end;
+
+ DataPointer:=PpvUInt8Array(aTargetBuffer.Memory.MapMemory);
+ try
+  Move(fMVScratch[0],DataPointer^[0],TpvSizeUInt(MVComponentCount)*4);
+ finally
+  aTargetBuffer.Memory.UnmapMemory;
+ end;
+
+end;
+
+procedure TpvFlexibleVideoDecoder.DecodeAlphaOwnMVDual(const aFrameBuffer:PpvUInt8Array;const aMVBlobOffset:TpvSizeUInt;const aMVBlobLength:TpvUInt32;const aHasRef1:boolean;const aTargetL0,aTargetL1:TpvVulkanBuffer);
+var MotionBlockCountX,MotionBlockCountY,MVComponentCount:TpvInt32;
+    MVRangeDecoder:TMVRangeDecoder;
+    MVReader:TBitReader;
+    DataPointer:PpvUInt8Array;
+begin
+
+ // own-alpha-MV B: mv0 then (when aHasRef1) mv1 are coded in ONE blob stream (no per-block mode — the alpha shares the
+ // luma blend mode), exactly like encode_frame_bidi's alpha blob. Decode both from the SAME decoder/reader (a fresh Init
+ // for L1 would re-read L0), full-grid like luma, then upload L0/L1 to the two alpha gmc MV buffers.
+ MotionBlockCountX:=MotionBlocksX(fWidth);
+ MotionBlockCountY:=MotionBlocksY(fHeight);
+ MVComponentCount:=(MotionBlockCountX*MotionBlockCountY)*2;
+ if TpvSizeUInt(Length(fMVScratch))<TpvSizeUInt(MVComponentCount) then begin
+  SetLength(fMVScratch,MVComponentCount);
+ end;
+ if TpvSizeUInt(Length(fMV1Scratch))<TpvSizeUInt(MVComponentCount) then begin
+  SetLength(fMV1Scratch,MVComponentCount);
+ end;
+ FillChar(fMVScratch[0],TpvSizeUInt(MVComponentCount)*4,#0);
+ FillChar(fMV1Scratch[0],TpvSizeUInt(MVComponentCount)*4,#0);
+
+ if aMVBlobLength>0 then begin
+  if fMVCodec=1 then begin // range-coded: one stream covering mv0 -> mv1
+   MVRangeDecoder.Init(PpvUInt8Array(@aFrameBuffer^[aMVBlobOffset]),aMVBlobLength);
+   DecodeMotionVectorsRange(MVRangeDecoder,PpvInt32Array(@fMVScratch[0]),MotionBlockCountX,MotionBlockCountY);
+   if aHasRef1 then begin
+    DecodeMotionVectorsRange(MVRangeDecoder,PpvInt32Array(@fMV1Scratch[0]),MotionBlockCountX,MotionBlockCountY);
+   end;
+  end else begin // signed Exp-Golomb: mv0 -> mv1 in one continuous bitstream
+   MVReader.Init(PpvUInt8Array(@aFrameBuffer^[aMVBlobOffset]),aMVBlobLength);
+   DecodeMotionVectors(MVReader,PpvInt32Array(@fMVScratch[0]),MotionBlockCountX,MotionBlockCountY);
+   if aHasRef1 then begin
+    DecodeMotionVectors(MVReader,PpvInt32Array(@fMV1Scratch[0]),MotionBlockCountX,MotionBlockCountY);
+   end;
+  end;
+ end;
+
+ DataPointer:=PpvUInt8Array(aTargetL0.Memory.MapMemory);
+ try
+  Move(fMVScratch[0],DataPointer^[0],TpvSizeUInt(MVComponentCount)*4);
+ finally
+  aTargetL0.Memory.UnmapMemory;
+ end;
+ if aHasRef1 then begin
+  DataPointer:=PpvUInt8Array(aTargetL1.Memory.MapMemory);
+  try
+   Move(fMV1Scratch[0],DataPointer^[0],TpvSizeUInt(MVComponentCount)*4);
+  finally
+   aTargetL1.Memory.UnmapMemory;
+  end;
+ end;
+
+end;
+
 procedure TpvFlexibleVideoDecoder.UploadAlphaForDisplayedFrame(const aCodingIndex:TpvInt32);
 var Entry:PFrameEntry;
     CompressedLength:TpvSizeUInt;
@@ -2802,7 +2963,10 @@ begin
   end;
  end;
 
- UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,AlphaSectionOffset);
+ // B path: pass the frame's alpha mv mode so ParseAlphaSection reads its own-MV blob, and aDualMV so the bidi B-frame's
+ // dual L0/L1 alpha field is decoded into the slot's two alpha MV buffers (the gmc0/gmc1 rebind binds them when own). A
+ // single-ref P-anchor (Ref1<0) decodes L0 only.
+ UploadAlphaFromBuffer(PpvUInt8Array(@fAlphaFrameScratch[0]),RawLength,AlphaSectionOffset,Entry^.AlphaMVMode,Entry^.Ref1>=0);
 
 end;
 
@@ -2940,16 +3104,21 @@ begin
   RecordComputeBarrier(aCommandBuffer);
  end;
 
- // colordiff (I/P) inter alpha: motion-compensate the previous reconstructed alpha (shared luma MVs) and add it to the
- // residual just produced in coeff[3], saving the reconstruction as the next alpha reference — mirror of the color planes'
- // closed loop. aIsPredicted<0 (B / 3D-DWT) keeps the alpha intra (no mc, no motion_add). The I-frame (aIsPredicted=0)
- // runs motion_add only, seeding previous[3] from the intra alpha. Alpha is full-res, so the luma MV grid applies directly.
+ // colordiff (I/P) inter alpha: motion-compensate the previous reconstructed alpha and add it to the residual just
+ // produced in coeff[3], saving the reconstruction as the next alpha reference — mirror of the color planes' closed loop.
+ // aIsPredicted<0 (B / 3D-DWT) keeps the alpha intra (no mc, no motion_add). The I-frame (aIsPredicted=0) runs motion_add
+ // only, seeding previous[3] from the intra alpha. Alpha is full-res, so the luma MV grid applies directly. The mc set is
+ // the own-alpha-MV set (this slot's own MV field) when AlphaMVMode=1, else the shared-luma-MV set.
  if aIsPredicted>=0 then begin
   if aIsPredicted>0 then begin
    MCPush[0]:=PlaneW;
    MCPush[1]:=PlaneH;
    MCPush[2]:=MotionBlocksX(PlaneW);
-   RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetMCPlay(3),@MCPush[0],12,PlanePixelWorkgroups,1,1);
+   if fAlphaCurrentMVMode<>0 then begin
+    RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,fAlphaRingSetMCPlayOwn[fAlphaCurrentSlot],@MCPush[0],12,PlanePixelWorkgroups,1,1);
+   end else begin
+    RecordDispatch(aCommandBuffer,fPipeMC,fPLUnpack,ActiveSetMCPlay(3),@MCPush[0],12,PlanePixelWorkgroups,1,1);
+   end;
    RecordComputeBarrier(aCommandBuffer);
   end;
   AddPush[0]:=PlanePixels;
@@ -3953,15 +4122,25 @@ begin
    ActiveSetDeblock(Plane).Flush;
   end;
  end;
- if fHasAlpha then begin // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots (shares the luma ActiveMVBuffer/MV1/Mode; alpha NOT deblocked)
+ if fHasAlpha then begin // inter B alpha (plane 3): rebind the bidi sets to the alpha DPB slots. The gmc0/gmc1 MV source is
+                         // the alpha's OWN MV field (this slot's L0/L1, decoded in UploadAlphaForDisplayedFrame) when AlphaMVMode=1,
+                         // else the shared luma ActiveMVBuffer/MV1. The blend mode is always the shared luma mode; alpha NOT deblocked.
   if aIsPredicted<>0 then begin
    BindStorageBuffer(ActiveSetGMC0(3),0,fDPBBuffer[Ref0Slot][3]);
-   BindStorageBuffer(ActiveSetGMC0(3),1,ActiveMVBuffer);
+   if Entry^.AlphaMVMode<>0 then begin
+    BindStorageBuffer(ActiveSetGMC0(3),1,fAlphaRingMVBuffer[fAlphaCurrentSlot]);
+   end else begin
+    BindStorageBuffer(ActiveSetGMC0(3),1,ActiveMVBuffer);
+   end;
    BindStorageBuffer(ActiveSetGMC0(3),2,fGMCBuffer[0][3]);
    ActiveSetGMC0(3).Flush;
    if aRef1Slot>=0 then begin
     BindStorageBuffer(ActiveSetGMC1(3),0,fDPBBuffer[aRef1Slot][3]);
-    BindStorageBuffer(ActiveSetGMC1(3),1,ActiveMV1Buffer);
+    if Entry^.AlphaMVMode<>0 then begin
+     BindStorageBuffer(ActiveSetGMC1(3),1,fAlphaRingMV1Buffer[fAlphaCurrentSlot]);
+    end else begin
+     BindStorageBuffer(ActiveSetGMC1(3),1,ActiveMV1Buffer);
+    end;
     BindStorageBuffer(ActiveSetGMC1(3),2,fGMCBuffer[1][3]);
     ActiveSetGMC1(3).Flush;
    end;
@@ -4183,8 +4362,8 @@ var Plane,PlanePixels,TemporalLevel,EffectiveQuality,StepSlot:TpvInt32;
     MVReader:TBitReader;
     MVRangeDecoder:TMVRangeDecoder;
     AlphaBlockCount,AlphaStepSlot:TpvInt32;
-    AlphaSectionOffset,AlphaTableOffset,AlphaDataOffset:TpvSizeUInt;
-    AlphaTableLength,AlphaDataLength:TpvUInt32;
+    AlphaSectionOffset,AlphaTableOffset,AlphaDataOffset,AlphaMVBlobOffset:TpvSizeUInt;
+    AlphaTableLength,AlphaDataLength,AlphaMVBlobLength:TpvUInt32;
 begin
 
  Entry:=@fFrameEntries[aCodingIndex];
@@ -4265,7 +4444,9 @@ begin
  if fHasAlpha then begin
   AlphaBlockCount:=BlockCountX(fWidth)*BlockCountY(fHeight);
   AlphaSectionOffset:=BlockDataOffset+DataLength;
-  if not ParseAlphaSection(PpvUInt8Array(@fFrameScratch[0]),RawLength,AlphaSectionOffset,AlphaBlockCount,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
+  // pass this subband's alpha mv mode so ParseAlphaSection skips its own-MV blob (the MCTF own-MV temporal field is decoded
+  // + bound by the MC-Haar inverse downstream; for shared / open-loop subbands the blob is absent and the parse is unchanged).
+  if not ParseAlphaSection(PpvUInt8Array(@fFrameScratch[0]),RawLength,AlphaSectionOffset,AlphaBlockCount,Entry^.AlphaMVMode<>0,AlphaMVBlobOffset,AlphaMVBlobLength,fAlphaQP,AlphaTableOffset,AlphaTableLength,AlphaDataOffset,AlphaDataLength) then begin
    raise EpvFlexibleVideoDecoder.Create('Corrupt alpha section (3D-DWT subband)');
   end;
   fAlphaLossless3D:=fAlphaQP=0;
@@ -4308,6 +4489,27 @@ begin
   end else begin
    MVReader.Init(PpvUInt8Array(@fFrameScratch[MVDataOffset]),MVLength);
    DecodeMotionVectors(MVReader,PpvInt32Array(@fMCTFMVScratch[aSlot*LumaBlocks*2]),MotionBlockCountX,MotionBlockCountY);
+  end;
+ end;
+
+ // own-alpha-MV MCTF: fill this subband slot's alpha temporal MV field. When this high-pass frame chose OWN (AlphaMVMode=1),
+ // decode the alpha section's own MV blob (independent of the luma MVs — the alpha matte may move while the colour is static,
+ // so the luma MVs can be zero/absent here); otherwise (shared high-pass frame) copy the luma MVs so the alpha MC-Haar rides
+ // them, keeping fully-shared GOPs bit-identical. Low-pass frames are passthrough (no mc) and need no entry. Mirrors fvdplay.
+ if fMCTF and fHasAlpha then begin
+  MotionBlockCountX:=MotionBlocksX(fWidth);
+  MotionBlockCountY:=MotionBlocksY(fHeight);
+  LumaBlocks:=MotionBlockCountX*MotionBlockCountY;
+  if (Entry^.AlphaMVMode<>0) and (AlphaMVBlobLength>0) then begin
+   if fMVCodec=1 then begin
+    MVRangeDecoder.Init(PpvUInt8Array(@fFrameScratch[AlphaMVBlobOffset]),AlphaMVBlobLength);
+    DecodeMotionVectorsRange(MVRangeDecoder,PpvInt32Array(@fAlphaMCTFMVScratch[aSlot*LumaBlocks*2]),MotionBlockCountX,MotionBlockCountY);
+   end else begin
+    MVReader.Init(PpvUInt8Array(@fFrameScratch[AlphaMVBlobOffset]),AlphaMVBlobLength);
+    DecodeMotionVectors(MVReader,PpvInt32Array(@fAlphaMCTFMVScratch[aSlot*LumaBlocks*2]),MotionBlockCountX,MotionBlockCountY);
+   end;
+  end else if MVLength>0 then begin
+   Move(fMCTFMVScratch[aSlot*LumaBlocks*2],fAlphaMCTFMVScratch[aSlot*LumaBlocks*2],TpvSizeUInt(LumaBlocks)*2*4);
   end;
  end;
 
@@ -4687,15 +4889,28 @@ begin
     finally
      fMVBuffer.Memory.UnmapMemory;
     end;
+    if fHasAlpha then begin // this high-pass frame's alpha MVs (own, or a copy of the luma MVs for shared frames) for the plane-3 MC
+     DataPointer:=PpvUInt8Array(fAlphaMCTFMVBuffer.Memory.MapMemory);
+     try
+      Move(fAlphaMCTFMVScratch[(LowCount+k)*LumaBlocks*2],DataPointer^[0],TpvSizeUInt(LumaBlocks)*2*4);
+     finally
+      fAlphaMCTFMVBuffer.Memory.UnmapMemory;
+     end;
+    end;
     for Plane:=0 to PlaneCount-1 do begin
      PlanePixels:=PlanePP[Plane];
      LowOff:=TVkDeviceSize(k)*PlanePixels*4;
      HighOff:=TVkDeviceSize(LowCount+k)*PlanePixels*4;
      EvenOff:=TVkDeviceSize(Even)*PlanePixels*4;
      OddOff:=TVkDeviceSize(Odd)*PlanePixels*4;
-     // mc: warp gop@low(k) by this pair's MVs -> mctf_pred
+     // mc: warp gop@low(k) by this pair's MVs -> mctf_pred. Plane 3 (alpha) uses its own per-frame MV field (own-decoded or
+     // luma-copied in Upload3DFrame); the colour planes use the shared luma MVs.
      BindStorageBufferOffset(fSetMCTFMC[Plane],0,fGopBuffer[aBuf][Plane],LowOff,TVkDeviceSize(PlanePixels)*4);
-     BindStorageBuffer(fSetMCTFMC[Plane],1,fMVBuffer);
+     if Plane=3 then begin
+      BindStorageBuffer(fSetMCTFMC[Plane],1,fAlphaMCTFMVBuffer);
+     end else begin
+      BindStorageBuffer(fSetMCTFMC[Plane],1,fMVBuffer);
+     end;
      BindStorageBuffer(fSetMCTFMC[Plane],2,fMCTFPred[Plane]);
      fSetMCTFMC[Plane].Flush;
      MCPush[0]:=PlaneW[Plane];
@@ -5280,6 +5495,9 @@ begin
   if SlotIndex<length(fAlphaRingSetRANSUnpack) then begin // DCT-mode alpha rANS set (allocated only when fSpatialDCT)
    FreeAndNil(fAlphaRingSetRANSUnpack[SlotIndex]);
   end;
+  if SlotIndex<length(fAlphaRingSetMCPlayOwn) then begin // own-alpha-MV I/P mc set
+   FreeAndNil(fAlphaRingSetMCPlayOwn[SlotIndex]);
+  end;
  end;
  FreeAndNil(fSetCoeffToScratch[3]);
  FreeAndNil(fSetScratchToCoeff[3]);
@@ -5379,6 +5597,7 @@ begin
   FreeAndNil(fGMCBuffer[1][Plane]);
  end;
  FreeAndNil(fMVBuffer);
+ FreeAndNil(fAlphaMCTFMVBuffer); // own-alpha-MV MCTF per-pair MV upload buffer (nil unless MCTF+alpha)
  FreeAndNil(fScratchBuffer);
  FreeAndNil(fCDEFTempBuffer);
  for Plane:=0 to fNumPlanes-1 do begin
@@ -5396,6 +5615,12 @@ begin
   FreeAndNil(fAlphaRingData[SlotIndex]);
   FreeAndNil(fAlphaRingOffset[SlotIndex]);
   FreeAndNil(fAlphaRingStep[SlotIndex]);
+  if SlotIndex<length(fAlphaRingMVBuffer) then begin // own-alpha-MV L0 field
+   FreeAndNil(fAlphaRingMVBuffer[SlotIndex]);
+  end;
+  if SlotIndex<length(fAlphaRingMV1Buffer) then begin // own-alpha-MV L1 field (B)
+   FreeAndNil(fAlphaRingMV1Buffer[SlotIndex]);
+  end;
   if SlotIndex<length(fAlphaRingTable) then begin // DCT-mode alpha rANS table (allocated only when fSpatialDCT)
    FreeAndNil(fAlphaRingTable[SlotIndex]);
   end;
