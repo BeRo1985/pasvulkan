@@ -457,6 +457,13 @@ vec3 acesHDR(const in vec3 color, const in float peak){
   return toned * hdrHighlightBoost(evOvershoot, peak);
 }
 
+// Generic faithful HDR for operators without a dedicated HDR parameter: keep the exact SDR look for the
+// diffuse range, lift highlights above white towards peak by the scene-luminance overshoot.
+vec3 sdrLookHDRExtend(const in vec3 sceneColor, const in float peak){
+  float evOvershoot = max(0.0, log2(max(lumaRec709(max(vec3(0.0), sceneColor)), 1e-6)));
+  return sdrToneMap(sceneColor) * hdrHighlightBoost(evOvershoot, peak);
+}
+
 vec3 doToneMapping(vec3 color){
   if(pushConstants.hdrMode == 0){
     return sdrToneMap(color); // SDR path: unchanged behaviour
@@ -506,8 +513,18 @@ vec3 doToneMapping(vec3 color){
         result = agxHDRExtend(sdrToneMap(sceneColor), agxEVOvershoot(sceneColor, AgXRec2020InsetMatrixFromLinearSRGB), peak);
         break;
       }
+      case MODE_HEJL:
+      case MODE_HEJL2015:
+      case MODE_UNCHARTED2:
+      case MODE_LOTTES:
+      case MODE_AMD:
+      case MODE_KHRONOS_PBR_NEUTRAL:{
+        // Operator's exact SDR look for the diffuse range, scene-overshoot highlight lift to peak.
+        result = sdrLookHDRExtend(sceneColor, peak);
+        break;
+      }
       default:{
-        // Operators without a dedicated faithful HDR path use BT.2390 display mapping.
+        // No-tonemapping mode (and any unhandled case): BT.2390 display mapping.
         result = hdrViaBT2390(sceneColor, peak);
         break;
       }
