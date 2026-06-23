@@ -2725,8 +2725,12 @@ int main(int argc, char **argv) {
     memcpy(step_map[plane], step, (size_t)(plane_w * plane_h) * 4);
   }
   if (g_has_alpha) {   // alpha plane 3: full-res quant map with its own QP (g_alpha_qp, or the color QP if < 0).
-    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // NOT AQ-modulated: alpha keeps plain alpha_qp steps (step_map[3] is
-    build_spatial_quant_steps(step, width, height, levels, alpha_qp);   // built once, never rebuilt per-frame; DCT matrix or wavelet steps per the spatial mode
+    int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // base alpha step (rebuilt per-frame only under --alpha-aq)
+    if (mode_3ddwt) {   // 3D-DWT alpha is ALWAYS wavelet-spatial (the GPU forward_row 5/3 / 9/7 + bit-plane), regardless of g_spatial_dct — match the decoders' wavelet dequant (build_spatial_quant_steps would wrongly give the DCT matrix when g_spatial_dct is set, over-quantizing the wavelet coeffs to ~0)
+      build_quantization_steps(step, width, height, levels, alpha_qp);
+    } else {   // I/P / B alpha follows the color spatial mode (DCT or wavelet), matching its own decode
+      build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+    }
     memcpy(step_map[3], step, (size_t)(width * height) * 4);
   }
   int current_quality = quality;   // per-GOP working Q (varies under --vbr); written into each FrameEntry
@@ -3468,7 +3472,7 @@ int main(int argc, char **argv) {
           uint8_t *alpha_map = all_alpha_qpmaps + ((size_t)coding_index * aq_map_bytes);
           compute_tile_aq_map(aq_alpha, width, height, g_alpha_aq_strength, alpha_map);
           int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;   // 3D-DWT alpha base step is GOP-constant; only the per-subband map varies
-          build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+          build_quantization_steps(step, width, height, levels, alpha_qp);   // 3D-DWT alpha is wavelet-spatial (see the base step build), then modulate per-tile
           apply_tile_aq(step, width, height, levels, alpha_map, aq_cols, aq_rows);
           memcpy(step_map[3], step, (size_t)pixel_count * 4);
         }
