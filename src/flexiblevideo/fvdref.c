@@ -6556,6 +6556,82 @@ static uint32_t encode_alpha_payload(int32_t *residual, int width, int height, i
   return (alpha_size_blob_length(offsets, block_count) + *table_len) + (uint32_t)writer->length;
 }
 
+// own-alpha-MV RD decision for the GPU-native encoder (step C2). Given the current source alpha, the previous reference
+// alpha, a luma MV field (real GPU readback OR a CPU proxy from motion_estimate_cpu on the source luma) and the alpha's
+// own MV field, decide shared-luma (0) vs own-alpha (1) exactly like the CPU oracle's probe: --alpha-mv=sad weighs the
+// residual SADs, =cpu-rd compares actual coded bytes (own pays its MV blob). The caller emits the chosen MVs; the decoder
+// rides whatever mode is signalled, so an approximate (proxy) luma MV only affects compactness, never correctness.
+static int alpha_mv_decide_gpu(const int32_t *alpha_cur, const int32_t *alpha_prev,
+                               const int *luma_mv, const int *alpha_mv,
+                               int width, int height, int levels, int alpha_qp,
+                               int motion_blocks_x, int motion_blocks_y, int use_dct_entropy) {
+  int pixel_count = width * height;
+  int block_count = block_count_x(width) * block_count_y(height);
+  int *step = checked_malloc((size_t)pixel_count * sizeof(int));
+  build_spatial_quant_steps(step, width, height, levels, alpha_qp);
+  float *float_plane = checked_malloc((size_t)pixel_count * sizeof(float));
+  int32_t *mc = checked_malloc((size_t)pixel_count * 4);
+  int32_t *res = checked_malloc((size_t)pixel_count * 4);
+  uint32_t *off = checked_malloc((size_t)block_count * 4);
+  int need_bytes = (g_alpha_mv_strategy == ALPHA_MV_CPURD);   // sad only needs the SADs; skip the (expensive) trial encodes
+
+  // shared variant: residual = alpha - MC(previous reconstructed alpha, the luma MVs)
+  motion_compensate(alpha_prev, (int *)luma_mv, mc, width, height, motion_blocks_x);
+  for (int i = 0; i < pixel_count; i++) {
+    res[i] = alpha_cur[i] - mc[i];
+  }
+  long sad_shared = alpha_residual_sad(res, pixel_count);
+  uint32_t cost_shared = 0;
+  if (need_bytes) {
+    BitWriter w_shared;
+    uint8_t *tab_shared = NULL;
+    uint32_t tab_shared_len = 0;
+    cost_shared = encode_alpha_payload(res, width, height, levels, alpha_qp, step, float_plane, &w_shared, off, &tab_shared, &tab_shared_len, use_dct_entropy);
+    free(w_shared.bytes);
+    free(tab_shared);
+  }
+
+  // own variant: residual = alpha - MC(previous reconstructed alpha, the own alpha MVs)
+  motion_compensate(alpha_prev, (int *)alpha_mv, mc, width, height, motion_blocks_x);
+  for (int i = 0; i < pixel_count; i++) {
+    res[i] = alpha_cur[i] - mc[i];
+  }
+  long sad_own = alpha_residual_sad(res, pixel_count);
+
+  // own MV blob byte length (sad weights it by lambda; cpu-rd adds it to the own cost)
+  uint8_t *mv_blob = NULL;
+  size_t mv_blob_len;
+  if (g_mv_codec == 1) {
+    mv_blob_len = mv_blob_encode_range(&mv_blob, 0, NULL, 0, (int *)alpha_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+  } else {
+    BitWriter mvw;
+    bitwriter_init(&mvw);
+    encode_motion_vectors(&mvw, (int *)alpha_mv, motion_blocks_x, motion_blocks_y);
+    bitwriter_flush(&mvw);
+    mv_blob = mvw.bytes;
+    mv_blob_len = mvw.length;
+  }
+  uint32_t cost_own = 0;
+  if (need_bytes) {
+    BitWriter w_own;
+    uint8_t *tab_own = NULL;
+    uint32_t tab_own_len = 0;
+    uint32_t pay_own = encode_alpha_payload(res, width, height, levels, alpha_qp, step, float_plane, &w_own, off, &tab_own, &tab_own_len, use_dct_entropy);
+    free(w_own.bytes);
+    free(tab_own);
+    cost_own = (pay_own + 4) + (uint32_t)mv_blob_len;   // the own variant pays for its MV blob ([len:u32] + blob)
+  }
+  free(mv_blob);
+
+  int mode = alpha_mv_pick(sad_shared, sad_own, cost_shared, cost_own, mv_blob_len);
+  free(step);
+  free(float_plane);
+  free(mc);
+  free(res);
+  free(off);
+  return mode;
+}
+
 // out_alpha_mv_mode (or NULL): when non-NULL AND the frame is predicted, the encoder ALSO motion-estimates the alpha
 // plane independently and probe-encodes both the shared-luma-MV and the own-alpha-MV residual, keeping whichever codes
 // to fewer actual bytes (the own variant pays for its MV blob). *out_alpha_mv_mode receives 0 (shared) or 1 (own). The

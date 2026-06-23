@@ -2670,6 +2670,14 @@ int main(int argc, char **argv) {
   int32_t *gpu_alpha_ref0 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int32_t *gpu_alpha_ref1 = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
   int *gpu_alpha_mv1 = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
+  // own-alpha-MV step C2 (--alpha-mv=cpu-rd|sad, GPU-native): a CPU PROXY luma MV field (motion_estimate_cpu on the source
+  // luma) approximates the GPU luma MVs for the shared-vs-own RD decision (alpha_mv_decide_gpu). gpu_luma_prev keeps the
+  // previous source luma for that ME; gpu_luma_co/cg are throwaway chroma scratch for rgb_to_ycocg.
+  int32_t *gpu_luma_cur = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *gpu_luma_prev = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *gpu_luma_co = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int32_t *gpu_luma_cg = g_has_alpha ? checked_malloc((size_t)pixel_count * 4) : NULL;
+  int *gpu_luma_mv = g_has_alpha ? checked_malloc((((size_t)motion_blocks_x * motion_blocks_y) * 2) * sizeof(int)) : NULL;
   // Self-test (no output) coefficient reference, so the CPU decode tracks P-frames too.
   int32_t *self_previous[MAX_PLANES];
   for (int plane = 0; plane < g_num_planes; plane++) {
@@ -4088,12 +4096,29 @@ int main(int argc, char **argv) {
           gpu_alpha_cur[i] = (g_sample_bytes == 2) ? ((const uint16_t *)cur_src)[(i * 4) + 3] : ((const uint8_t *)cur_src)[(i * 4) + 3];
         }
         if (!use_bframes) {   // I/P: a single previous reference, maintained sequentially across frames
-          if (((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) {
-            motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
-            memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
-            alpha_own_frame = 1;
+          int proxy_rd = (g_alpha_mv_strategy == ALPHA_MV_SAD) || (g_alpha_mv_strategy == ALPHA_MV_CPURD);
+          if (proxy_rd) {   // step C2: this frame's source luma (Y) for the proxy luma ME (rgb_to_ycocg handles 8/16-bit; chroma = scratch)
+            rgb_to_ycocg((const uint8_t *)cur_src, gpu_luma_cur, gpu_luma_co, gpu_luma_cg, pixel_count);
+          }
+          if (is_predicted && alpha_inter) {
+            if (g_alpha_mv_strategy == ALPHA_MV_OWN) {   // force own (no RD compare)
+              motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y);
+              memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
+              alpha_own_frame = 1;
+            } else if (proxy_rd) {   // cpu-rd / sad (step C2): RD-decide shared (proxy luma MVs) vs own (alpha MVs)
+              int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+              motion_estimate_cpu(gpu_luma_cur, gpu_luma_prev, gpu_luma_mv, width, height, motion_blocks_x, motion_blocks_y);   // proxy for the GPU luma MVs
+              motion_estimate_cpu(gpu_alpha_cur, gpu_alpha_prev, gpu_alpha_mv, width, height, motion_blocks_x, motion_blocks_y); // the own alpha candidate
+              if (alpha_mv_decide_gpu(gpu_alpha_cur, gpu_alpha_prev, gpu_luma_mv, gpu_alpha_mv, width, height, levels, alpha_qp, motion_blocks_x, motion_blocks_y, g_spatial_dct)) {
+                memcpy(alpha_mv_map, gpu_alpha_mv, alpha_mv_bytes);
+                alpha_own_frame = 1;
+              }
+            }
           }
           memcpy(gpu_alpha_prev, gpu_alpha_cur, (size_t)pixel_count * 4);   // this frame's source alpha = the next frame's ME reference
+          if (proxy_rd) {
+            memcpy(gpu_luma_prev, gpu_luma_cur, (size_t)pixel_count * 4);   // and its source luma for the next frame's proxy luma ME
+          }
         } else if (((((g_alpha_mv_strategy == ALPHA_MV_OWN) && is_predicted) && alpha_inter) && (b_ref0_slot >= 0))) {
           // B/P: pull the reference source alphas from the bgpu DPB source slots and search L0 (+ L1) independently.
           const void *ref0_src = bgpu.rgb_slot[b_ref0_slot];
