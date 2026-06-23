@@ -275,6 +275,13 @@ type TpvScene3DRendererAntialiasingMode=
       );
      PpvScene3DRendererHDRDisplayMapping=^TpvScene3DRendererHDRDisplayMapping;
 
+     { TpvScene3DRendererHDRDisplayMappingHelper }
+
+     TpvScene3DRendererHDRDisplayMappingHelper=record helper for TpvScene3DRendererHDRDisplayMapping
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
      { TpvScene3DRendererToneMappingModeHelper }
 
      TpvScene3DRendererToneMappingModeHelper=record helper for TpvScene3DRendererToneMappingMode
@@ -441,6 +448,31 @@ begin
   self:=TpvScene3DRendererToneMappingMode.KhronosPBRNeutral;
  end else begin
   self:=TpvScene3DRendererToneMappingMode.Auto;
+ end;
+end;
+
+{ TpvScene3DRendererHDRDisplayMappingHelper }
+
+function TpvScene3DRendererHDRDisplayMappingHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererHDRDisplayMapping.BT2390:begin
+   result:='bt2390';
+  end;
+  else begin
+   result:='faithful';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererHDRDisplayMappingHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if Value='bt2390' then begin
+  self:=TpvScene3DRendererHDRDisplayMapping.BT2390;
+ end else begin
+  self:=TpvScene3DRendererHDRDisplayMapping.Faithful;
  end;
 end;
 
