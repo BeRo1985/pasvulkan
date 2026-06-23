@@ -79,10 +79,13 @@ uses SysUtils,
 type { TpvScene3DRendererPassesTonemappingRenderPass }
      TpvScene3DRendererPassesTonemappingRenderPass=class(TpvFrameGraph.TRenderPass)
       public
-       type TPushConstants=record 
+       type TPushConstants=record
              Mode:TpvInt32;
              DebugBypass:TpvInt32;
-            end; 
+             HDRMode:TpvInt32;     // 0 = SDR (shader path stays byte-identical), 1 = HDR faithful, 2 = HDR BT.2390
+             PaperWhite:TpvFloat;  // scRGB anchor for diffuse white (default 1.0)
+             Peak:TpvFloat;        // HDR highlight headroom (multiple of paper white)
+            end;
             PPushConstants=^TPushConstants;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -391,9 +394,25 @@ var PushConstants:TpvScene3DRendererPassesTonemappingRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  if assigned(FrameGraph) and (FrameGraph.SurfaceColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) then begin
+  // SDR: real operator, HDRMode=0 keeps the shader path byte-identical to before.
   PushConstants.Mode:=TpvInt32(fInstance.Renderer.TonemappingMode);
+  PushConstants.HDRMode:=0;
  end else begin
-  PushConstants.Mode:=0; // HDR => No tone mapping, just color grading if all.
+  // HDR: real operator now (no longer forced to none) plus the selected display-mapping method.
+  PushConstants.Mode:=TpvInt32(fInstance.Renderer.TonemappingMode);
+  PushConstants.HDRMode:=TpvInt32(Ord(fInstance.Renderer.HDRDisplayMapping)); // 1 = Faithful, 2 = BT.2390
+ end;
+
+ // Diffuse white is anchored at the scRGB SDR-reference white, so SDR and HDR match in the diffuse range.
+ PushConstants.PaperWhite:=1.0;
+
+ // Peak headroom: explicit override when set, otherwise the nits ratio (guarded against division by zero).
+ if fInstance.Renderer.HDRPeakHeadroom>0.0 then begin
+  PushConstants.Peak:=fInstance.Renderer.HDRPeakHeadroom;
+ end else if fInstance.Renderer.HDRPaperWhiteNits>0.0 then begin
+  PushConstants.Peak:=fInstance.Renderer.HDRMaxNits/fInstance.Renderer.HDRPaperWhiteNits;
+ end else begin
+  PushConstants.Peak:=4.0;
  end;
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
     fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin

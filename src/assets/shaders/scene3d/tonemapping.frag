@@ -18,6 +18,9 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 layout(push_constant) uniform PushConstants {
   int mode;
   int debugBypass;
+  int hdrMode;       // 0 = SDR (path stays byte-identical to before), 1 = HDR faithful, 2 = HDR BT.2390
+  float paperWhite;  // scRGB anchor for diffuse white (default 1.0)
+  float peak;        // HDR highlight headroom (multiple of paper white)
 } pushConstants;
 
 #include "rec2020.glsl"
@@ -298,7 +301,24 @@ vec3 khronosPBRNeutral(vec3 color){
   return mix(color, newPeak * vec3(1.0, 1.0, 1.0), g);
 }
 
-vec3 doToneMapping(vec3 color){
+float lumaRec709(const in vec3 color){
+  return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// BT.2390-style soft shoulder in the linear domain: identity below the knee (paper white), then a
+// C1-continuous roll-off that asymptotes to peak. The exact ITU-R BT.2390 PQ-domain EETF can replace
+// the internals later without touching the call sites.
+float displayMapBT2390(const in float value, const in float peak){
+  float knee = min(1.0, 0.7 * peak);
+  if(value <= knee){
+    return value;
+  }
+  float headroom = peak - knee;
+  float excess = value - knee;
+  return knee + (headroom * (excess / (excess + headroom)));
+}
+
+vec3 sdrToneMap(vec3 color){
   switch(pushConstants.mode){
     case MODE_LINEAR:{
       color = clamp(linear(color.xyz), vec3(0.0), vec3(1.0));
@@ -376,6 +396,87 @@ vec3 doToneMapping(vec3 color){
     }
   }
   return color;
+}
+
+// HDR via BT.2390: keep the operator's SDR look (chroma + contrast), drive luminance through the shoulder.
+vec3 hdrViaBT2390(const in vec3 sceneColor, const in float peak){
+  vec3 look = sdrToneMap(sceneColor);              // operator's graded SDR look in [0,1]
+  float lookLuma = lumaRec709(look);
+  float sceneLuma = lumaRec709(sceneColor);
+  float hdrLuma = displayMapBT2390(sceneLuma, peak);
+  return look * (hdrLuma / max(lookLuma, 1e-4));   // keep look chroma, drive luminance to the HDR range
+}
+
+// Open AgX highlight extension: how far the brightest inset channel overshoots the SDR white ceiling,
+// in EV. Zero for everything up to SDR white, so the diffuse range stays bit-identical to the SDR AgX result.
+float agxEVOvershoot(const in vec3 color, const in mat3 insetMatrix){
+  const float AgXMinEV = -12.473931188332413;
+  const float AgXMaxEV = 4.026068811667588;
+  vec3 v = insetMatrix * max(vec3(0.0), color);
+  vec3 t = (log2(max(v, vec3(1e-10))) - vec3(AgXMinEV)) / vec3(AgXMaxEV - AgXMinEV);
+  float tMax = max(t.r, max(t.g, t.b));
+  return max(0.0, tMax - 1.0) * (AgXMaxEV - AgXMinEV);
+}
+
+// Open AgX highlight extension: keep the exact SDR AgX result for the diffuse range, then lift only the
+// highlights (which SDR clamped at white) smoothly towards peak, driven by the EV overshoot.
+vec3 agxHDRExtend(const in vec3 sdrLinear, const in float evOvershoot, const in float peak){
+  float boost = 1.0 + ((peak - 1.0) * (1.0 - exp2(-evOvershoot))); // 1 at white, asymptotes to peak
+  return sdrLinear * boost;
+}
+
+vec3 doToneMapping(vec3 color){
+  if(pushConstants.hdrMode == 0){
+    return sdrToneMap(color); // SDR path: unchanged behaviour
+  }
+
+  // HDR path: output linear scRGB with diffuse anchored at paper white and highlights rolled towards peak.
+  float peak = max(1.0, pushConstants.peak);
+  vec3 sceneColor = color; // graded scene-linear input (may exceed 1.0)
+  vec3 result;
+
+  if(pushConstants.hdrMode == 2){
+    // BT.2390 display mapping: valid for every operator.
+    result = hdrViaBT2390(sceneColor, peak);
+  }else{
+    // Faithful per-operator HDR: native white-point retarget where it is provably clean.
+    switch(pushConstants.mode){
+      case MODE_LINEAR:{
+        result = clamp(sceneColor, vec3(0.0), vec3(peak));
+        break;
+      }
+      case MODE_REINHARD:{
+        vec3 c = sceneColor * 1.5;                  // same exposure scale as the SDR Reinhard
+        result = (c * peak) / (c + vec3(peak));     // per-channel Reinhard with white point = peak
+        break;
+      }
+      case MODE_UCHIMURA:{
+        // Uchimura's P is literally "max display brightness" => set it to peak; toe and linear section stay fixed.
+        result = uchimura(sceneColor, peak, 1.0, 0.22, 0.4, 1.33, 0.0);
+        break;
+      }
+      case MODE_AGX_REC709:
+      case MODE_AGX_REC709_GOLDEN:
+      case MODE_AGX_REC709_PUNCHY:{
+        // Open AgX: exact SDR formation (incl. look) for the diffuse range, EV-driven highlight lift to peak.
+        result = agxHDRExtend(sdrToneMap(sceneColor), agxEVOvershoot(sceneColor, AgXRec709InsetMatrix), peak);
+        break;
+      }
+      case MODE_AGX_REC2020:
+      case MODE_AGX_REC2020_GOLDEN:
+      case MODE_AGX_REC2020_PUNCHY:{
+        result = agxHDRExtend(sdrToneMap(sceneColor), agxEVOvershoot(sceneColor, AgXRec2020InsetMatrixFromLinearSRGB), peak);
+        break;
+      }
+      default:{
+        // Operators without a dedicated faithful HDR path use BT.2390 display mapping.
+        result = hdrViaBT2390(sceneColor, peak);
+        break;
+      }
+    }
+  }
+
+  return max(vec3(0.0), result * pushConstants.paperWhite);
 }
 
 void main() {

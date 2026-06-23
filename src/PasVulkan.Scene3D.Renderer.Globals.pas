@@ -266,6 +266,15 @@ type TpvScene3DRendererAntialiasingMode=
       );
      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
 
+     { TpvScene3DRendererHDRDisplayMapping }
+
+     TpvScene3DRendererHDRDisplayMapping=
+      (
+       Faithful=1, // native per-operator faithful HDR (white-point / ODT retarget)
+       BT2390=2    // operator look + BT.2390-style display mapping
+      );
+     PpvScene3DRendererHDRDisplayMapping=^TpvScene3DRendererHDRDisplayMapping;
+
      { TpvScene3DRendererToneMappingModeHelper }
 
      TpvScene3DRendererToneMappingModeHelper=record helper for TpvScene3DRendererToneMappingMode

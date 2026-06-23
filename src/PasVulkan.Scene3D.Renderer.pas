@@ -151,6 +151,10 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationEmissiveScale:TpvFloat;   // global master regulator: scales the per-material emissive GI contribution
        fGlobalIlluminationEmissiveMaximum:TpvFloat;  // global master regulator: absolute cap (min'd with the per-material max)
        fToneMappingMode:TpvScene3DRendererToneMappingMode;
+       fHDRDisplayMapping:TpvScene3DRendererHDRDisplayMapping;
+       fHDRPaperWhiteNits:TpvFloat;
+       fHDRMaxNits:TpvFloat;
+       fHDRPeakHeadroom:TpvFloat;
 {      fMinLogLuminance:TpvFloat;
        fMaxLogLuminance:TpvFloat;}
        fMaxMSAA:TpvInt32;
@@ -249,6 +253,10 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationEmissiveScale:TpvFloat read fGlobalIlluminationEmissiveScale write fGlobalIlluminationEmissiveScale;
        property GlobalIlluminationEmissiveMaximum:TpvFloat read fGlobalIlluminationEmissiveMaximum write fGlobalIlluminationEmissiveMaximum;
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
+       property HDRDisplayMapping:TpvScene3DRendererHDRDisplayMapping read fHDRDisplayMapping write fHDRDisplayMapping;
+       property HDRPaperWhiteNits:TpvFloat read fHDRPaperWhiteNits write fHDRPaperWhiteNits;
+       property HDRMaxNits:TpvFloat read fHDRMaxNits write fHDRMaxNits;
+       property HDRPeakHeadroom:TpvFloat read fHDRPeakHeadroom write fHDRPeakHeadroom;
        property ResamplingMode:TpvScene3DRendererResamplingMode read fResamplingMode write fResamplingMode;
        property RCASSharpness:TpvFloat read fRCASSharpness write fRCASSharpness;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
@@ -452,6 +460,11 @@ begin
  fGlobalIlluminationEmissiveMaximum:=Infinity; // no-op default (unbounded)
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
+
+ fHDRDisplayMapping:=TpvScene3DRendererHDRDisplayMapping.Faithful;
+ fHDRPaperWhiteNits:=200.0;  // diffuse / SDR-reference white target in nits (slider default)
+ fHDRMaxNits:=1000.0;        // display peak luminance in nits (slider default)
+ fHDRPeakHeadroom:=0.0;      // 0 => auto headroom = HDRMaxNits/HDRPaperWhiteNits, >0 => manual override
 
  fResamplingMode:=TpvScene3DRendererResamplingMode.Lanczos;
 
