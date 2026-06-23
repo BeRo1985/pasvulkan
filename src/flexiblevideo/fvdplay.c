@@ -3315,9 +3315,11 @@ int main(int argc, char **argv) {
             vkCmdDispatch(command_buffer, qt_leaf_count[plane], 1, 1);
             memory_barrier();
           } else if (g_bframe_dct) {
-            // DCT-B uniform: a single inverse 8x8 block DCT (no wavelet level loop / transpose).
+            // DCT-B uniform: a single inverse 8x8 block DCT (no wavelet level loop / transpose). Lossless (Q0) uses the
+            // reversible integer inverse (the encoder coded it with dct_fwd_int) — float dct_inv on integer-DCT coeffs
+            // would reconstruct garbage (it did: lossless B color decoded black until this branch was added).
             int32_t dct_push[2] = { plane_w, plane_h };
-            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_dct_inv);
+            vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, lossless ? pipeline_dct_inv_int : pipeline_dct_inv);
             vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_dct, 0, 1, &set_row[plane], 0, 0);
             vkCmdPushConstants(command_buffer, pipeline_layout_dct, VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, dct_push);
             vkCmdDispatch(command_buffer, (plane_w + 7) / 8, (plane_h + 7) / 8, 1);
