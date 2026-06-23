@@ -156,8 +156,8 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 {$R *.res}
 
 begin
- // FWV decoder validation: `videoexample --fwvtest <file.fwv> [...]` runs the headless harness and exits.
- if (ParamCount>=1) and (ParamStr(1)='--fwvtest') then begin
+ // FVD decoder validation: `videoexample --fvdtest <file.fvd> [...]` runs the headless harness and exits.
+ if (ParamCount>=1) and (ParamStr(1)='--fvdtest') then begin
   TestHarness;
   halt(0);
  end;

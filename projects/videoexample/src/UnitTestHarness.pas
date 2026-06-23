@@ -1,11 +1,11 @@
 unit UnitTestHarness;
 {$i PasVulkan.inc}
 
-// FWV decoder validation harness, built as part of videoexample so it gets the engine's exact (lazbuild)
-// compile settings + ppu. The .dpr runs it (and exits) when invoked with `--fwvtest <file.fwv> [...]`, so
+// FVD decoder validation harness, built as part of videoexample so it gets the engine's exact (lazbuild)
+// compile settings + ppu. The .dpr runs it (and exits) when invoked with `--fvdtest <file.fvd> [...]`, so
 // it never opens a window. It creates a headless Vulkan compute device (validation layers on) and, per given
-// .fwv, builds the decoder, decodes its intra frame 0 on the GPU, reads the reconstructed RGB back and writes
-// it next to the file as <file>.pas.ppm. The C reference (fwvplay --dump -> /tmp/fwv_frame0.ppm, same SPIR-V)
+// .fvd, builds the decoder, decodes its intra frame 0 on the GPU, reads the reconstructed RGB back and writes
+// it next to the file as <file>.pas.ppm. The C reference (fvdplay --dump -> /tmp/fvd_frame0.ppm, same SPIR-V)
 // is then compared byte-for-byte externally. Lossy files raise (Stage C2) and are reported as skipped.
 
 interface
@@ -111,7 +111,7 @@ begin
    finally
     OutFile.Free;
    end;
-   // optional alpha: dump the decoded A lane as a raw 8-bit grayscale sidecar (matches the C fwvplay --dump alpha lane),
+   // optional alpha: dump the decoded A lane as a raw 8-bit grayscale sidecar (matches the C fvdplay --dump alpha lane),
    // so the alpha round-trip can be verified externally (the PPM itself drops A).
    if aDecoder.HasAlpha and not IsFP16 then begin
     AlphaFile:=TFileStream.Create(aPath+'.a.gray',fmCreate);
@@ -142,8 +142,8 @@ var Stream:TFileStream;
     PreferSCRGB:boolean;
     Extension:string;
 begin
- PreferSCRGB:=GetEnvironmentVariable('FWV_SCRGB')='1'; // scRGB FP16 output for HDR streams (.pasN.f16 instead of .ppm)
- SubmitMode:=StrToIntDef(GetEnvironmentVariable('FWV_BMODE'),0); // 0=A self-submit, 1=B caller-CB, 2=C step-loop
+ PreferSCRGB:=GetEnvironmentVariable('FVD_SCRGB')='1'; // scRGB FP16 output for HDR streams (.pasN.f16 instead of .ppm)
+ SubmitMode:=StrToIntDef(GetEnvironmentVariable('FVD_BMODE'),0); // 0=A self-submit, 1=B caller-CB, 2=C step-loop
  Stream:=TFileStream.Create(aPath,fmOpenRead);
  try
   Decoder:=TpvFlexibleVideoDecoder.Create(Stream,aDevice,PreferSCRGB,SubmitMode);
@@ -288,7 +288,7 @@ begin
  try
   Decoder:=TpvAudioQOALDecoder.Create(Stream);
   try
-   SeekFrame:=StrToInt64Def(GetEnvironmentVariable('FWV_QOALSEEK'),0); // optional: seek before decoding (seek validation)
+   SeekFrame:=StrToInt64Def(GetEnvironmentVariable('FVD_QOALSEEK'),0); // optional: seek before decoding (seek validation)
    if SeekFrame>0 then begin
     Decoder.Seek(SeekFrame);
    end;
@@ -368,7 +368,7 @@ begin
  end;
 end;
 
-// FWA encoder round-trip self-test: synthesize a tone, Pascal-encode (cross-fade overlap from FWV_FWAENC_OVERLAP),
+// FWA encoder round-trip self-test: synthesize a tone, Pascal-encode (cross-fade overlap from FVD_FWAENC_OVERLAP),
 // write <path>.pas.fwa for an external C `fwa dec` cross-check, then round-trip via the Pascal decoder + report the diff.
 procedure CheckFWAEncode(const aPath:string);
 const SampleRate=48000;
@@ -402,7 +402,7 @@ begin
  Params.Joint:=true;
  Params.PairEnabled:=true;
  Params.Adapt:=true;
- Params.Overlap:=StrToIntDef(GetEnvironmentVariable('FWV_FWAENC_OVERLAP'),1024);
+ Params.Overlap:=StrToIntDef(GetEnvironmentVariable('FVD_FWAENC_OVERLAP'),1024);
  MemStream:=TMemoryStream.Create;
  try
   Encoder:=TpvFlexibleWaveletAudioEncoder.Create;
@@ -670,12 +670,12 @@ var Instance:TpvVulkanInstance;
     UsePlayer:boolean;
     Extension:string;
 begin
- if GetEnvironmentVariable('FWV_H264SIZES')='1' then begin // ABI self-test: dump VK-video/StdVideo record sizes, then exit
+ if GetEnvironmentVariable('FVD_H264SIZES')='1' then begin // ABI self-test: dump VK-video/StdVideo record sizes, then exit
   CheckVKVideoSizes;
   writeln('RESULT: VK video sizes dumped');
   exit;
  end;
- Instance:=TpvVulkanInstance.Create('fwvtest',1,'PasVulkan',1,VK_API_VERSION_1_1,true,nil);
+ Instance:=TpvVulkanInstance.Create('fvdtest',1,'PasVulkan',1,VK_API_VERSION_1_1,true,nil);
  try
   Instance.Initialize;
   Device:=TpvVulkanDevice.Create(Instance,nil,nil,nil,true);
@@ -683,14 +683,14 @@ begin
    Device.AddQueues(nil); // headless: no surface -> no present queue
    Device.Initialize;
    writeln('GPU: ',string(Device.PhysicalDevice.DeviceName));
-   UsePlayer:=GetEnvironmentVariable('FWV_PLAYER')='1'; // drive the poll-API facade instead of the decoder directly
+   UsePlayer:=GetEnvironmentVariable('FVD_PLAYER')='1'; // drive the poll-API facade instead of the decoder directly
    for Index:=2 to ParamCount do begin
     Extension:=LowerCase(ExtractFileExt(ParamStr(Index)));
-    if GetEnvironmentVariable('FWV_H264FRAMES')='1' then begin
+    if GetEnvironmentVariable('FVD_H264FRAMES')='1' then begin
      CheckH264Frames(ParamStr(Index)); // Stage F3b-1 H.264 frame-list self-test
-    end else if GetEnvironmentVariable('FWV_H264PARSE')='1' then begin
+    end else if GetEnvironmentVariable('FVD_H264PARSE')='1' then begin
      CheckH264Parse(ParamStr(Index)); // Stage F3a H.264 bitstream parse self-test
-    end else if GetEnvironmentVariable('FWV_FWAENC')='1' then begin
+    end else if GetEnvironmentVariable('FVD_FWAENC')='1' then begin
      CheckFWAEncode(ParamStr(Index)); // FWA encoder round-trip self-test (Pascal-encode -> .pas.fwa for a C fwa-dec cross-check)
     end else if Extension='.qoal' then begin
      CheckQOAL(ParamStr(Index)); // pure-CPU audio sub-codec self-tests
@@ -713,7 +713,7 @@ begin
  finally
   Instance.Free;
  end;
- writeln('RESULT: FWV decode harness done');
+ writeln('RESULT: FVD decode harness done');
 end;
 
 end.

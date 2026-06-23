@@ -1,5 +1,5 @@
 #version 450 core
-// videoexample present path A: composite the decoded FWV video (rgba, A = the decoded alpha plane) over a chosen
+// videoexample present path A: composite the decoded FVD video (rgba, A = the decoded alpha plane) over a chosen
 // background so the alpha channel is actually visible. Replaces the engine's plain ToScreenBlit frag (it keeps the
 // same fullscreen-triangle vertex shader + binding 0 sampler). For an opaque (non-alpha) stream A=1 -> the video is
 // shown unchanged, so this is a safe drop-in. mode 0 = checkerboard, 1 = solid color; key 'G' toggles it live.

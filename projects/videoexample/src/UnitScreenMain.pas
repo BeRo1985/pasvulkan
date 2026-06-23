@@ -18,11 +18,11 @@ unit UnitScreenMain;
  {$define Windows}
 {$ifend}
 
-// Stage F2a: video-only window playback of a .fwv via the poll-API facade. Update() advances a wall-clock and calls
+// Stage F2a: video-only window playback of a .fvd via the poll-API facade. Update() advances a wall-clock and calls
 // DecodeTime (CPU); Draw() records the player's Decode (GPU) plus a present pass into the swapchain. Two present paths,
 // toggled with B: (A, default) a fullscreen textured triangle that SAMPLES the decoded image (reuses the engine's
 // ToScreenBlit shaders; this is also the path that generalises to drawing video onto textures in 3D scenes), and (B) a
-// straight vkCmdBlitImage of the decoded image into the swapchain. SPACE pauses, R restarts. The .fwv path is ParamStr(1).
+// straight vkCmdBlitImage of the decoded image into the swapchain. SPACE pauses, R restarts. The .fvd path is ParamStr(1).
 
 interface
 
@@ -51,8 +51,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fStream:TFileStream;
        fPlayer:TpvFlexibleVideoPlayer;
        fPlaybackTime:TpvDouble;
-       fAVLogTick:TpvInt32; // FWV_AVLOG diagnostic counter
-       fDecTimeAccumUS,fDecTimeMaxUS:TpvInt64; // FWV_DECTIME: CPU DecodeTime cost accumulator
+       fAVLogTick:TpvInt32; // FVD_AVLOG diagnostic counter
+       fDecTimeAccumUS,fDecTimeMaxUS:TpvInt64; // FVD_DECTIME: CPU DecodeTime cost accumulator
        fDecTimeCount:TpvInt32;
        fPaused:boolean;
        fPresentBlit:boolean; // False = textured-quad (A, default), True = blit (B)
@@ -111,10 +111,10 @@ type TScreenMain=class(TpvApplicationScreen)
 
 implementation
 
-// push constants for fwv_composite.frag (must match the shader's PushConstants block). The compiled shader itself is
-// a RUNTIME asset (assets/shaders/fwv_composite.frag.spv, built by src/assets/shaders/compileshaders.sh) loaded via
+// push constants for fvd_composite.frag (must match the shader's PushConstants block). The compiled shader itself is
+// a RUNTIME asset (assets/shaders/fvd_composite.frag.spv, built by src/assets/shaders/compileshaders.sh) loaded via
 // pvApplication.Assets, NOT embedded.
-type TFWVCompositePush=packed record
+type TFVDCompositePush=packed record
       Mode:TpvInt32;          // 0 = checkerboard, 1 = solid color
       Premultiplied:TpvInt32; // 1 = video RGB premultiplied by alpha
       CheckerSize:TpvFloat;   // checkerboard cell size in pixels
@@ -125,13 +125,13 @@ type TFWVCompositePush=packed record
 constructor TScreenMain.Create;
 begin
  inherited Create;
- fVideoPath:=ParamStr(1); // the .fwv to play (the harness path '--fwvtest' already exits in the .dpr before the app runs)
+ fVideoPath:=ParamStr(1); // the .fvd to play (the harness path '--fvdtest' already exits in the .dpr before the app runs)
  fStream:=nil;
  fPlayer:=nil;
  fPlaybackTime:=0.0;
  fPaused:=false;
- fPresentBlit:=GetEnvironmentVariable('FWV_BLIT')='1'; // start in present path B (else A); toggle live with B
- if GetEnvironmentVariable('FWV_BLENDBG')='1' then begin
+ fPresentBlit:=GetEnvironmentVariable('FVD_BLIT')='1'; // start in present path B (else A); toggle live with B
+ if GetEnvironmentVariable('FVD_BLENDBG')='1' then begin
   fBlendBackgroundMode:=1; // start on the solid-color background ('G' toggles to/from the checkerboard)
  end else begin
   fBlendBackgroundMode:=0; // default = checkerboard (classic transparency view)
@@ -188,7 +188,7 @@ begin
   if length(fVideoPath)>0 then begin
    writeln('videoexample: file not found: ',fVideoPath);
   end else begin
-   writeln('videoexample: no .fwv given (usage: videoexample <file.fwv>)');
+   writeln('videoexample: no .fvd given (usage: videoexample <file.fvd>)');
   end;
  end;
 end;
@@ -262,7 +262,7 @@ begin
   try
    FileStream.Seek(TpvInt64(Header.H264Offset),soBeginning);
    BlobStream.CopyFrom(FileStream,TpvInt64(Header.H264Size));
-   BlobStream.SaveToFile('/tmp/fwv_pas.h264'); // the raw Annex-B blob -> the ffmpeg reference decode
+   BlobStream.SaveToFile('/tmp/fvd_pas.h264'); // the raw Annex-B blob -> the ffmpeg reference decode
    BlobStream.Seek(0,soBeginning);
    try
     Decoder:=TpvVideoH264Decoder.Create(BlobStream,pvApplication.VulkanDevice);
@@ -275,7 +275,7 @@ begin
                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),0,'h264verify');
      CommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
      Fence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
-     DumpFile:=TFileStream.Create('/tmp/fwv_pas.rgb',fmCreate);
+     DumpFile:=TFileStream.Create('/tmp/fvd_pas.rgb',fmCreate);
      SetLength(RGBData,(Width*Height)*3);
      try
       for DisplayIndex:=0 to FrameCount-1 do begin
@@ -307,7 +307,7 @@ begin
        DumpFile.WriteBuffer(RGBData[0],(Width*Height)*3);
 
       end;
-      writeln(Format('  h264 decode test: dumped %d frames %dx%d to /tmp/fwv_pas.rgb (ref blob /tmp/fwv_pas.h264)',
+      writeln(Format('  h264 decode test: dumped %d frames %dx%d to /tmp/fvd_pas.rgb (ref blob /tmp/fvd_pas.h264)',
                      [FrameCount,Width,Height]));
      finally
       DumpFile.Free;
@@ -424,13 +424,13 @@ begin
                 [pvApplication.VulkanDevice.VideoDecodeQueueFamilyIndex,Ord(assigned(pvApplication.VulkanDevice.VideoDecodeQueue))]));
 
  // F3b session self-test: build a VkVideoSession from the container's H.264 stream (validates the bindings at runtime)
- if (GetEnvironmentVariable('FWV_H264SESSION')='1') and assigned(pvApplication.VulkanDevice.VideoDecodeQueue) and
+ if (GetEnvironmentVariable('FVD_H264SESSION')='1') and assigned(pvApplication.VulkanDevice.VideoDecodeQueue) and
     (length(fVideoPath)>0) and FileExists(fVideoPath) then begin
   TestH264Session;
  end;
 
  // F3b-3 decode self-test: HW-decode the whole H.264 stream in DISPLAY order, dump RGB for an external ffmpeg PSNR check
- if (GetEnvironmentVariable('FWV_H264DECODE')='1') and assigned(pvApplication.VulkanDevice.VideoDecodeQueue) and
+ if (GetEnvironmentVariable('FVD_H264DECODE')='1') and assigned(pvApplication.VulkanDevice.VideoDecodeQueue) and
     (length(fVideoPath)>0) and FileExists(fVideoPath) then begin
   TestH264Decode;
  end;
@@ -453,10 +453,10 @@ begin
  finally
   Stream.Free;
  end;
- // present path A frag = the FWV composite shader (blends the decoded alpha over the chosen background) instead of the
+ // present path A frag = the FVD composite shader (blends the decoded alpha over the chosen background) instead of the
  // plain ToScreenBlit frag; it keeps the SAME fullscreen-triangle vertex shader + binding-0 sampler, and for an opaque
  // (non-alpha) stream (A=1) it shows the video unchanged -> a safe drop-in. Loaded as a runtime asset.
- Stream:=pvApplication.Assets.GetAssetStream('shaders/fwv_composite.frag.spv');
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/fvd_composite.frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
  finally
@@ -478,7 +478,7 @@ begin
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFWVCompositePush)); // fwv_composite.frag background/blend params
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFVDCompositePush)); // fvd_composite.frag background/blend params
  fPipelineLayout.Initialize;
 
  fGraphicsPipeline:=nil;
@@ -711,7 +711,7 @@ begin
    // end instead of freezing mid-stream; clamps at the end (hold the last frame until the window is closed).
    fPlaybackTime:=fPlaybackTime+aDeltaTime;
   end;
-  if GetEnvironmentVariable('FWV_DECTIME')='1' then begin // CPU DecodeTime cost diagnostic (worst-case per frame vs 33.3 ms)
+  if GetEnvironmentVariable('FVD_DECTIME')='1' then begin // CPU DecodeTime cost diagnostic (worst-case per frame vs 33.3 ms)
    DecTimeT0:=pvApplication.HighResolutionTimer.GetTime;
    fPlayer.DecodeTime(fPlaybackTime);
    DecTimeUS:=pvApplication.HighResolutionTimer.ToMicroseconds(pvApplication.HighResolutionTimer.GetTime-DecTimeT0);
@@ -730,7 +730,7 @@ begin
   end else begin
    fPlayer.DecodeTime(fPlaybackTime); // CPU advance: stage the frame this time maps to (idempotent within a tick)
   end;
-  if GetEnvironmentVariable('FWV_AVLOG')='1' then begin // A/V sync diagnostic: master clock vs displayed frame
+  if GetEnvironmentVariable('FVD_AVLOG')='1' then begin // A/V sync diagnostic: master clock vs displayed frame
    inc(fAVLogTick);
    if (fAVLogTick mod 30)=0 then begin
     writeln(Format('  av: clock=%.3fs  frame=%d  (expected ~%.0f)',[fPlaybackTime,fPlayer.CurrentFrameIndex,fPlaybackTime*fPlayer.FrameRate]));
@@ -749,7 +749,7 @@ var CommandBuffer:TpvVulkanCommandBuffer;
     FitX,FitY,FitW,FitH:TpvInt32;
     Viewport:TVkViewport;
     ScissorRect:TVkRect2D;
-    CompositePush:TFWVCompositePush;
+    CompositePush:TFVDCompositePush;
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
 
@@ -863,7 +863,7 @@ begin
    CompositePush.SolidColor[1]:=0.12;
    CompositePush.SolidColor[2]:=0.18;
    CompositePush.SolidColor[3]:=1.0;
-   CommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFWVCompositePush),@CompositePush);
+   CommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TFVDCompositePush),@CompositePush);
    CommandBuffer.CmdDraw(3,1,0,0);
   end;
   fVulkanRenderPass.EndRenderPass(CommandBuffer);
