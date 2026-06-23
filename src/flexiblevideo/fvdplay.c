@@ -411,6 +411,8 @@ typedef struct {
   VkPipelineLayout layout_mc, layout_coeff_add, layout_round;
   VkBuffer mv_buffer, mctf_pred[MAX_PLANES], mctf_scratch[MAX_PLANES];
   void *mv_map;
+  VkBuffer alpha_mv_buffer;   // own-alpha-MV (MCTF): the alpha plane's OWN per-pair temporal MVs (used for plane 3 when the frame is own)
+  void *alpha_mv_map;
   VkDescriptorSet mctf_mc[MAX_PLANES], mctf_add[MAX_PLANES];
   // AQ: GPU apply pass (apply_tile_aq.comp) modulates the per-subband base step (aq_base_buffer,
   // filled by upload_subband) by the transmitted per-tile map into step_buffer the dequant reads. Bit-exact via the LUT.
@@ -659,9 +661,9 @@ static void decode3d_temporal(const Decode3D *d, int buf, int gop_count) {
 // (frame_mv, indexed by deinterleaved position low_count+k). Mirrors the CPU mctf_inverse. mv_buffer is reused
 // per pair, so each pair is its own submit (the caller already waited+reset the fence before calling, matching
 // decode3d_temporal's contract; the LAST submit is left pending for the caller's vkWaitForFences).
-static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, const int *frame_mv) {
+static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, const int *frame_mv, const int *alpha_frame_mv) {
   int luma_blocks = d->motion_blocks_x * d->motion_blocks_y;
-  int plane_count = d->has_alpha ? (g_num_planes + 1) : g_num_planes;   // alpha plane 3 rides the MC-Haar (shared luma MVs, full-res grid)
+  int plane_count = d->has_alpha ? (g_num_planes + 1) : g_num_planes;   // alpha plane 3 rides the MC-Haar (shared luma MVs, or its OWN when alpha_frame_mv != NULL)
   int plane_w[MAX_PLANES], plane_h[MAX_PLANES], plane_pp[MAX_PLANES], plane_mbx[MAX_PLANES];
   for (int plane = 0; plane < plane_count; plane++) {
     plane_w[plane] = (plane == 3) ? d->width : plane_width(plane, d->width);
@@ -686,13 +688,16 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
       if (((2 * k) + 1) < level_len) {
         int odd = (2 * k) + 1;
         memcpy(d->mv_map, &frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], (size_t)luma_blocks * 2 * 4);
+        if (alpha_frame_mv) {   // own-alpha-MV: this pair's OWN alpha temporal MVs (plane 3 binds alpha_mv_buffer below)
+          memcpy(d->alpha_mv_map, &alpha_frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], (size_t)luma_blocks * 2 * 4);
+        }
         for (int plane = 0; plane < plane_count; plane++) {
           int pp = plane_pp[plane];
           VkDeviceSize low_off = (VkDeviceSize)k * pp * 4, high_off = (VkDeviceSize)(low_count + k) * pp * 4;
           VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
-          // mc: warp gop@low(k) by this pair's MVs -> mctf_pred[plane]
+          // mc: warp gop@low(k) by this pair's MVs (alpha uses its OWN field when this frame is own) -> mctf_pred[plane]
           bind_storage_buffers_offset(d->mctf_mc[plane],
-            (VkBuffer[]){ d->gop_buffer[buf][plane], d->mv_buffer, d->mctf_pred[plane] }, (VkDeviceSize[]){ low_off, 0, 0 }, 3);
+            (VkBuffer[]){ d->gop_buffer[buf][plane], ((alpha_frame_mv && (plane == 3)) ? d->alpha_mv_buffer : d->mv_buffer), d->mctf_pred[plane] }, (VkDeviceSize[]){ low_off, 0, 0 }, 3);
           int32_t mc_push[3] = { plane_w[plane], plane_h[plane], plane_mbx[plane] };
           vkCmdBindPipeline(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->mc);
           vkCmdBindDescriptorSets(d->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, d->layout_mc, 0, 1, &d->mctf_mc[plane], 0, 0);
@@ -737,9 +742,9 @@ static void decode3d_mctf_inverse(const Decode3D *d, int buf, int gop_count, con
 }
 
 // Finish a decoded GOP: MCTF MC-Haar inverse (prediction_method==3) or the open-loop temporal-DWT inverse.
-static void decode3d_finish_gop(const Decode3D *d, int buf, int gop_count, int *const *mctf_mv) {
+static void decode3d_finish_gop(const Decode3D *d, int buf, int gop_count, int *const *mctf_mv, int *const *alpha_mctf_mv) {
   if (d->mctf) {
-    decode3d_mctf_inverse(d, buf, gop_count, mctf_mv[buf]);
+    decode3d_mctf_inverse(d, buf, gop_count, mctf_mv[buf], (d->has_alpha && alpha_mctf_mv) ? alpha_mctf_mv[buf] : NULL);
   } else {
     decode3d_temporal(d, buf, gop_count);
   }
@@ -821,7 +826,7 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
                            const int *block_count_plane, void **offset_map, void *data_map, void **step_map, int *step,
                            void **aq_base_map, void *tile_codes_map, const uint8_t *all_qpmaps, size_t aq_map_bytes,
                            int width, int height, int levels, int quality, int lossless,
-                           int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out, int *out_alpha_qp) {
+                           int subband_in_gop, int gop_count, int temporal_levels, int *mctf_mv_out, int *out_alpha_qp, int *alpha_mctf_mv_out) {
   size_t frame_len = read_frame(file, &index[source_index], frame_buffer, frame_buffer_capacity);
   uint32_t *parse_offsets[MAX_PLANES] = { (uint32_t *)offset_map[0], (uint32_t *)offset_map[1], (uint32_t *)offset_map[2] };
   int parsed_block_count;
@@ -867,9 +872,26 @@ static void upload_subband(FILE *file, const FrameEntry *index, uint32_t source_
     int alpha_qp;
     const uint8_t *alpha_table;
     uint32_t alpha_table_length, alpha_data_length;
-    const uint8_t *alpha_data = parse_alpha_section(alpha_section, frame_len - (size_t)(alpha_section - *frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, 0, NULL, NULL);
+    int alpha_own = (index[source_index].alpha_mv_mode == 1);   // own-alpha-MV (MCTF): this high-pass frame carries its own alpha temporal MV blob
+    const uint8_t *alpha_mv_blob = NULL;
+    uint32_t alpha_mv_blob_length = 0;
+    const uint8_t *alpha_data = parse_alpha_section(alpha_section, frame_len - (size_t)(alpha_section - *frame_buffer), a_off, a_block_count, &alpha_qp, &alpha_table, &alpha_table_length, &alpha_data_length, alpha_own, &alpha_mv_blob, &alpha_mv_blob_length);
     if (!alpha_data) {
       die("corrupt alpha section (3D-DWT subband)");
+    }
+    if (alpha_mctf_mv_out) {   // fill this frame's alpha temporal MV slab: own MVs from the blob, or (shared high-pass frame) a copy of the luma MVs so the alpha MC-Haar rides luma; low-pass frames have no mc
+      int motion_blocks_x = ((width + g_motion_block) - 1) / g_motion_block, motion_blocks_y = ((height + g_motion_block) - 1) / g_motion_block;
+      if (alpha_own && alpha_mv_blob_length) {
+        if (g_mv_codec == 1) {
+          mv_blob_decode_range(alpha_mv_blob, (size_t)alpha_mv_blob_length, 0, NULL, 0, alpha_mctf_mv_out, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+        } else {
+          BitReader a_mvr;
+          bitreader_init(&a_mvr, alpha_mv_blob, (size_t)alpha_mv_blob_length);
+          decode_motion_vectors(&a_mvr, alpha_mctf_mv_out, motion_blocks_x, motion_blocks_y);
+        }
+      } else if (mctf_mv_out && (mv_length > 0)) {
+        memcpy(alpha_mctf_mv_out, mctf_mv_out, (size_t)(motion_blocks_x * motion_blocks_y) * 2 * 4);
+      }
     }
     memcpy((uint8_t *)data_map + data_length, alpha_data, alpha_data_length);
     for (int block = 0; block < a_block_count; block++) {
@@ -2204,6 +2226,7 @@ int main(int argc, char **argv) {
   VkDeviceMemory mctf_pred_memory[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch_memory[MAX_PLANES] = { 0, 0, 0 };
   VkDescriptorSet set_mctf_mc[MAX_PLANES] = { 0, 0, 0 }, set_mctf_add[MAX_PLANES] = { 0, 0, 0 };
   int *mctf_mv[2] = { NULL, NULL };
+  int *alpha_mctf_mv[2] = { NULL, NULL };   // own-alpha-MV (MCTF): per-ping-pong-buffer alpha temporal MV field (own MVs, or luma copies for shared high-pass frames)
   int gop_capacity = mode_3ddwt ? ((header.gop < 2) ? 16 : ((header.gop > MAX_GOP) ? MAX_GOP : header.gop)) : 0;
   if (mode_3ddwt && g_mctf) {
     for (int plane = 0; plane < g_num_planes; plane++) {
@@ -2221,6 +2244,9 @@ int main(int argc, char **argv) {
     }
     for (int buffer = 0; buffer < 2; buffer++) {
       mctf_mv[buffer] = checked_malloc(((size_t)gop_capacity * motion_blocks_x * motion_blocks_y * 2) * sizeof(int));
+      if (g_has_alpha) {   // own-alpha-MV: a parallel per-buffer alpha MV field
+        alpha_mctf_mv[buffer] = checked_malloc(((size_t)gop_capacity * motion_blocks_x * motion_blocks_y * 2) * sizeof(int));
+      }
     }
   }
   if (mode_3ddwt) {
@@ -2533,6 +2559,8 @@ int main(int argc, char **argv) {
     d3d.layout_round = pipeline_layout_round;
     d3d.mv_buffer = mv_buffer;
     d3d.mv_map = mv_map;
+    d3d.alpha_mv_buffer = alpha_mv_buffer;   // own-alpha-MV (MCTF): the alpha plane's own per-pair temporal MVs (filled in decode3d_mctf_inverse)
+    d3d.alpha_mv_map = alpha_mv_map;
     for (int plane = 0; plane < g_num_planes; plane++) {
       d3d.unpack_pf[plane] = set_unpack_pf[plane];
       d3d.dequant_pf[plane] = set_dequant_pf[plane];
@@ -2579,7 +2607,8 @@ int main(int argc, char **argv) {
       int a_qp = 0;
       upload_subband(file, index, (uint32_t)g, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                      width, height, levels, quality, lossless, g, cur_gop_count, g_temporal_levels,
-                     g_mctf ? &mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+                     g_mctf ? &mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
+                     (g_mctf && g_has_alpha) ? &alpha_mctf_mv[0][(size_t)g * motion_blocks_x * motion_blocks_y * 2] : NULL);
       if (g_has_alpha) {   // alpha_qp is GOP-constant -> set the alpha's own lossless / inverse-row choice (5/3 vs 9/7) before the spatial inverse
         d3d.alpha_lossless = (a_qp == 0);
         d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
@@ -2587,7 +2616,7 @@ int main(int argc, char **argv) {
       decode3d_spatial(&d3d, 0, g);
     }
     decode3d_wait(&d3d);
-    decode3d_finish_gop(&d3d, 0, cur_gop_count, mctf_mv);
+    decode3d_finish_gop(&d3d, 0, cur_gop_count, mctf_mv, alpha_mctf_mv);
     vkWaitForFences(device, 1, &prefetch_fence, VK_TRUE, UINT64_MAX);   // GOP 0 fully decoded
     if (verify) {
       cpu_decode_gop(file, index, 0, cur_gop_count, width, height, levels, quality, cpu_gop_rgb, g_aq_enabled ? all_qpmaps : NULL, aq_cols, aq_rows);
@@ -2704,7 +2733,8 @@ int main(int argc, char **argv) {
         int a_qp = 0;
         upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
+                       (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
         if (g_has_alpha) {
           d3d.alpha_lossless = (a_qp == 0);
           d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
@@ -2713,7 +2743,7 @@ int main(int argc, char **argv) {
         pf_step++;
         if (pf_step >= pf_gop_count) {
           decode3d_wait(&d3d);
-          decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv);
+          decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv, alpha_mctf_mv);
           pf_done = 1;
         }
       }
@@ -4202,7 +4232,8 @@ int main(int argc, char **argv) {
         int a_qp = 0;
         upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                        width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+                       g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
+                       (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
         if (g_has_alpha) {
           d3d.alpha_lossless = (a_qp == 0);
           d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
@@ -4211,7 +4242,7 @@ int main(int argc, char **argv) {
         pf_step++;
         if (pf_step >= pf_gop_count) {
           decode3d_wait(&d3d);
-          decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv);
+          decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv, alpha_mctf_mv);
           pf_done = 1;
         }
       }
@@ -4288,7 +4319,8 @@ int main(int argc, char **argv) {
       int a_qp = 0;
       upload_subband(file, index, pf_gop_start + (uint32_t)pf_step, &frame_buffer, &frame_buffer_capacity, block_count_plane, offset_map, data_map, step_map, step, aq_base_map, tile_codes_map, all_qpmaps, aq_map_bytes,
                      width, height, levels, quality, lossless, pf_step, pf_gop_count, g_temporal_levels,
-                     g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL);
+                     g_mctf ? &mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL, g_has_alpha ? &a_qp : NULL,
+                     (g_mctf && g_has_alpha) ? &alpha_mctf_mv[pf_buf][(size_t)pf_step * motion_blocks_x * motion_blocks_y * 2] : NULL);
       if (g_has_alpha) {
         d3d.alpha_lossless = (a_qp == 0);
         d3d.alpha_inverse_row = d3d.alpha_lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
@@ -4297,7 +4329,7 @@ int main(int argc, char **argv) {
       pf_step++;
       if (pf_step >= pf_gop_count) {
         decode3d_wait(&d3d);
-        decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv);
+        decode3d_finish_gop(&d3d, pf_buf, pf_gop_count, mctf_mv, alpha_mctf_mv);
         pf_done = 1;
       }
     }

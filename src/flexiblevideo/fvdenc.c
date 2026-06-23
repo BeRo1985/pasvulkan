@@ -2337,9 +2337,9 @@ int main(int argc, char **argv) {
   VkPipeline pipeline_inverse_row = lossless ? pipeline_inverse_row_53 : pipeline_inverse_row_97;
   VkPipeline pipeline_bidi_blend = create_compute_pipeline("shaders/bidi_blend.spv", pipeline_layout_pack);   // weighted 2-ref prediction (3 buffers + 12-byte push)
 
-  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 796 };   // +3 own-alpha-MV set_mc_alpha_own; + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha I/P set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers) + inter-alpha B set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] (15 buffers) + 3D-DWT alpha set_temporal[3] (1) + MCTF alpha set_mctf_mc[3]/set_mctf_diff[3] (6)
+  VkDescriptorPoolSize pool_size = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 805 };   // +3 own-alpha-MV set_mc_alpha_own; +9 own-alpha-MV MCTF set_mctf_me_alpha; + MCTF 27 + CDEF 15 + DCT-B quadtree (dct_fwd_qt/dct_inv_qt/rans_hist_qt/rans_size_qt/deblock = ~15 sets/3 planes) + inter-alpha I/P set_mc[3]/set_ycocg_mc[3]/set_motion_add[3] (8 buffers) + inter-alpha B set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] (15 buffers) + 3D-DWT alpha set_temporal[3] (1) + MCTF alpha set_mctf_mc[3]/set_mctf_diff[3] (6)
   VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  pool_info.maxSets = 213;   // +1 own-alpha-MV set_mc_alpha_own; + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha I/P (3 sets) + inter-alpha B (set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] = 5 sets) + 3D-DWT alpha (set_temporal[3] + MCTF set_mctf_mc[3]/set_mctf_diff[3] = 3 sets)
+  pool_info.maxSets = 214;   // +1 own-alpha-MV set_mc_alpha_own; +1 own-alpha-MV set_mctf_me_alpha; + MCTF (7) + CDEF (6) + DCT-B quadtree encode sets + inter-alpha I/P (3 sets) + inter-alpha B (set_mc_b0/b1[3]/set_bidi_blend[3]/set_blend_mode[3]/set_motion_add_bidi[3] = 5 sets) + 3D-DWT alpha (set_temporal[3] + MCTF set_mctf_mc[3]/set_mctf_diff[3] = 3 sets)
   pool_info.poolSizeCount = 1;
   pool_info.pPoolSizes = &pool_size;
   VkDescriptorPool descriptor_pool;
@@ -2607,7 +2607,7 @@ int main(int argc, char **argv) {
   // pair to gop_buffer at the even/odd frame offsets (like the B-path rebinds set_bidi_blend to DPB slots).
   VkBuffer mctf_pred[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch[MAX_PLANES] = { 0, 0, 0 };
   VkDeviceMemory mctf_pred_memory[MAX_PLANES] = { 0, 0, 0 }, mctf_scratch_memory[MAX_PLANES] = { 0, 0, 0 };
-  VkDescriptorSet set_mctf_me = 0, set_mctf_mc[MAX_PLANES] = { 0, 0, 0 }, set_mctf_diff[MAX_PLANES] = { 0, 0, 0 };
+  VkDescriptorSet set_mctf_me = 0, set_mctf_me_alpha = 0, set_mctf_mc[MAX_PLANES] = { 0, 0, 0 }, set_mctf_diff[MAX_PLANES] = { 0, 0, 0 };
   if (mode_3ddwt && g_mctf) {
     for (int plane = 0; plane < g_num_planes; plane++) {
       int plane_pixels = plane_width(plane, width) * plane_height(plane, height);
@@ -2621,6 +2621,7 @@ int main(int argc, char **argv) {
       create_buffer((size_t)gop * pixel_count * 4, DEVICE_LOCAL, &mctf_scratch[3], &mctf_scratch_memory[3]);
       set_mctf_mc[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
       set_mctf_diff[3] = allocate_descriptor_set(descriptor_pool, layout_3_buffers);
+      set_mctf_me_alpha = allocate_descriptor_set(descriptor_pool, layout_9_buffers);   // own-alpha-MV: a SEPARATE search set (own buffers) so the alpha ME doesn't alias the luma set_mctf_me within a pair
     }
     set_mctf_me = allocate_descriptor_set(descriptor_pool, layout_9_buffers);
   }
@@ -3087,6 +3088,10 @@ int main(int argc, char **argv) {
     // MCTF: per-high-pass-frame luma MV field (deinterleaved-position indexed), read back from mv_buffer after each
     // pair's motion search and coded into the assemble_frame MV blob in the payload pass (mirrors CPU encode_gop_3ddwt).
     int *mctf_frame_mv = g_mctf ? checked_malloc(((size_t)gop * motion_blocks_x * motion_blocks_y * 2) * sizeof(int)) : NULL;
+    // own-alpha-MV (MCTF, --alpha-mv=own): the alpha plane gets its OWN per-high-pass-frame temporal MV field (searched on
+    // gop_buffer[3] alpha, separate from the luma search), used in the alpha MC-Haar instead of the shared luma MVs.
+    int mctf_alpha_own = ((g_alpha_mv_strategy == ALPHA_MV_OWN) && g_has_alpha) && g_mctf;
+    int *mctf_alpha_frame_mv = mctf_alpha_own ? checked_malloc(((size_t)gop * motion_blocks_x * motion_blocks_y * 2) * sizeof(int)) : NULL;
     if (g_mctf) {   // zero the motion_estimate temporal predictor once (never updated across pairs → predict=0, matching the CPU's no-predictor search)
       begin_recording();
       vkCmdFillBuffer(command_buffer, mv_prev_buffer, 0, (((VkDeviceSize)motion_blocks_x * motion_blocks_y) * 2) * 4, 0);
@@ -3204,13 +3209,30 @@ int main(int argc, char **argv) {
               vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
               submit_and_wait();
               memcpy(&mctf_frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], mv_map, (size_t)luma_blocks * 2 * 4);   // this pair's MVs live with the high frame
+              // own-alpha-MV (--alpha-mv=own): a SEPARATE alpha motion search on gop_buffer[3] (current = alpha@odd, ref =
+              // alpha@even) -> alpha_mv_buffer. Own submit so it doesn't share/alias set_mctf_me or sad_buffer with the luma
+              // search above. Stored alongside the high frame, exactly like the luma MVs; the alpha MC-Haar below uses them.
+              if (mctf_alpha_own) {
+                begin_recording();
+                VkDeviceSize odd_a = (VkDeviceSize)odd * pixel_count * 4, even_a = (VkDeviceSize)even * pixel_count * 4;
+                bind_storage_buffers_offset(set_mctf_me_alpha,
+                  (VkBuffer[]){ gop_buffer[3], gop_buffer[3], gop_buffer[3], gop_buffer[3], gop_buffer[3], gop_buffer[3], alpha_mv_buffer, mv_prev_buffer, sad_buffer },
+                  (VkDeviceSize[]){ odd_a, odd_a, odd_a, even_a, even_a, even_a, 0, 0, 0 }, 9);
+                int32_t a_me_push[4] = { width, height, motion_blocks_x, 1 };
+                vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_motion_estimate);
+                vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_motion_estimate, 0, 1, &set_mctf_me_alpha, 0, 0);
+                vkCmdPushConstants(command_buffer, pipeline_layout_motion_estimate, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, a_me_push);
+                vkCmdDispatch(command_buffer, motion_blocks_x * motion_blocks_y, 1, 1);
+                submit_and_wait();
+                memcpy(&mctf_alpha_frame_mv[((size_t)(low_count + k) * luma_blocks) * 2], alpha_mv_map, (size_t)luma_blocks * 2 * 4);
+              }
               // 2) per plane: pred = OBMC(gop@even, mv); high = gop@odd - pred -> scratch@(low_count+k); low = gop@even -> scratch@k
               begin_recording();
-              for (int plane = 0; plane < alpha_plane_count; plane++) {   // includes alpha plane 3 (rides the MC-Haar, shared luma MVs)
+              for (int plane = 0; plane < alpha_plane_count; plane++) {   // includes alpha plane 3 (rides the MC-Haar; shared luma MVs, or its OWN when --alpha-mv=own)
                 int pp = plane_pixels[plane];
                 VkDeviceSize even_off = (VkDeviceSize)even * pp * 4, odd_off = (VkDeviceSize)odd * pp * 4;
                 bind_storage_buffers_offset(set_mctf_mc[plane],
-                  (VkBuffer[]){ gop_buffer[plane], mv_buffer, mctf_pred[plane] }, (VkDeviceSize[]){ even_off, 0, 0 }, 3);
+                  (VkBuffer[]){ gop_buffer[plane], ((mctf_alpha_own && (plane == 3)) ? alpha_mv_buffer : mv_buffer), mctf_pred[plane] }, (VkDeviceSize[]){ even_off, 0, 0 }, 3);
                 int32_t mc_push[3] = { plane_w[plane], plane_h[plane], plane_mbx[plane] };
                 vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_mc);
                 vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_pack, 0, 1, &set_mctf_mc[plane], 0, 0);
@@ -3596,9 +3618,27 @@ int main(int argc, char **argv) {
                                       mv_blob, mv_blob_length, tight, tight_color_length, &frame);
         if (g_has_alpha) {   // append the alpha section (graceful-ignore) after the 3-plane color payload
           int alpha_qp = (g_alpha_qp >= 0) ? g_alpha_qp : quality;
+          // own-alpha-MV (MCTF): a high-pass frame (level>0) carries its own alpha temporal MV field (the deepest low-pass
+          // keyframes have none, exactly like the luma MV blob above). Coded like the luma MVs per g_mv_codec.
+          uint8_t *alpha_own_blob = NULL;
+          uint32_t alpha_own_blob_len = 0;
+          if (mctf_alpha_own && (level > 0)) {
+            const int *a_frame_mv = &mctf_alpha_frame_mv[((size_t)f * motion_blocks_x * motion_blocks_y) * 2];
+            if (g_mv_codec == 1) {
+              alpha_own_blob_len = (uint32_t)mv_blob_encode_range(&alpha_own_blob, 0, NULL, 0, a_frame_mv, 0, NULL, 0, motion_blocks_x, motion_blocks_y);
+            } else {
+              BitWriter a_mvw;
+              bitwriter_init(&a_mvw);
+              encode_motion_vectors(&a_mvw, a_frame_mv, motion_blocks_x, motion_blocks_y);
+              bitwriter_flush(&a_mvw);
+              alpha_own_blob = a_mvw.bytes;
+              alpha_own_blob_len = (uint32_t)a_mvw.length;
+            }
+          }
           total = append_alpha_section(&frame, total, alpha_qp, (const uint32_t *)size_map[3], alpha_block_count,
                                        NULL, 0,   // 3D-DWT is wavelet-mode -> alpha is bit-plane (no rANS table)
-                                       tight + tight_color_length, tight_total - tight_color_length, NULL, 0);   // shared luma MVs (own-alpha-MV TODO for GPU enc)
+                                       tight + tight_color_length, tight_total - tight_color_length, alpha_own_blob, alpha_own_blob_len);   // own alpha temporal MVs (high-pass frames) when --alpha-mv=own, else NULL/0 (shared)
+          free(alpha_own_blob);
         }
         free(tight);
         free(mv_blob);
@@ -3671,7 +3711,8 @@ int main(int argc, char **argv) {
           index[frame_index].ref0 = -1;                            // open-loop GOP — no inter-frame references
           index[frame_index].ref1 = -1;
           index[frame_index].temporal_id = 0;
-          index[frame_index].alpha_mv_mode = 0;   // GPU-native 3D-DWT alpha = shared luma MVs (own-MV = step 5e)
+          // own-alpha-MV (MCTF): a high-pass frame (temporal level>0) carries its own alpha MV blob in the alpha section.
+          index[frame_index].alpha_mv_mode = (uint8_t)((mctf_alpha_own && (temporal_quant_level(f, filled, g_temporal_levels) > 0)) ? 1 : 0);
           index[frame_index].size = (uint32_t)fwrite_frame(container_file, gop_encoded[f], gop_encoded_length[f]);
           if (g_cdef) {   // the per-frame CDEF strengths chosen by the search, in coding order
             cdef_table[(frame_index * 4) + 0] = gop_cdef[f][0];
@@ -3726,6 +3767,7 @@ int main(int argc, char **argv) {
     free(gop_encoded);
     free(gop_encoded_length);
     free(mctf_frame_mv);
+    free(mctf_alpha_frame_mv);
   } else {
     // GPU hierarchical-B encode shares this (display-order I/P) loop in CODING order.
     // The driver yields one coding step per iteration into rgb_map; the bidi sets are rebound to the DPB
