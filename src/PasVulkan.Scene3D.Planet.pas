@@ -25858,15 +25858,20 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  case fPass of
-   0:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_pass0_comp.spv');
-   end;
-   1:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_pass1_comp.spv');
-   end;
-   else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_simple_comp.spv');
+  if fCullRenderPass=TpvScene3DRendererCullRenderPass.Voxelization then begin
+   // Voxelization cull: single-pass (no HiZ), tiles culled against the cascade-volume union AABB instead of the frustum.
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_voxelization_comp.spv');
+  end else begin
+   case fPass of
+    0:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_pass0_comp.spv');
+    end;
+    1:begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_pass1_comp.spv');
+    end;
+    else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_simple_comp.spv');
+    end;
    end;
   end;
   try
@@ -25897,6 +25902,14 @@ begin
    end;
    else begin
    end;
+  end;
+  if fCullRenderPass=TpvScene3DRendererCullRenderPass.Voxelization then begin
+   fDescriptorSetLayout.AddBinding(2, // CVCT uniform buffer (cascade AABBs) for voxelization tile culling
+                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                   1,
+                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                   [],
+                                   0);
   end;
   fDescriptorSetLayout.Initialize;
 
@@ -26037,6 +26050,9 @@ begin
   else begin
   end;
  end;
+ if fCullRenderPass=TpvScene3DRendererCullRenderPass.Voxelization then begin
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),TpvScene3D(fScene3D).CountInFlightFrames);
+ end;
  fDescriptorPool.Initialize;
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
@@ -26096,6 +26112,16 @@ begin
    end;
    else begin
    end;
+  end;
+  if fCullRenderPass=TpvScene3DRendererCullRenderPass.Voxelization then begin
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                            [],
+                                                            [TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                            [],
+                                                            false);
   end;
   fDescriptorSets[InFlightFrameIndex].Flush;
  end;
@@ -26190,6 +26216,13 @@ begin
        CountViews:=InFlightFrameState^.CountReflectiveShadowMapViews;
        AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
        CountAdditionalViews:=InFlightFrameState^.CountFinalViews;
+      end;
+      TpvScene3DRendererCullRenderPass.Voxelization:begin
+       RenderPass:=TpvScene3DRendererRenderPass.Voxelization;
+       BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
+       CountViews:=Min(1,InFlightFrameState^.CountFinalViews); // the voxelization cull tests cascade AABBs, not views; this just passes the >0 guard
+       AdditionalViewIndex:=0;
+       CountAdditionalViews:=0;
       end;
       else begin
        Assert(false);
@@ -28894,7 +28927,6 @@ begin
  ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
  //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
          if assigned(vkCmdDrawIndexedIndirectCount) and
-            (fMode<>TpvScene3DPlanet.TRenderPass.TMode.Voxelization) and // voxelization draws all tiles (no cull pass / indirect buffer); the geometry shader amplifies per cascade
             (not ((fMode in [TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion]) and {not} TpvScene3DRenderer(fRenderer).Scene3D.RaytracingActive)) and
             Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                        RendererViewInstance) then begin

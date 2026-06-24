@@ -728,6 +728,7 @@ compileshaderarguments=(
   "-V planet_cull.comp -o ${tempPath}/planet_cull_simple_comp.spv"
   "-V planet_cull.comp -DPASS0 -o ${tempPath}/planet_cull_pass0_comp.spv"
   "-V planet_cull.comp -DPASS1 -o ${tempPath}/planet_cull_pass1_comp.spv"
+  "-V planet_cull.comp -DVOXELIZATION -o ${tempPath}/planet_cull_voxelization_comp.spv"
 
   "-V planet_water_modification.comp -o ${tempPath}/planet_water_modification_comp.spv"
 

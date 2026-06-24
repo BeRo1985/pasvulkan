@@ -556,6 +556,10 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // Mode C (submit mode 2): record ONE B-frame decode-ahead step (or the final display) into the caller's
        // command buffer; the caller submits + WAITS, then calls again, until this returns False (display recorded).
        function DecodeFrameStep(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayPOC:TpvInt32):boolean;
+       // Blit-present source: with fBlitUsage (SDR) this raw-copies the UNORM base image into the sRGB blit image (so a
+       // vkCmdBlitImage to an sRGB swapchain decodes the gamma bytes correctly) and returns it in TRANSFER_SRC_OPTIMAL;
+       // HDR (FP16) / no fBlitUsage returns fOutputImage directly. Requires fOutputImage already in TRANSFER_SRC_OPTIMAL.
+       function EnsureBlitImage(const aCommandBuffer:TpvVulkanCommandBuffer):TpvVulkanImage;
        property Width:TpvInt32 read fWidth;
        property Height:TpvInt32 read fHeight;
        property FrameCount:TpvInt64 read fFrameCount;
@@ -571,7 +575,7 @@ implementation
 
 { TpvFlexibleVideoDecoder }
 
-constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache);
+constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache;const aBlitUsage:boolean);
 begin
  inherited Create;
 
@@ -581,6 +585,7 @@ begin
  fDevice:=aDevice;
  fPreferSCRGB:=aPreferSCRGBForHDR; // consumed by ParseContainer (output format) below
  fSubmitMode:=aBSubmitMode;
+ fBlitUsage:=aBlitUsage; // SDR: allocate a separate sRGB blit image for a color-correct vkCmdBlitImage (declared up front, no on-demand alloc)
 
  // GPU breadcrumbs: only when the engine ran with --breadcrumbs (the device-lost handler then dumps the last-reached
  // decode stage). nil = no-op; keeps the normal path free of overhead.
@@ -752,6 +757,11 @@ begin
  if assigned(fOutputImageMemory) then begin
   fDevice.MemoryManager.FreeMemoryBlock(fOutputImageMemory);
   fOutputImageMemory:=nil;
+ end;
+ FreeAndNil(fBlitImage); // SDR + fBlitUsage only (nil otherwise)
+ if assigned(fBlitImageMemory) then begin
+  fDevice.MemoryManager.FreeMemoryBlock(fBlitImageMemory);
+  fBlitImageMemory:=nil;
  end;
  for Plane:=0 to fNumPlanes-1 do begin
   FreeAndNil(fGopBuffer[0][Plane]);
@@ -1068,10 +1078,12 @@ begin
  end;
  // Output format: scRGB FP16 (real HDR display) only when the caller asked for it AND the stream is HDR;
  // otherwise SDR R8G8B8A8 (HDR streams then tonemap to sRGB8 via the SDR-fallback color shader).
- // The output is "linear-s(c)RGB true truth": HDR = linear scRGB FP16 directly; SDR = an sRGB-format image that the
- // compute fills with gamma bytes via a UNORM storage view, so sampling / blitting decodes to linear (the engine's
- // sRGB swapchain then re-encodes for display, and it is directly usable as an sRGB texture in 3D). The sRGB image
- // needs MUTABLE_FORMAT + EXTENDED_USAGE so STORAGE usage is allowed through the UNORM view.
+ // The output is "linear-s(c)RGB true truth": HDR = linear scRGB FP16 directly; SDR = a UNORM base image the compute
+ // fills with gamma bytes via a UNORM storage view; an sRGB-alias view (MUTABLE_FORMAT) samples it back to linear, and
+ // it is directly usable as an sRGB texture in 3D. A correct blit-present needs an sRGB SOURCE IMAGE (vkCmdBlitImage
+ // reads the image format), which a view cannot provide — so fBlitUsage allocates a separate sRGB blit image and
+ // EnsureBlitImage raw-copies the UNORM base into it (format-compatible class, bytes 1:1) before the blit.
+ // fOutputFormat = the sRGB sample-view / blit format; fOutputStorageFormat = the UNORM base image + storage view format.
  fUseSCRGB:=fPreferSCRGB and fIsHDR;
  if fUseSCRGB then begin
   fOutputFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -1080,7 +1092,7 @@ begin
  end else begin
   fOutputFormat:=VK_FORMAT_R8G8B8A8_SRGB;
   fOutputStorageFormat:=VK_FORMAT_R8G8B8A8_UNORM;
-  fOutputImageFlags:=TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) or TVkImageCreateFlags(VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
+  fOutputImageFlags:=TVkImageCreateFlags(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT); // UNORM base supports STORAGE natively (no EXTENDED_USAGE); MUTABLE_FORMAT for the sRGB-alias sample view
  end;
 
  // Hierarchical B-frames: the colordiff stream carries a coding-order B-hierarchy when reserved2[2] > 0; the
@@ -1609,11 +1621,12 @@ begin
   end;
  end;
 
- // the output RGB image (compute-written, then transfer-read for present/readback)
+ // the output RGB image (compute-written, then transfer-read for readback / copied to the sRGB blit image for present).
+ // SDR: UNORM base format (fOutputStorageFormat) so STORAGE is native; MUTABLE_FORMAT lets the sRGB-alias sample view exist.
  fOutputImage:=TpvVulkanImage.Create(fDevice,
-                                     fOutputImageFlags, // SDR: MUTABLE_FORMAT|EXTENDED_USAGE so the sRGB image takes a UNORM storage view
+                                     fOutputImageFlags, // SDR: MUTABLE_FORMAT (sRGB-alias sample view); HDR: 0
                                      VK_IMAGE_TYPE_2D,
-                                     fOutputFormat,
+                                     fOutputStorageFormat, // UNORM (SDR) / FP16 (HDR) base
                                      fWidth,fHeight,1,
                                      1,1,
                                      VK_SAMPLE_COUNT_1_BIT,
@@ -1653,7 +1666,8 @@ begin
  end;
  VulkanCheckResult(fDevice.Commands.BindImageMemory(fDevice.Handle,fOutputImage.Handle,fOutputImageMemory.MemoryChunk.Handle,fOutputImageMemory.Offset));
 
- // sample / present view: fOutputFormat (sRGB for SDR -> samples to linear; FP16 for HDR)
+ // sample view: fOutputFormat (sRGB-alias for SDR -> samples to linear; FP16 for HDR). Usage restricted to SAMPLED so the
+ // sRGB-alias view does NOT inherit the image's STORAGE usage (sRGB can't be a storage image -> VUID-02275 otherwise).
  fOutputImageView:=TpvVulkanImageView.Create(fDevice,
                                              fOutputImage,
                                              VK_IMAGE_VIEW_TYPE_2D,
@@ -1663,9 +1677,11 @@ begin
                                              VK_COMPONENT_SWIZZLE_IDENTITY,
                                              VK_COMPONENT_SWIZZLE_IDENTITY,
                                              TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                             0,1,0,1);
+                                             0,1,0,1,
+                                             true,TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
- // compute storage view: fOutputStorageFormat (UNORM for SDR so imageStore writes raw gamma bytes; FP16 for HDR)
+ // compute storage view: fOutputStorageFormat (UNORM for SDR so imageStore writes raw gamma bytes; FP16 for HDR). Usage
+ // restricted to STORAGE (the only thing the compute write needs).
  fOutputImageStorageView:=TpvVulkanImageView.Create(fDevice,
                                                     fOutputImage,
                                                     VK_IMAGE_VIEW_TYPE_2D,
@@ -1675,8 +1691,93 @@ begin
                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                     TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                    0,1,0,1);
+                                                    0,1,0,1,
+                                                    true,TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT));
 
+ // SDR + fBlitUsage: a separate sRGB image for a color-correct blit-present (vkCmdBlitImage needs an sRGB source image;
+ // a view cannot satisfy that). EnsureBlitImage raw-copies the UNORM base into it each frame. HDR blits fOutputImage directly.
+ if fBlitUsage and not fUseSCRGB then begin
+  fBlitImage:=TpvVulkanImage.Create(fDevice,
+                                    0,
+                                    VK_IMAGE_TYPE_2D,
+                                    fOutputFormat, // sRGB
+                                    fWidth,fHeight,1,
+                                    1,1,
+                                    VK_SAMPLE_COUNT_1_BIT,
+                                    VK_IMAGE_TILING_OPTIMAL,
+                                    TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                    VK_SHARING_MODE_EXCLUSIVE,
+                                    [],
+                                    VK_IMAGE_LAYOUT_UNDEFINED);
+  MemoryRequirements:=fDevice.MemoryManager.GetImageMemoryRequirements(fBlitImage.Handle,RequiresDedicated,PrefersDedicated);
+  MemoryBlockFlags:=[];
+  if RequiresDedicated then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end else if PrefersDedicated then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation);
+  end;
+  ImageHandle:=fBlitImage.Handle;
+  fBlitImageMemory:=fDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                              MemoryRequirements.size,
+                                                              MemoryRequirements.alignment,
+                                                              MemoryRequirements.memoryTypeBits,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                              0,0,0,0,0,0,0,
+                                                              TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
+                                                              @ImageHandle,
+                                                              0,
+                                                              'FWV.blit');
+  if not assigned(fBlitImageMemory) then begin
+   raise EpvFlexibleVideoDecoder.Create('Blit image memory allocation failed');
+  end;
+  VulkanCheckResult(fDevice.Commands.BindImageMemory(fDevice.Handle,fBlitImage.Handle,fBlitImageMemory.MemoryChunk.Handle,fBlitImageMemory.Offset));
+ end;
+
+end;
+
+function TpvFlexibleVideoDecoder.EnsureBlitImage(const aCommandBuffer:TpvVulkanCommandBuffer):TpvVulkanImage;
+var Barrier:TVkImageMemoryBarrier;
+    ImageCopy:TVkImageCopy;
+begin
+ if not assigned(fBlitImage) then begin
+  result:=fOutputImage; // HDR (FP16) or no fBlitUsage: fOutputImage is directly blittable (already in TRANSFER_SRC_OPTIMAL)
+  exit;
+ end;
+ // fBlitImage: UNDEFINED -> TRANSFER_DST (fully overwritten by the copy, so the old contents can be discarded)
+ FillChar(Barrier,SizeOf(Barrier),#0);
+ Barrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+ Barrier.srcAccessMask:=0;
+ Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+ Barrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ Barrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+ Barrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ Barrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+ Barrier.image:=fBlitImage.Handle;
+ Barrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ Barrier.subresourceRange.levelCount:=1;
+ Barrier.subresourceRange.layerCount:=1;
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),0,0,nil,0,nil,1,@Barrier);
+
+ // raw copy fOutputImage (UNORM, TRANSFER_SRC) -> fBlitImage (sRGB, TRANSFER_DST): R8G8B8A8_UNORM and _SRGB share a
+ // format-compatibility class, so vkCmdCopyImage moves the gamma bytes 1:1 (no conversion); the sRGB image then blits color-correctly.
+ FillChar(ImageCopy,SizeOf(ImageCopy),#0);
+ ImageCopy.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageCopy.srcSubresource.layerCount:=1;
+ ImageCopy.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageCopy.dstSubresource.layerCount:=1;
+ ImageCopy.extent.width:=fWidth;
+ ImageCopy.extent.height:=fHeight;
+ ImageCopy.extent.depth:=1;
+ aCommandBuffer.CmdCopyImage(fOutputImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,fBlitImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,@ImageCopy);
+
+ // fBlitImage TRANSFER_DST -> TRANSFER_SRC for the blit-present
+ Barrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+ Barrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+ Barrier.oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+ Barrier.newLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),0,0,nil,0,nil,1,@Barrier);
+
+ result:=fBlitImage;
 end;
 
 procedure TpvFlexibleVideoDecoder.BuildDescriptorSets;

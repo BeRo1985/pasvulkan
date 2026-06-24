@@ -180,7 +180,10 @@ begin
  // via its own cull pass. The reflective shadow map (used by the cascaded radiance hints GI) therefore
  // needs a dedicated planet cull pass here, using the simple single-pass cull mode (aPass=-1), since
  // there is no HiZ depth pyramid for the reflective shadow map.
- if fCullRenderPass=TpvScene3DRendererCullRenderPass.ReflectiveShadowMap then begin
+ if (fCullRenderPass=TpvScene3DRendererCullRenderPass.ReflectiveShadowMap) or
+    (fCullRenderPass=TpvScene3DRendererCullRenderPass.Voxelization) then begin
+  // ReflectiveShadowMap: simple frustum cull (planet_cull_simple). Voxelization: cascade-AABB cull (planet_cull_voxelization,
+  // selected inside TCullPass by the cull render pass) so the geometry path only draws the tiles overlapping the cascades.
   fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                      fInstance,
                                                      fInstance.Renderer.Scene3D,

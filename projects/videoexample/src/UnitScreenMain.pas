@@ -166,7 +166,8 @@ begin
   fPlayer:=TpvFlexibleVideoPlayer.Create(fStream,pvApplication.VulkanDevice,
                                                 TpvFlexibleVideoPlayer.TDecoderChoice.Auto,
                                                 (pvApplication.VulkanSwapChain.ImageFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or ForceSCRGB,
-                                                pvApplication.VulkanPipelineCache); // engine's disk-persisted cache -> warm-start the ~2 s pipeline build
+                                                pvApplication.VulkanPipelineCache, // engine's disk-persisted cache -> warm-start the ~2 s pipeline build
+                                                true); // aBlitUsage: this screen presents via BlitLastDecodedFrame -> needs the sRGB blit image
   fPlaybackTime:=0.0;
   fOutputImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
   // wire the container audio into the engine audio system as the A/V master clock

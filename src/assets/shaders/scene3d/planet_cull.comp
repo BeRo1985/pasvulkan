@@ -40,6 +40,13 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 #endif
 
+#if defined(VOXELIZATION)
+// Cascaded voxel cone tracing uniform buffer (cascade AABBs); tiles are culled against the cascade volumes for voxelization.
+layout(set = 0, binding = 2, std140) readonly uniform VoxelGridDataCull {
+  #include "voxelgriddata_uniforms.glsl"
+} voxelGridDataCull;
+#endif
+
 layout(set = 1, binding = 0, std430) readonly buffer BoundingBoxes {
   vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
 } boundingBoxes;
@@ -156,6 +163,25 @@ void main(){
 
     vec3 aabbMin = boundingBoxes.data[(tileMapIndex << 1u) | 0u].xyz;
     vec3 aabbMax = boundingBoxes.data[(tileMapIndex << 1u) | 1u].xyz;
+
+#ifdef VOXELIZATION
+
+    // Voxelization: cull the tile against the cascade volumes (per-cascade world-space AABBs from the CVCT uniform buffer).
+    // The cascades cover only a small region around the camera, so most of the planet's tiles are skipped here. No frustum /
+    // occlusion / horizon culling.
+    bool visible = false;
+    {
+      uint countCascades = min(voxelGridDataCull.countCascades, 8u);
+      for(uint cascadeIndex = 0u; cascadeIndex < countCascades; cascadeIndex++){
+        vec3 cascadeDelta = worldSpaceBoundingSphere.xyz - clamp(worldSpaceBoundingSphere.xyz, voxelGridDataCull.cascadeAABBMin[cascadeIndex].xyz, voxelGridDataCull.cascadeAABBMax[cascadeIndex].xyz);
+        if(dot(cascadeDelta, cascadeDelta) <= (worldSpaceBoundingSphere.w * worldSpaceBoundingSphere.w)){
+          visible = true;
+          break;
+        }
+      }
+    }
+
+#else
 
     bool visible = false, notFurtherCull = false;
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
@@ -282,8 +308,10 @@ void main(){
       }
     }
 
-#if defined(PASS0) || defined(PASS1)  
-    // add to visibility buffer only if not yet existing        
+#endif // VOXELIZATION
+
+#if defined(PASS0) || defined(PASS1)
+    // add to visibility buffer only if not yet existing
     const uint mask = 1u << (tileMapIndex & 31u);
 #endif
 
@@ -338,9 +366,13 @@ void main(){
 
 #else  
 
-//    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);      
-      
+//    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+
+#if defined(VOXELIZATION)
+      const uint lod = max(1u, countLODLevels) - 1u; // coarsest LOD for voxelization (the voxel grid is coarse)
+#else
       const uint lod = min(max(tileLODMap.data[tileMapIndex], pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
+#endif
 
 #endif
 

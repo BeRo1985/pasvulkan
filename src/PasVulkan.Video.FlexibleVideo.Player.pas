@@ -91,7 +91,7 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        function GetPlaybackFinished:boolean; // True only when the LAST video frame has been decoded AND the audio has finished
        function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
       public
-       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false;const aPipelineCache:TpvVulkanPipelineCache=nil);
+       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false;const aPipelineCache:TpvVulkanPipelineCache=nil;const aBlitUsage:boolean=false);
        destructor Destroy; override;
        // map a presentation time to a display-order frame index (clamped to the stream)
        function TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;
@@ -137,7 +137,7 @@ implementation
 
 { TpvFlexibleVideoPlayer }
 
-constructor TpvFlexibleVideoPlayer.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice;const aPreferSCRGBForHDR:boolean;const aPipelineCache:TpvVulkanPipelineCache);
+constructor TpvFlexibleVideoPlayer.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice;const aPreferSCRGBForHDR:boolean;const aPipelineCache:TpvVulkanPipelineCache;const aBlitUsage:boolean);
 begin
  inherited Create;
 
@@ -207,7 +207,7 @@ begin
  // the wavelet backend is the default + the fallback; only built when the H.264 backend is not active
  if not fUsingH264 then begin
   fStream.Seek(0,soBeginning);
-  fDecoder:=TpvFlexibleVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1,aPipelineCache); // submit mode B: whole decode-ahead into ONE caller CB; shared pipeline cache warm-starts the build
+  fDecoder:=TpvFlexibleVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1,aPipelineCache,aBlitUsage); // submit mode B: whole decode-ahead into ONE caller CB; shared pipeline cache warm-starts the build; aBlitUsage -> sRGB blit image for the SDR blit-present
  end;
 
 end;
@@ -631,6 +631,7 @@ end;
 procedure TpvFlexibleVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean);
 var Blit:TVkImageBlit;
     Barrier:TVkImageMemoryBarrier;
+    SourceImage:TpvVulkanImage;
     SourceLayout:TVkImageLayout;
     ClearColor:TVkClearColorValue;
     ClearRange:TVkImageSubresourceRange;
@@ -675,6 +676,16 @@ begin
  // both backends leave OutputImage as a single persistent image in TRANSFER_SRC_OPTIMAL (the H.264 decoder copies its
  // current rotating pool slot into a stable display image), so the present path is identical for both
  SourceLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+ // blit source: H.264 blits its (already sRGB) output directly; the wavelet decoder's base image is UNORM, so EnsureBlitImage
+ // raw-copies it into the sRGB blit image first (color-correct blit to the sRGB swapchain). Both end up in TRANSFER_SRC_OPTIMAL.
+{$ifdef VkVideo}
+ if fUsingH264 then begin
+  SourceImage:=fH264.OutputImage;
+ end else{$endif}begin
+  Crumb('blit:ensure-srgb');
+  SourceImage:=fDecoder.EnsureBlitImage(aCommandBuffer);
+ end;
 
  // aspect-fit + centre the decoded frame in the target when letterboxing (else stretch to fill the whole target)
  if (((aLetterbox and (fWidth>0)) and (fHeight>0)) and (aTargetWidth>0)) and (aTargetHeight>0) then begin
@@ -731,8 +742,8 @@ begin
  Blit.dstOffsets[1].x:=DstX+DstW;
  Blit.dstOffsets[1].y:=DstY+DstH;
  Blit.dstOffsets[1].z:=1;
- Crumb('blit:image'); // the CmdBlitImage itself: reads GetOutputImage (the decoder's output), writes the target
- aCommandBuffer.CmdBlitImage(GetOutputImage.Handle,SourceLayout,
+ Crumb('blit:image'); // the CmdBlitImage itself: reads the blit source (sRGB), writes the target
+ aCommandBuffer.CmdBlitImage(SourceImage.Handle,SourceLayout,
                              aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              1,@Blit,VK_FILTER_LINEAR);
 
