@@ -1675,6 +1675,10 @@ type EpvApplication=class(Exception)
 
        fReinitializeGraphics:boolean;
 
+       fForceVulkanSwapChainRecreation:boolean;
+
+       fForceVulkanSwapChainRecreationWithSurface:boolean;
+
        fVulkanRecreateSwapChainOnSuboptimalSurface:boolean;
 
        fVulkanDebugging:boolean;
@@ -2255,6 +2259,13 @@ type EpvApplication=class(Exception)
        property PasMPProfilerHistory:TPasMPProfilerHistory read fPasMPProfilerHistory write fPasMPProfilerHistory;
 
        property PasMPProfilerHistoryCount:TPasMPInt32 read fPasMPProfilerHistoryCount write fPasMPProfilerHistoryCount;
+
+       // Schedules a Vulkan swapchain recreation for the next frame (e.g. after changing HDR / colorspace settings via the
+       // SwapChainHDR / SwapChainColorSpace properties). Processed safely from inside the render loop (device-idle wait +
+       // the before/after-create-swapchain hooks), so it can be called from anywhere (e.g. an HDR settings "Apply" button).
+       // When aRecreateSurface is true the VkSurface is rebuilt too, which some drivers require for an HDR/colorspace change
+       // to actually take effect.
+       procedure ForceVulkanSwapChainRecreation(const aRecreateSurface:boolean=false);
 
       published
 
@@ -9039,6 +9050,10 @@ begin
 
  fReinitializeGraphics:=false;
 
+ fForceVulkanSwapChainRecreation:=false;
+
+ fForceVulkanSwapChainRecreationWithSurface:=false;
+
  fSkipNextDrawFrame:=false;
 
  fStayActiveRegardlessOfVisibility:=false;
@@ -12556,6 +12571,19 @@ begin
 {$ifend}
 end;
 
+procedure TpvApplication.ForceVulkanSwapChainRecreation(const aRecreateSurface:boolean);
+begin
+
+ // Flag-based: the actual recreation is performed by the render loop (see the fForceVulkanSwapChainRecreation handling),
+ // so this is safe to call from any context (e.g. a settings menu) without touching the swapchain directly here.
+ fForceVulkanSwapChainRecreation:=true;
+
+ if aRecreateSurface then begin
+  fForceVulkanSwapChainRecreationWithSurface:=true;
+ end;
+
+end;
+
 {$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
 
 // On Windows >= 10 the old MMSYSTEM WaveOut and DirectSound APIs are just thin WASAPI API wrappers now, so
@@ -14984,6 +15012,24 @@ begin
 {$ifend}
    finally
     fReinitializeGraphics:=false;
+   end;
+  end;
+
+  if fForceVulkanSwapChainRecreation then begin
+   try
+    // Don't override an already-scheduled recreation/teardown; otherwise schedule a swapchain (or full surface) recreation.
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     if fForceVulkanSwapChainRecreationWithSurface then begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+     end else begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+     end;
+    end;
+   finally
+    fForceVulkanSwapChainRecreation:=false;
+    fForceVulkanSwapChainRecreationWithSurface:=false;
    end;
   end;
 
