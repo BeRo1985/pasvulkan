@@ -23,9 +23,16 @@
       <Version Value="2"/>
     </PublishOptions>
     <RunParams>
+      <local>
+        <CommandLineParams Value="\home\bero\Projects\GitHub\pasvulkan\projects\planetgame1\assets\videos\aao.fvd"/>
+      </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
-        <Mode0 Name="default"/>
+        <Mode0 Name="default">
+          <local>
+            <CommandLineParams Value="\home\bero\Projects\GitHub\pasvulkan\projects\planetgame1\assets\videos\aao.fvd"/>
+          </local>
+        </Mode0>
       </Modes>
     </RunParams>
     <Units Count="1">

@@ -104,6 +104,9 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        procedure Restart;
        // blit the last decoded frame (OutputImage, left in TRANSFER_SRC_OPTIMAL) into a present target image
        procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean=false);
+       // raw 1:1 byte copy of the last decoded frame into a sampleable target (no scaling/format conversion); for targets
+       // that match the video size and are only sampled -> avoids the sRGB blit intermediate (no aBlitUsage needed)
+       procedure CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
        // audio: open the container's audio sub-codec into a TpvAudioSoundVideo on the given engine audio system (A/V sync)
        procedure OpenAudio(const aAudio:TpvAudio);
        procedure StartAudio; // begin audio playback (anchors the master clock)
@@ -756,6 +759,73 @@ begin
   Breadcrumb.EndBreadcrumb(aCommandBuffer.Handle);
   Breadcrumb.PopZone;
  end;
+
+end;
+
+procedure TpvFlexibleVideoPlayer.CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+var ImageCopy:TVkImageCopy;
+    Barrier:TVkImageMemoryBarrier;
+    SourceImage:TpvVulkanImage;
+    CopyWidth,CopyHeight:TpvInt32;
+
+ procedure TransitionTarget(const aOldLayout,aNewLayout:TVkImageLayout;const aSrcAccess,aDstAccess:TVkAccessFlags;const aSrcStage,aDstStage:TVkPipelineStageFlags);
+ begin
+  FillChar(Barrier,SizeOf(Barrier),#0);
+  Barrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  Barrier.srcAccessMask:=aSrcAccess;
+  Barrier.dstAccessMask:=aDstAccess;
+  Barrier.oldLayout:=aOldLayout;
+  Barrier.newLayout:=aNewLayout;
+  Barrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  Barrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  Barrier.image:=aTargetImage.Handle;
+  Barrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  Barrier.subresourceRange.levelCount:=1;
+  Barrier.subresourceRange.layerCount:=1;
+  aCommandBuffer.CmdPipelineBarrier(aSrcStage,aDstStage,0,0,nil,0,nil,1,@Barrier);
+ end;
+
+begin
+
+ // Raw 1:1 byte copy of the decoded frame into a sampleable target (no scaling, no format conversion). The wavelet
+ // decoder's OutputImage is UNORM holding gamma bytes, the H.264 backend's is sRGB; either way vkCmdCopyImage moves the
+ // raw bytes, and an sRGB-format target view samples them back to linear correctly. R8G8B8A8_UNORM and _SRGB share a
+ // format-compatibility class, so the copy is valid. vkCmdBlitImage would instead reinterpret the (UNORM) source format
+ // and double-encode gamma into an sRGB target; the raw copy avoids that without needing the sRGB blit intermediate.
+ SourceImage:=GetOutputImage; // both backends leave it in TRANSFER_SRC_OPTIMAL after Decode
+
+ // clamp the copy extent to the smaller of source/target so a mismatched target cannot overrun (1:1 is the intended case)
+ CopyWidth:=fWidth;
+ if aTargetWidth<CopyWidth then begin
+  CopyWidth:=aTargetWidth;
+ end;
+
+ CopyHeight:=fHeight;
+ if aTargetHeight<CopyHeight then begin
+  CopyHeight:=aTargetHeight;
+ end;
+
+ // bring the target to TRANSFER_DST
+ TransitionTarget(aTargetOldLayout,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                  0,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+
+ FillChar(ImageCopy,SizeOf(ImageCopy),#0);
+ ImageCopy.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageCopy.srcSubresource.layerCount:=1;
+ ImageCopy.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+ ImageCopy.dstSubresource.layerCount:=1;
+ ImageCopy.extent.width:=CopyWidth;
+ ImageCopy.extent.height:=CopyHeight;
+ ImageCopy.extent.depth:=1;
+ aCommandBuffer.CmdCopyImage(SourceImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                             aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             1,@ImageCopy);
+
+ // bring the target to its requested final layout (e.g. SHADER_READ_ONLY_OPTIMAL for sampling)
+ TransitionTarget(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,aTargetNewLayout,
+                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),0,
+                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
 
 end;
 
