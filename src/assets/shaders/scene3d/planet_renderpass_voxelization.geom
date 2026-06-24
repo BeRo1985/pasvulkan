@@ -59,6 +59,16 @@ void main(){
       inBlock[2].worldSpacePosition
     );
 
+    // Per-cascade cull: if this triangle's world AABB doesn't overlap this cascade's volume, emit nothing. This is the big
+    // win for the vertex+geometry path — it skips rasterization and, crucially, the heavy planet albedo-splat fragment work
+    // for the (vast) part of the planet that lies outside the cascade around the camera.
+    vec3 triAABBMin = min(worldPositions[0], min(worldPositions[1], worldPositions[2]));
+    vec3 triAABBMax = max(worldPositions[0], max(worldPositions[1], worldPositions[2]));
+    if(!(all(lessThanEqual(triAABBMin, voxelGridData.cascadeAABBMax[cascadeIndex].xyz)) &&
+         all(greaterThanEqual(triAABBMax, voxelGridData.cascadeAABBMin[cascadeIndex].xyz)))){
+      return;
+    }
+
     vec3 cascadeSpacePositions[3] = vec3[3](
       vec3(voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex] * vec4(worldPositions[0], 1.0)).xyz,
       vec3(voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex] * vec4(worldPositions[1], 1.0)).xyz,

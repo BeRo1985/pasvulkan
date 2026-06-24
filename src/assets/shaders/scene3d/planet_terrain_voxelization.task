@@ -32,14 +32,53 @@ struct TaskData {
 
 taskPayloadSharedEXT TaskData taskData;
 
+// Conservative world-space bounding sphere of a planet tile (see planet_terrain.task's LOD tile-centre computation).
+void planetTileBoundingSphere(uint tileIndex, uint tileMapRes, float bottomRadius, float topRadius, out vec3 centerWorld, out float radiusWorld) {
+  uint tileX = tileIndex % tileMapRes;
+  uint tileY = tileIndex / tileMapRes;
+  vec3 tileDir = octUnsignedDecode((vec2(tileX, tileY) + vec2(0.5)) / float(tileMapRes));
+  vec3 objCenter = tileDir * ((bottomRadius + topRadius) * 0.5);
+  // Generous object-space radius: lateral tile angular extent + radial height range, with margin for octahedral distortion.
+  float lateral = topRadius * (2.0 / float(tileMapRes));
+  float radial = (topRadius - bottomRadius) * 0.5;
+  float objRadius = length(vec2(lateral, radial)) * 1.5;
+  centerWorld = (planetData.modelMatrix * vec4(objCenter, 1.0)).xyz;
+  float modelScale = max(length(planetData.modelMatrix[0].xyz), max(length(planetData.modelMatrix[1].xyz), length(planetData.modelMatrix[2].xyz)));
+  radiusWorld = objRadius * modelScale;
+}
+
+bool sphereIntersectsAABB(vec3 c, float r, vec3 mn, vec3 mx) {
+  vec3 d = c - clamp(c, mn, mx);
+  return dot(d, d) <= (r * r);
+}
+
 void main() {
 
   uint tileIndex = gl_GlobalInvocationID.x;
 
   uint tileRes = planetData.flagsResolutions.y & 0xFFFFu;
+  uint tileMapRes = (planetData.flagsResolutions.y >> 16u) & 0xFFFFu;
 
-  // Voxelization covers the whole planet via the cascade volumes, not a single camera frustum, so there is no per-tile
-  // frustum culling here. The voxel grid is coarse, so the coarsest tile LOD (one meshlet per tile) is sufficient.
+  uint countCascades = voxelGridData.countCascades;
+
+  // Cull the whole tile if its bounding sphere overlaps no cascade volume. The cascades cover only a small region around
+  // the camera, so this skips the vast majority of the planet's tiles (the main reason voxelizing the whole planet was slow).
+  vec3 tileCenterWorld;
+  float tileRadiusWorld;
+  planetTileBoundingSphere(tileIndex, tileMapRes, planetData.bottomRadiusTopRadiusHeightMapScale.x, planetData.bottomRadiusTopRadiusHeightMapScale.y, tileCenterWorld, tileRadiusWorld);
+  bool anyCascade = false;
+  for(uint cascadeIndex = 0u; cascadeIndex < min(countCascades, 8u); cascadeIndex++) {
+    if(sphereIntersectsAABB(tileCenterWorld, tileRadiusWorld, voxelGridData.cascadeAABBMin[cascadeIndex].xyz, voxelGridData.cascadeAABBMax[cascadeIndex].xyz)) {
+      anyCascade = true;
+      break;
+    }
+  }
+  if(!anyCascade) {
+    EmitMeshTasksEXT(0u, 0u, 0u);
+    return;
+  }
+
+  // Voxelization covers the cascade volumes; the voxel grid is coarse, so the coarsest tile LOD (one meshlet per tile) suffices.
   uint maxLodLevel = uint(findMSB(tileRes / MESHLET_K));
   uint lodLevel = maxLodLevel;
   uint lodStride = 1u << lodLevel;
@@ -49,7 +88,6 @@ void main() {
   taskData.lodLevel = lodLevel;
 
   // One mesh workgroup per (meshlet, cascade, chunk).
-  uint countCascades = voxelGridData.countCascades;
   EmitMeshTasksEXT(meshletsPerSide * meshletsPerSide * countCascades * VOXEL_MESHLET_PRIM_CHUNKS, 1u, 1u);
 
 }

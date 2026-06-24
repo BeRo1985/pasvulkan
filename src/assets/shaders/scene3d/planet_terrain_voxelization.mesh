@@ -135,6 +135,25 @@ PlanetVertex computePlanetVertex(uint globalX, uint globalY, uint tileX, uint ti
   return pv;
 }
 
+// Conservative world-space bounding sphere of a planet tile (kept identical to planet_terrain_voxelization.task).
+void planetTileBoundingSphere(uint tileIndex, uint tileMapRes, float bottomRadius, float topRadius, out vec3 centerWorld, out float radiusWorld) {
+  uint tileX = tileIndex % tileMapRes;
+  uint tileY = tileIndex / tileMapRes;
+  vec3 tileDir = octUnsignedDecode((vec2(tileX, tileY) + vec2(0.5)) / float(tileMapRes));
+  vec3 objCenter = tileDir * ((bottomRadius + topRadius) * 0.5);
+  float lateral = topRadius * (2.0 / float(tileMapRes));
+  float radial = (topRadius - bottomRadius) * 0.5;
+  float objRadius = length(vec2(lateral, radial)) * 1.5;
+  centerWorld = (planetData.modelMatrix * vec4(objCenter, 1.0)).xyz;
+  float modelScale = max(length(planetData.modelMatrix[0].xyz), max(length(planetData.modelMatrix[1].xyz), length(planetData.modelMatrix[2].xyz)));
+  radiusWorld = objRadius * modelScale;
+}
+
+bool sphereIntersectsAABB(vec3 c, float r, vec3 mn, vec3 mx) {
+  vec3 d = c - clamp(c, mn, mx);
+  return dot(d, d) <= (r * r);
+}
+
 void main() {
 
   const uint MESHLET_K_PLUS_1 = MESHLET_K + 1u;
@@ -157,6 +176,18 @@ void main() {
   uint meshletLocalY = meshletLocal / meshletsPerSide;
   uint meshletBaseX = meshletLocalX * MESHLET_K * lodStride;
   uint meshletBaseY = meshletLocalY * MESHLET_K * lodStride;
+
+  // Per-cascade cull: skip this (tile, cascade) workgroup entirely if the tile's bounding sphere doesn't overlap this
+  // cascade's volume (a tile near the camera often overlaps only the finest cascade, not all of them).
+  {
+    vec3 tileCenterWorld;
+    float tileRadiusWorld;
+    planetTileBoundingSphere(taskData.tileIndex, tileMapRes, planetData.bottomRadiusTopRadiusHeightMapScale.x, planetData.bottomRadiusTopRadiusHeightMapScale.y, tileCenterWorld, tileRadiusWorld);
+    if(!sphereIntersectsAABB(tileCenterWorld, tileRadiusWorld, voxelGridData.cascadeAABBMin[cascadeIndex].xyz, voxelGridData.cascadeAABBMax[cascadeIndex].xyz)) {
+      SetMeshOutputsEXT(0u, 0u);
+      return;
+    }
+  }
 
   uint chunkPrimStart = chunkIndex * VOXEL_CHUNK_PRIM_COUNT;
   uint chunkPrimCount = (chunkPrimStart < MESHLET_PRIM_COUNT) ? min(VOXEL_CHUNK_PRIM_COUNT, MESHLET_PRIM_COUNT - chunkPrimStart) : 0u;
