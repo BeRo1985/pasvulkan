@@ -64,7 +64,7 @@
 // the HiZ test wants to occlusion-cull == exactly the "depth present, color missing" flicker event.
 // Self-triggering + distance-gated (DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE) so it only fires for the
 // player's parts -> stays rare -> does NOT drop to the ~1-FPS regime where the race stops
-// reproducing. Needs the validation layer + DebugPrintf at runtime (run planetgame1 with
+// reproducing. Needs the validation layer + DebugPrintf at runtime (run the application with
 // --force-use-validation-layers); grep the log for "HIZDROP".
 //#define DEBUG_PASS0_HIZ_DROP_PRINTF
 #define DEBUG_PASS0_HIZ_DROP_MAX_DISTANCE 25.0

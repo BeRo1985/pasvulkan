@@ -369,7 +369,9 @@ void main(){
 //    const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
 
 #if defined(VOXELIZATION)
-      const uint lod = max(1u, countLODLevels) - 1u; // coarsest LOD for voxelization (the voxel grid is coarse)
+      // LOD 0 is always populated. Forcing the coarsest LOD drew nothing where the coarse LOD index groups are not generated
+      // (i.e. when LOD is disabled). The cull already limits this to the few tiles overlapping the cascades.
+      const uint lod = 0u;
 #else
       const uint lod = min(max(tileLODMap.data[tileMapIndex], pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 #endif

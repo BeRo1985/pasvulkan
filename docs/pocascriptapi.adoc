@@ -8892,8 +8892,8 @@ accessed through the `+engine.scene3d+` object.
 NOTE: `+engine.scene3d+` is *not* created by the engine itself — it is
 injected by the *game application* at context initialisation time by calling
 `+InitializePOCAScene3DContext(context, scene3DInstance, engineHash)+`
-(implemented in `+PasVulkan.POCA.Scene3D.pas+`).  In the planetgame1 (Seeds)
-project this call is made in `+UnitGamePOCA.pas+`.  A game that does not call
+(implemented in `+PasVulkan.POCA.Scene3D.pas+`).  In a typical game project
+this call is made in the game's own POCA setup unit.  A game that does not call
 `+InitializePOCAScene3DContext+` will not have an `+engine.scene3d+` object at
 all.
 
