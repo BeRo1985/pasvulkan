@@ -1,0 +1,55 @@
+#version 460
+
+#pragma shader_stage(task)
+
+#extension GL_EXT_mesh_shader : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+#include "bufferreference_definitions.glsl"
+#include "planet_terrain.glsl"
+#include "octahedral.glsl"
+
+// Voxel grid data (only countCascades is needed here) at the planet's dedicated voxelization descriptor set.
+#define VOXELIZATION
+#define VOXELIZATION_DESCRIPTOR_SET 4
+#include "voxelization_globals.glsl"
+
+// A planet meshlet holds MESHLET_PRIM_COUNT (=128) triangles. Voxelization duplicates vertices per triangle (the
+// dominant-axis projection differs per triangle), so a chunk is limited to 42 triangles (42*3=126 output vertices).
+// ceil(128/42) = 4 chunks.
+#define VOXEL_MESHLET_PRIM_CHUNKS 4u
+
+struct TaskData {
+  uint tileIndex;
+  uint lodLevel;
+};
+
+taskPayloadSharedEXT TaskData taskData;
+
+void main() {
+
+  uint tileIndex = gl_GlobalInvocationID.x;
+
+  uint tileRes = planetData.flagsResolutions.y & 0xFFFFu;
+
+  // Voxelization covers the whole planet via the cascade volumes, not a single camera frustum, so there is no per-tile
+  // frustum culling here. The voxel grid is coarse, so the coarsest tile LOD (one meshlet per tile) is sufficient.
+  uint maxLodLevel = uint(findMSB(tileRes / MESHLET_K));
+  uint lodLevel = maxLodLevel;
+  uint lodStride = 1u << lodLevel;
+  uint meshletsPerSide = tileRes / (MESHLET_K * lodStride);
+
+  taskData.tileIndex = tileIndex;
+  taskData.lodLevel = lodLevel;
+
+  // One mesh workgroup per (meshlet, cascade, chunk).
+  uint countCascades = voxelGridData.countCascades;
+  EmitMeshTasksEXT(meshletsPerSide * meshletsPerSide * countCascades * VOXEL_MESHLET_PRIM_CHUNKS, 1u, 1u);
+
+}

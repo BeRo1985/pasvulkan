@@ -1,0 +1,256 @@
+#version 460
+
+#pragma shader_stage(mesh)
+
+#extension GL_EXT_mesh_shader : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
+
+#define MESH_GROUP_SIZE 64
+
+layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 126, max_primitives = 42) out;
+
+#include "bufferreference_definitions.glsl"
+#include "planet_terrain.glsl"
+#include "octahedral.glsl"
+
+#if defined(RAYTRACING)
+layout(set = 0, binding = 10) uniform sampler2D u2DTextures[];
+#else
+layout(set = 0, binding = 8) uniform sampler2D u2DTextures[];
+#endif
+
+#include "planet_displacement.glsl"
+
+#define PASS_DESCRIPTOR_SET 1
+#define TERRAIN_MESH_DESCRIPTOR_SET 3
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = PASS_DESCRIPTOR_SET, binding = 0, std140) uniform uboViews {
+  View views[256];
+} uView;
+
+layout(set = TERRAIN_MESH_DESCRIPTOR_SET, binding = 0, std430) readonly buffer VisualMeshVertices {
+  uvec4 vertices[];
+} visualMeshVertices;
+
+// Voxel grid data (cascade matrices / extents) at the planet's dedicated voxelization descriptor set.
+#define VOXELIZATION
+#define VOXELIZATION_DESCRIPTOR_SET 4
+#include "voxelization_globals.glsl"
+
+#define VOXEL_MESHLET_PRIM_CHUNKS 4u
+#define VOXEL_CHUNK_PRIM_COUNT 42u
+
+struct TaskData {
+  uint tileIndex;
+  uint lodLevel;
+};
+taskPayloadSharedEXT TaskData taskData;
+
+// Output block must match the VOXELIZATION input of planet_renderpass.frag (planet block at locations 0..8 + extras).
+layout(location = 0) out PlanetVertexBlock {
+  vec3 position;
+  vec3 sphereNormal;
+  vec3 normal;
+  vec3 triplanarNormal;
+  vec3 triplanarPosition;
+  vec3 worldSpacePosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+  flat uint meshletID;
+} outBlock[];
+
+layout(location = 10) flat out uint outCascadeIndex[];
+layout(location = 11) out vec3 outVoxelPosition[];
+
+uint viewIndex = pushConstants.viewBaseIndex;
+
+struct PlanetVertex {
+  vec3 position;
+  vec3 sphereNormal;
+  vec3 normal;
+  vec3 triplanarNormal;
+  vec3 triplanarPosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+};
+
+PlanetVertex computePlanetVertex(uint globalX, uint globalY, uint tileX, uint tileY, uint tileRes, uint tileMapRes, mat4 viewMatrix, vec3 cameraPosition) {
+  uint totalRes = tileRes * tileMapRes;
+  uint totalResMask = totalRes - 1u;
+  uint absX = (tileX * tileRes) + globalX;
+  uint absY = (tileY * tileRes) + globalY;
+  uint wx = absX & totalResMask;
+  uint wy = absY & totalResMask;
+  uint divX = absX / totalRes;
+  uint divY = absY / totalRes;
+  if (((divX ^ divY) & 1u) != 0u) {
+    wx = (totalRes - (wx + 1u)) & totalResMask;
+    wy = (totalRes - (wy + 1u)) & totalResMask;
+  }
+  uint atX = wx / tileRes;
+  uint atY = wy / tileRes;
+  uint lvX = wx - atX * tileRes;
+  uint lvY = wy - atY * tileRes;
+  uint vtxIdx = (atY * tileMapRes + atX) * tileRes * tileRes + lvY * tileRes + lvX;
+
+  uvec4 vd = visualMeshVertices.vertices[vtxIdx];
+  vec3 inVector = uintBitsToFloat(vd.xyz);
+  vec2 encodedNormal = unpackSnorm2x16(vd.w);
+
+  vec3 sphereNormal = normalize(inVector);
+  vec3 position = (planetData.modelMatrix * vec4(inVector, 1.0)).xyz;
+  vec3 triplanarPosition = (planetData.triplanarMatrix * vec4(inVector, 1.0)).xyz;
+  vec3 normal = octSignedDecode(encodedNormal);
+
+  if((planetData.flagsResolutions.x & (1u << 1u)) != 0u){
+    layerMaterialSetup(sphereNormal);
+    multiplanarSetup(position, vec3(1e-6), vec3(1e-6), normal);
+    float displacement = 1.0 - clamp(getLayeredMultiplanarHeight(), 0.0, 1.0);
+    position -= normal * displacement * 0.25;
+  }
+
+  vec4 vsp = viewMatrix * vec4(position, 1.0);
+  vsp.xyz /= vsp.w;
+
+  PlanetVertex pv;
+  pv.position = position;
+  pv.sphereNormal = sphereNormal;
+  pv.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
+  pv.triplanarNormal = normalize((planetData.triplanarNormalMatrix * vec4(normal, 0.0)).xyz);
+  pv.triplanarPosition = triplanarPosition;
+  pv.viewSpacePosition = vsp.xyz;
+  pv.cameraRelativePosition = position - cameraPosition;
+  return pv;
+}
+
+void main() {
+
+  const uint MESHLET_K_PLUS_1 = MESHLET_K + 1u;
+
+  uint tileRes = planetData.flagsResolutions.y & 0xFFFFu;
+  uint tileMapRes = (planetData.flagsResolutions.y >> 16u) & 0xFFFFu;
+  uint tileX = taskData.tileIndex % tileMapRes;
+  uint tileY = taskData.tileIndex / tileMapRes;
+  uint lodStride = 1u << taskData.lodLevel;
+  uint meshletsPerSide = tileRes / (MESHLET_K * lodStride);
+  uint countCascades = voxelGridData.countCascades;
+
+  // Decode (meshletLocal, cascade, chunk) from the workgroup id (see planet_terrain_voxelization.task emit order).
+  uint wg = gl_WorkGroupID.x;
+  uint chunkIndex = wg % VOXEL_MESHLET_PRIM_CHUNKS;
+  uint tmp = wg / VOXEL_MESHLET_PRIM_CHUNKS;
+  uint cascadeIndex = tmp % countCascades;
+  uint meshletLocal = tmp / countCascades;
+  uint meshletLocalX = meshletLocal % meshletsPerSide;
+  uint meshletLocalY = meshletLocal / meshletsPerSide;
+  uint meshletBaseX = meshletLocalX * MESHLET_K * lodStride;
+  uint meshletBaseY = meshletLocalY * MESHLET_K * lodStride;
+
+  uint chunkPrimStart = chunkIndex * VOXEL_CHUNK_PRIM_COUNT;
+  uint chunkPrimCount = (chunkPrimStart < MESHLET_PRIM_COUNT) ? min(VOXEL_CHUNK_PRIM_COUNT, MESHLET_PRIM_COUNT - chunkPrimStart) : 0u;
+
+  SetMeshOutputsEXT(chunkPrimCount * 3u, chunkPrimCount);
+
+  uint threadIdx = gl_LocalInvocationIndex;
+
+  if (threadIdx < chunkPrimCount) {
+
+    mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+    vec3 cameraPosition = uView.views[viewIndex].inverseViewMatrix[3].xyz;
+
+    mat4 worldToCascadeClip = voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex];
+    float halfExtent = voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w;
+    bool noHWConservative = (voxelGridData.hardwareConservativeRasterization == 0u);
+
+    uint primIdx = chunkPrimStart + threadIdx;
+    uint quadIdx = primIdx >> 1u;
+    uint qx = quadIdx % MESHLET_K;
+    uint qy = quadIdx / MESHLET_K;
+    bool second = (primIdx & 1u) != 0u;
+
+    // Triangle corner local indices within the (K+1)^2 vertex grid (matches planet_terrain.mesh quad triangulation).
+    uvec2 corners[3];
+    if (second) {
+      corners[0] = uvec2(qx + 1u, qy);       // i10
+      corners[1] = uvec2(qx + 1u, qy + 1u);  // i11
+      corners[2] = uvec2(qx, qy + 1u);       // i01
+    } else {
+      corners[0] = uvec2(qx, qy);            // i00
+      corners[1] = uvec2(qx + 1u, qy);       // i10
+      corners[2] = uvec2(qx, qy + 1u);       // i01
+    }
+
+    PlanetVertex pv[3];
+    vec3 worldPositions[3];
+    [[unroll]] for (int i = 0; i < 3; i++) {
+      uint globalX = meshletBaseX + (corners[i].x * lodStride);
+      uint globalY = meshletBaseY + (corners[i].y * lodStride);
+      pv[i] = computePlanetVertex(globalX, globalY, tileX, tileY, tileRes, tileMapRes, viewMatrix, cameraPosition);
+      worldPositions[i] = pv[i].position;
+    }
+
+    // Dominant-axis projection into the cascade clip space (mirror of mesh_voxelization.geom).
+    vec3 cascadeSpace[3];
+    [[unroll]] for (int i = 0; i < 3; i++) {
+      cascadeSpace[i] = (worldToCascadeClip * vec4(worldPositions[i], 1.0)).xyz;
+    }
+
+    vec3 faceNormal = cross(worldPositions[1] - worldPositions[0], worldPositions[2] - worldPositions[0]);
+    ivec3 vertexIndexOrder = (faceNormal.z > 0.0) ? ivec3(0, 1, 2) : ivec3(0, 2, 1);
+    faceNormal = abs(faceNormal);
+    int dominantAxisIndex = (faceNormal.y > faceNormal.x) ? ((faceNormal.y > faceNormal.z) ? 1 : 2) : ((faceNormal.x > faceNormal.z) ? 0 : 2);
+    const ivec3 dominantAxisComponentOrders[3] = ivec3[3](ivec3(2, 1, 0), ivec3(0, 2, 1), ivec3(0, 1, 2));
+    ivec3 dao = dominantAxisComponentOrders[dominantAxisIndex];
+
+    vec4 proj[3];
+    [[unroll]] for (int i = 0; i < 3; i++) {
+      proj[i] = vec4(cascadeSpace[i][dao.x], cascadeSpace[i][dao.y], cascadeSpace[i][dao.z], 1.0);
+    }
+
+    if (noHWConservative) {
+      vec2 sides[3] = vec2[3](
+        normalize(proj[vertexIndexOrder[1]].xy - proj[vertexIndexOrder[0]].xy),
+        normalize(proj[vertexIndexOrder[2]].xy - proj[vertexIndexOrder[1]].xy),
+        normalize(proj[vertexIndexOrder[0]].xy - proj[vertexIndexOrder[2]].xy)
+      );
+      float texelSize = 1.41421356237 / halfExtent;
+      proj[vertexIndexOrder[0]].xy += normalize(sides[2] - sides[0]) * texelSize;
+      proj[vertexIndexOrder[1]].xy += normalize(sides[0] - sides[1]) * texelSize;
+      proj[vertexIndexOrder[2]].xy += normalize(sides[1] - sides[2]) * texelSize;
+    }
+
+    uint baseVertex = threadIdx * 3u;
+    [[unroll]] for (int v = 0; v < 3; v++) {
+      int ci = vertexIndexOrder[v];
+      uint outIdx = baseVertex + uint(v);
+      outBlock[outIdx].position = pv[ci].position;
+      outBlock[outIdx].sphereNormal = pv[ci].sphereNormal;
+      outBlock[outIdx].normal = pv[ci].normal;
+      outBlock[outIdx].triplanarNormal = pv[ci].triplanarNormal;
+      outBlock[outIdx].triplanarPosition = pv[ci].triplanarPosition;
+      outBlock[outIdx].worldSpacePosition = pv[ci].position;
+      outBlock[outIdx].viewSpacePosition = pv[ci].viewSpacePosition;
+      outBlock[outIdx].cameraRelativePosition = pv[ci].cameraRelativePosition;
+      outBlock[outIdx].meshletID = 0u;
+      outCascadeIndex[outIdx] = cascadeIndex;
+      outVoxelPosition[outIdx] = fma(cascadeSpace[ci].xyz, vec3(0.5), vec3(0.5));
+      gl_MeshVerticesEXT[outIdx].gl_Position = vec4(proj[ci].xy, fma(proj[ci].z, 0.5, 0.5), 1.0);
+    }
+
+    gl_PrimitiveTriangleIndicesEXT[threadIdx] = uvec3(baseVertex, baseVertex + 1u, baseVertex + 2u);
+
+  }
+
+}

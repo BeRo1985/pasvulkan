@@ -90,6 +90,12 @@ layout(location = 0) in InBlock {
 
 #endif
 
+#ifdef VOXELIZATION
+// Extra per-fragment inputs from planet_renderpass_voxelization.geom (the planet vertex block occupies locations 0..8).
+layout(location = 10) flat in uint inCascadeIndex;
+layout(location = 11) in vec3 inVoxelPosition;
+#endif
+
 layout(location = 0) out vec4 outFragColor;
 #if defined(VELOCITY)
   layout(location = 1) out vec2 outVelocity;
@@ -167,6 +173,17 @@ const vec3 inModelScale = vec3(1.0);
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl"
 
+#ifdef VOXELIZATION
+// Cascaded voxel cone tracing: the planet surface is injected into the voxel volume at its own dedicated descriptor set 4
+// (sets 0..3 are already used: global, mesh-rendering-pass, planet textures, terrain-mesh SSBO in the mesh-shader path).
+#include "rgb9e5.glsl"
+#define VOXELIZATION_DESCRIPTOR_SET 4
+#include "voxelization_globals.glsl"
+#endif
+
+#ifndef VOXELIZATION
+// Lighting / IBL globals are skipped for voxelization: the pass descriptor set (uPassTextures, shadow maps, env maps) is not
+// declared under VOXELIZATION (see mesh_rendering_pass_descriptorset.glsl), and voxelization only stores albedo + normal.
 #define LIGHTING_GLOBALS
 #include "lighting.glsl"
 #undef LIGHTING_GLOBALS
@@ -177,6 +194,7 @@ const vec3 inModelScale = vec3(1.0);
 #undef UseEnvMapLambertian
 
 #include "roughness.glsl"
+#endif
 
 #if defined(GLOBAL_ILLUMINATION_DDGI)
   // DDGI probe field for ray-tracing-based global illumination. Only wired for the RT GI modes (DDGI now, Surfel later) —
@@ -284,12 +302,14 @@ void parallaxMapping(){
 
 vec3 workNormal;
 
+#ifndef VOXELIZATION
 #define NOTEXCOORDS
 #define inFrameIndex pushConstants.frameIndex
 #include "shadows.glsl"
 
 #undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
+#endif
 #include "blendnormals.glsl"
 #include "decals.glsl"
 #include "meshlet.glsl"
@@ -436,6 +456,18 @@ void main(){
   float surfaceHeight = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], sphereNormal).x;
 
   albedo.xyz *= mix(planetData.minMaxHeightFactor.y, planetData.minMaxHeightFactor.w, pow(clamp((surfaceHeight - planetData.minMaxHeightFactor.x) / (planetData.minMaxHeightFactor.z - planetData.minMaxHeightFactor.x), 0.0, 1.0), planetData.heightFactorExponent));
+
+#ifdef VOXELIZATION
+  // Voxelization injects albedo + macro surface normal (no lighting; the voxel radiance transfer pass lights the voxels
+  // later from the cascaded shadow map + light BVH). The planet terrain has no emissive channel, so emission is zero.
+  {
+    vec4 baseColor = vec4(max(albedo.xyz, vec3(0.0)), 1.0);
+    vec4 emissionColor = vec4(0.0);
+    vec3 normal = normalize(workNormal);
+    bool voxelDoubleSided = false;
+#include "voxelization_fragment.glsl"
+  }
+#else
 
   //vec3 F0Dielectric = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
   vec3 F0Dielectric = vec3(0.04);
@@ -711,5 +743,7 @@ void main(){
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
   outFragNormalUsed = vec4(vec3(fma(normalize(workNormal), vec3(0.5), vec3(0.5))), 1.0);
 #endif
+
+#endif // !VOXELIZATION (the lighting + output path)
 
 }

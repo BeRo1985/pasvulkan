@@ -75,7 +75,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.SkyBox;
+     PasVulkan.Scene3D.Renderer.SkyBox,
+     PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass }
      TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass=class(TpvFrameGraph.TRenderPass)
@@ -89,6 +90,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVox
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
+       fPlanetVoxelizationPass:TpvScene3DPlanet.TRenderPass; // The planet surface uses a separate rendering system
        fInstance:TpvScene3DRendererInstance;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
@@ -355,10 +357,21 @@ begin
  //ParticleFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageParticleFragment);
 *)
 
+ // The planet surface is a separate rendering system, so it gets its own voxelization render pass that injects the planet
+ // terrain into the same cascaded voxel cone tracing volume (at the planet's own dedicated descriptor set 4).
+ fPlanetVoxelizationPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                              fInstance,
+                                                              fInstance.Renderer.Scene3D,
+                                                              TpvScene3DPlanet.TRenderPass.TMode.Voxelization,
+                                                              nil,
+                                                              nil);
+
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.ReleasePersistentResources;
 begin
+
+ FreeAndNil(fPlanetVoxelizationPass);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
@@ -771,6 +784,11 @@ begin
  end;
 *)
 
+ fPlanetVoxelizationPass.AllocateResources(fVulkanRenderPass,
+                                           fInstance.Renderer.GlobalIlluminationVoxelGridSize,
+                                           fInstance.Renderer.GlobalIlluminationVoxelGridSize,
+                                           TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass.ReleaseVolatileResources;
@@ -778,6 +796,7 @@ var Index:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+ fPlanetVoxelizationPass.ReleaseResources;
  FreeAndNil(fVulkanParticleGraphicsPipeline);
  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -829,6 +848,14 @@ begin
  if InFlightFrameState^.Ready then begin
 
   fOnSetRenderPassResourcesDone:=false;
+
+  // Inject the planet surface (separate rendering system) into the voxel volume before the regular scene meshes.
+  fPlanetVoxelizationPass.Draw(aInFlightFrameIndex,
+                               aFrameIndex,
+                               TpvScene3DRendererRenderPass.Voxelization,
+                               InFlightFrameState^.FinalViewIndex,
+                               Min(1,InFlightFrameState^.CountFinalViews),
+                               aCommandBuffer);
 
   fInstance.Renderer.Scene3D.Draw(fInstance,
                                   fVulkanGraphicsPipelines,

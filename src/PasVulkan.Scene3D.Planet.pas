@@ -2637,7 +2637,8 @@ type TpvScene3DPlanets=class;
                      ReflectiveShadowMap,
                      DepthPrepass,
                      DepthPrepassDisocclusion,
-                     Opaque
+                     Opaque,
+                     Voxelization
                     );
                    PMode=^TMode;
                    TPlanetPushConstants=packed record
@@ -2725,6 +2726,11 @@ type TpvScene3DPlanets=class;
               fTerrainMeshPipelineLayout:TpvVulkanPipelineLayout;
               fTerrainMeshPipeline:TpvVulkanGraphicsPipeline;
               fTerrainMeshShaderStageFlags:TVkShaderStageFlags;
+              fPlanetGeometryShaderModule:TpvVulkanShaderModule; // Only for the Voxelization mode (vertex+geometry path)
+              fPlanetGeometryShaderStage:TpvVulkanPipelineShaderStage;
+              fVoxelizationDescriptorSetLayout:TpvVulkanDescriptorSetLayout; // Set 4 = cascaded voxel cone tracing volume
+              fVoxelizationDescriptorPool:TpvVulkanDescriptorPool;
+              fVoxelizationDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fGrassFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fEmptyDescriptorSetLayout:TpvVulkanDescriptorSetLayout; // 0-binding placeholder so the vertex-path terrain pipeline layout can host the DDGI set at the same fixed set index (4) as the mesh-shader path
@@ -27485,7 +27491,9 @@ begin
 
   if TpvScene3D(fScene3D).PlanetTerrainMeshShaderSupport then begin
 
-   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_terrain_voxelization_task.spv');
+   end else if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_terrain_'+TopLevelKind+'velocity_task.spv');
    end else begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_terrain_'+TopLevelKind+'task.spv');
@@ -27497,7 +27505,9 @@ begin
    end;
    fVulkanDevice.DebugUtils.SetObjectName(fTerrainMeshTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTerrainMeshTaskShaderModule');
 
-   if fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE then begin
+   if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_terrain_voxelization_mesh.spv');
+   end else if fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE then begin
     if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_terrain_'+TopLevelKind+'velocity_multiview_mesh.spv');
     end else begin
@@ -27563,6 +27573,19 @@ begin
     finally
      FreeAndNil(Stream);
     end;
+
+   end;
+
+   TpvScene3DPlanet.TRenderPass.TMode.Voxelization:begin
+
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'voxelization_frag.spv');
+    try
+     fPlanetFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+    finally
+     FreeAndNil(Stream);
+    end;
+
+    fGrassFragmentShaderModule:=nil; // Grass is not voxelized (the planet ground is already tinted green under grass)
 
    end;
 
@@ -27641,6 +27664,21 @@ begin
    fPlanetFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fPlanetFragmentShaderModule,'main');
   end else begin
    fPlanetFragmentShaderStage:=nil;
+  end;
+
+  if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+   // Geometry shader for the vertex+geometry voxelization path (one variant per cascade count, like mesh_voxelization).
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_voxelization_'+IntToStr(TpvScene3DRenderer(fRenderer).GlobalIlluminationVoxelCountCascades)+'_geom.spv');
+   try
+    fPlanetGeometryShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
+   fVulkanDevice.DebugUtils.SetObjectName(fPlanetGeometryShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fPlanetGeometryShaderModule');
+   fPlanetGeometryShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fPlanetGeometryShaderModule,'main');
+  end else begin
+   fPlanetGeometryShaderModule:=nil;
+   fPlanetGeometryShaderStage:=nil;
   end;
 
   if assigned(fGrassVertexShaderModule) then begin
@@ -27776,6 +27814,38 @@ begin
   fEmptyDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fEmptyDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TRenderPass.fEmptyDescriptorSetLayout');
 
+  // Voxelization: dedicated descriptor set (set 4) for the cascaded voxel cone tracing volume. Bindings 1/2/3 match
+  // voxelization_globals.glsl (CVCT UBO, content data SSBO, content meta-data SSBO). Binding 1 is read by the geometry/
+  // task/mesh stages (cascade matrices) and the fragment; bindings 2/3 only by the fragment (the atomic append).
+  if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+   fVoxelizationDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+   fVoxelizationDescriptorSetLayout.AddBinding(1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_GEOMETRY_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               [],
+                                               0);
+   fVoxelizationDescriptorSetLayout.AddBinding(2,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               [],
+                                               0);
+   fVoxelizationDescriptorSetLayout.AddBinding(3,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               [],
+                                               0);
+   fVoxelizationDescriptorSetLayout.Initialize;
+   fVulkanDevice.DebugUtils.SetObjectName(fVoxelizationDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TRenderPass.fVoxelizationDescriptorSetLayout');
+  end else begin
+   fVoxelizationDescriptorSetLayout:=nil;
+  end;
+
   fPlanetPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fPlanetPipelineLayout.AddPushConstantRange(fShaderStageFlags,
                                              0,
@@ -27788,6 +27858,9 @@ begin
      assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
    fPlanetPipelineLayout.AddDescriptorSetLayout(fEmptyDescriptorSetLayout); // set 3 = empty placeholder (terrain-mesh SSBO slot, unused in the vertex path)
    fPlanetPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field
+  end else if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+   fPlanetPipelineLayout.AddDescriptorSetLayout(fEmptyDescriptorSetLayout); // set 3 = empty placeholder (terrain-mesh SSBO slot, unused in the vertex+geometry path)
+   fPlanetPipelineLayout.AddDescriptorSetLayout(fVoxelizationDescriptorSetLayout); // set 4 = cascaded voxel cone tracing volume
   end;
   fPlanetPipelineLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fPlanetPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fPlanetPipelineLayout');
@@ -27825,6 +27898,8 @@ begin
    if (PlanetRTGIActive(fRendererInstance)) and
       assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin
     fTerrainMeshPipelineLayout.AddDescriptorSetLayout(PlanetRTGIDescriptorSetLayout(fRendererInstance)); // set 4 = DDGI probe field
+   end else if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+    fTerrainMeshPipelineLayout.AddDescriptorSetLayout(fVoxelizationDescriptorSetLayout); // set 4 = cascaded voxel cone tracing volume
    end;
    fTerrainMeshPipelineLayout.Initialize;
    fVulkanDevice.DebugUtils.SetObjectName(fTerrainMeshPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fTerrainMeshPipelineLayout');
@@ -27850,6 +27925,12 @@ begin
  FreeAndNil(fPlanetPipeline);
 
  FreeAndNil(fPlanetPipelineLayout);
+
+ FreeAndNil(fVoxelizationDescriptorSetLayout);
+
+ FreeAndNil(fPlanetGeometryShaderStage);
+
+ FreeAndNil(fPlanetGeometryShaderModule);
 
  FreeAndNil(fDescriptorSetLayout);
 
@@ -27899,6 +27980,7 @@ var InFlightFrameIndex:TpvSizeInt;
     CloudsShadowImageInfo:TVkDescriptorImageInfo;
     SSAOImageInfo:TVkDescriptorImageInfo;
     DummyImageInfo:TVkDescriptorImageInfo;
+    PipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT;
 begin
 
  fWidth:=aWidth;
@@ -28088,6 +28170,46 @@ begin
                                                                               TpvScene3DRenderer(fRenderer).Renderer.ClampedSampler.Handle);
  end;
 
+ // Voxelization: the dedicated set-4 descriptor set bound to the renderer instance's cascaded voxel cone tracing volume.
+ if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+  fVoxelizationDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                              TpvScene3D(fScene3D).CountInFlightFrames);
+  fVoxelizationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),TpvScene3D(fScene3D).CountInFlightFrames);
+  fVoxelizationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*TpvScene3D(fScene3D).CountInFlightFrames);
+  fVoxelizationDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fVoxelizationDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TRenderPass.fVoxelizationDescriptorPool');
+  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+   fVoxelizationDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVoxelizationDescriptorPool,fVoxelizationDescriptorSetLayout);
+   fVoxelizationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                        [],
+                                                                        [TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                        [],
+                                                                        false);
+   fVoxelizationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                        [],
+                                                                        [TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationCascadedVoxelConeTracingContentDataBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                        [],
+                                                                        false);
+   fVoxelizationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                        0,
+                                                                        1,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                        [],
+                                                                        [TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                        [],
+                                                                        false);
+   fVoxelizationDescriptorSets[InFlightFrameIndex].Flush;
+   fVulkanDevice.DebugUtils.SetObjectName(fVoxelizationDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRenderPass.fVoxelizationDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+  end;
+ end;
+
  begin
 
   fPlanetPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
@@ -28101,6 +28223,9 @@ begin
                                                     0);
 
   fPlanetPipeline.AddStage(fPlanetVertexShaderStage);
+  if assigned(fPlanetGeometryShaderStage) then begin
+   fPlanetPipeline.AddStage(fPlanetGeometryShaderStage); // Voxelization: per-cascade amplification + dominant-axis projection
+  end;
   if assigned(fPlanetFragmentShaderStage) then begin
    fPlanetPipeline.AddStage(fPlanetFragmentShaderStage);
   end;
@@ -28129,7 +28254,8 @@ begin
   case fMode of
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.Voxelization:begin
     fPlanetPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
    end;
    else begin
@@ -28197,6 +28323,22 @@ begin
   end;
   fPlanetPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
   fPlanetPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+   // The voxelization render pass has no depth attachment; cascades are amplified in the geometry shader. Enable hardware
+   // conservative rasterization when available (matches the mesh voxelization pipeline + the CVCT UBO flag, so the shader's
+   // manual one-texel expansion is used only when hardware conservative raster is absent).
+   fPlanetPipeline.DepthStencilState.DepthTestEnable:=false;
+   fPlanetPipeline.DepthStencilState.DepthWriteEnable:=false;
+   if assigned(fVulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
+    FillChar(PipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
+    PipelineRasterizationConservativeStateCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+    PipelineRasterizationConservativeStateCreateInfoEXT.flags:=0;
+    PipelineRasterizationConservativeStateCreateInfoEXT.conservativeRasterizationMode:=VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+    PipelineRasterizationConservativeStateCreateInfoEXT.extraPrimitiveOverestimationSize:=Min(0.75,fVulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.maxExtraPrimitiveOverestimationSize);
+    fPlanetPipeline.RasterizationState.SetPipelineRasterizationConservativeStateCreateInfoEXT(PipelineRasterizationConservativeStateCreateInfoEXT);
+   end;
+  end;
 
   fPlanetPipeline.Initialize;
 
@@ -28361,7 +28503,8 @@ begin
    case fMode of
     TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
     TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap,
+    TpvScene3DPlanet.TRenderPass.TMode.Voxelization:begin
      fTerrainMeshPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
     end;
     else begin
@@ -28430,6 +28573,20 @@ begin
    fTerrainMeshPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
    fTerrainMeshPipeline.DepthStencilState.StencilTestEnable:=false;
 
+   if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+    // No depth attachment in the voxelization render pass; cascades are amplified in the mesh shader.
+    fTerrainMeshPipeline.DepthStencilState.DepthTestEnable:=false;
+    fTerrainMeshPipeline.DepthStencilState.DepthWriteEnable:=false;
+    if assigned(fVulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
+     FillChar(PipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
+     PipelineRasterizationConservativeStateCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.flags:=0;
+     PipelineRasterizationConservativeStateCreateInfoEXT.conservativeRasterizationMode:=VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.extraPrimitiveOverestimationSize:=Min(0.75,fVulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.maxExtraPrimitiveOverestimationSize);
+     fTerrainMeshPipeline.RasterizationState.SetPipelineRasterizationConservativeStateCreateInfoEXT(PipelineRasterizationConservativeStateCreateInfoEXT);
+    end;
+   end;
+
    fTerrainMeshPipeline.Initialize;
 
    fVulkanDevice.DebugUtils.SetObjectName(fTerrainMeshPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRenderPass.fTerrainMeshPipeline');
@@ -28458,6 +28615,12 @@ begin
  end;
 
  FreeAndNil(fDescriptorPool);
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  FreeAndNil(fVoxelizationDescriptorSets[InFlightFrameIndex]);
+ end;
+
+ FreeAndNil(fVoxelizationDescriptorPool);
 
 end;
 
@@ -28590,6 +28753,28 @@ begin
        end;
       end;
 
+      // Voxelization (cascaded voxel cone tracing): bind the voxel volume at the fixed set 4 (CVCT and RT GI are mutually
+      // exclusive, so this reuses the same set index as the DDGI path; same set for the mesh-shader and vertex+geometry pipelines).
+      if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+       if UseTerrainMeshShader then begin
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fTerrainMeshPipelineLayout.Handle,
+                                             4,
+                                             1,
+                                             @fVoxelizationDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+       end else begin
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             fPlanetPipelineLayout.Handle,
+                                             4,
+                                             1,
+                                             @fVoxelizationDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+       end;
+      end;
+
       ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;
       InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
       ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
@@ -28709,6 +28894,7 @@ begin
  ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
  //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
          if assigned(vkCmdDrawIndexedIndirectCount) and
+            (fMode<>TpvScene3DPlanet.TRenderPass.TMode.Voxelization) and // voxelization draws all tiles (no cull pass / indirect buffer); the geometry shader amplifies per cascade
             (not ((fMode in [TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion]) and {not} TpvScene3DRenderer(fRenderer).Scene3D.RaytracingActive)) and
             Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPass),
                                                        RendererViewInstance) then begin

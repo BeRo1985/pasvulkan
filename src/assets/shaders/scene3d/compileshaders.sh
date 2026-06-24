@@ -837,6 +837,17 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_rsm_frag.spv"
 
+  # Planet surface voxelization (cascaded voxel cone tracing): shared fragment + per-cascade-count geometry shader
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVOXELIZATION -o ${tempPath}/planet_renderpass_bufref_voxelization_frag.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/planet_renderpass_voxelization_1_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/planet_renderpass_voxelization_2_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/planet_renderpass_voxelization_3_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/planet_renderpass_voxelization_4_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=5 -o ${tempPath}/planet_renderpass_voxelization_5_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/planet_renderpass_voxelization_6_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/planet_renderpass_voxelization_7_geom.spv"
+  "-V planet_renderpass_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/planet_renderpass_voxelization_8_geom.spv"
+
   # Grass on planets
 
   #"-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
@@ -882,6 +893,10 @@ compileshaderarguments=(
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_terrain_bufref_velocity_multiview_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_terrain_raytracing_multiview_mesh.spv"
   "-V planet_terrain.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_terrain_raytracing_velocity_multiview_mesh.spv"
+
+  # Planet terrain voxelization (cascaded voxel cone tracing): task amplifies per (meshlet, cascade, chunk), mesh does dominant-axis projection
+  "-V planet_terrain_voxelization.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_terrain_voxelization_task.spv"
+  "-V planet_terrain_voxelization.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_terrain_voxelization_mesh.spv"
 
   # Water task+mesh shader variants (PLANET_WATER path)
   "-V planet_water.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_bufref_task.spv"
