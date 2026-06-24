@@ -28935,11 +28935,21 @@ begin
           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
            Planet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.DrawIndexed,'PlanetVisualMeshFallback');
           end;
-          aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
-                                        1,
-                                        Planet.fVisualMeshLODOffsets[0],
-                                        0,
-                                        0);
+          // Voxelization draws the coarsest LOD (the voxel grid is coarse, and this is the non-culled fallback over the whole
+          // planet — LOD 0 would be the finest mesh and is far too many vertices/triangles for the geometry-shader path).
+          if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+           aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[Planet.fCountVisualMeshLODLevels-1],
+                                         1,
+                                         Planet.fVisualMeshLODOffsets[Planet.fCountVisualMeshLODLevels-1],
+                                         0,
+                                         0);
+          end else begin
+           aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
+                                         1,
+                                         Planet.fVisualMeshLODOffsets[0],
+                                         0,
+                                         0);
+          end;
           if assigned(Planet.fVulkanDevice.BreadcrumbBuffer) then begin
            Planet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
           end;

@@ -362,12 +362,15 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fGMCBuffer:array[0..1] of array[0..3] of TpvVulkanBuffer; // B-frames: the L0/L1 motion-compensated references, device-local
        fScratchBuffer:TpvVulkanBuffer;
        fCDEFTempBuffer:TpvVulkanBuffer; // CDEF scratch: cdef.comp writes the deringed plane here, then it is copied back
-       fOutputImage:TpvVulkanImage;
+       fOutputImage:TpvVulkanImage;                // decode target: UNORM (SDR) / FP16 (HDR) base format; the compute stores into it
        fOutputImageMemory:TpvVulkanDeviceMemoryBlock;
-       fOutputImageView:TpvVulkanImageView;        // sample / present view (sRGB for SDR -> samples to linear; FP16 for HDR)
-       fOutputImageStorageView:TpvVulkanImageView; // compute storage view (UNORM for SDR -> stores raw gamma bytes; FP16 for HDR)
-       fOutputStorageFormat:TVkFormat;
+       fOutputImageView:TpvVulkanImageView;        // sample view (sRGB-alias for SDR -> samples to linear; FP16 for HDR); usage SAMPLED only
+       fOutputImageStorageView:TpvVulkanImageView; // compute storage view (UNORM for SDR -> stores raw gamma bytes; FP16 for HDR); usage STORAGE only
+       fOutputStorageFormat:TVkFormat;             // the base image + storage view format (UNORM SDR / FP16 HDR)
        fOutputImageFlags:TVkImageCreateFlags;
+       fBlitUsage:boolean;                         // --blit usage declared at Create: SDR allocates a separate sRGB blit image (vkCmdBlitImage needs an sRGB source); no on-demand alloc
+       fBlitImage:TpvVulkanImage;                  // SDR + fBlitUsage only: sRGB copy of fOutputImage for a color-correct blit-present (raw CopyImage from the UNORM base -> sRGB)
+       fBlitImageMemory:TpvVulkanDeviceMemoryBlock;
        fSetUnpack:array[0..3] of TpvVulkanDescriptorSet;
        fSetRANSUnpack:array[0..3] of TpvVulkanDescriptorSet; // DCT path: {data, offset[plane], coeff[plane], table[plane]}
        fSetRANSUnpackQuadTree:array[0..3] of TpvVulkanDescriptorSet; // DCT quad-tree: {data, offset[plane], coeff[plane], table[plane], partition}
@@ -534,7 +537,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // SDR-tonemapped sRGB8 fallback. Ignored for SDR streams (always R8G8B8A8). The output format is fixed here.
        // aBSubmitMode: 0 = the decoder self-submits the B-frame decode-ahead (reference/debug; uses its own queue/fence),
        // 1 = engine-friendly (the decode-ahead is recorded into the caller's command buffer; no self-submit).
-       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean=false;const aBSubmitMode:TpvInt32=0;const aPipelineCache:TpvVulkanPipelineCache=nil);
+       constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean=false;const aBSubmitMode:TpvInt32=0;const aPipelineCache:TpvVulkanPipelineCache=nil;const aBlitUsage:boolean=false);
        destructor Destroy; override;
        // Record a decode of aFrameIndex (I or P) into the caller's command buffer; on submit it leaves the
        // reconstructed RGB in OutputImage (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL). The CPU upload (read /
