@@ -26178,6 +26178,13 @@ begin
        AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
        CountAdditionalViews:=InFlightFrameState^.CountFinalViews;
       end;
+      TpvScene3DRendererCullRenderPass.ReflectiveShadowMap:begin
+       RenderPass:=TpvScene3DRendererRenderPass.ReflectiveShadowMap;
+       BaseViewIndex:=InFlightFrameState^.ReflectiveShadowMapViewIndex;
+       CountViews:=InFlightFrameState^.CountReflectiveShadowMapViews;
+       AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
+       CountAdditionalViews:=InFlightFrameState^.CountFinalViews;
+      end;
       else begin
        Assert(false);
        RenderPass:=TpvScene3DRendererRenderPass.View;

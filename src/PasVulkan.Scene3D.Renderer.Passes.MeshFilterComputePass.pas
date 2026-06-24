@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
@@ -102,6 +103,7 @@ type { TpvScene3DRendererPassesMeshFilterComputePass }
       private
        fInstance:TpvScene3DRendererInstance;
        fCullRenderPass:TpvScene3DRendererCullRenderPass;
+       fPlanetCullPass:TpvScene3DPlanet.TCullPass;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fPipelineLayout:TpvVulkanPipelineLayout;
@@ -174,10 +176,25 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ // The planet surface is a separate rendering system that fills its own indirect draw command buffer
+ // via its own cull pass. The reflective shadow map (used by the cascaded radiance hints GI) therefore
+ // needs a dedicated planet cull pass here, using the simple single-pass cull mode (aPass=-1), since
+ // there is no HiZ depth pyramid for the reflective shadow map.
+ if fCullRenderPass=TpvScene3DRendererCullRenderPass.ReflectiveShadowMap then begin
+  fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
+                                                     fInstance,
+                                                     fInstance.Renderer.Scene3D,
+                                                     fCullRenderPass,
+                                                     -1);
+ end else begin
+  fPlanetCullPass:=nil;
+ end;
+
 end;
 
 procedure TpvScene3DRendererPassesMeshFilterComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fPlanetCullPass);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -205,10 +222,17 @@ begin
                                             0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshFilterComputePass.fPipeline');
 
+ if assigned(fPlanetCullPass) then begin
+  fPlanetCullPass.AllocateResources;
+ end;
+
 end;
 
 procedure TpvScene3DRendererPassesMeshFilterComputePass.ReleaseVolatileResources;
 begin
+ if assigned(fPlanetCullPass) then begin
+  fPlanetCullPass.ReleaseResources;
+ end;
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  inherited ReleaseVolatileResources;
@@ -453,6 +477,10 @@ begin
                                     0,nil,
                                     3,@BufferMemoryBarriers[0],
                                     0,nil);
+
+  if assigned(fPlanetCullPass) then begin
+   fPlanetCullPass.Execute(aCommandBuffer,aInFlightFrameIndex);
+  end;
 
   fInstance.Renderer.VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 

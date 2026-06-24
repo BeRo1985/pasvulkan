@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
@@ -90,6 +91,7 @@ type { TpvScene3DRendererPassesReflectiveShadowMapRenderPass }
                                           const aInFlightFrameIndex:TpvSizeInt);
       public
        fVulkanRenderPass:TpvVulkanRenderPass;
+       fPlanetReflectiveShadowMapPass:TpvScene3DPlanet.TRenderPass;
        fInstance:TpvScene3DRendererInstance;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
@@ -335,12 +337,22 @@ begin
                                           fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);//}
 
+ fPlanetReflectiveShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                                     fInstance,
+                                                                     fInstance.Renderer.Scene3D,
+                                                                     TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap,
+                                                                     fResourceCascadedShadowMap,
+                                                                     nil,
+                                                                     fResourceCloudsShadowMap);
+
 end;
 
 procedure TpvScene3DRendererPassesReflectiveShadowMapRenderPass.ReleasePersistentResources;
 begin
 
 //FreeAndNil(fSkyBox);
+
+ FreeAndNil(fPlanetReflectiveShadowMapPass);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
@@ -1037,6 +1049,11 @@ begin
                            fInstance.ReflectiveShadowMapHeight,
                            VK_SAMPLE_COUNT_1_BIT);//}
 
+ fPlanetReflectiveShadowMapPass.AllocateResources(fVulkanRenderPass,
+                                                  fInstance.ReflectiveShadowMapWidth,
+                                                  fInstance.ReflectiveShadowMapHeight,
+                                                  VK_SAMPLE_COUNT_1_BIT);
+
 end;
 
 procedure TpvScene3DRendererPassesReflectiveShadowMapRenderPass.ReleaseVolatileResources;
@@ -1048,6 +1065,7 @@ var Index:TpvSizeInt;
 begin
 //fSkyBox.ReleaseResources;
 //FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
+ fPlanetReflectiveShadowMapPass.ReleaseResources;
  for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -1121,6 +1139,13 @@ begin
   if true then begin
 
    fOnSetRenderPassResourcesDone:=false;
+
+   fPlanetReflectiveShadowMapPass.Draw(aInFlightFrameIndex,
+                                       aFrameIndex,
+                                       TpvScene3DRendererRenderPass.ReflectiveShadowMap,
+                                       InFlightFrameState^.ReflectiveShadowMapViewIndex,
+                                       InFlightFrameState^.CountReflectiveShadowMapViews,
+                                       aCommandBuffer);
 
    if fInstance.Renderer.UseDepthPrepass then begin
 
