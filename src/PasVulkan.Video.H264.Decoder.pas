@@ -272,6 +272,8 @@ type EpvVideoH264=class(Exception);
 
 implementation
 
+uses PasVulkan.Application;
+
 { TpvVideoH264Decoder.TBitReader }
 
 procedure TpvVideoH264Decoder.TBitReader.Init(const aData:PpvUInt8Array;const aLength:TpvSizeUInt);
@@ -954,16 +956,16 @@ begin
  end;
  fDevice.Commands.GetVideoSessionMemoryRequirementsKHR(fDevice.Handle,fSession,@MemoryRequirementCount,@MemoryRequirements[0]);
 {$ifdef FWVH264Debug}
- writeln(ErrOutput,'  [h264dbg] SizeOf(TVkVideoSessionMemoryRequirementsKHR)=',SizeOf(TVkVideoSessionMemoryRequirementsKHR),' memReqCount=',MemoryRequirementCount);
+ pvApplication.Log(LOG_VERBOSE,'TpvVideoH264Decoder','  [h264dbg] SizeOf(TVkVideoSessionMemoryRequirementsKHR)='+IntToStr(SizeOf(TVkVideoSessionMemoryRequirementsKHR))+' memReqCount='+IntToStr(MemoryRequirementCount));
  for Index:=0 to MemoryRequirementCount-1 do begin
-  writeln(ErrOutput,'  [h264dbg] req[',Index,'] bindIndex=',MemoryRequirements[Index].memoryBindIndex,
-                    ' typeBits=$',IntToHex(MemoryRequirements[Index].memoryRequirements.memoryTypeBits,8),
-                    ' size=',MemoryRequirements[Index].memoryRequirements.size);
+  pvApplication.Log(LOG_VERBOSE,'TpvVideoH264Decoder','  [h264dbg] req['+IntToStr(Index)+'] bindIndex='+IntToStr(MemoryRequirements[Index].memoryBindIndex)+
+                    ' typeBits=$'+IntToHex(MemoryRequirements[Index].memoryRequirements.memoryTypeBits,8)+
+                    ' size='+IntToStr(MemoryRequirements[Index].memoryRequirements.size));
  end;
- writeln(ErrOutput,'  [h264dbg] memoryTypeCount=',fDevice.PhysicalDevice.MemoryProperties.memoryTypeCount);
+ pvApplication.Log(LOG_VERBOSE,'TpvVideoH264Decoder','  [h264dbg] memoryTypeCount='+IntToStr(fDevice.PhysicalDevice.MemoryProperties.memoryTypeCount));
  for Index:=0 to fDevice.PhysicalDevice.MemoryProperties.memoryTypeCount-1 do begin
-  writeln(ErrOutput,'  [h264dbg] memType[',Index,'] propertyFlags=$',IntToHex(fDevice.PhysicalDevice.MemoryProperties.memoryTypes[Index].propertyFlags,8),
-                    ' heapIndex=',fDevice.PhysicalDevice.MemoryProperties.memoryTypes[Index].heapIndex);
+  pvApplication.Log(LOG_VERBOSE,'TpvVideoH264Decoder','  [h264dbg] memType['+IntToStr(Index)+'] propertyFlags=$'+IntToHex(fDevice.PhysicalDevice.MemoryProperties.memoryTypes[Index].propertyFlags,8)+
+                    ' heapIndex='+IntToStr(fDevice.PhysicalDevice.MemoryProperties.memoryTypes[Index].heapIndex));
  end;
 {$endif}
  for Index:=0 to MemoryRequirementCount-1 do begin
