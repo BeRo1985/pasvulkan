@@ -215,7 +215,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
               Centered,
               CenterToNearestPixel,
               Scaled,
-              ScaleToNearest
+              ScaleToNearest,
+              WriteToConsoleOutput
              );
             PFlag=^TFlag;
             TFlags=set of TFlag;
@@ -2902,7 +2903,9 @@ begin
    if IncomingChars>0 then begin
     IncomingChars:=fMachineInstance.Machine.UARTDevice.OutputRingBuffer.ReadAsMuchAsPossible(@fUARTOutputBuffer,Min(IncomingChars,SizeOf(fUARTOutputBuffer)));
     if IncomingChars>0 then begin
-     system.write(copy(fUARTOutputBuffer,0,IncomingChars));
+     if TFlag.WriteToConsoleOutput in fFlags then begin
+      System.Write(copy(fUARTOutputBuffer,0,IncomingChars));
+     end;
      fTerm.Write(@fUARTOutputBuffer,IncomingChars);
      Updated:=true;
     end;
