@@ -446,6 +446,10 @@ begin
  UniformBufferData.CountsFrame.z:=TpvScene3DRendererInstance.GlobalIlluminationSurfelMaxPerCell;
  UniformBufferData.CountsFrame.w:=TpvUInt32(aFrameIndex);
  UniformBufferData.Params:=TpvVector4.InlineableCreate(1.0,0.95,256.0,1.0);                  // radius, hysteresis, recycle frame age, spawn coverage threshold
+ UniformBufferData.Debug.x:=fInstance.GlobalIlluminationSurfelDebugVisualization;            // debug visualization mode (0 = off; cycled via Shift+Ctrl+F)
+ UniformBufferData.Debug.y:=0;
+ UniformBufferData.Debug.z:=0;
+ UniformBufferData.Debug.w:=0;
  fInstance.GlobalIlluminationSurfelUniformBuffers[aInFlightFrameIndex].UpdateData(UniformBufferData,0,SizeOf(TpvScene3DRendererInstance.TGlobalIlluminationSurfelUniformBufferData));
 
  // One-time zero of the persistent pool / stats / free-list (not cleared on allocation). After this, the per-frame clear

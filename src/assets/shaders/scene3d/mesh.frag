@@ -1276,6 +1276,15 @@ void main() {
   }
 #endif
 
+#if defined(GLOBAL_ILLUMINATION_SURFEL) && !defined(DEPTHONLY) && !defined(VOXELIZATION) && !defined(REFLECTIVESHADOWMAPOUTPUT)
+  // Surfel GI debug visualization: replace the shaded color with the selected diagnostic channel (coverage / occlusion /
+  // raw irradiance / surfel identity / cell occupancy). The post-processing passes detect the mode and bypass tonemapping
+  // / exposure so the raw debug values reach the screen (mirrors the meshlet debug-color path).
+  if(surfelData.debug.x != 0u){
+    finalColor = vec4(giSurfelDebugColor(inWorldSpacePosition.xyz, workNormal, surfelData.debug.x), 1.0);
+  }
+#endif
+
 #if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
 #ifndef BLEND
   outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);

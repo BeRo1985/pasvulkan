@@ -189,6 +189,7 @@ struct SurfelUniforms {
   vec4 cameraPositionCellSize;  // xyz = camera world position, w = base hash cell size (meters)
   uvec4 countsFrame;            // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
   vec4 params;                  // x = surfel radius, y = temporal hysteresis (0..1), z = recycle frame age, w = spawn coverage threshold
+  uvec4 debug;                  // x = debug visualization mode (0 = off; cycled via Shift+Ctrl+F), yzw reserved
 };
 
 // --- World-space hash grid ------------------------------------------------------------------------------------------
@@ -340,6 +341,102 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal,
 #else
   return max(vec3(0.0), accumIrradiance / accumWeight);
 #endif
+}
+
+// --- Debug visualization (surfelData.debug.x, cycled via Shift+Ctrl+F) ----------------------------------------------
+// Jet-style ramp for scalar debug channels (0 -> blue ... 1 -> red).
+vec3 surfelDebugHeat(const in float value){
+  float t = clamp(value, 0.0, 1.0);
+  return clamp(vec3(1.5) - abs((4.0 * t) - vec3(3.0, 2.0, 1.0)), vec3(0.0), vec3(1.0));
+}
+
+// Per-pixel diagnostic for the surfel field, selected by mode (= surfelData.debug.x):
+//   1 = coverage       (effective gather weight; BLACK = no surfel covers this point -> grid coverage hole)
+//   2 = occlusion      (mean Chebyshev visibility of the covering surfels; dark/blue = heavily occluded / over-darkened)
+//   3 = raw irradiance (the gathered diffuse irradiance E, before albedo)
+//   4 = surfel identity(hash color of the highest-weight covering surfel; shows the disc/decal footprint)
+//   5 = cell occupancy (live surfel count in the point's hash cell / GI_SURFEL_MAX_PER_CELL)
+// Modes 1/2/4 re-walk the cell with the same weighting as giSurfelSampleIrradiance, but without reading irradiance, so
+// the coverage BLACK corresponds exactly to where the real gather returns vec3(0.0).
+vec3 giSurfelDebugColor(const in vec3 worldPosition, const in vec3 normal, const in uint mode){
+  float cellSize = surfelData.cameraPositionCellSize.w;
+  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, cellSize));
+  uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
+  uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+
+  if(mode == 3u){
+    float skyVisibility;
+    return giSurfelSampleIrradiance(worldPosition, normal, skyVisibility); // raw irradiance E (rides the post-fx bypass)
+  }
+
+  if(mode == 5u){
+    return surfelDebugHeat(float(count) * (1.0 / float(GI_SURFEL_MAX_PER_CELL))); // raw hash-cell occupancy
+  }
+
+  float coverage = 0.0;          // sum of spatial*normal*confidence weight (pre-occlusion)
+  float occlusionWeighted = 0.0; // the same, times the per-surfel Chebyshev visibility
+  float bestWeight = 0.0;
+  uint bestSurfel = 0xffffffffu;
+
+  for(uint i = 0u; i < count; i++){
+    uint surfelIndex = surfelGridCells[base + i];
+    if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
+      continue;
+    }
+    Surfel surfel = surfels[surfelIndex];
+    if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
+      continue;
+    }
+
+    float radius = max(surfel.positionRadius.w, 1e-3);
+    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+    float dN = dot(toSurfel, surfel.normalCount.xyz);
+    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+    if(md >= radius){
+      continue;
+    }
+
+    float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
+    if(normalWeight <= 0.0){
+      continue;
+    }
+
+    float weight = smoothstep(radius, 0.0, md) * normalWeight
+                 * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0);
+    if(weight <= 0.0){
+      continue;
+    }
+
+    coverage += weight;
+    occlusionWeighted += weight * surfelDepthOcclusion(surfel, worldPosition);
+    if(weight > bestWeight){
+      bestWeight = weight;
+      bestSurfel = surfelIndex;
+    }
+  }
+
+  if(mode == 1u){
+    if(coverage <= 0.0){
+      return vec3(0.0); // true coverage hole: no covering surfel (== where the real gather goes black)
+    }
+    return surfelDebugHeat(clamp(coverage, 0.0, 1.0));
+  }
+
+  if(mode == 2u){
+    float occlusion = (coverage > 0.0) ? (occlusionWeighted / coverage) : 1.0;
+    return surfelDebugHeat(occlusion); // blue/dark = heavily occluded / over-darkened (Chebyshev)
+  }
+
+  // mode 4: surfel identity (hash color of the highest-weight covering surfel)
+  if(bestSurfel == 0xffffffffu){
+    return vec3(0.0);
+  }
+  uint h = bestSurfel;
+  h = (h ^ (h >> 17u)) * 0xed5ad4bbu;
+  h = (h ^ (h >> 11u)) * 0xac4c1b51u;
+  h = (h ^ (h >> 15u)) * 0x31848babu;
+  return vec3(uvec3((uvec3(h ^ (h >> 14u)) >> uvec3(0u, 8u, 16u)) & uvec3(255u))) * (1.0 / 255.0);
 }
 
 #endif // GLOBAL_ILLUMINATION_SURFEL_SAMPLE

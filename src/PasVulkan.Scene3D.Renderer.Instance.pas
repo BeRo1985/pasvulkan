@@ -462,6 +462,7 @@ type { TpvScene3DRendererInstance }
              CameraPositionCellSize:TpvVector4; // xyz = camera world position, w = base hash cell size
              CountsFrame:TpvUInt32Vector4;      // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
              Params:TpvVector4;                 // x = surfel radius, y = hysteresis, z = recycle frame age, w = spawn coverage threshold
+             Debug:TpvUInt32Vector4;            // x = debug visualization mode (0 = off; cycled via Shift+Ctrl+F), yzw reserved
             end;
             PGlobalIlluminationSurfelUniformBufferData=^TGlobalIlluminationSurfelUniformBufferData;
             TGlobalIlluminationSurfelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationSurfelUniformBufferData;
@@ -886,6 +887,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
        fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:LongBool;
+       fGlobalIlluminationSurfelDebugVisualization:TpvUInt32;
        fDrawMeshletDebugColors:boolean;
       public
        fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
@@ -1253,6 +1255,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout;
        property GlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets read fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
        property GlobalIlluminationCascadedVoxelConeTracingDebugVisualization:LongBool read fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization write fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization;
+       property GlobalIlluminationSurfelDebugVisualization:TpvUInt32 read fGlobalIlluminationSurfelDebugVisualization write fGlobalIlluminationSurfelDebugVisualization;
        property DrawMeshletDebugColors:boolean read fDrawMeshletDebugColors write fDrawMeshletDebugColors;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
@@ -2742,6 +2745,8 @@ begin
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets),#0);
 
  fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:=false;
+
+ fGlobalIlluminationSurfelDebugVisualization:=0;
 
  fDrawMeshletDebugColors:=false;
 
