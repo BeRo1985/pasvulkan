@@ -736,6 +736,13 @@ void main(){
     c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
   }
 
+#if defined(GLOBAL_ILLUMINATION_SURFEL)
+  // Surfel GI debug visualization (Shift+Ctrl+F): replace the shaded color with the selected diagnostic channel.
+  if(surfelData.debug.x != 0u){
+    c = vec4(giSurfelDebugColor(inWorldSpacePosition, workNormal, surfelData.debug.x), 1.0);
+  }
+#endif
+
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
 #if defined(VELOCITY)

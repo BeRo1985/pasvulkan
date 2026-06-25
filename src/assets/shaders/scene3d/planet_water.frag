@@ -1104,6 +1104,13 @@ void main(){
     outFragColor = vec4(meshletDebugColor(inBlock.meshletID & 0x7fffffffu), 1.0);
   }
 
+#if defined(GLOBAL_ILLUMINATION_SURFEL)
+  // Surfel GI debug visualization (Shift+Ctrl+F): replace the shaded color with the selected diagnostic channel.
+  if(surfelData.debug.x != 0u){
+    outFragColor = vec4(giSurfelDebugColor(inWorldSpacePosition, workNormal, surfelData.debug.x), 1.0);
+  }
+#endif
+
 #elif defined(UNDERWATER)
 
   vec4 finalColor = vec4(textureLod(uPassTextures[1], vec3(inBlock.texCoord, gl_ViewIndex), 1.0).xyz * waterBaseColor * waterBaseColor, 1.0);
