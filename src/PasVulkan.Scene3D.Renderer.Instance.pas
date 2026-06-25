@@ -461,7 +461,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationSurfelUniformBufferData=record
              CameraPositionCellSize:TpvVector4; // xyz = camera world position, w = base hash cell size
              CountsFrame:TpvUInt32Vector4;      // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
-             Params:TpvVector4;                 // x = surfel radius, y = hysteresis, z = recycle frame age, w = spawn coverage threshold
+             Params:TpvVector4;                 // x = radius / cascade-cell-size scale, y = hysteresis, z = recycle frame age, w = spawn coverage threshold
              Debug:TpvUInt32Vector4;            // x = debug visualization mode (0 = off; cycled via Shift+Ctrl+F), yzw reserved
             end;
             PGlobalIlluminationSurfelUniformBufferData=^TGlobalIlluminationSurfelUniformBufferData;

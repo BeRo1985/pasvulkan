@@ -69,6 +69,12 @@ unit PasVulkan.Application;
  {$packenum 4}
 {$endif}
 
+// Swapchain images need a defined layout before the FrameGraph (which expects VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+// first uses them. When this is defined, each image is transitioned to PRESENT_SRC once AFTER its first acquire
+// (spec-conformant). Undefine it to fall back to the legacy transition at swapchain-image creation time, which
+// newer Vulkan validation layers flag as UNASSIGNED-non-acquired-swapchain-image-used.
+{$define PasVulkanSwapChainImagePostAcquireLayoutInit}
+
 interface
 
 uses {$if defined(Unix)}
@@ -1952,6 +1958,12 @@ type EpvApplication=class(Exception)
 
        fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array of TpvVulkanCommandBuffer;
        fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
+
+{$ifdef PasVulkanSwapChainImagePostAcquireLayoutInit}
+       fVulkanInitialPresentSrcLayoutCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanInitialPresentSrcLayoutCommandBufferSemaphores:array of TpvVulkanSemaphore;
+       fVulkanInitialPresentSrcLayoutPending:array of boolean;
+{$endif}
 
        fVulkanFrameFences:array[0..3] of TpvVulkanFence;
        fVulkanFrameFencesReady:TpvUInt32;
@@ -11042,6 +11054,8 @@ begin
                                                 false);
 
 
+{$ifndef PasVulkanSwapChainImagePostAcquireLayoutInit}
+    // Legacy: transition the swapchain image to PRESENT_SRC at creation time, before it is ever acquired.
     if (fVulkanDevice.GraphicsQueue=fVulkanDevice.PresentQueue) or
        ((fVulkanDevice.PhysicalDevice.QueueFamilyProperties[fVulkanDevice.PresentQueue.QueueFamilyIndex].queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) then begin
      SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
@@ -11061,6 +11075,7 @@ begin
                                    fVulkanDevice.PresentQueue,
                                    fInternalPresentQueueCommandBufferFence,
                                    true);
+{$endif}
 
     ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
                                                         ColorAttachmentImage,
@@ -11177,6 +11192,11 @@ begin
   SetLength(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores,CountSwapChainImages);
   SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers,CountSwapChainImages);
   SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores,CountSwapChainImages);
+{$ifdef PasVulkanSwapChainImagePostAcquireLayoutInit}
+  SetLength(fVulkanInitialPresentSrcLayoutCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanInitialPresentSrcLayoutCommandBufferSemaphores,CountSwapChainImages);
+  SetLength(fVulkanInitialPresentSrcLayoutPending,CountSwapChainImages);
+{$endif}
 
   fVulkanPresentCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                          fVulkanDevice.PresentQueueFamilyIndex,
@@ -11368,6 +11388,42 @@ begin
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=nil;
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
 
+{$ifdef PasVulkanSwapChainImagePostAcquireLayoutInit}
+    // Same queue family => no present->draw barrier exists. Record a one-time UNDEFINED->PRESENT_SRC barrier
+    // that is submitted once after this image's first acquire (see the Apply state), so the FrameGraph's
+    // expected PRESENT_SRC start layout holds without touching a not-yet-acquired image at creation time.
+    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier.pNext:=nil;
+    ImageMemoryBarrier.srcAccessMask:=0; // semaphore wait provides the source synchronization
+    ImageMemoryBarrier.dstAccessMask:=0; // semaphore signal provides the destination synchronization
+    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    ImageMemoryBarrier.srcQueueFamilyIndex:=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+    ImageMemoryBarrier.dstQueueFamilyIndex:=TVkUInt32(VK_QUEUE_FAMILY_IGNORED);
+    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+    ImageMemoryBarrier.subresourceRange.levelCount:=1;
+    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+    ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+    fVulkanInitialPresentSrcLayoutCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugMarker.SetObjectName(fVulkanInitialPresentSrcLayoutCommandBuffers[Index].Handle,
+                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                            'InitialPresentSrcLayout');
+    fVulkanInitialPresentSrcLayoutCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanInitialPresentSrcLayoutCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+    fVulkanInitialPresentSrcLayoutCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                           0,
+                                                                           0,nil,
+                                                                           0,nil,
+                                                                           1,@ImageMemoryBarrier);
+    fVulkanInitialPresentSrcLayoutCommandBuffers[Index].EndRecording;
+    fVulkanInitialPresentSrcLayoutPending[Index]:=true;
+{$endif}
+
    end;
 
   end;
@@ -11429,6 +11485,17 @@ begin
  for Index:=0 to length(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]);
  end;
+{$ifdef PasVulkanSwapChainImagePostAcquireLayoutInit}
+ for Index:=0 to length(fVulkanInitialPresentSrcLayoutCommandBuffers)-1 do begin
+  FreeAndNil(fVulkanInitialPresentSrcLayoutCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanInitialPresentSrcLayoutCommandBufferSemaphores)-1 do begin
+  FreeAndNil(fVulkanInitialPresentSrcLayoutCommandBufferSemaphores[Index]);
+ end;
+ fVulkanInitialPresentSrcLayoutCommandBuffers:=nil;
+ fVulkanInitialPresentSrcLayoutCommandBufferSemaphores:=nil;
+ fVulkanInitialPresentSrcLayoutPending:=nil;
+{$endif}
  fVulkanFrameFenceCommandBuffers:=nil;
  fVulkanFrameFenceSemaphores:=nil;
  fVulkanWaitFenceCommandBuffers:=nil;
@@ -12063,6 +12130,22 @@ begin
                                                                                                               false);
         fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fSwapChainImageIndex];
 
+{$ifdef PasVulkanSwapChainImagePostAcquireLayoutInit}
+       end else if fVulkanInitialPresentSrcLayoutPending[fSwapChainImageIndex] then begin
+
+        // Same queue family: this image was just acquired for the first time, so give it its initial
+        // PRESENT_SRC layout now (post-acquire, spec-conformant) before the FrameGraph uses it.
+
+        fVulkanInitialPresentSrcLayoutCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                   fVulkanWaitSemaphore,
+                                                                                   fVulkanInitialPresentSrcLayoutCommandBufferSemaphores[fSwapChainImageIndex],
+                                                                                   nil,
+                                                                                   false);
+        fVulkanWaitSemaphore:=fVulkanInitialPresentSrcLayoutCommandBufferSemaphores[fSwapChainImageIndex];
+        fVulkanInitialPresentSrcLayoutPending[fSwapChainImageIndex]:=false;
+
+{$endif}
        end;
 
  {     if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex]) and

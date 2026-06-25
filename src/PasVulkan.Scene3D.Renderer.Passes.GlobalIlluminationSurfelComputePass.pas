@@ -425,6 +425,7 @@ var PushConstants:TPushConstants;
     UniformBufferData:TpvScene3DRendererInstance.TGlobalIlluminationSurfelUniformBufferData;
     DescriptorSets:array[0..3] of TVkDescriptorSet;
     SpawnGroupsX,SpawnGroupsY:TpvInt32;
+    CameraPosition:TpvVector3;
  procedure FullMemoryBarrier;
  var MemoryBarrier:TVkMemoryBarrier;
  begin
@@ -440,12 +441,14 @@ begin
 
  // Fill the per-frame surfel uniform buffer (static config + frame index; the frame index drives the parity free-list
  // bank and the recycle age). Done here because the global frame index is available in Execute.
- UniformBufferData.CameraPositionCellSize:=TpvVector4.InlineableCreate(0.0,0.0,0.0,2.0);    // w = base hash cell size (m); >= surfel radius so a single-cell gather covers a point
+ // xyz = primary camera world position (the cascaded grid is camera-centred); w = base cell size (cascade 0 = 1.0 m, doubling per cascade).
+ CameraPosition:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].MainCameraPosition;
+ UniformBufferData.CameraPositionCellSize:=TpvVector4.InlineableCreate(CameraPosition.x,CameraPosition.y,CameraPosition.z,1.0);
  UniformBufferData.CountsFrame.x:=TpvScene3DRendererInstance.GlobalIlluminationSurfelMaxCount;
  UniformBufferData.CountsFrame.y:=TpvScene3DRendererInstance.GlobalIlluminationSurfelHashCellCount;
  UniformBufferData.CountsFrame.z:=TpvScene3DRendererInstance.GlobalIlluminationSurfelMaxPerCell;
  UniformBufferData.CountsFrame.w:=TpvUInt32(aFrameIndex);
- UniformBufferData.Params:=TpvVector4.InlineableCreate(1.0,0.95,256.0,1.0);                  // radius, hysteresis, recycle frame age, spawn coverage threshold
+ UniformBufferData.Params:=TpvVector4.InlineableCreate(0.5,0.95,256.0,1.0);                  // radius/cascade-cell-size scale (0.5 = radius<=cellSize/2), hysteresis, recycle frame age, spawn coverage threshold
  UniformBufferData.Debug.x:=fInstance.GlobalIlluminationSurfelDebugVisualization;            // debug visualization mode (0 = off; cycled via Shift+Ctrl+F)
  UniformBufferData.Debug.y:=0;
  UniformBufferData.Debug.z:=0;

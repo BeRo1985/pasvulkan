@@ -38,6 +38,14 @@
   #define GI_SURFEL_MAX_PER_CELL 128          // surfel index slots stored per hash cell (overflow is dropped)
 #endif
 
+#ifndef GI_SURFEL_CASCADE_COUNT
+  #define GI_SURFEL_CASCADE_COUNT 6           // camera-centred clipmap cascades (configurable 4..8); cell size doubles per level
+#endif
+
+#ifndef GI_SURFEL_CASCADE_BASE_CELLS
+  #define GI_SURFEL_CASCADE_BASE_CELLS 8      // cascade 0 outer radius in base cells -> baseRange = baseCellSize * this
+#endif
+
 #define GI_SURFEL_HASH_CELL_MASK (uint(GI_SURFEL_HASH_CELL_COUNT) - 1u)
 
 // Confidence / fade-in: a surfel's contribution weight at gather time is scaled by saturate(sampleCount / this), so a freshly
@@ -188,21 +196,38 @@ vec3 surfelOctSample(const in Surfel surfel, const in vec3 direction){
 struct SurfelUniforms {
   vec4 cameraPositionCellSize;  // xyz = camera world position, w = base hash cell size (meters)
   uvec4 countsFrame;            // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
-  vec4 params;                  // x = surfel radius, y = temporal hysteresis (0..1), z = recycle frame age, w = spawn coverage threshold
+  vec4 params;                  // x = radius / cascade-cell-size scale, y = temporal hysteresis (0..1), z = recycle frame age, w = spawn coverage threshold
   uvec4 debug;                  // x = debug visualization mode (0 = off; cycled via Shift+Ctrl+F), yzw reserved
 };
 
-// --- World-space hash grid ------------------------------------------------------------------------------------------
+// --- World-space cascaded hash grid (camera-centred clipmap) --------------------------------------------------------
+// cameraPositionCellSize = (camera world position .xyz, base cell size .w). Cells are camera-relative and their size
+// doubles per cascade; the cascade for a point is chosen by distance from the camera so cells stay ~screen-constant. This
+// gives fine resolution near the camera and cheap coverage far away (a single coarse cell spans a large region).
 
-// The integer cell coordinate a world position falls into. Fixed cell size for now (a future improvement is camera
-// distance dependent clipmap-style cell scaling à la SEED; that only changes this function + the hash level term).
-ivec3 giSurfelCellCoord(const in vec3 worldPosition, const in float cellSize){
-  return ivec3(floor(worldPosition / max(cellSize, 1e-4)));
+// Camera-centred cascade index for a world position: clamp(floor(log2(dist / baseRange)), 0, CASCADE_COUNT-1), where
+// baseRange = baseCellSize * GI_SURFEL_CASCADE_BASE_CELLS is the outer radius of cascade 0.
+int giSurfelCascade(const in vec3 worldPosition, const in vec4 cameraPositionCellSize){
+  float baseRange = cameraPositionCellSize.w * float(GI_SURFEL_CASCADE_BASE_CELLS);
+  float dist = length(worldPosition - cameraPositionCellSize.xyz);
+  return clamp(int(floor(log2(max(dist, 1e-4) / max(baseRange, 1e-4)))), 0, GI_SURFEL_CASCADE_COUNT - 1);
 }
 
-// Spatial hash of a cell coordinate into [0, GI_SURFEL_HASH_CELL_COUNT). Classic three-prime xor hash.
-uint giSurfelCellHash(const in ivec3 cellCoord){
-  uint h = (uint(cellCoord.x) * 73856093u) ^ (uint(cellCoord.y) * 19349663u) ^ (uint(cellCoord.z) * 83492791u);
+// World-space edge length of a cascade's cells (base cell size * 2^cascade).
+float giSurfelCascadeCellSize(const in int cascade, const in float baseCellSize){
+  return baseCellSize * float(1 << cascade);
+}
+
+// The integer (camera-relative) cell coordinate a world position falls into within its cascade.
+ivec3 giSurfelCellCoord(const in vec3 worldPosition, const in vec4 cameraPositionCellSize, const in int cascade){
+  float cellSize = giSurfelCascadeCellSize(cascade, cameraPositionCellSize.w);
+  return ivec3(floor((worldPosition - cameraPositionCellSize.xyz) / max(cellSize, 1e-4)));
+}
+
+// Spatial hash of a (cell coordinate, cascade) pair into [0, GI_SURFEL_HASH_CELL_COUNT). Classic three-prime xor hash with
+// the cascade folded in so same-coordinate cells in different cascades get distinct buckets.
+uint giSurfelCellHash(const in ivec3 cellCoord, const in int cascade){
+  uint h = (uint(cellCoord.x) * 73856093u) ^ (uint(cellCoord.y) * 19349663u) ^ (uint(cellCoord.z) * 83492791u) ^ (uint(cascade) * 2654435761u);
   return h & GI_SURFEL_HASH_CELL_MASK;
 }
 
@@ -211,12 +236,12 @@ uint giSurfelCellHash(const in ivec3 cellCoord){
 // (those are MAX_PER_CELL grid overflow, not borders). Default off; define to evaluate the border-hole contribution.
 //#define GI_SURFEL_GATHER_NEIGHBORS
 
-// The base cell of the 2x2x2 block of world-hash cells bracketing a world position. Insertion registers a surfel only in
-// its centre cell, so a single-cell gather misses surfels that cover a point from across a cell border (-> black coverage
-// holes). With the cell size chosen >= 2*radius (Pascal side), iterating the 8 cells baseCell + {0,1}^3 (giSurfelNeighborCell
-// below) catches every surfel within reach. Callers loop neighbor in [0,8) and read surfelGridCells of giSurfelNeighborCell.
-ivec3 giSurfelNeighborBaseCell(const in vec3 worldPosition, const in float cellSize){
-  return ivec3(floor((worldPosition / max(cellSize, 1e-4)) - vec3(0.5)));
+// The base cell of the 2x2x2 block of cells bracketing a world position within its cascade. Insertion registers a surfel
+// only in its centre cell, so a single-cell gather misses surfels that cover a point from across a cell border (-> black
+// coverage holes). Iterating the 8 cells baseCell + {0,1}^3 (giSurfelNeighborCell below) catches every surfel within reach.
+ivec3 giSurfelNeighborBaseCell(const in vec3 worldPosition, const in vec4 cameraPositionCellSize, const in int cascade){
+  float cellSize = giSurfelCascadeCellSize(cascade, cameraPositionCellSize.w);
+  return ivec3(floor(((worldPosition - cameraPositionCellSize.xyz) / max(cellSize, 1e-4)) - vec3(0.5)));
 }
 
 ivec3 giSurfelNeighborCell(const in ivec3 baseCell, const in int neighbor){
@@ -286,11 +311,12 @@ layout(set = GI_SURFEL_DESCRIPTOR_SET, binding = 3, std430) readonly buffer Surf
 // cell size is chosen (Pascal side) >= the surfel radius so a single-cell gather already covers a point's neighbourhood;
 // returns irradiance E (multiply by albedo/PI like getIBLDiffuse's result for the diffuse contribution).
 vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, out float skyVisibility){
+  int cascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
 #if defined(GI_SURFEL_GATHER_NEIGHBORS)
-  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
 #else
-  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
 #endif
 
@@ -303,7 +329,7 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal,
   float accumSkyVis = 0.0;
 
   for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
-    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor), cascade);
     uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
     uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
 
@@ -390,18 +416,20 @@ vec3 giSurfelDebugColor(const in vec3 worldPosition, const in vec3 normal, const
 
   if(mode == 5u){
     // Raw occupancy of the point's OWN hash cell (single cell on purpose — this channel diagnoses per-cell saturation).
-    uint ownCell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
+    int ownCascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
+    uint ownCell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, ownCascade), ownCascade);
     uint ownCount = min(surfelGridCellCounts[ownCell], uint(GI_SURFEL_MAX_PER_CELL));
     return surfelDebugHeat(float(ownCount) * (1.0 / float(GI_SURFEL_MAX_PER_CELL)));
   }
 
   // Modes 1/2/4 re-walk the same 2x2x2 neighbourhood as giSurfelSampleIrradiance (but without reading irradiance), so the
   // coverage BLACK corresponds exactly to where the real gather returns vec3(0.0).
+  int cascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
 #if defined(GI_SURFEL_GATHER_NEIGHBORS)
-  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
 #else
-  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
 #endif
 
@@ -411,7 +439,7 @@ vec3 giSurfelDebugColor(const in vec3 worldPosition, const in vec3 normal, const
   uint bestSurfel = 0xffffffffu;
 
   for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
-    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor), cascade);
     uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
     uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
 
@@ -534,7 +562,8 @@ uint giSurfelFreeBankRead(){ return giSurfelFreeBankWrite() ^ 1u; }
 
 // Insert a surfel index into its world-space hash cell (atomic append, overflow dropped).
 void giSurfelGridInsert(const in uint surfelIndex, const in vec3 worldPosition){
-  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
+  int cascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
+  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, cascade), cascade);
   uint slot = atomicAdd(surfelGridCellCounts[cell], 1u);
   if(slot < uint(GI_SURFEL_MAX_PER_CELL)){
     surfelGridCells[(cell * uint(GI_SURFEL_MAX_PER_CELL)) + slot] = surfelIndex;
@@ -570,16 +599,17 @@ void giSurfelFree(const in uint surfelIndex){
 // Coverage estimate at a world position/normal: the summed proximity/normal weight of the surfels in the cell. The
 // spawn pass spawns a new surfel when this is below surfelData.params.w. Mirrors the shading gather's weighting.
 float giSurfelCoverage(const in vec3 worldPosition, const in vec3 normal){
+  int cascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
 #if defined(GI_SURFEL_GATHER_NEIGHBORS)
-  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
 #else
-  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
 #endif
   float coverage = 0.0;
   for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
-    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor), cascade);
     uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
     uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
     for(uint i = 0u; i < count; i++){
@@ -617,11 +647,12 @@ float giSurfelCoverage(const in vec3 worldPosition, const in vec3 normal){
 // Compute-side irradiance gather (same weighting as the shading-side giSurfelSampleIrradiance, but on the read-write
 // buffers) — used by the trace pass for the previous-frame multi-bounce feedback term.
 vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal){
+  int cascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
 #if defined(GI_SURFEL_GATHER_NEIGHBORS)
-  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
 #else
-  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize, cascade);
   const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
 #endif
 #if GI_SURFEL_STORAGE_IS_SH
@@ -631,7 +662,7 @@ vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal)
 #endif
   float accumWeight = 0.0;
   for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
-    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor), cascade);
     uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
     uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
     for(uint i = 0u; i < count; i++){

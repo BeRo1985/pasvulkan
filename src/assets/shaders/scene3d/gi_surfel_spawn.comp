@@ -109,7 +109,12 @@ void main(){
   }
 
   Surfel surfel;
-  surfel.positionRadius = vec4(worldPosition, surfelData.params.x);
+  // Per-cascade radius: scale (params.x) * the surfel's cascade cell size. Far surfels (coarse cascade) get a large radius
+  // so the spawn reaches coverage with few of them -> the distant field fills without over-spawning; near surfels stay small
+  // and detailed. params.x = radius / cascade-cell-size ratio (0.5 keeps radius <= cellSize/2, the 2x2x2-gather invariant).
+  int spawnCascade = giSurfelCascade(worldPosition, surfelData.cameraPositionCellSize);
+  float spawnRadius = surfelData.params.x * giSurfelCascadeCellSize(spawnCascade, surfelData.cameraPositionCellSize.w);
+  surfel.positionRadius = vec4(worldPosition, spawnRadius);
   surfel.normalCount = vec4(worldNormal, 0.0);
   for(int k = 0; k < GI_SURFEL_PAYLOAD_UVEC2_COUNT; k++){
     surfel.payload[k] = uvec2(0u); // zero SH / octahedral atlas; the trace pass fills it
