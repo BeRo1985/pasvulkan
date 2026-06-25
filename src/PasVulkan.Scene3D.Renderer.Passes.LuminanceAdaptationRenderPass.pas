@@ -388,8 +388,7 @@ var PushConstants:TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushCon
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
-    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization or
-    (fInstance.GlobalIlluminationSurfelDebugVisualization<>0) then begin
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.DebugBypass:=1;
  end else begin
   PushConstants.DebugBypass:=0;

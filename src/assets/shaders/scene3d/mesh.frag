@@ -241,12 +241,6 @@ layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain tex
   #define DDGI_DESCRIPTOR_SET 2
   #include "global_illumination_ddgi_sampling.glsl"
 
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-
-  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
-  #define GI_SURFEL_DESCRIPTOR_SET 2
-  #include "global_illumination_surfel.glsl"
-
 #endif
 
 #ifndef VOXELIZATION
@@ -502,8 +496,8 @@ void main() {
 
   vec3 voxelEmission = textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz;
   // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): per-material factor/max (two fp16 packed into the material's
-  // dispersion/shadow uvec4 .w) scaled by the global master regulator (voxelGridData) and clamped — same policy as the DDGI/
-  // surfel gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
+  // dispersion/shadow uvec4 .w) scaled by the global master regulator (voxelGridData) and clamped — same policy as the
+  // DDGI gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
   vec2 voxelEmissiveGI = unpackHalf2x16(material.dispersionShadowCastMaskShadowReceiveMaskUnused.w);
   voxelEmission = min(voxelEmission * (voxelEmissiveGI.x * voxelGridData.emissiveGIScale), vec3(min(voxelEmissiveGI.y, voxelGridData.emissiveGIMax)));
   vec4 emissionColor = vec4(voxelEmission, baseColor.w);
@@ -1032,29 +1026,16 @@ void main() {
         colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
   #endif
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-      // Surfel GI: gather the nearby surfels from the world hash grid, blend their SH and evaluate the diffuse irradiance
-      // E(n) (outgoing diffuse = albedo/PI * E). The surfel field replaces the environment IBL diffuse; the environment
-      // IBL specular is kept (block below).
-      // Sample the surfel field unconditionally to also get the per-point sky visibility (blend of nearby surfels) — it
-      // occludes the environment IBL specular below (iblWeight), the surfel analogue of DDGI's ddgiSkyVisibility, so enclosed
-      // areas stop being washed out by full-strength env specular. The diffuse irradiance is only added for non-black albedo.
-      float surfelSkyVisibility;
-      vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, surfelSkyVisibility);
-      float iblWeight = surfelSkyVisibility;
-      if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-        colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-      }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DDGI) && !defined(GLOBAL_ILLUMINATION_DDGI_OCT_STORAGE)))
-#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI) || defined(GLOBAL_ILLUMINATION_SURFEL)
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI)
 //    float iblWeight = 1.0; // already declared in the global illumination branch above
 #else
       float iblWeight = 1.0; // for future sky occulsion
 #endif
-#if defined(GLOBAL_ILLUMINATION_DDGI) || defined(GLOBAL_ILLUMINATION_SURFEL)
-      vec3 iblDiffuse = vec3(0.0); // DDGI / surfel GI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
+#if defined(GLOBAL_ILLUMINATION_DDGI)
+      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
 #else
       vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
 #endif
@@ -1273,15 +1254,6 @@ void main() {
 #if !defined(DEPTHONLY) && !defined(VOXELIZATION)
   if((inInstanceDataIndex & 0x80000000u) != 0u){
     finalColor = vec4(inColor0.xyz, 1.0);
-  }
-#endif
-
-#if defined(GLOBAL_ILLUMINATION_SURFEL) && !defined(DEPTHONLY) && !defined(VOXELIZATION) && !defined(REFLECTIVESHADOWMAPOUTPUT)
-  // Surfel GI debug visualization: replace the shaded color with the selected diagnostic channel (coverage / occlusion /
-  // raw irradiance / surfel identity / cell occupancy). The post-processing passes detect the mode and bypass tonemapping
-  // / exposure so the raw debug values reach the screen (mirrors the meshlet debug-color path).
-  if(surfelData.debug.x != 0u){
-    finalColor = vec4(giSurfelDebugColor(inWorldSpacePosition.xyz, workNormal, surfelData.debug.x), 1.0);
   }
 #endif
 

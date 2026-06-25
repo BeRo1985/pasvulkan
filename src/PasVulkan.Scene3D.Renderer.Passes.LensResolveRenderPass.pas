@@ -439,8 +439,7 @@ begin
  fPushConstants.HaloWidth:=0.5;
  fPushConstants.Distortion:=1.5;
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
-    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization or
-    (fInstance.GlobalIlluminationSurfelDebugVisualization<>0) then begin
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   fPushConstants.DebugBypass:=1;
  end else begin
   fPushConstants.DebugBypass:=0;

@@ -197,19 +197,14 @@ const vec3 inModelScale = vec3(1.0);
 #endif
 
 #if defined(GLOBAL_ILLUMINATION_DDGI)
-  // DDGI probe field for ray-tracing-based global illumination. Only wired for the RT GI modes (DDGI now, Surfel later) —
+  // DDGI probe field for ray-tracing-based global illumination. Only wired for the RT GI modes —
   // deliberately NOT for cascaded radiance hints or voxel cone tracing, since RSM-feeding / voxelizing planets would be
   // overkill. Set 3 holds the probe data; the planet passes already use sets 0..2 (global, mesh-rendering-pass, planet
   // textures, and set 3 may hold path-specific data: terrain-mesh SSBO in the mesh-shader path, empty placeholder in the
-  // vertex path). GI therefore lives at a fixed dedicated set 4 across all planet pipelines (future RT GI modes like
-  // Surfel reuse the same set), mirroring mesh.frag's dedicated DDGI set.
+  // vertex path). GI therefore lives at a fixed dedicated set 4 across all planet pipelines, mirroring mesh.frag's
+  // dedicated DDGI set.
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-  // Surfel GI shares the same fixed dedicated set 4 as DDGI (the two RT GI modes are mutually exclusive build variants).
-  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
-  #define GI_SURFEL_DESCRIPTOR_SET 4
-  #include "global_illumination_surfel.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -595,16 +590,6 @@ void main(){
   }
   vec3 iblDiffuse = vec3(0.0);
   float giIBLWeight = ddgiSkyVisibility;
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-  // RT GI: surfel field provides the diffuse indirect (replacing the environment IBL diffuse); the IBL specular is kept but
-  // occluded by the blended per-surfel sky visibility (so enclosed terrain stops being washed out by full env specular).
-  float surfelSkyVisibility;
-  vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal, surfelSkyVisibility);
-  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-  }
-  vec3 iblDiffuse = vec3(0.0);
-  float giIBLWeight = surfelSkyVisibility;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;
@@ -735,13 +720,6 @@ void main(){
   if((inBlock.meshletID & 0x80000000u) != 0u){
     c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
   }
-
-#if defined(GLOBAL_ILLUMINATION_SURFEL)
-  // Surfel GI debug visualization (Shift+Ctrl+F): replace the shaded color with the selected diagnostic channel.
-  if(surfelData.debug.x != 0u){
-    c = vec4(giSurfelDebugColor(inWorldSpacePosition, workNormal, surfelData.debug.x), 1.0);
-  }
-#endif
 
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 

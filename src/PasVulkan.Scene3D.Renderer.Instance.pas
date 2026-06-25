@@ -174,27 +174,6 @@ type { TpvScene3DRendererInstance }
              // const is referenced only by the DORMANT combined ProbeUpdate pass (kept for reference); the active per-stage
              // path ignores it. Kept so that file still compiles — safe to drop together with that pass.
              GlobalIlluminationDDGIProbeAgeWarmup=true;
-             // Surfel-based global illumination. Must match the GI_SURFEL_* defines in global_illumination_surfel.glsl
-             // (and SURFEL_STORAGE in compileshaders.sh). The persistent surfel pool is indexed by a world-space hash grid.
-             GlobalIlluminationSurfelMaxCount=65536;                 // surfel pool capacity
-             GlobalIlluminationSurfelHashCellCount=131072;           // hash buckets; MUST be a power of two (>= ~2x the pool)
-             GlobalIlluminationSurfelMaxPerCell=128;                 // surfel index slots stored per hash cell
-             GlobalIlluminationSurfelRaysPerSurfel=32;               // rays traced per surfel per frame (<= GI_SURFEL_RAYS_PER_SURFEL)
-             // Radiance storage: 0 = octahedral atlas (per surfel), 1 = L1 SH (default), 2 = L2 SH. MUST match SURFEL_STORAGE.
-             GlobalIlluminationSurfelStorageMode=2;
-             GlobalIlluminationSurfelOctSize=4;                      // octahedral atlas edge (only used when storage mode = 0)
-             GlobalIlluminationSurfelStorageIsSH=(GlobalIlluminationSurfelStorageMode<>0);
-             // Per-surfel payload size in uvec2 units: L1 = 3, L2 = 7, OCT = N*N (one uvec2 per RGB texel).
-             GlobalIlluminationSurfelPayloadUVec2Count=(7*Ord(GlobalIlluminationSurfelStorageMode=2))+
-                                                       (3*Ord(GlobalIlluminationSurfelStorageMode=1))+
-                                                       ((GlobalIlluminationSurfelOctSize*GlobalIlluminationSurfelOctSize)*Ord(GlobalIlluminationSurfelStorageMode=0));
-             // Per-surfel radial depth atlas (occlusion): GI_SURFEL_DEPTH_OCT_SIZE² uint texels (half-packed mean/mean² of hit
-             // distance per direction). MUST match GI_SURFEL_DEPTH_OCT_SIZE in global_illumination_surfel.glsl.
-             GlobalIlluminationSurfelDepthOctSize=4;
-             GlobalIlluminationSurfelDepthTexels=GlobalIlluminationSurfelDepthOctSize*GlobalIlluminationSurfelDepthOctSize;
-             // GLSL std430 Surfel stride: positionRadius(16) + normalCount(16) + payload(count*8) + lastFrame/flags(8) +
-             // skyVisibility(4) + depth(DepthTexels*4) = 44 + payload + depth, rounded up to the 16-byte struct alignment.
-             GlobalIlluminationSurfelRecordSize=((44+(GlobalIlluminationSurfelPayloadUVec2Count*8)+(GlobalIlluminationSurfelDepthTexels*4)+15) div 16)*16;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;
@@ -455,19 +434,6 @@ type { TpvScene3DRendererInstance }
             end;
             PGlobalIlluminationDDGIMasterData=^TGlobalIlluminationDDGIMasterData;
             TGlobalIlluminationDDGIDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-            // Surfel GI: the UBO (per in-flight frame, CPU-written) mirrors the SurfelUniforms std140 layout in the shader.
-            // The pool / grid / stats / free-list are single persistent GPU-only SSBOs (the surfel state accumulates across
-            // frames; within one queue the GPU executes frame N fully before N+1, so no per-in-flight duplication is needed).
-            TGlobalIlluminationSurfelUniformBufferData=record
-             CameraPositionCellSize:TpvVector4; // xyz = camera world position, w = base hash cell size
-             CountsFrame:TpvUInt32Vector4;      // x = maxSurfels, y = hashCellCount, z = maxPerCell, w = frameIndex
-             Params:TpvVector4;                 // x = radius / cascade-cell-size scale, y = hysteresis, z = recycle frame age, w = spawn coverage threshold
-             Debug:TpvUInt32Vector4;            // x = debug visualization mode (0 = off; cycled via Shift+Ctrl+F), yzw reserved
-            end;
-            PGlobalIlluminationSurfelUniformBufferData=^TGlobalIlluminationSurfelUniformBufferData;
-            TGlobalIlluminationSurfelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationSurfelUniformBufferData;
-            TGlobalIlluminationSurfelUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationSurfelDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalIlluminationRadianceHintsRSMUniformBufferData=record
              WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
              ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
@@ -848,17 +814,6 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets;
        fGlobalIlluminationDDGIFirstFrames:array[0..MaxInFlightFrames-1] of boolean; // per in-flight slot: true until that slot's probe images were written once (not cleared on alloc); shared by the trace + probe-update passes
-       // Surfel GI resources. UBO per in-flight frame; the pool/grid/stats/free-list are single persistent SSBOs.
-       fGlobalIlluminationSurfelUniformBufferDataArray:TGlobalIlluminationSurfelUniformBufferDataArray;
-       fGlobalIlluminationSurfelUniformBuffers:TGlobalIlluminationSurfelUniformBuffers;
-       fGlobalIlluminationSurfelPoolBuffer:TpvVulkanBuffer;          // GI_SURFEL_MAX_COUNT * GlobalIlluminationSurfelRecordSize
-       fGlobalIlluminationSurfelGridCellBuffer:TpvVulkanBuffer;      // hashCellCount * maxPerCell * uint
-       fGlobalIlluminationSurfelGridCellCountBuffer:TpvVulkanBuffer; // hashCellCount * uint
-       fGlobalIlluminationSurfelStatsBuffer:TpvVulkanBuffer;         // 4 * uint (spawn cursor, alive count, free counts[2])
-       fGlobalIlluminationSurfelFreeListBuffer:TpvVulkanBuffer;      // 2 * GI_SURFEL_MAX_COUNT * uint (parity banks)
-       fGlobalIlluminationSurfelDescriptorPool:TpvVulkanDescriptorPool;
-       fGlobalIlluminationSurfelDescriptorSetLayout:TpvVulkanDescriptorSetLayout;   // shading-side (set 2 mesh / set 4 planet): UBO + pool + grid cells + grid counts
-       fGlobalIlluminationSurfelDescriptorSets:TGlobalIlluminationSurfelDescriptorSets;
        fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers;
        fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
@@ -887,7 +842,6 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
        fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:LongBool;
-       fGlobalIlluminationSurfelDebugVisualization:TpvUInt32;
        fDrawMeshletDebugColors:boolean;
       public
        fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
@@ -1227,14 +1181,6 @@ type { TpvScene3DRendererInstance }
        procedure SetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt;const aValue:boolean);
        // Shared first-frame state between the DDGI trace + probe-update passes (the update flips it false after writing).
        property GlobalIlluminationDDGIFirstFrames[const aInFlightFrameIndex:TpvSizeInt]:boolean read GetGlobalIlluminationDDGIFirstFrame write SetGlobalIlluminationDDGIFirstFrame;
-       property GlobalIlluminationSurfelUniformBuffers:TGlobalIlluminationSurfelUniformBuffers read fGlobalIlluminationSurfelUniformBuffers;
-       property GlobalIlluminationSurfelPoolBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelPoolBuffer;
-       property GlobalIlluminationSurfelGridCellBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelGridCellBuffer;
-       property GlobalIlluminationSurfelGridCellCountBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelGridCellCountBuffer;
-       property GlobalIlluminationSurfelStatsBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelStatsBuffer;
-       property GlobalIlluminationSurfelFreeListBuffer:TpvVulkanBuffer read fGlobalIlluminationSurfelFreeListBuffer;
-       property GlobalIlluminationSurfelDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationSurfelDescriptorSetLayout;
-       property GlobalIlluminationSurfelDescriptorSets:TGlobalIlluminationSurfelDescriptorSets read fGlobalIlluminationSurfelDescriptorSets;
        property GlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray read fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers read fGlobalIlluminationRadianceHintsRSMUniformBuffers;
        property GlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationRadianceHintsDescriptorPool;
@@ -1255,7 +1201,6 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout;
        property GlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets read fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
        property GlobalIlluminationCascadedVoxelConeTracingDebugVisualization:LongBool read fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization write fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization;
-       property GlobalIlluminationSurfelDebugVisualization:TpvUInt32 read fGlobalIlluminationSurfelDebugVisualization write fGlobalIlluminationSurfelDebugVisualization;
        property DrawMeshletDebugColors:boolean read fDrawMeshletDebugColors write fDrawMeshletDebugColors;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
@@ -1503,7 +1448,6 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIStageComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationSurfelComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass,
@@ -1644,7 +1588,6 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationDDGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIRelocationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;       // relocation only
        fGlobalIlluminationDDGIClassificationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;   // relocation only
-       fGlobalIlluminationSurfelComputePass:TpvScene3DRendererPassesGlobalIlluminationSurfelComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass;
        fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass;
@@ -2709,16 +2652,6 @@ begin
  fGlobalIlluminationDDGIDescriptorSetLayout:=nil;
  FillChar(fGlobalIlluminationDDGIDescriptorSets,SizeOf(TGlobalIlluminationDDGIDescriptorSets),#0);
 
- FillChar(fGlobalIlluminationSurfelUniformBuffers,SizeOf(TGlobalIlluminationSurfelUniformBuffers),#0);
- fGlobalIlluminationSurfelPoolBuffer:=nil;
- fGlobalIlluminationSurfelGridCellBuffer:=nil;
- fGlobalIlluminationSurfelGridCellCountBuffer:=nil;
- fGlobalIlluminationSurfelStatsBuffer:=nil;
- fGlobalIlluminationSurfelFreeListBuffer:=nil;
- fGlobalIlluminationSurfelDescriptorPool:=nil;
- fGlobalIlluminationSurfelDescriptorSetLayout:=nil;
- FillChar(fGlobalIlluminationSurfelDescriptorSets,SizeOf(TGlobalIlluminationSurfelDescriptorSets),#0);
-
  fGlobalIlluminationRadianceHintsDescriptorPool:=nil;
 
  fGlobalIlluminationRadianceHintsDescriptorSetLayout:=nil;
@@ -2745,8 +2678,6 @@ begin
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets),#0);
 
  fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:=false;
-
- fGlobalIlluminationSurfelDebugVisualization:=0;
 
  fDrawMeshletDebugColors:=false;
 
@@ -3146,18 +3077,6 @@ begin
  FreeAndNil(fGlobalIlluminationDDGIDescriptorSetLayout);
  FreeAndNil(fGlobalIlluminationDDGIDescriptorPool);
  FreeAndNil(fGlobalIlluminationDDGICascadedVolumes);
-
- for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationSurfelUniformBuffers[InFlightFrameIndex]);
- end;
- FreeAndNil(fGlobalIlluminationSurfelDescriptorSetLayout);
- FreeAndNil(fGlobalIlluminationSurfelDescriptorPool);
- FreeAndNil(fGlobalIlluminationSurfelPoolBuffer);
- FreeAndNil(fGlobalIlluminationSurfelGridCellBuffer);
- FreeAndNil(fGlobalIlluminationSurfelGridCellCountBuffer);
- FreeAndNil(fGlobalIlluminationSurfelStatsBuffer);
- FreeAndNil(fGlobalIlluminationSurfelFreeListBuffer);
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
@@ -4009,113 +3928,6 @@ begin
                                                                                     [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas (RGBA16F, hardware bilinear)
     end;
     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].Flush;
-   end;
-
-  end;
-
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
-
-   // Persistent (single, GPU-only) surfel pool / hash grid / stats / free-list SSBOs. The surfel state accumulates across
-   // frames; within one queue the GPU executes frame N fully before N+1, so no per-in-flight duplication is needed. They
-   // are zeroed once on the compute pass' first frame (vkCmdFillBuffer). All are device-local with TRANSFER_DST for that.
-   fGlobalIlluminationSurfelPoolBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                              TpvSizeInt(GlobalIlluminationSurfelMaxCount)*TpvSizeInt(GlobalIlluminationSurfelRecordSize),
-                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                              [],
-                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                              0,0,0,0,0,0,0,
-                                                              [],
-                                                              0,
-                                                              pvAllocationGroupIDScene3DStatic,
-                                                              'TpvScene3DRendererInstance.fGlobalIlluminationSurfelPoolBuffer');
-
-   fGlobalIlluminationSurfelGridCellBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                  TpvSizeInt(GlobalIlluminationSurfelHashCellCount)*TpvSizeInt(GlobalIlluminationSurfelMaxPerCell)*SizeOf(TpvUInt32),
-                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                  [],
-                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                  0,0,0,0,0,0,0,
-                                                                  [],
-                                                                  0,
-                                                                  pvAllocationGroupIDScene3DStatic,
-                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationSurfelGridCellBuffer');
-
-   fGlobalIlluminationSurfelGridCellCountBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                       TpvSizeInt(GlobalIlluminationSurfelHashCellCount)*SizeOf(TpvUInt32),
-                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                       [],
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                       0,0,0,0,0,0,0,
-                                                                       [],
-                                                                       0,
-                                                                       pvAllocationGroupIDScene3DStatic,
-                                                                       'TpvScene3DRendererInstance.fGlobalIlluminationSurfelGridCellCountBuffer');
-
-   fGlobalIlluminationSurfelStatsBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                               4*SizeOf(TpvUInt32), // spawn cursor, alive count, free count bank 0, free count bank 1
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,0,0,0,0,0,0,
-                                                               [],
-                                                               0,
-                                                               pvAllocationGroupIDScene3DStatic,
-                                                               'TpvScene3DRendererInstance.fGlobalIlluminationSurfelStatsBuffer');
-
-   fGlobalIlluminationSurfelFreeListBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                  TpvSizeInt(2)*TpvSizeInt(GlobalIlluminationSurfelMaxCount)*SizeOf(TpvUInt32),
-                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                  [],
-                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                  0,0,0,0,0,0,0,
-                                                                  [],
-                                                                  0,
-                                                                  pvAllocationGroupIDScene3DStatic,
-                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationSurfelFreeListBuffer');
-
-   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalIlluminationSurfelUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                       SizeOf(TGlobalIlluminationSurfelUniformBufferData),
-                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                       [],
-                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                                       0,0,0,0,0,0,
-                                                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible],
-                                                                                       0,
-                                                                                       pvAllocationGroupIDScene3DStatic,
-                                                                                       'TpvScene3DRendererInstance.fGlobalIlluminationSurfelUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
-   end;
-
-   // Shading-side descriptor (set 2 in mesh.frag / set 4 in the planet shaders): UBO + pool + grid cells + grid counts.
-   fGlobalIlluminationSurfelDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
-                                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                          Renderer.CountInFlightFrames);
-   fGlobalIlluminationSurfelDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
-   fGlobalIlluminationSurfelDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames*3);
-   fGlobalIlluminationSurfelDescriptorPool.Initialize;
-
-   fGlobalIlluminationSurfelDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
-   fGlobalIlluminationSurfelDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   fGlobalIlluminationSurfelDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   fGlobalIlluminationSurfelDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   fGlobalIlluminationSurfelDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
-   fGlobalIlluminationSurfelDescriptorSetLayout.Initialize;
-
-   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationSurfelDescriptorPool,fGlobalIlluminationSurfelDescriptorSetLayout);
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),[],[fGlobalIlluminationSurfelUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationSurfelPoolBuffer.DescriptorBufferInfo],[],false);
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationSurfelGridCellBuffer.DescriptorBufferInfo],[],false);
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationSurfelGridCellCountBuffer.DescriptorBufferInfo],[],false);
-    fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].Flush;
-    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationSurfelDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fGlobalIlluminationSurfelDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
    end;
 
   end;
@@ -5351,7 +5163,6 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass:=nil;
 
  // Particle BVH build pass (technique-neutral): created before all GI passes; the consuming GI pass (the DDGI trace) takes an
  // explicit dependency on it where it is created, so it is both kept alive and ordered before the consumer.
@@ -5487,18 +5298,6 @@ begin
     TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass);
    end else begin
     TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
-   end;
-
-  end;
-
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
-
-   // Unlike DDGI, the surfel pass spawns from the camera depth buffer, so it runs AFTER the depth prepass (that ordering
-   // comes automatically from its 'resourcetype_depth' image input) and BEFORE the shading passes (which depend on it,
-   // set up further below). It must NOT be forced before mesh culling.
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass:=TpvScene3DRendererPassesGlobalIlluminationSurfelComputePass.Create(fFrameGraph,self);
-   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
 
   end;
@@ -5735,9 +5534,6 @@ begin
    end else begin
     TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
    end;
-  end;
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:begin
-   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationSurfelComputePass);
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass);

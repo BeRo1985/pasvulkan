@@ -248,7 +248,7 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #include "planet_caustics.glsl"
 #endif
 
-// DDGI probe field for ray-tracing-based global illumination, gated to RT GI modes (DDGI now, Surfel later) — never
+// DDGI probe field for ray-tracing-based global illumination, gated to RT GI modes — never
 // CRH/VCT. Wired into the main water surface AND the underwater fullscreen pass (shore-foam ambient); WATER_CAUSTICS is
 // excluded because that pass is purely additive refracted-sun light with no diffuse/ambient term for DDGI to feed. GI
 // lives at the fixed dedicated set 4 (the water pipelines use sets 0..3), mirroring planet_renderpass.frag / planet_grass.frag.
@@ -256,11 +256,6 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
   #define WATER_DDGI 1
-#elif defined(GLOBAL_ILLUMINATION_SURFEL) && !defined(WATER_CAUSTICS)
-  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
-  #define GI_SURFEL_DESCRIPTOR_SET 4
-  #include "global_illumination_surfel.glsl"
-  #define WATER_SURFEL 1
 #endif
 
 // Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
@@ -272,10 +267,6 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #if defined(WATER_DDGI)
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
   return ddgiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
-}
-#elif defined(WATER_SURFEL)
-vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
-  return giSurfelSampleIrradiance(worldPosition, n, skyVisibility) * OneOverPI;
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
@@ -1103,13 +1094,6 @@ void main(){
   if((inBlock.meshletID & 0x80000000u) != 0u) {
     outFragColor = vec4(meshletDebugColor(inBlock.meshletID & 0x7fffffffu), 1.0);
   }
-
-#if defined(GLOBAL_ILLUMINATION_SURFEL)
-  // Surfel GI debug visualization (Shift+Ctrl+F): replace the shaded color with the selected diagnostic channel.
-  if(surfelData.debug.x != 0u){
-    outFragColor = vec4(giSurfelDebugColor(inWorldSpacePosition, workNormal, surfelData.debug.x), 1.0);
-  }
-#endif
 
 #elif defined(UNDERWATER)
 

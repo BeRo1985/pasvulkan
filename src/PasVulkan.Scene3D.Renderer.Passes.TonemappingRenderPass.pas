@@ -415,8 +415,7 @@ begin
   PushConstants.Peak:=4.0;
  end;
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
-    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization or
-    (fInstance.GlobalIlluminationSurfelDebugVisualization<>0) then begin
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.DebugBypass:=1;
  end else begin
   PushConstants.DebugBypass:=0;

@@ -3840,21 +3840,19 @@ type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
 // --- Ray-traced GI helpers for the planet pipelines -----------------------------------------------------------------
-// The planet pipelines wire a dedicated set 4 + a 'kind' frag-variant segment for the RT-based GI modes (DDGI and surfel,
-// which are mutually exclusive and share that slot). These helpers select the active mode's descriptor set layout / set /
-// frag-variant name so each call site stays mode-agnostic. They return nil / '' for the non-RT GI modes (CRH, VCT, ...).
+// The planet pipelines wire a dedicated set 4 + a 'kind' frag-variant segment for the RT-based GI mode (DDGI). These
+// helpers select the active mode's descriptor set layout / set / frag-variant name so each call site stays mode-agnostic.
+// They return nil / '' for the non-RT GI modes (CRH, VCT, ...).
 function PlanetRTGIActive(const aRendererInstance:TObject):boolean;
 begin
  result:=TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode in
-          [TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination,
-           TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination];
+          [TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination];
 end;
 
 function PlanetRTGIDescriptorSetLayout(const aRendererInstance:TObject):TpvVulkanDescriptorSetLayout;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout;
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationSurfelDescriptorSetLayout;
   else result:=nil;
  end;
 end;
@@ -3863,27 +3861,24 @@ function PlanetRTGIDescriptorSet(const aRendererInstance:TObject;const aInFlight
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex];
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationSurfelDescriptorSets[aInFlightFrameIndex];
   else result:=nil;
  end;
 end;
 
-// Frag-variant 'kind' name segment ('ddgi_' / 'surfel_' / ''), e.g. planet_renderpass_raytracing_<kind>frag.spv.
+// Frag-variant 'kind' name segment ('ddgi_' / ''), e.g. planet_renderpass_raytracing_<kind>frag.spv.
 function PlanetRTGIKind(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='ddgi_';
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:='surfel_';
   else result:='';
  end;
 end;
 
-// Frag-variant name suffix segment ('_ddgi' / '_surfel' / ''), used by the water passes (planet_water..._<suffix>_frag.spv).
+// Frag-variant name suffix segment ('_ddgi' / ''), used by the water passes (planet_water..._<suffix>_frag.spv).
 function PlanetRTGISuffix(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='_ddgi';
-  TpvScene3DRendererGlobalIlluminationMode.SurfelGlobalIllumination:result:='_surfel';
   else result:='';
  end;
 end;
@@ -27631,7 +27626,7 @@ begin
    else begin
 
     // DDGI (RT-based GI): the 'ddgi_' Kind selects the planet_renderpass DDGI frag variant (samples the probe field at
-    // set 4). Only for the RT GI modes (DDGI now, Surfel later) — never CRH/VCT. Reset to '' before the grass frag below,
+    // set 4). Only for the RT GI mode (DDGI) — never CRH/VCT. Reset to '' before the grass frag below,
     // since the grass DDGI variant is wired in a separate step.
     if (PlanetRTGIActive(fRendererInstance)) and
        assigned(PlanetRTGIDescriptorSetLayout(fRendererInstance)) then begin

@@ -216,13 +216,7 @@ type TpvScene3DRendererAntialiasingMode=
        // atlas, switchable via a shader define) plus an octahedral mean/mean-squared distance term for the Chebyshev visibility test, which is what
        // prevents the light leaking that cascaded radiance hints suffer from. The probe grid placement reuses the cascaded radiance hints snapping
        // infrastructure. Requires hardware ray tracing support (RaytracingActive).
-       DynamicDiffuseGlobalIllumination,
-
-       // Surfel-based global illumination (in the spirit of EA SEED's "Global Illumination Based on Surfels", Halen 2021). Surfels (oriented surface
-       // elements) are spawned from the G-buffer where surfel coverage is insufficient, stored in a persistent GPU pool indexed by a world-space hash
-       // grid, and each surfel accumulates irradiance (as spherical harmonics) over many frames by tracing a few rays per frame against the TLAS. During
-       // shading the nearby surfels are gathered from the hash grid and blended. Requires hardware ray tracing support (RaytracingActive).
-       SurfelGlobalIllumination
+       DynamicDiffuseGlobalIllumination
 
 {
        // Possible further options on my todo list for the future:

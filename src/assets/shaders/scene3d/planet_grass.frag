@@ -160,16 +160,11 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 #include "roughness.glsl"
 
 #if defined(GLOBAL_ILLUMINATION_DDGI)
-  // DDGI probe field for ray-tracing-based global illumination — only for the RT GI modes (DDGI now, Surfel later), never
+  // DDGI probe field for ray-tracing-based global illumination — only for the RT GI modes, never
   // CRH/VCT. GI lives at the fixed dedicated set 4 (the grass pipeline uses sets 0..3: global, mesh-rendering-pass, planet
   // textures, grass cull/mesh-gen). Mirrors planet_renderpass.frag / mesh.frag.
   #define DDGI_DESCRIPTOR_SET 4
   #include "global_illumination_ddgi_sampling.glsl"
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-  // Surfel GI shares the same fixed dedicated set 4 as DDGI (mutually exclusive RT GI build variants).
-  #define GLOBAL_ILLUMINATION_SURFEL_SAMPLE
-  #define GI_SURFEL_DESCRIPTOR_SET 4
-  #include "global_illumination_surfel.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -396,15 +391,6 @@ void main(){
   }
   vec3 iblDiffuse = vec3(0.0);
   float giIBLWeight = ddgiSkyVisibility;
-#elif defined(GLOBAL_ILLUMINATION_SURFEL)
-  // RT GI: surfel-field diffuse (replaces IBL diffuse); IBL specular kept but occluded by the blended surfel sky visibility.
-  float surfelSkyVisibility;
-  vec3 surfelIrradiance = giSurfelSampleIrradiance(inWorldSpacePosition, normal, surfelSkyVisibility);
-  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    colorOutput += surfelIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-  }
-  vec3 iblDiffuse = vec3(0.0);
-  float giIBLWeight = surfelSkyVisibility;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;
@@ -453,13 +439,6 @@ void main(){
   if((inBlock.meshletID & 0x80000000u) != 0u){
     c.xyz = meshletDebugColor(inBlock.meshletID & 0x7fffffffu);
   }
-
-#if defined(GLOBAL_ILLUMINATION_SURFEL)
-  // Surfel GI debug visualization (Shift+Ctrl+F): replace the shaded color with the selected diagnostic channel.
-  if(surfelData.debug.x != 0u){
-    c = vec4(giSurfelDebugColor(inWorldSpacePosition, workNormal, surfelData.debug.x), 1.0);
-  }
-#endif
 
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 

@@ -407,8 +407,7 @@ begin
   PushConstants.Mode:=0;
  end;
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
-    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization or
-    (fInstance.GlobalIlluminationSurfelDebugVisualization<>0) then begin
+    fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
   PushConstants.Mode:=0;
  end;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

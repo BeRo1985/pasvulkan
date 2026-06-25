@@ -2,9 +2,9 @@
 #define GI_RT_GATHER_GLSL
 
 // =====================================================================================================================
-//  Shared ray-traced "probe gather" layer for the ray-traced global illumination techniques (DDGI and surfel GI).
+//  Shared ray-traced "probe gather" layer for the ray-traced global illumination techniques (currently DDGI).
 //
-//  This include encapsulates the common operation that both DDGI probes and surfels need: shoot a ray into the scene,
+//  This include encapsulates the common operation a ray-traced GI producer needs: shoot a ray into the scene,
 //  find the closest hit, and compute the outgoing radiance towards the ray origin at that hit point. The radiance
 //  accounts for:
 //    - emissive meshes               (the hit material's emissive term)
@@ -426,13 +426,13 @@ vec3 giGatherEvaluateLighting(const in vec3 worldPosition, const in vec3 normal)
 //  Outgoing radiance towards the ray origin at a gather hit.
 //    Lo = emission + (albedo / PI) * (directLight + previousFrameIndirect)
 //  previousFrameIndirect is the irradiance that the caller sampled from the *previous* frame's GI data structure at the
-//  hit point (probe field for DDGI, hash grid for surfels). Passing it in here gives multi-bounce ("infinite bounce")
+//  hit point (the probe field for DDGI). Passing it in here gives multi-bounce ("infinite bounce")
 //  lighting almost for free; pass vec3(0.0) to disable it.
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Global GI-emissive master regulators: a renderer-wide scale (multiplies the per-material factor) and an absolute cap
-// (min'd with the per-material max). Each GI producer supplies them from its own source (DDGI: ddgiData; surfels: push
-// constants) by #defining these before including this file; they default to a no-op (scale 1.0, +Inf cap).
+// (min'd with the per-material max). Each GI producer supplies them from its own source (DDGI: ddgiData) by #defining
+// these before including this file; they default to a no-op (scale 1.0, +Inf cap).
 #ifndef GI_GATHER_EMISSIVE_SCALE
 #define GI_GATHER_EMISSIVE_SCALE 1.0
 #endif
@@ -461,7 +461,7 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-//  Swappable closest-hit trace backend. The trace producers (DDGI / surfel) call giTraceClosestHit() instead of a fixed
+//  Swappable closest-hit trace backend. The trace producers (DDGI) call giTraceClosestHit() instead of a fixed
 //  implementation, so the ray-vs-scene query can be swapped at compile time. The default is the hardware ray-query
 //  backend (giGatherClosestHit, above); a future SDF backend would #define GI_TRACE_BACKEND = GI_TRACE_BACKEND_SDF and
 //  provide its own giTraceClosestHit returning a GIGatherSurface. (A ray-generation/closest-hit RT-pipeline producer is a
