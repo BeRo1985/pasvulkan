@@ -272,7 +272,7 @@ float surfelDepthOcclusion(const in Surfel surfel, const in vec3 worldPosition){
   float variance = max(m.y - (m.x * m.x), 1e-5);
   float dd = z - m.x;
   float chebyshev = variance / (variance + (dd * dd));
-  return clamp(chebyshev * chebyshev, 0.0, 1.0); // sharpen
+  return clamp(chebyshev, 0.0, 1.0); // plain one-tailed Chebyshev; the previous *chebyshev "sharpen" over-darkened (the f2 blotches)
 }
 
 // =====================================================================================================================
