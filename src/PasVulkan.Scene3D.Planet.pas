@@ -28342,6 +28342,20 @@ begin
                                                                 VK_BLEND_OP_ADD,
                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                 TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
+  end else if fMode=TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap then begin
+   // The reflective shadow map render pass has a second color attachment (normal + used), so the pipeline
+   // needs a matching second color blend attachment.
+   fPlanetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_FACTOR_ZERO,
+                                                                VK_BLEND_OP_ADD,
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
   end;
 
   fPlanetPipeline.DepthStencilState.DepthTestEnable:=true;
@@ -28488,6 +28502,20 @@ begin
                                                                VK_BLEND_OP_ADD,
                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
+  end else if fMode=TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap then begin
+   // The reflective shadow map render pass has a second color attachment (normal + used), so the pipeline
+   // needs a matching second color blend attachment.
+   fGrassPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
   end;
 
   fGrassPipeline.DepthStencilState.DepthTestEnable:=true;
@@ -28591,6 +28619,20 @@ begin
                                                                       VK_BLEND_OP_ADD,
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT));
+   end else if fMode=TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap then begin
+    // The reflective shadow map render pass has a second color attachment (normal + used), so the pipeline
+    // needs a matching second color blend attachment.
+    fTerrainMeshPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
    end;
 
    fTerrainMeshPipeline.DepthStencilState.DepthTestEnable:=true;
