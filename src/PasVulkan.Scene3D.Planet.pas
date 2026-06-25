@@ -27454,6 +27454,12 @@ begin
    TopLevelKind:='bufref_';
   end;
 
+  // Voxelization is a pure rasterize-into-voxels pass that never traces rays, so it always uses the
+  // buffer-reference data path; there is no raytracing_ voxelization fragment shader variant.
+  if fMode=TpvScene3DPlanet.TRenderPass.TMode.Voxelization then begin
+   TopLevelKind:='bufref_';
+  end;
+
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_vert.spv');
   end else begin
