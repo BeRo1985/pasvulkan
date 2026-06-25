@@ -3852,16 +3852,24 @@ end;
 function PlanetRTGIDescriptorSetLayout(const aRendererInstance:TObject):TpvVulkanDescriptorSetLayout;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout;
-  else result:=nil;
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSetLayout;
+  end;
+  else begin
+   result:=nil;
+  end;
  end;
 end;
 
 function PlanetRTGIDescriptorSet(const aRendererInstance:TObject;const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDescriptorSet;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex];
-  else result:=nil;
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex];
+  end;
+  else begin
+   result:=nil;
+  end;
  end;
 end;
 
@@ -3869,8 +3877,12 @@ end;
 function PlanetRTGIKind(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='ddgi_';
-  else result:='';
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   result:='ddgi_';
+  end;
+  else begin
+   result:='';
+  end;
  end;
 end;
 
@@ -3878,8 +3890,12 @@ end;
 function PlanetRTGISuffix(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:result:='_ddgi';
-  else result:='';
+  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   result:='_ddgi';
+  end;
+  else begin
+   result:='';
+  end;
  end;
 end;
 
