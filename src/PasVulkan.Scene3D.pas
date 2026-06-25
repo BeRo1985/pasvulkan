@@ -13430,7 +13430,7 @@ begin
        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanMeshletDescriptorBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBuffer.fVulkanMeshletDescriptorBuffer');
       end;
       if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count>0 then begin
-//     writeln('fSceneInstance.fVulkanMeshletDescriptorBufferData.Count: ',fSceneInstance.fVulkanMeshletDescriptorBufferData.Count);
+//     pvApplication.Log(LOG_VERBOSE,'TpvScene3D','fSceneInstance.fVulkanMeshletDescriptorBufferData.Count: '+IntToStr(fSceneInstance.fVulkanMeshletDescriptorBufferData.Count));
        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                          fSceneInstance.fVulkanStagingCommandBuffer,
                                                          fSceneInstance.fVulkanStagingFence,
@@ -15800,11 +15800,11 @@ begin
                  fMeshlets,
                  fMesh.fGroup.fOptimizeMeshletIndices);
 {$ifdef MeshShaderDebug}
-   WriteLn('[DEBUG-MS] Primitive.Finish: BuildMeshlets produced ',fMeshlets.Count,' meshlets from ',fTemporaryVertices.Count,' verts ',fTemporaryIndices.Count,' indices');
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] Primitive.Finish: BuildMeshlets produced '+IntToStr(fMeshlets.Count)+' meshlets from '+IntToStr(fTemporaryVertices.Count)+' verts '+IntToStr(fTemporaryIndices.Count)+' indices');
 {$endif}
   end else begin
 {$ifdef MeshShaderDebug}
-   WriteLn('[DEBUG-MS] Primitive.Finish: SKIPPED BuildMeshlets Topology=',ord(fPrimitiveTopology),' IndicesCount=',fTemporaryIndices.Count);
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] Primitive.Finish: SKIPPED BuildMeshlets Topology='+IntToStr(ord(fPrimitiveTopology))+' IndicesCount='+IntToStr(fTemporaryIndices.Count));
 {$endif}
   end;
 
@@ -15833,7 +15833,7 @@ begin
 
  end else begin
 {$ifdef MeshShaderDebug}
-  WriteLn('[DEBUG-MS] Primitive.Finish: NO fTemporaryVertices/fTemporaryIndices! TempVerts=',assigned(fTemporaryVertices),' TempIdx=',assigned(fTemporaryIndices),' existing meshlets=',fMeshlets.Count);
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] Primitive.Finish: NO fTemporaryVertices/fTemporaryIndices! TempVerts='+IntToStr(ord(assigned(fTemporaryVertices)))+' TempIdx='+IntToStr(ord(assigned(fTemporaryIndices)))+' existing meshlets='+IntToStr(fMeshlets.Count));
 {$endif}
  end;
 
@@ -15942,7 +15942,7 @@ begin
      (SavedMaxPrimitives=TpvUInt32(MaxPrimitivesPerMeshlet)) then begin
    fMeshlets.Resize(CountMeshlets);
 {$ifdef MeshShaderDebug}
-   WriteLn('[DEBUG-MS] LoadFromStream: Prim loading ',CountMeshlets,' meshlets (MaxVert=',SavedMaxVertices,' MaxPrim=',SavedMaxPrimitives,')');
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] LoadFromStream: Prim loading '+IntToStr(CountMeshlets)+' meshlets (MaxVert='+IntToStr(SavedMaxVertices)+' MaxPrim='+IntToStr(SavedMaxPrimitives)+')');
 {$endif}
    for MeshletIndex:=0 to CountMeshlets-1 do begin
     FillChar(fMeshlets.Items[MeshletIndex],SizeOf(TpvScene3DMeshlet),0);
@@ -15959,7 +15959,7 @@ begin
   end else begin
    // Meshlet config mismatch — skip stored data, will be regenerated
 {$ifdef MeshShaderDebug}
-   WriteLn('[DEBUG-MS] LoadFromStream: MISMATCH saved MaxVert=',SavedMaxVertices,' MaxPrim=',SavedMaxPrimitives,' expected MaxVert=',MaxVerticesPerMeshlet,' MaxPrim=',MaxPrimitivesPerMeshlet,' skipping ',CountMeshlets,' meshlets');
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] LoadFromStream: MISMATCH saved MaxVert='+IntToStr(SavedMaxVertices)+' MaxPrim='+IntToStr(SavedMaxPrimitives)+' expected MaxVert='+IntToStr(MaxVerticesPerMeshlet)+' MaxPrim='+IntToStr(MaxPrimitivesPerMeshlet)+' skipping '+IntToStr(CountMeshlets)+' meshlets');
 {$endif}
    for MeshletIndex:=0 to TpvSizeInt(CountMeshlets)-1 do begin
     SavedMaxVertices:=StreamIO.ReadUInt32;
@@ -17744,7 +17744,7 @@ begin
                        DestinationMeshPrimitive.fMeshlets,
                        fGroup.fOptimizeMeshletIndices);
 {$ifdef MeshShaderDebug}
-         WriteLn('[DEBUG-MS] glTF BuildMeshlets: produced ',DestinationMeshPrimitive.fMeshlets.Count,' meshlets from ',length(DestinationMeshPrimitiveVertices),' verts ',length(DestinationMeshPrimitiveIndices),' indices');
+         pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] glTF BuildMeshlets: produced '+IntToStr(DestinationMeshPrimitive.fMeshlets.Count)+' meshlets from '+IntToStr(length(DestinationMeshPrimitiveVertices))+' verts '+IntToStr(length(DestinationMeshPrimitiveIndices))+' indices');
 {$endif}
         end;
 
@@ -19884,18 +19884,18 @@ begin
  end;
  if fTotalMeshletCount>0 then begin
 {$ifdef MeshShaderDebug}
-  WriteLn('[DEBUG-MS] CollectMeshlets: Group=',fName,' TotalMeshlets=',fTotalMeshletCount,' TotalMeshletVerts=',fTotalMeshletVertexCount,' TotalMeshletPrims=',fTotalMeshletPrimitiveCount);
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] CollectMeshlets: Group='+fName+' TotalMeshlets='+IntToStr(fTotalMeshletCount)+' TotalMeshletVerts='+IntToStr(fTotalMeshletVertexCount)+' TotalMeshletPrims='+IntToStr(fTotalMeshletPrimitiveCount));
 {$endif}
  end else begin
 {$ifdef MeshShaderDebug}
-  WriteLn('[DEBUG-MS] CollectMeshlets: Group=',fName,' TotalMeshlets=0 Meshes=',fMeshes.Count);
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] CollectMeshlets: Group='+fName+' TotalMeshlets=0 Meshes='+IntToStr(fMeshes.Count));
 {$endif}
   for MeshIndex:=0 to fMeshes.Count-1 do begin
    Mesh:=fMeshes[MeshIndex];
    for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
     Primitive:=Mesh.fPrimitives[PrimitiveIndex];
 {$ifdef MeshShaderDebug}
-    WriteLn('[DEBUG-MS]   Mesh[',MeshIndex,'].Prim[',PrimitiveIndex,'] Topology=',ord(Primitive.fPrimitiveTopology),' MeshletCount=',Primitive.fMeshlets.Count,' Verts=',Primitive.fCountVertices,' Indices=',Primitive.fCountIndices);
+    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS]   Mesh['+IntToStr(MeshIndex)+'].Prim['+IntToStr(PrimitiveIndex)+'] Topology='+IntToStr(ord(Primitive.fPrimitiveTopology))+' MeshletCount='+IntToStr(Primitive.fMeshlets.Count)+' Verts='+IntToStr(Primitive.fCountVertices)+' Indices='+IntToStr(Primitive.fCountIndices));
 {$endif}
    end;
   end;
@@ -21070,7 +21070,7 @@ begin
        fSceneInstance.fLODInfoIDManagerLock.Release;
       end;
 {$ifdef MeshShaderDebug}
-      WriteLn('[DEBUG-MS] CollectLODData: NonLOD meshlet LODInfoIdx=',LODInfoIndex,' Offset=',SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset,' Count=',SourceNodeMeshPrimitiveInstance.fMeshletLocalCount);
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] CollectLODData: NonLOD meshlet LODInfoIdx='+IntToStr(LODInfoIndex)+' Offset='+IntToStr(SourceNodeMeshPrimitiveInstance.fMeshletLocalOffset)+' Count='+IntToStr(SourceNodeMeshPrimitiveInstance.fMeshletLocalCount));
 {$endif}
       TPasMPInterlocked.Increment(fSceneInstance.fLODInfoGeneration);
      end;
@@ -26544,7 +26544,7 @@ begin
    CurrentDrawInfo.MeshletDescriptorBase:=fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
    CurrentDrawInfo.MeshletBoundingSphereBase:=fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
 {$ifdef MeshShaderDebug}
-   WriteLn('[DBG-SPHERE] VirtInst DrawInfo MeshObjID=',NodeMeshObjectID,' SphereBase=',CurrentDrawInfo.MeshletBoundingSphereBase,' AllocOffset=',fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] VirtInst DrawInfo MeshObjID='+IntToStr(NodeMeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
    CurrentDrawInfo.MeshletVisibilityBase:=fMeshletVisibilityBufferRange.Offset;
    fSceneInstance.AddDrawInfo(NodeMeshObjectID,CurrentDrawInfo);
@@ -27378,7 +27378,7 @@ begin
       CurrentDrawInfo.MeshletVisibilityBase:=TpvUInt32(fBufferRanges.VulkanMeshletVisibilityBufferRange.Offset);
      end;
 {$ifdef MeshShaderDebug}
-     WriteLn('[DBG-SPHERE] NonRI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo.MeshletBoundingSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+     pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] NonRI DrawInfo MeshObjID='+IntToStr(MeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
      fSceneInstance.AddDrawInfo(MeshObjectID,CurrentDrawInfo);
     end;
@@ -27925,7 +27925,7 @@ begin
    fBufferRanges.VulkanMeshletVisibilityBufferRange:=fSceneInstance.fVulkanMeshletVisibilityBufferRangeAllocator.AllocateBufferRange(fGroup.fTotalMeshletCount);
    fBufferRanges.VulkanMeshletBoundingSphereBufferRange:=fSceneInstance.fVulkanMeshletBoundingSphereBufferRangeAllocator.AllocateBufferRange(fGroup.fTotalMeshletCount);
 {$ifdef MeshShaderDebug}
-   WriteLn('[DBG-SPHERE] AllocRange GroupInst=',TpvPtrUInt(Pointer(self)),' Offset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' Size=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Size,' MeshletCount=',fGroup.fTotalMeshletCount);
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] AllocRange GroupInst='+IntToStr(TpvPtrUInt(Pointer(self)))+' Offset='+IntToStr(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset)+' Size='+IntToStr(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Size)+' MeshletCount='+IntToStr(fGroup.fTotalMeshletCount));
 {$endif}
 
    ConstructData(false);
@@ -28138,7 +28138,7 @@ begin
         CurrentDrawInfo^.MeshletDescriptorBase:=fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
         CurrentDrawInfo^.MeshletBoundingSphereBase:=fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
 {$ifdef MeshShaderDebug}
-        WriteLn('[DBG-SPHERE] Defrag DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+        pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] Defrag DrawInfo MeshObjID='+IntToStr(MeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo^.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
         CurrentDrawInfo^.MeshletVisibilityBase:=fBufferRanges.VulkanMeshletVisibilityBufferRange.Offset;
        finally
@@ -28626,12 +28626,12 @@ var NodeIndex,PrimitiveIndex,RenderInstanceIndex,BatchItemIndex:TpvSizeInt;
 begin
 {$ifdef MeshShaderDebug}
  if assigned(aRenderInstance) then begin
-  WriteLn('=== RenderInstance DumpMeshletMeshObjectIDs: Group="',fGroup.fName,'" Instance=',TpvPtrUInt(self),' " RenderInstance=',TpvPtrUInt(aRenderInstance),' ===');
-  WriteLn('  --- RenderInstance ---');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','=== RenderInstance DumpMeshletMeshObjectIDs: Group="'+fGroup.fName+'" Instance='+IntToStr(TpvPtrUInt(self))+' " RenderInstance='+IntToStr(TpvPtrUInt(aRenderInstance))+' ===');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  --- RenderInstance ---');
   begin
    RenderInstance:=aRenderInstance;
    RenderInstanceIndex:=RenderInstance.fIndex;
-   WriteLn('  RI[',RenderInstanceIndex,'] Active=',RenderInstance.fActive,' MatrixID=',RenderInstance.fMatrixID);
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  RI['+IntToStr(RenderInstanceIndex)+'] Active='+BoolToString[RenderInstance.fActive]+' MatrixID='+IntToStr(RenderInstance.fMatrixID));
    for NodeIndex:=0 to length(RenderInstance.fNodeMeshObjectIDs)-1 do begin
     NodeMeshObjectID:=RenderInstance.fNodeMeshObjectIDs[NodeIndex];
     if NodeMeshObjectID>0 then begin
@@ -28641,19 +28641,19 @@ begin
       Mesh:=Node.fMesh;
      end;
      if assigned(Node) and assigned(Mesh) then begin
-      WriteLn('    NodeIdx=',NodeIndex,' RI_MeshObjID=',NodeMeshObjectID,' NodeName="',Node.fName,'" MeshName="',Mesh.fName,'"');
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','    NodeIdx='+IntToStr(NodeIndex)+' RI_MeshObjID='+IntToStr(NodeMeshObjectID)+' NodeName="'+Node.fName+'" MeshName="'+Mesh.fName+'"');
      end else begin
-      WriteLn('    NodeIdx=',NodeIndex,' RI_MeshObjID=',NodeMeshObjectID,' (no node/mesh)');
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','    NodeIdx='+IntToStr(NodeIndex)+' RI_MeshObjID='+IntToStr(NodeMeshObjectID)+' (no node/mesh)');
      end;
     end;
    end;
   end;
-  WriteLn('=== End RenderInstance DumpMeshletMeshObjectIDs ===');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','=== End RenderInstance DumpMeshletMeshObjectIDs ===');
  end else begin
-  WriteLn('=== Instance DumpMeshletMeshObjectIDs: Group="',fGroup.fName,'" Instance=',TpvPtrUInt(self),' ===');
-  WriteLn('  Nodes=',fGroup.fNodes.Count,' RenderInstances=',fRenderInstances.Count,' BatchItems=',fDrawChoreographyBatchItems.Count,' UniqueBatchItems=',fDrawChoreographyBatchUniqueItems.Count);
-  WriteLn('  MeshletDescriptorBase=',fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset);
-  WriteLn('  --- Nodes (Group + Instance) ---');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','=== Instance DumpMeshletMeshObjectIDs: Group="'+fGroup.fName+'" Instance='+IntToStr(TpvPtrUInt(self))+' ===');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Nodes='+IntToStr(fGroup.fNodes.Count)+' RenderInstances='+IntToStr(fRenderInstances.Count)+' BatchItems='+IntToStr(fDrawChoreographyBatchItems.Count)+' UniqueBatchItems='+IntToStr(fDrawChoreographyBatchUniqueItems.Count));
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  MeshletDescriptorBase='+IntToStr(fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset));
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  --- Nodes (Group + Instance) ---');
   for NodeIndex:=0 to fGroup.fNodes.Count-1 do begin
    Node:=fGroup.fNodes[NodeIndex];
    if assigned(Node) then begin
@@ -28665,21 +28665,21 @@ begin
     end;
     if assigned(Mesh) then begin
      if assigned(InstanceNode) then begin
-      WriteLn('  Node[',NodeIndex,'] Name="',Node.fName,'" Mesh="',Mesh.fName,'" Visible=',Node.fVisible,' LODVariant=',Node.fIsLODVariant,' InstanceMeshObjID=',InstanceNode.fMeshObjectID,' Prims=',Mesh.fPrimitives.Count);
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Node['+IntToStr(NodeIndex)+'] Name="'+Node.fName+'" Mesh="'+Mesh.fName+'" Visible='+BoolToString[Node.fVisible]+' LODVariant='+BoolToString[Node.fIsLODVariant]+' InstanceMeshObjID='+IntToStr(InstanceNode.fMeshObjectID)+' Prims='+IntToStr(Mesh.fPrimitives.Count));
      end else begin
-      WriteLn('  Node[',NodeIndex,'] Name="',Node.fName,'" Mesh="',Mesh.fName,'" Visible=',Node.fVisible,' LODVariant=',Node.fIsLODVariant,' (no InstanceNode) Prims=',Mesh.fPrimitives.Count);
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Node['+IntToStr(NodeIndex)+'] Name="'+Node.fName+'" Mesh="'+Mesh.fName+'" Visible='+BoolToString[Node.fVisible]+' LODVariant='+BoolToString[Node.fIsLODVariant]+' (no InstanceNode) Prims='+IntToStr(Mesh.fPrimitives.Count));
      end;
      for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
       Primitive:=Mesh.fPrimitives[PrimitiveIndex];
       if assigned(Primitive) then begin
-       WriteLn('    Prim[',PrimitiveIndex,'] MeshletLocalOfs=',Primitive.fMeshletLocalOffset,' MeshletLocalCnt=',Primitive.fMeshletLocalCount,' MeshletsCnt=',Primitive.fMeshlets.Count,' Verts=',Primitive.fCountVertices,' Idx=',Primitive.fCountIndices);
+       pvApplication.Log(LOG_VERBOSE,'TpvScene3D','    Prim['+IntToStr(PrimitiveIndex)+'] MeshletLocalOfs='+IntToStr(Primitive.fMeshletLocalOffset)+' MeshletLocalCnt='+IntToStr(Primitive.fMeshletLocalCount)+' MeshletsCnt='+IntToStr(Primitive.fMeshlets.Count)+' Verts='+IntToStr(Primitive.fCountVertices)+' Idx='+IntToStr(Primitive.fCountIndices));
       end;
      end;
     end else begin
      if assigned(InstanceNode) then begin
-      WriteLn('  Node[',NodeIndex,'] Name="',Node.fName,'" (no mesh) InstanceMeshObjID=',InstanceNode.fMeshObjectID);
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Node['+IntToStr(NodeIndex)+'] Name="'+Node.fName+'" (no mesh) InstanceMeshObjID='+IntToStr(InstanceNode.fMeshObjectID));
      end else begin
-      WriteLn('  Node[',NodeIndex,'] Name="',Node.fName,'" (no mesh, no InstanceNode)');
+      pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Node['+IntToStr(NodeIndex)+'] Name="'+Node.fName+'" (no mesh, no InstanceNode)');
      end;
     end;
    end;
@@ -28711,7 +28711,7 @@ begin
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
   end;}
-  WriteLn('  --- DrawChoreographyBatchItems ---');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  --- DrawChoreographyBatchItems ---');
   for BatchItemIndex:=0 to fDrawChoreographyBatchItems.Count-1 do begin
    BatchItem:=fDrawChoreographyBatchItems[BatchItemIndex];
    if assigned(BatchItem) then begin
@@ -28725,20 +28725,20 @@ begin
     end else begin
      MeshName:='(nil)';
     end;
-    WriteLn('  DCBI[',BatchItemIndex,']',
-     ' AlphaMode=',ord(BatchItem.fAlphaMode),
-     ' MeshObjID=',BatchItem.fMeshObjectID,
-     ' LODInfoIdx=',BatchItem.fLODInfoIndex,
-     ' MeshPrim=',BatchItem.fMeshPrimitive,
-     ' StartIdx=',BatchItem.fStartIndex,
-     ' CountIdx=',BatchItem.fCountIndices,
-     ' Node="',NodeName,'"',
-     ' Mesh="',MeshName,'"',
-     ' DoubleSided=',BatchItem.fDoubleSided);
+    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  DCBI['+IntToStr(BatchItemIndex)+']'+
+     ' AlphaMode='+IntToStr(ord(BatchItem.fAlphaMode))+
+     ' MeshObjID='+IntToStr(BatchItem.fMeshObjectID)+
+     ' LODInfoIdx='+IntToStr(BatchItem.fLODInfoIndex)+
+     ' MeshPrim='+IntToStr(BatchItem.fMeshPrimitive)+
+     ' StartIdx='+IntToStr(BatchItem.fStartIndex)+
+     ' CountIdx='+IntToStr(BatchItem.fCountIndices)+
+     ' Node="'+NodeName+'"'+
+     ' Mesh="'+MeshName+'"'+
+     ' DoubleSided='+BoolToString[BatchItem.fDoubleSided]);
    end;
   end;
-  WriteLn('=== End Instance DumpMeshletMeshObjectIDs ===');
-  WriteLn('');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','=== End Instance DumpMeshletMeshObjectIDs ===');
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','');
  end;
 {$endif}
 end;
@@ -31584,7 +31584,7 @@ begin
             CurrentDrawInfo^.MeshletDescriptorBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
             CurrentDrawInfo^.MeshletBoundingSphereBase:=RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
 {$ifdef MeshShaderDebug}
-            WriteLn('[DBG-SPHERE] RI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' MatrixID=',RenderInstance.fMatrixID);
+            pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] RI DrawInfo MeshObjID='+IntToStr(MeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo^.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(RenderInstance.fInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset)+' MatrixID='+IntToStr(RenderInstance.fMatrixID));
 {$endif}
             CurrentDrawInfo^.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
            finally
@@ -34136,7 +34136,7 @@ begin
         CachedMeshletBoundsRange.OutputSphereBase:=fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset+TpvUInt32(NodeMeshPrimitiveInstance.fMeshletLocalOffset);
 
 {$ifdef MeshShaderDebug}
-        WriteLn('[DBG-SPHERE] UpdateCached OutputBase=',CachedMeshletBoundsRange.OutputSphereBase,' AllocOffset=',fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' LocalOff=',NodeMeshPrimitiveInstance.fMeshletLocalOffset,' Count=',CachedMeshletBoundsRange.MeshletCount);
+        pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] UpdateCached OutputBase='+IntToStr(CachedMeshletBoundsRange.OutputSphereBase)+' AllocOffset='+IntToStr(fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset)+' LocalOff='+IntToStr(NodeMeshPrimitiveInstance.fMeshletLocalOffset)+' Count='+IntToStr(CachedMeshletBoundsRange.MeshletCount));
 {$endif}
         fGroup.fSceneInstance.fCachedMeshletBoundsRanges.Add(CachedMeshletBoundsRange);
        end;
@@ -36731,7 +36731,7 @@ begin
                 CurrentDrawInfo^.MeshletDescriptorBase:=GroupInstance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
                 CurrentDrawInfo^.MeshletBoundingSphereBase:=GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
 {$ifdef MeshShaderDebug}
-                WriteLn('[DBG-SPHERE] Defrag2 DrawInfo MeshObjID=',InstanceNode.fMeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+                pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] Defrag2 DrawInfo MeshObjID='+IntToStr(InstanceNode.fMeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo^.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
                 CurrentDrawInfo^.MeshletVisibilityBase:=GroupInstance.fBufferRanges.VulkanMeshletVisibilityBufferRange.Offset;
                finally
@@ -37572,7 +37572,7 @@ begin
     fVulkanDevice.DebugUtils.SetObjectName(fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.GlobalMeshletBoundingSphereBuffer['+IntToStr(InFlightFrameIndex)+']');
     fGlobalMeshletBoundingSphereBufferNeedsClear:=true;
 {$ifdef MeshShaderDebug}
-    WriteLn('[DBG-SPHERE] Buffer created IFF=',InFlightFrameIndex,' Size=',fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Size,' Count=',Count,' AllocCapacity=',fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity);
+    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] Buffer created IFF='+IntToStr(InFlightFrameIndex)+' Size='+IntToStr(fGlobalMeshletBoundingSphereBuffers[InFlightFrameIndex].Size)+' Count='+IntToStr(Count)+' AllocCapacity='+IntToStr(fVulkanMeshletBoundingSphereBufferRangeAllocator.Capacity));
 {$endif}
    end;
   end;
@@ -39643,7 +39643,7 @@ begin
           CurrentDrawInfo^.MeshletDescriptorBase:=Instance.fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset;
           CurrentDrawInfo^.MeshletBoundingSphereBase:=Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
   {$ifdef MeshShaderDebug}
-          WriteLn('[DBG-SPHERE] RI DrawInfo MeshObjID=',MeshObjectID,' SphereBase=',CurrentDrawInfo^.MeshletBoundingSphereBase,' AllocOffset=',Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset,' MatrixID=',RenderInstance.fMatrixID);
+          pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] RI DrawInfo MeshObjID='+IntToStr(MeshObjectID)+' SphereBase='+IntToStr(CurrentDrawInfo^.MeshletBoundingSphereBase)+' AllocOffset='+IntToStr(Instance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset)+' MatrixID='+IntToStr(RenderInstance.fMatrixID));
   {$endif}
           CurrentDrawInfo^.MeshletVisibilityBase:=RenderInstance.fMeshletVisibilityBufferRange.Offset;
          finally
@@ -40043,17 +40043,17 @@ end;
 
 procedure TpvScene3D.DumpUpdateProfilingTimes;
 begin
- Writeln('Instance Update Profiling Times (in milliseconds):');
- Writeln(' Reset Time: ',fInstanceTimeResetSum:7:5,' ms');
- Writeln(' Camera Time: ',fInstanceTimeCameraSum:7:5,' ms');
- Writeln(' Material Time: ',fInstanceTimeMaterialSum:7:5,' ms');
- Writeln(' Animation Time: ',fInstanceTimeAnimationTimeSum:7:5,' ms');
- Writeln(' Base Overwrite Time: ',fInstanceTimeBaseOverwriteTimeSum:7:5,' ms');
- Writeln(' Light Time: ',fInstanceTimeLightSum:7:5,' ms');
- Writeln(' Node Process Time: ',fInstanceTimeProcessNodesSum:7:5,' ms');
- Writeln(' Skin Time: ',fInstanceTimeSkinsSum:7:5,' ms');
- Writeln(' Bounding Time: ',fInstanceTimeBoundingSum:7:5,' ms');
- Writeln(' Render Instance Time: ',fInstanceTimeRenderInstanceSum:7:5,' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D','Instance Update Profiling Times (in milliseconds):');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Reset Time: '+ConvertDoubleToString(fInstanceTimeResetSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Camera Time: '+ConvertDoubleToString(fInstanceTimeCameraSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Material Time: '+ConvertDoubleToString(fInstanceTimeMaterialSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Animation Time: '+ConvertDoubleToString(fInstanceTimeAnimationTimeSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Base Overwrite Time: '+ConvertDoubleToString(fInstanceTimeBaseOverwriteTimeSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Light Time: '+ConvertDoubleToString(fInstanceTimeLightSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Node Process Time: '+ConvertDoubleToString(fInstanceTimeProcessNodesSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Skin Time: '+ConvertDoubleToString(fInstanceTimeSkinsSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Bounding Time: '+ConvertDoubleToString(fInstanceTimeBoundingSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Render Instance Time: '+ConvertDoubleToString(fInstanceTimeRenderInstanceSum,omFixed,5)+' ms');
 end;
 
 procedure TpvScene3D.CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
@@ -40539,17 +40539,17 @@ var Group:TpvScene3D.TGroup;
 begin
  fDebugMeshletSpherePairs.Count:=0;
 {$ifdef MeshShaderDebug}
- WriteLn('[DBG-PAIRS] RebuildDebugMeshletSpherePairs: fGroups.Count=',fGroups.Count);
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] RebuildDebugMeshletSpherePairs: fGroups.Count='+IntToStr(fGroups.Count));
 {$endif}
  for Group in fGroups do begin
 {$ifdef MeshShaderDebug}
-  WriteLn('[DBG-PAIRS] Group: Usable=',Group.Usable,' MeshletCount=',Group.fTotalMeshletCount,' Instances=',Group.fInstances.Count);
+  pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] Group: Usable='+BoolToString[Group.Usable]+' MeshletCount='+IntToStr(Group.fTotalMeshletCount)+' Instances='+IntToStr(Group.fInstances.Count));
 {$endif}
   if Group.Usable and (Group.fTotalMeshletCount>0) then begin
    for GroupInstanceIndex:=0 to Group.fInstances.Count-1 do begin
     GroupInstance:=Group.fInstances[GroupInstanceIndex];
 {$ifdef MeshShaderDebug}
-    WriteLn('[DBG-PAIRS] GroupInst: Active=',GroupInstance.fActives[aInFlightFrameIndex],' Headless=',GroupInstance.fHeadless,' Virtual=',GroupInstance.fVirtual,' UseRI=',GroupInstance.fUseRenderInstances,' SphereBase=',GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset);
+    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] GroupInst: Active='+BoolToString[GroupInstance.fActives[aInFlightFrameIndex]]+' Headless='+BoolToString[GroupInstance.fHeadless]+' Virtual='+BoolToString[GroupInstance.fVirtual]+' UseRI='+BoolToString[GroupInstance.fUseRenderInstances]+' SphereBase='+IntToStr(GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
     if GroupInstance.fActives[aInFlightFrameIndex] and (not GroupInstance.fHeadless) and (not GroupInstance.fVirtual) then begin
      SphereBase:=GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
@@ -40578,7 +40578,7 @@ begin
   end;
  end;
 {$ifdef MeshShaderDebug}
- WriteLn('[DBG-PAIRS] Total pairs built: ',fDebugMeshletSpherePairs.Count);
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] Total pairs built: '+IntToStr(fDebugMeshletSpherePairs.Count));
 {$endif}
 end;
 
@@ -41275,7 +41275,7 @@ begin
       fGlobalMeshletBoundingSphereBufferNeedsClear then begin
     fGlobalMeshletBoundingSphereBufferNeedsClear:=false;
 {$ifdef MeshShaderDebug}
-    WriteLn('[DBG-SPHERE] ZeroFill BufferSize=',MeshletBoundingSphereBuffer.Size);
+    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-SPHERE] ZeroFill BufferSize='+IntToStr(MeshletBoundingSphereBuffer.Size));
 {$endif}
     CommandBuffer.CmdFillBuffer(MeshletBoundingSphereBuffer.Handle,0,VK_WHOLE_SIZE,0);
     FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
@@ -42479,12 +42479,12 @@ begin
 
 {$ifdef MeshShaderDebug}
   if aInFlightFrameIndex=0 then begin
-   WriteLn('[DEBUG-MS] BDA IFF=',aInFlightFrameIndex,
-    ' MeshletDesc=',fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletDescriptorDeviceAddress,
-    ' MeshletVert=',fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress,
-    ' MeshletPrim=',fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress,
-    ' LODInfo=',fGlobalVulkanBDAPointersData[aInFlightFrameIndex].LODInfoDeviceAddress,
-    ' MatrixPair=',fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairDeviceAddress);
+   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DEBUG-MS] BDA IFF='+IntToStr(aInFlightFrameIndex)+
+    ' MeshletDesc='+IntToStr(fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletDescriptorDeviceAddress)+
+    ' MeshletVert='+IntToStr(fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletVertexDeviceAddress)+
+    ' MeshletPrim='+IntToStr(fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MeshletPrimitiveDeviceAddress)+
+    ' LODInfo='+IntToStr(fGlobalVulkanBDAPointersData[aInFlightFrameIndex].LODInfoDeviceAddress)+
+    ' MatrixPair='+IntToStr(fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairDeviceAddress));
   end;
 {$endif}
 

@@ -450,6 +450,8 @@ type PPpvInt8=^PpvInt8;
      PpvTime=^TpvTime;
      TpvTime=TpvDouble;
 
+const BoolToString:array[Boolean] of TpvUTF8String=('false','true');
+
 var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
     FloatToHalfFloatShiftTable:array[0..511] of TpvUInt8;
 
