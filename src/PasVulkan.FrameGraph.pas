@@ -7960,12 +7960,12 @@ end;
 procedure TpvFrameGraph.Dump;
 var Pass:TpvFrameGraph.TPass;
 begin
- writeln;
+ pvApplication.Log(LOG_VERBOSE,'TpvFrameGraph','');
  for Pass in fTopologicalSortedPasses do begin
-  writeln('Pass ',Pass.Name,':');
-  writeln;
+  pvApplication.Log(LOG_VERBOSE,'TpvFrameGraph','Pass '+Pass.Name+':');
+  pvApplication.Log(LOG_VERBOSE,'TpvFrameGraph','');
  end;
- writeln;
+ pvApplication.Log(LOG_VERBOSE,'TpvFrameGraph','');
 end;
 
 end.
