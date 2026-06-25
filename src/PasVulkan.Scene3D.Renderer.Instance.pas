@@ -178,7 +178,7 @@ type { TpvScene3DRendererInstance }
              // (and SURFEL_STORAGE in compileshaders.sh). The persistent surfel pool is indexed by a world-space hash grid.
              GlobalIlluminationSurfelMaxCount=65536;                 // surfel pool capacity
              GlobalIlluminationSurfelHashCellCount=131072;           // hash buckets; MUST be a power of two (>= ~2x the pool)
-             GlobalIlluminationSurfelMaxPerCell=32;                  // surfel index slots stored per hash cell
+             GlobalIlluminationSurfelMaxPerCell=128;                 // surfel index slots stored per hash cell
              GlobalIlluminationSurfelRaysPerSurfel=32;               // rays traced per surfel per frame (<= GI_SURFEL_RAYS_PER_SURFEL)
              // Radiance storage: 0 = octahedral atlas (per surfel), 1 = L1 SH (default), 2 = L2 SH. MUST match SURFEL_STORAGE.
              GlobalIlluminationSurfelStorageMode=2;

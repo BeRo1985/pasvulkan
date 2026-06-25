@@ -35,7 +35,7 @@
 #endif
 
 #ifndef GI_SURFEL_MAX_PER_CELL
-  #define GI_SURFEL_MAX_PER_CELL 32           // surfel index slots stored per hash cell (overflow is dropped)
+  #define GI_SURFEL_MAX_PER_CELL 128          // surfel index slots stored per hash cell (overflow is dropped)
 #endif
 
 #define GI_SURFEL_HASH_CELL_MASK (uint(GI_SURFEL_HASH_CELL_COUNT) - 1u)
@@ -206,6 +206,23 @@ uint giSurfelCellHash(const in ivec3 cellCoord){
   return h & GI_SURFEL_HASH_CELL_MASK;
 }
 
+// Opt-in: gather the 2x2x2 block of neighbour cells instead of only the point's own cell. The single-cell default leaves
+// coverage holes at cell borders, which 2x2x2 closes — but at ~8x the cell reads, and it does NOT fix the dominant holes
+// (those are MAX_PER_CELL grid overflow, not borders). Default off; define to evaluate the border-hole contribution.
+//#define GI_SURFEL_GATHER_NEIGHBORS
+
+// The base cell of the 2x2x2 block of world-hash cells bracketing a world position. Insertion registers a surfel only in
+// its centre cell, so a single-cell gather misses surfels that cover a point from across a cell border (-> black coverage
+// holes). With the cell size chosen >= 2*radius (Pascal side), iterating the 8 cells baseCell + {0,1}^3 (giSurfelNeighborCell
+// below) catches every surfel within reach. Callers loop neighbor in [0,8) and read surfelGridCells of giSurfelNeighborCell.
+ivec3 giSurfelNeighborBaseCell(const in vec3 worldPosition, const in float cellSize){
+  return ivec3(floor((worldPosition / max(cellSize, 1e-4)) - vec3(0.5)));
+}
+
+ivec3 giSurfelNeighborCell(const in ivec3 baseCell, const in int neighbor){
+  return baseCell + ivec3(neighbor & 1, (neighbor >> 1) & 1, (neighbor >> 2) & 1);
+}
+
 // --- Per-surfel radial depth (Chebyshev occlusion) -----------------------------------------------------------------
 // Texel index in a surfel's radial depth atlas for a (world-space) direction, full-sphere octahedral mapping.
 int surfelDepthTexel(const in vec3 dir){
@@ -269,12 +286,13 @@ layout(set = GI_SURFEL_DESCRIPTOR_SET, binding = 3, std430) readonly buffer Surf
 // cell size is chosen (Pascal side) >= the surfel radius so a single-cell gather already covers a point's neighbourhood;
 // returns irradiance E (multiply by albedo/PI like getIBLDiffuse's result for the diffuse contribution).
 vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, out float skyVisibility){
-  float cellSize = surfelData.cameraPositionCellSize.w;
-  ivec3 cellCoord = giSurfelCellCoord(worldPosition, cellSize);
-  uint cell = giSurfelCellHash(cellCoord);
-
-  uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
-  uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+#if defined(GI_SURFEL_GATHER_NEIGHBORS)
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
+#else
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
+#endif
 
 #if GI_SURFEL_STORAGE_IS_SH
   SURFEL_SH_TYPE accumSH = SURFEL_SH_ZERO();
@@ -284,49 +302,55 @@ vec3 giSurfelSampleIrradiance(const in vec3 worldPosition, const in vec3 normal,
   float accumWeight = 0.0;
   float accumSkyVis = 0.0;
 
-  for(uint i = 0u; i < count; i++){
-    uint surfelIndex = surfelGridCells[base + i];
-    if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
-      continue;
-    }
-    Surfel surfel = surfels[surfelIndex];
-    if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
-      continue;
-    }
+  for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
+    uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
 
-    float radius = max(surfel.positionRadius.w, 1e-3);
-    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
-    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
-    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
-    float dN = dot(toSurfel, surfel.normalCount.xyz);
-    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
-    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
-    if(md >= radius){
-      continue; // outside this surfel's influence
-    }
+    for(uint i = 0u; i < count; i++){
+      uint surfelIndex = surfelGridCells[base + i];
+      if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
+        continue;
+      }
+      Surfel surfel = surfels[surfelIndex];
+      if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
+        continue;
+      }
 
-    // Normal agreement: reject surfels facing away from the shaded surface (avoids leaking through thin geometry).
-    float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
-    if(normalWeight <= 0.0){
-      continue;
-    }
+      float radius = max(surfel.positionRadius.w, 1e-3);
+      // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+      // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+      vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+      float dN = dot(toSurfel, surfel.normalCount.xyz);
+      vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+      float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+      if(md >= radius){
+        continue; // outside this surfel's influence
+      }
 
-    // Smooth spatial falloff towards the surfel radius.
-    float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
+      // Normal agreement: reject surfels facing away from the shaded surface (avoids leaking through thin geometry).
+      float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
+      if(normalWeight <= 0.0){
+        continue;
+      }
 
-    float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
-                 * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
-    if(weight <= 0.0){
-      continue;
-    }
+      // Smooth spatial falloff towards the surfel radius.
+      float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
+
+      float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
+                   * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
+      if(weight <= 0.0){
+        continue;
+      }
 
 #if GI_SURFEL_STORAGE_IS_SH
-    accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
+      accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
 #else
-    accumIrradiance += surfelOctSample(surfel, normal) * weight; // per-surfel oct atlas already stores irradiance
+      accumIrradiance += surfelOctSample(surfel, normal) * weight; // per-surfel oct atlas already stores irradiance
 #endif
-    accumWeight += weight;
-    accumSkyVis += surfel.skyVisibility * weight;
+      accumWeight += weight;
+      accumSkyVis += surfel.skyVisibility * weight;
+    }
   }
 
   if(accumWeight <= 0.0){
@@ -359,60 +383,74 @@ vec3 surfelDebugHeat(const in float value){
 // Modes 1/2/4 re-walk the cell with the same weighting as giSurfelSampleIrradiance, but without reading irradiance, so
 // the coverage BLACK corresponds exactly to where the real gather returns vec3(0.0).
 vec3 giSurfelDebugColor(const in vec3 worldPosition, const in vec3 normal, const in uint mode){
-  float cellSize = surfelData.cameraPositionCellSize.w;
-  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, cellSize));
-  uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
-  uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
-
   if(mode == 3u){
     float skyVisibility;
     return giSurfelSampleIrradiance(worldPosition, normal, skyVisibility); // raw irradiance E (rides the post-fx bypass)
   }
 
   if(mode == 5u){
-    return surfelDebugHeat(float(count) * (1.0 / float(GI_SURFEL_MAX_PER_CELL))); // raw hash-cell occupancy
+    // Raw occupancy of the point's OWN hash cell (single cell on purpose — this channel diagnoses per-cell saturation).
+    uint ownCell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
+    uint ownCount = min(surfelGridCellCounts[ownCell], uint(GI_SURFEL_MAX_PER_CELL));
+    return surfelDebugHeat(float(ownCount) * (1.0 / float(GI_SURFEL_MAX_PER_CELL)));
   }
+
+  // Modes 1/2/4 re-walk the same 2x2x2 neighbourhood as giSurfelSampleIrradiance (but without reading irradiance), so the
+  // coverage BLACK corresponds exactly to where the real gather returns vec3(0.0).
+#if defined(GI_SURFEL_GATHER_NEIGHBORS)
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
+#else
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
+#endif
 
   float coverage = 0.0;          // sum of spatial*normal*confidence weight (pre-occlusion)
   float occlusionWeighted = 0.0; // the same, times the per-surfel Chebyshev visibility
   float bestWeight = 0.0;
   uint bestSurfel = 0xffffffffu;
 
-  for(uint i = 0u; i < count; i++){
-    uint surfelIndex = surfelGridCells[base + i];
-    if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
-      continue;
-    }
-    Surfel surfel = surfels[surfelIndex];
-    if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
-      continue;
-    }
+  for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
+    uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
 
-    float radius = max(surfel.positionRadius.w, 1e-3);
-    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
-    float dN = dot(toSurfel, surfel.normalCount.xyz);
-    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
-    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
-    if(md >= radius){
-      continue;
-    }
+    for(uint i = 0u; i < count; i++){
+      uint surfelIndex = surfelGridCells[base + i];
+      if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
+        continue;
+      }
+      Surfel surfel = surfels[surfelIndex];
+      if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
+        continue;
+      }
 
-    float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
-    if(normalWeight <= 0.0){
-      continue;
-    }
+      float radius = max(surfel.positionRadius.w, 1e-3);
+      vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+      float dN = dot(toSurfel, surfel.normalCount.xyz);
+      vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+      float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+      if(md >= radius){
+        continue;
+      }
 
-    float weight = smoothstep(radius, 0.0, md) * normalWeight
-                 * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0);
-    if(weight <= 0.0){
-      continue;
-    }
+      float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
+      if(normalWeight <= 0.0){
+        continue;
+      }
 
-    coverage += weight;
-    occlusionWeighted += weight * surfelDepthOcclusion(surfel, worldPosition);
-    if(weight > bestWeight){
-      bestWeight = weight;
-      bestSurfel = surfelIndex;
+      float weight = smoothstep(radius, 0.0, md) * normalWeight
+                   * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0);
+      if(weight <= 0.0){
+        continue;
+      }
+
+      coverage += weight;
+      occlusionWeighted += weight * surfelDepthOcclusion(surfel, worldPosition);
+      if(weight > bestWeight){
+        bestWeight = weight;
+        bestSurfel = surfelIndex;
+      }
     }
   }
 
@@ -532,37 +570,46 @@ void giSurfelFree(const in uint surfelIndex){
 // Coverage estimate at a world position/normal: the summed proximity/normal weight of the surfels in the cell. The
 // spawn pass spawns a new surfel when this is below surfelData.params.w. Mirrors the shading gather's weighting.
 float giSurfelCoverage(const in vec3 worldPosition, const in vec3 normal){
-  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
-  uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
-  uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+#if defined(GI_SURFEL_GATHER_NEIGHBORS)
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
+#else
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
+#endif
   float coverage = 0.0;
-  for(uint i = 0u; i < count; i++){
-    uint surfelIndex = surfelGridCells[base + i];
-    if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
-      continue;
+  for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
+    uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+    for(uint i = 0u; i < count; i++){
+      uint surfelIndex = surfelGridCells[base + i];
+      if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
+        continue;
+      }
+      Surfel surfel = surfels[surfelIndex];
+      if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
+        continue;
+      }
+      float radius = max(surfel.positionRadius.w, 1e-3);
+      // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+      // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+      vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+      float dN = dot(toSurfel, surfel.normalCount.xyz);
+      vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+      float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+      if(md >= radius){
+        continue;
+      }
+      // Keep-alive: this surfel covers a currently-visible shading point (the spawn pass runs giSurfelCoverage at every
+      // visible depth tile each frame). Refreshing its recycle timer HERE — driven by visibility — is the "still needed"
+      // signal; the trace must NOT do it (it touches every surfel every frame, which would keep the whole pool alive forever
+      // and starve newly-revealed regions). Surfels no longer near any visible surface stop being refreshed and age out.
+      surfels[surfelIndex].lastFrame = giSurfelFrameIndex();
+      float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
+      float spatialWeight = smoothstep(radius, 0.0, md); // same anisotropic falloff as the gather, so coverage matches resolve
+      coverage += spatialWeight * normalWeight;
     }
-    Surfel surfel = surfels[surfelIndex];
-    if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
-      continue;
-    }
-    float radius = max(surfel.positionRadius.w, 1e-3);
-    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
-    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
-    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
-    float dN = dot(toSurfel, surfel.normalCount.xyz);
-    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
-    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
-    if(md >= radius){
-      continue;
-    }
-    // Keep-alive: this surfel covers a currently-visible shading point (the spawn pass runs giSurfelCoverage at every
-    // visible depth tile each frame). Refreshing its recycle timer HERE — driven by visibility — is the "still needed"
-    // signal; the trace must NOT do it (it touches every surfel every frame, which would keep the whole pool alive forever
-    // and starve newly-revealed regions). Surfels no longer near any visible surface stop being refreshed and age out.
-    surfels[surfelIndex].lastFrame = giSurfelFrameIndex();
-    float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
-    float spatialWeight = smoothstep(radius, 0.0, md); // same anisotropic falloff as the gather, so coverage matches resolve
-    coverage += spatialWeight * normalWeight;
   }
   return coverage;
 }
@@ -570,50 +617,59 @@ float giSurfelCoverage(const in vec3 worldPosition, const in vec3 normal){
 // Compute-side irradiance gather (same weighting as the shading-side giSurfelSampleIrradiance, but on the read-write
 // buffers) — used by the trace pass for the previous-frame multi-bounce feedback term.
 vec3 giSurfelGatherIrradiance(const in vec3 worldPosition, const in vec3 normal){
-  uint cell = giSurfelCellHash(giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w));
-  uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
-  uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+#if defined(GI_SURFEL_GATHER_NEIGHBORS)
+  ivec3 baseCell = giSurfelNeighborBaseCell(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 8; // 2x2x2 neighbourhood (closes cell-border holes, ~8x cell reads)
+#else
+  ivec3 baseCell = giSurfelCellCoord(worldPosition, surfelData.cameraPositionCellSize.w);
+  const int surfelGatherCellCount = 1; // single cell (default); giSurfelNeighborCell(baseCell, 0) == baseCell
+#endif
 #if GI_SURFEL_STORAGE_IS_SH
   SURFEL_SH_TYPE accumSH = SURFEL_SH_ZERO();
 #else
   vec3 accumIrradiance = vec3(0.0);
 #endif
   float accumWeight = 0.0;
-  for(uint i = 0u; i < count; i++){
-    uint surfelIndex = surfelGridCells[base + i];
-    if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
-      continue;
-    }
-    Surfel surfel = surfels[surfelIndex];
-    if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
-      continue;
-    }
-    float radius = max(surfel.positionRadius.w, 1e-3);
-    // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
-    // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
-    vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
-    float dN = dot(toSurfel, surfel.normalCount.xyz);
-    vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
-    float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
-    if(md >= radius){
-      continue;
-    }
-    float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
-    if(normalWeight <= 0.0){
-      continue;
-    }
-    float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
-    float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
-                 * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
-    if(weight <= 0.0){
-      continue;
-    }
+  for(int neighbor = 0; neighbor < surfelGatherCellCount; neighbor++){
+    uint cell = giSurfelCellHash(giSurfelNeighborCell(baseCell, neighbor));
+    uint count = min(surfelGridCellCounts[cell], uint(GI_SURFEL_MAX_PER_CELL));
+    uint base = cell * uint(GI_SURFEL_MAX_PER_CELL);
+    for(uint i = 0u; i < count; i++){
+      uint surfelIndex = surfelGridCells[base + i];
+      if(surfelIndex >= uint(GI_SURFEL_MAX_COUNT)){
+        continue;
+      }
+      Surfel surfel = surfels[surfelIndex];
+      if((surfel.flags & GI_SURFEL_FLAG_ALIVE) == 0u){
+        continue;
+      }
+      float radius = max(surfel.positionRadius.w, 1e-3);
+      // Anisotropic ("squished") distance: penalise the component along the surfel normal so the surfel is a flat disc hugging
+      // its surface, not an isotropic sphere (which intersects a wall as a visible circle / bleeds off-surface).
+      vec3 toSurfel = worldPosition - surfel.positionRadius.xyz;
+      float dN = dot(toSurfel, surfel.normalCount.xyz);
+      vec3 dT = toSurfel - (dN * surfel.normalCount.xyz);
+      float md = sqrt(dot(dT, dT) + ((dN * GI_SURFEL_NORMAL_SQUISH) * (dN * GI_SURFEL_NORMAL_SQUISH)));
+      if(md >= radius){
+        continue;
+      }
+      float normalWeight = clamp(dot(surfel.normalCount.xyz, normal), 0.0, 1.0);
+      if(normalWeight <= 0.0){
+        continue;
+      }
+      float spatialWeight = smoothstep(radius, 0.0, md); // smooth falloff over the (anisotropic) radius -> no hard disc edge
+      float weight = spatialWeight * normalWeight * clamp(surfel.normalCount.w * (1.0 / GI_SURFEL_CONFIDENCE_SAMPLES), 0.0, 1.0) // confidence/fade-in: un-converged (low sample-count) surfels contribute proportionally less
+                   * surfelDepthOcclusion(surfel, worldPosition); // radial-depth occlusion: surfels whose recorded geometry blocks this point contribute nothing (no leak through walls)
+      if(weight <= 0.0){
+        continue;
+      }
 #if GI_SURFEL_STORAGE_IS_SH
-    accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
+      accumSH = SURFEL_SH_ADD(accumSH, SURFEL_SH_MUL(surfelLoadSH(surfel), weight));
 #else
-    accumIrradiance += surfelOctSample(surfel, normal) * weight;
+      accumIrradiance += surfelOctSample(surfel, normal) * weight;
 #endif
-    accumWeight += weight;
+      accumWeight += weight;
+    }
   }
   if(accumWeight <= 0.0){
     return vec3(0.0);
