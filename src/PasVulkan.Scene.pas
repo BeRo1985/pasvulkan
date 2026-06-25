@@ -64,6 +64,7 @@ interface
 uses Classes,
      SysUtils,
      PasMP,
+     PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Math.Double,
@@ -1235,7 +1236,7 @@ var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
  if (fState=TpvSceneNodeState.Loaded) then begin
-  WriteLn('  ',ClassName,': ',pvApplication.HighResolutionTimer.ToFloatSeconds(fTimeDuration)*1000.0:7:5,' ms');
+  pvApplication.Log(LOG_VERBOSE,'TpvSceneNode','  '+ClassName+': '+ConvertDoubleToString(pvApplication.HighResolutionTimer.ToFloatSeconds(fTimeDuration)*1000.0)+' ms');
   if not fScene.fUseDirectedAcyclicGraph then begin
    ParentReadLock;
    try
@@ -2555,7 +2556,7 @@ procedure TpvScene.DumpTimes;
 var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
     ExecutionLevelNodes:TpvSceneNodes;
 begin
- WriteLn('Scene Node Times Dump:');
+ pvApplication.Log(LOG_VERBOSE,'TpvSceneNode','Scene Node Times Dump:');
  if fUseDirectedAcyclicGraph then begin
   RebuildDirectedAcyclicGraph;
   for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
@@ -2567,7 +2568,7 @@ begin
  end else begin
   fRootNode.DumpTimes;
  end;
- WriteLn;
+ pvApplication.Log(LOG_VERBOSE,'TpvSceneNode','');
 end;
 
 function TpvScene.Serialize:TObject;
