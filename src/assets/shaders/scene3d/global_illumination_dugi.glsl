@@ -174,9 +174,10 @@
   #define GI_DUGI_HYSTERESIS 0.97
 #endif
 
-// Sharpness exponent applied to the Chebyshev weight; higher values darken leaking transitions more aggressively.
+// Sharpness exponent applied to the Chebyshev weight; higher values darken leaking transitions more aggressively. With a
+// limited per-probe ray count this trades directional precision against noise (the temporal blend mitigates the latter).
 #ifndef GI_DUGI_VISIBILITY_SHARPNESS
-  #define GI_DUGI_VISIBILITY_SHARPNESS 8.0
+  #define GI_DUGI_VISIBILITY_SHARPNESS 50.0
 #endif
 
 // Surface bias when sampling the probe field (mirrors RTXGI probeNormalBias/probeViewBias): the shading point is offset
@@ -184,7 +185,7 @@
 // self-shadowing and light leaking through thin geometry. Expressed as a fraction of the cascade cell size (probe spacing),
 // so it scales with cascade resolution. Tunable; too large makes the GI "slip"/over-darken near edges.
 #ifndef GI_DUGI_NORMAL_BIAS
-  #define GI_DUGI_NORMAL_BIAS 0.3
+  #define GI_DUGI_NORMAL_BIAS 0.1
 #endif
 #ifndef GI_DUGI_VIEW_BIAS
   #define GI_DUGI_VIEW_BIAS 0.1
@@ -460,13 +461,14 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   //  weighting (the DUGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
   // ---------------------------------------------------------------------------------------------------------------------
   vec3 dugiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
-    vec3 gridCoord = dugiWorldToProbeGrid(worldPosition, cascadeIndex);
+    // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
+    // light leaking through thin geometry; the base probe, the trilinear fractions and the Chebyshev distToProbe below are
+    // all measured from this lifted position, so the interpolation cell matches the visibility test.
+    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+
+    vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
-
-    // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
-    // light leaking through thin geometry; the Chebyshev distToProbe below is measured from this lifted position.
-    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
 
     vec3 sumIrradiance = vec3(0.0);
     float sumSkyVisibility = 0.0;
@@ -477,8 +479,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDUGIProbeCounts - ivec3(1)); // logical (lattice) coord
       ivec3 physProbeCoord = dugiProbePhysicalCoord(probeCoord, cascadeIndex);              // toroidal storage slot for reads
 
-      vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
-      float weight = trilinear.x * trilinear.y * trilinear.z;
+      vec3 trilinear = max(vec3(0.001), mix(vec3(1.0) - frac, frac, vec3(offset)));
+      float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
@@ -493,28 +495,31 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       // Backface / smooth wrap weight: probes "behind" the surface contribute less.
       float wrap = (dot(dirToProbe, normal) + 1.0) * 0.5;
-      weight *= (wrap * wrap) + 0.2;
+      float weight = (wrap * wrap) + 0.2;
 
       // Chebyshev visibility test against the probe's stored octahedral depth statistics.
       float distToProbe = length(probeToPoint);
       vec3 vis = dugiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint));
       vec2 moments = vis.xy;
       float meanDist = moments.x;
+      float chebyshev = 1.0;
       if(distToProbe > meanDist){
         float variance = abs((meanDist * meanDist) - moments.y);
         float d = distToProbe - meanDist;
-        float chebyshev = variance / (variance + (d * d));
+        chebyshev = variance / (variance + (d * d));
         chebyshev = max(0.0, chebyshev * chebyshev * chebyshev); // sharpen
-        weight *= chebyshev;
       }
+      // Keep a small floor so a fully occluded probe still contributes a little — fallback for when no probe has visibility.
+      weight *= max(0.05, chebyshev);
 
-      // Avoid zero contribution everywhere by keeping a tiny epsilon, then apply a small power to crush near-zero weights.
+      // Floor away exact zero, then crush near-zero weights; the trilinear interpolation weight is applied last so the
+      // crush shapes only the wrap/visibility term.
+      weight = max(weight, 1e-6);
       const float crushThreshold = 0.2;
       if(weight < crushThreshold){
         weight *= (weight * weight) * (1.0 / (crushThreshold * crushThreshold));
       }
-
-      weight = max(weight, 1e-6);
+      weight *= trilinearWeight;
 
       sumIrradiance += dugiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
 
@@ -587,11 +592,11 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   //  cosine-convolved irradiance along the normal. Returns prefiltered radiance (the caller applies the split-sum BRDF).
   // ---------------------------------------------------------------------------------------------------------------------
   vec3 dugiSampleGlossyRadianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 reflectionDirection, const in vec3 viewDirection, const in int cascadeIndex){
-    vec3 gridCoord = dugiWorldToProbeGrid(worldPosition, cascadeIndex);
+    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+
+    vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
     vec3 frac = gridCoord - vec3(baseProbe);
-
-    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
 
     vec3 sumGlossy = vec3(0.0);
     float sumWeight = 0.0;
@@ -601,8 +606,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDUGIProbeCounts - ivec3(1));
       ivec3 physProbeCoord = dugiProbePhysicalCoord(probeCoord, cascadeIndex);
 
-      vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
-      float weight = trilinear.x * trilinear.y * trilinear.z;
+      vec3 trilinear = max(vec3(0.001), mix(vec3(1.0) - frac, frac, vec3(offset)));
+      float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
@@ -616,24 +621,26 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 dirToProbe = normalize(-probeToPoint);
 
       float wrap = (dot(dirToProbe, normal) + 1.0) * 0.5;
-      weight *= (wrap * wrap) + 0.2;
+      float weight = (wrap * wrap) + 0.2;
 
       float distToProbe = length(probeToPoint);
       vec2 moments = dugiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint)).xy;
       float meanDist = moments.x;
+      float chebyshev = 1.0;
       if(distToProbe > meanDist){
         float variance = abs((meanDist * meanDist) - moments.y);
         float d = distToProbe - meanDist;
-        float chebyshev = variance / (variance + (d * d));
+        chebyshev = variance / (variance + (d * d));
         chebyshev = max(0.0, chebyshev * chebyshev * chebyshev);
-        weight *= chebyshev;
       }
+      weight *= max(0.05, chebyshev);
 
+      weight = max(weight, 1e-6);
       const float crushThreshold = 0.2;
       if(weight < crushThreshold){
         weight *= (weight * weight) * (1.0 / (crushThreshold * crushThreshold));
       }
-      weight = max(weight, 1e-6);
+      weight *= trilinearWeight;
 
       sumGlossy += dugiEvaluateGlossyRadiance(physProbeCoord, cascadeIndex, reflectionDirection) * weight;
       sumWeight += weight;
@@ -690,12 +697,12 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   //  (proper specular via the analytic BRDF) plus a residual ambient SH (diffuse), mirroring the cascaded radiance hints.
   // ---------------------------------------------------------------------------------------------------------------------
   DUGI_SH_TYPE dugiSampleRadianceSHInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
-    vec3 gridCoord = dugiWorldToProbeGrid(worldPosition, cascadeIndex);
-    ivec3 baseProbe = ivec3(floor(gridCoord));
-    vec3 frac = gridCoord - vec3(baseProbe);
-
     // Surface bias (see dugiSampleIrradianceInCascade): lift along normal + towards camera, scaled by the cell size.
     vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+
+    vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
+    ivec3 baseProbe = ivec3(floor(gridCoord));
+    vec3 frac = gridCoord - vec3(baseProbe);
 
     DUGI_SH_TYPE sumSH = DUGI_SH_ZERO();
     float sumSkyVisibility = 0.0;
@@ -706,8 +713,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       ivec3 probeCoord = clamp(baseProbe + offset, ivec3(0), uDUGIProbeCounts - ivec3(1)); // logical (lattice) coord
       ivec3 physProbeCoord = dugiProbePhysicalCoord(probeCoord, cascadeIndex);              // toroidal storage slot for reads
 
-      vec3 trilinear = mix(vec3(1.0) - frac, frac, vec3(offset));
-      float weight = trilinear.x * trilinear.y * trilinear.z;
+      vec3 trilinear = max(vec3(0.001), mix(vec3(1.0) - frac, frac, vec3(offset)));
+      float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
@@ -721,7 +728,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 dirToProbe = normalize(-probeToPoint);
 
       float wrap = (dot(dirToProbe, normal) + 1.0) * 0.5;
-      weight *= (wrap * wrap) + 0.2;
+      float weight = (wrap * wrap) + 0.2;
 
       float distToProbe = length(probeToPoint);
       vec3 vis = dugiSampleVisibility(physProbeCoord, cascadeIndex, normalize(probeToPoint));
@@ -734,14 +741,14 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
         chebyshev = variance / (variance + (d * d));
         chebyshev = max(0.0, chebyshev * chebyshev * chebyshev);
       }
-      weight *= chebyshev;
+      weight *= max(0.05, chebyshev);
 
+      weight = max(weight, 1e-6);
       const float crushThreshold = 0.2;
       if(weight < crushThreshold){
         weight *= (weight * weight) * (1.0 / (crushThreshold * crushThreshold));
       }
-
-      weight = max(weight, 1e-6);
+      weight *= trilinearWeight;
 
       sumSH = DUGI_SH_ADD(sumSH, DUGI_SH_MUL(dugiLoadIrradianceSH(physProbeCoord, cascadeIndex), weight));
       sumSkyVisibility += dugiSampleVisibility(physProbeCoord, cascadeIndex, normal).z * weight;
