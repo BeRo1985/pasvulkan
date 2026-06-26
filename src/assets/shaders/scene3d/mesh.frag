@@ -1028,7 +1028,9 @@ void main() {
       // specular reflects the sky, so gate it by whether the sky is visible along the reflected ray. This avoids the sky
       // colour bleeding onto surfaces that are open to the sky in the normal hemisphere but whose reflection is occluded.
       vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, normalize(reflect(-viewDirection, normal.xyz)), dugiSkyVisibility);
-      float iblWeight = dugiSkyVisibility;
+      // Roughness gate (A): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on matte ones
+      // (so matte surfaces like tyres do not pick up the sky colour through the coarse probe field / env cubemap).
+      float iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
         colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }

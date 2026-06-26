@@ -164,6 +164,17 @@
   #define GI_DUGI_GLOSSY_ROUGHNESS_HI 0.45
 #endif
 
+// Roughness gate for the OCT shading path's env/glossy specular reflection: full at/below LO (glossy surfaces reflect the
+// sky/environment correctly), faded to zero at/above HI (matte surfaces barely reflect, so they do not pick up the sky colour
+// through the coarse environment cubemap / probe glossy). Tunable; raise HI if too much reflection is lost on semi-glossy
+// surfaces, lower it if matte surfaces still show the sky.
+#ifndef GI_DUGI_SPECULAR_ROUGHNESS_LO
+  #define GI_DUGI_SPECULAR_ROUGHNESS_LO 0.1
+#endif
+#ifndef GI_DUGI_SPECULAR_ROUGHNESS_HI
+  #define GI_DUGI_SPECULAR_ROUGHNESS_HI 0.35
+#endif
+
 // Number of rays traced per probe per frame.
 #ifndef GI_DUGI_RAYS_PER_PROBE
   #define GI_DUGI_RAYS_PER_PROBE 128
