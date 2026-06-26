@@ -8759,22 +8759,27 @@ begin
   fGlobalIlluminationDDGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex]:=BaseCell;
  end;
 
- // Non-raytraced fallback producer: fill the (slim) RSM matrices UBO that gi_ddgi_rsm_splat reads (set 0 binding 3). Only the
- // world<->RSM matrices are needed (the splat reconstructs a VPL world position from the RSM depth); the AddReflectiveShadowMapView
- // call in the view setup has already written InFlightFrameState.ReflectiveShadowMapMatrix this frame. The remaining RSM UBO
- // fields stay at their zero-init value (unused by the splat). Skipped when raytracing is active (the trace producer needs no RSM).
- if (not Renderer.Scene3D.RaytracingActive) and assigned(fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex]) then begin
-  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
-  GlobalIlluminationRadianceHintsRSMUniformBufferData:=@fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray[aInFlightFrameIndex];
-  GlobalIlluminationRadianceHintsRSMUniformBufferData^.WorldToReflectiveShadowMapMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix;
-  GlobalIlluminationRadianceHintsRSMUniformBufferData^.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
-  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
-                                             fScene3D.VulkanStagingCommandBuffer,
-                                             fScene3D.VulkanStagingFence,
-                                             fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray[aInFlightFrameIndex],
-                                             fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex],
-                                             0,
-                                             SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData));
+ // Non-raytraced fallback producer: render + read the sun's RSM. The RSM render pass only draws when MustRenderGIMaps is set
+ // (otherwise driven by the radiance-hints caching logic, which does not run in DDGI mode), so set it every frame here — the
+ // fallback needs a fresh RSM each frame and the RSM render pass is the only consumer of this flag in DDGI mode. Then fill the
+ // (slim) RSM matrices UBO the gi_ddgi_rsm_splat producer reads (set 0 binding 3): only the world<->RSM matrices are needed (the
+ // splat reconstructs a VPL world position from the RSM depth); AddReflectiveShadowMapView in the view setup has already written
+ // InFlightFrameState.ReflectiveShadowMapMatrix this frame. The remaining RSM UBO fields stay zero (unused by the splat).
+ if not Renderer.Scene3D.RaytracingActive then begin
+  fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex]:=true;
+  if assigned(fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex]) then begin
+   InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+   GlobalIlluminationRadianceHintsRSMUniformBufferData:=@fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray[aInFlightFrameIndex];
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.WorldToReflectiveShadowMapMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix;
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
+   Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
+                                              fScene3D.VulkanStagingCommandBuffer,
+                                              fScene3D.VulkanStagingFence,
+                                              fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray[aInFlightFrameIndex],
+                                              fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex],
+                                              0,
+                                              SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData));
+  end;
  end;
 
 end;
