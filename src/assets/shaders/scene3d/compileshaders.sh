@@ -22,30 +22,30 @@ DELETEAFTERCOMPILE=1
 # Debug mode, if set to 1, debug information will generated and written into the spirv files
 DEBUG=1
 
-# DDGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = octahedral atlas (1 image),
+# DUGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = octahedral atlas (1 image),
 # 1 = L1 spherical harmonics (3 images), 2 = L2 spherical harmonics (7 images, default — for testing/comparison). This MUST match
-# GlobalIlluminationDDGIStorageMode in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor layouts / image
-# counts / view types of the DDGI compute shaders and the globalillumination_ddgi mesh fragment variant won't match the
+# GlobalIlluminationDUGIStorageMode in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor layouts / image
+# counts / view types of the DUGI compute shaders and the globalillumination_dugi mesh fragment variant won't match the
 # Pascal side. The define is always passed explicitly (the shader's own default differs), so keep the two in sync.
-DDGI_STORAGE=0
-DDGI_STORAGE_DEFINE="-DGI_DDGI_STORAGE=${DDGI_STORAGE}"
+DUGI_STORAGE=0
+DUGI_STORAGE_DEFINE="-DGI_DUGI_STORAGE=${DUGI_STORAGE}"
 
-# RTXGI-style probe relocation + classification (0 = off, 1 = on). When on, the trace traces GI_DDGI_FIXED_RAYS fixed rays
+# RTXGI-style probe relocation + classification (0 = off, 1 = on). When on, the trace traces GI_DUGI_FIXED_RAYS fixed rays
 # for the relocation/classification compute passes, the irradiance/visibility blend integrates only the remaining random
 # rays, and the trace/sampling shaders bind the per-probe probe-data image (relocation offset + active state). This MUST
-# match GlobalIlluminationDDGIProbeRelocation in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor binding
-# counts (compute set binding 5 + shading set binding 3) won't line up with the Pascal side. Passed to every DDGI shader.
-DDGI_PROBE_RELOCATION=1
-DDGI_PROBE_RELOCATION_DEFINE="-DGI_DDGI_PROBE_RELOCATION=${DDGI_PROBE_RELOCATION}"
+# match GlobalIlluminationDUGIProbeRelocation in PasVulkan.Scene3D.Renderer.Instance.pas, otherwise the descriptor binding
+# counts (compute set binding 5 + shading set binding 3) won't line up with the Pascal side. Passed to every DUGI shader.
+DUGI_PROBE_RELOCATION=1
+DUGI_PROBE_RELOCATION_DEFINE="-DGI_DUGI_PROBE_RELOCATION=${DUGI_PROBE_RELOCATION}"
 
-# DDGI glossy prefiltered-radiance octahedral atlas (0 = off, 1 = on). Opt-in. When on, the gi_ddgi_glossy_update
+# DUGI glossy prefiltered-radiance octahedral atlas (0 = off, 1 = on). Opt-in. When on, the gi_dugi_glossy_update
 # compute pass + the glossy atlas binding (compute set 1 binding 5 / shading set binding 5) are built, and the border + the
-# mesh/planet DDGI fragment variants get the glossy sampling path. This MUST match GlobalIlluminationDDGIGlossyRadiance in
-# PasVulkan.Scene3D.Renderer.Instance.pas. First iteration uses the RGBA16F atlas format (-DGI_DDGI_GLOSSY_RGBA16F); the
-# RGB9E5 variant (smaller) is a later option. When off, GLOSSY_DEFINE is empty (plain DDGI, no glossy atlas/binding).
-DDGI_GLOSSY=1
-if [ "${DDGI_GLOSSY}" = "1" ]; then
-  GLOSSY_DEFINE="-DGI_DDGI_GLOSSY_RADIANCE -DGI_DDGI_GLOSSY_RGBA16F"
+# mesh/planet DUGI fragment variants get the glossy sampling path. This MUST match GlobalIlluminationDUGIGlossyRadiance in
+# PasVulkan.Scene3D.Renderer.Instance.pas. First iteration uses the RGBA16F atlas format (-DGI_DUGI_GLOSSY_RGBA16F); the
+# RGB9E5 variant (smaller) is a later option. When off, GLOSSY_DEFINE is empty (plain DUGI, no glossy atlas/binding).
+DUGI_GLOSSY=1
+if [ "${DUGI_GLOSSY}" = "1" ]; then
+  GLOSSY_DEFINE="-DGI_DUGI_GLOSSY_RADIANCE -DGI_DUGI_GLOSSY_RGBA16F"
 else
   GLOSSY_DEFINE=""
 fi
@@ -534,7 +534,7 @@ compileshaderarguments=(
   "-V cnn_buffer_to_image.comp -o ${tempPath}/cnn_buffer_to_image_comp.spv"
 
   # Per-frame GPU particle LBVH build (emit -> AABB -> Morton -> radix sort -> Karras hierarchy -> AABB refit), software-traced
-  # by GI/RT consumers (DDGI now, path tracing later) to inject particles (not in the BLAS). emit reads the vertex buffer via BDA -> 1.2.
+  # by GI/RT consumers (DUGI now, path tracing later) to inject particles (not in the BLAS). emit reads the vertex buffer via BDA -> 1.2.
   "-V particle_bvh_emit.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_emit_comp.spv"
   "-V particle_bvh_aabb.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_aabb_comp.spv"
   "-V particle_bvh_morton.comp --target-env vulkan1.2 -o ${tempPath}/particle_bvh_morton_comp.spv"
@@ -565,44 +565,44 @@ compileshaderarguments=(
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
 
-  # DDGI (dynamic diffuse global illumination). Storage mode defaults to L1 spherical harmonics (GI_DDGI_STORAGE = 0);
-  # build the octahedral irradiance variants by adding -DGI_DDGI_STORAGE=1 (and matching the shading variant below).
-  # gi_ddgi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
+  # DUGI (dynamic diffuse global illumination). Storage mode defaults to L1 spherical harmonics (GI_DUGI_STORAGE = 0);
+  # build the octahedral irradiance variants by adding -DGI_DUGI_STORAGE=1 (and matching the shading variant below).
+  # gi_dugi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
-  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
-  # Non-raytraced DDGI producer = the SAME gi_ddgi_trace.comp built with the Reflective Shadow Map backend (GI_TRACE_BACKEND=2):
+  "-V gi_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_trace_comp.spv"
+  # Non-raytraced DUGI producer = the SAME gi_dugi_trace.comp built with the Reflective Shadow Map backend (GI_TRACE_BACKEND=2):
   # no ray query (no ray-tracing SPIR-V target needed), reads the sun's RSM instead of the TLAS. Probe iteration / relocation /
-  # multi-bounce / particle injection / ray-data encode are identical to the ray-query build. Used as the DDGI fallback when
+  # multi-bounce / particle injection / ray-data encode are identical to the ray-query build. Used as the DUGI fallback when
   # hardware ray query is unavailable.
-  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -DGI_TRACE_BACKEND=2 -o ${tempPath}/gi_ddgi_trace_rsm_comp.spv"
-  # gi_ddgi_rsm_splat.comp is the non-raytraced DDGI producer (Reflective Shadow Map VPL splatting), used as the fallback
-  # when hardware ray query is unavailable. It writes the same ddgiData ray-data contract as the trace, so it needs the
+  "-V gi_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_TRACE_BACKEND=2 -o ${tempPath}/gi_dugi_trace_rsm_comp.spv"
+  # gi_dugi_rsm_splat.comp is the non-raytraced DUGI producer (Reflective Shadow Map VPL splatting), used as the fallback
+  # when hardware ray query is unavailable. It writes the same dugiData ray-data contract as the trace, so it needs the
   # buffer_reference SPIR-V target; it does NOT ray-trace, so no ray-tracing target is required.
-  "-V gi_ddgi_rsm_splat.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_rsm_splat_comp.spv"
-  # irradiance/visibility update read the ray-data via the DDGI master BDA buffer (gi_ddgi_master.glsl) -> need the
+  "-V gi_dugi_rsm_splat.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_rsm_splat_comp.spv"
+  # irradiance/visibility update read the ray-data via the DUGI master BDA buffer (gi_dugi_master.glsl) -> need the
   # buffer_reference SPIR-V target even though they don't ray-trace.
-  "-V gi_ddgi_irradiance_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
-  "-V gi_ddgi_visibility_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_visibility_update_comp.spv"
+  "-V gi_dugi_irradiance_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_irradiance_update_comp.spv"
+  "-V gi_dugi_visibility_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_visibility_update_comp.spv"
   # Border also copies the glossy atlas guard band when glossy is on (binding 5); GLOSSY_DEFINE gates that to match the
-  # Pascal descriptor layout (which adds binding 5 only when GlobalIlluminationDDGIGlossyRadiance).
-  "-V gi_ddgi_border_update.comp ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_border_update_comp.spv"
+  # Pascal descriptor layout (which adds binding 5 only when GlobalIlluminationDUGIGlossyRadiance).
+  "-V gi_dugi_border_update.comp ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_border_update_comp.spv"
   # Glossy prefiltered-radiance update. Always built (like the relocation/classification comps) with the RGBA16F atlas
-  # format the Pascal side uses; only dispatched when GlobalIlluminationDDGIGlossyRadiance is true (the matching toggle). Reads
-  # the ray-data via the DDGI master BDA buffer -> needs the buffer_reference SPIR-V target.
-  "-V gi_ddgi_glossy_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -DGI_DDGI_GLOSSY_RGBA16F -o ${tempPath}/gi_ddgi_glossy_update_comp.spv"
+  # format the Pascal side uses; only dispatched when GlobalIlluminationDUGIGlossyRadiance is true (the matching toggle). Reads
+  # the ray-data via the DUGI master BDA buffer -> needs the buffer_reference SPIR-V target.
+  "-V gi_dugi_glossy_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_DUGI_GLOSSY_RGBA16F -o ${tempPath}/gi_dugi_glossy_update_comp.spv"
   # Probe relocation + classification (RTXGI-style). Traces fixed rays via ray query (includes raytracing.glsl), hence the
-  # explicit ray-tracing SPIR-V target like the DDGI trace. Built with the same DDGI_PROBE_RELOCATION_DEFINE as the rest;
-  # only dispatched when GlobalIlluminationDDGIProbeRelocation is true on the Pascal side (the matching toggle).
-  "-V gi_ddgi_relocation.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_relocation_comp.spv"
-  "-V gi_ddgi_classification.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_classification_comp.spv"
-  # DDGI probe debug visualization (RendererInstance.DebugDDGIProbes). Procedural octahedral sphere per probe, instanced over
-  # all cascades, coloured by the probe's directional irradiance via ddgiEvaluateIrradiance (same storage mode as the rest).
-  "-V gi_ddgi_probe_debug.vert --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_vert.spv"
-  "-V gi_ddgi_probe_debug.frag --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_frag.spv"
+  # explicit ray-tracing SPIR-V target like the DUGI trace. Built with the same DUGI_PROBE_RELOCATION_DEFINE as the rest;
+  # only dispatched when GlobalIlluminationDUGIProbeRelocation is true on the Pascal side (the matching toggle).
+  "-V gi_dugi_relocation.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_relocation_comp.spv"
+  "-V gi_dugi_classification.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_classification_comp.spv"
+  # DUGI probe debug visualization (RendererInstance.DebugDUGIProbes). Procedural octahedral sphere per probe, instanced over
+  # all cascades, coloured by the probe's directional irradiance via dugiEvaluateIrradiance (same storage mode as the rest).
+  "-V gi_dugi_probe_debug.vert --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_vert.spv"
+  "-V gi_dugi_probe_debug.frag --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_frag.spv"
   # Frustum-culled mesh-shader variant (task -> mesh) of the probe debug overlay; needs the mesh-shader SPIR-V target like the other mesh/task shaders.
-  "-V gi_ddgi_probe_debug.task --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_task.spv"
-  "-V gi_ddgi_probe_debug.mesh --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_ddgi_probe_debug_mesh.spv"
+  "-V gi_dugi_probe_debug.task --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_task.spv"
+  "-V gi_dugi_probe_debug.mesh --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_mesh.spv"
 
   "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
@@ -768,10 +768,10 @@ compileshaderarguments=(
   "-V planet_water.frag -DUNDERWATER -o ${tempPath}/planet_water_underwater_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
-  # DDGI (RT-based GI) variant of the underwater fullscreen pass — RT only, 'ddgi' segment last; DDGI feeds the shore-foam
-  # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DDGI variant:
+  # DUGI (RT-based GI) variant of the underwater fullscreen pass — RT only, 'dugi' segment last; DUGI feeds the shore-foam
+  # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DUGI variant:
   # that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
-  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_ddgi_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_dugi_frag.spv"
 
   "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
   "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"
@@ -800,16 +800,16 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_frag.spv"
-  # DDGI (RT-based global illumination) variants — only for RT GI modes, hence combined with raytracing_/bufref_; the 'ddgi_'
-  # Kind segment sits last (matches the Planet.pas naming, Kind:='ddgi_'). Built per DDGI storage mode (DDGI_STORAGE_DEFINE).
-  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_ddgi_frag.spv"
-  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_ddgi_frag.spv"
+  # DUGI (RT-based global illumination) variants — only for RT GI modes, hence combined with raytracing_/bufref_; the 'dugi_'
+  # Kind segment sits last (matches the Planet.pas naming, Kind:='dugi_'). Built per DUGI storage mode (DUGI_STORAGE_DEFINE).
+  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_dugi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_velocity_dugi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_dugi_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_dugi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_dugi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_velocity_dugi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_dugi_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_dugi_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_rsm_frag.spv"
@@ -822,7 +822,7 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_rsm_frag.spv"
-  # Reflective shadow map ALBEDO output variants (non-raytraced DDGI RSM-backend producer): raw albedo, no lighting. Only the
+  # Reflective shadow map ALBEDO output variants (non-raytraced DUGI RSM-backend producer): raw albedo, no lighting. Only the
   # non-velocity / non-wireframe TopLevelKind variants the ReflectiveShadowMap planet pass actually loads.
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRSMALBEDO -o ${tempPath}/planet_renderpass_rsm_albedo_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DRSMALBEDO -o ${tempPath}/planet_renderpass_bufref_rsm_albedo_frag.spv"
@@ -926,15 +926,15 @@ compileshaderarguments=(
   "-V planet_grass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
   "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
-  # DDGI (RT-based GI) variants — only for RT GI modes; 'ddgi_' Kind segment last (matches Planet.pas). Per DDGI storage mode.
-  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_ddgi_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_ddgi_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_ddgi_frag.spv"
+  # DUGI (RT-based GI) variants — only for RT GI modes; 'dugi_' Kind segment last (matches Planet.pas). Per DUGI storage mode.
+  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_dugi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_velocity_dugi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_dugi_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_dugi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_dugi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_velocity_dugi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_dugi_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_grass_bufref_wireframe_velocity_dugi_frag.spv"
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"                                  # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"              # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"            # unused: BDA always active
@@ -947,7 +947,7 @@ compileshaderarguments=(
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_rsm_frag.spv"
-  # Reflective shadow map ALBEDO output variants (non-raytraced DDGI RSM-backend producer): raw albedo, no lighting.
+  # Reflective shadow map ALBEDO output variants (non-raytraced DUGI RSM-backend producer): raw albedo, no lighting.
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DRSMALBEDO -o ${tempPath}/planet_grass_bufref_rsm_albedo_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DRSMALBEDO -o ${tempPath}/planet_grass_raytracing_rsm_albedo_frag.spv"
 
@@ -1160,12 +1160,12 @@ addPlanetWaterFragmentVariants(){
 
 addPlanetWaterFragmentVariants "planet_water" "-DTESSELLATION"
 
-# DDGI (RT-based global illumination) variants of the main water surface — only the raytracing path gets GI (DDGI is RT only),
-# and only the main surface (UNDERWATER / WATER_CAUSTICS deliberately excluded). The 'ddgi' segment sits last, matching the
-# Planet.pas name assembly (planet_water[_raytracing][_msaa|_msaa_fast]_ddgi_frag.spv). Built per DDGI storage mode.
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_ddgi_frag.spv"
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_ddgi_frag.spv"
-addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_ddgi_frag.spv"
+# DUGI (RT-based global illumination) variants of the main water surface — only the raytracing path gets GI (DUGI is RT only),
+# and only the main surface (UNDERWATER / WATER_CAUSTICS deliberately excluded). The 'dugi' segment sits last, matching the
+# Planet.pas name assembly (planet_water[_raytracing][_msaa|_msaa_fast]_dugi_frag.spv). Built per DUGI storage mode.
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_dugi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_dugi_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_raytracing_msaa_fast_dugi_frag.spv"
 
 #############################################
 #               Mesh shaders                #
@@ -1279,7 +1279,7 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   # Cascaded voxel cone tracing
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
 
-  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_ddgi" "$2 -DGLOBAL_ILLUMINATION_DDGI ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE}"
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_dugi" "$2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE}"
 
 }
 
@@ -1344,7 +1344,7 @@ addMeshFragmentPassTargetVariants(){
   # The reflective shadow map stuff
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"
 
-  # Reflective shadow map ALBEDO output (for the non-raytraced DDGI RSM-backend producer): outputs the raw albedo and skips
+  # Reflective shadow map ALBEDO output (for the non-raytraced DUGI RSM-backend producer): outputs the raw albedo and skips
   # all lighting (the producer re-lights the albedo itself, so the probe field is not double-lit).
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm_albedo" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT -DRSMALBEDO"
 

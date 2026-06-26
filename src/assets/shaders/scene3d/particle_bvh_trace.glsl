@@ -4,7 +4,7 @@
 // Descriptor-FREE software traversal of the per-frame GPU particle LBVH, used to inject particles (not in the hardware
 // ray-tracing BLAS) into a renderer's lighting. Technique-neutral: a consumer only needs the two buffer device addresses + the
 // particle count (however it obtains them — push constant, UBO, a master buffer). No shared descriptor set/binding contract,
-// so the DDGI trace (now) and a pure-path-tracing path (later) reuse the exact same code. Requires GL_EXT_buffer_reference(+
+// so the DUGI trace (now) and a pure-path-tracing path (later) reuse the exact same code. Requires GL_EXT_buffer_reference(+
 // _uvec2) and the structs from particle_bvh.glsl (included WITHOUT PARTICLE_BVH_BINDINGS).
 
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ParticleBVHEmitterRef {

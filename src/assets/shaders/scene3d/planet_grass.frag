@@ -159,12 +159,12 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 
 #include "roughness.glsl"
 
-#if defined(GLOBAL_ILLUMINATION_DDGI)
-  // DDGI probe field for ray-tracing-based global illumination — only for the RT GI modes, never
+#if defined(GLOBAL_ILLUMINATION_DUGI)
+  // DUGI probe field for ray-tracing-based global illumination — only for the RT GI modes, never
   // CRH/VCT. GI lives at the fixed dedicated set 4 (the grass pipeline uses sets 0..3: global, mesh-rendering-pass, planet
   // textures, grass cull/mesh-gen). Mirrors planet_renderpass.frag / mesh.frag.
-  #define DDGI_DESCRIPTOR_SET 4
-  #include "global_illumination_ddgi_sampling.glsl"
+  #define DUGI_DESCRIPTOR_SET 4
+  #include "global_illumination_dugi_sampling.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -385,34 +385,34 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
-#if defined(GLOBAL_ILLUMINATION_DDGI)
+#if defined(GLOBAL_ILLUMINATION_DUGI)
   // RT GI: probe-field diffuse (replaces IBL diffuse); IBL specular kept but occluded by probe sky-visibility · AO.
-  float ddgiSkyVisibility;
-  vec3 ddgiIrradiance = ddgiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, ddgiSkyVisibility);
+  float dugiSkyVisibility;
+  vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, dugiSkyVisibility);
   if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+    colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  float giIBLWeight = ddgiSkyVisibility;
+  float giIBLWeight = dugiSkyVisibility;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;
 #endif
   vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
-#if defined(GLOBAL_ILLUMINATION_DDGI) && defined(GI_DDGI_GLOSSY_RESIDUAL)
+#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
   // Probe-derived glossy (matches mesh.frag / planet_renderpass.frag). Storage-agnostic: sample the probe field along
   // the reflection vector as a broad prefiltered radiance (E(R)/pi) and lerp it into the prefiltered specular source by
   // roughness (rough grass takes the probe local colour bleed, sharp keeps the environment reflection). giIBLWeight unchanged.
   {
-    float ddgiGlossySky;
-    vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal));
-    vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI; // broad reflection
-#if defined(GI_DDGI_GLOSSY_RADIANCE)
+    float dugiGlossySky;
+    vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal));
+    vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition, dugiReflectionVector, viewDirection, dugiGlossySky) * OneOverPI; // broad reflection
+#if defined(GI_DUGI_GLOSSY_RADIANCE)
     // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
-    vec3 ddgiSharpGlossy = ddgiSampleGlossyRadiance(inWorldSpacePosition, normal, ddgiReflectionVector, viewDirection);
-    ddgiGlossyRadiance = mix(ddgiSharpGlossy, ddgiGlossyRadiance, smoothstep(GI_DDGI_GLOSSY_ROUGHNESS_LO, GI_DDGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
+    dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
-    iblSpecularMetal = mix(iblSpecularMetal, ddgiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+    iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
   }
 #endif
   vec3 iblSpecularDielectric = iblSpecularMetal;

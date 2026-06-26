@@ -264,7 +264,7 @@ vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior) {
 
 void doSingleLight(const in vec3 lightColor,
                    const in vec3 lightLit,
-                   const in vec2 diffuseSpecularFactors, // x = diffuse scale, y = specular (incl. sheen/clearcoat) scale; lets a caller fade one lobe without the other (e.g. DDGI crossfading the dominant-light specular against the glossy atlas while keeping its diffuse). vec2(1.0) = neutral.
+                   const in vec2 diffuseSpecularFactors, // x = diffuse scale, y = specular (incl. sheen/clearcoat) scale; lets a caller fade one lobe without the other (e.g. DUGI crossfading the dominant-light specular against the glossy atlas while keeping its diffuse). vec2(1.0) = neutral.
                    const in vec3 lightDirection, // Direction from surface point to light
                    const in vec3 normal, 
                    const in vec3 baseColor,

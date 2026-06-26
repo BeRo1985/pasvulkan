@@ -248,25 +248,25 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #include "planet_caustics.glsl"
 #endif
 
-// DDGI probe field for ray-tracing-based global illumination, gated to RT GI modes — never
+// DUGI probe field for ray-tracing-based global illumination, gated to RT GI modes — never
 // CRH/VCT. Wired into the main water surface AND the underwater fullscreen pass (shore-foam ambient); WATER_CAUSTICS is
-// excluded because that pass is purely additive refracted-sun light with no diffuse/ambient term for DDGI to feed. GI
+// excluded because that pass is purely additive refracted-sun light with no diffuse/ambient term for DUGI to feed. GI
 // lives at the fixed dedicated set 4 (the water pipelines use sets 0..3), mirroring planet_renderpass.frag / planet_grass.frag.
-#if defined(GLOBAL_ILLUMINATION_DDGI) && !defined(WATER_CAUSTICS)
-  #define DDGI_DESCRIPTOR_SET 4
-  #include "global_illumination_ddgi_sampling.glsl"
-  #define WATER_DDGI 1
+#if defined(GLOBAL_ILLUMINATION_DUGI) && !defined(WATER_CAUSTICS)
+  #define DUGI_DESCRIPTOR_SET 4
+  #include "global_illumination_dugi_sampling.glsl"
+  #define WATER_DUGI 1
 #endif
 
 // Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
-// albedo" convention. Under the DDGI build variant it comes from the probe field (replacing the environment IBL diffuse);
+// albedo" convention. Under the DUGI build variant it comes from the probe field (replacing the environment IBL diffuse);
 // otherwise it is the environment IBL diffuse (which ignores the position). The specular reflection path stays IBL either
 // way (water reflections are wanted). An explicit world position is taken because the underwater fullscreen pass has no
 // per-fragment surface position (the file-scope inWorldSpacePosition is only valid on the tessellated surface) — the
 // underwater shore-foam caller reconstructs the world position from the depth buffer instead. viewDirection is file-scope.
-#if defined(WATER_DDGI)
+#if defined(WATER_DUGI)
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
-  return ddgiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
+  return dugiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
@@ -879,21 +879,21 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
-#if defined(WATER_DDGI) && defined(GI_DDGI_GLOSSY_RESIDUAL)
+#if defined(WATER_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
     // Probe-derived glossy, roughness-gated. Water is normally near-mirror (low roughness), so smoothstep(0.3,0.8) keeps this ~inert and
     // the sharp environment/SSR reflection wins (sharp water reflections are wanted — see waterDiffuseAmbient). It only kicks
     // in for rough/foamy water, where a broad probe reflection (with local colour bleed) is appropriate. Storage-agnostic
-    // via ddgiSampleIrradiance (E(R)/pi ~ broad prefiltered radiance along the reflection vector).
+    // via dugiSampleIrradiance (E(R)/pi ~ broad prefiltered radiance along the reflection vector).
     {
-      float ddgiGlossySky;
-      vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal));
-      vec3 ddgiGlossyRadiance = ddgiSampleIrradiance(inWorldSpacePosition, ddgiReflectionVector, viewDirection, ddgiGlossySky) * OneOverPI; // broad reflection
-#if defined(GI_DDGI_GLOSSY_RADIANCE)
+      float dugiGlossySky;
+      vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal));
+      vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition, dugiReflectionVector, viewDirection, dugiGlossySky) * OneOverPI; // broad reflection
+#if defined(GI_DUGI_GLOSSY_RADIANCE)
       // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
-      vec3 ddgiSharpGlossy = ddgiSampleGlossyRadiance(inWorldSpacePosition, normal, ddgiReflectionVector, viewDirection);
-      ddgiGlossyRadiance = mix(ddgiSharpGlossy, ddgiGlossyRadiance, smoothstep(GI_DDGI_GLOSSY_ROUGHNESS_LO, GI_DDGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+      vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
+      dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
-      iblSpecularMetal = mix(iblSpecularMetal, ddgiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+      iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
     }
 #endif
     vec3 iblSpecularDielectric = iblSpecularMetal;
@@ -1117,8 +1117,8 @@ void main(){
       if(waterRadius > 0.0){
         float shoreDepth = max(0.0, waterRadius - groundRadius);
         // The global workNormal/viewDirection are only set on the tessellated surface, not in this fullscreen pass, but
-        // applyShoreFoam's ambient lookup (waterDiffuseAmbient -> IBL or DDGI) reads them. Use the world-space surface
-        // up-normal at the shore point and the direction toward the camera so the DDGI/IBL diffuse stays well-defined.
+        // applyShoreFoam's ambient lookup (waterDiffuseAmbient -> IBL or DUGI) reads them. Use the world-space surface
+        // up-normal at the shore point and the direction toward the camera so the DUGI/IBL diffuse stays well-defined.
         workNormal = normalize((planetModelMatrix * vec4(sphereNormal, 0.0)).xyz);
         viewDirection = normalize(inverseViewMatrix[3].xyz - worldPos);
         finalColor.xyz = applyShoreFoam(finalColor.xyz, planetPos, shoreDepth);

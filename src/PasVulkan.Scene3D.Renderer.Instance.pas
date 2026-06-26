@@ -116,64 +116,64 @@ type { TpvScene3DRendererInstance }
                                                           GlobalIlluminationRadiantHintVolumeSize*
                                                           GlobalIlluminationRadiantHintVolumeSize)*
                                                          GlobalIlluminationRadiantHintVolumeSize;
-             // DDGI (dynamic diffuse global illumination) probe field. Must match the GI_DDGI_* defines in
-             // global_illumination_ddgi.glsl. Irradiance default storage = L2 spherical harmonics (7 RGBA16F 3D images).
-             CountGlobalIlluminationDDGICascades=4;
-             GlobalIlluminationDDGIProbeCountX=16;
-             GlobalIlluminationDDGIProbeCountY=16;
-             GlobalIlluminationDDGIProbeCountZ=16;
-             GlobalIlluminationDDGIProbesPerCascade=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ;
-             GlobalIlluminationDDGIRaysPerProbe=128;
-             {$define GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES} // mirror of the GLSL define (global_illumination_ddgi.glsl); comment out for the legacy 8/16 interior
-             {$ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
-             GlobalIlluminationDDGIIrradianceOctSize=6;
-             GlobalIlluminationDDGIVisibilityOctSize=14;
+             // DUGI (dynamic diffuse global illumination) probe field. Must match the GI_DUGI_* defines in
+             // global_illumination_dugi.glsl. Irradiance default storage = L2 spherical harmonics (7 RGBA16F 3D images).
+             CountGlobalIlluminationDUGICascades=4;
+             GlobalIlluminationDUGIProbeCountX=16;
+             GlobalIlluminationDUGIProbeCountY=16;
+             GlobalIlluminationDUGIProbeCountZ=16;
+             GlobalIlluminationDUGIProbesPerCascade=GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ;
+             GlobalIlluminationDUGIRaysPerProbe=128;
+             {$define GI_DUGI_OCT_ALIGNED_BORDER_NPOT_SIZES} // mirror of the GLSL define (global_illumination_dugi.glsl); comment out for the legacy 8/16 interior
+             {$ifdef GI_DUGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
+             GlobalIlluminationDUGIIrradianceOctSize=6;
+             GlobalIlluminationDUGIVisibilityOctSize=14;
              {$else}
-             GlobalIlluminationDDGIIrradianceOctSize=8;
-             GlobalIlluminationDDGIVisibilityOctSize=16;
+             GlobalIlluminationDUGIIrradianceOctSize=8;
+             GlobalIlluminationDUGIVisibilityOctSize=16;
              {$endif}
-             GlobalIlluminationDDGIIrradianceOctFull=GlobalIlluminationDDGIIrradianceOctSize+2;
-             GlobalIlluminationDDGIVisibilityOctFull=GlobalIlluminationDDGIVisibilityOctSize+2;
+             GlobalIlluminationDUGIIrradianceOctFull=GlobalIlluminationDUGIIrradianceOctSize+2;
+             GlobalIlluminationDUGIVisibilityOctFull=GlobalIlluminationDUGIVisibilityOctSize+2;
              // Irradiance storage mode: 0 = octahedral atlas (1 RGBA16F 2D image), 1 = L1 spherical harmonics
              // (3 RGBA16F 3D images), 2 = L2 spherical harmonics (7 RGBA16F 3D images). Compile-time choice; MUST match the
-             // GI_DDGI_STORAGE (= DDGI_STORAGE in compileshaders.sh) the DDGI compute shaders AND the globalillumination_ddgi
+             // GI_DUGI_STORAGE (= DUGI_STORAGE in compileshaders.sh) the DUGI compute shaders AND the globalillumination_dugi
              // mesh fragment variant are built with, otherwise the descriptor image counts / view types mismatch.
-             GlobalIlluminationDDGIStorageMode=0;
-             GlobalIlluminationDDGIStorageOctahedral=(GlobalIlluminationDDGIStorageMode=0);
+             GlobalIlluminationDUGIStorageMode=0;
+             GlobalIlluminationDUGIStorageOctahedral=(GlobalIlluminationDUGIStorageMode=0);
              // SH image count: L2 = 7, L1 = 3 (and 3 as the unused placeholder size for the octahedral mode).
-             GlobalIlluminationDDGISHImageCount=(7*Ord(GlobalIlluminationDDGIStorageMode=2))+(3*Ord(GlobalIlluminationDDGIStorageMode<>2));
-             GlobalIlluminationDDGIIrradianceImageCount=(GlobalIlluminationDDGISHImageCount*(1-Ord(GlobalIlluminationDDGIStorageOctahedral)))+(1*Ord(GlobalIlluminationDDGIStorageOctahedral));
-             GlobalIlluminationDDGIIrradianceAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIIrradianceOctFull;
-             GlobalIlluminationDDGIIrradianceAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIIrradianceOctFull;
-             GlobalIlluminationDDGIVisibilityAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull;
-             GlobalIlluminationDDGIVisibilityAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull;
+             GlobalIlluminationDUGISHImageCount=(7*Ord(GlobalIlluminationDUGIStorageMode=2))+(3*Ord(GlobalIlluminationDUGIStorageMode<>2));
+             GlobalIlluminationDUGIIrradianceImageCount=(GlobalIlluminationDUGISHImageCount*(1-Ord(GlobalIlluminationDUGIStorageOctahedral)))+(1*Ord(GlobalIlluminationDUGIStorageOctahedral));
+             GlobalIlluminationDUGIIrradianceAtlasWidth=GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIIrradianceOctFull;
+             GlobalIlluminationDUGIIrradianceAtlasHeight=GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIIrradianceOctFull;
+             GlobalIlluminationDUGIVisibilityAtlasWidth=GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIVisibilityOctFull;
+             GlobalIlluminationDUGIVisibilityAtlasHeight=GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIVisibilityOctFull;
              // Glossy prefiltered-radiance octahedral atlas; same tiling as the visibility atlas (14/16 + guard band).
-             {$ifdef GI_DDGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
-             GlobalIlluminationDDGIGlossyOctSize=14;
+             {$ifdef GI_DUGI_OCT_ALIGNED_BORDER_NPOT_SIZES}
+             GlobalIlluminationDUGIGlossyOctSize=14;
              {$else}
-             GlobalIlluminationDDGIGlossyOctSize=16;
+             GlobalIlluminationDUGIGlossyOctSize=16;
              {$endif}
-             GlobalIlluminationDDGIGlossyOctFull=GlobalIlluminationDDGIGlossyOctSize+2;
-             GlobalIlluminationDDGIGlossyAtlasWidth=GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIGlossyOctFull;
-             GlobalIlluminationDDGIGlossyAtlasHeight=GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIGlossyOctFull;
-             // RTXGI-style probe relocation + classification. MUST match GI_DDGI_PROBE_RELOCATION (= DDGI_PROBE_RELOCATION in
-             // compileshaders.sh) the DDGI shaders are built with. When true: the trace traces fixed relocation rays, the
+             GlobalIlluminationDUGIGlossyOctFull=GlobalIlluminationDUGIGlossyOctSize+2;
+             GlobalIlluminationDUGIGlossyAtlasWidth=GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIGlossyOctFull;
+             GlobalIlluminationDUGIGlossyAtlasHeight=GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIGlossyOctFull;
+             // RTXGI-style probe relocation + classification. MUST match GI_DUGI_PROBE_RELOCATION (= DUGI_PROBE_RELOCATION in
+             // compileshaders.sh) the DUGI shaders are built with. When true: the trace traces fixed relocation rays, the
              // relocation + classification compute passes run, a per-probe probe-data 3D image (xyz = relocation offset, w =
              // active state) is allocated, and the compute set (binding 5) + shading set (binding 3) carry it. When false none
-             // of that exists (plain DDGI), and the binding counts match the relocation-off shader variants.
-             GlobalIlluminationDDGIProbeRelocation=true;
+             // of that exists (plain DUGI), and the binding counts match the relocation-off shader variants.
+             GlobalIlluminationDUGIProbeRelocation=true;
              // Glossy prefiltered-radiance octahedral atlas, opt-in. When true: an extra RGBA16F octahedral atlas
              // (prefiltered RADIANCE, not cosine-convolved) is allocated, updated by the GlossyRadiance stage (chained
              // Irradiance -> GlossyRadiance -> Visibility), border-copied, and sampled at compute set 1 binding 5 / shading
-             // set binding 5 for glossy reflections. MUST match GI_DDGI_GLOSSY_RADIANCE in compileshaders.sh (this RGBA16F
-             // first iteration also needs -DGI_DDGI_GLOSSY_RGBA16F there; the RGB9E5 variant is a later memory optimization).
+             // set binding 5 for glossy reflections. MUST match GI_DUGI_GLOSSY_RADIANCE in compileshaders.sh (this RGBA16F
+             // first iteration also needs -DGI_DUGI_GLOSSY_RGBA16F there; the RGB9E5 variant is a later memory optimization).
              // Default false (no atlas, no stage, no extra binding; the broad glossy in the frag shaders still applies).
-             GlobalIlluminationDDGIGlossyRadiance=true;
+             GlobalIlluminationDUGIGlossyRadiance=true;
              // VESTIGIAL: the per-probe convergence warmup is now ALWAYS on (per-probe age lives in its own BDA buffer, the
              // shaders no longer gate it, and the per-stage compute barrier covers the irradiance<->visibility ordering). This
              // const is referenced only by the DORMANT combined ProbeUpdate pass (kept for reference); the active per-stage
              // path ignores it. Kept so that file still compiles — safe to drop together with that pass.
-             GlobalIlluminationDDGIProbeAgeWarmup=true;
+             GlobalIlluminationDUGIProbeAgeWarmup=true;
              MaxMultiIndirectDrawCalls=65536; //1048576; // as worst case
              InitialCountSolidPrimitives=1 shl 10;
              MaxSolidPrimitives=1 shl 20;
@@ -406,34 +406,34 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationRadianceHintsUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsUniformBufferData;
             PGlobalIlluminationRadianceHintsUniformBufferDataArray=^TGlobalIlluminationRadianceHintsUniformBufferDataArray;
 
-            // DDGI probe field uniform data; layout must match uboGlobalIlluminationDDGIData in global_illumination_ddgi.glsl.
-            TGlobalIlluminationDDGIUniformBufferData=record
-             AABBMin:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             AABBMax:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             AABBScale:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             CellSizes:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;     // w = max probe ray distance
-             AABBCenter:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             AABBFadeStart:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             AABBFadeEnd:array[0..CountGlobalIlluminationDDGICascades-1] of TpvVector4;
-             ProbeScroll:array[0..CountGlobalIlluminationDDGICascades-1] of TIntVector4;      // xyz = base cell floor(AABBMin/cellSize) this frame, w = scrolling enabled
-             ProbeScrollPrev:array[0..CountGlobalIlluminationDDGICascades-1] of TIntVector4;  // xyz = base cell at the previous update of this in-flight slot (toroidal re-init)
+            // DUGI probe field uniform data; layout must match uboGlobalIlluminationDUGIData in global_illumination_dugi.glsl.
+            TGlobalIlluminationDUGIUniformBufferData=record
+             AABBMin:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             AABBMax:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             AABBScale:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             CellSizes:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;     // w = max probe ray distance
+             AABBCenter:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             AABBFadeStart:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             AABBFadeEnd:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector4;
+             ProbeScroll:array[0..CountGlobalIlluminationDUGICascades-1] of TIntVector4;      // xyz = base cell floor(AABBMin/cellSize) this frame, w = scrolling enabled
+             ProbeScrollPrev:array[0..CountGlobalIlluminationDUGICascades-1] of TIntVector4;  // xyz = base cell at the previous update of this in-flight slot (toroidal re-init)
             end;
-            PGlobalIlluminationDDGIUniformBufferData=^TGlobalIlluminationDDGIUniformBufferData;
-            TGlobalIlluminationDDGIUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationDDGIUniformBufferData;
-            TGlobalIlluminationDDGIUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationDDGIImage2Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage2D;
-            TGlobalIlluminationDDGIImage3Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage3D; // one RGBA16F 3D image per in-flight frame (probe relocation data)
-            TGlobalIlluminationDDGIBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer; // per-in-flight BDA storage buffers (ray-data, master, ...)
-            // BDA master: device-address pointers to the point-access DDGI sub-buffers; layout must match DDGIMaster in
-            // gi_ddgi_master.glsl. Pointers are 0 until their migration phase enables them (ray-data = phase 1).
-            TGlobalIlluminationDDGIMasterData=packed record
+            PGlobalIlluminationDUGIUniformBufferData=^TGlobalIlluminationDUGIUniformBufferData;
+            TGlobalIlluminationDUGIUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationDUGIUniformBufferData;
+            TGlobalIlluminationDUGIUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationDUGIImage2Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage2D;
+            TGlobalIlluminationDUGIImage3Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage3D; // one RGBA16F 3D image per in-flight frame (probe relocation data)
+            TGlobalIlluminationDUGIBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer; // per-in-flight BDA storage buffers (ray-data, master, ...)
+            // BDA master: device-address pointers to the point-access DUGI sub-buffers; layout must match DUGIMaster in
+            // gi_dugi_master.glsl. Pointers are 0 until their migration phase enables them (ray-data = phase 1).
+            TGlobalIlluminationDUGIMasterData=packed record
              RayData:TVkDeviceAddress;       // -> ray-data buffer
              ProbeData:TVkDeviceAddress;     // -> probe-data buffer (0 when relocation off)
              IrradianceSH:TVkDeviceAddress;  // -> SH-irradiance buffer (0 in octahedral storage mode)
              Age:TVkDeviceAddress;           // -> per-probe convergence age buffer (uint per probe)
             end;
-            PGlobalIlluminationDDGIMasterData=^TGlobalIlluminationDDGIMasterData;
-            TGlobalIlluminationDDGIDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            PGlobalIlluminationDUGIMasterData=^TGlobalIlluminationDUGIMasterData;
+            TGlobalIlluminationDUGIDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalIlluminationRadianceHintsRSMUniformBufferData=record
              WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
              ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
@@ -542,7 +542,7 @@ type { TpvScene3DRendererInstance }
                      General,
                      VoxelConeTracing,
                      CascadedRadianceHints,
-                     DynamicDiffuseGlobalIllumination
+                     DynamicUnifiedGlobalIllumination
                     );
                    { TCascade }
                    TCascade=class
@@ -797,23 +797,23 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages:TInFlightFrameCascadedRadianceHintVolumeImages;
        fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
-       fGlobalIlluminationDDGICascadedVolumes:TCascadedVolumes;
-       fGlobalIlluminationDDGIProbeBaseCells:array[0..MaxInFlightFrames-1,0..CountGlobalIlluminationDDGICascades-1] of TpvVector3; // per in-flight slot per cascade: rounded baseCell of the previous update, for toroidal scroll re-init
-       fGlobalIlluminationDDGIUniformBufferDataArray:TGlobalIlluminationDDGIUniformBufferDataArray;
-       // (the separate DDGI globals UBO buffer is gone — globals + sub-buffer pointers now share one SSBO: fGlobalIlluminationDDGIMasterBuffers)
-       fGlobalIlluminationDDGIIrradianceSHBuffers:TGlobalIlluminationDDGIBuffers;              // SH storage: BDA buffer (DDGI_SH_IMAGE_COUNT packed vec4 per probe) per frame
-       fGlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds;             // octahedral storage: 1 RGBA16F 2D atlas per frame
-       fGlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds;          // visibility MOMENTS atlas (RG32F): x = mean dist, y = mean dist^2
-       fGlobalIlluminationDDGIVisibilitySkyImages:TGlobalIlluminationDDGIImage2Ds;              // visibility SKY atlas (R8): x = sky visibility (0..1)
-       fGlobalIlluminationDDGIGlossyImages:TGlobalIlluminationDDGIImage2Ds;                     // glossy prefiltered-radiance atlas (RGBA16F; only when GlobalIlluminationDDGIGlossyRadiance)
-       fGlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
-       fGlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers;                     // unified DDGI data SSBO (`ddgiData`): cascade globals + BDA sub-buffer pointers, per in-flight frame (BAR, binding 0)
-       fGlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
-       fGlobalIlluminationDDGIAgeBuffers:TGlobalIlluminationDDGIBuffers;                        // BDA buffer, uint per probe (per-probe convergence age, written by visibility / read by irradiance)
-       fGlobalIlluminationDDGIDescriptorPool:TpvVulkanDescriptorPool;
-       fGlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-       fGlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets;
-       fGlobalIlluminationDDGIFirstFrames:array[0..MaxInFlightFrames-1] of boolean; // per in-flight slot: true until that slot's probe images were written once (not cleared on alloc); shared by the trace + probe-update passes
+       fGlobalIlluminationDUGICascadedVolumes:TCascadedVolumes;
+       fGlobalIlluminationDUGIProbeBaseCells:array[0..MaxInFlightFrames-1,0..CountGlobalIlluminationDUGICascades-1] of TpvVector3; // per in-flight slot per cascade: rounded baseCell of the previous update, for toroidal scroll re-init
+       fGlobalIlluminationDUGIUniformBufferDataArray:TGlobalIlluminationDUGIUniformBufferDataArray;
+       // (the separate DUGI globals UBO buffer is gone — globals + sub-buffer pointers now share one SSBO: fGlobalIlluminationDUGIMasterBuffers)
+       fGlobalIlluminationDUGIIrradianceSHBuffers:TGlobalIlluminationDUGIBuffers;              // SH storage: BDA buffer (DUGI_SH_IMAGE_COUNT packed vec4 per probe) per frame
+       fGlobalIlluminationDUGIIrradianceOctImages:TGlobalIlluminationDUGIImage2Ds;             // octahedral storage: 1 RGBA16F 2D atlas per frame
+       fGlobalIlluminationDUGIVisibilityMomentsImages:TGlobalIlluminationDUGIImage2Ds;          // visibility MOMENTS atlas (RG32F): x = mean dist, y = mean dist^2
+       fGlobalIlluminationDUGIVisibilitySkyImages:TGlobalIlluminationDUGIImage2Ds;              // visibility SKY atlas (R8): x = sky visibility (0..1)
+       fGlobalIlluminationDUGIGlossyImages:TGlobalIlluminationDUGIImage2Ds;                     // glossy prefiltered-radiance atlas (RGBA16F; only when GlobalIlluminationDUGIGlossyRadiance)
+       fGlobalIlluminationDUGIRayDataBuffers:TGlobalIlluminationDUGIBuffers;                    // BDA storage buffer (rgb = radiance, a = distance), per in-flight frame
+       fGlobalIlluminationDUGIMasterBuffers:TGlobalIlluminationDUGIBuffers;                     // unified DUGI data SSBO (`dugiData`): cascade globals + BDA sub-buffer pointers, per in-flight frame (BAR, binding 0)
+       fGlobalIlluminationDUGIProbeDataBuffers:TGlobalIlluminationDUGIBuffers;                  // relocation only: BDA buffer, vec4 per probe (xyz = offset, w = active state)
+       fGlobalIlluminationDUGIAgeBuffers:TGlobalIlluminationDUGIBuffers;                        // BDA buffer, uint per probe (per-probe convergence age, written by visibility / read by irradiance)
+       fGlobalIlluminationDUGIDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalIlluminationDUGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalIlluminationDUGIDescriptorSets:TGlobalIlluminationDUGIDescriptorSets;
+       fGlobalIlluminationDUGIFirstFrames:array[0..MaxInFlightFrames-1] of boolean; // per in-flight slot: true until that slot's probe images were written once (not cleared on alloc); shared by the trace + probe-update passes
        fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers;
        fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
@@ -993,8 +993,8 @@ type { TpvScene3DRendererInstance }
        fKeepPass0ForRendering:Boolean;
        fKeepPass0InPass1:Boolean;
        fSelectionOutlineThickness:TpvFloat;
-       fDebugDDGIProbes:Boolean;
-       fGlobalIlluminationDDGIUseRSMSplat:Boolean; // non-raytraced DDGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM); default true
+       fDebugDUGIProbes:Boolean;
+       fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM); default true
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1048,8 +1048,8 @@ type { TpvScene3DRendererInstance }
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure UpdateGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
        procedure UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
-       procedure UpdateGlobalIlluminationDDGI(const aInFlightFrameIndex:TpvInt32);
-       procedure UploadGlobalIlluminationDDGI(const aInFlightFrameIndex:TpvInt32);
+       procedure UpdateGlobalIlluminationDUGI(const aInFlightFrameIndex:TpvInt32);
+       procedure UploadGlobalIlluminationDUGI(const aInFlightFrameIndex:TpvInt32);
        procedure UpdateGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
        procedure UploadGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
@@ -1167,21 +1167,21 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
        property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
-       property GlobalIlluminationDDGIIrradianceSHBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIIrradianceSHBuffers;
-       property GlobalIlluminationDDGIIrradianceOctImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIIrradianceOctImages;
-       property GlobalIlluminationDDGIVisibilityMomentsImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilityMomentsImages;
-       property GlobalIlluminationDDGIVisibilitySkyImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIVisibilitySkyImages;
-       property GlobalIlluminationDDGIGlossyImages:TGlobalIlluminationDDGIImage2Ds read fGlobalIlluminationDDGIGlossyImages;
-       property GlobalIlluminationDDGIRayDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIRayDataBuffers;
-       property GlobalIlluminationDDGIMasterBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIMasterBuffers;
-       property GlobalIlluminationDDGIProbeDataBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIProbeDataBuffers;
-       property GlobalIlluminationDDGIAgeBuffers:TGlobalIlluminationDDGIBuffers read fGlobalIlluminationDDGIAgeBuffers;
-       property GlobalIlluminationDDGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDDGIDescriptorSetLayout;
-       property GlobalIlluminationDDGIDescriptorSets:TGlobalIlluminationDDGIDescriptorSets read fGlobalIlluminationDDGIDescriptorSets;
-       function GetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
-       procedure SetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt;const aValue:boolean);
-       // Shared first-frame state between the DDGI trace + probe-update passes (the update flips it false after writing).
-       property GlobalIlluminationDDGIFirstFrames[const aInFlightFrameIndex:TpvSizeInt]:boolean read GetGlobalIlluminationDDGIFirstFrame write SetGlobalIlluminationDDGIFirstFrame;
+       property GlobalIlluminationDUGIIrradianceSHBuffers:TGlobalIlluminationDUGIBuffers read fGlobalIlluminationDUGIIrradianceSHBuffers;
+       property GlobalIlluminationDUGIIrradianceOctImages:TGlobalIlluminationDUGIImage2Ds read fGlobalIlluminationDUGIIrradianceOctImages;
+       property GlobalIlluminationDUGIVisibilityMomentsImages:TGlobalIlluminationDUGIImage2Ds read fGlobalIlluminationDUGIVisibilityMomentsImages;
+       property GlobalIlluminationDUGIVisibilitySkyImages:TGlobalIlluminationDUGIImage2Ds read fGlobalIlluminationDUGIVisibilitySkyImages;
+       property GlobalIlluminationDUGIGlossyImages:TGlobalIlluminationDUGIImage2Ds read fGlobalIlluminationDUGIGlossyImages;
+       property GlobalIlluminationDUGIRayDataBuffers:TGlobalIlluminationDUGIBuffers read fGlobalIlluminationDUGIRayDataBuffers;
+       property GlobalIlluminationDUGIMasterBuffers:TGlobalIlluminationDUGIBuffers read fGlobalIlluminationDUGIMasterBuffers;
+       property GlobalIlluminationDUGIProbeDataBuffers:TGlobalIlluminationDUGIBuffers read fGlobalIlluminationDUGIProbeDataBuffers;
+       property GlobalIlluminationDUGIAgeBuffers:TGlobalIlluminationDUGIBuffers read fGlobalIlluminationDUGIAgeBuffers;
+       property GlobalIlluminationDUGIDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationDUGIDescriptorSetLayout;
+       property GlobalIlluminationDUGIDescriptorSets:TGlobalIlluminationDUGIDescriptorSets read fGlobalIlluminationDUGIDescriptorSets;
+       function GetGlobalIlluminationDUGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
+       procedure SetGlobalIlluminationDUGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt;const aValue:boolean);
+       // Shared first-frame state between the DUGI trace + probe-update passes (the update flips it false after writing).
+       property GlobalIlluminationDUGIFirstFrames[const aInFlightFrameIndex:TpvSizeInt]:boolean read GetGlobalIlluminationDUGIFirstFrame write SetGlobalIlluminationDUGIFirstFrame;
        property GlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray read fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers read fGlobalIlluminationRadianceHintsRSMUniformBuffers;
        property GlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationRadianceHintsDescriptorPool;
@@ -1314,9 +1314,9 @@ type { TpvScene3DRendererInstance }
        // fraction of the screen across render resolutions and AI/EASU upscaling (the buffer is built at render
        // resolution and upscaled at compose time). Default 3.0. See SelectionOutlineBuildRenderPass.
        property SelectionOutlineThickness:TpvFloat read fSelectionOutlineThickness write fSelectionOutlineThickness;
-       // Debug: draw every DDGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
-       property DebugDDGIProbes:Boolean read fDebugDDGIProbes write fDebugDDGIProbes;
-       property GlobalIlluminationDDGIUseRSMSplat:Boolean read fGlobalIlluminationDDGIUseRSMSplat write fGlobalIlluminationDDGIUseRSMSplat; // set before Prepare; only consulted for DDGI without hardware ray query
+       // Debug: draw every DUGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
+       property DebugDUGIProbes:Boolean read fDebugDUGIProbes write fDebugDUGIProbes;
+       property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -1448,10 +1448,10 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectRSMComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceRSMComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIRSMSplatComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIStageComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDUGITraceComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDUGITraceRSMComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDUGIRSMSplatComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDUGIStageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass,
@@ -1585,15 +1585,15 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
-       fGlobalIlluminationDDGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass;
-       fGlobalIlluminationDDGITraceRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceRSMComputePass; // non-raytraced RSM producer (used instead of the trace when raytracing is unavailable)
-       fGlobalIlluminationDDGIRSMSplatComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass; // alternative non-raytraced RSM producer (standalone flux VPL splat; selected by GlobalIlluminationDDGIUseRSMSplat)
-       fGlobalIlluminationDDGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
-       fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass; // glossy atlas (only when GlobalIlluminationDDGIGlossyRadiance)
-       fGlobalIlluminationDDGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
-       fGlobalIlluminationDDGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
-       fGlobalIlluminationDDGIRelocationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;       // relocation only
-       fGlobalIlluminationDDGIClassificationComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;   // relocation only
+       fGlobalIlluminationDUGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass;
+       fGlobalIlluminationDUGITraceRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass; // non-raytraced RSM producer (used instead of the trace when raytracing is unavailable)
+       fGlobalIlluminationDUGIRSMSplatComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass; // alternative non-raytraced RSM producer (standalone flux VPL splat; selected by GlobalIlluminationDUGIUseRSMSplat)
+       fGlobalIlluminationDUGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass;
+       fGlobalIlluminationDUGIGlossyRadianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass; // glossy atlas (only when GlobalIlluminationDUGIGlossyRadiance)
+       fGlobalIlluminationDUGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass;
+       fGlobalIlluminationDUGIBorderUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass;
+       fGlobalIlluminationDUGIRelocationComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass;       // relocation only
+       fGlobalIlluminationDUGIClassificationComputePass:TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass;   // relocation only
        fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass;
        fGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingMetaVoxelizationRenderPass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass;
@@ -2067,7 +2067,7 @@ begin
   TCascadeVolumeKind.VoxelConeTracing:begin
    MaximumCascadeCellSize:=Ceil(MaximumCascadeCellSize/(1 shl fCountCascades))*(1 shl fCountCascades);
   end;
-  TCascadeVolumeKind.DynamicDiffuseGlobalIllumination:begin
+  TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
    MaximumCascadeCellSize:=Ceil(MaximumCascadeCellSize/(1 shl fCountCascades))*(1 shl fCountCascades);
   end;
   else begin
@@ -2093,7 +2093,7 @@ begin
      CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));//}
     end;
    end;
-   TCascadeVolumeKind.DynamicDiffuseGlobalIllumination:begin
+   TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
     if CascadeIndex=(fCountCascades-1) then begin
      CellSize:=MaximumCascadeCellSize;//}
     end else if CascadeIndex=0 then begin
@@ -2130,7 +2130,7 @@ begin
    TCascadeVolumeKind.VoxelConeTracing:begin
     SnapSize:=CellSize*2.0;
    end;
-   TCascadeVolumeKind.DynamicDiffuseGlobalIllumination:begin
+   TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
     SnapSize:=CellSize*2.0;
    end;
    else begin
@@ -2154,7 +2154,7 @@ begin
     AABB.Min:=SnappedPosition-(GridSize*0.5);
     AABB.Max:=AABB.Min+GridSize;
    end;
-   TCascadeVolumeKind.DynamicDiffuseGlobalIllumination:begin
+   TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
     AABB.Min:=SnappedPosition-(GridSize*0.5);
     AABB.Max:=AABB.Min+GridSize;
    end;
@@ -2276,9 +2276,9 @@ begin
  // Object-selection outline thickness in reference pixels (at 1080p render height); resolution-scaled in the build pass.
  fSelectionOutlineThickness:=3.0;
 
- fDebugDDGIProbes:=false;
+ fDebugDUGIProbes:=false;
 
- fGlobalIlluminationDDGIUseRSMSplat:=true; // default = standalone flux RSM VPL splat producer; set false before Prepare for the RSM backend of the trace shader (albedo)
+ fGlobalIlluminationDUGIUseRSMSplat:=true; // default = standalone flux RSM VPL splat producer; set false before Prepare for the RSM backend of the trace shader (albedo)
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
@@ -2644,21 +2644,21 @@ begin
 
  FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
 
- FillChar(fGlobalIlluminationDDGIProbeBaseCells,SizeOf(fGlobalIlluminationDDGIProbeBaseCells),#0);
+ FillChar(fGlobalIlluminationDUGIProbeBaseCells,SizeOf(fGlobalIlluminationDUGIProbeBaseCells),#0);
 
- fGlobalIlluminationDDGICascadedVolumes:=nil;
- FillChar(fGlobalIlluminationDDGIIrradianceSHBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- FillChar(fGlobalIlluminationDDGIIrradianceOctImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
- FillChar(fGlobalIlluminationDDGIVisibilityMomentsImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
- FillChar(fGlobalIlluminationDDGIVisibilitySkyImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
- FillChar(fGlobalIlluminationDDGIGlossyImages,SizeOf(TGlobalIlluminationDDGIImage2Ds),#0);
- FillChar(fGlobalIlluminationDDGIRayDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- FillChar(fGlobalIlluminationDDGIMasterBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- FillChar(fGlobalIlluminationDDGIProbeDataBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- FillChar(fGlobalIlluminationDDGIAgeBuffers,SizeOf(TGlobalIlluminationDDGIBuffers),#0);
- fGlobalIlluminationDDGIDescriptorPool:=nil;
- fGlobalIlluminationDDGIDescriptorSetLayout:=nil;
- FillChar(fGlobalIlluminationDDGIDescriptorSets,SizeOf(TGlobalIlluminationDDGIDescriptorSets),#0);
+ fGlobalIlluminationDUGICascadedVolumes:=nil;
+ FillChar(fGlobalIlluminationDUGIIrradianceSHBuffers,SizeOf(TGlobalIlluminationDUGIBuffers),#0);
+ FillChar(fGlobalIlluminationDUGIIrradianceOctImages,SizeOf(TGlobalIlluminationDUGIImage2Ds),#0);
+ FillChar(fGlobalIlluminationDUGIVisibilityMomentsImages,SizeOf(TGlobalIlluminationDUGIImage2Ds),#0);
+ FillChar(fGlobalIlluminationDUGIVisibilitySkyImages,SizeOf(TGlobalIlluminationDUGIImage2Ds),#0);
+ FillChar(fGlobalIlluminationDUGIGlossyImages,SizeOf(TGlobalIlluminationDUGIImage2Ds),#0);
+ FillChar(fGlobalIlluminationDUGIRayDataBuffers,SizeOf(TGlobalIlluminationDUGIBuffers),#0);
+ FillChar(fGlobalIlluminationDUGIMasterBuffers,SizeOf(TGlobalIlluminationDUGIBuffers),#0);
+ FillChar(fGlobalIlluminationDUGIProbeDataBuffers,SizeOf(TGlobalIlluminationDUGIBuffers),#0);
+ FillChar(fGlobalIlluminationDUGIAgeBuffers,SizeOf(TGlobalIlluminationDUGIBuffers),#0);
+ fGlobalIlluminationDUGIDescriptorPool:=nil;
+ fGlobalIlluminationDUGIDescriptorSetLayout:=nil;
+ FillChar(fGlobalIlluminationDUGIDescriptorSets,SizeOf(TGlobalIlluminationDUGIDescriptorSets),#0);
 
  fGlobalIlluminationRadianceHintsDescriptorPool:=nil;
 
@@ -3071,20 +3071,20 @@ begin
  FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorPool);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]);
-  FreeAndNil(fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIIrradianceSHBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIGlossyImages[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIProbeDataBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIAgeBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex]);
  end;
- FreeAndNil(fGlobalIlluminationDDGIDescriptorSetLayout);
- FreeAndNil(fGlobalIlluminationDDGIDescriptorPool);
- FreeAndNil(fGlobalIlluminationDDGICascadedVolumes);
+ FreeAndNil(fGlobalIlluminationDUGIDescriptorSetLayout);
+ FreeAndNil(fGlobalIlluminationDUGIDescriptorPool);
+ FreeAndNil(fGlobalIlluminationDUGICascadedVolumes);
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
@@ -3461,12 +3461,12 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
-    GlobalIlluminationDDGIMasterData:TGlobalIlluminationDDGIMasterData;
-    DDGIClearCommandPool:TpvVulkanCommandPool;
-    DDGIClearCommandBuffer:TpvVulkanCommandBuffer;
-    DDGIClearFence:TpvVulkanFence;
-    DDGIClearColorValue:TVkClearColorValue;
-    DDGIClearImageRange:TVkImageSubresourceRange;
+    GlobalIlluminationDUGIMasterData:TGlobalIlluminationDUGIMasterData;
+    DUGIClearCommandPool:TpvVulkanCommandPool;
+    DUGIClearCommandBuffer:TpvVulkanCommandBuffer;
+    DUGIClearFence:TpvVulkanFence;
+    DUGIClearColorValue:TVkClearColorValue;
+    DUGIClearImageRange:TVkImageSubresourceRange;
 begin
 
  // If AI upscaling is enabled, enforce the size factor from the upscale mode.
@@ -3650,33 +3650,33 @@ begin
 
   end;
 
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
 
    // The probe images are not cleared on allocation, so mark every in-flight slot "first frame" until it has been written
    // once (the trace pass then skips multi-bounce + the probe-update pass discards the uninitialized previous data, and
-   // flips this false). Shared by both DDGI compute passes.
+   // flips this false). Shared by both DUGI compute passes.
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalIlluminationDDGIFirstFrames[InFlightFrameIndex]:=true;
+    fGlobalIlluminationDUGIFirstFrames[InFlightFrameIndex]:=true;
    end;
 
    // Reuse the cascaded-volume snapping (used by radiance hints) for the probe grid placement: probe (0..N-1) spans the
    // cascade AABB, so the "volume size" passed here is the per-axis probe count.
-   fGlobalIlluminationDDGICascadedVolumes:=TCascadedVolumes.Create(self,
-                                                                   GlobalIlluminationDDGIProbeCountX,
-                                                                   CountGlobalIlluminationDDGICascades,
-                                                                   TCascadedVolumes.TCascadeVolumeKind.DynamicDiffuseGlobalIllumination);
+   fGlobalIlluminationDUGICascadedVolumes:=TCascadedVolumes.Create(self,
+                                                                   GlobalIlluminationDUGIProbeCountX,
+                                                                   CountGlobalIlluminationDUGICascades,
+                                                                   TCascadedVolumes.TCascadeVolumeKind.DynamicUnifiedGlobalIllumination);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
-    // The cascade globals (formerly a separate UBO buffer) now live at offset 0 of the DDGI data buffer (fGlobalIllumination
-    // DDGIMasterBuffers), followed by the BDA sub-buffer pointers — one std430 SSBO `ddgiData` (gi_ddgi_data.glsl). Created
+    // The cascade globals (formerly a separate UBO buffer) now live at offset 0 of the DUGI data buffer (fGlobalIllumination
+    // DUGIMasterBuffers), followed by the BDA sub-buffer pointers — one std430 SSBO `dugiData` (gi_dugi_data.glsl). Created
     // further below (after the sub-buffers exist), so nothing to allocate here any more.
 
-    if GlobalIlluminationDDGIStorageOctahedral then begin
+    if GlobalIlluminationDUGIStorageOctahedral then begin
      // Octahedral irradiance: a single RGBA16F 2D atlas (probe tiles with guard bands).
-     fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
-                                                                                                      GlobalIlluminationDDGIIrradianceAtlasWidth,
-                                                                                                      GlobalIlluminationDDGIIrradianceAtlasHeight,
+     fGlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                                      GlobalIlluminationDUGIIrradianceAtlasWidth,
+                                                                                                      GlobalIlluminationDUGIIrradianceAtlasHeight,
                                                                                                       VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                                                       true,
                                                                                                       VK_SAMPLE_COUNT_1_BIT,
@@ -3684,12 +3684,12 @@ begin
                                                                                                       VK_SHARING_MODE_EXCLUSIVE,
                                                                                                       nil,
                                                                                                       pvAllocationGroupIDScene3DStatic,
-                                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIIrradianceOctImages['+IntToStr(InFlightFrameIndex)+']');
+                                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDUGIIrradianceOctImages['+IntToStr(InFlightFrameIndex)+']');
     end else begin
-     // Spherical harmonics irradiance: a BDA storage buffer, DDGI_SH_IMAGE_COUNT packed RGBA16F-equivalent vec4 per probe
+     // Spherical harmonics irradiance: a BDA storage buffer, DUGI_SH_IMAGE_COUNT packed RGBA16F-equivalent vec4 per probe
      // (L1 = 3, L2 = 7), reached via the master. Device-local, fully overwritten by the irradiance update (no initial clear).
-     fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                            TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*TpvSizeInt(GlobalIlluminationDDGISHImageCount)*SizeOf(TpvVector4),
+     fGlobalIlluminationDUGIIrradianceSHBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                            TpvSizeInt(CountGlobalIlluminationDUGICascades)*TpvSizeInt(GlobalIlluminationDUGIProbesPerCascade)*TpvSizeInt(GlobalIlluminationDUGISHImageCount)*SizeOf(TpvVector4),
                                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                             [],
@@ -3698,15 +3698,15 @@ begin
                                                                                             [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                             0,
                                                                                             pvAllocationGroupIDScene3DStatic,
-                                                                                            'TpvScene3DRendererInstance.fGlobalIlluminationDDGIIrradianceSHBuffers['+IntToStr(InFlightFrameIndex)+']');
+                                                                                            'TpvScene3DRendererInstance.fGlobalIlluminationDUGIIrradianceSHBuffers['+IntToStr(InFlightFrameIndex)+']');
     end;
 
     // Visibility split: distance MOMENTS (mean, mean^2) in an RG32F atlas (F32 precision for the Chebyshev test — fp16 was
     // dithering it), and the SKY visibility separately in an R8 atlas (only needs 0..1). The per-probe age moved to its own
     // BDA buffer, so neither image carries it any more. Both bilinear-sampled in shading, so they stay sampled images.
-    fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
-                                                                                                  GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull,
-                                                                                                  GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull,
+    fGlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                                  GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIVisibilityOctFull,
+                                                                                                  GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIVisibilityOctFull,
                                                                                                   VK_FORMAT_R32G32_SFLOAT, // x = mean dist, y = mean dist^2
                                                                                                   true,
                                                                                                   VK_SAMPLE_COUNT_1_BIT,
@@ -3714,11 +3714,11 @@ begin
                                                                                                   VK_SHARING_MODE_EXCLUSIVE,
                                                                                                   nil,
                                                                                                   pvAllocationGroupIDScene3DStatic,
-                                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDDGIVisibilityMomentsImages['+IntToStr(InFlightFrameIndex)+']');
+                                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDUGIVisibilityMomentsImages['+IntToStr(InFlightFrameIndex)+']');
 
-    fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
-                                                                                                     GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIVisibilityOctFull,
-                                                                                                     GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIVisibilityOctFull,
+    fGlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                                     GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIVisibilityOctFull,
+                                                                                                     GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIVisibilityOctFull,
                                                                                                      VK_FORMAT_R8_UNORM, // x = sky visibility (0..1)
                                                                                                      true,
                                                                                                      VK_SAMPLE_COUNT_1_BIT,
@@ -3726,14 +3726,14 @@ begin
                                                                                                      VK_SHARING_MODE_EXCLUSIVE,
                                                                                                      nil,
                                                                                                      pvAllocationGroupIDScene3DStatic,
-                                                                                                     'TpvScene3DRendererInstance.fGlobalIlluminationDDGIVisibilitySkyImages['+IntToStr(InFlightFrameIndex)+']');
+                                                                                                     'TpvScene3DRendererInstance.fGlobalIlluminationDUGIVisibilitySkyImages['+IntToStr(InFlightFrameIndex)+']');
 
     // Glossy prefiltered-radiance octahedral atlas, opt-in. RGBA16F (hardware-bilinear-filtered,
     // single view via TpvScene3DRendererImage2D like the irradiance octahedral atlas). Only allocated when the toggle is on.
-    if GlobalIlluminationDDGIGlossyRadiance then begin
-     fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
-                                                                                               GlobalIlluminationDDGIProbeCountX*GlobalIlluminationDDGIGlossyOctFull,
-                                                                                               GlobalIlluminationDDGIProbeCountY*GlobalIlluminationDDGIProbeCountZ*CountGlobalIlluminationDDGICascades*GlobalIlluminationDDGIGlossyOctFull,
+    if GlobalIlluminationDUGIGlossyRadiance then begin
+     fGlobalIlluminationDUGIGlossyImages[InFlightFrameIndex]:=TpvScene3DRendererImage2D.Create(fScene3D.VulkanDevice,
+                                                                                               GlobalIlluminationDUGIProbeCountX*GlobalIlluminationDUGIGlossyOctFull,
+                                                                                               GlobalIlluminationDUGIProbeCountY*GlobalIlluminationDUGIProbeCountZ*CountGlobalIlluminationDUGICascades*GlobalIlluminationDUGIGlossyOctFull,
                                                                                                VK_FORMAT_R16G16B16A16_SFLOAT, // prefiltered radiance (RGB)
                                                                                                true,
                                                                                                VK_SAMPLE_COUNT_1_BIT,
@@ -3741,14 +3741,14 @@ begin
                                                                                                VK_SHARING_MODE_EXCLUSIVE,
                                                                                                nil,
                                                                                                pvAllocationGroupIDScene3DStatic,
-                                                                                               'TpvScene3DRendererInstance.fGlobalIlluminationDDGIGlossyImages['+IntToStr(InFlightFrameIndex)+']');
+                                                                                               'TpvScene3DRendererInstance.fGlobalIlluminationDUGIGlossyImages['+IntToStr(InFlightFrameIndex)+']');
     end;
 
     // Ray-data is now a BDA storage buffer (vec4 per (probe,ray): rgb = radiance, a = distance). Device-local, full
     // precision, no image-format cap; written by the trace, read by the update/relocation/classification passes via the
-    // DDGI master buffer (gi_ddgi_master.glsl). Fully rewritten every frame, so no initial clear is needed.
-    fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                      TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*TpvSizeInt(GlobalIlluminationDDGIRaysPerProbe)*SizeOf(TpvVector4),
+    // DUGI master buffer (gi_dugi_master.glsl). Fully rewritten every frame, so no initial clear is needed.
+    fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                      TpvSizeInt(CountGlobalIlluminationDUGICascades)*TpvSizeInt(GlobalIlluminationDUGIProbesPerCascade)*TpvSizeInt(GlobalIlluminationDUGIRaysPerProbe)*SizeOf(TpvVector4),
                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                       [],
@@ -3757,16 +3757,16 @@ begin
                                                                                       [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                       0,
                                                                                       pvAllocationGroupIDScene3DStatic,
-                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIRayDataBuffers['+IntToStr(InFlightFrameIndex)+']');
+                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDUGIRayDataBuffers['+IntToStr(InFlightFrameIndex)+']');
 
-    // DDGI data buffer: ONE std430 SSBO holding the cascade globals (offset 0, CPU-written each frame) followed by the BDA
-    // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `ddgiData` block (gi_ddgi_data.glsl),
-    // bound at the DDGI set's binding 0 in both the compute passes and the fragment consumers (replaces the old globals UBO
-    // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DDGI invocation / fragment) AND
+    // DUGI data buffer: ONE std430 SSBO holding the cascade globals (offset 0, CPU-written each frame) followed by the BDA
+    // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `dugiData` block (gi_dugi_data.glsl),
+    // bound at the DUGI set's binding 0 in both the compute passes and the fragment consumers (replaces the old globals UBO
+    // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DUGI invocation / fragment) AND
     // host-visible (CPU fills the pointers via UpdateData; the per-frame globals are staged into offset 0). No device-address
     // needed for the block itself any more (only the sub-buffers it points to are BDA).
-    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                     SizeOf(TGlobalIlluminationDDGIUniformBufferData)+SizeOf(TGlobalIlluminationDDGIMasterData),
+    fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                     SizeOf(TGlobalIlluminationDUGIUniformBufferData)+SizeOf(TGlobalIlluminationDUGIMasterData),
                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                      [],
@@ -3776,11 +3776,11 @@ begin
                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                      0,
                                                                                      pvAllocationGroupIDScene3DStatic,
-                                                                                     'TpvScene3DRendererInstance.fGlobalIlluminationDDGIMasterBuffers['+IntToStr(InFlightFrameIndex)+']');
+                                                                                     'TpvScene3DRendererInstance.fGlobalIlluminationDUGIMasterBuffers['+IntToStr(InFlightFrameIndex)+']');
 
     // Non-raytraced fallback only: the RSM matrices UBO the RSM-backend trace producer reads (set 2 binding 3). It shares
-    // the radiance-hints RSM UBO type/buffer (reused, not duplicated); allocated here so the DDGI mode owns it when there is
-    // no hardware ray query. Filled (slim, matrices only) in UpdateGlobalIlluminationDDGI; freed in the mode-independent
+    // the radiance-hints RSM UBO type/buffer (reused, not duplicated); allocated here so the DUGI mode owns it when there is
+    // no hardware ray query. Filled (slim, matrices only) in UpdateGlobalIlluminationDUGI; freed in the mode-independent
     // FreeAndNil loop with the other radiance-hints buffers (nil-safe).
     if not Renderer.Scene3D.RaytracingActive then begin
      fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -3806,9 +3806,9 @@ begin
     // Probe relocation data: a BDA storage buffer, vec4 per probe (xyz = relocation offset, w = active state). Written by the
     // relocation/classification passes, read by the trace + the shading consumers via the master. Allocated only when probe
     // relocation is on (full F32 precision; the world-space offset would dither in fp16).
-    if GlobalIlluminationDDGIProbeRelocation then begin
-     fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                         TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*SizeOf(TpvVector4),
+    if GlobalIlluminationDUGIProbeRelocation then begin
+     fGlobalIlluminationDUGIProbeDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                         TpvSizeInt(CountGlobalIlluminationDUGICascades)*TpvSizeInt(GlobalIlluminationDUGIProbesPerCascade)*SizeOf(TpvVector4),
                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                          [],
@@ -3817,15 +3817,15 @@ begin
                                                                                          [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                          0,
                                                                                          pvAllocationGroupIDScene3DStatic,
-                                                                                         'TpvScene3DRendererInstance.fGlobalIlluminationDDGIProbeDataBuffers['+IntToStr(InFlightFrameIndex)+']');
+                                                                                         'TpvScene3DRendererInstance.fGlobalIlluminationDUGIProbeDataBuffers['+IntToStr(InFlightFrameIndex)+']');
     end;
 
     // Per-probe convergence age: a tiny BDA storage buffer, one uint per probe (frames since (re)init). Written by the
     // visibility update (one thread per probe), read by the irradiance update for the warmup hysteresis ramp; never sampled.
     // Always allocated (the per-probe warmup is no longer compile-time gated). Not cleared: on a probe's first frame the age
     // is reset, so the uninitialized value is never used.
-    fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                  TpvSizeInt(CountGlobalIlluminationDDGICascades)*TpvSizeInt(GlobalIlluminationDDGIProbesPerCascade)*SizeOf(TpvUInt32),
+    fGlobalIlluminationDUGIAgeBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                  TpvSizeInt(CountGlobalIlluminationDUGICascades)*TpvSizeInt(GlobalIlluminationDUGIProbesPerCascade)*SizeOf(TpvUInt32),
                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                   [],
@@ -3834,134 +3834,134 @@ begin
                                                                                   [TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                   0,
                                                                                   pvAllocationGroupIDScene3DStatic,
-                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDDGIAgeBuffers['+IntToStr(InFlightFrameIndex)+']');
+                                                                                  'TpvScene3DRendererInstance.fGlobalIlluminationDUGIAgeBuffers['+IntToStr(InFlightFrameIndex)+']');
 
     // Fill the master pointers now that all of this slot's sub-buffers exist. probe-data = 0 when relocation is off; the
     // The SH-irradiance pointer is set only in SH storage mode (the octahedral mode keeps its sampled image instead).
-    FillChar(GlobalIlluminationDDGIMasterData,SizeOf(GlobalIlluminationDDGIMasterData),#0);
-    GlobalIlluminationDDGIMasterData.RayData:=fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex].DeviceAddress;
-    if GlobalIlluminationDDGIProbeRelocation then begin
-     GlobalIlluminationDDGIMasterData.ProbeData:=fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex].DeviceAddress;
+    FillChar(GlobalIlluminationDUGIMasterData,SizeOf(GlobalIlluminationDUGIMasterData),#0);
+    GlobalIlluminationDUGIMasterData.RayData:=fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex].DeviceAddress;
+    if GlobalIlluminationDUGIProbeRelocation then begin
+     GlobalIlluminationDUGIMasterData.ProbeData:=fGlobalIlluminationDUGIProbeDataBuffers[InFlightFrameIndex].DeviceAddress;
     end;
-    if not GlobalIlluminationDDGIStorageOctahedral then begin
-     GlobalIlluminationDDGIMasterData.IrradianceSH:=fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex].DeviceAddress;
+    if not GlobalIlluminationDUGIStorageOctahedral then begin
+     GlobalIlluminationDUGIMasterData.IrradianceSH:=fGlobalIlluminationDUGIIrradianceSHBuffers[InFlightFrameIndex].DeviceAddress;
     end;
-    GlobalIlluminationDDGIMasterData.Age:=fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex].DeviceAddress;
-    // Pointers go AFTER the cascade globals (which the per-frame UploadGlobalIlluminationDDGI stages into offset 0). Written
+    GlobalIlluminationDUGIMasterData.Age:=fGlobalIlluminationDUGIAgeBuffers[InFlightFrameIndex].DeviceAddress;
+    // Pointers go AFTER the cascade globals (which the per-frame UploadGlobalIlluminationDUGI stages into offset 0). Written
     // once here (the sub-buffer addresses are stable for the slot's lifetime).
-    fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDDGIMasterData,SizeOf(TGlobalIlluminationDDGIUniformBufferData),SizeOf(GlobalIlluminationDDGIMasterData));
+    fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDUGIMasterData,SizeOf(TGlobalIlluminationDUGIUniformBufferData),SizeOf(GlobalIlluminationDUGIMasterData));
 
    end;
 
    // Defense-in-depth: the probe images/buffers are not zeroed by the allocator (the per-slot first-frame guard + the NaN-safe
-   // discard in the update shaders are the actual protection). Explicitly clear every freshly allocated DDGI image/buffer once
+   // discard in the update shaders are the actual protection). Explicitly clear every freshly allocated DUGI image/buffer once
    // here, so VRAM reused from a prior session can never feed NaN/Inf garbage in for even a frame. The master buffer is excluded
    // on purpose: it holds the BDA sub-buffer pointers + cascade globals that were just written above.
-   DDGIClearCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
+   DUGIClearCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
                                                      Renderer.VulkanDevice.UniversalQueueFamilyIndex,
                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
    try
-    DDGIClearCommandBuffer:=TpvVulkanCommandBuffer.Create(DDGIClearCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    DUGIClearCommandBuffer:=TpvVulkanCommandBuffer.Create(DUGIClearCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     try
-     DDGIClearFence:=TpvVulkanFence.Create(Renderer.VulkanDevice);
+     DUGIClearFence:=TpvVulkanFence.Create(Renderer.VulkanDevice);
      try
-      DDGIClearCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-      FillChar(DDGIClearColorValue,SizeOf(DDGIClearColorValue),#0);
-      DDGIClearImageRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,VK_REMAINING_MIP_LEVELS,0,VK_REMAINING_ARRAY_LAYERS);
+      DUGIClearCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+      FillChar(DUGIClearColorValue,SizeOf(DUGIClearColorValue),#0);
+      DUGIClearImageRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,VK_REMAINING_MIP_LEVELS,0,VK_REMAINING_ARRAY_LAYERS);
       for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
        // Images live in VK_IMAGE_LAYOUT_GENERAL (clearable in place).
-       if assigned(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       if assigned(fGlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DUGIClearColorValue,1,@DUGIClearImageRange);
        end;
-       if assigned(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       if assigned(fGlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DUGIClearColorValue,1,@DUGIClearImageRange);
        end;
-       if assigned(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       if assigned(fGlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DUGIClearColorValue,1,@DUGIClearImageRange);
        end;
-       if assigned(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DDGIClearColorValue,1,@DDGIClearImageRange);
+       if assigned(fGlobalIlluminationDUGIGlossyImages[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdClearColorImage(fGlobalIlluminationDUGIGlossyImages[InFlightFrameIndex].VulkanImage.Handle,VK_IMAGE_LAYOUT_GENERAL,@DUGIClearColorValue,1,@DUGIClearImageRange);
        end;
        // Storage buffers (all created with TRANSFER_DST). The master buffer is intentionally NOT filled here.
-       if assigned(fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIIrradianceSHBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       if assigned(fGlobalIlluminationDUGIIrradianceSHBuffers[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDUGIIrradianceSHBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
        end;
-       if assigned(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIRayDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       if assigned(fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
        end;
-       if assigned(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIProbeDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       if assigned(fGlobalIlluminationDUGIProbeDataBuffers[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDUGIProbeDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
        end;
-       if assigned(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex]) then begin
-        DDGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDDGIAgeBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       if assigned(fGlobalIlluminationDUGIAgeBuffers[InFlightFrameIndex]) then begin
+        DUGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDUGIAgeBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
        end;
       end;
-      DDGIClearCommandBuffer.EndRecording;
-      DDGIClearCommandBuffer.Execute(Renderer.VulkanDevice.UniversalQueue,0,nil,nil,DDGIClearFence,true);
+      DUGIClearCommandBuffer.EndRecording;
+      DUGIClearCommandBuffer.Execute(Renderer.VulkanDevice.UniversalQueue,0,nil,nil,DUGIClearFence,true);
      finally
-      FreeAndNil(DDGIClearFence);
+      FreeAndNil(DUGIClearFence);
      end;
     finally
-     FreeAndNil(DDGIClearCommandBuffer);
+     FreeAndNil(DUGIClearCommandBuffer);
     end;
    finally
-    FreeAndNil(DDGIClearCommandPool);
+    FreeAndNil(DUGIClearCommandPool);
    end;
 
    // Set 2 descriptor for the mesh fragment shader (sampled probe data): UBO + irradiance SH (3 sampler3D) + visibility.
-   fGlobalIlluminationDDGIDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
+   fGlobalIlluminationDUGIDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
                                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                          Renderer.CountInFlightFrames);
-   fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames); // binding 0 = ddgiData SSBO (cascade globals + sub-buffer pointers)
-   if GlobalIlluminationDDGIStorageOctahedral then begin
-    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*3); // binding 1 = oct irradiance + binding 2 = visibility moments + binding 4 = visibility sky
+   fGlobalIlluminationDUGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames); // binding 0 = dugiData SSBO (cascade globals + sub-buffer pointers)
+   if GlobalIlluminationDUGIStorageOctahedral then begin
+    fGlobalIlluminationDUGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*3); // binding 1 = oct irradiance + binding 2 = visibility moments + binding 4 = visibility sky
    end else begin
-    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*2); // binding 2 = visibility moments + binding 4 = visibility sky (SH irradiance is a BDA buffer via the master)
+    fGlobalIlluminationDUGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*2); // binding 2 = visibility moments + binding 4 = visibility sky (SH irradiance is a BDA buffer via the master)
    end;
-   if GlobalIlluminationDDGIGlossyRadiance then begin
-    fGlobalIlluminationDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames); // binding 5 = glossy prefiltered-radiance atlas
+   if GlobalIlluminationDUGIGlossyRadiance then begin
+    fGlobalIlluminationDUGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames); // binding 5 = glossy prefiltered-radiance atlas
    end;
-   fGlobalIlluminationDDGIDescriptorPool.Initialize;
+   fGlobalIlluminationDUGIDescriptorPool.Initialize;
 
-   // Binding 0 = ddgiData SSBO (cascade globals + the BDA sub-buffer pointers — probe-data + SH-irradiance + ...); binding 2 =
+   // Binding 0 = dugiData SSBO (cascade globals + the BDA sub-buffer pointers — probe-data + SH-irradiance + ...); binding 2 =
    // octahedral visibility moments (bilinear); binding 4 = visibility sky (bilinear). Binding 1 = octahedral irradiance atlas
-   // (bilinear) ONLY in OCT storage mode (SH irradiance is a sub-buffer reached via ddgiData). Matches the `ddgiData` SSBO in
-   // gi_ddgi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
-   fGlobalIlluminationDDGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
-   // binding 0 = ddgiData SSBO. VERTEX/FRAGMENT always; TASK/MESH only when mesh shaders are supported (else the stage bits
-   // would reference an unsupported feature -> validation error). The gi_ddgi_probe_debug.{vert | task+mesh} debug overlay reads
+   // (bilinear) ONLY in OCT storage mode (SH irradiance is a sub-buffer reached via dugiData). Matches the `dugiData` SSBO in
+   // gi_dugi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
+   fGlobalIlluminationDUGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+   // binding 0 = dugiData SSBO. VERTEX/FRAGMENT always; TASK/MESH only when mesh shaders are supported (else the stage bits
+   // would reference an unsupported feature -> validation error). The gi_dugi_probe_debug.{vert | task+mesh} debug overlay reads
    // the cascade globals here for probe placement + frustum cull; production shading reads it in FRAGMENT.
    if Renderer.Scene3D.MeshShaderSupport then begin
-    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+    fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    end else begin
-    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+    fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    end;
-   if GlobalIlluminationDDGIStorageOctahedral then begin
-    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
+   if GlobalIlluminationDUGIStorageOctahedral then begin
+    fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
    end;
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 2 = visibility moments (RG32F)
-   fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 4 = visibility sky (R8)
-   if GlobalIlluminationDDGIGlossyRadiance then begin
-    fGlobalIlluminationDDGIDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 5 = glossy prefiltered-radiance atlas
+   fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 2 = visibility moments (RG32F)
+   fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 4 = visibility sky (R8)
+   if GlobalIlluminationDUGIGlossyRadiance then begin
+    fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(5,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]); // binding 5 = glossy prefiltered-radiance atlas
    end;
-   fGlobalIlluminationDDGIDescriptorSetLayout.Initialize;
+   fGlobalIlluminationDUGIDescriptorSetLayout.Initialize;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationDDGIDescriptorPool,fGlobalIlluminationDDGIDescriptorSetLayout);
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false); // binding 0 = ddgiData SSBO (globals + sub-buffer pointers)
-    if GlobalIlluminationDDGIStorageOctahedral then begin
-     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+    fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationDUGIDescriptorPool,fGlobalIlluminationDUGIDescriptorSetLayout);
+    fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false); // binding 0 = dugiData SSBO (globals + sub-buffer pointers)
+    if GlobalIlluminationDUGIStorageOctahedral then begin
+     fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
     end;
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                   [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 2 = visibility moments
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                   [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky
-    if GlobalIlluminationDDGIGlossyRadiance then begin
-     fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDDGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas (RGBA16F, hardware bilinear)
+    fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                   [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 2 = visibility moments
+    fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                   [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky
+    if GlobalIlluminationDUGIGlossyRadiance then begin
+     fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                    [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,fGlobalIlluminationDUGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas (RGBA16F, hardware bilinear)
     end;
-    fGlobalIlluminationDDGIDescriptorSets[InFlightFrameIndex].Flush;
+    fGlobalIlluminationDUGIDescriptorSets[InFlightFrameIndex].Flush;
    end;
 
   end;
@@ -5190,15 +5190,15 @@ begin
 
  TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass:=nil;
  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=nil;
- TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIGlossyRadianceUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIVisibilityUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRelocationComputePass:=nil;
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIClassificationComputePass:=nil;
 
- // Particle BVH build pass (technique-neutral): created before all GI passes; the consuming GI pass (the DDGI trace) takes an
+ // Particle BVH build pass (technique-neutral): created before all GI passes; the consuming GI pass (the DUGI trace) takes an
  // explicit dependency on it where it is created, so it is both kept alive and ordered before the consumer.
  if assigned(fParticleBVH) and fParticleBVH.Active then begin
   TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass:=TpvScene3DRendererPassesParticleBVHComputePass.Create(fFrameGraph,self);
@@ -5291,26 +5291,26 @@ begin
 
   end;
 
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
 
-   // DDGI is split into a swappable ray-tracing PRODUCER pass (writes the ray-data) and the technique-agnostic probe
+   // DUGI is split into a swappable ray-tracing PRODUCER pass (writes the ray-data) and the technique-agnostic probe
    // BLEND/update CORE pass (irradiance/visibility/border), coupled only through the shared ray-data + probe images.
    // It needs the ray tracing acceleration structure (built outside the frame graph in TpvScene3D.UpdateCache) + the
    // light buffers; visibility for the gather shading is resolved with ray-traced shadow rays, so no shadow map dependency
    // is required. The main mesh culling/rendering is made to depend on the update pass further below.
-   // DDGI producer selection: with hardware ray query, the ray-tracing trace pass; without it, the non-raytraced Reflective
+   // DUGI producer selection: with hardware ray query, the ray-tracing trace pass; without it, the non-raytraced Reflective
    // Shadow Map backend of the SAME trace shader (renders the sun's RSM first, then gathers its lit texels along each probe
    // ray instead of tracing the TLAS). The probe BLEND/update core below is producer-agnostic (it only reads the ray-data), so
    // only the producer and the Irradiance dependency on it differ; relocation, multi-bounce, particle injection and the
    // ray-data encode all run identically (it is the same main()). The RSM gather only sees lit geometry, so probe-space
    // occlusion is partial — accepted for the fallback.
    if Renderer.Scene3D.RaytracingActive then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass.Create(fFrameGraph,self);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass.Create(fFrameGraph,self);
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
     end;
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
     end;
    end else begin
     // No hardware ray query: render the sun's Reflective Shadow Map (mesh filter -> RSM render pass), then the RSM-backend
@@ -5336,63 +5336,63 @@ begin
     end;
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=TpvScene3DRendererPassesReflectiveShadowMapRenderPass.Create(fFrameGraph,self);
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass);
-    // DDGI producer (no hardware ray query): default = the RSM backend of the trace shader (reads the RSM as albedo); opt-in
-    // via GlobalIlluminationDDGIUseRSMSplat = the standalone RSM VPL splat (reads the RSM as flux). Both gather only lit RSM
+    // DUGI producer (no hardware ray query): default = the RSM backend of the trace shader (reads the RSM as albedo); opt-in
+    // via GlobalIlluminationDUGIUseRSMSplat = the standalone RSM VPL splat (reads the RSM as flux). Both gather only lit RSM
     // texels (partial probe-space occlusion, accepted for the fallback), inject the particle LBVH and feed the SAME probe
     // BLEND/update core. Both depend on the RSM render pass + (when present) the atmosphere process + the particle BVH build.
-    if not fGlobalIlluminationDDGIUseRSMSplat then begin
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGITraceRSMComputePass.Create(fFrameGraph,self);
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+    if not fGlobalIlluminationDUGIUseRSMSplat then begin
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
-      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
      end;
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
-      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
      end;
     end else begin
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass.Create(fFrameGraph,self);
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
-      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
      end;
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
-      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
      end;
     end;
    end;
    // The technique-agnostic probe BLEND/update CORE is split into one frame-graph pass per compute stage so each shader gets
    // its own GPU timer (separate profiler per-pass timing). They chain linearly; the last stage (classification when relocation
    // is on, else border) flips the shared firstFrames flag + publishes the probe writes to the fragment shading stages.
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.Irradiance,false);
    if Renderer.Scene3D.RaytracingActive then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
-   end else if not fGlobalIlluminationDDGIUseRSMSplat then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass);
+   end else if not fGlobalIlluminationDUGIUseRSMSplat then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass);
    end else begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass);
    end;
    // Glossy radiance stage (opt-in): chained Irradiance -> GlossyRadiance -> Visibility (it reads the per-probe age the
    // visibility stage writes, like irradiance, so it must run before visibility). When off, Visibility depends on Irradiance.
-   if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.GlossyRadiance,false);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+   if TpvScene3DRendererInstance.GlobalIlluminationDUGIGlossyRadiance then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIGlossyRadianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.GlossyRadiance,false);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIGlossyRadianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass);
    end;
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Visibility,false);
-   if TpvScene3DRendererInstance.GlobalIlluminationDDGIGlossyRadiance then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIVisibilityUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.Visibility,false);
+   if TpvScene3DRendererInstance.GlobalIlluminationDUGIGlossyRadiance then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIGlossyRadianceUpdateComputePass);
    end else begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIVisibilityUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIIrradianceUpdateComputePass);
    end;
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Border,not TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation);
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIVisibilityUpdateComputePass);
-   if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Relocation,false);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Classification,true);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRelocationComputePass);
-    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.Border,not TpvScene3DRendererInstance.GlobalIlluminationDUGIProbeRelocation);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIVisibilityUpdateComputePass);
+   if TpvScene3DRendererInstance.GlobalIlluminationDUGIProbeRelocation then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRelocationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.Relocation,false);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRelocationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIClassificationComputePass:=TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass.TStage.Classification,true);
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIClassificationComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRelocationComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIClassificationComputePass);
    end else begin
-    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass);
    end;
 
   end;
@@ -5622,12 +5622,12 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsBounceComputePass);
   end;
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   // depend on the last DDGI update stage (it owns the final publish barrier to the fragment shading stages)
-   if TpvScene3DRendererInstance.GlobalIlluminationDDGIProbeRelocation then begin
-    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIClassificationComputePass);
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   // depend on the last DUGI update stage (it owns the final publish barrier to the fragment shading stages)
+   if TpvScene3DRendererInstance.GlobalIlluminationDUGIProbeRelocation then begin
+    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIClassificationComputePass);
    end else begin
-    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIBorderUpdateComputePass);
+    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIBorderUpdateComputePass);
    end;
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
@@ -8738,9 +8738,9 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationDDGI(const aInFlightFrameIndex:TpvInt32);
+procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationDUGI(const aInFlightFrameIndex:TpvInt32);
 var CascadeIndex:TpvSizeInt;
-    DDGIData:PGlobalIlluminationDDGIUniformBufferData;
+    DUGIData:PGlobalIlluminationDUGIUniformBufferData;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     Extent:TpvVector3;
     s:TpvScalar;
@@ -8753,42 +8753,42 @@ begin
   exit;
  end;
 
- fGlobalIlluminationDDGICascadedVolumes.Update(aInFlightFrameIndex);
+ fGlobalIlluminationDUGICascadedVolumes.Update(aInFlightFrameIndex);
 
- DDGIData:=@fGlobalIlluminationDDGIUniformBufferDataArray[aInFlightFrameIndex];
+ DUGIData:=@fGlobalIlluminationDUGIUniformBufferDataArray[aInFlightFrameIndex];
 
- for CascadeIndex:=0 to CountGlobalIlluminationDDGICascades-1 do begin
-  Cascade:=fGlobalIlluminationDDGICascadedVolumes.Cascades[CascadeIndex];
+ for CascadeIndex:=0 to CountGlobalIlluminationDUGICascades-1 do begin
+  Cascade:=fGlobalIlluminationDUGICascadedVolumes.Cascades[CascadeIndex];
   Extent:=Cascade.fAABB.Max-Cascade.fAABB.Min;
-  s:=fGlobalIlluminationDDGICascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationDDGICascades-1)].fCellSize*2.0;
-  DDGIData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Min,0.0);
-  DDGIData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Max,0.0);
-  DDGIData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extent,0.0);
+  s:=fGlobalIlluminationDUGICascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationDUGICascades-1)].fCellSize*2.0;
+  DUGIData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Min,0.0);
+  DUGIData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Max,0.0);
+  DUGIData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extent,0.0);
   // CellSizes.w = maximum probe ray distance: the cascade diagonal so probes can see geometry across the whole cascade.
-  DDGIData^.CellSizes[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fCellSize,Cascade.fCellSize,Cascade.fCellSize,Extent.Length);
-  DDGIData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((Cascade.fAABB.Min+Cascade.fAABB.Max)*0.5)+Cascade.fOffset,0.0);
-  DDGIData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-(Cascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
-  DDGIData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-Cascade.fSnapSize,0.0);
+  DUGIData^.CellSizes[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fCellSize,Cascade.fCellSize,Cascade.fCellSize,Extent.Length);
+  DUGIData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((Cascade.fAABB.Min+Cascade.fAABB.Max)*0.5)+Cascade.fOffset,0.0);
+  DUGIData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-(Cascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
+  DUGIData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-Cascade.fSnapSize,0.0);
   // Toroidal scroll base cell: AABBMin is snapped to whole cellSize increments, so floor(AABBMin/cellSize) is the integer
   // world-cell offset of the cascade min corner. The shader maps logical<->physical probe slots by this (mod probeCount),
   // keeping a world-fixed probe's history on the same texel as the volume scrolls; the previous value (per in-flight slot)
   // lets the shader re-initialize probes that just scrolled in.
   BaseCell:=(Cascade.fAABB.Min/Cascade.fCellSize).Round;
-  PrevBaseCell:=fGlobalIlluminationDDGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex];
-  DDGIData^.ProbeScroll[CascadeIndex].x:=Trunc(BaseCell.x);
-  DDGIData^.ProbeScroll[CascadeIndex].y:=Trunc(BaseCell.y);
-  DDGIData^.ProbeScroll[CascadeIndex].z:=Trunc(BaseCell.z);
-  DDGIData^.ProbeScroll[CascadeIndex].w:=1; // scrolling enabled
-  DDGIData^.ProbeScrollPrev[CascadeIndex].x:=Trunc(PrevBaseCell.x);
-  DDGIData^.ProbeScrollPrev[CascadeIndex].y:=Trunc(PrevBaseCell.y);
-  DDGIData^.ProbeScrollPrev[CascadeIndex].z:=Trunc(PrevBaseCell.z);
-  DDGIData^.ProbeScrollPrev[CascadeIndex].w:=0;
-  fGlobalIlluminationDDGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex]:=BaseCell;
+  PrevBaseCell:=fGlobalIlluminationDUGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex];
+  DUGIData^.ProbeScroll[CascadeIndex].x:=Trunc(BaseCell.x);
+  DUGIData^.ProbeScroll[CascadeIndex].y:=Trunc(BaseCell.y);
+  DUGIData^.ProbeScroll[CascadeIndex].z:=Trunc(BaseCell.z);
+  DUGIData^.ProbeScroll[CascadeIndex].w:=1; // scrolling enabled
+  DUGIData^.ProbeScrollPrev[CascadeIndex].x:=Trunc(PrevBaseCell.x);
+  DUGIData^.ProbeScrollPrev[CascadeIndex].y:=Trunc(PrevBaseCell.y);
+  DUGIData^.ProbeScrollPrev[CascadeIndex].z:=Trunc(PrevBaseCell.z);
+  DUGIData^.ProbeScrollPrev[CascadeIndex].w:=0;
+  fGlobalIlluminationDUGIProbeBaseCells[aInFlightFrameIndex,CascadeIndex]:=BaseCell;
  end;
 
  // Non-raytraced fallback producer: render + read the sun's RSM. The RSM render pass only draws when MustRenderGIMaps is set
- // (otherwise driven by the radiance-hints caching logic, which does not run in DDGI mode), so set it every frame here — the
- // fallback needs a fresh RSM each frame and the RSM render pass is the only consumer of this flag in DDGI mode. Then fill the
+ // (otherwise driven by the radiance-hints caching logic, which does not run in DUGI mode), so set it every frame here — the
+ // fallback needs a fresh RSM each frame and the RSM render pass is the only consumer of this flag in DUGI mode. Then fill the
  // (slim) RSM matrices UBO the RSM-backend trace producer reads (set 2 binding 3): only the world<->RSM matrices are needed (the
  // backend reconstructs a VPL world position from the RSM depth); AddReflectiveShadowMapView in the view setup has already written
  // InFlightFrameState.ReflectiveShadowMapMatrix this frame. The remaining RSM UBO fields stay zero (unused by the backend).
@@ -8811,7 +8811,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.UploadGlobalIlluminationDDGI(const aInFlightFrameIndex:TpvInt32);
+procedure TpvScene3DRendererInstance.UploadGlobalIlluminationDUGI(const aInFlightFrameIndex:TpvInt32);
 begin
 
  if aInFlightFrameIndex<0 then begin
@@ -8821,21 +8821,21 @@ begin
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,
                                             fScene3D.VulkanStagingFence,
-                                            fGlobalIlluminationDDGIUniformBufferDataArray[aInFlightFrameIndex],
-                                            fGlobalIlluminationDDGIMasterBuffers[aInFlightFrameIndex], // cascade globals live at offset 0 of the unified ddgiData buffer (the sub-buffer pointers, written once, sit after them)
+                                            fGlobalIlluminationDUGIUniformBufferDataArray[aInFlightFrameIndex],
+                                            fGlobalIlluminationDUGIMasterBuffers[aInFlightFrameIndex], // cascade globals live at offset 0 of the unified dugiData buffer (the sub-buffer pointers, written once, sit after them)
                                             0,
-                                            SizeOf(TGlobalIlluminationDDGIUniformBufferData));
+                                            SizeOf(TGlobalIlluminationDUGIUniformBufferData));
 
 end;
 
-function TpvScene3DRendererInstance.GetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
+function TpvScene3DRendererInstance.GetGlobalIlluminationDUGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt):boolean;
 begin
- result:=fGlobalIlluminationDDGIFirstFrames[aInFlightFrameIndex];
+ result:=fGlobalIlluminationDUGIFirstFrames[aInFlightFrameIndex];
 end;
 
-procedure TpvScene3DRendererInstance.SetGlobalIlluminationDDGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt;const aValue:boolean);
+procedure TpvScene3DRendererInstance.SetGlobalIlluminationDUGIFirstFrame(const aInFlightFrameIndex:TpvSizeInt;const aValue:boolean);
 begin
- fGlobalIlluminationDDGIFirstFrames[aInFlightFrameIndex]:=aValue;
+ fGlobalIlluminationDUGIFirstFrames[aInFlightFrameIndex]:=aValue;
 end;
 
 procedure TpvScene3DRendererInstance.UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
@@ -10472,9 +10472,9 @@ begin
  end;
 
  // Reflective shadow map view (sets InFlightFrameState.ReflectiveShadowMapMatrix from the sun + scene AABB): radiance hints,
- // and the non-raytraced DDGI fallback (which renders the sun's RSM as its probe-ray producer).
+ // and the non-raytraced DUGI fallback (which renders the sun's RSM as its probe-ray producer).
  if (Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints) or
-    ((Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and not Renderer.Scene3D.RaytracingActive) then begin
+    ((Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination) and not Renderer.Scene3D.RaytracingActive) then begin
   AddReflectiveShadowMapView(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
@@ -10513,8 +10513,8 @@ begin
    UpdateGlobalIlluminationCascadedRadianceHints(aInFlightFrameIndex);
   end;
 
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   UpdateGlobalIlluminationDDGI(aInFlightFrameIndex);
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   UpdateGlobalIlluminationDUGI(aInFlightFrameIndex);
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
@@ -10712,8 +10712,8 @@ begin
    UploadGlobalIlluminationCascadedRadianceHints(aInFlightFrameIndex);
   end;
 
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   UploadGlobalIlluminationDDGI(aInFlightFrameIndex);
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   UploadGlobalIlluminationDUGI(aInFlightFrameIndex);
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin

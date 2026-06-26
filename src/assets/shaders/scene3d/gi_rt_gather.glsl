@@ -2,7 +2,7 @@
 #define GI_RT_GATHER_GLSL
 
 // =====================================================================================================================
-//  Shared ray-traced "probe gather" layer for the ray-traced global illumination techniques (currently DDGI).
+//  Shared ray-traced "probe gather" layer for the ray-traced global illumination techniques (currently DUGI).
 //
 //  This include encapsulates the common operation a ray-traced GI producer needs: shoot a ray into the scene,
 //  find the closest hit, and compute the outgoing radiance towards the ray origin at that hit point. The radiance
@@ -67,7 +67,7 @@ struct GIGatherSurface {
   float hitDistance; // distance from ray origin to hit; negative when the ray missed
   bool hit;          // true when the ray hit geometry, false on a sky/environment miss
   bool backface;     // true when the ray hit the back side of the surface (shading normal pointed along the ray before
-                     // it was flipped) — i.e. the ray origin is behind/inside this surface. Used by the DDGI trace to
+                     // it was flipped) — i.e. the ray origin is behind/inside this surface. Used by the DUGI trace to
                      // treat such hits as occluders (shortened distance) and absorptive (black), preventing leaks.
   bool doubleSided;  // true when the hit material is double-sided (face culling == None). A "backface" of a double-sided
                      // surface (foliage, thin sheets) is a legitimate surface, not geometry the probe is embedded in.
@@ -436,12 +436,12 @@ vec3 giGatherEvaluateLighting(const in vec3 worldPosition, const in vec3 normal)
 //  Outgoing radiance towards the ray origin at a gather hit.
 //    Lo = emission + (albedo / PI) * (directLight + previousFrameIndirect)
 //  previousFrameIndirect is the irradiance that the caller sampled from the *previous* frame's GI data structure at the
-//  hit point (the probe field for DDGI). Passing it in here gives multi-bounce ("infinite bounce")
+//  hit point (the probe field for DUGI). Passing it in here gives multi-bounce ("infinite bounce")
 //  lighting almost for free; pass vec3(0.0) to disable it.
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Global GI-emissive master regulators: a renderer-wide scale (multiplies the per-material factor) and an absolute cap
-// (min'd with the per-material max). Each GI producer supplies them from its own source (DDGI: ddgiData) by #defining
+// (min'd with the per-material max). Each GI producer supplies them from its own source (DUGI: dugiData) by #defining
 // these before including this file; they default to a no-op (scale 1.0, +Inf cap).
 #ifndef GI_GATHER_EMISSIVE_SCALE
 #define GI_GATHER_EMISSIVE_SCALE 1.0
@@ -473,7 +473,7 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
 #endif // RAYTRACING
 
 // ---------------------------------------------------------------------------------------------------------------------
-//  Swappable closest-hit trace backend. The trace producers (DDGI) call giTraceClosestHit() instead of a fixed
+//  Swappable closest-hit trace backend. The trace producers (DUGI) call giTraceClosestHit() instead of a fixed
 //  implementation, so the ray-vs-scene query can be swapped at compile time. The default is the hardware ray-query
 //  backend (giGatherClosestHit, above); a future SDF backend would #define GI_TRACE_BACKEND = GI_TRACE_BACKEND_SDF and
 //  provide its own giTraceClosestHit returning a GIGatherSurface. (A ray-generation/closest-hit RT-pipeline producer is a
@@ -481,7 +481,7 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
 // ---------------------------------------------------------------------------------------------------------------------
 #define GI_TRACE_BACKEND_RAYQUERY 0
 #define GI_TRACE_BACKEND_SDF      1
-#define GI_TRACE_BACKEND_RSM      2  // non-raytraced Reflective Shadow Map gather; its giTraceClosestHit is provided by the includer (gi_ddgi_trace.comp)
+#define GI_TRACE_BACKEND_RSM      2  // non-raytraced Reflective Shadow Map gather; its giTraceClosestHit is provided by the includer (gi_dugi_trace.comp)
 #ifndef GI_TRACE_BACKEND
   #define GI_TRACE_BACKEND GI_TRACE_BACKEND_RAYQUERY
 #endif

@@ -78,9 +78,9 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesParticleBVHComputePass }
      // Builds a per-frame GPU LBVH over the particle emitters (particles are not in the hardware ray-tracing BLAS) so that
-     // gi_ddgi_trace.comp can software-trace them into the DDGI probe irradiance. Pipeline: extract emitters from the billboard
+     // gi_dugi_trace.comp can software-trace them into the DUGI probe irradiance. Pipeline: extract emitters from the billboard
      // vertex buffer -> world AABB -> Morton codes -> LSD radix sort -> Karras hierarchy -> bottom-up AABB refit. Runs before
-     // the DDGI trace pass (explicit dependency). All buffers live on the renderer instance.
+     // the DUGI trace pass (explicit dependency). All buffers live on the renderer instance.
      TpvScene3DRendererPassesParticleBVHComputePass=class(TpvFrameGraph.TComputePass)
       public
        const Stages=8; // 0=emit 1=aabb 2=morton 3=radixHistogram 4=radixScan 5=radixScatter 6=hierarchy 7=refit
@@ -316,7 +316,7 @@ begin
  RunStage(7,(ParticleCount+255) shr 8,0);
  StageBarrier;
 
- // Publish the finished node + emitter buffers to the DDGI trace pass (it reads them via its set-1 SSBO bindings).
+ // Publish the finished node + emitter buffers to the DUGI trace pass (it reads them via its set-1 SSBO bindings).
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,1,@MemoryBarrier,0,nil,0,nil);

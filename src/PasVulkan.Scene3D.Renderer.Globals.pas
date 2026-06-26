@@ -211,12 +211,12 @@ type TpvScene3DRendererAntialiasingMode=
        // only that it is used for global illumination instead of shadows.
        CascadedVoxelConeTracing,
 
-       // Dynamic Diffuse Global Illumination (DDGI, Majercik et al. 2019). A cascaded grid of light probes that are updated each frame by tracing rays
+       // Dynamic Unified Global Illumination (DUGI — extends Majercik et al. 2019's DDGI). A cascaded grid of light probes that are updated each frame by tracing rays
        // against the hardware ray tracing acceleration structure (TLAS). Each probe stores irradiance (either as spherical harmonics or as an octahedral
        // atlas, switchable via a shader define) plus an octahedral mean/mean-squared distance term for the Chebyshev visibility test, which is what
        // prevents the light leaking that cascaded radiance hints suffer from. The probe grid placement reuses the cascaded radiance hints snapping
        // infrastructure. Requires hardware ray tracing support (RaytracingActive).
-       DynamicDiffuseGlobalIllumination
+       DynamicUnifiedGlobalIllumination
 
 {
        // Possible further options on my todo list for the future:

@@ -603,8 +603,8 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
   end;
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationDDGIDescriptorSetLayout);
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationDUGIDescriptorSetLayout);
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout);
@@ -1047,9 +1047,9 @@ begin
                                          0,
                                          nil);
    end;
-   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+   TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
     DescriptorSets[0]:=fPassVulkanDescriptorSets[aInFlightFrameIndex].Handle;
-    DescriptorSets[1]:=fInstance.GlobalIlluminationDDGIDescriptorSets[aInFlightFrameIndex].Handle;
+    DescriptorSets[1]:=fInstance.GlobalIlluminationDUGIDescriptorSets[aInFlightFrameIndex].Handle;
     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          fVulkanPipelineLayout.Handle,
                                          1,

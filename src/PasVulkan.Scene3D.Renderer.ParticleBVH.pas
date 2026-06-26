@@ -77,10 +77,10 @@ uses SysUtils,
 type { TpvScene3DRendererParticleBVH }
      // Self-contained, GI-technique-NEUTRAL particle BVH subsystem: owns the per-frame GPU buffers for a per-frame-built LBVH
      // over the particle emitters (particles are not in the hardware ray-tracing BLAS). Any consumer software-traces it
-     // (the DDGI trace now; a pure-path-tracing path later) via particle_bvh_trace.glsl using the emitter + node buffer device
+     // (the DUGI trace now; a pure-path-tracing path later) via particle_bvh_trace.glsl using the emitter + node buffer device
      // addresses — there is no shared descriptor contract. The build pipeline (extract -> AABB -> Morton -> radix sort ->
      // Karras hierarchy -> AABB refit) is the separate ParticleBVHComputePass; layouts are in particle_bvh.glsl. Kept entirely
-     // out of the DDGI (and any other technique's) code so it can be reused without coupling.
+     // out of the DUGI (and any other technique's) code so it can be reused without coupling.
      TpvScene3DRendererParticleBVH=class
       public
        type TBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -123,7 +123,7 @@ begin
 
  fRenderer:=aRenderer;
 
- // Consumers of the particle BVH. Currently only the DDGI trace software-injects particles; OR future consumers here.
+ // Consumers of the particle BVH. Currently only the DUGI trace software-injects particles; OR future consumers here.
  fActive:=MustBeCreated(fRenderer);
 
  FillChar(fEmitterBuffers,SizeOf(TBuffers),#0);
@@ -145,7 +145,7 @@ end;
 
 class function TpvScene3DRendererParticleBVH.MustBeCreated(const aRenderer:TpvScene3DRenderer):boolean;
 begin
- result:=aRenderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination;
+ result:=aRenderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination;
 end;
 
 procedure TpvScene3DRendererParticleBVH.AcquireVolatileResources;

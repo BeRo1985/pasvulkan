@@ -236,10 +236,10 @@ layout(set = 1, binding = 10) uniform sampler2D uRainTextures[]; // 0 = rain tex
 
   #include "global_illumination_voxel_cone_tracing.glsl"
 
-#elif defined(GLOBAL_ILLUMINATION_DDGI)
+#elif defined(GLOBAL_ILLUMINATION_DUGI)
 
-  #define DDGI_DESCRIPTOR_SET 2
-  #include "global_illumination_ddgi_sampling.glsl"
+  #define DUGI_DESCRIPTOR_SET 2
+  #include "global_illumination_dugi_sampling.glsl"
 
 #endif
 
@@ -497,7 +497,7 @@ void main() {
   vec3 voxelEmission = textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz;
   // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): per-material factor/max (two fp16 packed into the material's
   // dispersion/shadow uvec4 .w) scaled by the global master regulator (voxelGridData) and clamped — same policy as the
-  // DDGI gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
+  // DUGI gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
   vec2 voxelEmissiveGI = unpackHalf2x16(material.dispersionShadowCastMaskShadowReceiveMaskUnused.w);
   voxelEmission = min(voxelEmission * (voxelEmissiveGI.x * voxelGridData.emissiveGIScale), vec3(min(voxelEmissiveGI.y, voxelGridData.emissiveGIMax)));
   vec4 emissionColor = vec4(voxelEmission, baseColor.w);
@@ -932,38 +932,38 @@ void main() {
           colorOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * specularOcclusion * OneOverPI;
         }
       }
-#elif defined(GLOBAL_ILLUMINATION_DDGI)
-  #if GI_DDGI_STORAGE_IS_SH
+#elif defined(GLOBAL_ILLUMINATION_DUGI)
+  #if GI_DUGI_STORAGE_IS_SH
       // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically
       // by doSingleLight) and add the remaining residual SH as diffuse — mirroring the cascaded radiance hints path. The
       // environment IBL block below is disabled for this variant (see its #if guard); the specular comes from the dominant
-      // light, optionally crossfaded with the directional glossy-radiance atlas by roughness when GI_DDGI_GLOSSY_RADIANCE.
+      // light, optionally crossfaded with the directional glossy-radiance atlas by roughness when GI_DUGI_GLOSSY_RADIANCE.
       {
         // Roughness crossfade weight (set below when the glossy atlas is built): scales the dominant-light specular; the
         // glossy atlas takes the complementary 1-weight. Stays 1.0 (full dominant specular, no atlas) when glossy is off.
-        float ddgiSpecularWeight = 1.0;
-        float ddgiSkyVisibility;
-        DDGI_SH_TYPE ddgiRadianceSH = ddgiSampleRadianceSH(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
+        float dugiSpecularWeight = 1.0;
+        float dugiSkyVisibility;
+        DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(inWorldSpacePosition.xyz, normal.xyz, viewDirection, dugiSkyVisibility);
         vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
         // INVARIANT: the probe radiance field is split into (dominant directional light) + (residual SH), and the total
         // diffuse must stay = the full field's diffuse, i.e. residualDiffuse (added below) + dominantDiffuse (contributed by
         // doSingleLight further down) == full-field diffuse. The residual is therefore "field minus dominant", and the
         // dominant light's DIFFUSE must always be applied at full strength. Only the dominant's SPECULAR may be scaled (it is,
-        // by ddgiSpecularWeight via doSingleLight's diffuseSpecularFactors.y, to crossfade against the glossy atlas). Do NOT
+        // by dugiSpecularWeight via doSingleLight's diffuseSpecularFactors.y, to crossfade against the glossy atlas). Do NOT
         // scale the whole dominant light (the 2nd doSingleLight arg / diffuseSpecularFactors.x) by the roughness weight, or
         // the dominant's diffuse goes missing and low-roughness surfaces darken.
-#ifdef GI_DDGI_SH_APPROXIMATE_DOMINANT
+#ifdef GI_DUGI_SH_APPROXIMATE_DOMINANT
         // Default (applied to L1 and L2): approximate dominant directional light + residual SH (DC kept).
         // The dominant light direction/intensity live in the L0/L1 bands, so the L2 variant extracts them from the L1
         // reduction (identical method to L1); the full L2 detail is preserved in the residual below.
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-        SHC3CoefficientsL1ApproximateDirectionalLight(SHC3CoefficientsL1FromL2(ddgiRadianceSH), shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
+#if GI_DUGI_STORAGE == GI_DUGI_STORAGE_L2_VALUE
+        SHC3CoefficientsL1ApproximateDirectionalLight(SHC3CoefficientsL1FromL2(dugiRadianceSH), shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
 #else
-        SHC3CoefficientsL1ApproximateDirectionalLight(ddgiRadianceSH, shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
+        SHC3CoefficientsL1ApproximateDirectionalLight(dugiRadianceSH, shDominantDirectionalLightDirection, shDominantDirectionalLightColor);
 #endif
         // Residual SH = field minus the extracted dominant light, so it is not double-counted in the diffuse term.
-        DDGI_SH_TYPE shResidual = DDGI_SH_SUB(ddgiRadianceSH, DDGI_SH_PROJECT(shDominantDirectionalLightDirection, shDominantDirectionalLightColor));
-        vec3 shResidualDiffuse = max(vec3(0.0), DDGI_SH_EVALUATE(DDGI_SH_CONVOLVE_COSINE(shResidual), normal.xyz));
+        DUGI_SH_TYPE shResidual = DUGI_SH_SUB(dugiRadianceSH, DUGI_SH_PROJECT(shDominantDirectionalLightDirection, shDominantDirectionalLightColor));
+        vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(shResidual), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
         }
@@ -971,32 +971,32 @@ void main() {
         // Alternative: native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
         vec3 shAmbient;
         float shModifiedSqrtRoughness;
-        DDGI_SH_EXTRACT_DOMINANT(ddgiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
-        vec3 shResidualDiffuse = max(vec3(0.0), DDGI_SH_EVALUATE(DDGI_SH_CONVOLVE_COSINE(ddgiRadianceSH), normal.xyz));
+        DUGI_SH_EXTRACT_DOMINANT(dugiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
+        vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(dugiRadianceSH), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
         }
-        DDGI_SH_TYPE shResidual = ddgiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in ddgiRadianceSH
+        DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
-#if defined(GI_DDGI_GLOSSY_RESIDUAL) && defined(GI_DDGI_GLOSSY_RADIANCE) && !defined(REFLECTIVESHADOWMAPOUTPUT)
+#if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE) && !defined(REFLECTIVESHADOWMAPOUTPUT)
         // Probe-field specular, crossfaded by roughness against the dominant directional light (doSingleLight below): at low
         // roughness the sharp, directional glossy prefiltered-radiance atlas (sampled along the reflection vector) dominates;
-        // at high roughness the broad dominant-light specular does. ddgiSpecularWeight scales the dominant specular (via
+        // at high roughness the broad dominant-light specular does. dugiSpecularWeight scales the dominant specular (via
         // doSingleLight's diffuseSpecularFactors.y) and this adds the complementary (1 - weight) of the atlas, so the two sum
         // to one specular without double-counting. The dominant light's DIFFUSE stays full (diffuseSpecularFactors.x = 1), so
         // no indirect diffuse is lost. Routed through the same split-sum BRDF term (getIBLGGXFresnel) as the environment IBL.
         {
-          vec3 ddgiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
+          vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
           // Crossfade weight: 0 at low roughness (take the glossy atlas) .. 1 at high roughness (take the dominant light).
-          ddgiSpecularWeight = smoothstep(GI_DDGI_GLOSSY_ROUGHNESS_LO, GI_DDGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness);
-          vec3 ddgiGlossyRadiance = ddgiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, ddgiReflectionVector, viewDirection);
-          vec3 ddgiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
-          colorOutput += ddgiGlossyRadiance * ddgiGlossyFresnel * specularOcclusion * (1.0 - ddgiSpecularWeight);
+          dugiSpecularWeight = smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness);
+          vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
+          vec3 dugiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
+          colorOutput += dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
         }
 #endif
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //
-                      vec2(1.0, ddgiSpecularWeight),                      // diffuse kept full; specular crossfaded against the glossy atlas (1-weight added above)
+                      vec2(1.0, dugiSpecularWeight),                      // diffuse kept full; specular crossfaded against the glossy atlas (1-weight added above)
                       -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       baseColor.xyz,                                      //
@@ -1019,27 +1019,27 @@ void main() {
                       0.0);
       }
   #else
-      // Octahedral storage: ddgiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) (outgoing diffuse =
+      // Octahedral storage: dugiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) (outgoing diffuse =
       // albedo/PI * E) plus a sky-visibility factor from the probes. The probe field replaces the environment IBL diffuse;
       // the environment IBL specular is kept (block below) but occluded by the probe sky-visibility (long-range "is the
       // sky actually visible here", which the short-range per-pixel AO misses) combined with that AO.
-      float ddgiSkyVisibility;
-      vec3 ddgiIrradiance = ddgiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, ddgiSkyVisibility);
-      float iblWeight = ddgiSkyVisibility;
+      float dugiSkyVisibility;
+      vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, dugiSkyVisibility);
+      float iblWeight = dugiSkyVisibility;
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-        colorOutput += ddgiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+        colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
   #endif
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DDGI) && !defined(GLOBAL_ILLUMINATION_DDGI_OCT_STORAGE)))
-#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DDGI)
+#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DUGI) && !defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)))
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
 //    float iblWeight = 1.0; // already declared in the global illumination branch above
 #else
       float iblWeight = 1.0; // for future sky occulsion
 #endif
-#if defined(GLOBAL_ILLUMINATION_DDGI)
-      vec3 iblDiffuse = vec3(0.0); // DDGI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
+#if defined(GLOBAL_ILLUMINATION_DUGI)
+      vec3 iblDiffuse = vec3(0.0); // DUGI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
 #else
       vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
 #endif

@@ -219,12 +219,12 @@ begin
 
  MeshFragmentSpecializationConstants:=fInstance.MeshFragmentSpecializationConstants;
 
- // The non-raytraced DDGI RSM-backend (trace) producer wants the RSM to carry raw albedo (it re-lights it itself), so render the
+ // The non-raytraced DUGI RSM-backend (trace) producer wants the RSM to carry raw albedo (it re-lights it itself), so render the
  // albedo output variant of the fragment shaders in that case; otherwise (radiance hints, OR the RSM VPL splat producer which
  // re-emits the stored flux directly) the lit flux variant.
- if (fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+ if (fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination) and
     (not fInstance.Renderer.Scene3D.RaytracingActive) and
-    (not fInstance.GlobalIlluminationDDGIUseRSMSplat) then begin
+    (not fInstance.GlobalIlluminationDUGIUseRSMSplat) then begin
   RSMInfix:='rsm_albedo_';
  end else begin
   RSMInfix:='rsm_';

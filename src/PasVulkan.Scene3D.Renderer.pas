@@ -1168,7 +1168,7 @@ begin
 
  if fGlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.Auto then begin
   if fRaytracingActive and (fVulkanDevice.PhysicalDevice.Properties.deviceType<>VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) then begin
-   fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination;
+   fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination;
   end else begin
    case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
     TpvVulkanVendorID.AMD:begin
@@ -1201,14 +1201,14 @@ begin
 //fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
  end;
 
- // DDGI normally needs hardware ray tracing to trace the probe rays. When it is not available we KEEP DDGI but drive its
- // probe field from a non-raytraced Reflective Shadow Map producer (gi_ddgi_trace built with the RSM backend) instead of the ray-query trace; the
+ // DUGI normally needs hardware ray tracing to trace the probe rays. When it is not available we KEEP DUGI but drive its
+ // probe field from a non-raytraced Reflective Shadow Map producer (gi_dugi_trace built with the RSM backend) instead of the ray-query trace; the
  // probe blend / shading path is producer-agnostic, so only the producer pass differs (wired in the Instance per RaytracingActive).
  case fGlobalIlluminationMode of
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
    if not fRaytracingActive then begin
     if assigned(pvApplication) then begin
-     pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination without raytracing: using the non-raytraced Reflective Shadow Map fallback producer');
+     pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicUnifiedGlobalIllumination without raytracing: using the non-raytraced Reflective Shadow Map fallback producer');
     end;
    end;
   end;
@@ -1223,8 +1223,8 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_voxel_cone_tracing_';
   end;
-  TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
-   fMeshFragGlobalIlluminationTypeName:='globalillumination_ddgi_';
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   fMeshFragGlobalIlluminationTypeName:='globalillumination_dugi_';
   end;
   else begin
    fMeshFragGlobalIlluminationTypeName:='';
