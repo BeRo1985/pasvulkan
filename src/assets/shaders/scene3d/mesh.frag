@@ -1024,7 +1024,10 @@ void main() {
       // the environment IBL specular is kept (block below) but occluded by the probe sky-visibility (long-range "is the
       // sky actually visible here", which the short-range per-pixel AO misses) combined with that AO.
       float dugiSkyVisibility;
-      vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, dugiSkyVisibility);
+      // Sky-visibility for the IBL specular gate (iblWeight) is sampled along the reflection vector, not the normal: the IBL
+      // specular reflects the sky, so gate it by whether the sky is visible along the reflected ray. This avoids the sky
+      // colour bleeding onto surfaces that are open to the sky in the normal hemisphere but whose reflection is occluded.
+      vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, normalize(reflect(-viewDirection, normal.xyz)), dugiSkyVisibility);
       float iblWeight = dugiSkyVisibility;
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
         colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;

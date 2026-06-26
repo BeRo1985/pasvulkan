@@ -52,7 +52,10 @@ void main(){
   // Sharper directional weighting than for irradiance, so the depth statistics stay local to the texel direction.
   const float sharpness = GI_DUGI_VISIBILITY_SHARPNESS;
 
-  float maxRayDistance = max(dugiData.dugiCascadeCellSizes[cascadeIndex].w, 1e-2);
+  // Local depth scale for the visibility statistics (~1.5 * cell size): hits are clamped to it in the ray-data encode, and a
+  // stored ray distance beyond it marks a sky miss (the encode leaves misses unclamped). Keeps far hits / sky from inflating
+  // the mean/mean^2 and masking nearby thin-slab occluders.
+  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiData.dugiCascadeCellSizes[cascadeIndex].x, 1e-2);
 
   // Cooperatively load this probe's rays (direction + raw distance) into shared memory ONCE for the whole workgroup. Each
   // thread loads a strided subset; the 256 threads (16x16) cover the <=128 rays in a single iteration. Then barrier so every
@@ -73,9 +76,10 @@ void main(){
     float weight = pow(max(0.0, dot(texelDirection, ray.xyz)), sharpness);
     if(weight > 0.0){
       float rawDist = ray.w;
-      float dist = min(rawDist, maxRayDistance);
-      // The trace stores maxRayDistance as the hit distance on a miss, so a ray that reached (or exceeded) it saw the sky.
-      float missedToSky = (rawDist >= (maxRayDistance * 0.999)) ? 1.0 : 0.0;
+      float dist = min(rawDist, visibilityMaxDistance);
+      // Hits are clamped to the local scale in the ray-data encode, so any stored distance beyond it is a sky miss; the
+      // clamp above still folds that sky into the moments as a far, non-occluding depth.
+      float missedToSky = (rawDist > visibilityMaxDistance) ? 1.0 : 0.0;
       sumDist += dist * weight;
       sumDist2 += (dist * dist) * weight;
       sumSky += missedToSky * weight;
@@ -84,7 +88,7 @@ void main(){
   }
 
   vec3 moments = (sumWeight > 1e-6) ? vec3(sumDist / sumWeight, sumDist2 / sumWeight, sumSky / sumWeight)
-                                    : vec3(maxRayDistance, maxRayDistance * maxRayDistance, 1.0);
+                                    : vec3(visibilityMaxDistance, visibilityMaxDistance * visibilityMaxDistance, 1.0);
 
   ivec2 atlasTexel = dugiProbeTileOrigin(probeCoord, cascadeIndex, GI_DUGI_VISIBILITY_OCT_FULL) + localTexel;
   vec3 previous = vec3(imageLoad(uDUGIVisibilityMoments, atlasTexel).xy, imageLoad(uDUGIVisibilitySky, atlasTexel).x);

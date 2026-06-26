@@ -460,7 +460,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
   //  weighting (the DUGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
   // ---------------------------------------------------------------------------------------------------------------------
-  vec3 dugiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
+  vec3 dugiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, const in int cascadeIndex, out float skyVisibility){
     // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
     // light leaking through thin geometry; the base probe, the trilinear fractions and the Chebyshev distToProbe below are
     // all measured from this lifted position, so the interpolation cell matches the visibility test.
@@ -523,8 +523,9 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
       sumIrradiance += dugiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
 
-      // Sky visibility for IBL occlusion: how open the surface hemisphere (normal direction) is to the sky at this probe.
-      sumSkyVisibility += dugiSampleVisibility(physProbeCoord, cascadeIndex, normal).z * weight;
+      // Sky visibility for IBL occlusion, sampled along the requested direction (the reflection vector for the specular gate,
+      // or the normal for the diffuse hemisphere) — how open that direction is to the sky at this probe.
+      sumSkyVisibility += dugiSampleVisibility(physProbeCoord, cascadeIndex, skyVisibilityDirection).z * weight;
 
       sumWeight += weight;
 
@@ -540,9 +541,11 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
   }
 
-  // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance;
-  // skyVisibility (out) is the IBL occlusion factor (1 = fully open to the sky, 0 = enclosed), 1 outside all cascades.
-  vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
+  // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance
+  // (sampled along the normal); skyVisibility (out) is the IBL occlusion factor measured along skyVisibilityDirection (1 =
+  // fully open to the sky, 0 = enclosed), 1 outside all cascades. Pass the reflection vector as skyVisibilityDirection to
+  // gate the IBL specular by "is the sky visible along the reflected ray" instead of along the normal.
+  vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, out float skyVisibility){
     int cascadeIndex = 0;
     while(((cascadeIndex + 1) < GI_DUGI_CASCADES) &&
           (any(lessThan(worldPosition, dugiData.dugiCascadeAABBMin[cascadeIndex].xyz)) ||
@@ -572,7 +575,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
       if(weight > 1e-6){
         float cascadeSkyVisibility;
-        result += dugiSampleIrradianceInCascade(worldPosition, normal, viewDirection, c, cascadeSkyVisibility) * weight;
+        result += dugiSampleIrradianceInCascade(worldPosition, normal, viewDirection, skyVisibilityDirection, c, cascadeSkyVisibility) * weight;
         sumSkyVisibility += cascadeSkyVisibility * weight;
         sumWeight += weight;
       }
@@ -582,6 +585,11 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     }
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
     return result;
+  }
+
+  // Backward-compatible overload: sky visibility measured along the surface normal (the diffuse-hemisphere openness).
+  vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
+    return dugiSampleIrradiance(worldPosition, normal, viewDirection, normal, skyVisibility);
   }
 
 #if defined(GI_DUGI_GLOSSY_RADIANCE)

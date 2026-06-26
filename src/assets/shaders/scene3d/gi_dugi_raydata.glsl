@@ -62,17 +62,26 @@ vec4 dugiEncodeRayData(const in uint rayIndex,
 
   // Random ray: shaded radiance in rgb (integrated by the irradiance blend) + the distance in a (feeds the mean/mean^2
   // visibility statistics for the Chebyshev test).
-  float storedDistance = aHit ? aHitDistance : aMissDistance;
+  float storedDistance;
+  if(aHit){
+    storedDistance = aHitDistance;
 
-  // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
-  // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
-  if(aHit && aBackface){
-    storedDistance *= 0.2; // Majercik: register a thin slab right behind the probe as a near occluder for the Chebyshev test
+    // Shorten backface-hit distances (à la Majercik's DDGI optimization) so a probe just behind a thin slab records it as a
+    // close occluder in the mean/mean^2 depth statistics — the Chebyshev test then blocks the leak to the other side.
+    if(aBackface){
+      storedDistance *= 0.2; // Majercik: register a thin slab right behind the probe as a near occluder for the Chebyshev test
+    }
+
+    // Clamp the stored visibility distance to a local scale (~1.5 * cell size, mirroring RTXGI's probeMaxRayDistance) so far
+    // hits don't inflate the mean/mean^2 statistics and mask nearby thin-slab occluders. The radiance is unaffected (it still
+    // gathers light from the full ray length); only this depth channel is clamped.
+    storedDistance = min(storedDistance, GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * aCellSize);
+  }else{
+    // Miss / sky: store the full ray reach unclamped. Every hit above is clamped to the local scale, so the visibility pass
+    // can tell a sky miss from a clamped far hit by "stored distance exceeds the local scale", and it re-clamps this value so
+    // the sky still folds into the depth statistics as a far, non-occluding distance.
+    storedDistance = aMissDistance;
   }
-  // Clamp the stored visibility distance to a local scale (~1.5 * cell size, mirroring RTXGI's probeMaxRayDistance) so far
-  // hits and sky misses don't inflate the mean/mean^2 statistics and mask nearby thin-slab occluders. The radiance is
-  // unaffected (it still gathers light from the full ray length); only this depth channel is clamped.
-  storedDistance = min(storedDistance, GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * aCellSize);
   return vec4(aShadedRadiance, storedDistance);
 }
 

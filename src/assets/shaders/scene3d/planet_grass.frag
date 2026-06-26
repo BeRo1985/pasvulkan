@@ -388,7 +388,9 @@ void main(){
 #if defined(GLOBAL_ILLUMINATION_DUGI)
   // RT GI: probe-field diffuse (replaces IBL diffuse); IBL specular kept but occluded by probe sky-visibility · AO.
   float dugiSkyVisibility;
-  vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, dugiSkyVisibility);
+  // Sky-visibility for the IBL specular gate (giIBLWeight) is sampled along the reflection vector, not the normal, so the
+  // gate reflects whether the sky is visible along the reflected ray (avoids sky colour bleeding via the specular term).
+  vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, normalize(reflect(-viewDirection, normal)), dugiSkyVisibility);
   if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
     colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
