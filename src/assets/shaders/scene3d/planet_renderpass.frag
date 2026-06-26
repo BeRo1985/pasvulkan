@@ -594,7 +594,9 @@ void main(){
     colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
-  float giIBLWeight = dugiSkyVisibility;
+  // Roughness gate (matches mesh.frag): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on
+  // matte ones (so matte surfaces do not pick up the sky colour through the coarse probe field / env cubemap).
+  float giIBLWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;
