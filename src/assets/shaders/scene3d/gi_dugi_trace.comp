@@ -100,8 +100,9 @@ float dugiEmissiveMax = uintBitsToFloat(0x7f800000u);
 //  ReflectiveShadowMapRenderPass and gathers, per probe ray, the lit RSM texels (virtual point lights) best aligned with the
 //  ray direction, returning their weighted average as the hit surface. main() then shades it EXACTLY like a ray-query hit
 //  (direct light from the light BVH without ray-traced shadows + previous-frame multi-bounce), so relocation, multi-bounce,
-//  particle injection and the ray-data encode are byte-for-byte identical to the hardware path. albedo = RSM color (which is
-//  currently flux; treated as albedo here — corrected later by the planned mesh.frag RSM-albedo output variant).
+//  particle injection and the ray-data encode are byte-for-byte identical to the hardware path. albedo = RSM color: the
+//  rsm_albedo_ fragment variant (-DRSMALBEDO) writes raw diffuse albedo (no flux, no lighting) into the RSM here, selected by
+//  ReflectiveShadowMapRenderPass when DUGI + no ray query + not the splat producer; giGatherShadeHit then re-lights it.
 // =====================================================================================================================
 layout(set = 2, binding = 0) uniform sampler2D uReflectiveShadowMapColor;      // rgb = reflected flux (used as albedo)
 layout(set = 2, binding = 1) uniform sampler2D uReflectiveShadowMapNormalUsed; // xyz = encoded world normal, w = used flag
@@ -130,6 +131,13 @@ layout(set = 2, binding = 3, std140) uniform RSMData {
 // this factor are behind it and rejected (else distant lit surfaces leak in). 1.0 = hard nearest, larger = softer. Overridable.
 #ifndef GI_DUGI_RSM_NEAR_BAND
   #define GI_DUGI_RSM_NEAR_BAND 1.5
+#endif
+// RSM-fallback visibility neutralization: the sun-only RSM cannot give reliable closest-hit distances (sun-shadowed geometry is
+// absent), so feeding them into the Chebyshev visibility moments produces FALSE occlusion (and the sun-only miss/sky split is
+// underdetermined). 1 = encode a neutral "visible, not sky" distance on a hit so the probe visibility does not occlude from RSM
+// hits (misses still record sky); 0 = use the raw RSM hit distance. Env/define overridable.
+#ifndef GI_DUGI_RSM_NEUTRAL_VISIBILITY
+  #define GI_DUGI_RSM_NEUTRAL_VISIBILITY 1
 #endif
 
 // PCG3D hash -> a per-(probe, ray, frame) Cranley-Patterson rotation offset in [0,1)^2 for the RSM sample set. main() sets the
@@ -403,6 +411,14 @@ void main(){
   // Encode per the shared ray-data contract (fixed -> signed/unclamped distance, no radiance; random -> shaded radiance +
   // backface-shortened, locally-clamped distance).
   DUGIRayDataBuffer rayData = dugiData.rayData; // launder through a local (readonly master field -> non-readonly ref)
+  float visibilityDistance = effectiveHitDistance;
+#if (GI_TRACE_BACKEND == 2) && GI_DUGI_RSM_NEUTRAL_VISIBILITY
+  // RSM fallback: the sun-only RSM gives unreliable hit distances, so don't drive the Chebyshev visibility from them — encode a
+  // neutral "visible, not sky" distance on a hit (just under the cascade reach; misses keep effectiveHitDistance = sky).
+  if(effectiveHit){
+    visibilityDistance = tMax * 0.99;
+  }
+#endif
   dugiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
-               dugiEncodeRayData(rayIndex, radiance, effectiveHit, effectiveBackface, effectiveHitDistance, tMax, cellSize));
+               dugiEncodeRayData(rayIndex, radiance, effectiveHit, effectiveBackface, visibilityDistance, tMax, cellSize));
 }

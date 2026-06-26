@@ -107,6 +107,14 @@ vec3 dugiGatherSky(const in vec3 dir){
   #define GI_DUGI_RSM_SPLAT_NEAR_BAND 1.5
 #endif
 
+// RSM-fallback visibility neutralization: the sun-only RSM cannot give reliable closest-hit distances (sun-shadowed geometry is
+// absent), so feeding them into the Chebyshev visibility moments produces FALSE occlusion. 1 = encode a neutral "visible, not
+// sky" distance on a hit so the probe visibility does not occlude from RSM hits (misses still record sky); 0 = use the raw RSM
+// hit distance. Env/define overridable.
+#ifndef GI_DUGI_RSM_SPLAT_NEUTRAL_VISIBILITY
+  #define GI_DUGI_RSM_SPLAT_NEUTRAL_VISIBILITY 1
+#endif
+
 // Optional global energy scale on the gathered VPL radiance, so the fallback can be calibrated against the ray-traced
 // look / the RSM flux units without touching the math. Env/define overridable (default 1.0).
 #ifndef GI_DUGI_RSM_SPLAT_INTENSITY
@@ -310,6 +318,14 @@ void main(){
 
   // Encode per the shared ray-data contract (random ray: shaded radiance + locally-clamped distance; no backface here).
   DUGIRayDataBuffer rayData = dugiData.rayData; // launder through a local (readonly master field -> non-readonly ref)
+  float visibilityDistance = hitDistance;
+#if GI_DUGI_RSM_SPLAT_NEUTRAL_VISIBILITY
+  // RSM fallback: the sun-only RSM gives unreliable hit distances, so don't drive the Chebyshev visibility from them — encode a
+  // neutral "visible, not sky" distance on a hit (just under the cascade reach; misses keep hitDistance = tMax = sky).
+  if(hit){
+    visibilityDistance = tMax * 0.99;
+  }
+#endif
   dugiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
-               dugiEncodeRayData(rayIndex, outRadiance, hit, false, hitDistance, tMax, cellSize));
+               dugiEncodeRayData(rayIndex, outRadiance, hit, false, visibilityDistance, tMax, cellSize));
 }
