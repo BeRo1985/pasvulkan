@@ -9,13 +9,38 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_ray_query : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference_uvec2 : require
+
+// Trace backend (compile-time -DGI_TRACE_BACKEND): 0 = hardware ray query (default), 2 = non-raytraced Reflective Shadow
+// Map gather. The probe iteration / relocation / multi-bounce / particle injection / ray-data encode in main() are IDENTICAL
+// for both backends — only the closest-hit (giTraceClosestHit) and the descriptor sets it needs differ.
+#ifndef GI_TRACE_BACKEND
+  #define GI_TRACE_BACKEND 0
+#endif
+#if GI_TRACE_BACKEND != 2
+  #extension GL_EXT_ray_query : require
+#endif
 
 /* clang-format off */
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+#if GI_TRACE_BACKEND == 2
+
+// RSM backend: no TLAS / no ray query. The gather shading still evaluates the analytic lights — these live in the global
+// descriptor set under LIGHTS, independently of RAYTRACING; without RAYTRACING the engine binds the non-RT global set layout
+// (no TLAS, textures at binding 8). Ray-traced shadows are off (no TLAS); the RSM already bakes the sun's visibility into its
+// flux. giTraceClosestHit is provided below (after gi_rt_gather.glsl) by the RSM gather.
+#define GI_GATHER_RSM
+#define LIGHTS
+#define USE_MATERIAL_BUFFER_REFERENCE
+#define USE_BUFFER_REFERENCE
+#define GI_GATHER_TRACE_SHADOWS 0
+#define CULLMASK_ALL 0xFFu // the RSM backend ignores the cull mask; main() still passes CULLMASK_ALL (otherwise from raytracing.glsl)
+#include "globaldescriptorset.glsl"
+
+#else
 
 // The gather layer needs the engine's global descriptor set (TLAS, lights, materials, textures) and the ray helpers.
 #define RAYTRACING
@@ -25,6 +50,8 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 #include "globaldescriptorset.glsl"
 #include "raytracing.glsl"
+
+#endif
 
 // Particle LBVH (built per frame on the GPU) software-traced here to inject particles — which are NOT in the hardware
 // ray-tracing BLAS (too many, too dynamic) — into the probe irradiance. Descriptor-free: the structs come from particle_bvh.glsl
@@ -51,9 +78,12 @@ vec3 ddgiGatherSky(const in vec3 dir){
 #define GI_GATHER_SKY(dir) ddgiGatherSky(dir)
 
 // Per-planet blend/grass maps (bindless, indexed by planet object index) on set 2, so planet hits get the full material
-// layer blend instead of just the default ground material.
+// layer blend instead of just the default ground material. RT closest-hit only; the RSM backend reads albedo from the RSM
+// (and reuses set 2 for the RSM source textures instead).
+#if GI_TRACE_BACKEND != 2
 #define GI_GATHER_PLANET_TEXTURES
 #define GI_GATHER_PLANET_TEXTURES_SET 2
+#endif
 
 // Global GI-emissive master regulators, delivered via the push constants. The push block is included further below, so these
 // file-scope globals (set in main() before any hit is shaded) let giGatherShadeHit read the values without a signature change.
@@ -63,6 +93,114 @@ float ddgiEmissiveMax = uintBitsToFloat(0x7f800000u);
 #define GI_GATHER_EMISSIVE_MAX ddgiEmissiveMax
 
 #include "gi_rt_gather.glsl"
+
+#if GI_TRACE_BACKEND == 2
+// =====================================================================================================================
+//  RSM backend: the non-raytraced closest-hit. Reads the sun's reflective shadow map (light-POV G-buffer) rendered by the
+//  ReflectiveShadowMapRenderPass and gathers, per probe ray, the lit RSM texels (virtual point lights) best aligned with the
+//  ray direction, returning their weighted average as the hit surface. main() then shades it EXACTLY like a ray-query hit
+//  (direct light from the light BVH without ray-traced shadows + previous-frame multi-bounce), so relocation, multi-bounce,
+//  particle injection and the ray-data encode are byte-for-byte identical to the hardware path. albedo = RSM color (which is
+//  currently flux; treated as albedo here — corrected later by the planned mesh.frag RSM-albedo output variant).
+// =====================================================================================================================
+layout(set = 2, binding = 0) uniform sampler2D uReflectiveShadowMapColor;      // rgb = reflected flux (used as albedo)
+layout(set = 2, binding = 1) uniform sampler2D uReflectiveShadowMapNormalUsed; // xyz = encoded world normal, w = used flag
+layout(set = 2, binding = 2) uniform sampler2D uReflectiveShadowMapDepth;      // light-space depth
+layout(set = 2, binding = 3, std140) uniform RSMData {
+  // Byte-mirrors TGlobalIlluminationRadianceHintsRSMUniformBufferData (the same UBO the radiance-hints RSM inject pass uses).
+  mat4 worldToReflectiveShadowMapMatrix; // unused here
+  mat4 reflectiveShadowMapToWorldMatrix; // reconstructs a VPL world position from (uv, depth)
+  mat4 modelViewProjectionMatrix;        // unused here
+  vec4 spreadExtents[4];                 // unused here
+  vec4 lightDirection;                   // unused here
+  vec4 lightPosition;                    // unused here
+  vec4 scaleFactors;                     // unused here
+  ivec4 countSamples;                    // unused here
+} rsm;
+
+// Number of RSM texels sampled per probe ray (spread over the whole RSM); more = less noise, linear cost. Env/define overridable.
+#ifndef GI_DDGI_RSM_SAMPLES
+  #define GI_DDGI_RSM_SAMPLES 64
+#endif
+// Phong-lobe exponent of the per-ray RSM gather (how tightly a VPL must align with the ray to count). Env/define overridable.
+#ifndef GI_DDGI_RSM_SHARPNESS
+  #define GI_DDGI_RSM_SHARPNESS 16.0
+#endif
+
+// 2D low-discrepancy point on the unit square (golden ratio) for RSM sample i of n.
+vec2 ddgiRSMSampleUV(const in int i, const in int n){
+  const float PHI = 1.6180339887498949;
+  return vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+}
+
+GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction, const in float tMin, const in float tMax, const in uint cullMask){
+  GIGatherSurface s;
+  s.position = origin + (direction * tMax);
+  s.normal = -direction;
+  s.albedo = vec3(0.0);
+  s.emission = vec3(0.0);
+  s.emissiveGIFactor = 1.0;
+  s.emissiveGIMax = uintBitsToFloat(0x7f800000u);
+  s.hitDistance = -1.0;
+  s.hit = false;
+  s.backface = false;
+  s.doubleSided = false;
+
+  vec3 albedoSum = vec3(0.0);
+  vec3 normalSum = vec3(0.0);
+  vec3 positionSum = vec3(0.0);
+  float distanceSum = 0.0;
+  float weightSum = 0.0;
+
+  for(int sampleIndex = 0; sampleIndex < GI_DDGI_RSM_SAMPLES; sampleIndex++){
+
+    vec2 uv = ddgiRSMSampleUV(sampleIndex, GI_DDGI_RSM_SAMPLES);
+
+    vec4 normalUsed = textureLod(uReflectiveShadowMapNormalUsed, uv, 0.0);
+    if(normalUsed.w < 0.5){
+      continue; // no surface rasterized into this RSM texel
+    }
+
+    float depth = textureLod(uReflectiveShadowMapDepth, uv, 0.0).x;
+    vec4 worldPosition = rsm.reflectiveShadowMapToWorldMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depth, 1.0);
+    vec3 vplPosition = worldPosition.xyz / worldPosition.w;
+
+    vec3 toVPL = vplPosition - origin;
+    float distanceToVPL = length(toVPL);
+    if((distanceToVPL < max(tMin, 1e-3)) || (distanceToVPL > tMax)){
+      continue; // degenerate, or beyond this cascade's reach
+    }
+    vec3 directionToVPL = toVPL * (1.0 / distanceToVPL);
+
+    vec3 vplNormal = normalize(fma(normalUsed.xyz, vec3(2.0), vec3(-1.0)));
+    if(dot(-directionToVPL, vplNormal) <= 0.0){
+      continue; // the VPL surface faces away from the probe
+    }
+
+    float alignment = max(dot(direction, directionToVPL), 0.0);
+    if(alignment <= 0.0){
+      continue;
+    }
+    float weight = pow(alignment, GI_DDGI_RSM_SHARPNESS);
+
+    vec3 albedo = max(vec3(0.0), textureLod(uReflectiveShadowMapColor, uv, 0.0).xyz);
+    albedoSum += albedo * weight;
+    normalSum += vplNormal * weight;
+    positionSum += vplPosition * weight;
+    distanceSum += distanceToVPL * weight;
+    weightSum += weight;
+  }
+
+  if(weightSum > 1e-6){
+    s.hit = true;
+    s.albedo = albedoSum / weightSum;
+    s.normal = normalize(normalSum);
+    s.position = positionSum / weightSum;
+    s.hitDistance = distanceSum / weightSum;
+  }
+  return s;
+}
+#endif // GI_TRACE_BACKEND == GI_TRACE_BACKEND_RSM
 
 // Optional multi-bounce: sample the previous frame's irradiance field at each ray hit and feed it back as the indirect
 // term, giving "infinite" diffuse bounces. Compile-time toggle (default on) plus a runtime strength (push constant
@@ -84,67 +222,12 @@ float ddgiEmissiveMax = uintBitsToFloat(0x7f800000u);
 // Per-ray output (rgb = radiance towards the probe, a = hit distance / signed for fixed rays) now lives in the master's
 // ray-data BDA storage buffer (full precision, no image-format cap), written via ddgiStoreRay below.
 
-#if GI_DDGI_MULTIBOUNCE
-// Read-only views of the probe field this in-flight slot still holds from the PREVIOUS frame (the irradiance/visibility
-// update stages overwrite these images only after this trace stage), used as the feedback term. Same bindings as the
-// update stages write (set 1, bindings 2 and 3), just declared read-only here. The probe sampling function bodies
-// (declared by global_illumination_ddgi.glsl) are backed by these storage images via imageLoad. Both irradiance storage
-// variants are supported so multi-bounce works regardless of the GI_DDGI_STORAGE the field was built with.
-
-#if GI_DDGI_STORAGE_IS_SH
-// SH multi-bounce read now comes from the master's irradianceSH BDA buffer; ddgiLoadIrradianceSH is defined after the push
-// constant (it dereferences the master pointer), the prototype in global_illumination_ddgi.glsl lets the sampling use it.
-#else
-layout(set = 1, binding = 2, rgba16f) uniform readonly image2D uDDGIIrradianceOctRead;
-
-vec3 ddgiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
-  vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DDGI_IRRADIANCE_OCT_SIZE, GI_DDGI_IRRADIANCE_OCT_FULL);
-  ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_IRRADIANCE_OCT_FULL)));
-  return max(vec3(0.0), imageLoad(uDDGIIrradianceOctRead, texel).rgb);
-}
-#endif
-
-layout(set = 1, binding = 3, rg32f) uniform readonly image2D uDDGIVisibilityMomentsRead; // x = mean dist, y = mean dist^2
-
-vec3 ddgiSampleVisibility(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 direction){
-  vec2 uv = ddgiProbeOctUV(probeCoord, cascadeIndex, direction, GI_DDGI_VISIBILITY_OCT_SIZE, GI_DDGI_VISIBILITY_OCT_FULL);
-  ivec2 texel = ivec2(uv * vec2(ddgiAtlasSize(GI_DDGI_VISIBILITY_OCT_FULL))); // point sample (no bilinear) is fine for the secondary feedback term
-  // The multibounce gather discards the sky-visibility term (skyVisibilityUnused), so only the distance moments are read
-  // here (z = 0); the sky atlas is therefore not bound in the trace, avoiding a clash with the env cubemaps at binding 4.
-  return vec3(imageLoad(uDDGIVisibilityMomentsRead, texel).xy, 0.0); // x = mean dist, y = mean dist^2, z = sky (unused here)
-}
-#endif
-
 #include "gi_ddgi_pushconstants.glsl"
 
-#if GI_DDGI_PROBE_RELOCATION
-// Probe data (xyz = relocation offset, w = state) lives in the master's probe-data BDA buffer (written by the relocation/
-// classification passes). Used here for this probe's relocated ray origin and by the probe-sampling functions (multi-bounce).
-// Defined after the push constant since it dereferences the master pointer; the prototype in global_illumination_ddgi.glsl
-// lets the sampling functions (compiled above) call it.
-vec4 ddgiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIProbeDataBuffer pd = ddgiData.probeData; // launder through a local (readonly master field -> non-readonly ref) + hoist
-  return ddgiLoadProbeDataBuffer(pd, probeCoord, cascadeIndex);
-}
-#endif
-
-#if GI_DDGI_MULTIBOUNCE && GI_DDGI_STORAGE_IS_SH
-// Previous-frame SH irradiance (multi-bounce feedback) from the master's irradianceSH BDA buffer. Same packing as the update
-// pass writes; defined after the push constant (dereferences the master), prototyped in global_illumination_ddgi.glsl.
-DDGI_SH_TYPE ddgiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
-  DDGIIrradianceSHBuffer shBuf = ddgiData.irradianceSH; // hoist the master->sub-pointer deref once
-  DDGISHProbe p = ddgiLoadSHProbe(shBuf, probeCoord, cascadeIndex);     // one contiguous load of the whole probe
-  vec4 a = p.c[0]; vec4 b = p.c[1]; vec4 c = p.c[2];
-#if GI_DDGI_STORAGE == GI_DDGI_STORAGE_L2_VALUE
-  vec4 d = p.c[3]; vec4 e = p.c[4]; vec4 f = p.c[5]; vec4 g = p.c[6];
-  return SHC3CoefficientsL2Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w),
-                                  vec3(d.x, d.y, d.z), vec3(d.w, e.x, e.y), vec3(e.z, e.w, f.x), vec3(f.y, f.z, f.w),
-                                  vec3(g.x, g.y, g.z));
-#else
-  return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
-#endif
-}
-#endif
+// Shared previous-frame probe-field reads (set 1 binding 2/3) + the relocation offset + the SH irradiance loader — factored
+// out so the non-raytraced RSM producers reuse exactly this machinery instead of duplicating it. (The reads are declared
+// read-only here; the update stages overwrite these images only after this trace stage.)
+#include "gi_ddgi_multibounce.glsl"
 
 void main(){
 

@@ -571,6 +571,11 @@ compileshaderarguments=(
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
   "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
+  # Non-raytraced DDGI producer = the SAME gi_ddgi_trace.comp built with the Reflective Shadow Map backend (GI_TRACE_BACKEND=2):
+  # no ray query (no ray-tracing SPIR-V target needed), reads the sun's RSM instead of the TLAS. Probe iteration / relocation /
+  # multi-bounce / particle injection / ray-data encode are identical to the ray-query build. Used as the DDGI fallback when
+  # hardware ray query is unavailable.
+  "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -DGI_TRACE_BACKEND=2 -o ${tempPath}/gi_ddgi_trace_rsm_comp.spv"
   # gi_ddgi_rsm_splat.comp is the non-raytraced DDGI producer (Reflective Shadow Map VPL splatting), used as the fallback
   # when hardware ray query is unavailable. It writes the same ddgiData ray-data contract as the trace, so it needs the
   # buffer_reference SPIR-V target; it does NOT ray-trace, so no ray-tracing target is required.
@@ -817,6 +822,11 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_rsm_frag.spv"
+  # Reflective shadow map ALBEDO output variants (non-raytraced DDGI RSM-backend producer): raw albedo, no lighting. Only the
+  # non-velocity / non-wireframe TopLevelKind variants the ReflectiveShadowMap planet pass actually loads.
+  "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRSMALBEDO -o ${tempPath}/planet_renderpass_rsm_albedo_frag.spv"
+  "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DRSMALBEDO -o ${tempPath}/planet_renderpass_bufref_rsm_albedo_frag.spv"
+  "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DRSMALBEDO -o ${tempPath}/planet_renderpass_raytracing_rsm_albedo_frag.spv"
 
   # Planet surface voxelization (cascaded voxel cone tracing): shared fragment + per-cascade-count geometry shader
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVOXELIZATION -o ${tempPath}/planet_renderpass_bufref_voxelization_frag.spv"
@@ -937,6 +947,9 @@ compileshaderarguments=(
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_rsm_frag.spv"
   "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_rsm_frag.spv"
+  # Reflective shadow map ALBEDO output variants (non-raytraced DDGI RSM-backend producer): raw albedo, no lighting.
+  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DUSE_BUFFER_REFERENCE -DRSMALBEDO -o ${tempPath}/planet_grass_bufref_rsm_albedo_frag.spv"
+  "-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DRAYTRACING -DRSMALBEDO -o ${tempPath}/planet_grass_raytracing_rsm_albedo_frag.spv"
 
   # Atmosphere
   "-V atmosphere_map_scan.comp -o ${tempPath}/atmosphere_map_scan_comp.spv"
@@ -1330,6 +1343,10 @@ addMeshFragmentPassTargetVariants(){
 
   # The reflective shadow map stuff
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"
+
+  # Reflective shadow map ALBEDO output (for the non-raytraced DDGI RSM-backend producer): outputs the raw albedo and skips
+  # all lighting (the producer re-lights the albedo itself, so the probe field is not double-lit).
+  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm_albedo" "$2 -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT -DRSMALBEDO"
 
   # The voxelization stuff
   addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION ${VOXEL_CONTENT_FP16_DEFINE}"

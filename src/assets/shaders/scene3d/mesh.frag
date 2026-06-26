@@ -875,9 +875,13 @@ void main() {
 
       const bool receiveShadows = (flags & (1u << 30u)) != 0u;
 
+      // The RSM albedo output variant writes the raw albedo and lets the GI producer re-light it, so all lighting here is
+      // unnecessary work — skip the direct-light accumulation entirely. (IBL/GI are already skipped for the RSM output.)
+#if !defined(RSMALBEDO)
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
+#endif
 
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
@@ -1095,7 +1099,13 @@ void main() {
 #else
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
 #endif
+#if defined(RSMALBEDO)
+      // RSM albedo output: write the raw diffuse albedo (base color, demoted for metals) instead of the shaded flux. The GI
+      // producer reading this RSM applies the lighting itself (albedo * directLight), so the probe field is not double-lit.
+      color = vec4(baseColor.xyz * (1.0 - metallic), baseColor.w);
+#else
       color = vec4(colorOutput.xyz, baseColor.w);
+#endif
 #ifndef EXTRAEMISSIONOUTPUT
       color.xyz += emissiveOutput * (1.0 - (clearcoatFactor * clearcoatFresnel));
 #endif

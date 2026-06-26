@@ -574,6 +574,9 @@ void main(){
 
   const bool receiveShadows = true;
 
+  // The RSM albedo output variant writes the raw albedo and lets the GI producer re-light it, so all lighting (the direct
+  // light loop + the IBL/GI block below) is unnecessary work — skip it entirely.
+#if !defined(RSMALBEDO)
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
@@ -621,9 +624,16 @@ void main(){
   vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
   colorOutput += iblResultColor * giIBLWeight;
+#endif // !RSMALBEDO
 
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
+#if defined(RSMALBEDO)
+  // RSM albedo output: write the raw diffuse albedo (already metallic-demoted) instead of the shaded flux; the GI producer
+  // applies the lighting itself, so the probe field is not double-lit.
+  vec4 c = vec4(diffuseColorAlpha.xyz, 1.0);
+#else
   vec4 c = vec4(colorOutput, 1.0);
+#endif
 
   if(planetData.selected.w > 1e-6){
 

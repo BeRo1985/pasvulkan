@@ -994,6 +994,7 @@ type { TpvScene3DRendererInstance }
        fKeepPass0InPass1:Boolean;
        fSelectionOutlineThickness:TpvFloat;
        fDebugDDGIProbes:Boolean;
+       fGlobalIlluminationDDGIUseRSMSplat:Boolean; // non-raytraced DDGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM); default true
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1315,6 +1316,7 @@ type { TpvScene3DRendererInstance }
        property SelectionOutlineThickness:TpvFloat read fSelectionOutlineThickness write fSelectionOutlineThickness;
        // Debug: draw every DDGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
        property DebugDDGIProbes:Boolean read fDebugDDGIProbes write fDebugDDGIProbes;
+       property GlobalIlluminationDDGIUseRSMSplat:Boolean read fGlobalIlluminationDDGIUseRSMSplat write fGlobalIlluminationDDGIUseRSMSplat; // set before Prepare; only consulted for DDGI without hardware ray query
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -1447,6 +1449,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGITraceRSMComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIRSMSplatComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationDDGIStageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass,
@@ -1583,7 +1586,8 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
        fGlobalIlluminationDDGITraceComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass;
-       fGlobalIlluminationDDGIRSMSplatComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass; // non-raytraced RSM producer (used instead of the trace when raytracing is unavailable)
+       fGlobalIlluminationDDGITraceRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGITraceRSMComputePass; // non-raytraced RSM producer (used instead of the trace when raytracing is unavailable)
+       fGlobalIlluminationDDGIRSMSplatComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass; // alternative non-raytraced RSM producer (standalone flux VPL splat; selected by GlobalIlluminationDDGIUseRSMSplat)
        fGlobalIlluminationDDGIIrradianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
        fGlobalIlluminationDDGIGlossyRadianceUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass; // glossy atlas (only when GlobalIlluminationDDGIGlossyRadiance)
        fGlobalIlluminationDDGIVisibilityUpdateComputePass:TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass;
@@ -2273,6 +2277,8 @@ begin
  fSelectionOutlineThickness:=3.0;
 
  fDebugDDGIProbes:=false;
+
+ fGlobalIlluminationDDGIUseRSMSplat:=true; // default = standalone flux RSM VPL splat producer; set false before Prepare for the RSM backend of the trace shader (albedo)
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
@@ -3772,7 +3778,7 @@ begin
                                                                                      pvAllocationGroupIDScene3DStatic,
                                                                                      'TpvScene3DRendererInstance.fGlobalIlluminationDDGIMasterBuffers['+IntToStr(InFlightFrameIndex)+']');
 
-    // Non-raytraced fallback only: the RSM matrices UBO the gi_ddgi_rsm_splat producer reads (set 0 binding 3). It shares
+    // Non-raytraced fallback only: the RSM matrices UBO the RSM-backend trace producer reads (set 2 binding 3). It shares
     // the radiance-hints RSM UBO type/buffer (reused, not duplicated); allocated here so the DDGI mode owns it when there is
     // no hardware ray query. Filled (slim, matrices only) in UpdateGlobalIlluminationDDGI; freed in the mode-independent
     // FreeAndNil loop with the other radiance-hints buffers (nil-safe).
@@ -5293,10 +5299,11 @@ begin
    // light buffers; visibility for the gather shading is resolved with ray-traced shadow rays, so no shadow map dependency
    // is required. The main mesh culling/rendering is made to depend on the update pass further below.
    // DDGI producer selection: with hardware ray query, the ray-tracing trace pass; without it, the non-raytraced Reflective
-   // Shadow Map splat pass (renders the sun's RSM first, then splats its texels as VPLs into the same ray-data). The probe
-   // BLEND/update core below is producer-agnostic (it only reads the ray-data), so only the producer and the Irradiance
-   // dependency on it differ. Relocation/classification stay on: the splat writes the fixed rays as misses, so probes
-   // classify active with a ~zero relocation offset (RSM gives no probe-space geometry distances, accepted for the fallback).
+   // Shadow Map backend of the SAME trace shader (renders the sun's RSM first, then gathers its lit texels along each probe
+   // ray instead of tracing the TLAS). The probe BLEND/update core below is producer-agnostic (it only reads the ray-data), so
+   // only the producer and the Irradiance dependency on it differ; relocation, multi-bounce, particle injection and the
+   // ray-data encode all run identically (it is the same main()). The RSM gather only sees lit geometry, so probe-space
+   // occlusion is partial — accepted for the fallback.
    if Renderer.Scene3D.RaytracingActive then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGITraceComputePass.Create(fFrameGraph,self);
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
@@ -5306,8 +5313,8 @@ begin
      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
     end;
    end else begin
-    // No hardware ray query: render the sun's Reflective Shadow Map (mesh filter -> RSM render pass), then the splat producer
-    // reads it. The RSM mesh filter wants the cascaded shadow map for shadowed flux; depend on it only if it exists here.
+    // No hardware ray query: render the sun's Reflective Shadow Map (mesh filter -> RSM render pass), then the RSM-backend
+    // trace producer reads it. The RSM mesh filter wants the cascaded shadow map for shadowed flux; depend on it only if it exists here.
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.ReflectiveShadowMap);
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
      TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
@@ -5329,10 +5336,28 @@ begin
     end;
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=TpvScene3DRendererPassesReflectiveShadowMapRenderPass.Create(fFrameGraph,self);
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass.Create(fFrameGraph,self);
-    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
-    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
-     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+    // DDGI producer (no hardware ray query): default = the RSM backend of the trace shader (reads the RSM as albedo); opt-in
+    // via GlobalIlluminationDDGIUseRSMSplat = the standalone RSM VPL splat (reads the RSM as flux). Both gather only lit RSM
+    // texels (partial probe-space occlusion, accepted for the fallback), inject the particle LBVH and feed the SAME probe
+    // BLEND/update core. Both depend on the RSM render pass + (when present) the atmosphere process + the particle BVH build.
+    if not fGlobalIlluminationDDGIUseRSMSplat then begin
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGITraceRSMComputePass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+     end;
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+     end;
+    end else begin
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass.Create(fFrameGraph,self);
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+     end;
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
+     end;
     end;
    end;
    // The technique-agnostic probe BLEND/update CORE is split into one frame-graph pass per compute stage so each shader gets
@@ -5341,6 +5366,8 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass:=TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.Create(fFrameGraph,self,TpvScene3DRendererPassesGlobalIlluminationDDGIStageComputePass.TStage.Irradiance,false);
    if Renderer.Scene3D.RaytracingActive then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceComputePass);
+   end else if not fGlobalIlluminationDDGIUseRSMSplat then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGITraceRSMComputePass);
    end else begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIIrradianceUpdateComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDDGIRSMSplatComputePass);
    end;
@@ -8762,9 +8789,9 @@ begin
  // Non-raytraced fallback producer: render + read the sun's RSM. The RSM render pass only draws when MustRenderGIMaps is set
  // (otherwise driven by the radiance-hints caching logic, which does not run in DDGI mode), so set it every frame here — the
  // fallback needs a fresh RSM each frame and the RSM render pass is the only consumer of this flag in DDGI mode. Then fill the
- // (slim) RSM matrices UBO the gi_ddgi_rsm_splat producer reads (set 0 binding 3): only the world<->RSM matrices are needed (the
- // splat reconstructs a VPL world position from the RSM depth); AddReflectiveShadowMapView in the view setup has already written
- // InFlightFrameState.ReflectiveShadowMapMatrix this frame. The remaining RSM UBO fields stay zero (unused by the splat).
+ // (slim) RSM matrices UBO the RSM-backend trace producer reads (set 2 binding 3): only the world<->RSM matrices are needed (the
+ // backend reconstructs a VPL world position from the RSM depth); AddReflectiveShadowMapView in the view setup has already written
+ // InFlightFrameState.ReflectiveShadowMapMatrix this frame. The remaining RSM UBO fields stay zero (unused by the backend).
  if not Renderer.Scene3D.RaytracingActive then begin
   fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex]:=true;
   if assigned(fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex]) then begin

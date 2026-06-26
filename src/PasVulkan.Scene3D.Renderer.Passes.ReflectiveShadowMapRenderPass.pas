@@ -211,12 +211,24 @@ procedure TpvScene3DRendererPassesReflectiveShadowMapRenderPass.AcquirePersisten
 var Index:TpvSizeInt;
     Stream:TStream;
     MeshFragmentSpecializationConstants:TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants;
+    RSMInfix:TpvUTF8String;
 begin
  inherited AcquirePersistentResources;
 
  fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
 
  MeshFragmentSpecializationConstants:=fInstance.MeshFragmentSpecializationConstants;
+
+ // The non-raytraced DDGI RSM-backend (trace) producer wants the RSM to carry raw albedo (it re-lights it itself), so render the
+ // albedo output variant of the fragment shaders in that case; otherwise (radiance hints, OR the RSM VPL splat producer which
+ // re-emits the stored flux directly) the lit flux variant.
+ if (fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+    (not fInstance.Renderer.Scene3D.RaytracingActive) and
+    (not fInstance.GlobalIlluminationDDGIUseRSMSplat) then begin
+  RSMInfix:='rsm_albedo_';
+ end else begin
+  RSMInfix:='rsm_';
+ end;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
@@ -225,7 +237,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'rsm_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+RSMInfix+'frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -233,11 +245,11 @@ begin
  end;
 
  if fInstance.Renderer.UseDemote then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'rsm_alphatest_demote_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+RSMInfix+'alphatest_demote_frag.spv');
  end else if fInstance.Renderer.UseNoDiscard then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'rsm_alphatest_nodiscard_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+RSMInfix+'alphatest_nodiscard_frag.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'rsm_alphatest_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+RSMInfix+'alphatest_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);

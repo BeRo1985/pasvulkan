@@ -1202,7 +1202,7 @@ begin
  end;
 
  // DDGI normally needs hardware ray tracing to trace the probe rays. When it is not available we KEEP DDGI but drive its
- // probe field from a non-raytraced Reflective Shadow Map producer (gi_ddgi_rsm_splat) instead of the ray-query trace; the
+ // probe field from a non-raytraced Reflective Shadow Map producer (gi_ddgi_trace built with the RSM backend) instead of the ray-query trace; the
  // probe blend / shading path is producer-agnostic, so only the producer pass differs (wired in the Instance per RaytracingActive).
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin

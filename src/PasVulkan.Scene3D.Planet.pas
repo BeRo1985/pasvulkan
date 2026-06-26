@@ -27433,6 +27433,7 @@ constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;
 var Stream:TStream;
     Kind:TpvUTF8String;
     TopLevelKind:TpvUTF8String;
+    RSMInfix:TpvUTF8String;
 begin
 
  inherited Create;
@@ -27610,14 +27611,25 @@ begin
 
    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
 
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'rsm_frag.spv');
+    // The non-raytraced DDGI RSM-backend (trace) producer wants raw albedo in the RSM (it re-lights it itself); render the
+    // albedo output variant in that case, otherwise (radiance hints, OR the RSM VPL splat producer which re-emits the stored
+    // flux directly) the lit flux variant.
+    if (TpvScene3DRenderer(fRenderer).GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination) and
+       (not TpvScene3D(fScene3D).RaytracingActive) and
+       (not TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDDGIUseRSMSplat) then begin
+     RSMInfix:='rsm_albedo_';
+    end else begin
+     RSMInfix:='rsm_';
+    end;
+
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+RSMInfix+'frag.spv');
     try
      fPlanetFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
      FreeAndNil(Stream);
     end;
 
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'rsm_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+RSMInfix+'frag.spv');
     try
      fGrassFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally

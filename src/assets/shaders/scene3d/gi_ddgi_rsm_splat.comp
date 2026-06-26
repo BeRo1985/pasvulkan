@@ -14,7 +14,12 @@
 // Dispatch is identical to the trace: one thread per (rayIndex, globalProbeIndex), local_size_x = 32, grid
 // ((raysPerProbe + 31) >> 5, totalProbes, 1). Each thread owns one ray slot and gathers the RSM VPLs whose direction from
 // the probe aligns with this ray's deterministic spherical-Fibonacci direction, weighted by a Phong lobe around it.
+//
+// Extension: multi-bounce and particle injection (the "later stages" above) are now implemented, and the probe position is
+// relocated (ddgiLoadProbeData) like the trace — all shared with the trace via gi_ddgi_multibounce.glsl and
+// gi_ddgi_particle_inject.glsl. It still reads the RSM flux directly (no lights / no global descriptor set).
 
+#extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference_uvec2 : require
@@ -48,8 +53,19 @@ layout(set = 0, binding = 3, std140) uniform RSMData {
 // --- Set 1: DDGI field resources (same set/bindings the trace uses) --------------------------------------------------
 // binding 0 = ddgiData SSBO (cascade globals + the BDA sub-buffer pointers, incl. rayData), pulled in by the include below.
 // binding 4 = the 6 environment cubemaps (sky on ray miss), mirroring gi_ddgi_trace.comp.
+// binding 2 = previous-frame oct irradiance read + binding 3 = visibility read (multi-bounce; declared by gi_ddgi_multibounce.glsl).
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+
+// Optional multi-bounce (default on): sample the previous frame's irradiance field at each gather hit and feed it back as the
+// indirect term. Enables the probe sampling path (GLOBAL_ILLUMINATION_DDGI_SAMPLE) in the DDGI header below.
+#ifndef GI_DDGI_MULTIBOUNCE
+  #define GI_DDGI_MULTIBOUNCE 1
+#endif
+#if GI_DDGI_MULTIBOUNCE
+  #define GLOBAL_ILLUMINATION_DDGI_SAMPLE
+#endif
+
 #include "global_illumination_ddgi.glsl"     // probe field dims + addressing + ddgiData SSBO (via gi_ddgi_data.glsl)
 #include "gi_ddgi_raydata.glsl"              // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiStoreRay
 #include "gi_ddgi_pushconstants.glsl"        // the shared DDGI push-constant block (randomRotation / params / blend / ...)
@@ -63,6 +79,11 @@ vec3 ddgiGatherSky(const in vec3 dir){
   vec4 envB = textureLod(uDDGIEnvironmentMaps[5], dir, 0.0);           // Lambertian, env B (atmosphere); w = coverage
   return mix(irradiance, envB.xyz, envB.w);
 }
+
+// Shared previous-frame probe-field reads (binding 2/3) + the relocation offset + the SH irradiance loader, and the particle
+// LBVH inject — the same machinery the ray-query trace uses, factored out here to avoid duplicating it.
+#include "gi_ddgi_multibounce.glsl"
+#include "gi_ddgi_particle_inject.glsl"
 
 // --- RSM VPL sampling parameters -------------------------------------------------------------------------------------
 // Number of RSM texels sampled per ray slot per frame, spread over the whole RSM with a 2D spherical-Fibonacci (golden-
@@ -112,6 +133,14 @@ void main(){
   // Toroidal scrolling: the iterated slot is physical; its world position comes from the logical lattice coordinate.
   ivec3 logicalProbeCoord = ddgiProbeLogicalCoord(probeCoord, cascadeIndex);
   vec3 probePosition = ddgiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
+#if GI_DDGI_PROBE_RELOCATION
+  // Gather from the relocated probe position (the relocation pass pushed it out of geometry), so the gathered irradiance/
+  // visibility match the position the shading sampler reads it back at. Skip on this slot's first frame (probe data is still
+  // uninitialized garbage) until the relocation pass has written a value at least once. blend.z = first-frame flag.
+  if(pushConstants.blend.z < 0.5){
+    probePosition += ddgiLoadProbeData(probeCoord, cascadeIndex).xyz;
+  }
+#endif
 
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
   vec3 rayDirection = ddgiTraceRayDirection(rayIndex, randomRotation); // contract: fixed (unrotated) vs random (rotated)
@@ -127,7 +156,10 @@ void main(){
   // Gather: accumulate the RSM VPLs that fall within this ray slot's Phong lobe. As a ray *hit*, a Lambertian VPL emits
   // radiance flux/PI towards the probe (view-independent), with no 1/d^2 falloff (that is a directional sample, not a point
   // light); the receiver cosine is applied later by the irradiance blend. The VPL surface cosine gates the half-space only.
+  // Also track the weighted VPL position/normal, for the multi-bounce feedback sampled at the resolved hit.
   vec3 radianceSum = vec3(0.0);
+  vec3 positionSum = vec3(0.0);
+  vec3 normalSum = vec3(0.0);
   float distanceSum = 0.0;
   float weightSum = 0.0;
 
@@ -167,6 +199,8 @@ void main(){
       vec3 radiance = flux * GI_DDGI_RSM_ONE_OVER_PI;
 
       radianceSum += radiance * weight;
+      positionSum += vplPosition * weight;
+      normalSum += vplNormal * weight;
       distanceSum += distanceToVPL * weight;
       weightSum += weight;
     }
@@ -174,18 +208,39 @@ void main(){
 
   // Resolve the slot: a populated lobe becomes a hit (averaged VPL radiance + averaged distance); an empty lobe is a sky
   // miss (the same sky term the trace integrates, distance = tMax) so the probe still bakes in the correctly-occluded sky.
+  // Multi-bounce then adds the previous frame's indirect at the resolved hit position; particles are injected afterwards.
   vec3 outRadiance = vec3(0.0);
   bool hit = false;
+  bool backface = false; // RSM VPLs / sky are front-facing; only an injected opaque particle would touch this (it does not here)
   float hitDistance = tMax;
   if(!isFixed){
     if(weightSum > 1e-6){
-      outRadiance = (radianceSum / weightSum) * GI_DDGI_RSM_SPLAT_INTENSITY;
+      vec3 radiance = radianceSum / weightSum;
+      vec3 vplPosition = positionSum / weightSum;
+      vec3 vplNormal = normalize(normalSum);
       hitDistance = distanceSum / weightSum;
+#if GI_DDGI_MULTIBOUNCE
+      // The VPL re-reflects the previous-frame indirect light (multi-bounce). The RSM stores flux, not a separate albedo, so the
+      // secondary bounce assumes unit albedo (the 1/PI Lambertian normalization only); pushConstants.blend.y is the feedback
+      // strength that bounds it against runaway, the same feedback term the trace producer applies at its hit.
+      float skyVisibilityUnused;
+      vec3 previousFrameIndirect = ddgiSampleIrradiance(vplPosition, vplNormal, -rayDirection, skyVisibilityUnused) * pushConstants.blend.y;
+      if(any(isnan(previousFrameIndirect)) || any(isinf(previousFrameIndirect))){
+        previousFrameIndirect = vec3(0.0);
+      }
+      radiance += GI_DDGI_RSM_ONE_OVER_PI * previousFrameIndirect;
+#endif
+      outRadiance = radiance * GI_DDGI_RSM_SPLAT_INTENSITY;
       hit = true;
     }else{
       outRadiance = ddgiGatherSky(rayDirection);
       hit = false;
     }
+
+    // Particle LBVH inject (shared with the trace via gi_ddgi_particle_inject.glsl): a closest opaque particle overrides the
+    // radiance + shortens the distance, transparent/additive particles add emission. tMin = 1e-3, miss bound = tMax.
+    ddgiInjectParticles(probePosition, rayDirection, 1e-3, tMax, outRadiance, hit, backface, hitDistance);
+
     if(any(isnan(outRadiance)) || any(isinf(outRadiance))){
       outRadiance = vec3(0.0);
     }

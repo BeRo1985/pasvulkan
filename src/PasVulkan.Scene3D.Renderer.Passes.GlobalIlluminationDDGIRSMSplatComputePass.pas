@@ -91,9 +91,9 @@ type { TpvScene3DRendererPassesGlobalIlluminationDDGIRSMSplatComputePass }
              RandomRotation1:TpvVector4;         // mat3 column 1 in xyz
              RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-             Blend:TpvVector4;                   // unused by the splat (kept to byte-match gi_ddgi_pushconstants.glsl)
-             EmissiveGIParticleCount:TpvVector4; // unused by the splat (kept to byte-match gi_ddgi_pushconstants.glsl)
-             ParticleBVH:TpvUInt32Vector4;       // unused by the splat (kept to byte-match gi_ddgi_pushconstants.glsl)
+             Blend:TpvVector4;                   // x = irradiance blend, y = multi-bounce feedback strength, z = first-frame relocation gate (< 0.5 applies the offset)
+             EmissiveGIParticleCount:TpvVector4; // x = emissive GI scale, y = emissive GI maximum, z = alive particle count (0 disables particle injection)
+             ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
             end;
             PPushConstants=^TPushConstants;
       private
@@ -206,15 +206,26 @@ begin
  fRSMDescriptorSetLayout.Initialize;
 
  // Set 1 = DDGI resources: ddgiData SSBO (cascade globals + sub-buffer pointers, incl. ray-data) + 6 env cubemaps (sky-on-miss).
+ // Plus the previous-frame multi-bounce reads (mirrors the trace pass): octahedral irradiance at binding 2 (octahedral storage
+ // only; SH irradiance is the master BDA buffer, no image) and the visibility moments at binding 3.
  fDDGIDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                      fInstance.Renderer.CountInFlightFrames);
- fDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames);
+ fDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,fInstance.Renderer.CountInFlightFrames); // binding 0 = ddgiData SSBO
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+  fDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2); // binding 2 = oct irradiance read + binding 3 = visibility read (multi-bounce)
+ end else begin
+  fDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames); // binding 3 = visibility read only (SH irradiance is a BDA buffer via the master)
+ end;
  fDDGIDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
  fDDGIDescriptorPool.Initialize;
 
  fDDGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fDDGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);        // ddgiData SSBO
+ if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+  fDDGIDescriptorSetLayout.AddBinding(2,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);       // oct irradiance read (multi-bounce)
+ end;
+ fDDGIDescriptorSetLayout.AddBinding(3,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]);        // visibility moments read (multi-bounce)
  fDDGIDescriptorSetLayout.AddBinding(4,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,6,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),[]); // 6 env cubemaps (sky-on-miss)
  fDDGIDescriptorSetLayout.Initialize;
 
@@ -247,6 +258,12 @@ begin
 
   fDDGIDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDDGIDescriptorPool,fDDGIDescriptorSetLayout);
   fDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fInstance.GlobalIlluminationDDGIMasterBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false); // binding 0 = ddgiData SSBO
+  if TpvScene3DRendererInstance.GlobalIlluminationDDGIStorageOctahedral then begin
+   fDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                               [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 2 = oct irradiance read (multi-bounce)
+  end;
+  fDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDDGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 3 = visibility moments read (multi-bounce)
   fDDGIDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,6,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                               [fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
                                                                fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
@@ -300,6 +317,8 @@ var PushConstants:TPushConstants;
     RotationMatrix:TpvMatrix3x3;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     FinalMemoryBarrier:TVkMemoryBarrier;
+    ParticleEmitterAddress,ParticleNodeAddress:TVkDeviceAddress;
+    ParticleCount:TpvUInt32;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -318,13 +337,34 @@ begin
  PushConstants.Params.z:=TpvScene3DRendererInstance.GlobalIlluminationDDGIProbesPerCascade;
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDDGIRaysPerProbe;
 
- // Unused by the splat (no multi-bounce / emissive / particle injection here), zeroed to keep the push block well-defined.
- PushConstants.Blend:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
- PushConstants.EmissiveGIParticleCount:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
- PushConstants.ParticleBVH.x:=0;
- PushConstants.ParticleBVH.y:=0;
- PushConstants.ParticleBVH.z:=0;
- PushConstants.ParticleBVH.w:=0;
+ // Multi-bounce feedback strength + relocation-offset gate: 0 / first-frame on this slot's first frame (the previous probe
+ // field is uninitialized garbage and the relocation offset is not written yet), else full. Shared with the probe-update pass.
+ if fInstance.GlobalIlluminationDDGIFirstFrames[aInFlightFrameIndex] then begin
+  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,0.0,1.0,0.0);
+ end else begin
+  PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
+ end;
+
+ // Particle LBVH (software-traced, no hardware RT): alive count + emitter/node buffer addresses, zero when inactive. The splat
+ // injects particles through the same shared gi_ddgi_particle_inject.glsl as the trace producer.
+ ParticleEmitterAddress:=0;
+ ParticleNodeAddress:=0;
+ ParticleCount:=0;
+ if assigned(fInstance.ParticleBVH) and fInstance.ParticleBVH.Active and assigned(fInstance.ParticleBVH.NodeBuffers[aInFlightFrameIndex]) and assigned(fInstance.ParticleBVH.EmitterBuffers[aInFlightFrameIndex]) then begin
+  ParticleEmitterAddress:=fInstance.ParticleBVH.EmitterBuffers[aInFlightFrameIndex].DeviceAddress;
+  ParticleNodeAddress:=fInstance.ParticleBVH.NodeBuffers[aInFlightFrameIndex].DeviceAddress;
+  ParticleCount:=Min(TpvSizeInt(fInstance.Scene3D.CountInFlightFrameParticleVertices[aInFlightFrameIndex] div 3),TpvSizeInt(TpvScene3D.MaxParticles));
+ end;
+
+ PushConstants.EmissiveGIParticleCount:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationEmissiveScale,
+                                                       fInstance.Renderer.GlobalIlluminationEmissiveMaximum,
+                                                       ParticleCount,
+                                                       0.0);
+
+ PushConstants.ParticleBVH.x:=TpvUInt32(ParticleEmitterAddress and TpvUInt64($ffffffff));
+ PushConstants.ParticleBVH.y:=TpvUInt32(ParticleEmitterAddress shr 32);
+ PushConstants.ParticleBVH.z:=TpvUInt32(ParticleNodeAddress and TpvUInt64($ffffffff));
+ PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
 
  // Make the host/transfer writes visible to the compute shader: the ddgiData buffer's per-frame cascade globals (SSBO read)
  // and the shared RSM matrices UBO (uniform read).

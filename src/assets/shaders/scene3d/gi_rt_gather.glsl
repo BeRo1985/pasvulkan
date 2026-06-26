@@ -30,7 +30,11 @@
 //    GI_GATHER_DEFAULT_PLANET_ALBEDO  vec3(0.25) - albedo used for planet hits (planet materials are not unpacked here)
 // =====================================================================================================================
 
-#ifdef RAYTRACING
+// Active for the hardware ray-query backend (RAYTRACING) AND for the non-raytraced Reflective Shadow Map backend
+// (GI_GATHER_RSM): both need the GIGatherSurface struct + the light evaluation / shading (which only requires LIGHTS, not
+// the TLAS). The actual closest-hit (ray query, planet-material unpack) stays RAYTRACING-only further below; the RSM
+// backend provides its own giTraceClosestHit in the includer.
+#if defined(RAYTRACING) || defined(GI_GATHER_RSM)
 
 #ifndef GI_GATHER_TRACE_SHADOWS
   #define GI_GATHER_TRACE_SHADOWS 1
@@ -68,6 +72,10 @@ struct GIGatherSurface {
   bool doubleSided;  // true when the hit material is double-sided (face culling == None). A "backface" of a double-sided
                      // surface (foliage, thin sheets) is a legitimate surface, not geometry the probe is embedded in.
 };
+
+// The closest-hit query + planet-material unpack below are hardware ray-query + global-texture based, so they are
+// RAYTRACING-only. The RSM backend does not use them (it gathers RSM texels in its own giTraceClosestHit).
+#ifdef RAYTRACING
 
 // ---------------------------------------------------------------------------------------------------------------------
 //  Closest-hit query with material extraction.
@@ -346,6 +354,8 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
   return s;
 }
 
+#endif // RAYTRACING (closest-hit + planet-material unpack)
+
 // ---------------------------------------------------------------------------------------------------------------------
 //  Lambertian contribution of a single light at a gather hit, with an optional ray-traced shadow. This mirrors the
 //  light model used by the voxel cone tracing radiance transfer (voxelEvaluateLight) so the indirect light matches the
@@ -450,7 +460,8 @@ vec3 giGatherShadeHit(const in GIGatherSurface surface, const in vec3 previousFr
 }
 
 // Convenience: trace one gather ray and return its radiance, sampling the sky on a miss. previousFrameIndirect is only
-// applied at geometry hits.
+// applied at geometry hits. Ray-query based, hence RAYTRACING-only.
+#ifdef RAYTRACING
 vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const in float tMin, const in float tMax, const in uint cullMask, const in vec3 previousFrameIndirect, out float hitDistance){
   GIGatherSurface surface = giGatherClosestHit(origin, direction, tMin, tMax, cullMask);
   hitDistance = surface.hitDistance;
@@ -459,6 +470,7 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
   }
   return giGatherShadeHit(surface, previousFrameIndirect);
 }
+#endif // RAYTRACING
 
 // ---------------------------------------------------------------------------------------------------------------------
 //  Swappable closest-hit trace backend. The trace producers (DDGI) call giTraceClosestHit() instead of a fixed
@@ -469,6 +481,7 @@ vec3 giGatherTraceRadiance(const in vec3 origin, const in vec3 direction, const 
 // ---------------------------------------------------------------------------------------------------------------------
 #define GI_TRACE_BACKEND_RAYQUERY 0
 #define GI_TRACE_BACKEND_SDF      1
+#define GI_TRACE_BACKEND_RSM      2  // non-raytraced Reflective Shadow Map gather; its giTraceClosestHit is provided by the includer (gi_ddgi_trace.comp)
 #ifndef GI_TRACE_BACKEND
   #define GI_TRACE_BACKEND GI_TRACE_BACKEND_RAYQUERY
 #endif
@@ -478,6 +491,6 @@ GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction,
 }
 #endif
 
-#endif // RAYTRACING
+#endif // RAYTRACING || GI_GATHER_RSM
 
 #endif // GI_RT_GATHER_GLSL
