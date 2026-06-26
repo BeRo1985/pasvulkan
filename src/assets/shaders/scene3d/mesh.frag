@@ -1074,6 +1074,23 @@ void main() {
       }
 #endif
       vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
+      // Blend the probe-derived glossy reflection into the specular source by roughness (matches planet_renderpass/grass and
+      // the SH path): rough surfaces take the probe field along the reflection vector (occlusion-aware local colour bleed, not
+      // the bright sky cubemap), sharp surfaces keep the environment reflection (the low-res probe atlas can't resolve a sharp
+      // reflection). This stops the sky colour leaking onto rough surfaces (e.g. wheels) via the environment IBL specular.
+      {
+        vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
+        float dugiGlossySkyUnused;
+        vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, dugiReflectionVector, viewDirection, dugiGlossySkyUnused) * OneOverPI; // broad reflection
+#if defined(GI_DUGI_GLOSSY_RADIANCE)
+        // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
+        vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
+        dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+#endif
+        iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+      }
+#endif
       vec3 iblSpecularDielectric = iblSpecularMetal;
       vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
       vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
