@@ -994,7 +994,7 @@ type { TpvScene3DRendererInstance }
        fKeepPass0InPass1:Boolean;
        fSelectionOutlineThickness:TpvFloat;
        fDebugDUGIProbes:Boolean;
-       fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM); default true
+       fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -2278,7 +2278,7 @@ begin
 
  fDebugDUGIProbes:=false;
 
- fGlobalIlluminationDUGIUseRSMSplat:=true; // default = standalone flux RSM VPL splat producer; set false before Prepare for the RSM backend of the trace shader (albedo)
+ fGlobalIlluminationDUGIUseRSMSplat:=false; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
