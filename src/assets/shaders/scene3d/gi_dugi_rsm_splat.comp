@@ -115,10 +115,25 @@ vec3 dugiGatherSky(const in vec3 dir){
 
 const float GI_DUGI_RSM_ONE_OVER_PI = 0.3183098861837907; // 1/PI: Lambertian outgoing radiance = flux / PI
 
-// 2D low-discrepancy point on the unit square (golden-ratio / spherical-Fibonacci style) for sample i of n.
+// PCG3D hash -> a per-(probe, ray, frame) Cranley-Patterson rotation offset in [0,1)^2 for the RSM sample set. main() sets
+// gDUGIRSMJitter below before the gather; rotating the fixed stratified taps per probe/ray and every frame makes them cover the
+// whole RSM over the DUGI temporal blend, instead of every probe/ray/frame seeing the same 64 texels (a fixed global pattern is
+// a near-blind subsample of a large RSM).
+vec2 dugiRSMJitter(const in uvec3 seed){
+  uvec3 v = (seed * 1664525u) + 1013904223u;
+  v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+  v ^= v >> 16u;
+  v.x += v.y * v.z; v.y += v.z * v.x;
+  return vec2(v.xy) * (1.0 / 4294967296.0);
+}
+vec2 gDUGIRSMJitter = vec2(0.0); // set per invocation in main() before the gather
+
+// 2D low-discrepancy point on the unit square (golden-ratio / spherical-Fibonacci style), Cranley-Patterson-rotated by
+// gDUGIRSMJitter, for sample i of n.
 vec2 dugiRSMSampleUV(const in int i, const in int n){
   const float PHI = 1.6180339887498949; // golden ratio
-  return vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+  vec2 base = vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+  return fract(base + gDUGIRSMJitter);
 }
 
 void main(){
@@ -176,6 +191,10 @@ void main(){
   float weightSum = 0.0;
 
   if(!isFixed){
+
+    // Decorrelate the RSM sample taps per probe + ray + frame (see dugiRSMJitter) so both passes below sample a rotated set
+    // instead of the same fixed global 64 texels (set once here so pass 1 and pass 2 use the identical rotated set).
+    gDUGIRSMJitter = dugiRSMJitter(uvec3(globalProbeIndex, rayIndex, uint(pushConstants.params.x)));
 
     // Pass 1 (nearest-hit selection): the distance of the closest VPL that passes this slot's lobe + half-space gates.
     float nearestDistance = tMax;

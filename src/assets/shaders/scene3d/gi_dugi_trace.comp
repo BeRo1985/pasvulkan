@@ -132,10 +132,25 @@ layout(set = 2, binding = 3, std140) uniform RSMData {
   #define GI_DUGI_RSM_NEAR_BAND 1.5
 #endif
 
-// 2D low-discrepancy point on the unit square (golden ratio) for RSM sample i of n.
+// PCG3D hash -> a per-(probe, ray, frame) Cranley-Patterson rotation offset in [0,1)^2 for the RSM sample set. main() sets the
+// file-scope gDUGIRSMJitter below from the probe/ray indices + frame (pushConstants is only included further down, so this
+// mirrors the dugiEmissive* pattern and lets the gather read it without a signature change). Rotating the fixed stratified taps
+// per probe/ray and every frame makes them cover the whole RSM over the DUGI temporal blend, instead of every probe/ray/frame
+// seeing the same 64 texels (a fixed global pattern is a near-blind subsample of a large RSM).
+vec2 dugiRSMJitter(const in uvec3 seed){
+  uvec3 v = (seed * 1664525u) + 1013904223u;
+  v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+  v ^= v >> 16u;
+  v.x += v.y * v.z; v.y += v.z * v.x;
+  return vec2(v.xy) * (1.0 / 4294967296.0);
+}
+vec2 gDUGIRSMJitter = vec2(0.0); // set per invocation in main() before giTraceClosestHit
+
+// 2D low-discrepancy point on the unit square (golden ratio), Cranley-Patterson-rotated by gDUGIRSMJitter, for RSM sample i of n.
 vec2 dugiRSMSampleUV(const in int i, const in int n){
   const float PHI = 1.6180339887498949;
-  return vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+  vec2 base = vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+  return fract(base + gDUGIRSMJitter);
 }
 
 GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction, const in float tMin, const in float tMax, const in uint cullMask){
@@ -152,10 +167,15 @@ GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction,
   s.doubleSided = false;
 
   vec3 albedoSum = vec3(0.0);
-  vec3 normalSum = vec3(0.0);
   vec3 positionSum = vec3(0.0);
   float distanceSum = 0.0;
   float weightSum = 0.0;
+
+  // Representative (dominant) VPL normal: the lit RSM texel contributing most to this lobe. Used INSTEAD of an averaged normal
+  // for shading, because giGatherShadeHit evaluates the unshadowed sun at this normal and an averaged normal can tilt past
+  // N.L = 0 -> the sun-lit texel goes black. The dominant VPL is a real sun-visible surface (N.L > 0 by RSM construction).
+  float bestWeight = 0.0;
+  vec3 bestNormal = -direction;
 
   // Two-pass closest-hit gather (mirrors gi_dugi_rsm_splat.comp): a real ray hits only the NEAREST surface, so VPLs much
   // farther than the nearest lobe hit are behind it and must not bleed in. Pass 1 finds the nearest lobe VPL distance; pass 2
@@ -219,9 +239,13 @@ GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction,
     }
     float weight = pow(alignment, GI_DUGI_RSM_SHARPNESS) / max(distanceToVPL * distanceToVPL, 1e-4);
 
+    if(weight > bestWeight){
+      bestWeight = weight;
+      bestNormal = vplNormal; // keep the dominant VPL's true normal for the sun N.L (see above)
+    }
+
     vec3 albedo = max(vec3(0.0), textureLod(uReflectiveShadowMapColor, uv, 0.0).xyz);
     albedoSum += albedo * weight;
-    normalSum += vplNormal * weight;
     positionSum += vplPosition * weight;
     distanceSum += distanceToVPL * weight;
     weightSum += weight;
@@ -230,7 +254,7 @@ GIGatherSurface giTraceClosestHit(const in vec3 origin, const in vec3 direction,
   if(weightSum > 1e-6){
     s.hit = true;
     s.albedo = albedoSum / weightSum;
-    s.normal = normalize(normalSum);
+    s.normal = bestNormal; // dominant VPL normal, not the averaged normal (sun N.L correctness; see above)
     s.position = positionSum / weightSum;
     s.hitDistance = distanceSum / weightSum;
   }
@@ -307,6 +331,11 @@ void main(){
 
   // Trace via the swappable backend (ray-query by default). Emissive meshes + all analytic lights + ray-traced shadows are
   // handled in the gather layer; optional multi-bounce feedback samples the previous frame's irradiance field at the hit.
+#if GI_TRACE_BACKEND == 2
+  // RSM backend: decorrelate the RSM sample taps per probe + ray + frame (see dugiRSMJitter) so the gather is not a fixed
+  // global 64-tap pattern (which would leave permanent blind spots in a large RSM).
+  gDUGIRSMJitter = dugiRSMJitter(uvec3(globalProbeIndex, rayIndex, uint(pushConstants.params.x)));
+#endif
   GIGatherSurface surface = giTraceClosestHit(probePosition, rayDirection, tMin, tMax, CULLMASK_ALL);
 
   // Particle LBVH (not in the BLAS): a closest opaque particle nearer than the mesh hit becomes the closest surface — it

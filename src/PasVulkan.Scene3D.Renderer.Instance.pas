@@ -2278,7 +2278,7 @@ begin
 
  fDebugDUGIProbes:=false;
 
- fGlobalIlluminationDUGIUseRSMSplat:=false; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
+ fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
