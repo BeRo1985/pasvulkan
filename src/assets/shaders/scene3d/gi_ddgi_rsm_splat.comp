@@ -1,0 +1,198 @@
+#version 460 core
+
+// DDGI probe ray-data PRODUCER — non-raytraced Reflective Shadow Map (RSM) fallback.
+//
+// A drop-in replacement for gi_ddgi_trace.comp for hardware without VK_KHR_ray_query. Instead of tracing rays against the
+// scene TLAS, it treats a subset of the sun's RSM texels as virtual point lights (VPLs) and "splats" them into the same
+// per-(ray, probe) ray-data slots the ray-query trace would have written — so every downstream consumer (irradiance /
+// visibility / glossy blend, border, relocation, classification) stays byte-for-byte identical and needs no change.
+//
+// This is the literal "treat a subset of the RSM samples as if they're ray hits rather than using RT" approach: single
+// bounce, no SDF/voxel occlusion, light leaks accepted (the low-end fallback tier). Multi-bounce (sampling the previous
+// frame's probe field at each VPL) and a separate RSM-depth visibility fill are deliberately left for later stages.
+//
+// Dispatch is identical to the trace: one thread per (rayIndex, globalProbeIndex), local_size_x = 32, grid
+// ((raysPerProbe + 31) >> 5, totalProbes, 1). Each thread owns one ray slot and gathers the RSM VPLs whose direction from
+// the probe aligns with this ray's deterministic spherical-Fibonacci direction, weighted by a Phong lobe around it.
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+
+/* clang-format off */
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+// --- Set 0: the sun's Reflective Shadow Map (light-POV G-buffer) + its world<->RSM transform -------------------------
+// Same three RSM attachments the cascaded radiance hints inject pass consumes: color = reflected flux (albedo * sun light),
+// normalUsed = encoded world normal in xyz with w = "a surface was rasterized here" flag, depth = light-space depth (the
+// VPL world position is reconstructed from it via the RSM->world matrix). Rendered by the ReflectiveShadowMapRenderPass.
+layout(set = 0, binding = 0) uniform sampler2D uReflectiveShadowMapColor;       // rgb = reflected flux
+layout(set = 0, binding = 1) uniform sampler2D uReflectiveShadowMapNormalUsed;  // xyz = encoded normal, w = used flag
+layout(set = 0, binding = 2) uniform sampler2D uReflectiveShadowMapDepth;       // light-space depth
+
+// Byte-mirrors TGlobalIlluminationRadianceHintsRSMUniformBufferData on the Pascal side (the same UBO the radiance-hints
+// RSM inject pass uses) — we reuse that already-filled buffer instead of allocating a second one. Only reflectiveShadowMap-
+// ToWorldMatrix is read here; the rest are kept solely so the offsets line up (std140) and for possible later use.
+layout(set = 0, binding = 3, std140) uniform RSMData {
+  mat4 worldToReflectiveShadowMapMatrix; // unused here
+  mat4 reflectiveShadowMapToWorldMatrix; // reconstructs a VPL world position from (uv, depth)
+  mat4 modelViewProjectionMatrix;        // unused here
+  vec4 spreadExtents[4];                 // unused here
+  vec4 lightDirection;                   // xyz = sun direction (towards the scene); unused here
+  vec4 lightPosition;                    // unused here
+  vec4 scaleFactors;                     // unused here
+  ivec4 countSamples;                    // unused here (x = countSamples, y = countOcclusionSamples)
+} rsm;
+
+// --- Set 1: DDGI field resources (same set/bindings the trace uses) --------------------------------------------------
+// binding 0 = ddgiData SSBO (cascade globals + the BDA sub-buffer pointers, incl. rayData), pulled in by the include below.
+// binding 4 = the 6 environment cubemaps (sky on ray miss), mirroring gi_ddgi_trace.comp.
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+#include "global_illumination_ddgi.glsl"     // probe field dims + addressing + ddgiData SSBO (via gi_ddgi_data.glsl)
+#include "gi_ddgi_raydata.glsl"              // shared ray-data contract: ddgiTraceRayDirection / ddgiEncodeRayData / ddgiStoreRay
+#include "gi_ddgi_pushconstants.glsl"        // the shared DDGI push-constant block (randomRotation / params / blend / ...)
+
+layout(set = 1, binding = 4) uniform samplerCube uDDGIEnvironmentMaps[6];
+
+// Sky diffuse irradiance in a direction (byte-identical to gi_ddgi_trace.comp's ddgiGatherSky): Lambertian env A dual-
+// blended with the atmosphere-inclusive env B by env B's coverage alpha. Used for ray slots that gather no VPL (a "miss").
+vec3 ddgiGatherSky(const in vec3 dir){
+  vec3 irradiance = textureLod(uDDGIEnvironmentMaps[2], dir, 0.0).xyz; // Lambertian (diffuse irradiance), env A
+  vec4 envB = textureLod(uDDGIEnvironmentMaps[5], dir, 0.0);           // Lambertian, env B (atmosphere); w = coverage
+  return mix(irradiance, envB.xyz, envB.w);
+}
+
+// --- RSM VPL sampling parameters -------------------------------------------------------------------------------------
+// Number of RSM texels sampled per ray slot per frame, spread over the whole RSM with a 2D spherical-Fibonacci (golden-
+// ratio) pattern so each frame's random rotation re-decorrelates the set. More samples = less noise / fewer missed VPLs,
+// at a linear cost. Env/define overridable (kept tunable, default 64).
+#ifndef GI_DDGI_RSM_SPLAT_SAMPLES
+  #define GI_DDGI_RSM_SPLAT_SAMPLES 64
+#endif
+
+// Phong-lobe exponent of the per-ray-slot gather: w = pow(max(dot(rayDir, dirToVPL), 0), sharpness). Wider (smaller) =
+// smoother but more direction-blurred; sharper = crisper VPL direction but more noise/empty slots. ~16 covers roughly one
+// spherical-Fibonacci ray spacing for 128 rays. Env/define overridable.
+#ifndef GI_DDGI_RSM_SPLAT_SHARPNESS
+  #define GI_DDGI_RSM_SPLAT_SHARPNESS 16.0
+#endif
+
+// Optional global energy scale on the gathered VPL radiance, so the fallback can be calibrated against the ray-traced
+// look / the RSM flux units without touching the math. Env/define overridable (default 1.0).
+#ifndef GI_DDGI_RSM_SPLAT_INTENSITY
+  #define GI_DDGI_RSM_SPLAT_INTENSITY 1.0
+#endif
+
+const float GI_DDGI_RSM_ONE_OVER_PI = 0.3183098861837907; // 1/PI: Lambertian outgoing radiance = flux / PI
+
+// 2D low-discrepancy point on the unit square (golden-ratio / spherical-Fibonacci style) for sample i of n.
+vec2 ddgiRSMSampleUV(const in int i, const in int n){
+  const float PHI = 1.6180339887498949; // golden ratio
+  return vec2(fract((float(i) + 0.5) * (1.0 / float(n))), fract(float(i) * (PHI - 1.0)));
+}
+
+void main(){
+
+  uint rayIndex = gl_GlobalInvocationID.x;
+  uint globalProbeIndex = gl_GlobalInvocationID.y;
+
+  uint raysPerProbe = pushConstants.params.w;
+  uint totalProbes = pushConstants.params.y * pushConstants.params.z;
+
+  if((rayIndex >= raysPerProbe) || (globalProbeIndex >= totalProbes)){
+    return;
+  }
+
+  int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
+  int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
+  ivec3 probeCoord = ddgiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
+
+  // Toroidal scrolling: the iterated slot is physical; its world position comes from the logical lattice coordinate.
+  ivec3 logicalProbeCoord = ddgiProbeLogicalCoord(probeCoord, cascadeIndex);
+  vec3 probePosition = ddgiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
+
+  mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
+  vec3 rayDirection = ddgiTraceRayDirection(rayIndex, randomRotation); // contract: fixed (unrotated) vs random (rotated)
+
+  float tMax = max(ddgiData.ddgiCascadeCellSizes[cascadeIndex].w, 1e-2);
+  float cellSize = ddgiData.ddgiCascadeCellSizes[cascadeIndex].x;
+
+  // Fixed rays (relocation/classification) carry no radiance — and without an actual trace we cannot report their signed
+  // geometry distance, so the RSM fallback runs with relocation disabled (the Pascal side gates it off). Guard anyway: a
+  // fixed ray just writes a miss so the encode keeps the contract.
+  bool isFixed = ddgiRayIsFixed(rayIndex);
+
+  // Gather: accumulate the RSM VPLs that fall within this ray slot's Phong lobe. As a ray *hit*, a Lambertian VPL emits
+  // radiance flux/PI towards the probe (view-independent), with no 1/d^2 falloff (that is a directional sample, not a point
+  // light); the receiver cosine is applied later by the irradiance blend. The VPL surface cosine gates the half-space only.
+  vec3 radianceSum = vec3(0.0);
+  float distanceSum = 0.0;
+  float weightSum = 0.0;
+
+  if(!isFixed){
+    for(int sampleIndex = 0; sampleIndex < GI_DDGI_RSM_SPLAT_SAMPLES; sampleIndex++){
+
+      vec2 uv = ddgiRSMSampleUV(sampleIndex, GI_DDGI_RSM_SPLAT_SAMPLES);
+
+      vec4 normalUsed = textureLod(uReflectiveShadowMapNormalUsed, uv, 0.0);
+      if(normalUsed.w < 0.5){
+        continue; // no surface rasterized into this RSM texel
+      }
+
+      float depth = textureLod(uReflectiveShadowMapDepth, uv, 0.0).x;
+      vec4 worldPosition = rsm.reflectiveShadowMapToWorldMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depth, 1.0);
+      vec3 vplPosition = worldPosition.xyz / worldPosition.w;
+
+      vec3 toVPL = vplPosition - probePosition;
+      float distanceToVPL = length(toVPL);
+      if((distanceToVPL < 1e-3) || (distanceToVPL > tMax)){
+        continue; // degenerate, or beyond this cascade's reach
+      }
+      vec3 directionToVPL = toVPL * (1.0 / distanceToVPL);
+
+      vec3 vplNormal = normalize(fma(normalUsed.xyz, vec3(2.0), vec3(-1.0)));
+      if(dot(-directionToVPL, vplNormal) <= 0.0){
+        continue; // the VPL surface faces away from the probe (back half-space)
+      }
+
+      float alignment = max(dot(rayDirection, directionToVPL), 0.0);
+      if(alignment <= 0.0){
+        continue; // the VPL is not in this ray slot's hemisphere
+      }
+      float weight = pow(alignment, GI_DDGI_RSM_SPLAT_SHARPNESS);
+
+      vec3 flux = max(vec3(0.0), textureLod(uReflectiveShadowMapColor, uv, 0.0).xyz);
+      vec3 radiance = flux * GI_DDGI_RSM_ONE_OVER_PI;
+
+      radianceSum += radiance * weight;
+      distanceSum += distanceToVPL * weight;
+      weightSum += weight;
+    }
+  }
+
+  // Resolve the slot: a populated lobe becomes a hit (averaged VPL radiance + averaged distance); an empty lobe is a sky
+  // miss (the same sky term the trace integrates, distance = tMax) so the probe still bakes in the correctly-occluded sky.
+  vec3 outRadiance = vec3(0.0);
+  bool hit = false;
+  float hitDistance = tMax;
+  if(!isFixed){
+    if(weightSum > 1e-6){
+      outRadiance = (radianceSum / weightSum) * GI_DDGI_RSM_SPLAT_INTENSITY;
+      hitDistance = distanceSum / weightSum;
+      hit = true;
+    }else{
+      outRadiance = ddgiGatherSky(rayDirection);
+      hit = false;
+    }
+    if(any(isnan(outRadiance)) || any(isinf(outRadiance))){
+      outRadiance = vec3(0.0);
+    }
+  }
+
+  // Encode per the shared ray-data contract (random ray: shaded radiance + locally-clamped distance; no backface here).
+  DDGIRayDataBuffer rayData = ddgiData.rayData; // launder through a local (readonly master field -> non-readonly ref)
+  ddgiStoreRay(rayData, globalProbeIndex, rayIndex, raysPerProbe,
+               ddgiEncodeRayData(rayIndex, outRadiance, hit, false, hitDistance, tMax, cellSize));
+}

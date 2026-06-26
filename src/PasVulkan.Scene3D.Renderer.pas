@@ -1201,16 +1201,15 @@ begin
 //fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
  end;
 
- // DDGI requires hardware ray tracing. If it is not available, fall back to cascaded radiance hints, which is
- // the closest non-ray-traced equivalent (it also stores spherical harmonics in a cascaded volume).
+ // DDGI normally needs hardware ray tracing to trace the probe rays. When it is not available we KEEP DDGI but drive its
+ // probe field from a non-raytraced Reflective Shadow Map producer (gi_ddgi_rsm_splat) instead of the ray-query trace; the
+ // probe blend / shading path is producer-agnostic, so only the producer pass differs (wired in the Instance per RaytracingActive).
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicDiffuseGlobalIllumination:begin
    if not fRaytracingActive then begin
     if assigned(pvApplication) then begin
-     pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination requires raytracing, downgrading to StaticEnvironmentMap');
+     pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','DynamicDiffuseGlobalIllumination without raytracing: using the non-raytraced Reflective Shadow Map fallback producer');
     end;
-    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap;
-//  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
    end;
   end;
   else begin

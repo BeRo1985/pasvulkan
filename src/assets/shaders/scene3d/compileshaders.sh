@@ -571,6 +571,10 @@ compileshaderarguments=(
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
   "-V gi_ddgi_trace.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_trace_comp.spv"
+  # gi_ddgi_rsm_splat.comp is the non-raytraced DDGI producer (Reflective Shadow Map VPL splatting), used as the fallback
+  # when hardware ray query is unavailable. It writes the same ddgiData ray-data contract as the trace, so it needs the
+  # buffer_reference SPIR-V target; it does NOT ray-trace, so no ray-tracing target is required.
+  "-V gi_ddgi_rsm_splat.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_rsm_splat_comp.spv"
   # irradiance/visibility update read the ray-data via the DDGI master BDA buffer (gi_ddgi_master.glsl) -> need the
   # buffer_reference SPIR-V target even though they don't ray-trace.
   "-V gi_ddgi_irradiance_update.comp --target-env vulkan1.2 ${DDGI_STORAGE_DEFINE} ${DDGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_ddgi_irradiance_update_comp.spv"
