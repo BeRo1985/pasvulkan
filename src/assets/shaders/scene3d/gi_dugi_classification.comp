@@ -4,8 +4,10 @@
 //
 // One thread per probe. From the fixed rays' signed distances (negative = backface) written by the trace it marks probes
 // that mostly see backfaces (i.e. are inside geometry) as INACTIVE, so the shading gather skips them — the robust anti-leak
-// guard. Conservative v1: probes in open space stay ACTIVE (they still provide valid sky/bounce GI); only the inside-
-// geometry case disables. Writes only the state (w) of the probe-data image and preserves the relocation offset (xyz),
+// guard. With GI_DUGI_PROBE_CLASSIFY_NEARBY (RTXGI-style, default on) a not-inside probe is additionally INACTIVE unless a
+// fixed ray hits geometry within its own cell (the voxel-plane test) — open-space probes carrying only far/sky light are
+// skipped; set it to 0 for the conservative behaviour (open space stays ACTIVE). Writes only the state (w) of the probe-data
+// image and preserves the relocation offset (xyz),
 // which the relocation pass owns. Runs after the relocation pass.
 
 #extension GL_GOOGLE_include_directive : require
@@ -16,6 +18,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_dugi.glsl"
+#include "gi_dugi_raydata.glsl" // dugiTraceRayDirection for the fixed-ray voxel-plane "nearby geometry" test
 // dugiData (SSBO: cascade globals + sub-buffer pointers) + the sub-buffer accessors come via global_illumination_dugi.glsl
 
 #include "gi_dugi_pushconstants.glsl"
@@ -35,29 +38,61 @@ void main(){
   DUGIRayDataBuffer rayData = dugiData.rayData;
   DUGIProbeDataBuffer probeDataBuf = dugiData.probeData;
 
+  vec4 probeData = dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
+
+#if GI_DUGI_PROBE_CLASSIFY_NEARBY
+  // The probe's (relocated) world position + cell size, for the RTXGI voxel-plane "nearby geometry" test below. The fixed rays
+  // were traced from the relocated position, so the cell-boundary planes are measured from it too.
+  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+  vec3 probeWorld = dugiProbeGridToWorld(dugiProbeLogicalCoord(probeCoord, cascadeIndex), cascadeIndex);
+#if GI_DUGI_PROBE_RELOCATION
+  probeWorld += probeData.xyz; // relocation offset (owned by the relocation pass, already written this frame)
+#endif
+#endif
+
   int backfaceCount = 0;
+  bool nearbyGeometry = false;
   for(int i = 0; i < GI_DUGI_FIXED_RAYS; i++){
-    if(dugiLoadRay(rayData, globalProbeIndex, uint(i), pushConstants.params.w).a < 0.0){
-      backfaceCount++;
+    float signedDist = dugiLoadRay(rayData, globalProbeIndex, uint(i), pushConstants.params.w).a;
+    if(signedDist < 0.0){
+      backfaceCount++; // backface hit (inside-geometry vote); skip the nearby-geometry test for it
+      continue;
     }
+#if GI_DUGI_PROBE_CLASSIFY_NEARBY
+    // A frontface ray hits geometry WITHIN the probe's own cell iff its hit distance is no farther than the nearest crossing
+    // of the cell-boundary planes (one cell size away along each axis in the ray's octant). The distance to the axis plane is
+    // cellSize / |dir.axis|; the nearest of the three bounds the cell along this ray.
+    vec3 dir = dugiTraceRayDirection(uint(i), mat3(1.0)); // fixed rays are unrotated
+    float maxDistance = min(cellSize / max(abs(dir.x), 1e-6), min(cellSize / max(abs(dir.y), 1e-6), cellSize / max(abs(dir.z), 1e-6)));
+    if(signedDist <= maxDistance){
+      nearbyGeometry = true;
+    }
+#endif
   }
 
   float backfaceFraction = float(backfaceCount) / float(GI_DUGI_FIXED_RAYS);
 
-  vec4 probeData = dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
+  // The "not inside geometry" target state: ACTIVE normally, but with the nearby-geometry test a probe whose own cell holds no
+  // geometry (only far / sky hits) is INACTIVE, so the gather skips probes that would contribute only distant/sky light.
+#if GI_DUGI_PROBE_CLASSIFY_NEARBY
+  float activeState = nearbyGeometry ? GI_DUGI_PROBE_STATE_ACTIVE : GI_DUGI_PROBE_STATE_INACTIVE;
+#else
+  float activeState = GI_DUGI_PROBE_STATE_ACTIVE;
+#endif
 
   // Classification hysteresis: a deadband around the threshold stops a borderline probe from flip-flopping ACTIVE<->INACTIVE
   // every frame (which pops it in/out of the shading gather -> flicker). Only flip when the backface fraction is clearly
   // over/under; inside the band keep the previous state. On this slot's first frame / a probe that just toroidally scrolled
   // in there is no valid previous state (w is uninitialized garbage / for another cell), so fall back to the plain threshold.
+  // (The nearby-geometry test uses the unrotated fixed rays, so its result is temporally stable for static geometry.)
   bool noHistory = (pushConstants.blend.z > 0.5) || dugiProbeScrolledIn(probeCoord, cascadeIndex);
   float state;
   if(backfaceFraction > (GI_DUGI_PROBE_BACKFACE_THRESHOLD + GI_DUGI_PROBE_BACKFACE_HYSTERESIS)){
     state = GI_DUGI_PROBE_STATE_INACTIVE; // clearly inside geometry
   }else if(backfaceFraction < (GI_DUGI_PROBE_BACKFACE_THRESHOLD - GI_DUGI_PROBE_BACKFACE_HYSTERESIS)){
-    state = GI_DUGI_PROBE_STATE_ACTIVE;   // clearly in open space
+    state = activeState;                  // clearly not inside geometry: ACTIVE iff it has nearby geometry (see above)
   }else{
-    state = noHistory ? ((backfaceFraction > GI_DUGI_PROBE_BACKFACE_THRESHOLD) ? GI_DUGI_PROBE_STATE_INACTIVE : GI_DUGI_PROBE_STATE_ACTIVE)
+    state = noHistory ? ((backfaceFraction > GI_DUGI_PROBE_BACKFACE_THRESHOLD) ? GI_DUGI_PROBE_STATE_INACTIVE : activeState)
                       : probeData.w;      // in the deadband: hold the previous classification
   }
 

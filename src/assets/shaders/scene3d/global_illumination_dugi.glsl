@@ -234,6 +234,12 @@
 #ifndef GI_DUGI_PROBE_BACKFACE_HYSTERESIS   // deadband half-width around the threshold: classification only flips ACTIVE<->
   #define GI_DUGI_PROBE_BACKFACE_HYSTERESIS 0.05  // INACTIVE outside [threshold-h, threshold+h], else keeps the previous state
 #endif
+// RTXGI-style "nearby geometry" classification: when 1, a probe that is NOT inside geometry is only ACTIVE if at least one
+// fixed ray hits geometry WITHIN its own cell (the voxel-plane test); a probe with only far/sky hits sees no nearby geometry
+// and is marked INACTIVE (skipped in the shading gather). When 0 (conservative), open-space probes stay ACTIVE.
+#ifndef GI_DUGI_PROBE_CLASSIFY_NEARBY
+  #define GI_DUGI_PROBE_CLASSIFY_NEARBY 1
+#endif
 #define GI_DUGI_PROBE_STATE_INACTIVE 0.0
 #define GI_DUGI_PROBE_STATE_ACTIVE   1.0
 
