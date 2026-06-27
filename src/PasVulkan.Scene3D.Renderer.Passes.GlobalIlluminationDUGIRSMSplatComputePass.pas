@@ -83,7 +83,8 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass }
      // the ray-query trace pass would have written. It is a drop-in alternative to the trace producer: everything downstream
      // (irradiance / visibility / glossy blend, border) depends only on the ray-data, so those stages are unchanged.
      // Set 0 = the RSM source (color/normal/depth + the radiance-hints RSM UBO it shares); set 1 = the DUGI field (dugiData
-     // SSBO + the 6 environment cubemaps for sky-on-miss). Dispatch is identical to the trace: one thread per (ray, probe).
+     // SSBO + the 6 environment cubemaps for sky-on-miss). Dispatch: one workgroup per probe; its ray threads cooperatively
+     // load the probe's RSM VPL set into shared memory once, then each ray gathers from it (no per-ray RSM re-sampling).
      TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass=class(TpvFrameGraph.TComputePass)
       public
        type TPushConstants=record
@@ -385,9 +386,10 @@ begin
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,0,2,@DescriptorSets[0],0,nil);
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
 
- // Splat: one thread per (ray, probe). local_size_x = 32, same dispatch as the trace producer.
+ // Splat: one workgroup per probe (local_size_x = GI_DUGI_RAYS_PER_PROBE). The workgroup's ray threads cooperatively load the
+ // probe's VPL set into shared memory once, then each ray gathers its lobe from it (no per-ray RSM re-sampling).
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
- aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationDUGIRaysPerProbe+31) shr 5,TotalProbes,1);
+ aCommandBuffer.CmdDispatch(TotalProbes,1,1);
 
  // Publish the ray-data writes to the probe-update passes (they read the ray-data buffer). The frame graph orders the passes;
  // this memory barrier makes the writes visible.

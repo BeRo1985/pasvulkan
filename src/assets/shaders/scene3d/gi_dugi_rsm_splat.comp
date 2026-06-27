@@ -11,9 +11,10 @@
 // bounce, no SDF/voxel occlusion, light leaks accepted (the low-end fallback tier). Multi-bounce (sampling the previous
 // frame's probe field at each VPL) and a separate RSM-depth visibility fill are deliberately left for later stages.
 //
-// Dispatch is identical to the trace: one thread per (rayIndex, globalProbeIndex), local_size_x = 32, grid
-// ((raysPerProbe + 31) >> 5, totalProbes, 1). Each thread owns one ray slot and gathers the RSM VPLs whose direction from
-// the probe aligns with this ray's deterministic spherical-Fibonacci direction, weighted by a Phong lobe around it.
+// Dispatch: one workgroup per probe (local_size_x = GI_DUGI_RAYS_PER_PROBE), grid (totalProbes, 1, 1). The workgroup's ray
+// threads cooperatively load the probe's VPL set into shared memory ONCE, then each ray (thread) gathers the shared VPLs whose
+// direction from the probe aligns with its deterministic spherical-Fibonacci direction, weighted by a Phong lobe around it —
+// so the expensive RSM texture fetches happen once per probe instead of once per (probe, ray).
 //
 // Extension: multi-bounce and particle injection (the "later stages" above) are now implemented, and the probe position is
 // relocated (dugiLoadProbeData) like the trace — all shared with the trace via gi_dugi_multibounce.glsl and
@@ -25,8 +26,6 @@
 #extension GL_EXT_buffer_reference_uvec2 : require
 
 /* clang-format off */
-
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 // --- Set 0: the sun's Reflective Shadow Map (light-POV G-buffer) + its world<->RSM transform -------------------------
 // Same three RSM attachments the cascaded radiance hints inject pass consumes: color = reflected flux (albedo * sun light),
@@ -86,11 +85,12 @@ vec3 dugiGatherSky(const in vec3 dir){
 #include "gi_dugi_particle_inject.glsl"
 
 // --- RSM VPL sampling parameters -------------------------------------------------------------------------------------
-// Number of RSM texels sampled per ray slot per frame, spread over the whole RSM with a 2D spherical-Fibonacci (golden-
-// ratio) pattern so each frame's random rotation re-decorrelates the set. More samples = less noise / fewer missed VPLs,
-// at a linear cost. Env/define overridable (kept tunable, default 64).
-#ifndef GI_DUGI_RSM_SPLAT_SAMPLES
-  #define GI_DUGI_RSM_SPLAT_SAMPLES 64
+// Number of RSM texels loaded cooperatively into shared memory per PROBE per frame — the VPL set shared by ALL of the probe's
+// rays (one workgroup == one probe). Replaces the old per-ray sample count: the RSM is sampled once per probe into LDS instead
+// of re-sampled per (probe, ray), then every ray gathers its lobe from LDS. Spread over the whole RSM with a 2D spherical-
+// Fibonacci (golden-ratio) pattern, per-probe-per-frame rotated so the temporal blend covers the RSM. Env/define overridable.
+#ifndef GI_DUGI_RSM_SPLAT_VPL_COUNT
+  #define GI_DUGI_RSM_SPLAT_VPL_COUNT 128
 #endif
 
 // Phong-lobe exponent of the per-ray-slot gather: w = pow(max(dot(rayDir, dirToVPL), 0), sharpness). Wider (smaller) =
@@ -144,54 +144,91 @@ vec2 dugiRSMSampleUV(const in int i, const in int n){
   return fract(base + gDUGIRSMJitter);
 }
 
+// One workgroup per probe: all GI_DUGI_RAYS_PER_PROBE ray threads cooperatively load the per-probe VPL set into shared memory
+// once, then each ray gathers its lobe from it — instead of every ray re-sampling the RSM (the old per-(probe,ray) cost that
+// dominated the pass). Mirrors the visibility/glossy update's shared-ray-cache pattern.
+layout(local_size_x = GI_DUGI_RAYS_PER_PROBE, local_size_y = 1, local_size_z = 1) in;
+
+shared vec3 sProbePosition;                              // the (relocated) probe world position, resolved once by thread 0
+shared vec4 sVPLPosition[GI_DUGI_RSM_SPLAT_VPL_COUNT];   // xyz = VPL world position, w = valid (1) / empty (0)
+shared vec4 sVPLNormal[GI_DUGI_RSM_SPLAT_VPL_COUNT];     // xyz = VPL world normal
+shared vec4 sVPLFlux[GI_DUGI_RSM_SPLAT_VPL_COUNT];       // xyz = VPL reflected flux
+
 void main(){
 
-  uint rayIndex = gl_GlobalInvocationID.x;
-  uint globalProbeIndex = gl_GlobalInvocationID.y;
+  uint globalProbeIndex = gl_WorkGroupID.x;   // one workgroup == one probe
+  uint rayIndex = gl_LocalInvocationID.x;      // one thread == one ray of that probe
 
   uint raysPerProbe = pushConstants.params.w;
   uint totalProbes = pushConstants.params.y * pushConstants.params.z;
-
-  if((rayIndex >= raysPerProbe) || (globalProbeIndex >= totalProbes)){
-    return;
+  if(globalProbeIndex >= totalProbes){
+    return; // uniform across the whole workgroup, so no barrier divergence
   }
 
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = dugiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
 
-  // Toroidal scrolling: the iterated slot is physical; its world position comes from the logical lattice coordinate.
-  ivec3 logicalProbeCoord = dugiProbeLogicalCoord(probeCoord, cascadeIndex);
-  vec3 probePosition = dugiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
+  float tMax = max(dugiData.dugiCascadeCellSizes[cascadeIndex].w, 1e-2);
+  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+
+  // Thread 0 resolves the (relocated, toroidal) probe world position once into shared memory — the rest of the workgroup reads
+  // it back after the barrier (avoids GI_DUGI_RAYS_PER_PROBE redundant relocation-buffer reads of the same probe).
+  if(rayIndex == 0u){
+    ivec3 logicalProbeCoord = dugiProbeLogicalCoord(probeCoord, cascadeIndex);
+    vec3 probePosition = dugiProbeGridToWorld(logicalProbeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
-  // Gather from the relocated probe position (the relocation pass pushed it out of geometry), so the gathered irradiance/
-  // visibility match the position the shading sampler reads it back at. Skip on this slot's first frame (probe data is still
-  // uninitialized garbage) until the relocation pass has written a value at least once. blend.z = first-frame flag.
-  if(pushConstants.blend.z < 0.5){
-    probePosition += dugiLoadProbeData(probeCoord, cascadeIndex).xyz;
-  }
+    // Gather from the relocated probe position (the relocation pass pushed it out of geometry). Skip on this slot's first
+    // frame (probe data still uninitialized garbage) until relocation has written a value at least once (blend.z = first frame).
+    if(pushConstants.blend.z < 0.5){
+      probePosition += dugiLoadProbeData(probeCoord, cascadeIndex).xyz;
+    }
 #endif
+    sProbePosition = probePosition;
+  }
+
+  // Per-PROBE (not per-ray) jitter so the cooperatively-loaded VPL set rotates each frame; the DUGI temporal blend then covers
+  // the whole RSM over time even though all the probe's rays share one VPL set this frame. Same for every thread (deterministic).
+  gDUGIRSMJitter = dugiRSMJitter(uvec3(globalProbeIndex, 0u, uint(pushConstants.params.x)));
+
+  // Cooperative VPL load: each thread loads a strided subset of the GI_DUGI_RSM_SPLAT_VPL_COUNT RSM taps into shared memory.
+  // The expensive RSM texture fetches happen ONCE per probe here instead of once per (probe, ray).
+  for(uint i = rayIndex; i < uint(GI_DUGI_RSM_SPLAT_VPL_COUNT); i += uint(GI_DUGI_RAYS_PER_PROBE)){
+    vec2 uv = dugiRSMSampleUV(int(i), GI_DUGI_RSM_SPLAT_VPL_COUNT);
+    vec4 normalUsed = textureLod(uReflectiveShadowMapNormalUsed, uv, 0.0);
+    if(normalUsed.w < 0.5){
+      sVPLPosition[i] = vec4(0.0); // w = 0 marks an empty/invalid VPL slot (no surface rasterized into this RSM texel)
+      continue;
+    }
+    float depth = textureLod(uReflectiveShadowMapDepth, uv, 0.0).x;
+    vec4 worldPosition = rsm.reflectiveShadowMapToWorldMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depth, 1.0);
+    sVPLPosition[i] = vec4(worldPosition.xyz / worldPosition.w, 1.0);
+    sVPLNormal[i]   = vec4(normalize(fma(normalUsed.xyz, vec3(2.0), vec3(-1.0))), 0.0);
+    sVPLFlux[i]     = vec4(max(vec3(0.0), textureLod(uReflectiveShadowMapColor, uv, 0.0).xyz), 0.0);
+  }
+
+  barrier();
+
+  if(rayIndex >= raysPerProbe){
+    return; // beyond the active ray count: still helped fill the shared VPL set + hit the barrier, nothing to write
+  }
+
+  vec3 probePosition = sProbePosition;
 
   mat3 randomRotation = mat3(pushConstants.randomRotation0.xyz, pushConstants.randomRotation1.xyz, pushConstants.randomRotation2.xyz);
   vec3 rayDirection = dugiTraceRayDirection(rayIndex, randomRotation); // contract: fixed (unrotated) vs random (rotated)
-
-  float tMax = max(dugiData.dugiCascadeCellSizes[cascadeIndex].w, 1e-2);
-  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
 
   // Fixed rays (relocation/classification) carry no radiance — and without an actual trace we cannot report their signed
   // geometry distance, so the RSM fallback runs with relocation disabled (the Pascal side gates it off). Guard anyway: a
   // fixed ray just writes a miss so the encode keeps the contract.
   bool isFixed = dugiRayIsFixed(rayIndex);
 
-  // Gather: accumulate the RSM VPLs that fall within this ray slot's Phong lobe. As a ray *hit*, a Lambertian VPL emits
-  // radiance flux/PI towards the probe (view-independent), with no 1/d^2 falloff on the stored radiance (that is a directional
-  // sample, not a point light); the receiver cosine is applied later by the irradiance blend. The VPL surface cosine gates the
-  // half-space only. Also track the weighted VPL position/normal, for the multi-bounce feedback sampled at the resolved hit.
-  // Two passes give the slot closest-hit semantics: a real ray hits only the NEAREST surface, so VPLs much farther than the
-  // nearest lobe hit are behind it and must not bleed in (otherwise distant lit surfaces leak onto the probe). Pass 1 finds the
-  // nearest lobe VPL distance; pass 2 keeps only VPLs within nearestDistance * NEAR_BAND, weighted by alignment^sharpness / d^2
-  // (the 1/d^2 is a SELECTION bias towards the nearest, NOT a radiance falloff — it cancels in the normalized average, so the
-  // resolved radiance stays in flux/PI units).
+  // Gather over the SHARED VPL set (no texture fetches here): accumulate the VPLs in this ray slot's Phong lobe. As a ray
+  // *hit*, a Lambertian VPL emits radiance flux/PI towards the probe (no 1/d^2 falloff on the stored radiance — directional
+  // sample, not a point light; receiver cosine applied later by the irradiance blend). The VPL surface cosine gates the half-
+  // space only. Two passes give closest-hit semantics: pass 1 finds the nearest lobe VPL distance, pass 2 keeps only VPLs
+  // within nearestDistance * NEAR_BAND (the 1/d^2 weight is a SELECTION bias towards the nearest, cancels in the normalized
+  // average, so the resolved radiance stays in flux/PI units).
   vec3 radianceSum = vec3(0.0);
   vec3 positionSum = vec3(0.0);
   vec3 normalSum = vec3(0.0);
@@ -200,29 +237,20 @@ void main(){
 
   if(!isFixed){
 
-    // Decorrelate the RSM sample taps per probe + ray + frame (see dugiRSMJitter) so both passes below sample a rotated set
-    // instead of the same fixed global 64 texels (set once here so pass 1 and pass 2 use the identical rotated set).
-    gDUGIRSMJitter = dugiRSMJitter(uvec3(globalProbeIndex, rayIndex, uint(pushConstants.params.x)));
-
-    // Pass 1 (nearest-hit selection): the distance of the closest VPL that passes this slot's lobe + half-space gates.
+    // Pass 1 (nearest-hit selection) over the shared VPLs — LDS only.
     float nearestDistance = tMax;
-    for(int sampleIndex = 0; sampleIndex < GI_DUGI_RSM_SPLAT_SAMPLES; sampleIndex++){
-      vec2 uv = dugiRSMSampleUV(sampleIndex, GI_DUGI_RSM_SPLAT_SAMPLES);
-      vec4 normalUsed = textureLod(uReflectiveShadowMapNormalUsed, uv, 0.0);
-      if(normalUsed.w < 0.5){
-        continue; // no surface rasterized into this RSM texel
+    for(int i = 0; i < GI_DUGI_RSM_SPLAT_VPL_COUNT; i++){
+      vec4 posValid = sVPLPosition[i];
+      if(posValid.w < 0.5){
+        continue; // empty/invalid VPL slot
       }
-      float depth = textureLod(uReflectiveShadowMapDepth, uv, 0.0).x;
-      vec4 worldPosition = rsm.reflectiveShadowMapToWorldMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depth, 1.0);
-      vec3 vplPosition = worldPosition.xyz / worldPosition.w;
-      vec3 toVPL = vplPosition - probePosition;
+      vec3 toVPL = posValid.xyz - probePosition;
       float distanceToVPL = length(toVPL);
       if((distanceToVPL < 1e-3) || (distanceToVPL > tMax)){
         continue; // degenerate, or beyond this cascade's reach
       }
       vec3 directionToVPL = toVPL * (1.0 / distanceToVPL);
-      vec3 vplNormal = normalize(fma(normalUsed.xyz, vec3(2.0), vec3(-1.0)));
-      if(dot(-directionToVPL, vplNormal) <= 0.0){
+      if(dot(-directionToVPL, sVPLNormal[i].xyz) <= 0.0){
         continue; // the VPL surface faces away from the probe (back half-space)
       }
       if(dot(rayDirection, directionToVPL) <= 0.0){
@@ -231,46 +259,34 @@ void main(){
       nearestDistance = min(nearestDistance, distanceToVPL);
     }
 
-    // Pass 2 (accumulate within the near band, 1/d^2-biased towards the nearest). Clamp the band to the cascade reach so it
-    // never reaches past tMax; with an empty pass 1 (nearestDistance == tMax) this leaves the slot a sky miss.
+    // Pass 2 (accumulate within the near band, 1/d^2-biased towards the nearest) — LDS only. Clamp the band to the cascade
+    // reach; with an empty pass 1 (nearestDistance == tMax) this leaves the slot a sky miss.
     float bandDistance = min(nearestDistance * GI_DUGI_RSM_SPLAT_NEAR_BAND, tMax);
-    for(int sampleIndex = 0; sampleIndex < GI_DUGI_RSM_SPLAT_SAMPLES; sampleIndex++){
-
-      vec2 uv = dugiRSMSampleUV(sampleIndex, GI_DUGI_RSM_SPLAT_SAMPLES);
-
-      vec4 normalUsed = textureLod(uReflectiveShadowMapNormalUsed, uv, 0.0);
-      if(normalUsed.w < 0.5){
-        continue; // no surface rasterized into this RSM texel
+    for(int i = 0; i < GI_DUGI_RSM_SPLAT_VPL_COUNT; i++){
+      vec4 posValid = sVPLPosition[i];
+      if(posValid.w < 0.5){
+        continue;
       }
-
-      float depth = textureLod(uReflectiveShadowMapDepth, uv, 0.0).x;
-      vec4 worldPosition = rsm.reflectiveShadowMapToWorldMatrix * vec4(fma(uv, vec2(2.0), vec2(-1.0)), depth, 1.0);
-      vec3 vplPosition = worldPosition.xyz / worldPosition.w;
-
-      vec3 toVPL = vplPosition - probePosition;
+      vec3 toVPL = posValid.xyz - probePosition;
       float distanceToVPL = length(toVPL);
       if((distanceToVPL < 1e-3) || (distanceToVPL > bandDistance)){
         continue; // degenerate, or behind the nearest lobe hit (beyond its near band)
       }
       vec3 directionToVPL = toVPL * (1.0 / distanceToVPL);
-
-      vec3 vplNormal = normalize(fma(normalUsed.xyz, vec3(2.0), vec3(-1.0)));
-      if(dot(-directionToVPL, vplNormal) <= 0.0){
-        continue; // the VPL surface faces away from the probe (back half-space)
+      if(dot(-directionToVPL, sVPLNormal[i].xyz) <= 0.0){
+        continue;
       }
-
       float alignment = max(dot(rayDirection, directionToVPL), 0.0);
       if(alignment <= 0.0){
-        continue; // the VPL is not in this ray slot's hemisphere
+        continue;
       }
       float weight = pow(alignment, GI_DUGI_RSM_SPLAT_SHARPNESS) / max(distanceToVPL * distanceToVPL, 1e-4);
 
-      vec3 flux = max(vec3(0.0), textureLod(uReflectiveShadowMapColor, uv, 0.0).xyz);
-      vec3 radiance = flux * GI_DUGI_RSM_ONE_OVER_PI;
+      vec3 radiance = sVPLFlux[i].xyz * GI_DUGI_RSM_ONE_OVER_PI;
 
       radianceSum += radiance * weight;
-      positionSum += vplPosition * weight;
-      normalSum += vplNormal * weight;
+      positionSum += posValid.xyz * weight;
+      normalSum += sVPLNormal[i].xyz * weight;
       distanceSum += distanceToVPL * weight;
       weightSum += weight;
     }
