@@ -101,11 +101,28 @@ void main(){
 
   vec3 worldPosition = probeWorld + (direction * radius);
 
-  uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-  gl_Position = uView.views[viewIndex].projectionMatrix * (uView.views[viewIndex].viewMatrix * vec4(worldPosition, 1.0));
-
   outDirection = direction;
   outProbeCoord = probeCoord;
   outCascadeIndex = cascadeIndex;
   outActive = probeActive;
+
+  if(probeActive < 0.5){
+
+    // Inactive probe
+
+    // Cull the sphere if the probe is inactive (inside geometry) — the fragment shader will dim it, but we don't want to
+    // waste rasterization on it. The sphere is still generated for all probes so the mesh can be instanced over all probes
+    // without a separate culling pass.
+
+    gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
+
+  }else{
+
+    // Active probe: transform the vertex to clip space.
+    //
+    uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+    gl_Position = uView.views[viewIndex].projectionMatrix * (uView.views[viewIndex].viewMatrix * vec4(worldPosition, 1.0));
+
+  }
+
 }
