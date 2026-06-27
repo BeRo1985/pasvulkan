@@ -899,17 +899,21 @@ void main() {
 
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
+        vec3 diffuseColor = mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion;
         vec3 volumeSphericalHarmonics[9];
         globalIlluminationVolumeLookUp(volumeSphericalHarmonics, inWorldSpacePosition.xyz, vec3(0.0), normal.xyz);
 #if 0
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
+        diffuseColor *= shResidualDiffuse;
+        colorOutput += diffuseColor;
+        giDebugGIDiffuse += diffuseColor;
 #else
         vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
-        giDebugGIDiffuse += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
+        diffuseColor *= shResidualDiffuse;
+        colorOutput += diffuseColor;
+        giDebugGIDiffuse += diffuseColor;
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //
                       vec2(1.0),                                          // diffuseSpecularFactors (neutral)
@@ -933,6 +937,15 @@ void main() {
                       specularWeight,                                     //
                       vec3(0.0),                                        //
                       0.0);
+        // Indirect specular reflection: evaluate the residual radiance-hints SH along the reflection vector (the dominant
+        // indirect direction is already handled by doSingleLight above, so this is the broad residual reflection — no double
+        // counting) and weight it with the split-sum specular BRDF. This is the proper low-frequency CRH reflection within its
+        // data model — it lets metals (which have zero diffuse) reflect their surroundings instead of going black wherever the
+        // dominant light does not reach (tunnels, shadow).
+        vec3 shResidualSpecular = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecode(reflect(-viewDirection, normal.xyz), volumeSphericalHarmonics)));
+        vec3 specularColor = shResidualSpecular * getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion;
+        colorOutput += specularColor;
+        giDebugGISpecular += specularColor;
 #endif
       }
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
@@ -940,8 +953,9 @@ void main() {
       {
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           vec4 c = cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz);
-          colorOutput += c.xyz * baseColor.xyz * diffuseOcclusion * OneOverPI;
-          giDebugGIDiffuse += c.xyz * baseColor.xyz * diffuseOcclusion * OneOverPI;
+          vec3 diffuseColor = c.xyz * mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion * OneOverPI;
+          colorOutput += diffuseColor;
+          giDebugGIDiffuse += diffuseColor;
           iblWeight = clamp(1.0 - c.w, 0.0, 1.0);
         }
         if(dot(F0Dielectric, vec3(1.0)) > 1e-6){
@@ -951,6 +965,8 @@ void main() {
         }
       }
 #elif defined(GLOBAL_ILLUMINATION_DUGI)
+      // Calculate the diffuse color based on the base color and metallic value, modulated by diffuse occlusion.
+      vec3 diffuseColor = mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion;
   #if GI_DUGI_STORAGE_IS_SH
       // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically
       // by doSingleLight) and add the remaining residual SH as diffuse — mirroring the cascaded radiance hints path. The
@@ -983,8 +999,9 @@ void main() {
         DUGI_SH_TYPE shResidual = DUGI_SH_SUB(dugiRadianceSH, DUGI_SH_PROJECT(shDominantDirectionalLightDirection, shDominantDirectionalLightColor));
         vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(shResidual), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-          colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
-          giDebugGIDiffuse += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
+          diffuseColor *= shResidualDiffuse * OneOverPI;
+          colorOutput += diffuseColor;
+          giDebugGIDiffuse += diffuseColor;
         }
 #else
         // Alternative: native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
@@ -993,8 +1010,9 @@ void main() {
         DUGI_SH_EXTRACT_DOMINANT(dugiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(perceptualRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
         vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(dugiRadianceSH), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-          colorOutput += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
-          giDebugGIDiffuse += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
+          diffuseColor *= fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient));
+          colorOutput += diffuseColor;
+          giDebugGIDiffuse += diffuseColor;
         }
         DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
@@ -1011,8 +1029,9 @@ void main() {
           dugiSpecularWeight = smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness);
           vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
           vec3 dugiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
-          colorOutput += dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
-          giDebugGISpecular += dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
+          vec3 specularColor = dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
+          colorOutput += specularColor;
+          giDebugGISpecular += specularColor;
         }
 #endif
         doSingleLight(shDominantDirectionalLightColor,                    //
@@ -1053,8 +1072,9 @@ void main() {
       // (so matte surfaces like tyres do not pick up the sky colour through the coarse probe field / env cubemap).
       float iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-        colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-        giDebugGIDiffuse += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+        diffuseColor *= dugiIrradiance * OneOverPI;
+        colorOutput += diffuseColor;
+        giDebugGIDiffuse += diffuseColor;
       }
   #endif
 #endif

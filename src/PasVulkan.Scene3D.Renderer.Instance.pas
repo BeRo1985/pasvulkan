@@ -3375,7 +3375,7 @@ begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
     end;
     2:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
     end;
     3:begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
@@ -3481,7 +3481,7 @@ begin
      result:='GI diffuse only';
     end;
     2:begin
-     result:='IBL specular only';
+     result:='GI specular only';
     end;
     3:begin
      result:='direct light only';

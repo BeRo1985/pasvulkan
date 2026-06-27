@@ -208,6 +208,15 @@ const vec3 inModelScale = vec3(1.0);
   #define DUGI_DESCRIPTOR_SET 4
   #include "global_illumination_dugi_sampling.glsl"
 #endif
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+  // Cascaded radiance hints SH volume at the same dedicated set 4 (mirroring the DUGI probe field above and mesh.frag's CRH
+  // descriptor). binding 0 = the cascade uniform (declared inside the include), binding 1 = the SH cascade 3D textures.
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 4
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+  layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 1) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
+  #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
+  #include "global_illumination_cascaded_radiance_hints.glsl"
+#endif
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
@@ -611,6 +620,22 @@ void main(){
   // Roughness gate (matches mesh.frag): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on
   // matte ones (so matte surfaces do not pick up the sky colour through the coarse probe field / env cubemap).
   float giIBLWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
+#elif defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+  // Cascaded radiance hints: the SH volume provides the indirect diffuse (evaluated at the normal, metals demoted) and a
+  // low-frequency indirect specular reflection (the SH volume evaluated along the reflection vector, parallax-offset by
+  // roughness). The environment IBL is disabled below (giIBLWeight = 0) since this mode carries the indirect itself.
+  vec3 crhSphericalHarmonics[9];
+  globalIlluminationVolumeLookUp(crhSphericalHarmonics, inWorldSpacePosition, vec3(0.0), normal);
+  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+    vec3 crhDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, crhSphericalHarmonics))) * mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion;
+    colorOutput += crhDiffuse;
+    giDebugGIDiffuse += crhDiffuse;
+  }
+  vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness)) * getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion;
+  colorOutput += crhSpecular;
+  giDebugGISpecular += crhSpecular;
+  vec3 iblDiffuse = vec3(0.0);
+  const float giIBLWeight = 0.0;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;

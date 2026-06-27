@@ -259,6 +259,16 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
   #include "global_illumination_dugi_sampling.glsl"
   #define WATER_DUGI 1
 #endif
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) && !defined(WATER_CAUSTICS)
+  // Cascaded radiance hints SH volume at the same dedicated set 4 (mirrors planet_renderpass.frag / planet_grass.frag); the
+  // ambient diffuse and the reflection are sourced from it (the environment cubemap carries no scene radiance in this mode).
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 4
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+  layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 1) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
+  #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
+  #include "global_illumination_cascaded_radiance_hints.glsl"
+  #define WATER_CRH 1
+#endif
 
 // Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
 // albedo" convention. Under the DUGI build variant it comes from the probe field (replacing the environment IBL diffuse);
@@ -269,6 +279,13 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
 #if defined(WATER_DUGI)
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
   return dugiSampleIrradiance(worldPosition, n, viewDirection, skyVisibility) * OneOverPI;
+}
+#elif defined(WATER_CRH)
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
+  skyVisibility = 1.0;
+  vec3 sphericalHarmonics[9];
+  globalIlluminationVolumeLookUp(sphericalHarmonics, worldPosition, vec3(0.0), n);
+  return max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(n, sphericalHarmonics)));
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
@@ -892,6 +909,11 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+#if defined(WATER_CRH)
+    // Cascaded radiance hints: the environment cubemap has no scene radiance in this GI mode, so the water reflection comes
+    // from the SH volume along the reflection vector (parallax-offset by roughness) — low-frequency, but present, not black.
+    iblSpecularMetal = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness));
+#endif
 #if defined(WATER_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
     // Probe-derived glossy, roughness-gated. Water is normally near-mirror (low roughness), so smoothstep(0.3,0.8) keeps this ~inert and
     // the sharp environment/SSR reflection wins (sharp water reflections are wanted — see waterDiffuseAmbient). It only kicks
