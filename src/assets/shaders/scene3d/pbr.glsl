@@ -375,14 +375,14 @@ void doSingleLight(const in vec3 lightColor,
       lightDielectricBRDF = mix(lightDielectricBRDF, rgbMix(lightDiffuse, lightSpecularDielectric, iridescenceFresnelDielectric), iridescenceFactor);
     }
 
-    if ((flags & (1u << 7u)) != 0u) {
+    if (((flags & (1u << 7u)) != 0u) && (diffuseSpecularFactors.y > 0.0)) {
       float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
       lightAlbedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(NDotV, sheenRoughness)), //
                                     1.0 - (sheenColorMax * albedoSheenScalingLUT(NDotL, sheenRoughness)));
       lightSheen = lightIntensity * NDotL * BRDF_specularSheen(sheenColor, sheenRoughness, NDotL, NDotV, NDotH) * diffuseSpecularFactors.y;
     }
 
-    if ((flags & (1u << 8u)) != 0u) {
+    if (((flags & (1u << 8u)) != 0u) && (diffuseSpecularFactors.y > 0.0)) {
       float NDotL = clamp(dot(clearcoatNormal, lightDirection), 0.0, 1.0);
       float NDotV = clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0);
       float NDotH = clamp(dot(clearcoatNormal, halfwayVector), 0.0, 1.0);

@@ -897,7 +897,15 @@ void main() {
       vec3 giDebugIBLDiffuse = vec3(0.0);
       vec3 giDebugDirectLight = colorOutput;
 
-#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
+      float giResidualIBLDiffuseWeight = 0.0;
+      float giResidualIBLSpecularWeight = 0.0;
+#else
+      float giResidualIBLDiffuseWeight = 1.0;
+      float giResidualIBLSpecularWeight = 1.0;
+#endif
+
+ #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
         vec3 diffuseColor = mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion;
         vec3 volumeSphericalHarmonics[9];
@@ -939,11 +947,29 @@ void main() {
                       0.0);
         // Indirect specular reflection: sample the radiance-hints volume along the reflection vector (parallax-offset by
         // roughness) via the engine's CRH specular helper — the full low-frequency field reflection (NOT the dominant-subtracted
-        // residual, whose directional information is exactly what was removed), weighted by the split-sum specular BRDF. Same
-        // path as the planet CRH; lets metals (zero diffuse) reflect their surroundings instead of going black wherever the
-        // dominant light does not reach (tunnels, shadow). The dominant analytic specular is disabled above to avoid double counting.
+        // residual, whose directional information is exactly what was removed). It is the specular SOURCE; the split-sum BRDF and
+        // the sheen / clearcoat / iridescence lobes are then layered on top exactly like the environment-IBL block (the dominant
+        // analytic specular is disabled above, vec2(1.0, 0.0), to avoid double counting). No environment-IBL diffuse term here —
+        // CRH supplies the indirect diffuse in the block above — so the dielectric BRDF is the specular part only.
         vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition.xyz, viewDirection, normal.xyz, perceptualRoughness));
-        vec3 specularColor = crhSpecular * getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion;
+        vec3 crhMetalFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
+        vec3 crhMetalBRDF = crhMetalFresnel * crhSpecular;
+        vec3 crhDielectricFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
+        vec3 crhDielectricBRDF = crhSpecular * specularOcclusion * crhDielectricFresnel;
+        if((flags & (1u << 10u)) != 0u){ // iridescence
+          crhMetalBRDF = mix(crhMetalBRDF, crhSpecular * iridescenceFresnelMetallic, iridescenceFactor);
+          crhDielectricBRDF = mix(crhDielectricBRDF, crhSpecular * specularOcclusion * iridescenceFresnelDielectric, iridescenceFactor);
+        }
+        vec3 crhSheen = vec3(0.0);
+        float crhAlbedoSheenScaling = 1.0;
+        if((flags & (1u << 7u)) != 0u){ // sheen
+          crhSheen = getIBLRadianceCharlie(normal.xyz, viewDirection, sheenRoughness, sheenColor) * diffuseOcclusion;
+          crhAlbedoSheenScaling = 1.0 - (max(max(sheenColor.x, sheenColor.y), sheenColor.z) * albedoSheenScalingLUT(NdotV, sheenRoughness));
+        }
+        vec3 crhClearcoatBRDF = ((flags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(clearcoatNormal, viewDirection, clearcoatRoughness) * diffuseOcclusion) : vec3(0.0);
+        vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * specularOcclusion, metallic); // dielectric / metallic mix
+        specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);               // sheen modulation
+        specularColor = mix(specularColor, crhClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // clearcoat modulation
         colorOutput += specularColor;
         giDebugGISpecular += specularColor;
 #endif
@@ -1085,11 +1111,7 @@ void main() {
 #else
       float iblWeight = 1.0; // for future sky occulsion
 #endif
-#if defined(GLOBAL_ILLUMINATION_DUGI)
-      vec3 iblDiffuse = vec3(0.0); // DUGI replaces the environment IBL diffuse term (the field carries the sky via ray misses); IBL specular is kept but occluded via iblWeight
-#else
-      vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
-#endif
+      vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(normal) * baseColor.xyz * giResidualIBLDiffuseWeight) : vec3(0.0);
 
       // Diffuse transmission
       if ((flags & (1u << 16u)) != 0u) {
@@ -1117,6 +1139,7 @@ void main() {
         iblDiffuse = mix(iblDiffuse, iblSpecularTransmission, transmissionFactor);
       }
 #endif
+
       vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
 #if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
       // Blend the probe-derived glossy reflection into the specular source by roughness (matches planet_renderpass/grass and
