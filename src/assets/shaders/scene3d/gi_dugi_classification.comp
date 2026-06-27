@@ -77,7 +77,10 @@ void main(){
   // only applied when the producer wrote real per-ray geometry distances (FIXED_RAY_GEOMETRY_VALID flag); the RSM fallback
   // leaves it clear, so every fixed ray is a far miss there and all probes stay ACTIVE.
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
-  float activeState = (nearbyGeometry || ((pushConstants.flags & GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID) == 0u)) ? GI_DUGI_PROBE_STATE_ACTIVE : GI_DUGI_PROBE_STATE_INACTIVE;
+  float activeState = (nearbyGeometry ||
+                       ((pushConstants.flags & GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID) == 0u)
+                      ) ? GI_DUGI_PROBE_STATE_ACTIVE
+                        : GI_DUGI_PROBE_STATE_INACTIVE;
 #else
   float activeState = GI_DUGI_PROBE_STATE_ACTIVE;
 #endif
