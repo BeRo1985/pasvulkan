@@ -130,6 +130,7 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
+#include "gi_debug.glsl"
 #include "planet_grassflagsmap.glsl"
 
 #define FRAGMENT_SHADER
@@ -385,6 +386,16 @@ void main(){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
+  // GI / IBL / direct-light debug channel isolation (renderer-instance CycleGlobalIlluminationDebugMode -> Ctrl+Shift+F): the
+  // selected channel index sits in the spare bits of the planet flags word. colorOutput currently holds only the analytic
+  // direct lighting (the GI volume and the environment IBL are added below), so snapshot it for the direct-light-only channel.
+  uint giDebugDisplay = (pushConstants.flags >> GI_DEBUG_DISPLAY_PLANETFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
+  vec3 giDebugGIDiffuse = vec3(0.0);
+  vec3 giDebugGISpecular = vec3(0.0);
+  vec3 giDebugIBLSpecular = vec3(0.0);
+  vec3 giDebugIBLDiffuse = vec3(0.0);
+  vec3 giDebugDirectLight = colorOutput;
+
 #if defined(GLOBAL_ILLUMINATION_DUGI)
   // RT GI: probe-field diffuse (replaces IBL diffuse); IBL specular kept but occluded by probe sky-visibility · AO.
   float dugiSkyVisibility;
@@ -393,6 +404,7 @@ void main(){
   vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, normalize(reflect(-viewDirection, normal)), dugiSkyVisibility);
   if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
     colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+    giDebugGIDiffuse += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
   }
   vec3 iblDiffuse = vec3(0.0);
   // Roughness gate (matches mesh.frag): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on
@@ -426,6 +438,42 @@ void main(){
   vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
   colorOutput += iblResultColor * giIBLWeight;
+  if(giDebugDisplay != 0u){
+    // Split the environment IBL result into its diffuse and specular parts for the debug channels (see mesh.frag).
+    vec3 iblDiffusePart = (iblDiffuse * diffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - metallic);
+    giDebugIBLDiffuse += iblDiffusePart * giIBLWeight;
+    giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * giIBLWeight;
+#if defined(GLOBAL_ILLUMINATION_DUGI)
+    // The probe-derived glossy reflection is folded into the environment specular here, so the GI-specular channel mirrors it.
+    giDebugGISpecular += (iblResultColor - iblDiffusePart) * giIBLWeight;
+#endif
+    // Replace the shaded colour with the single selected indirect / direct lighting channel before it is packed into c below.
+    switch(giDebugDisplay){
+      case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
+        colorOutput = giDebugGIDiffuse;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_GI_SPECULAR: {
+        colorOutput = giDebugGISpecular;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
+        colorOutput = giDebugIBLSpecular;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
+        colorOutput = giDebugIBLDiffuse;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
+        colorOutput = giDebugDirectLight;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
 #endif // !RSMALBEDO
 
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);

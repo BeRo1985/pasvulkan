@@ -872,6 +872,18 @@ begin
      exit;
     end;
    end;
+   KEYCODE_F:begin
+    // Ctrl+Shift+F: cycle the global-illumination debug view (overlays + isolated GI/IBL/direct-light channels, per GI mode).
+    // Plain F (no Ctrl+Shift) falls through to the camera-movement handler below.
+    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+     if assigned(fRendererInstance) then begin
+      fRendererInstance.CycleGlobalIlluminationDebugMode;
+      pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Global illumination debug mode: '+fRendererInstance.GlobalIlluminationDebugModeName);
+     end;
+     result:=true;
+     exit;
+    end;
+   end;
   end;
  end;
  if aKeyEvent.KeyEventType in [TpvApplicationInputKeyEventType.Down,TpvApplicationInputKeyEventType.Up] then begin

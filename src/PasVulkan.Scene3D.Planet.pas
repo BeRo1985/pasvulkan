@@ -28936,6 +28936,8 @@ begin
       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
        fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 3);
       end;
+      // GI debug channel (Ctrl+Shift+F cycle) -> spare bits of the planet flags word (gi_debug.glsl reads bits 22..25).
+      fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or ((TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDebugShadingMode and 15) shl 22);
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
        fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 4); // PLANET_TERRAIN_FLAG_FRUSTUM_CULL
        if Planet.fData.fLODActive then begin
@@ -29177,6 +29179,8 @@ begin
       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
        fGrassPushConstants.Flags:=fGrassPushConstants.Flags or 1;
       end;
+      // GI debug channel (Ctrl+Shift+F cycle) -> spare bits of the planet flags word (gi_debug.glsl reads bits 22..25).
+      fGrassPushConstants.Flags:=fGrassPushConstants.Flags or ((TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDebugShadingMode and 15) shl 22);
       fGrassPushConstants.FrameIndex:=0;
       fGrassPushConstants.TimeSeconds:=trunc(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
       fGrassPushConstants.TimeFractionalSecond:=frac(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex]);
@@ -31627,6 +31631,8 @@ begin
        if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
         fPushConstants.Flags:=fPushConstants.Flags or (TpvUInt32(1) shl 3); // PLANET_WATER_FLAG_MESHLET_DEBUG_COLORS
        end;
+       // GI debug channel (Ctrl+Shift+F cycle) -> spare bits of the planet flags word (gi_debug.glsl reads bits 22..25).
+       fPushConstants.Flags:=fPushConstants.Flags or ((TpvScene3DRendererInstance(fRendererInstance).GlobalIlluminationDebugShadingMode and 15) shl 22);
 
        fPushConstants.FrameIndex:=aFrameIndex;
        fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);

@@ -139,6 +139,8 @@ layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
+#include "gi_debug.glsl"
+
 #define FRAGMENT_SHADER
 
 #define WATER_FRAGMENT_SHADER
@@ -877,6 +879,17 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #include "lighting.glsl"
 #undef LIGHTING_IMPLEMENTATION
 
+    // GI / IBL / direct-light debug channel isolation (renderer-instance CycleGlobalIlluminationDebugMode -> Ctrl+Shift+F): the
+    // selected channel index sits in the spare bits of the planet flags word. colorOutput holds only the analytic direct
+    // lighting here. Water's indirect terms are approximate (its lighting is a reflection / refraction blend), but the channels
+    // still isolate the ambient diffuse and the (probe-blended) specular reflection. 0 = off (normal shading).
+    uint giDebugDisplay = (pushConstants.flags >> GI_DEBUG_DISPLAY_PLANETFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
+    vec3 giDebugGIDiffuse = vec3(0.0);
+    vec3 giDebugGISpecular = vec3(0.0);
+    vec3 giDebugIBLSpecular = vec3(0.0);
+    vec3 giDebugIBLDiffuse = vec3(0.0);
+    vec3 giDebugDirectLight = colorOutput;
+
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
 #if defined(WATER_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
@@ -903,6 +916,16 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
     vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
     vec3 iblSpecular = iblResultColor;
+    if(giDebugDisplay != 0u){
+      // Split the ambient IBL result into diffuse and specular for the debug channels (see mesh.frag). Water's diffuse ambient
+      // (waterDiffuseAmbient) carries the probe / sky irradiance, so it doubles as the GI-diffuse channel; the specular
+      // reflection (with any probe glossy already folded in) is the GI- and IBL-specular channel.
+      vec3 iblDiffusePart = (iblDiffuse * diffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - metallic);
+      giDebugIBLDiffuse += iblDiffusePart;
+      giDebugGIDiffuse += iblDiffusePart;
+      giDebugIBLSpecular += iblResultColor - iblDiffusePart;
+      giDebugGISpecular += iblResultColor - iblDiffusePart;
+    }
 
 //    vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0Dielectric, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
 
@@ -970,6 +993,35 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
       clamp(1.0 - exp(-max(waterHeight, waterDepth) * 6.0), 0.0, 1.0)
       //clamp(1.0 - exp(-mix(waterHeight, waterDepth, max(0.0, dot(normal, viewDirection))) * 6.0), 0.0, 1.0)
     );
+
+    // GI debug cycle (Ctrl+Shift+F): replace the blended water colour with the single selected indirect / direct channel.
+    if(giDebugDisplay != 0u){
+      switch(giDebugDisplay){
+        case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
+          color.xyz = giDebugGIDiffuse;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_GI_SPECULAR: {
+          color.xyz = giDebugGISpecular;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
+          color.xyz = giDebugIBLSpecular;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
+          color.xyz = giDebugIBLDiffuse;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
+          color.xyz = giDebugDirectLight;
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
 
   //  color.xyz = vec3(waterDepth * 0.01);
     

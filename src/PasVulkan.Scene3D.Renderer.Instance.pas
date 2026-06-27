@@ -994,6 +994,8 @@ type { TpvScene3DRendererInstance }
        fKeepPass0InPass1:Boolean;
        fSelectionOutlineThickness:TpvFloat;
        fDebugDUGIProbes:Boolean;
+       fGlobalIlluminationDebugMode:TpvUInt32; // per-GI-mode debug cycle position (0 = off); advanced by CycleGlobalIlluminationDebugMode
+       fGlobalIlluminationDebugShadingMode:TpvUInt32; // derived GI/IBL/direct-light isolation channel pushed to the surface shaders (0..5, matches gi_debug.glsl GI_DEBUG_DISPLAY_*)
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
        fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
        fDebugDrawMeshletBoundingSpheres:Boolean;
@@ -1044,6 +1046,8 @@ type { TpvScene3DRendererInstance }
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
        procedure SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
+       function GetGlobalIlluminationDebugModeCount:TpvUInt32;
+       procedure ApplyGlobalIlluminationDebugMode;
       private
        procedure CalculateSceneBounds(const aInFlightFrameIndex:TpvInt32);
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
@@ -1088,6 +1092,8 @@ type { TpvScene3DRendererInstance }
        function AddSolidTriangle3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        function AddSolidQuad3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2,aPosition3:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset,aPosition3Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+       procedure CycleGlobalIlluminationDebugMode; // advances the per-GI-mode debug cycle (Ctrl+Shift+F): overlays + isolated GI/IBL/direct-light channels
+       function GlobalIlluminationDebugModeName:TpvUTF8String; // human-readable name of the current debug cycle position (for logging)
        procedure ResetFrame(const aInFlightFrameIndex:TpvInt32);
        function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
        function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
@@ -1317,6 +1323,9 @@ type { TpvScene3DRendererInstance }
        property SelectionOutlineThickness:TpvFloat read fSelectionOutlineThickness write fSelectionOutlineThickness;
        // Debug: draw every DUGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
        property DebugDUGIProbes:Boolean read fDebugDUGIProbes write fDebugDUGIProbes;
+       // GI debug cycle (Ctrl+Shift+F): current cycle position and the derived per-pixel isolation channel pushed to the shaders.
+       property GlobalIlluminationDebugMode:TpvUInt32 read fGlobalIlluminationDebugMode;
+       property GlobalIlluminationDebugShadingMode:TpvUInt32 read fGlobalIlluminationDebugShadingMode;
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
        property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable (A/B); false = keep all probes active (no inactive-probe early-out)
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
@@ -2279,6 +2288,9 @@ begin
  fSelectionOutlineThickness:=3.0;
 
  fDebugDUGIProbes:=false;
+
+ fGlobalIlluminationDebugMode:=0;
+ fGlobalIlluminationDebugShadingMode:=0;
 
  fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
  fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime for A/B
@@ -3258,6 +3270,252 @@ begin
  if fRaytracingFlags<>aRaytracingFlags then begin
   fRaytracingFlags:=aRaytracingFlags;
  end;
+end;
+
+// GI debug shading channel codes — must match gi_debug.glsl (GI_DEBUG_DISPLAY_*) and the surface-shader switch statements.
+const GIDebugShadingNone=0;
+      GIDebugShadingGIDiffuse=1;
+      GIDebugShadingGISpecular=2;
+      GIDebugShadingIBLSpecular=3;
+      GIDebugShadingIBLDiffuse=4;
+      GIDebugShadingDirectLight=5;
+
+function TpvScene3DRendererInstance.GetGlobalIlluminationDebugModeCount:TpvUInt32;
+begin
+
+ // The number of debug cycle positions depends on the active GI technique: the ray-traced / voxel techniques add a probe /
+ // voxel overlay plus the GI diffuse + GI specular channels; the radiance-hints technique is diffuse-only; the pure-IBL
+ // techniques (environment map / camera reflection probe) only have the two IBL channels. Position 0 is always "off", and the
+ // direct-light-only channel is always the last position, so every technique can show it.
+ case Renderer.GlobalIlluminationMode of
+
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination,
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   result:=6; // off, overlay, GI diffuse, GI specular, IBL specular, direct light
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
+   result:=4; // off, GI diffuse, IBL specular, direct light
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
+  TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
+   result:=4; // off, IBL diffuse, IBL specular, direct light
+  end;
+
+  else begin
+   result:=1; // off only
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3DRendererInstance.ApplyGlobalIlluminationDebugMode;
+var Mode:TpvUInt32;
+begin
+
+ // Translate the current cycle position into the underlying debug state: an overlay toggle (probes / voxels) or the per-pixel
+ // GI/IBL/direct-light isolation channel pushed to the surface shaders. Reset all of them first so exactly one is active.
+ fDebugDUGIProbes:=false;
+ fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:=false;
+ fGlobalIlluminationDebugShadingMode:=GIDebugShadingNone;
+
+ Mode:=fGlobalIlluminationDebugMode;
+
+ case Renderer.GlobalIlluminationMode of
+
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   case Mode of
+    1:begin
+     fDebugDUGIProbes:=true;
+    end;
+    2:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+    end;
+    3:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
+    end;
+    4:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    5:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+    end;
+    else begin
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   case Mode of
+    1:begin
+     fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:=true;
+    end;
+    2:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+    end;
+    3:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
+    end;
+    4:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    5:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+    end;
+    else begin
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
+   case Mode of
+    1:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+    end;
+    2:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    3:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+    end;
+    else begin
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
+  TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
+   case Mode of
+    1:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
+    end;
+    2:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    3:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+    end;
+    else begin
+    end;
+   end;
+  end;
+
+  else begin
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3DRendererInstance.CycleGlobalIlluminationDebugMode;
+var Count:TpvUInt32;
+begin
+
+ Count:=GetGlobalIlluminationDebugModeCount;
+ if Count<=1 then begin
+  fGlobalIlluminationDebugMode:=0;
+ end else begin
+  fGlobalIlluminationDebugMode:=(fGlobalIlluminationDebugMode+1) mod Count;
+ end;
+
+ ApplyGlobalIlluminationDebugMode;
+
+end;
+
+function TpvScene3DRendererInstance.GlobalIlluminationDebugModeName:TpvUTF8String;
+begin
+
+ case Renderer.GlobalIlluminationMode of
+
+  TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
+   case fGlobalIlluminationDebugMode of
+    1:begin
+     result:='probes';
+    end;
+    2:begin
+     result:='GI diffuse only';
+    end;
+    3:begin
+     result:='GI specular only';
+    end;
+    4:begin
+     result:='IBL specular only';
+    end;
+    5:begin
+     result:='direct light only';
+    end;
+    else begin
+     result:='off';
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   case fGlobalIlluminationDebugMode of
+    1:begin
+     result:='voxels';
+    end;
+    2:begin
+     result:='GI diffuse only';
+    end;
+    3:begin
+     result:='GI specular only';
+    end;
+    4:begin
+     result:='IBL specular only';
+    end;
+    5:begin
+     result:='direct light only';
+    end;
+    else begin
+     result:='off';
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
+   case fGlobalIlluminationDebugMode of
+    1:begin
+     result:='GI diffuse only';
+    end;
+    2:begin
+     result:='IBL specular only';
+    end;
+    3:begin
+     result:='direct light only';
+    end;
+    else begin
+     result:='off';
+    end;
+   end;
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
+  TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
+   case fGlobalIlluminationDebugMode of
+    1:begin
+     result:='IBL diffuse only';
+    end;
+    2:begin
+     result:='IBL specular only';
+    end;
+    3:begin
+     result:='direct light only';
+    end;
+    else begin
+     result:='off';
+    end;
+   end;
+  end;
+
+  else begin
+   result:='off';
+  end;
+
+ end;
+
 end;
 
 procedure TpvScene3DRendererInstance.CheckSolidPrimitives(const aInFlightFrameIndex:TpvInt32);
@@ -9874,6 +10132,10 @@ begin
   end;
   if fZFar<0.0 then begin
    MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or (TpvUInt32(1) shl 4); // FLAG_REVERSED_Z
+  end;
+  if (aRenderPass=TpvScene3DRendererRenderPass.View) and (fGlobalIlluminationDebugShadingMode<>0) then begin
+   // GI debug channel (Ctrl+Shift+F cycle): isolate one indirect/direct lighting channel; only the final view, never the GI producers.
+   MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or ((fGlobalIlluminationDebugShadingMode and 15) shl 28); // GI_DEBUG_DISPLAY_* high bits (gi_debug.glsl)
   end;
   MeshStagePushConstants^.TextureDepthIndex:=0;
   case aRenderPass of

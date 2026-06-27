@@ -159,6 +159,8 @@ const int TEXTURE_BASE_INDEX = 10;
 
 #include "mesh_pushconstants.glsl"
 
+#include "gi_debug.glsl"
+
 #define REVERSEDZ_BIT 4
 bool reversedZ = (pushConstants.drawFlags & (1u << REVERSEDZ_BIT)) != 0;
 //float reversedZFactor = reversedZ ? -1.0 : 1.0;
@@ -883,6 +885,18 @@ void main() {
 #undef LIGHTING_IMPLEMENTATION
 #endif
 
+      // GI / IBL / direct-light debug channel isolation (renderer-instance CycleGlobalIlluminationDebugMode -> Ctrl+Shift+F):
+      // the selected channel index sits in the spare high bits of drawFlags. Each indirect / direct contribution below is also
+      // mirrored into a per-channel accumulator so the final colour can show one channel in isolation. colorOutput currently
+      // holds only the analytic direct lighting (the GI volume and the environment IBL are added afterwards), so snapshot it
+      // here for the direct-light-only channel. 0 = off (normal shading).
+      uint giDebugDisplay = (pushConstants.drawFlags >> GI_DEBUG_DISPLAY_DRAWFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
+      vec3 giDebugGIDiffuse = vec3(0.0);
+      vec3 giDebugGISpecular = vec3(0.0);
+      vec3 giDebugIBLSpecular = vec3(0.0);
+      vec3 giDebugIBLDiffuse = vec3(0.0);
+      vec3 giDebugDirectLight = colorOutput;
+
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
         vec3 volumeSphericalHarmonics[9];
@@ -895,6 +909,7 @@ void main() {
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
         colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
+        giDebugGIDiffuse += shResidualDiffuse * baseColor.xyz * diffuseOcclusion;
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //
                       vec2(1.0),                                          // diffuseSpecularFactors (neutral)
@@ -926,10 +941,13 @@ void main() {
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           vec4 c = cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz);
           colorOutput += c.xyz * baseColor.xyz * diffuseOcclusion * OneOverPI;
+          giDebugGIDiffuse += c.xyz * baseColor.xyz * diffuseOcclusion * OneOverPI;
           iblWeight = clamp(1.0 - c.w, 0.0, 1.0);
         }
         if(dot(F0Dielectric, vec3(1.0)) > 1e-6){
-          colorOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * specularOcclusion * OneOverPI;
+          vec3 cvctSpecular = cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0Dielectric * specularOcclusion * OneOverPI;
+          colorOutput += cvctSpecular;
+          giDebugGISpecular += cvctSpecular;
         }
       }
 #elif defined(GLOBAL_ILLUMINATION_DUGI)
@@ -966,6 +984,7 @@ void main() {
         vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(shResidual), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
+          giDebugGIDiffuse += shResidualDiffuse * baseColor.xyz * diffuseOcclusion * OneOverPI;
         }
 #else
         // Alternative: native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
@@ -975,6 +994,7 @@ void main() {
         vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(dugiRadianceSH), normal.xyz));
         if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
           colorOutput += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
+          giDebugGIDiffuse += fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient)) * baseColor.xyz * diffuseOcclusion;
         }
         DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
@@ -992,6 +1012,7 @@ void main() {
           vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
           vec3 dugiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
           colorOutput += dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
+          giDebugGISpecular += dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
         }
 #endif
         doSingleLight(shDominantDirectionalLightColor,                    //
@@ -1033,6 +1054,7 @@ void main() {
       float iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
         colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
+        giDebugGIDiffuse += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
       }
   #endif
 #endif
@@ -1114,6 +1136,19 @@ void main() {
       iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen); // Sheen modulation
       iblResultColor = mix(iblResultColor, iblClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // Clearcoat modulation
       colorOutput += iblResultColor * iblWeight; // Add to the color output; iblWeight (= 1 - voxel cone tracing diffuse occlusion) suppresses the environment IBL where the voxel cone tracing already gathered near-field indirect light and occlusion, so the VCT global illumination actually contributes instead of being drowned out by full-strength IBL. For non-VCT paths iblWeight is 1.0.
+      if(giDebugDisplay != 0u){
+        // Split the environment IBL result into its diffuse and specular parts for the debug channels: iblDielectricBRDF mixes
+        // the diffuse against the specular by the dielectric Fresnel, so the diffuse part is (1 - Fresnel) of the dielectric
+        // term and only on non-metals; the remainder (metal BRDF, sheen, clearcoat, dielectric specular) is the specular part.
+        vec3 iblDiffusePart = (iblDiffuse * diffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - metallic);
+        giDebugIBLDiffuse += iblDiffusePart * iblWeight;
+        giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
+#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)
+        // Octahedral DUGI folds the probe-derived glossy reflection into the environment specular above (it is not a separate
+        // additive term like the SH / voxel cone tracing paths), so the GI-specular channel mirrors that combined specular.
+        giDebugGISpecular += (iblResultColor - iblDiffusePart) * iblWeight;
+#endif
+      }
 #endif
 #endif
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
@@ -1152,6 +1187,36 @@ void main() {
       color.xyz = fma(color.xyz, vec3(1.0 - (clearcoatFactor * clearcoatFresnel)), clearcoatOutput);*/
 #ifdef EXTRAEMISSIONOUTPUT
 //      emissionColor.xyz = emissiveOutput * (1.0 - (clearcoatFactor * clearcoatFresnel));
+#endif
+#if !defined(REFLECTIVESHADOWMAPOUTPUT) && !defined(RSMALBEDO)
+      // GI debug cycle (Ctrl+Shift+F): replace the shaded colour with the single selected indirect / direct lighting channel.
+      if(giDebugDisplay != 0u){
+        switch(giDebugDisplay){
+          case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
+            color.xyz = giDebugGIDiffuse;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_GI_SPECULAR: {
+            color.xyz = giDebugGISpecular;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
+            color.xyz = giDebugIBLSpecular;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
+            color.xyz = giDebugIBLDiffuse;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
+            color.xyz = giDebugDirectLight;
+            break;
+          }
+          default: {
+            break;
+          }
+        }
+      }
 #endif
       break;
     }
