@@ -947,12 +947,14 @@ void main() {
                       specularWeight,                                     //
                       vec3(0.0),                                        //
                       0.0);
-        // Indirect specular reflection: sample the radiance-hints volume along the reflection vector (parallax-offset by
-        // roughness) via the engine's CRH specular helper — the full low-frequency field reflection (NOT the dominant-subtracted
-        // residual, whose directional information is exactly what was removed). It is the specular SOURCE; the split-sum BRDF and
-        // the sheen / clearcoat / iridescence lobes are then layered on top exactly like the environment-IBL block (the dominant
-        // analytic specular is disabled above, vec2(1.0, 0.0), to avoid double counting). No environment-IBL diffuse term here —
-        // CRH supplies the indirect diffuse in the block above — so the dielectric BRDF is the specular part only.
+        // Indirect specular reflection — the ROUGH side of a roughness crossfade. Sample the radiance-hints volume along the
+        // reflection vector (parallax-offset by roughness) via the engine's CRH specular helper — the full low-frequency field
+        // reflection (NOT the dominant-subtracted residual, whose directional information is exactly what was removed) — and run
+        // it through the same split-sum BRDF + sheen / clearcoat / iridescence as the environment-IBL block. The SHARP side comes
+        // from that env-IBL block below (its env reflection is gated by giResidualIBLSpecularWeight); this term takes the
+        // complementary (1 - weight) at the end, so rough surfaces reflect the local SH and sharp ones the environment. The
+        // dominant analytic specular is off above (vec2(1.0, 0.0)) and there is no env-IBL diffuse for CRH (its indirect diffuse
+        // is added in the block above), so this is the specular part only.
         giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, perceptualRoughness); // 0.0 = dominant-light specular, 1.0 = IBL specular
         vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition.xyz, viewDirection, normal.xyz, perceptualRoughness));
         vec3 crhMetalFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
@@ -973,7 +975,7 @@ void main() {
         vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * specularOcclusion, metallic); // dielectric / metallic mix
         specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);               // sheen modulation
         specularColor = mix(specularColor, crhClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // clearcoat modulation
-        specularColor *= 1.0 - giResidualIBLSpecularWeight; // crossfade against the glossy-radiance atlas (the dominant light's specular is already applied above)
+        specularColor *= 1.0 - giResidualIBLSpecularWeight; // rough side of the crossfade: the env-IBL reflection below is gated by giResidualIBLSpecularWeight (sharp side), so the local SH reflection takes the complementary (1 - weight)
         colorOutput += specularColor;
         giDebugGISpecular += specularColor;
 #endif
