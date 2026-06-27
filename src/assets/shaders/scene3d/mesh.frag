@@ -159,6 +159,8 @@ const int TEXTURE_BASE_INDEX = 10;
 
 #include "mesh_pushconstants.glsl"
 
+#include "gi_globals.glsl"
+
 #include "gi_debug.glsl"
 
 #define REVERSEDZ_BIT 4
@@ -951,6 +953,7 @@ void main() {
         // the sheen / clearcoat / iridescence lobes are then layered on top exactly like the environment-IBL block (the dominant
         // analytic specular is disabled above, vec2(1.0, 0.0), to avoid double counting). No environment-IBL diffuse term here —
         // CRH supplies the indirect diffuse in the block above — so the dielectric BRDF is the specular part only.
+        giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, perceptualRoughness); // 0.0 = dominant-light specular, 1.0 = IBL specular
         vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition.xyz, viewDirection, normal.xyz, perceptualRoughness));
         vec3 crhMetalFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
         vec3 crhMetalBRDF = crhMetalFresnel * crhSpecular;
@@ -970,6 +973,7 @@ void main() {
         vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * specularOcclusion, metallic); // dielectric / metallic mix
         specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);               // sheen modulation
         specularColor = mix(specularColor, crhClearcoatBRDF, clearcoatFactor * clearcoatFresnel); // clearcoat modulation
+        specularColor *= 1.0 - giResidualIBLSpecularWeight; // crossfade against the glossy-radiance atlas (the dominant light's specular is already applied above)
         colorOutput += specularColor;
         giDebugGISpecular += specularColor;
 #endif
@@ -1052,7 +1056,7 @@ void main() {
         {
           vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal.xyz));
           // Crossfade weight: 0 at low roughness (take the glossy atlas) .. 1 at high roughness (take the dominant light).
-          dugiSpecularWeight = smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness);
+          dugiSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness);
           vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
           vec3 dugiGlossyFresnel = getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic));
           vec3 specularColor = dugiGlossyRadiance * dugiGlossyFresnel * specularOcclusion * (1.0 - dugiSpecularWeight);
@@ -1096,7 +1100,7 @@ void main() {
       vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition.xyz, normal.xyz, viewDirection, normalize(reflect(-viewDirection, normal.xyz)), dugiSkyVisibility);
       // Roughness gate (A): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on matte ones
       // (so matte surfaces like tyres do not pick up the sky colour through the coarse probe field / env cubemap).
-      float iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
+      float iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
       if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
         diffuseColor *= dugiIrradiance * OneOverPI;
         colorOutput += diffuseColor;
@@ -1140,7 +1144,7 @@ void main() {
       }
 #endif
 
-      vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
+      vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(normal, viewDirection, perceptualRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
 #if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
       // Blend the probe-derived glossy reflection into the specular source by roughness (matches planet_renderpass/grass and
       // the SH path): rough surfaces take the probe field along the reflection vector (occlusion-aware local colour bleed, not
@@ -1153,7 +1157,7 @@ void main() {
 #if defined(GI_DUGI_GLOSSY_RADIANCE)
         // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
         vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition.xyz, normal.xyz, dugiReflectionVector, viewDirection);
-        dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+        dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
         iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
       }

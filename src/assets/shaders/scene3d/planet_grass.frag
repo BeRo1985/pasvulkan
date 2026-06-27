@@ -130,6 +130,7 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
+#include "gi_globals.glsl"
 #include "gi_debug.glsl"
 #include "planet_grassflagsmap.glsl"
 
@@ -425,7 +426,7 @@ void main(){
   vec3 iblDiffuse = vec3(0.0);
   // Roughness gate (matches mesh.frag): keep the (coarse) env/glossy specular reflection on glossy surfaces, fade it out on
   // matte ones (so matte surfaces do not pick up the sky colour through the coarse probe field / env cubemap).
-  float giIBLWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_DUGI_SPECULAR_ROUGHNESS_LO, GI_DUGI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
+  float giIBLWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
   // Cascaded radiance hints: SH volume diffuse (at the normal, metals demoted) + low-frequency SH reflection (along the
   // reflection vector). The environment IBL is disabled below (giIBLWeight = 0); this mode carries the indirect itself.
@@ -472,7 +473,7 @@ void main(){
 #if defined(GI_DUGI_GLOSSY_RADIANCE)
     // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
     vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
-    dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+    dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
     iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
   }

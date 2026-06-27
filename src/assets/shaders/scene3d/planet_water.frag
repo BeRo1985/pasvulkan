@@ -139,6 +139,8 @@ layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
+#include "gi_globals.glsl"
+
 #include "gi_debug.glsl"
 
 #define FRAGMENT_SHADER
@@ -946,7 +948,7 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #if defined(GI_DUGI_GLOSSY_RADIANCE)
       // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
       vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
-      dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_DUGI_GLOSSY_ROUGHNESS_LO, GI_DUGI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
+      dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
       iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
     }
