@@ -68,6 +68,7 @@ type { TScreenMain }
        fCountInFlightFrames:TpvSizeInt;
        fInFlightFrameStates:TInFlightFrameStates;
        fScene3D:TpvScene3D;
+       fScene3DConfiguration:TpvScene3D.TConfiguration;
        fRenderer:TpvScene3DRenderer;
        fRendererInstance:TpvScene3DRendererInstance;
        fPrimaryDirectionalLight:TpvScene3D.TLight;
@@ -196,7 +197,9 @@ begin
 
  fUpdateLock:=TPasMPCriticalSection.Create;
 
- fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,nil,pvApplication.VulkanDevice,TpvScene3DRenderer.CheckBufferDeviceAddress(pvApplication.VulkanDevice),fCountInFlightFrames,nil,UnitApplication.Application.VirtualReality);
+ fScene3DConfiguration:=TpvScene3D.TConfiguration.Create;
+
+ fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,nil,pvApplication.VulkanDevice,fCountInFlightFrames,nil,UnitApplication.Application.VirtualReality,fScene3DConfiguration);
 
  fScene3D.PasMPInstance:=pvApplication.PasMPInstance;
 
@@ -341,6 +344,7 @@ begin
  FreeAndNil(fGroup);
  FreeAndNil(fPrimaryDirectionalLight);
  FreeAndNil(fScene3D);
+ FreeAndNil(fScene3DConfiguration);
  FreeAndNil(fUpdateLock);
  FreeAndNil(fVelocityCamera);
  inherited Destroy;
