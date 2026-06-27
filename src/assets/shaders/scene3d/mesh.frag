@@ -916,7 +916,7 @@ void main() {
         giDebugGIDiffuse += diffuseColor;
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(specularOcclusion),                            //
-                      vec2(1.0),                                          // diffuseSpecularFactors (neutral)
+                      vec2(1.0, 0.0),                                     // dominant light: diffuse only — the full-field indirect specular reflection below already covers the dominant direction, so applying its analytic specular too would double-count
                       -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       baseColor.xyz,                                      //
@@ -937,13 +937,13 @@ void main() {
                       specularWeight,                                     //
                       vec3(0.0),                                        //
                       0.0);
-        // Indirect specular reflection: evaluate the residual radiance-hints SH along the reflection vector (the dominant
-        // indirect direction is already handled by doSingleLight above, so this is the broad residual reflection — no double
-        // counting) and weight it with the split-sum specular BRDF. This is the proper low-frequency CRH reflection within its
-        // data model — it lets metals (which have zero diffuse) reflect their surroundings instead of going black wherever the
-        // dominant light does not reach (tunnels, shadow).
-        vec3 shResidualSpecular = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecode(reflect(-viewDirection, normal.xyz), volumeSphericalHarmonics)));
-        vec3 specularColor = shResidualSpecular * getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion;
+        // Indirect specular reflection: sample the radiance-hints volume along the reflection vector (parallax-offset by
+        // roughness) via the engine's CRH specular helper — the full low-frequency field reflection (NOT the dominant-subtracted
+        // residual, whose directional information is exactly what was removed), weighted by the split-sum specular BRDF. Same
+        // path as the planet CRH; lets metals (zero diffuse) reflect their surroundings instead of going black wherever the
+        // dominant light does not reach (tunnels, shadow). The dominant analytic specular is disabled above to avoid double counting.
+        vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition.xyz, viewDirection, normal.xyz, perceptualRoughness));
+        vec3 specularColor = crhSpecular * getIBLGGXFresnel(normal.xyz, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion;
         colorOutput += specularColor;
         giDebugGISpecular += specularColor;
 #endif

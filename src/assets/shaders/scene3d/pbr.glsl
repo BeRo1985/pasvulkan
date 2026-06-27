@@ -8,12 +8,12 @@
 #ifdef UseEnvMapGGX
 float envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
 #else
-float envMapMaxLevelGGX; 
+float envMapMaxLevelGGX;
 #endif
 
 #ifdef UseEnvMapCharlie
 float envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
-#else 
+#else
 float envMapMaxLevelCharlie;
 #endif
 
@@ -45,7 +45,7 @@ float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 #include "math.glsl"
 
 float ambientOcclusion = 1.0;
-float diffuseOcclusion = 1.0; 
+float diffuseOcclusion = 1.0;
 float specularOcclusion = 1.0;
 
 vec3 iridescenceFresnelDielectric = vec3(0.0);
@@ -78,7 +78,7 @@ float rcpSinFromCos(const in float cosAngle){
   return inversesqrt(max(0.0, 1.0 - (cosAngle * cosAngle)));
 }
 
-// Based on https://x.com/BenSimsTech/status/1933128209786347709 
+// Based on https://x.com/BenSimsTech/status/1933128209786347709
 vec3 getViewClampedNormal(vec3 normal, const in vec3 viewDirection, out float NdotV){
   NdotV = dot(normal, viewDirection);
   if(NdotV < 0.0){
@@ -89,7 +89,7 @@ vec3 getViewClampedNormal(vec3 normal, const in vec3 viewDirection, out float Nd
 }
 
 float applyIorToRoughness(float roughness, float ior) {
-  // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and 
+  // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and
   // an IOR of 1.5 results in the default amount of microfacet refraction.
   return roughness * clamp(fma(ior, 2.0, -2.0), 0.0, 1.0);
 }
@@ -113,7 +113,7 @@ vec3 F_Schlick(vec3 f0, vec3 f90, float VdotH) {
 float F_Schlick(float f0, float f90, float VdotH) {
   float x = clamp(1.0 - VdotH, 0.0, 1.0);
   float x2 = x * x;
-  return mix(f0, f90, x * x2 * x2);  
+  return mix(f0, f90, x * x2 * x2);
 }
 
 float F_Schlick(float f0, float VdotH) {
@@ -140,11 +140,11 @@ float Schlick_to_F0(float f, float f90, float VdotH) {
   return (f - (f90 * x5)) / (1.0 - x5);
 }
 
-vec3 Schlick_to_F0(vec3 f, float VdotH) { 
+vec3 Schlick_to_F0(vec3 f, float VdotH) {
   return Schlick_to_F0(f, vec3(1.0), VdotH); //
 }
 
-float Schlick_to_F0(float f, float VdotH) { 
+float Schlick_to_F0(float f, float VdotH) {
   return Schlick_to_F0(f, 1.0, VdotH); //
 }
 
@@ -165,7 +165,7 @@ float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
   float GGX = (NdotL * sqrt(((NdotV * NdotV) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
               (NdotV * sqrt(((NdotL * NdotL) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq));
   return (GGX > 0.0) ? (0.5 / GGX) : 0.0;
-#endif  
+#endif
 }
 
 float D_GGX(float NdotH, float alphaRoughness) {
@@ -173,7 +173,7 @@ float D_GGX(float NdotH, float alphaRoughness) {
   if (anisotropyActive) {
     float a2 = alphaRoughnessAnisotropyT * alphaRoughnessAnisotropyB;
     vec3 f = vec3(alphaRoughnessAnisotropyB * anisotropyTdotH, alphaRoughnessAnisotropyT * anisotropyBdotH, a2 * NdotH);
-    return (a2 * pow2(a2 / dot(f, f))) / PI;  
+    return (a2 * pow2(a2 / dot(f, f))) / PI;
   }else{
     float alphaRoughnessSq = alphaRoughness * alphaRoughness;
     float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
@@ -217,7 +217,7 @@ float D_Charlie(float sheenRoughness, float NdotH) {
 // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#acknowledgments AppendixB
 vec3 BRDF_lambertian(vec3 diffuseColor) {
   // see https://seblagarde.wordpress.com/2012/01/08/pi-or-not-to-pi-in-game-lighting-equation/
-  return diffuseColor * OneOverPI; 
+  return diffuseColor * OneOverPI;
 }
 
 // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#acknowledgments AppendixB
@@ -230,8 +230,8 @@ vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, floa
 }
 
 float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
-  return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0); 
-} 
+  return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0);
+}
 
 float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessFactor) {
   return textureLod(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor), 0.0).x;  //
@@ -246,7 +246,7 @@ vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 atte
     return radiance;
   } else {
     // Compute light attenuation using Beer's law.
-#if 0    
+#if 0
     vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
     vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance);  // Beer's law
 #else
@@ -266,22 +266,22 @@ void doSingleLight(const in vec3 lightColor,
                    const in vec3 lightLit,
                    const in vec2 diffuseSpecularFactors, // x = diffuse scale, y = specular (incl. sheen/clearcoat) scale; lets a caller fade one lobe without the other (e.g. DUGI crossfading the dominant-light specular against the glossy atlas while keeping its diffuse). vec2(1.0) = neutral.
                    const in vec3 lightDirection, // Direction from surface point to light
-                   const in vec3 normal, 
+                   const in vec3 normal,
                    const in vec3 baseColor,
                    const in vec3 F0Dielectric,
-                   const in vec3 F90, 
+                   const in vec3 F90,
                    const in vec3 F90Dielectric,
-                   const in vec3 viewDirection, 
-                   const in float refractiveAngle, 
+                   const in vec3 viewDirection,
+                   const in float refractiveAngle,
                    const in float materialTransparency,
-                   const in float alphaRoughness, 
-                   const in float metallic, 
-                   const in vec3 sheenColor, 
+                   const in float alphaRoughness,
+                   const in float metallic,
+                   const in vec3 sheenColor,
                    const in float sheenRoughness,
-                   const in vec3 clearcoatNormal, 
+                   const in vec3 clearcoatNormal,
                    const in vec3 clearcoatFresnel,
                    const in float clearcoatFactor,
-                   const float clearcoatRoughness, 
+                   const float clearcoatRoughness,
                    const in float specularWeight,
                    const vec3 transmittedLight,
                    const in float transmissionFactor){
@@ -296,7 +296,7 @@ void doSingleLight(const in vec3 lightColor,
 
   vec3 dielectricFresnel = F_Schlick(F0Dielectric * specularWeight, F90Dielectric, abs(VDotH));
   vec3 metalFresnel = F_Schlick(baseColor.xyz, vec3(1.0), abs(VDotH));
-  
+
   vec3 lightIntensity = vec3(lightColor * lightLit);
 
   vec3 lightDiffuse = lightIntensity * NDotL * BRDF_lambertian(baseColor.xyz);
@@ -307,13 +307,13 @@ void doSingleLight(const in vec3 lightColor,
   vec3 lightMetalBRDF = vec3(0.0);
   vec3 lightClearcoatBRDF = vec3(0.0);
   vec3 lightSheen = vec3(0.0);
-  float lightAlbedoSheenScaling = 1.0; 
+  float lightAlbedoSheenScaling = 1.0;
 
 #if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
 
-  // Diffuse transmission  
+  // Diffuse transmission
   if ((flags & (1u << 16u)) != 0u) {
-    lightDiffuse *= 1.0 - diffuseTransmissionFactor; 
+    lightDiffuse *= 1.0 - diffuseTransmissionFactor;
     if(dot(normal, lightDirection) < 0.0){
       float lightNDotL = clamp(dot(normal, -lightDirection), 0.0, 1.0);
       vec3 lightDiffuseBTDF = lightIntensity * lightNDotL * BRDF_lambertian(diffuseTransmissionColorFactor.xyz);
@@ -323,9 +323,9 @@ void doSingleLight(const in vec3 lightColor,
       // Volume attenuation
       if ((flags & (1u << 12u)) != 0u) {
         lightDiffuseBTDF = applyVolumeAttenuation(
-          lightDiffuseBTDF, 
-          diffuseTransmissionThickness, 
-          volumeAttenuationColor, 
+          lightDiffuseBTDF,
+          diffuseTransmissionThickness,
+          volumeAttenuationColor,
           volumeAttenuationDistance
         );
       }
@@ -343,8 +343,17 @@ void doSingleLight(const in vec3 lightColor,
 
   lightDiffuse *= diffuseSpecularFactors.x; // independent diffuse scale (the specular lobes below take diffuseSpecularFactors.y)
 
-  if((NDotL > 0.0) || (NDotV > 0.0)) // <= TODO: Check if this check is right, if it produces no missing light output
-  {
+  if(
+     (
+      (NDotL > 0.0) || (NDotV > 0.0) // <= TODO: Check if this check is right, if it produces no missing light output
+     ) &&
+     (
+      (diffuseSpecularFactors.y > 0.0)
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+      || (iridescenceFactor > 0.0)
+#endif
+     )
+    ){
 
 #ifdef ENABLE_ANISOTROPIC
     anisotropyTdotL = dot(anisotropyT, lightDirection);
@@ -373,7 +382,7 @@ void doSingleLight(const in vec3 lightColor,
       lightSheen = lightIntensity * NDotL * BRDF_specularSheen(sheenColor, sheenRoughness, NDotL, NDotV, NDotH) * diffuseSpecularFactors.y;
     }
 
-    if ((flags & (1u << 8u)) != 0u) { 
+    if ((flags & (1u << 8u)) != 0u) {
       float NDotL = clamp(dot(clearcoatNormal, lightDirection), 0.0, 1.0);
       float NDotV = clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0);
       float NDotH = clamp(dot(clearcoatNormal, halfwayVector), 0.0, 1.0);
@@ -405,7 +414,7 @@ vec3 getIBLDiffuse(const in vec3 normal) {
 #ifdef DUALENVMAP
   if(enableDualEnvMap){
     vec4 envB = textureLod(uImageBasedLightingEnvMaps[5], normal.xyz, 0.0);
-    irradiance = mix(irradiance, envB.xyz, envB.w); 
+    irradiance = mix(irradiance, envB.xyz, envB.w);
   }
 #endif
   return irradiance;
@@ -418,7 +427,7 @@ vec3 getIBLGGXFresnel(vec3 normal, vec3 viewDirection, float roughness, vec3 F0,
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 #ifdef ENABLE_ANISOTROPIC
   if(anisotropyActive){
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
+  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);
     normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
   }
 #endif
@@ -440,7 +449,7 @@ vec3 getIBLRadianceGGX(vec3 normal, vec3 viewDirection, float roughness){
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 #ifdef ENABLE_ANISOTROPIC
   if(anisotropyActive){
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
+  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);
     normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
   }
 #endif
@@ -449,8 +458,8 @@ vec3 getIBLRadianceGGX(vec3 normal, vec3 viewDirection, float roughness){
 #ifdef DUALENVMAP
   if(enableDualEnvMap){
     vec4 envB = textureLod(uImageBasedLightingEnvMaps[3], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX2));
-    specularSample = mix(specularSample, envB.xyz, envB.w); 
-  } 
+    specularSample = mix(specularSample, envB.xyz, envB.w);
+  }
 #endif
   vec3 specularLight = specularSample.xyz;
   return specularLight;
@@ -461,7 +470,7 @@ vec3 getIBLRadianceGGX(vec3 normal, vec3 viewDirection, float roughness){
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 #ifdef ENABLE_ANISOTROPIC
   if(anisotropyActive){
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
+  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);
     normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
   }
 #endif
@@ -474,8 +483,8 @@ vec3 getIBLRadianceGGX(vec3 normal, vec3 viewDirection, float roughness){
 #ifdef DUALENVMAP
   if(enableDualEnvMap){
     vec4 envB = textureLod(uImageBasedLightingEnvMaps[3], reflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX2));
-    irradiance = mix(irradiance, envB.xyz, envB.w); 
-  } 
+    irradiance = mix(irradiance, envB.xyz, envB.w);
+  }
 #endif
   return (irradiance *                                                                   //
           fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
@@ -487,7 +496,7 @@ vec3 getIBLRadianceGGX(vec3 normal, vec3 viewDirection, float roughness){
           specularOcclusion *                                                            //
           1.0);
 #else
-  return vec3(0.0); 
+  return vec3(0.0);
 #endif
 }*/
 
@@ -499,7 +508,7 @@ vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness
 #ifdef DUALENVMAP
   if(enableDualEnvMap){
     vec4 envB = textureLod(uImageBasedLightingEnvMaps[4], reflectionVector, roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie2));
-    irradiance = mix(irradiance, envB.xyz, envB.w); 
+    irradiance = mix(irradiance, envB.xyz, envB.w);
   }
 #endif
   return irradiance * //
@@ -539,12 +548,12 @@ vec3 Fresnel0ToIor(vec3 fresnel0) {
 }
 
 // Conversion FO/IOR
-vec3 IorToFresnel0(vec3 transmittedIor, float incidentIor) { 
+vec3 IorToFresnel0(vec3 transmittedIor, float incidentIor) {
   return sq((transmittedIor - vec3(incidentIor)) / (transmittedIor + vec3(incidentIor))); //
 }
 
 // ior is a value between 1.0 and 3.0. 1.0 is air interface
-float IorToFresnel0(float transmittedIor, float incidentIor) { 
+float IorToFresnel0(float transmittedIor, float incidentIor) {
   return sq((transmittedIor - incidentIor) / (transmittedIor + incidentIor)); //
 }
 
@@ -625,7 +634,7 @@ vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFi
 }
 
 ////////////////////////////
- 
+
 #if defined(TRANSMISSION) || defined(SCREEN_SPACE_REFLECTIONS)
 
 vec4 cubic(float v) {
@@ -652,7 +661,7 @@ vec4 textureBicubicEx(const in sampler2DArray tex, vec3 uvw, int lod) {
 
 vec4 textureBicubic(const in sampler2DArray tex, vec3 uvw, float lod, int maxLod) {
   int ilod = int(floor(lod));
-  lod -= float(ilod); 
+  lod -= float(ilod);
   return (lod < float(maxLod)) ? mix(textureBicubicEx(tex, uvw, ilod), textureBicubicEx(tex, uvw, ilod + 1), lod) : textureBicubicEx(tex, uvw, maxLod);
 }
 
@@ -665,7 +674,7 @@ vec4 betterTextureEx(const in sampler2DArray tex, vec3 uvw, int lod) {
 
 vec4 betterTexture(const in sampler2DArray tex, vec3 uvw, float lod, int maxLod) {
   int ilod = int(floor(lod));
-  lod -= float(ilod); 
+  lod -= float(ilod);
   return (lod < float(maxLod)) ? mix(betterTextureEx(tex, uvw, ilod), betterTextureEx(tex, uvw, ilod + 1), lod) : betterTextureEx(tex, uvw, maxLod);
 }
 
@@ -680,7 +689,7 @@ vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
   float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, ior);
 #if 1
   vec3 transmittedLight = (framebufferLod < 1e-4) ? //
-                           betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
+                           betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //
                            textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
 #else
   vec3 transmittedLight = texture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
@@ -689,18 +698,18 @@ vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
 }
 
 vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 position, float ior, float thickness, vec3 attenuationColor, float attenuationDistance, float dispersion) {
-  
+
   vec3 attenuatedColor;
 
   // Sample framebuffer to get pixel the refracted ray hits.
   if(abs(dispersion) > 1e-7){
-    
+
     float realIOR = 1.0 / ior;
-    
+
     float iorDispersionSpread = 0.04 * dispersion * (realIOR - 1.0);
-    
+
     vec3 iorValues = vec3(1.0 / (realIOR - iorDispersionSpread), ior, 1.0 / (realIOR + iorDispersionSpread));
-    
+
     for(int i = 0; i < 3; i++){
       vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, iorValues[i]);
       vec3 refractedRayExit = position + transmissionRay;
@@ -711,7 +720,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
       vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, iorValues[i]);
 
-      attenuatedColor[i] = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance)[i];    
+      attenuatedColor[i] = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance)[i];
 
     }
 
@@ -726,10 +735,10 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
     vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
 
-    attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);  
-      
+    attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
+
   }
-  
+
   return attenuatedColor * baseColor;
 }
 #endif // TRANSMISSION
@@ -746,8 +755,8 @@ vec3 ssrEnhance(const in vec3 rayOrigin, const in vec3 rayDirection, const in in
   const vec2 mipSize = vec2(texSize >> mipLevel);
   const vec2 position = rayOrigin.xy * mipSize;
   return fma(
-    rayDirection, 
-    vec3(ssrRayAAABBIntersection(rayOrigin.xy, rayDirection.xy, floor(position) / mipSize, ceil(position) / mipSize) + (0.1 / mipSize.x)), 
+    rayDirection,
+    vec3(ssrRayAAABBIntersection(rayOrigin.xy, rayDirection.xy, floor(position) / mipSize, ceil(position) / mipSize) + (0.1 / mipSize.x)),
     rayOrigin
   );
 }
@@ -764,10 +773,10 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
 
   vec3 viewDirection = normalize(rayDirection);
 
-  float cameraContribution = smoothstep(0.5, 0.25, dot(-viewDirection, rayDirection));  
+  float cameraContribution = smoothstep(0.5, 0.25, dot(-viewDirection, rayDirection));
   if(cameraContribution < 1e-6){
     return false;
-  } 
+  }
 
   const bool reversedZ = false;//projectionMatrix[2][3] < -1e-7;
 
@@ -775,18 +784,18 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   const int countIterations = 128;
 
   const ivec2 texSize = ivec2(textureSize(uPassTextures[2], 0).xy);
-  
+
   const int countLODLevels = int(textureQueryLevels(uPassTextures[2]));
 
   vec3 p0 = rayOrigin;
   vec3 p1 = fma(rayDirection, vec3(maxDistance), rayOrigin);
 
   vec4 t = projectionMatrix * vec4(p0, 1.0);
-  vec3 start = t.xyz / t.w; 
+  vec3 start = t.xyz / t.w;
   start.xy = fma(start.xy, vec2(0.5), vec2(0.5));
 
   t = projectionMatrix * vec4(p1, 1.0);
-  vec3 end = t.xyz / t.w; 
+  vec3 end = t.xyz / t.w;
   end.xy = fma(end.xy, vec2(0.5), vec2(0.5));
 
   vec3 origin = start;
@@ -820,7 +829,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
         origin -= direction * ((origin.z - depth) / direction.z);
         mipLevel--;
       }
-      
+
     }else{
       break;
     }
@@ -879,9 +888,9 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
 
   vec3 vSSAbs = abs(vSS);
   vSS = mix(vSS, stepSign * zeroDirectionEpsilon, lessThan(vSSAbs, vec3(zeroEpsilon)));
- 
+
   vec2 stepVector = clamp(stepSign.xy, vec2(0.0), vec2(1.0));
- 
+
   vec3 vSSInv = vec3(1.0) / vSS;
 
   float pSS0InvZ = 1.0 / pSS0.z;
@@ -892,19 +901,19 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
 
   float calcT0 = -pSS0InvZ;
   float calcT1 = 1.0f / (pSS1InvZ - pSS0InvZ);
- 
+
   const vec2 timeStartPixelXY = ((((floor(pSS0.xy * vec2(lod0Size)) + stepVector) / vec2(lod0Size)) + stepOffset) - pSS0.xy) * vSSInv.xy;
   float time = min(timeStartPixelXY.x, timeStartPixelXY.y);
   vec2 timeSceneZMinMax = vec2(1.0, 0.0);
   int mipLevel = countLODLevels - 1;
- 
+
   for(int iteration = 0; (mipLevel >= 0) && (iteration < countHiZRayIterations) && (time <= 1.0); iteration++){
     const vec2 maxRayPointXY = fma(vSS.xy, vec2(time), pSS0.xy);
     const vec2 levelSize = floor(vec2(lod0Size) / min(vec2(exp2(mipLevel)), vec2(lod0Size)));
     const vec2 pixel = floor(maxRayPointXY * levelSize);
     const vec2 timePixelXY = ((((pixel + stepVector) / levelSize) + stepOffset) - pSS0.xy) * vSSInv.xy;
     const float timePixelEdge = min(timePixelXY.x, timePixelXY.y);
-    vec2 uv = (pixel + vec2(0.5)) * invLOD0Size;   
+    vec2 uv = (pixel + vec2(0.5)) * invLOD0Size;
     vec2 rawDepths = textureLod(uPassTextures[2], vec3(uv, inViewIndex), float(mipLevel)).xy;
     uv = fma(uv, vec2(2.0), vec2(-1.0));
     vec4 depths = vec4((inverseProjectionMatrix * vec4(uv, rawDepths.x, 1.0)).zw, (inverseProjectionMatrix * vec4(uv, rawDepths.y, 1.0)).zw);
@@ -925,7 +934,7 @@ bool castScreenSpaceRay(vec3 worldSpaceRayOrigin,
   vec3 hit = vec3(fma(vSS.xy, vec2(time), pSS0.xy), 1.0 / fma(interpolationVector, time, interpolationPoint));
 
   hitUV = hit.xy;
-  
+
   return (mipLevel == -1) && (time >= timeSceneZMinMax.x) && (time <= timeSceneZMinMax.y);
 
 }
@@ -936,7 +945,7 @@ vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, 1.0);
 #if 1
   vec3 reflectedLight = (framebufferLod < 1e-4) ? //
-                        betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
+                        betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //
                         textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
 #else
   vec3 reflectedLight = texture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
@@ -945,13 +954,13 @@ vec3 getReflectionSample(vec2 fragCoord, float roughness) {
 }
 
 vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
-                              vec3 worldSpaceNormal, 
+                              vec3 worldSpaceNormal,
                               vec3 worldSpaceViewDirection,
                               float roughness,
                               vec4 fallbackColor){
 
   // Compute the reflection vector in world space.
-  vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
+  vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz));
 
 #if 0
 
@@ -966,8 +975,8 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
   const int countLinearSearchIterations = 128;
   const int countBinarySearchIterations = 16;
   const float distanceBias = 0.05;
-  const bool isBinarySearchEnabled = true;  
-  const bool isAdaptiveStepEnabled = false;  
+  const bool isBinarySearchEnabled = true;
+  const bool isAdaptiveStepEnabled = false;
   const bool isExponentialStepEnabled = true;
 
   float viewIndex = float(gl_ViewIndex);
@@ -977,11 +986,11 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
 
   vec3 rayDirection = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
-  // First, perform a linear search to find the first intersection point. 
+  // First, perform a linear search to find the first intersection point.
 
   float depthDifference;
 
-  vec3 stepVector = rayDirection * rayStep;  
+  vec3 stepVector = rayDirection * rayStep;
 
   vec3 rayPosition = rayOrigin + stepVector;
 
@@ -998,7 +1007,7 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
     if((all(greaterThanEqual(screenSpaceRayPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceRayPosition.xy, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
       return vec4(getReflectionSample(screenSpaceRayPosition.xy, roughness), 1.0);
-    } 
+    }
 
     if(isBinarySearchEnabled && (depthDifference > 0.0)){
       // Switch to binary search for further refinement.
@@ -1023,12 +1032,12 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
   if(isBinarySearchEnabled){
 
     for(int iteration = 0; iteration < countBinarySearchIterations; iteration++){
-	
+
       rayPosition -= ((stepVector *= 0.5) * sign(depthDifference));
 
       vec4 screenSpaceRayPosition = projectionMatrix * vec4(rayPosition, 1.0);
       screenSpaceRayPosition.xy = fma(screenSpaceRayPosition.xy / screenSpaceRayPosition.w, vec2(0.5), vec2(0.5));
-			
+
       float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceRayPosition.xy, viewIndex), 0.0).x;
 
       vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceRayPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
@@ -1058,7 +1067,7 @@ vec4 getScreenSpaceReflection(vec3 worldSpacePosition,
       env = mix(env, envB.xyz, envB.w);
     }
 #endif
- 
+
     return vec4(mix(env.xyz, fallbackColor.xyz, fallbackColor.w), 0.0);
 
   }
