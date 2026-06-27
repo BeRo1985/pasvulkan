@@ -46,6 +46,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
+  uint flags;                                            // GI_DUGI_FLAG_* bitmask; bit0 = inactive-probe early-out (cull inactive probes) — clear shows all probes
 } pushConstants;
 
 struct TaskPayload {
@@ -94,8 +95,11 @@ void main(){
     bool visible = false;
 
     // Check if the probe is active: the classification pass marks probes inside geometry / with no nearby geometry INACTIVE
-    // (state w = 0); skip those here so the debug view shows only the probes that actually contribute to shading.
-    bool probeActive = dugiData.probeData.data[dugiProbeDataIndex(physProbeCoord, cascadeIndex)].w >= 0.5;
+    // (state w = 0); skip those here so the debug view shows only the probes that actually contribute to shading. The cull is
+    // tied to the inactive-probe early-out: when that optimization is disabled (flag clear), every probe is updated, so show
+    // all of them (A/B) by treating each as active.
+    bool earlyOut = (pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u;
+    bool probeActive = (!earlyOut) || (dugiData.probeData.data[dugiProbeDataIndex(physProbeCoord, cascadeIndex)].w >= 0.5);
     if(probeActive){
       for(uint viewIdx = 0u; viewIdx < countViews; viewIdx++){
         uint viewIndex = pushConstants.viewBaseIndex + viewIdx;

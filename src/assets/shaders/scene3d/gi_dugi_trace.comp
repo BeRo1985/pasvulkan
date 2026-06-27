@@ -334,8 +334,8 @@ void main(){
     // matching update passes skip the same probes, so their stale random-ray slots are never consumed. NOT applied to a
     // scrolled-in slot (its state is for the old world cell — keep tracing it until classification re-evaluates), which keeps
     // this in lockstep with the update passes' identical guard.
-    if((probeData.w < 0.5) && !dugiRayIsFixed(rayIndex) && !dugiProbeScrolledIn(probeCoord, cascadeIndex)){
-      return;
+    if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (probeData.w < 0.5) && !dugiRayIsFixed(rayIndex) && !dugiProbeScrolledIn(probeCoord, cascadeIndex)){
+      return; // early-out gated by the runtime A/B flag; when clear, every probe is traced in full
     }
   }
 #endif

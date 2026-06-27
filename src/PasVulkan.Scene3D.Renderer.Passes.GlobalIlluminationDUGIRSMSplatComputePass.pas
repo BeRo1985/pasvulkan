@@ -95,6 +95,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass }
              Blend:TpvVector4;                   // x = irradiance blend, y = multi-bounce feedback strength, z = first-frame relocation gate (< 0.5 applies the offset)
              EmissiveGIParticleCount:TpvVector4; // x = emissive GI scale, y = emissive GI maximum, z = alive particle count (0 disables particle injection)
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); 0 here (splat producer has no inactive-probe skip)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -366,6 +367,8 @@ begin
  PushConstants.ParticleBVH.y:=TpvUInt32(ParticleEmitterAddress shr 32);
  PushConstants.ParticleBVH.z:=TpvUInt32(ParticleNodeAddress and TpvUInt64($ffffffff));
  PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
+
+ PushConstants.Flags:=0; // splat producer has no inactive-probe skip
 
  // Make the host/transfer writes visible to the compute shader: the dugiData buffer's per-frame cascade globals (SSBO read)
  // and the shared RSM matrices UBO (uniform read).

@@ -95,6 +95,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass }
              Blend:TpvVector4;                   // y = multi-bounce feedback strength (0 on a slot's first frame); x/z unused by the trace (the update owns them)
              EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match gi_dugi_pushconstants.glsl
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); bit0 = inactive-probe early-out
             end;
             PPushConstants=^TPushConstants;
       private
@@ -372,6 +373,8 @@ begin
  PushConstants.ParticleBVH.y:=TpvUInt32(ParticleEmitterAddress shr 32);
  PushConstants.ParticleBVH.z:=TpvUInt32(ParticleNodeAddress and TpvUInt64($ffffffff));
  PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
+
+ PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1); // bit0 = inactive-probe early-out (runtime A/B toggle); other bits unused by the trace
 
  // Make the host/transfer write of the dugiData buffer's per-frame cascade globals visible to the compute shader (SSBO read).
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),

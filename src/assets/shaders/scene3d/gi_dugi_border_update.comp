@@ -82,7 +82,7 @@ void main(){
   // not re-blended, so its guard band would copy stale interior — skip it (the probe is not sampled anyway). Same condition as
   // the trace/update skips; uniform across the workgroup (one probe).
   DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
-  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+  if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
      (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
     return;
   }

@@ -97,7 +97,7 @@ void main(){
   // shading gather skips them anyway, and the trace only re-traces their fixed rays (random-ray slots stale, must not blend).
   // Not on the field's first frame (state uninitialized) nor a scrolled-in slot — same condition as the trace's skip.
   DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
-  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+  if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
      (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
     return;
   }
@@ -155,7 +155,7 @@ void main(){
   // Inactive-probe early-out: see the SH path above. Uniform across the workgroup (one probe), so all
   // texel threads return together before any image work.
   DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
-  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+  if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
      (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
     return;
   }

@@ -995,6 +995,7 @@ type { TpvScene3DRendererInstance }
        fSelectionOutlineThickness:TpvFloat;
        fDebugDUGIProbes:Boolean;
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
+       fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1317,6 +1318,7 @@ type { TpvScene3DRendererInstance }
        // Debug: draw every DUGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
        property DebugDUGIProbes:Boolean read fDebugDUGIProbes write fDebugDUGIProbes;
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
+       property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable (A/B); false = keep all probes active (no inactive-probe early-out)
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -2279,6 +2281,7 @@ begin
  fDebugDUGIProbes:=false;
 
  fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
+ fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime for A/B
 
  fDebugDrawMeshletBoundingSpheres:=false;
 

@@ -73,11 +73,11 @@ void main(){
   float backfaceFraction = float(backfaceCount) / float(GI_DUGI_FIXED_RAYS);
 
   // The "not inside geometry" target state: ACTIVE normally, but with the nearby-geometry test a probe whose own cell holds no
-  // geometry (only far / sky hits) is INACTIVE, so the gather skips probes that would contribute only distant/sky light. The
-  // test is only applied when real per-ray geometry distances are available (blend.w >= 0.5, the hardware ray-traced producer);
-  // the RSM fallback writes every fixed ray as a far miss, which would deactivate ALL probes, so probes stay active there.
+  // geometry (only far / sky hits) is INACTIVE, so the gather skips probes that contribute only distant/sky light. The test is
+  // only applied when the producer wrote real per-ray geometry distances (FIXED_RAY_GEOMETRY_VALID flag); the RSM fallback
+  // leaves it clear, so every fixed ray is a far miss there and all probes stay ACTIVE.
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
-  float activeState = (nearbyGeometry || (pushConstants.blend.w < 0.5)) ? GI_DUGI_PROBE_STATE_ACTIVE : GI_DUGI_PROBE_STATE_INACTIVE;
+  float activeState = (nearbyGeometry || ((pushConstants.flags & GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID) == 0u)) ? GI_DUGI_PROBE_STATE_ACTIVE : GI_DUGI_PROBE_STATE_INACTIVE;
 #else
   float activeState = GI_DUGI_PROBE_STATE_ACTIVE;
 #endif

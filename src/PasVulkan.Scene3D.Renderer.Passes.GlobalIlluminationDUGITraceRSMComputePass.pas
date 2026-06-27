@@ -96,6 +96,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass }
              Blend:TpvVector4;                   // y = multi-bounce feedback strength (0 on a slot's first frame); z = first-frame flag (relocation offset gate)
              EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match gi_dugi_pushconstants.glsl
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); 0 here (RSM fallback: classification keeps all probes active)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -365,6 +366,8 @@ begin
  PushConstants.ParticleBVH.y:=TpvUInt32(ParticleEmitterAddress shr 32);
  PushConstants.ParticleBVH.z:=TpvUInt32(ParticleNodeAddress and TpvUInt64($ffffffff));
  PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
+
+ PushConstants.Flags:=0; // RSM fallback: classification keeps all probes active (no fixed-ray geometry), so the early-out never applies
 
  // Make the host/transfer writes visible to the compute shader: the dugiData cascade globals (SSBO read) and the shared RSM
  // matrices UBO (uniform read).

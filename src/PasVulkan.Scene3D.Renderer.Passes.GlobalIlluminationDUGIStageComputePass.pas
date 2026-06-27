@@ -102,9 +102,10 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass }
              RandomRotation1:TpvVector4;         // mat3 column 1 in xyz
              RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-             Blend:TpvVector4;                   // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y unused; w = fixed-ray geometry valid (1 = HW ray-traced producer, 0 = RSM) -> classification nearby-test gate
+             Blend:TpvVector4;                   // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
              EmissiveGIParticleCount:TpvVector4; // unused by the update stages; present only to byte-match the shared gi_dugi_pushconstants.glsl block
              ParticleBVH:TpvUInt32Vector4;       // unused by the update stages; present only to byte-match the shared gi_dugi_pushconstants.glsl block
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask: bit0 = inactive-probe early-out (renderer property), bit1 = fixed-ray geometry valid (RaytracingActive)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -331,22 +332,23 @@ begin
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDUGIRaysPerProbe;
  // x = temporal hysteresis; z = firstFrame flag (this slot's probe data is still uninitialized -> discard the previous data
  // in the temporal blend this frame). Shared first-frame state with the trace pass; flipped false by the final stage below.
- // w = whether real per-ray geometry distances are available (1 = hardware ray-traced producer, 0 = RSM fallback): the
- // classification only applies its nearby-geometry test when w = 1, otherwise the RSM's all-miss fixed rays would deactivate
- // every probe. RaytracingActive picks the producer, so it is the discriminator.
  if IsFirstFrame then begin
   // First frame of this slot: take the raw value (z=1, hysteresis irrelevant).
-  PushConstants.Blend:=TpvVector4.InlineableCreate(SteadyHysteresis,0.0,1.0,ord(fInstance.Scene3D.RaytracingActive)*1.0);
+  PushConstants.Blend:=TpvVector4.InlineableCreate(SteadyHysteresis,0.0,1.0,0.0);
  end else begin
   // Warmup ramp: low hysteresis right after init (probes converge fast) easing up to the steady value over WarmupFrames.
   WarmupT:=Min(fWarmupFrameCounts[aInFlightFrameIndex]/WarmupFrames,1.0);
   Hysteresis:=(WarmupStartHysteresis*(1.0-WarmupT))+(SteadyHysteresis*WarmupT);
-  PushConstants.Blend:=TpvVector4.InlineableCreate(Hysteresis,1.0,0.0,ord(fInstance.Scene3D.RaytracingActive)*1.0);
+  PushConstants.Blend:=TpvVector4.InlineableCreate(Hysteresis,1.0,0.0,0.0);
  end;
 
  // The ray-data was published by the trace pass and each previous stage by its barrier below (+ the frame-graph ordering).
  DescriptorSet:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,1,1,@DescriptorSet,0,nil); // bind set 1 only (set 0 unused)
+ // bit0 = inactive-probe early-out (renderer property, A/B toggle); bit1 = fixed-ray geometry valid (hardware ray-traced producer ->
+ // classification applies its nearby-geometry test; clear for the RSM fallback so it keeps all probes active).
+ PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1) or (TpvUInt32(ord(fInstance.Scene3D.RaytracingActive) and 1) shl 1);
+
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 

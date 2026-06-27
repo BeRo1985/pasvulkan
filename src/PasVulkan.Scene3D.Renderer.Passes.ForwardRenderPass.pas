@@ -99,10 +99,11 @@ type { TpvScene3DRendererPassesForwardRenderPass }
             end;
             PDebugLinesPushConstants=^TDebugLinesPushConstants;
             // DUGI probe debug overlay (RendererInstance.DebugDUGIProbes): one octahedral sphere per probe over all cascades,
-            // coloured by the live-sampled directional irradiance. Matches gi_dugi_probe_debug.vert's push (viewBaseIndex, countViews).
+            // coloured by the live-sampled directional irradiance. Matches gi_dugi_probe_debug.vert's push (viewBaseIndex, countViews, flags).
             TDUGIProbeDebugPushConstants=packed record
              ViewBaseIndex:TpvUInt32;
              CountViews:TpvUInt32;
+             Flags:TpvUInt32;            // GI_DUGI_FLAG_* bitmask; bit0 = inactive-probe early-out (cull inactive probes) — clear shows all probes
             end;
             PDUGIProbeDebugPushConstants=^TDUGIProbeDebugPushConstants;
       private
@@ -2095,6 +2096,8 @@ begin
 
    DUGIProbeDebugPushConstants.ViewBaseIndex:=TpvUInt32(InFlightFrameState^.FinalViewIndex);
    DUGIProbeDebugPushConstants.CountViews:=TpvUInt32(InFlightFrameState^.CountFinalViews);
+   // bit0 mirrors the GI inactive-probe early-out: when disabled, the debug view shows all probes (active + inactive) instead of culling inactive ones.
+   DUGIProbeDebugPushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1);
 
    if fDUGIProbeDebugMeshShader then begin
     aCommandBuffer.CmdPushConstants(fVulkanDUGIProbeDebugPipelineLayout.Handle,

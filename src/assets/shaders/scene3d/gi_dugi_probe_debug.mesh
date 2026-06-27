@@ -52,6 +52,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
+  uint flags;                                            // GI_DUGI_FLAG_* bitmask (shared push layout; the cull happens in the task shader, the mesh shader only renders)
 } pushConstants;
 
 struct TaskPayload {

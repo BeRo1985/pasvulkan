@@ -42,6 +42,7 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
+  uint flags;                                            // GI_DUGI_FLAG_* bitmask; bit0 = inactive-probe early-out (cull inactive probes) — clear shows all probes
 } pushConstants;
 
 layout(location = 0) out vec3 outDirection;
@@ -106,7 +107,11 @@ void main(){
   outCascadeIndex = cascadeIndex;
   outActive = probeActive;
 
-  if(probeActive < 0.5){
+  // The inactive cull is tied to the inactive-probe early-out: when that optimization is disabled (flag clear), every probe
+  // is updated, so show all of them (A/B) — keep the inactive ones, the fragment shader still dims them by outActive.
+  bool earlyOut = (pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u;
+
+  if(earlyOut && (probeActive < 0.5)){
 
     // Inactive probe
 
@@ -118,7 +123,7 @@ void main(){
 
   }else{
 
-    // Active probe: transform the vertex to clip space.
+    // Active probe (or early-out disabled): transform the vertex to clip space.
     //
     uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
     gl_Position = uView.views[viewIndex].projectionMatrix * (uView.views[viewIndex].viewMatrix * vec4(worldPosition, 1.0));

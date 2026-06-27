@@ -47,7 +47,7 @@ void main(){
   // condition as the trace's skip, so the stale random-ray slots are never integrated. Uniform across the workgroup (one
   // probe) and placed before the cooperative load + barrier, so all threads return together (no barrier divergence).
   DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
-  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+  if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
      (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
     return;
   }

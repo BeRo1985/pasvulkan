@@ -243,6 +243,11 @@
 #define GI_DUGI_PROBE_STATE_INACTIVE 0.0
 #define GI_DUGI_PROBE_STATE_ACTIVE   1.0
 
+// Bit flags for the per-pass `flags` push-constant field (set on the Pascal side). Defined here, in the shared core, so both
+// the compute push block (gi_dugi_pushconstants.glsl) and the probe debug-draw shaders (their own push block) can reference them.
+#define GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT 1u  // trace/update passes skip inactive probes; clear = process every probe (runtime A/B toggle)
+#define GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID 2u  // real per-ray geometry distances available (hardware ray-traced producer); clear = RSM fallback -> classification skips its nearby-geometry test
+
 // Per-probe convergence warmup (always on). Each probe ramps its temporal hysteresis from GI_DUGI_WARMUP_START_HYSTERESIS up
 // to GI_DUGI_STEADY_HYSTERESIS over its first GI_DUGI_WARMUP_FRAMES frames of life, so a freshly-initialized or toroidally-
 // scrolled-in probe converges in a few frames instead of ~100 (kills the scroll-in flicker during fast camera motion). The
