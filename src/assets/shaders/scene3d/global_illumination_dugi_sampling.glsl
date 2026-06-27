@@ -29,6 +29,7 @@
 // binding 3 is freed).
 
 #if GI_DUGI_STORAGE_IS_SH
+
   // RGB spherical harmonics: one contiguous DUGISHProbe (DUGI_SH_IMAGE_COUNT packed vec4) per probe in the master's
   // irradianceSH BDA buffer (no sampler) — loaded as a whole element for coalesced access.
   DUGI_SH_TYPE dugiLoadIrradianceSH(const in ivec3 probeCoord, const in int cascadeIndex){
@@ -43,14 +44,18 @@
     return SHC3CoefficientsL1Create(vec3(a.x, a.y, a.z), vec3(a.w, b.x, b.y), vec3(b.z, b.w, c.x), vec3(c.y, c.z, c.w));
 #endif
   }
+
 #else
+
   layout(set = DUGI_DESCRIPTOR_SET, binding = 1) uniform sampler2D uDUGIIrradianceOct;
+
   vec3 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
     vec2 uv = dugiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DUGI_IRRADIANCE_OCT_SIZE, GI_DUGI_IRRADIANCE_OCT_FULL);
     // The atlas stores the cosine-weighted MEAN incident radiance A = E/PI; multiply by PI here (split, like RTXGI) to return the
     // full irradiance integral E (matches the SH path; shading then applies albedo/PI). The trace's own multibounce read stays raw.
     return max(vec3(0.0), textureLod(uDUGIIrradianceOct, uv, 0.0).rgb) * 3.14159265358979;
   }
+
 #endif
 
 layout(set = DUGI_DESCRIPTOR_SET, binding = 2) uniform sampler2D uDUGIVisibilityMoments; // x = mean dist, y = mean dist^2 (RG32F)
