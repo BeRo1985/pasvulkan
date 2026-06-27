@@ -4,7 +4,7 @@
 //
 // One thread per probe. From the fixed rays' signed distances (negative = backface) written by the trace it marks probes
 // that mostly see backfaces (i.e. are inside geometry) as INACTIVE, so the shading gather skips them — the robust anti-leak
-// guard. With GI_DUGI_PROBE_CLASSIFY_NEARBY (RTXGI-style, default on) a not-inside probe is additionally INACTIVE unless a
+// guard. With GI_DUGI_PROBE_CLASSIFY_NEARBY (default on) a not-inside probe is additionally INACTIVE unless a
 // fixed ray hits geometry within its own cell (the voxel-plane test) — open-space probes carrying only far/sky light are
 // skipped; set it to 0 for the conservative behaviour (open space stays ACTIVE). Writes only the state (w) of the probe-data
 // image and preserves the relocation offset (xyz),
@@ -41,7 +41,7 @@ void main(){
   vec4 probeData = dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
 
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
-  // The probe's (relocated) world position + cell size, for the RTXGI voxel-plane "nearby geometry" test below. The fixed rays
+  // The probe's (relocated) world position + cell size, for the voxel-plane "nearby geometry" test below. The fixed rays
   // were traced from the relocated position, so the cell-boundary planes are measured from it too.
   float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
   vec3 probeWorld = dugiProbeGridToWorld(dugiProbeLogicalCoord(probeCoord, cascadeIndex), cascadeIndex);

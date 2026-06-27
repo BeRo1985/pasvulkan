@@ -17,7 +17,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #include "global_illumination_dugi.glsl"
-// dugiData (SSBO) comes via global_illumination_dugi.glsl; border doesn't use it, but the SSBO's buffer_reference members need the extension above
+// dugiData (SSBO) comes via global_illumination_dugi.glsl; used here only for the inactive-probe early-out (probe state) under GI_DUGI_PROBE_RELOCATION
 
 // One workgroup per probe; threads cover the full (bordered) visibility tile, which is the larger of the two tiles.
 layout(local_size_x = GI_DUGI_VISIBILITY_OCT_FULL, local_size_y = GI_DUGI_VISIBILITY_OCT_FULL, local_size_z = 1) in;
@@ -76,6 +76,17 @@ void main(){
   int cascadeIndex = int(globalProbeIndex / pushConstants.params.z);
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = dugiProbeCoordFromIndex(probeIndexInCascade);
+
+#if GI_DUGI_PROBE_RELOCATION
+  // Inactive-probe early-out (the blend normally does the border copy in the same pass): an inactive probe's interior was
+  // not re-blended, so its guard band would copy stale interior — skip it (the probe is not sampled anyway). Same condition as
+  // the trace/update skips; uniform across the workgroup (one probe).
+  DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
+  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+     (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
+    return;
+  }
+#endif
 
   ivec2 t = ivec2(gl_LocalInvocationID.xy);
 

@@ -324,9 +324,19 @@ void main(){
   // Trace from the relocated probe position (the relocation pass pushed it out of any geometry it was embedded in), so the
   // gathered irradiance/visibility match the position the shading sampler reads it back at. The probe-data image is not
   // cleared on allocation, so on this slot's first frame (blend.z) it still holds uninitialized garbage -> skip the offset
-  // until the relocation pass has written a (clamped) value at least once.
+  // (and the inactive-probe early-out below) until the relocation/classification passes have written valid data at least once.
   if(pushConstants.blend.z < 0.5){
-    probePosition += dugiLoadProbeData(probeCoord, cascadeIndex).xyz;
+    vec4 probeData = dugiLoadProbeData(probeCoord, cascadeIndex);
+    probePosition += probeData.xyz; // relocation offset
+
+    // Inactive-probe early-out: a probe classified inside geometry / with no nearby geometry only
+    // re-traces its FIXED rays (so relocation + classification can still re-activate it); its random rays are skipped. The
+    // matching update passes skip the same probes, so their stale random-ray slots are never consumed. NOT applied to a
+    // scrolled-in slot (its state is for the old world cell — keep tracing it until classification re-evaluates), which keeps
+    // this in lockstep with the update passes' identical guard.
+    if((probeData.w < 0.5) && !dugiRayIsFixed(rayIndex) && !dugiProbeScrolledIn(probeCoord, cascadeIndex)){
+      return;
+    }
   }
 #endif
 

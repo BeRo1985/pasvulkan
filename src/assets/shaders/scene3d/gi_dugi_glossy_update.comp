@@ -57,6 +57,17 @@ void main(){
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = dugiProbeCoordFromIndex(probeIndexInCascade);
 
+#if GI_DUGI_PROBE_RELOCATION
+  // Inactive-probe early-out: skip probes classified inside geometry / with no nearby geometry. Same
+  // condition as the trace's skip; uniform across the workgroup (one probe) and before the cooperative load + barrier, so all
+  // threads return together (no barrier divergence).
+  DUGIProbeDataBuffer probeDataBuf = dugiData.probeData; // launder the readonly master field -> non-readonly ref
+  if((pushConstants.blend.z < 0.5) && !dugiProbeScrolledIn(probeCoord, cascadeIndex) &&
+     (dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex).w < 0.5)){
+    return;
+  }
+#endif
+
   ivec2 localTexel = ivec2(gl_LocalInvocationID.xy);
   vec2 uv = (vec2(localTexel) + vec2(0.5)) / float(GI_DUGI_GLOSSY_OCT_SIZE);
   vec3 texelDirection = octDecode(fma(uv, vec2(2.0), vec2(-1.0)));
