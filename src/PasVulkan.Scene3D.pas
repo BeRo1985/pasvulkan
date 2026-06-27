@@ -3360,6 +3360,7 @@ type EpvScene3D=class(Exception);
                                  TRenderInstanceGenerations=array[-1..MaxInFlightFrames-1] of TpvUInt64;
                                  TRenderInstanceActives=array[-1..MaxInFlightFrames-1] of Boolean;
                                  TRenderInstanceLastModelMatrices=array[0..MaxInFlightFrames-1] of TpvMatrix4x4D;
+                                 TRenderInstanceLastLightGenerations=array[0..MaxInFlightFrames-1] of TpvUInt64;
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fSceneInstance:TpvScene3D;
@@ -3386,6 +3387,11 @@ type EpvScene3D=class(Exception);
                             fDrawInfoGenerations:TRenderInstanceGenerations;
                             fActiveRenderPassesGenerations:TRenderInstanceGenerations;
                             fLastModelMatrices:TRenderInstanceLastModelMatrices;
+                            // Last per-in-flight-frame instance light-matrix generation this render instance applied to its
+                            // own lights. The per-RI skip check keys on fModelMatrix alone, so an animated in-model light node
+                            // moving while the render instance stays put would otherwise never refresh; comparing this against
+                            // fInstance.fLightMatricesGeneration forces UpdateLights on those frames too.
+                            fLastLightGenerations:TRenderInstanceLastLightGenerations;
 {$ifdef FlatParallelRenderInstanceUpdates}
                             fComputedPreviousModelMatrix:TpvMatrix4x4;
 {$endif}
@@ -3598,6 +3604,10 @@ type EpvScene3D=class(Exception);
                      fTag:TpvUInt64;
                      fActiveRenderPassesGeneration:TPasMPUInt64;
                      fActiveRenderPassesGenerations:array[0..MaxInFlightFrames-1] of TPasMPUInt64;
+                     // Bumped by ProcessNode whenever a base node light matrix (or its data pointer/generation) changes, i.e.
+                     // when an in-model light node animates. Render instances compare their last-applied value against this to
+                     // know they must re-run UpdateLights even when their own model matrix is unchanged.
+                     fLightMatricesGeneration:TPasMPUInt64;
                      procedure SetActiveRenderPasses(const aActiveRenderPasses:TpvScene3DRendererRenderPasses);
                      procedure ConstructData(const aLock:boolean);
                      procedure AllocateData;
@@ -26485,6 +26495,9 @@ begin
  end;
  FillChar(fLastModelMatrices,SizeOf(TRenderInstanceLastModelMatrices),#0);
 
+ // Sentinel so the very first processing (also forced by fFirst) refreshes the lights and syncs the generation.
+ FillChar(fLastLightGenerations,SizeOf(TRenderInstanceLastLightGenerations),#$ff);
+
  fGeneration:=0;
 
  fActiveMask:=0;
@@ -27088,6 +27101,8 @@ begin
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fActiveRenderPassesGenerations[Index]:=High(TPasMPUInt64);
  end;
+
+ fLightMatricesGeneration:=0;
 
  fInstanceUpdateDirtyCounter:=2;
 
@@ -31061,6 +31076,8 @@ begin
       fGroup.fSceneInstance.fLightDataLock.Release;
      end;
 {$endif}
+     // The shared base light matrix moved (animation); make every render instance re-run UpdateLights.
+     TPasMPInterlocked.Increment(fLightMatricesGeneration);
     end;
    end else begin
 {$ifdef DeferredLightAABBTreeUpdates}
@@ -31095,6 +31112,8 @@ begin
      fGroup.fSceneInstance.fLightDataLock.Release;
     end;
 {$endif}
+    // A new base light node became visible; make every render instance pick it up via UpdateLights.
+    TPasMPInterlocked.Increment(fLightMatricesGeneration);
    end;
   end;
  end;
@@ -31458,6 +31477,7 @@ begin
        // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
        if (not fSceneInstance.fUpdatedOriginTransform) and
           (not RenderInstance.fFirst) and
+          (RenderInstance.fLastLightGenerations[aInFlightFrameIndex]=RenderInstance.fInstance.fLightMatricesGeneration) and
           ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0) and
           (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]=RenderInstance.fInstanceDataIndex) and
           CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D)) and
@@ -31525,6 +31545,7 @@ begin
         RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
         RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
         RenderInstance.UpdateLights(aInFlightFrameIndex);
+        RenderInstance.fLastLightGenerations[aInFlightFrameIndex]:=RenderInstance.fInstance.fLightMatricesGeneration;
         if (RenderInstance.fDrawInfoGenerations[aInFlightFrameIndex]<>RenderInstance.fGenerations[aInFlightFrameIndex]) or
            (RenderInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]<>RenderInstance.fInstance.fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
 {$ifdef DecoupleDrawInfoFromMatrix}
@@ -39576,6 +39597,7 @@ begin
      // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
      if (not fUpdatedOriginTransform) and
         (not RenderInstance.fFirst) and
+        (RenderInstance.fLastLightGenerations[InFlightFrameIndex]=Instance.fLightMatricesGeneration) and
         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl InFlightFrameIndex))<>0) and
         (RenderInstance.fInstanceDataIndices[InFlightFrameIndex]=RenderInstance.fInstanceDataIndex) and
         CompareMem(@RenderInstance.fLastModelMatrices[InFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D)) and
@@ -39635,6 +39657,7 @@ begin
       RenderInstance.fGenerations[InFlightFrameIndex]:=RenderInstance.fGeneration;
       RenderInstance.fPreviousModelMatrix:=RenderInstance.fWorkModelMatrix;
       RenderInstance.UpdateLights(InFlightFrameIndex);
+      RenderInstance.fLastLightGenerations[InFlightFrameIndex]:=Instance.fLightMatricesGeneration;
 {$ifdef FlatParallelPhase1Populate}
       // MatrixPair: write master without per-element Mark (no atomic/CAS here); batched MarkRange at job end.
       if RenderInstance.fDrawInfoGenerations[InFlightFrameIndex]<>RenderInstance.fGenerations[InFlightFrameIndex] then begin
