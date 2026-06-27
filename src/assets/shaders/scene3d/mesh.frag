@@ -1109,7 +1109,7 @@ void main() {
   #endif
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DUGI) && !defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)))
+#if !(defined(GLOBAL_ILLUMINATION_DUGI) && !defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE))
 #if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
 //    float iblWeight = 1.0; // already declared in the global illumination branch above
 #else
@@ -1123,7 +1123,7 @@ void main() {
         if((flags & (1u << 12u)) != 0u){
           iblDiffuseTransmission = applyVolumeAttenuation(iblDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
         }
-        iblDiffuse = mix(iblDiffuse, iblDiffuseTransmission,  diffuseTransmissionFactor);
+        iblDiffuse = mix(iblDiffuse, iblDiffuseTransmission, diffuseTransmissionFactor);
       }
 
 #if defined(TRANSMISSION)
