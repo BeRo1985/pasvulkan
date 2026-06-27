@@ -775,6 +775,9 @@ compileshaderarguments=(
   # Cascaded radiance hints underwater variants (not RT-bound; the underwater filename uses _raytracing or _bufref, so both):
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_underwater_raytracing_crh_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_underwater_bufref_crh_frag.spv"
+  # Cascaded voxel cone tracing underwater variants:
+  "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_underwater_raytracing_cvct_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_underwater_bufref_cvct_frag.spv"
 
   "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
   "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"
@@ -823,6 +826,15 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_renderpass_bufref_velocity_crh_frag.spv"
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_renderpass_bufref_wireframe_crh_frag.spv"
   "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_crh_frag.spv"
+  # Cascaded voxel cone tracing (voxel grid) variants — same raytracing_/bufref_ top-level kinds; the 'cvct_' Kind segment sits last.
+  "-V planet_renderpass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_raytracing_cvct_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_raytracing_velocity_cvct_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_raytracing_wireframe_cvct_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_cvct_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_bufref_cvct_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_bufref_velocity_cvct_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_bufref_wireframe_cvct_frag.spv"
+  "-V planet_renderpass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_renderpass_bufref_wireframe_velocity_cvct_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_renderpass_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_rsm_frag.spv"
   "-V planet_renderpass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_rsm_frag.spv"
@@ -957,6 +969,15 @@ compileshaderarguments=(
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_grass_bufref_velocity_crh_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_grass_bufref_wireframe_crh_frag.spv"
   "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_grass_bufref_wireframe_velocity_crh_frag.spv"
+  # Cascaded voxel cone tracing (voxel grid) grass variants (Kind:='cvct_').
+  "-V planet_grass.frag -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_raytracing_cvct_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_raytracing_velocity_cvct_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_raytracing_wireframe_cvct_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_cvct_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_bufref_cvct_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_bufref_velocity_cvct_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_bufref_wireframe_cvct_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_grass_bufref_wireframe_velocity_cvct_frag.spv"
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -o ${tempPath}/planet_grass_rsm_frag.spv"                                  # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DVELOCITY -o ${tempPath}/planet_grass_velocity_rsm_frag.spv"              # unused: BDA always active
   #"-V planet_grass.frag -DREFLECTIVESHADOWMAPOUTPUT -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_rsm_frag.spv"            # unused: BDA always active
@@ -1197,6 +1218,14 @@ addShader "-V planet_water.frag -DTESSELLATION -DMSAA -DMSAA_FAST -DGLOBAL_ILLUM
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_raytracing_crh_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_raytracing_msaa_crh_frag.spv"
 addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_raytracing_msaa_fast_crh_frag.spv"
+
+# Cascaded voxel cone tracing (voxel grid) variants of the main water surface (planet_water[_raytracing][_msaa|_msaa_fast]_cvct_frag.spv).
+addShader "-V planet_water.frag -DTESSELLATION -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_cvct_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DMSAA -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_msaa_cvct_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_msaa_fast_cvct_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_raytracing_cvct_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_raytracing_msaa_cvct_frag.spv"
+addShader "-V planet_water.frag -DTESSELLATION -DRAYTRACING -DMSAA -DMSAA_FAST -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_raytracing_msaa_fast_cvct_frag.spv"
 
 #############################################
 #               Mesh shaders                #

@@ -3843,12 +3843,13 @@ type TVector3Array=TpvDynamicArray<TpvVector3>;
 // The planet pipelines wire a dedicated set 4 + a 'kind' frag-variant segment for the volume-based GI modes. These helpers
 // select the active mode's descriptor set layout / set / frag-variant name so each call site stays mode-agnostic. They
 // return nil / '' for the GI modes that have no per-planet volume (EnvironmentMap, CameraReflectionProbe). Supported:
-// DUGI (probe field), CascadedRadianceHints (SH volume). CascadedVoxelConeTracing is wired up in a following step.
+// DUGI (probe field), CascadedRadianceHints (SH volume) and CascadedVoxelConeTracing (voxel grid).
 function PlanetGIActive(const aRendererInstance:TObject):boolean;
 begin
  result:=TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode in
           [TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination,
-           TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints];
+           TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints,
+           TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing];
 end;
 
 function PlanetGIDescriptorSetLayout(const aRendererInstance:TObject):TpvVulkanDescriptorSetLayout;
@@ -3859,6 +3860,9 @@ begin
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationRadianceHintsDescriptorSetLayout;
+  end;
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout;
   end;
   else begin
    result:=nil;
@@ -3875,13 +3879,16 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationRadianceHintsDescriptorSets[aInFlightFrameIndex];
   end;
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   result:=TpvScene3DRendererInstance(aRendererInstance).GlobalIlluminationCascadedVoxelConeTracingDescriptorSets[aInFlightFrameIndex];
+  end;
   else begin
    result:=nil;
   end;
  end;
 end;
 
-// Frag-variant 'kind' name segment ('dugi_' / 'crh_' / ''), e.g. planet_renderpass_raytracing_<kind>frag.spv.
+// Frag-variant 'kind' name segment ('dugi_' / 'crh_' / 'cvct_' / ''), e.g. planet_renderpass_raytracing_<kind>frag.spv.
 function PlanetGIKind(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
@@ -3891,13 +3898,16 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    result:='crh_';
   end;
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   result:='cvct_';
+  end;
   else begin
    result:='';
   end;
  end;
 end;
 
-// Frag-variant name suffix segment ('_dugi' / '_crh' / ''), used by the water passes (planet_water..._<suffix>_frag.spv).
+// Frag-variant name suffix segment ('_dugi' / '_crh' / '_cvct' / ''), used by the water passes (planet_water..._<suffix>_frag.spv).
 function PlanetGISuffix(const aRendererInstance:TObject):TpvUTF8String;
 begin
  case TpvScene3DRendererInstance(aRendererInstance).Renderer.GlobalIlluminationMode of
@@ -3906,6 +3916,9 @@ begin
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    result:='_crh';
+  end;
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   result:='_cvct';
   end;
   else begin
    result:='';

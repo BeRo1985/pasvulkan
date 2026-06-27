@@ -199,12 +199,9 @@ const vec3 inModelScale = vec3(1.0);
 #endif
 
 #if defined(GLOBAL_ILLUMINATION_DUGI)
-  // DUGI probe field for ray-tracing-based global illumination. Only wired for the RT GI modes —
-  // deliberately NOT for cascaded radiance hints or voxel cone tracing, since RSM-feeding / voxelizing planets would be
-  // overkill. Set 3 holds the probe data; the planet passes already use sets 0..2 (global, mesh-rendering-pass, planet
-  // textures, and set 3 may hold path-specific data: terrain-mesh SSBO in the mesh-shader path, empty placeholder in the
-  // vertex path). GI therefore lives at a fixed dedicated set 4 across all planet pipelines, mirroring mesh.frag's
-  // dedicated DUGI set.
+  // DUGI probe field. The planet passes already use sets 0..2 (global, mesh-rendering-pass, planet textures) and set 3 may
+  // hold path-specific data (terrain-mesh SSBO in the mesh-shader path, empty placeholder in the vertex path), so every GI
+  // volume mode lives at a fixed dedicated set 4 across all planet pipelines, mirroring mesh.frag's dedicated GI set.
   #define DUGI_DESCRIPTOR_SET 4
   #include "global_illumination_dugi_sampling.glsl"
 #endif
@@ -216,6 +213,16 @@ const vec3 inModelScale = vec3(1.0);
   layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 1) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
   #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
   #include "global_illumination_cascaded_radiance_hints.glsl"
+#endif
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+  // Cascaded voxel cone tracing grid at the same dedicated set 4 (mirroring mesh.frag's CVCT descriptor): binding 0 = the
+  // voxel grid uniform, binding 1 = the per-cascade occlusion 3D textures, binding 2 = the per-cascade radiance 3D textures.
+  layout(set = 4, binding = 0, std140) readonly uniform VoxelGridData {
+    #include "voxelgriddata_uniforms.glsl"
+  } voxelGridData;
+  layout(set = 4, binding = 1) uniform sampler3D uVoxelGridOcclusion[];
+  layout(set = 4, binding = 2) uniform sampler3D uVoxelGridRadiance[];
+  #include "global_illumination_voxel_cone_tracing.glsl"
 #endif
 
 vec3 imageLightBasedLightDirection = vec3(0.0, 0.0, -1.0); // imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
@@ -636,6 +643,22 @@ void main(){
   giDebugGISpecular += crhSpecular;
   vec3 iblDiffuse = vec3(0.0);
   const float giIBLWeight = 0.0;
+#elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+  // Cascaded voxel cone tracing: cone-traced indirect diffuse + specular from the voxel grid (metals demoted on the diffuse,
+  // metal F0 on the specular). The environment IBL fills where the cones did not gather near-field light (giIBLWeight =
+  // 1 - cone diffuse occlusion), mirroring mesh.frag's CVCT path.
+  vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
+  float giIBLWeight = 1.0;
+  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
+    vec4 cvctDiffuse = cvctIndirectDiffuseLight(inWorldSpacePosition, normal);
+    vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion * OneOverPI;
+    colorOutput += cvctDiffuseColor;
+    giDebugGIDiffuse += cvctDiffuseColor;
+    giIBLWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0);
+  }
+  vec3 cvctSpecularColor = cvctIndirectSpecularLight(inWorldSpacePosition, normal, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * mix(F0Dielectric, baseColor.xyz, metallic) * specularOcclusion * OneOverPI;
+  colorOutput += cvctSpecularColor;
+  giDebugGISpecular += cvctSpecularColor;
 #else
   vec3 iblDiffuse = getIBLDiffuse(normal) * baseColor.xyz;
   const float giIBLWeight = 1.0;

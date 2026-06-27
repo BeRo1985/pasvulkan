@@ -269,6 +269,17 @@ mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
   #include "global_illumination_cascaded_radiance_hints.glsl"
   #define WATER_CRH 1
 #endif
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) && !defined(WATER_CAUSTICS)
+  // Cascaded voxel cone tracing grid at the same dedicated set 4 (mirrors planet_renderpass.frag / planet_grass.frag); the
+  // ambient diffuse and the reflection are cone-traced from it.
+  layout(set = 4, binding = 0, std140) readonly uniform VoxelGridData {
+    #include "voxelgriddata_uniforms.glsl"
+  } voxelGridData;
+  layout(set = 4, binding = 1) uniform sampler3D uVoxelGridOcclusion[];
+  layout(set = 4, binding = 2) uniform sampler3D uVoxelGridRadiance[];
+  #include "global_illumination_voxel_cone_tracing.glsl"
+  #define WATER_CVCT 1
+#endif
 
 // Diffuse ambient irradiance for the water surface at a given world position, in getIBLDiffuse()'s "ready to multiply by
 // albedo" convention. Under the DUGI build variant it comes from the probe field (replacing the environment IBL diffuse);
@@ -286,6 +297,11 @@ vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float
   vec3 sphericalHarmonics[9];
   globalIlluminationVolumeLookUp(sphericalHarmonics, worldPosition, vec3(0.0), n);
   return max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(n, sphericalHarmonics)));
+}
+#elif defined(WATER_CVCT)
+vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
+  skyVisibility = 1.0;
+  return cvctIndirectDiffuseLight(worldPosition, n).xyz * OneOverPI;
 }
 #else
 vec3 waterDiffuseAmbient(const in vec3 worldPosition, const in vec3 n, out float skyVisibility){
@@ -913,6 +929,10 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // Cascaded radiance hints: the environment cubemap has no scene radiance in this GI mode, so the water reflection comes
     // from the SH volume along the reflection vector (parallax-offset by roughness) — low-frequency, but present, not black.
     iblSpecularMetal = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness));
+#endif
+#if defined(WATER_CVCT)
+    // Cascaded voxel cone tracing: the water reflection is cone-traced from the voxel grid along the reflection vector.
+    iblSpecularMetal = cvctIndirectSpecularLight(inWorldSpacePosition, normal, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24);
 #endif
 #if defined(WATER_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
     // Probe-derived glossy, roughness-gated. Water is normally near-mirror (low roughness), so smoothstep(0.3,0.8) keeps this ~inert and
