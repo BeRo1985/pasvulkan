@@ -928,9 +928,10 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
     vec3 iblSpecularMetal = getIBLRadianceGGX(normal, viewDirection, perceptualRoughness);
 #if defined(WATER_CRH)
-    // Cascaded radiance hints: the environment cubemap has no scene radiance in this GI mode, so the water reflection comes
-    // from the SH volume along the reflection vector (parallax-offset by roughness) — low-frequency, but present, not black.
-    iblSpecularMetal = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness));
+    // Cascaded radiance hints: roughness crossfade (matches mesh.frag / planet_renderpass) — sharp water keeps the environment
+    // reflection (getIBLRadianceGGX above; water is near-mirror), rough / foamy water takes the low-frequency SH reflection.
+    float giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, perceptualRoughness); // 1 = sharp (env), 0 = rough (SH)
+    iblSpecularMetal = mix(max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness)), iblSpecularMetal, giResidualIBLSpecularWeight);
 #endif
 #if defined(WATER_CVCT)
     // Cascaded voxel cone tracing: the water reflection is cone-traced from the voxel grid along the reflection vector.
