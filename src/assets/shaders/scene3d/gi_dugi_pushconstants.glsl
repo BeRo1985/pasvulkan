@@ -11,7 +11,7 @@ layout(push_constant) uniform PushConstants {
   vec4 randomRotation1;          // mat3 column 1 (xyz)
   vec4 randomRotation2;          // mat3 column 2 (xyz)
   uvec4 params;                  // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
-  vec4 blend;                    // x = temporal hysteresis, y = multi-bounce feedback strength (trace), z = firstFrame flag; exact use varies per pass
+  vec4 blend;                    // x = temporal hysteresis, y = multi-bounce feedback strength (trace), z = firstFrame flag, w = fixed-ray geometry valid (classification stage: 1 = HW ray-traced producer, 0 = RSM); exact use varies per pass
   vec4 emissiveGIParticleCount;  // x = global GI emissive scale, y = global GI emissive max, z = particle count (trace only; update stages ignore)
   uvec4 particleBVH;             // particle LBVH device addresses (trace only): xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
 } pushConstants;
