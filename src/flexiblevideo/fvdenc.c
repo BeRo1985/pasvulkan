@@ -498,8 +498,13 @@ static size_t compact_block_data(uint8_t *out, const uint8_t *padded,
 }
 
 // Extract the audio track to a temporary OGG/Vorbis blob via ffmpeg (returns NULL if there is none).
-static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
+// max_seconds > 0 caps the audio to that many seconds (-t), so it ends with a duration-limited video.
+static uint8_t *extract_audio(const char *input, double max_seconds, uint64_t *out_size) {
   char command[4096];
+  char limit[64] = "";   // optional "-t <sec> " fragment that truncates the audio to the encoded video length
+  if (max_seconds > 0.0) {
+    snprintf(limit, sizeof limit, "-t %.6f ", max_seconds);
+  }
   *out_size = 0;
   // Probe the source audio codec by name: if it is already Vorbis, stream-copy it verbatim into an Ogg container
   // (lossless, no re-encode); otherwise ffmpeg transcodes it to OGG/Vorbis.
@@ -518,10 +523,10 @@ static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
   }
   if (!strcmp(codec_name, "vorbis")) {
     fprintf(stderr, "audio: ffmpeg COPIES source Ogg/Vorbis audio -> OGG (stream-copy, no re-encode)\n");
-    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -c:a copy -f ogg /tmp/pvw2_a.ogg", input);
+    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" %s-vn -c:a copy -f ogg /tmp/pvw2_a.ogg", input, limit);
   } else {
     fprintf(stderr, "audio: ffmpeg RE-ENCODES source audio (%s) -> OGG/Vorbis (libvorbis q5; not a stream copy)\n", codec_name);
-    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -c:a libvorbis -q:a 5 /tmp/pvw2_a.ogg", input);
+    snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" %s-vn -c:a libvorbis -q:a 5 /tmp/pvw2_a.ogg", input, limit);
   }
   if (system(command)) {
     return 0;
@@ -551,8 +556,12 @@ static uint8_t *extract_audio(const char *input, uint64_t *out_size) {
 // Extract the source audio as interleaved s16 PCM (for the QOA / RPCM paths). Probes channels + sample
 // rate, then has ffmpeg decode to raw s16le. Returns malloc'd PCM and sets *samples (per channel) /
 // *channels / *sample_rate; returns NULL if there is no audio stream.
-static short *extract_audio_pcm(const char *input, int *out_samples, int *out_channels, int *out_rate) {
+static short *extract_audio_pcm(const char *input, double max_seconds, int *out_samples, int *out_channels, int *out_rate) {
   char command[4096];
+  char limit[64] = "";   // optional "-t <sec> " fragment that truncates the audio to the encoded video length
+  if (max_seconds > 0.0) {
+    snprintf(limit, sizeof limit, "-t %.6f ", max_seconds);
+  }
   int channels = 0, rate = 0;
   snprintf(command, sizeof command, "ffprobe -v error -select_streams a:0 -show_entries stream=channels -of csv=p=0 \"%s\"", input);
   FILE *probe = popen(command, "r");
@@ -576,7 +585,7 @@ static short *extract_audio_pcm(const char *input, int *out_samples, int *out_ch
     return NULL;
   }
   fprintf(stderr, "audio: ffmpeg DECODES source audio -> raw s16 PCM (%d ch @ %d Hz); re-encoded by the chosen audio codec (not a stream copy)\n", channels, rate);
-  snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" -vn -f s16le -acodec pcm_s16le -ac %d -ar %d /tmp/pvw2_a.raw", input, channels, rate);
+  snprintf(command, sizeof command, "ffmpeg -v error -y -i \"%s\" %s-vn -f s16le -acodec pcm_s16le -ac %d -ar %d /tmp/pvw2_a.raw", input, limit, channels, rate);
   if (system(command)) {
     return NULL;
   }
@@ -1449,6 +1458,7 @@ int main(int argc, char **argv) {
       "    --quality=N                    0 = lossless, >=1 = lossy (default 8; max 255); DCT+rANS by default, wavelet with --dwt\n"
       "    --levels=N                     spatial wavelet decomposition levels (default 5; wavelet mode only)\n"
       "    --max-frames=N                 encode at most N frames (default 0 = all)\n"
+      "    --max-duration=<sec>           encode at most this many seconds (audio cut to match; default 0 = unlimited)\n"
       "    --gop=N                        max keyframe interval (1 = all-intra; default 10, or 16 for --mode=3ddwt)\n"
       "  spatial transform (default = DCT + rANS; --dwt = wavelet, FWV parity):\n"
       "    --dwt                          wavelet instead of DCT: 5/3 (lossless) / 9-7 (lossy) + bit-plane (header bit7 clear)\n"
@@ -1564,6 +1574,7 @@ int main(int argc, char **argv) {
   int quality = 8;              // --quality=N: 0 = lossless 5/3, >= 1 = lossy 9/7 (default 8)
   int levels = 5;               // --levels=N: spatial wavelet decomposition levels (default 5)
   long max_frames = -1;         // --max-frames=N: encode at most N frames (default 0 = all; -1 = unset sentinel)
+  double max_duration = 0.0;    // --max-duration=<sec>: cap the encode to this many seconds (0 = unlimited); folded into max_frames once the source fps is known
   int gop = 0;                  // --gop=N: max keyframe interval (default 10 for I/P/B; 16 for 3D-DWT; 0 = unset sentinel)
   for (int i = 0; i < argc; i++) {
     if (!strncmp(argv[i], "--vbr=", 6)) {
@@ -1778,6 +1789,8 @@ int main(int argc, char **argv) {
       levels = atoi(argv[i] + 9);      // spatial wavelet decomposition levels
     } else if (!strncmp(argv[i], "--max-frames=", 13)) {
       max_frames = atol(argv[i] + 13); // encode at most N frames (0 = all)
+    } else if (!strncmp(argv[i], "--max-duration=", 15)) {
+      max_duration = atof(argv[i] + 15); // cap the encode to N seconds (0 = unlimited); converted to a frame cap below, once fps is known
     } else if (!strncmp(argv[i], "--gop=", 6)) {
       gop = atoi(argv[i] + 6);         // max keyframe interval
     } else if (positional_count < 16) {
@@ -1864,6 +1877,18 @@ int main(int argc, char **argv) {
       pclose(probe);
     }
     sscanf(text, "%u/%u", &fps_num, &fps_den);
+  }
+  // --max-duration=<sec>: now that the source frame rate is known, convert the duration cap to a frame cap and
+  // fold it into max_frames. The smaller of the two caps wins, so --max-frames and --max-duration combine safely.
+  if (max_duration > 0.0) {
+    double fps_value = (double)fps_num / ((fps_den > 0) ? (double)fps_den : 1.0);
+    long duration_frames = (long)((max_duration * fps_value) + 0.5);
+    if (duration_frames < 1) {
+      duration_frames = 1;
+    }
+    if ((max_frames <= 0) || (duration_frames < max_frames)) {
+      max_frames = duration_frames;
+    }
   }
   int level_limit = maximum_levels(width, height);
   if (levels > level_limit) {
@@ -2773,11 +2798,17 @@ int main(int argc, char **argv) {
     ContainerHeader placeholder;
     memset(&placeholder, 0, sizeof placeholder);
     fwrite(&placeholder, sizeof placeholder, 1, container_file);   // reserve space, filled at the end
+    // Cut the audio to the encoded video length (max_frames/fps) so a duration- or frame-capped clip ends A/V together.
+    double audio_limit_seconds = 0.0;
+    if (max_frames > 0) {
+      double fps_value = (double)fps_num / ((fps_den > 0) ? (double)fps_den : 1.0);
+      audio_limit_seconds = (double)max_frames / fps_value;
+    }
     if (audio_codec_choice == 0) {
-      audio = extract_audio(input, &audio_size);   // OGG/Vorbis (transcoded by ffmpeg)
+      audio = extract_audio(input, audio_limit_seconds, &audio_size);   // OGG/Vorbis (transcoded by ffmpeg)
     } else {
       int a_samples = 0, a_channels = 0, a_rate = 0;
-      short *pcm = extract_audio_pcm(input, &a_samples, &a_channels, &a_rate);
+      short *pcm = extract_audio_pcm(input, audio_limit_seconds, &a_samples, &a_channels, &a_rate);
       if (pcm) {
         if (audio_codec_choice == 1) {
           audio = qoal_encode(pcm, a_samples, a_channels, a_rate, &audio_size);
