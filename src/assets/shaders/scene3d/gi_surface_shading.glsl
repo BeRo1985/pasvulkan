@@ -160,22 +160,18 @@
     // Residual SH = field minus the extracted dominant light, so it is not double-counted in the diffuse term.
     DUGI_SH_TYPE shResidual = DUGI_SH_SUB(dugiRadianceSH, DUGI_SH_PROJECT(shDominantDirectionalLightDirection, shDominantDirectionalLightColor));
     vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(shResidual), giNormal));
-    if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-      giDiffuseColor *= shResidualDiffuse * OneOverPI;
-      colorOutput += giDiffuseColor;
-      giDebugGIDiffuse += giDiffuseColor;
-    }
+    giDiffuseColor *= shResidualDiffuse * OneOverPI;
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
 #else
     // Alternative: native extract-and-subtract -> uniform ambient + DC-zeroed residual + dominant light.
     vec3 shAmbient;
     float shModifiedSqrtRoughness;
     DUGI_SH_EXTRACT_DOMINANT(dugiRadianceSH, shAmbient, shDominantDirectionalLightDirection, shDominantDirectionalLightColor, sqrt(clamp(giRoughness, 0.0, 1.0)), shModifiedSqrtRoughness);
     vec3 shResidualDiffuse = max(vec3(0.0), DUGI_SH_EVALUATE(DUGI_SH_CONVOLVE_COSINE(dugiRadianceSH), giNormal));
-    if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-      giDiffuseColor *= fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient));
-      colorOutput += giDiffuseColor;
-      giDebugGIDiffuse += giDiffuseColor;
-    }
+    giDiffuseColor *= fma(shResidualDiffuse, vec3(OneOverPI), max(vec3(0.0), shAmbient));
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
     DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
 #if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE) && !defined(REFLECTIVESHADOWMAPOUTPUT)
@@ -255,17 +251,55 @@
   // The probe field replaces the environment-IBL diffuse; the env-IBL specular is kept (block below) but occluded by the probe
   // sky-visibility (sampled along the reflection vector) combined with the per-pixel AO. (DISABLED for now)
   {
+
+    // Diffuse irradiance from the probe field
     float dugiSkyVisibility;
     vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibility);
-#if !defined(GI_DUGI_GLOSSY_RADIANCE)
+    giDiffuseColor *= dugiIrradiance * OneOverPI;
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
+
+    // Specular radiance
+  #if defined(GI_DUGI_GLOSSY_RADIANCE)
+    // Specular: the probe-field glossy radiance atlas
+    vec3 dugiDiffuse = giDiffuseColor;
+    vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
+    float dugiGlossySkyUnused;
+    vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPos, dugiReflectionVector, giViewDir, dugiGlossySkyUnused) * OneOverPI; // broad reflection
+    // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
+    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
+    vec3 dugiSpecularMetal = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
+    vec3 dugiSpecularDielectric = dugiSpecularMetal;
+    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
+    vec3 dugiMetalBRDF = dugiMetalFresnel * dugiSpecularMetal;
+    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
+    vec3 dugiDielectricBRDF = mix(dugiDiffuse * giDiffuseOcclusion, dugiSpecularDielectric * giSpecularOcclusion, dugiDielectricFresnel);
+  #if defined(MESH_FRAGMENT)
+    if((giFlags & (1u << 10u)) != 0u){ // iridescence
+      dugiMetalBRDF = mix(dugiMetalBRDF, dugiSpecularMetal * giIridescenceFresnelMetallic, giIridescenceFactor);
+      dugiDielectricBRDF = mix(dugiDielectricBRDF, rgbMix(dugiDiffuse * giDiffuseOcclusion, dugiSpecularDielectric * giSpecularOcclusion, giIridescenceFresnelDielectric), giIridescenceFactor);
+    }
+    vec3 dugiSheen = vec3(0.0);
+    float dugiAlbedoSheenScaling = 1.0;
+    if((giFlags & (1u << 7u)) != 0u){ // sheen
+      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDir, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+      dugiAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
+    }
+    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+  #endif
+    vec3 dugiResultColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic);   // dielectric / metallic mix
+  #if defined(MESH_FRAGMENT)
+    dugiResultColor = fma(dugiResultColor, vec3(dugiAlbedoSheenScaling), dugiSheen);                   // sheen modulation
+    dugiResultColor = mix(dugiResultColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
+  #endif
+    colorOutput += dugiResultColor;
+    giDebugGISpecular += dugiResultColor;
+#else
+    // Specular fallback from the IBL environment map
 //  iblWeight = dugiSkyVisibility;
 //  giResidualIBLSpecularWeight *= 1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, giRoughness);
+    giResidualIBLSpecularWeight = 1.0;
 #endif
-    if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-      giDiffuseColor *= dugiIrradiance * OneOverPI;
-      colorOutput += giDiffuseColor;
-      giDebugGIDiffuse += giDiffuseColor;
-    }
   }
 
   #endif
@@ -283,7 +317,7 @@
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if !(defined(GLOBAL_ILLUMINATION_DUGI) && (!defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)) && defined(GI_DUGI_GLOSSY_RADIANCE))
+#if !(defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RADIANCE))
   vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight) : vec3(0.0);
 
 #if defined(MESH_FRAGMENT)
@@ -314,22 +348,6 @@
 #endif
 
   vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDir, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
-#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE) && defined(GI_DUGI_GLOSSY_RESIDUAL)
-  // Blend the probe-derived glossy reflection into the specular source by roughness: rough surfaces take the probe field along
-  // the reflection vector (occlusion-aware local colour bleed, not the bright sky cubemap), sharp surfaces keep the
-  // environment reflection (the low-res probe atlas cannot resolve a sharp reflection).
-  {
-    vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
-    float dugiGlossySkyUnused;
-    vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPos, dugiReflectionVector, giViewDir, dugiGlossySkyUnused) * OneOverPI; // broad reflection
-#if defined(GI_DUGI_GLOSSY_RADIANCE)
-    // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
-    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
-    dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
-#endif
-    iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, giRoughness));
-  }
-#endif
   vec3 iblSpecularDielectric = iblSpecularMetal;
   vec3 iblMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
   vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
@@ -360,11 +378,6 @@
     vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
     giDebugIBLDiffuse += iblDiffusePart * iblWeight;
     giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
-#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)
-    // Octahedral DUGI folds the probe-derived glossy reflection into the environment specular above (not a separate additive
-    // term like the SH / voxel cone tracing paths), so the GI-specular channel mirrors that combined specular.
-    giDebugGISpecular += (iblResultColor - iblDiffusePart) * iblWeight;
-#endif
   }
 #endif
 #endif
