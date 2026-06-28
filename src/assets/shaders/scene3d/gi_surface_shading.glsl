@@ -78,7 +78,6 @@
 
   {
 
-    vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
     vec3 crhVolumeSphericalHarmonics[9];
     globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonics, giWorldPosition, vec3(0.0), giNormal);
     // Extract the volume's dominant directional light and shade it analytically (sharper indirect diffuse than a pure cosine
@@ -86,8 +85,6 @@
     vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
     globalIlluminationSphericalHarmonicsExtractAndSubtract(crhVolumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
     vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(giNormal, crhVolumeSphericalHarmonics)));
-
-#if 1
 
     giResidualIBLDiffuseWeight = 1.0;
     giResidualIBLSpecularWeight = smoothstep(GI_BROAD_ROUGHNESS_HI, GI_BROAD_ROUGHNESS_LO, giRoughness);
@@ -131,103 +128,6 @@
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
                   0.0);
-
-#elif 1
-
-    giDiffuseColor *= shResidualDiffuse;
-    colorOutput += giDiffuseColor;
-    giDebugGIDiffuse += giDiffuseColor;
-
-    giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
-
-    doSingleLight(shDominantDirectionalLightColor,                    //
-                  vec3(giSpecularOcclusion),                          //
-                  vec2(1.0, 1.0 - giResidualIBLSpecularWeight),       //
-                  -shDominantDirectionalLightDirection,               //
-                  giNormal,                                           //
-                  giBaseColor,                                        //
-                  giF0Dielectric,                                     //
-                  giF90,                                              //
-                  giF90Dielectric,                                    //
-                  giViewDirection,                                    //
-                  giRefractiveAngle,                                  //
-                  giTransparency,                                     //
-                  giAlphaRoughness,                                   //
-                  giMetallic,                                         //
-                  giSheenColor,                                       //
-                  giSheenRoughness,                                   //
-                  giClearcoatNormal,                                  //
-                  giClearcoatFresnel,                                 //
-                  giClearcoatFactor,                                  //
-                  giClearcoatRoughness,                               //
-                  giSpecularWeight,                                   //
-                  vec3(0.0),                                          //
-                  0.0);
-
-#else
-
-    giDiffuseColor *= shResidualDiffuse;
-    colorOutput += giDiffuseColor;
-    giDebugGIDiffuse += giDiffuseColor;
-
-    doSingleLight(shDominantDirectionalLightColor,                    //
-                  vec3(giSpecularOcclusion),                          //
-                  vec2(1.0, 0.0),                                     // dominant light: diffuse only - the full-field indirect specular reflection below already covers the dominant direction
-                  -shDominantDirectionalLightDirection,               //
-                  giNormal,                                           //
-                  giBaseColor,                                        //
-                  giF0Dielectric,                                     //
-                  giF90,                                              //
-                  giF90Dielectric,                                    //
-                  giViewDirection,                                    //
-                  giRefractiveAngle,                                  //
-                  giTransparency,                                     //
-                  giAlphaRoughness,                                   //
-                  giMetallic,                                         //
-                  giSheenColor,                                       //
-                  giSheenRoughness,                                   //
-                  giClearcoatNormal,                                  //
-                  giClearcoatFresnel,                                 //
-                  giClearcoatFactor,                                  //
-                  giClearcoatRoughness,                               //
-                  giSpecularWeight,                                   //
-                  vec3(0.0),                                          //
-                  0.0);
-
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-    // Indirect specular - the ROUGH side of a roughness crossfade: the radiance-hints volume sampled along the reflection
-    // vector (parallax-offset by roughness). The SHARP side comes from the environment-IBL block below (its env reflection is
-    // gated by giResidualIBLSpecularWeight); this term takes the complementary (1 - weight).
-    giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
-    vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPosition, giViewDirection, giNormal, giRoughness));
-    vec3 crhMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
-    vec3 crhMetalBRDF = crhMetalFresnel * crhSpecular;
-    vec3 crhDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
-    vec3 crhDielectricBRDF = crhSpecular * giSpecularOcclusion * crhDielectricFresnel;
-#if defined(MESH_FRAGMENT)
-    if((giFlags & (1u << 10u)) != 0u){ // iridescence
-      crhMetalBRDF = mix(crhMetalBRDF, crhSpecular * giIridescenceFresnelMetallic, giIridescenceFactor);
-      crhDielectricBRDF = mix(crhDielectricBRDF, crhSpecular * giSpecularOcclusion * giIridescenceFresnelDielectric, giIridescenceFactor);
-    }
-#endif
-    vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
-#if defined(MESH_FRAGMENT)
-    vec3 crhSheen = vec3(0.0);
-    float crhAlbedoSheenScaling = 1.0;
-    if((giFlags & (1u << 7u)) != 0u){ // sheen
-      crhSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
-      crhAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
-    }
-    vec3 crhClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
-    specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);                   // sheen modulation
-    specularColor = mix(specularColor, crhClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
-#endif
-    specularColor *= 1.0 - giResidualIBLSpecularWeight; // rough side of the crossfade (env-IBL below is the sharp side)
-    colorOutput += specularColor;
-    giDebugGISpecular += specularColor;
-#endif
-
-#endif
 
   }
 
