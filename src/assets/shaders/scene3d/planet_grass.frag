@@ -407,10 +407,9 @@ void main(){
   // selected channel index sits in the spare bits of the planet flags word. colorOutput currently holds only the analytic
   // direct lighting (the GI volume and the environment IBL are added below), so snapshot it for the direct-light-only channel.
   uint giDebugDisplay = (pushConstants.flags >> GI_DEBUG_DISPLAY_PLANETFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
-  vec3 giDebugGIDiffuse = vec3(0.0);
-  vec3 giDebugGISpecular = vec3(0.0);
-  vec3 giDebugIBLSpecular = vec3(0.0);
-  vec3 giDebugIBLDiffuse = vec3(0.0);
+  vec3 giDebugIndirectDiffuse = vec3(0.0);
+  vec3 giDebugIndirectSpecular = vec3(0.0);
+  vec3 giDebugProbeInfluence = vec3(0.0);
   vec3 giDebugDirectLight = colorOutput;
 
   // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
@@ -443,24 +442,20 @@ void main(){
   if(giDebugDisplay != 0u){
     // GI debug cycle (Ctrl+Shift+F): replace the shaded colour with the single selected indirect / direct lighting channel.
     switch(giDebugDisplay){
-      case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
-        colorOutput = giDebugGIDiffuse;
-        break;
-      }
-      case GI_DEBUG_DISPLAY_GI_SPECULAR: {
-        colorOutput = giDebugGISpecular;
-        break;
-      }
-      case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
-        colorOutput = giDebugIBLSpecular;
-        break;
-      }
-      case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
-        colorOutput = giDebugIBLDiffuse;
-        break;
-      }
       case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
         colorOutput = giDebugDirectLight;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_INDIRECT_DIFFUSE: {
+        colorOutput = giDebugIndirectDiffuse;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_INDIRECT_SPECULAR: {
+        colorOutput = giDebugIndirectSpecular;
+        break;
+      }
+      case GI_DEBUG_DISPLAY_PROBE_INFLUENCE: {
+        colorOutput = vec3(giDebugProbeInfluence.x / max(1e-6, giDebugProbeInfluence.y)); // brightness-weighted probe share (0 = env/sky, 1 = probe)
         break;
       }
       default: {

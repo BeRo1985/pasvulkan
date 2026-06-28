@@ -403,6 +403,159 @@ void doSingleLight(const in vec3 lightColor,
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// doSingleLight() variant with output parameters for diffuse and specular parts, so that a caller can use them separately,
+// for example for debugging purposes
+
+void doSingleLight(const in vec3 lightColor,
+                   const in vec3 lightLit,
+                   const in vec2 diffuseSpecularFactors, // x = diffuse scale, y = specular (incl. sheen/clearcoat) scale; lets a caller fade one lobe without the other (e.g. DUGI crossfading the dominant-light specular against the glossy atlas while keeping its diffuse). vec2(1.0) = neutral.
+                   const in vec3 lightDirection, // Direction from surface point to light
+                   const in vec3 normal,
+                   const in vec3 baseColor,
+                   const in vec3 F0Dielectric,
+                   const in vec3 F90,
+                   const in vec3 F90Dielectric,
+                   const in vec3 viewDirection,
+                   const in float refractiveAngle,
+                   const in float materialTransparency,
+                   const in float alphaRoughness,
+                   const in float metallic,
+                   const in vec3 sheenColor,
+                   const in float sheenRoughness,
+                   const in vec3 clearcoatNormal,
+                   const in vec3 clearcoatFresnel,
+                   const in float clearcoatFactor,
+                   const float clearcoatRoughness,
+                   const in float specularWeight,
+                   const vec3 transmittedLight,
+                   const in float transmissionFactor,
+                   out vec3 diffusePart,
+                   out vec3 specularPart){
+
+  vec3 halfwayVector = normalize(viewDirection + lightDirection); // Direction of the vector between lightDirection and viewDirection, called halfway vector
+
+  float NDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
+  float NDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+  float NDotH = clamp(dot(normal, halfwayVector), 0.0, 1.0);
+  float LDotH = clamp(dot(lightDirection, halfwayVector), 0.0, 1.0);
+  float VDotH = clamp(dot(viewDirection, halfwayVector), 0.0, 1.0);
+
+  vec3 dielectricFresnel = F_Schlick(F0Dielectric * specularWeight, F90Dielectric, abs(VDotH));
+  vec3 metalFresnel = F_Schlick(baseColor.xyz, vec3(1.0), abs(VDotH));
+
+  vec3 lightIntensity = vec3(lightColor * lightLit);
+
+  vec3 lightDiffuse = lightIntensity * NDotL * BRDF_lambertian(baseColor.xyz);
+
+  vec3 lightSpecularDielectric = vec3(0.0);
+  vec3 lightSpecularMetal = vec3(0.0);
+  vec3 lightDielectricBRDF = vec3(0.0);
+  vec3 lightMetalBRDF = vec3(0.0);
+  vec3 lightClearcoatBRDF = vec3(0.0);
+  vec3 lightSheen = vec3(0.0);
+  float lightAlbedoSheenScaling = 1.0;
+
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+
+  // Diffuse transmission
+  if ((flags & (1u << 16u)) != 0u) {
+    lightDiffuse *= 1.0 - diffuseTransmissionFactor;
+    if(dot(normal, lightDirection) < 0.0){
+      float lightNDotL = clamp(dot(normal, -lightDirection), 0.0, 1.0);
+      vec3 lightDiffuseBTDF = lightIntensity * lightNDotL * BRDF_lambertian(diffuseTransmissionColorFactor.xyz);
+      vec3 lightMirror = normalize(lightDirection + (2.0 * dot(-lightDirection, normal) * normal));
+      float diffuseVDotH = clamp(dot(viewDirection, lightMirror), 0.0, 1.0);
+      dielectricFresnel = F_Schlick(F0Dielectric * specularWeight, F90Dielectric, abs(diffuseVDotH));
+      // Volume attenuation
+      if ((flags & (1u << 12u)) != 0u) {
+        lightDiffuseBTDF = applyVolumeAttenuation(
+          lightDiffuseBTDF,
+          diffuseTransmissionThickness,
+          volumeAttenuationColor,
+          volumeAttenuationDistance
+        );
+      }
+      lightDiffuse += lightDiffuseBTDF * diffuseTransmissionFactor;
+    }
+  }
+
+#ifdef TRANSMISSION
+  // Transmission
+  if ((flags & (1u << 11u)) != 0u) {
+    lightDiffuse = mix(lightDiffuse, transmittedLight, transmissionFactor);
+  }
+#endif
+#endif
+
+  lightDiffuse *= diffuseSpecularFactors.x; // independent diffuse scale (the specular lobes below take diffuseSpecularFactors.y)
+
+  if(
+     (
+      (NDotL > 0.0) || (NDotV > 0.0) // <= TODO: Check if this check is right, if it produces no missing light output
+     ) &&
+     (
+      (diffuseSpecularFactors.y > 0.0)
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+      || (iridescenceFactor > 0.0)
+#endif
+     )
+    ){
+
+#ifdef ENABLE_ANISOTROPIC
+    anisotropyTdotL = dot(anisotropyT, lightDirection);
+    anisotropyBdotL = dot(anisotropyB, lightDirection);
+    anisotropyTdotH = dot(anisotropyT, halfwayVector);
+    anisotropyBdotH = dot(anisotropyB, halfwayVector);
+#endif
+
+    lightSpecularMetal = lightIntensity * NDotL * BRDF_specularGGX(alphaRoughness, NDotL, NDotV, NDotH) * diffuseSpecularFactors.y;
+    lightSpecularDielectric = lightSpecularMetal;
+
+    lightMetalBRDF = metalFresnel * lightSpecularMetal;
+    lightDielectricBRDF = mix(lightDiffuse, lightSpecularDielectric, dielectricFresnel);
+
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+
+    if ((flags & (1u << 10u)) != 0u) {
+      lightMetalBRDF = mix(lightMetalBRDF, lightSpecularMetal * iridescenceFresnelMetallic, iridescenceFactor);
+      lightDielectricBRDF = mix(lightDielectricBRDF, rgbMix(lightDiffuse, lightSpecularDielectric, iridescenceFresnelDielectric), iridescenceFactor);
+    }
+
+    if (((flags & (1u << 7u)) != 0u) && (diffuseSpecularFactors.y > 0.0)) {
+      float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
+      lightAlbedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(NDotV, sheenRoughness)), //
+                                    1.0 - (sheenColorMax * albedoSheenScalingLUT(NDotL, sheenRoughness)));
+      lightSheen = lightIntensity * NDotL * BRDF_specularSheen(sheenColor, sheenRoughness, NDotL, NDotV, NDotH) * diffuseSpecularFactors.y;
+    }
+
+    if (((flags & (1u << 8u)) != 0u) && (diffuseSpecularFactors.y > 0.0)) {
+      float NDotL = clamp(dot(clearcoatNormal, lightDirection), 0.0, 1.0);
+      float NDotV = clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0);
+      float NDotH = clamp(dot(clearcoatNormal, halfwayVector), 0.0, 1.0);
+      lightClearcoatBRDF = lightIntensity * NDotL * BRDF_specularGGX(clearcoatRoughness * clearcoatRoughness, NDotL, NDotV, NDotH) * diffuseSpecularFactors.y;
+    }
+
+#endif
+
+  }
+
+  // Compute the final color
+  vec3 lightResultColor = mix(lightDielectricBRDF, lightMetalBRDF, metallic);
+#if defined(CAN_HAVE_EXTENDED_PBR_MATERIAL)
+  lightResultColor = fma(lightResultColor, vec3(lightAlbedoSheenScaling), lightSheen);
+  lightResultColor = mix(lightResultColor, lightClearcoatBRDF, clearcoatFactor * clearcoatFresnel);
+#endif
+  colorOutput += lightResultColor;
+
+  diffusePart = lightDiffuse * (vec3(1.0) - dielectricFresnel) * (1.0 - metallic);
+  specularPart = lightResultColor - diffusePart;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
   rayDirection = normalize(rayDirection);
   return textureLod(texEnvMap, (vec2((atan(rayDirection.z, rayDirection.x) / PI2) + 0.5, acos(rayDirection.y) / 3.1415926535897932384626433832795)), texLOD);

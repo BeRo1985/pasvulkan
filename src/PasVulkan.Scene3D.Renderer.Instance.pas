@@ -3274,33 +3274,32 @@ end;
 
 // GI debug shading channel codes — must match gi_debug.glsl (GI_DEBUG_DISPLAY_*) and the surface-shader switch statements.
 const GIDebugShadingNone=0;
-      GIDebugShadingGIDiffuse=1;
-      GIDebugShadingGISpecular=2;
-      GIDebugShadingIBLSpecular=3;
-      GIDebugShadingIBLDiffuse=4;
-      GIDebugShadingDirectLight=5;
+      GIDebugShadingDirectLight=1;
+      GIDebugShadingIndirectDiffuse=2;
+      GIDebugShadingIndirectSpecular=3;
+      GIDebugShadingProbeInfluence=4;
 
 function TpvScene3DRendererInstance.GetGlobalIlluminationDebugModeCount:TpvUInt32;
 begin
 
  // The number of debug cycle positions depends on the active GI technique: the ray-traced / voxel techniques add a probe /
- // voxel overlay plus the GI diffuse + GI specular channels; the radiance-hints technique is diffuse-only; the pure-IBL
- // techniques (environment map / camera reflection probe) only have the two IBL channels. Position 0 is always "off", and the
- // direct-light-only channel is always the last position, so every technique can show it.
+ // voxel overlay; all GI-volume techniques expose the combined indirect diffuse + specular channels plus the probe-influence
+ // heatmap (probe vs environment blend); the pure-IBL techniques have no probe, so they drop the probe-influence channel.
+ // Position 0 is always "off"; the direct-light channel is the first non-overlay position for every technique.
  case Renderer.GlobalIlluminationMode of
 
   TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination,
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
-   result:=7; // off, overlay, GI diffuse, GI specular, IBL diffuse, IBL specular, direct light
+   result:=6; // off, overlay, direct light, indirect diffuse, indirect specular, probe influence
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
-   result:=5; // off, GI diffuse, GI specular, IBL specular, direct light
+   result:=5; // off, direct light, indirect diffuse, indirect specular, probe influence
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
   TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
-   result:=4; // off, IBL diffuse, IBL specular, direct light
+   result:=4; // off, direct light, indirect diffuse, indirect specular
   end;
 
   else begin
@@ -3331,19 +3330,16 @@ begin
      fDebugDUGIProbes:=true;
     end;
     2:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     3:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectDiffuse;
     end;
     4:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectSpecular;
     end;
     5:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
-    end;
-    6:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingProbeInfluence;
     end;
     else begin
     end;
@@ -3356,19 +3352,16 @@ begin
      fGlobalIlluminationCascadedVoxelConeTracingDebugVisualization:=true;
     end;
     2:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     3:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectDiffuse;
     end;
     4:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectSpecular;
     end;
     5:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
-    end;
-    6:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingProbeInfluence;
     end;
     else begin
     end;
@@ -3378,16 +3371,16 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    case Mode of
     1:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGIDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     2:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectDiffuse;
     end;
     3:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectSpecular;
     end;
     4:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingProbeInfluence;
     end;
     else begin
     end;
@@ -3398,13 +3391,13 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
    case Mode of
     1:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     2:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectDiffuse;
     end;
     3:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIndirectSpecular;
     end;
     else begin
     end;
@@ -3444,19 +3437,16 @@ begin
      result:='probes';
     end;
     2:begin
-     result:='GI diffuse only';
+     result:='direct light only';
     end;
     3:begin
-     result:='GI specular only';
+     result:='indirect diffuse only';
     end;
     4:begin
-     result:='IBL diffuse only';
+     result:='indirect specular only';
     end;
     5:begin
-     result:='IBL specular only';
-    end;
-    6:begin
-     result:='direct light only';
+     result:='probe influence';
     end;
     else begin
      result:='off';
@@ -3470,19 +3460,16 @@ begin
      result:='voxels';
     end;
     2:begin
-     result:='GI diffuse only';
+     result:='direct light only';
     end;
     3:begin
-     result:='GI specular only';
+     result:='indirect diffuse only';
     end;
     4:begin
-     result:='IBL diffuse only';
+     result:='indirect specular only';
     end;
     5:begin
-     result:='IBL specular only';
-    end;
-    6:begin
-     result:='direct light only';
+     result:='probe influence';
     end;
     else begin
      result:='off';
@@ -3493,16 +3480,16 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    case fGlobalIlluminationDebugMode of
     1:begin
-     result:='GI diffuse only';
+     result:='direct light only';
     end;
     2:begin
-     result:='GI specular only';
+     result:='indirect diffuse only';
     end;
     3:begin
-     result:='IBL specular only';
+     result:='indirect specular only';
     end;
     4:begin
-     result:='direct light only';
+     result:='probe influence';
     end;
     else begin
      result:='off';
@@ -3514,13 +3501,13 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
    case fGlobalIlluminationDebugMode of
     1:begin
-     result:='IBL diffuse only';
+     result:='direct light only';
     end;
     2:begin
-     result:='IBL specular only';
+     result:='indirect diffuse only';
     end;
     3:begin
-     result:='direct light only';
+     result:='indirect specular only';
     end;
     else begin
      result:='off';

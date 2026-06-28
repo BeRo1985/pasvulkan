@@ -893,10 +893,9 @@ void main() {
       // holds only the analytic direct lighting (the GI volume and the environment IBL are added afterwards), so snapshot it
       // here for the direct-light-only channel. 0 = off (normal shading).
       uint giDebugDisplay = (pushConstants.drawFlags >> GI_DEBUG_DISPLAY_DRAWFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
-      vec3 giDebugGIDiffuse = vec3(0.0);
-      vec3 giDebugGISpecular = vec3(0.0);
-      vec3 giDebugIBLSpecular = vec3(0.0);
-      vec3 giDebugIBLDiffuse = vec3(0.0);
+      vec3 giDebugIndirectDiffuse = vec3(0.0);
+      vec3 giDebugIndirectSpecular = vec3(0.0);
+      vec3 giDebugProbeInfluence = vec3(0.0);
       vec3 giDebugDirectLight = colorOutput;
 
       // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
@@ -973,24 +972,20 @@ void main() {
       // GI debug cycle (Ctrl+Shift+F): replace the shaded colour with the single selected indirect / direct lighting channel.
       if(giDebugDisplay != 0u){
         switch(giDebugDisplay){
-          case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
-            color.xyz = giDebugGIDiffuse;
-            break;
-          }
-          case GI_DEBUG_DISPLAY_GI_SPECULAR: {
-            color.xyz = giDebugGISpecular;
-            break;
-          }
-          case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
-            color.xyz = giDebugIBLSpecular;
-            break;
-          }
-          case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
-            color.xyz = giDebugIBLDiffuse;
-            break;
-          }
           case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
             color.xyz = giDebugDirectLight;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_INDIRECT_DIFFUSE: {
+            color.xyz = giDebugIndirectDiffuse;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_INDIRECT_SPECULAR: {
+            color.xyz = giDebugIndirectSpecular;
+            break;
+          }
+          case GI_DEBUG_DISPLAY_PROBE_INFLUENCE: {
+            color.xyz = vec3(giDebugProbeInfluence.x / max(1e-6, giDebugProbeInfluence.y)); // brightness-weighted probe share (0 = env/sky, 1 = probe)
             break;
           }
           default: {

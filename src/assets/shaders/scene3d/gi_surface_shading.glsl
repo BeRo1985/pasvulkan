@@ -6,7 +6,8 @@
 // The includer must, BEFORE the #include:
 //   - hold the analytic direct lighting so far in `colorOutput` (vec3),
 //   - declare the debug accumulators (the giDebugDisplay bit source differs: mesh = drawFlags, planet = flags):
-//       uint giDebugDisplay; vec3 giDebugGIDiffuse, giDebugGISpecular, giDebugIBLDiffuse, giDebugIBLSpecular, giDebugDirectLight;
+//       uint giDebugDisplay; vec3 giDebugIndirectDiffuse, giDebugIndirectSpecular, giDebugProbeInfluence, giDebugDirectLight;
+//       (giDebugProbeInfluence packs .x = brightness-weighted probe luminance, .y = total indirect luminance; heatmap = x / y)
 //   - bind the canonical gi* surface inputs, and
 //   - #define exactly one of MESH_FRAGMENT / PLANET_FRAGMENT (and #undef it after the include).
 //
@@ -26,6 +27,9 @@
 #undef IBL_GI_PROBES
 
 {
+  // Luminance weights for the debug probe-influence heatmap (brightness-weighted probe-vs-env blend, see the debug splits below).
+  const vec3 giDebugLuminance = vec3(0.2126, 0.7152, 0.0722);
+
   // Environment-IBL residual weights, split into diffuse and specular: 0 for the GI-volume modes (the volume supplies the
   // indirect; CRH overrides the specular weight below for its roughness crossfade, CVCT re-enables both for its env fill, and
   // DUGI-SH drives them from its probe crossfades), 1 for the pure environment-IBL path. DUGI-oct stays fully self-contained.
@@ -105,6 +109,7 @@
 
     iblGIProbeSpecular = vec4(max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPosition, giViewDirection, giNormal, giRoughness)), smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
 
+    vec3 crhDominantDiffusePart, crhDominantSpecularPart;
     doSingleLight(shDominantDirectionalLightColor,                    //
                   vec3(giSpecularOcclusion),                          //
                   vec2(1.0, 1.0 - giResidualIBLSpecularWeight),       //
@@ -127,20 +132,17 @@
                   giClearcoatRoughness,                               //
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
-                  0.0);
+                  0.0,                                                //
+                  crhDominantDiffusePart,                             //
+                  crhDominantSpecularPart);
 
-    // Cheap good-enough split of the dominant directional light into the GI debug channels (doSingleLight only writes to
-    // colorOutput, not the debug accumulators - a lightweight Lambert + Blinn-Phong estimate is enough for the debug view).
+    // The dominant directional light is probe-derived: add its real diffuse / specular split (from doSingleLight's output
+    // parameters) to the GI debug channels and count it as 100% probe in the probe-influence heatmap.
     if(giDebugDisplay != 0u){
-      vec3 crhDominantLightDirection = -shDominantDirectionalLightDirection; // surface -> light (matches the doSingleLight call above)
-      float crhDominantNdotL = clamp(dot(giNormal, crhDominantLightDirection), 0.0, 1.0);
-      vec3 crhDominantIntensity = (shDominantDirectionalLightColor * giSpecularOcclusion) * crhDominantNdotL;
-      giDebugGIDiffuse += (crhDominantIntensity * mix(giBaseColor, vec3(0.0), giMetallic)) * OneOverPI; // diffuse share (diffuseSpecularFactors.x = 1.0)
-      vec3 crhDominantHalfwayVector = normalize(crhDominantLightDirection + giViewDirection);
-      float crhDominantNdotH = clamp(dot(giNormal, crhDominantHalfwayVector), 0.0, 1.0);
-      float crhDominantShininess = 2.0 / max(1e-4, giAlphaRoughness * giAlphaRoughness); // roughness -> Blinn-Phong exponent
-      vec3 crhDominantSpecularColor = mix(giF0Dielectric * giSpecularWeight, giBaseColor, giMetallic);
-      giDebugGISpecular += (crhDominantIntensity * crhDominantSpecularColor) * (pow(crhDominantNdotH, crhDominantShininess) * (1.0 - giResidualIBLSpecularWeight)); // specular share (diffuseSpecularFactors.y)
+      giDebugIndirectDiffuse += crhDominantDiffusePart;
+      giDebugIndirectSpecular += crhDominantSpecularPart;
+      float crhDominantLuminance = dot(crhDominantDiffusePart + crhDominantSpecularPart, giDebugLuminance);
+      giDebugProbeInfluence += vec3(crhDominantLuminance, crhDominantLuminance, 0.0);
     }
 
   }
@@ -159,7 +161,11 @@
     vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPosition, giNormal);
     vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * OneOverPI;
     colorOutput += cvctDiffuseColor;
-    giDebugGIDiffuse += cvctDiffuseColor;
+    if(giDebugDisplay != 0u){
+      giDebugIndirectDiffuse += cvctDiffuseColor;
+      float cvctDiffuseLuminance = dot(cvctDiffuseColor, giDebugLuminance);
+      giDebugProbeInfluence += vec3(cvctDiffuseLuminance, cvctDiffuseLuminance, 0.0); // cone-traced diffuse = 100% probe
+    }
     giResidualIBLDiffuseWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // env diffuse fills where the diffuse cones did not gather
   }else{
     giResidualIBLDiffuseWeight = 1.0; // no diffuse color, so the env diffuse fills the whole diffuse lobe
@@ -169,7 +175,11 @@
     vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24);
     vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI * (1.0 - giResidualIBLSpecularWeight); // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += cvctSpecularColor;
-    giDebugGISpecular += cvctSpecularColor;
+    if(giDebugDisplay != 0u){
+      giDebugIndirectSpecular += cvctSpecularColor;
+      float cvctSpecularLuminance = dot(cvctSpecularColor, giDebugLuminance);
+      giDebugProbeInfluence += vec3(cvctSpecularLuminance, cvctSpecularLuminance, 0.0); // cone-traced specular = 100% probe
+    }
     giResidualIBLSpecularWeight = mix(clamp(1.0 - cvctSpecular.w, 0.0, 1.0), 1.0, giResidualIBLSpecularWeight); // env specular fills where the specular cone did not gather
   }else{
     giResidualIBLSpecularWeight = 1.0; // no specular color, so the env specular fills the whole specular lobe
@@ -261,6 +271,7 @@
     dugiSpecularWeight = 1.0 - giResidualIBLSpecularWeight; // dominant's share (rough side), applied via doSingleLight below
 #endif
 
+    vec3 dugiDominantDiffusePart, dugiDominantSpecularPart;
     doSingleLight(shDominantDirectionalLightColor,                    //
                   vec3(giSpecularOcclusion),                          //
                   vec2(dugiDiffuseWeight, dugiSpecularWeight),        // dominant: diffuse x (1 - skyVisDiffuse), specular x (1 - giResidualProbeOrIBLSpecularWeight)
@@ -283,19 +294,17 @@
                   giClearcoatRoughness,                               //
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
-                  0.0);
+                  0.0,                                                //
+                  dugiDominantDiffusePart,                            //
+                  dugiDominantSpecularPart);
 
-    // Cheap good-enough split of the dominant directional light into the GI debug channels (mirrors the CRH path).
+    // The dominant directional light is probe-derived: add its real diffuse / specular split (from doSingleLight's output
+    // parameters) to the GI debug channels and count it as 100% probe in the probe-influence heatmap.
     if(giDebugDisplay != 0u){
-      vec3 dugiDominantLightDirection = -shDominantDirectionalLightDirection; // surface -> light (matches the doSingleLight call above)
-      float dugiDominantNdotL = clamp(dot(giNormal, dugiDominantLightDirection), 0.0, 1.0);
-      vec3 dugiDominantIntensity = (shDominantDirectionalLightColor * giSpecularOcclusion) * dugiDominantNdotL;
-      giDebugGIDiffuse += (dugiDominantIntensity * mix(giBaseColor, vec3(0.0), giMetallic)) * (OneOverPI * dugiDiffuseWeight); // diffuse share (diffuseSpecularFactors.x)
-      vec3 dugiDominantHalfwayVector = normalize(dugiDominantLightDirection + giViewDirection);
-      float dugiDominantNdotH = clamp(dot(giNormal, dugiDominantHalfwayVector), 0.0, 1.0);
-      float dugiDominantShininess = 2.0 / max(1e-4, giAlphaRoughness * giAlphaRoughness); // roughness -> Blinn-Phong exponent
-      vec3 dugiDominantSpecularColor = mix(giF0Dielectric * giSpecularWeight, giBaseColor, giMetallic);
-      giDebugGISpecular += (dugiDominantIntensity * dugiDominantSpecularColor) * (pow(dugiDominantNdotH, dugiDominantShininess) * dugiSpecularWeight); // specular share (diffuseSpecularFactors.y)
+      giDebugIndirectDiffuse += dugiDominantDiffusePart;
+      giDebugIndirectSpecular += dugiDominantSpecularPart;
+      float dugiDominantLuminance = dot(dugiDominantDiffusePart + dugiDominantSpecularPart, giDebugLuminance);
+      giDebugProbeInfluence += vec3(dugiDominantLuminance, dugiDominantLuminance, 0.0);
     }
   }
 
@@ -380,10 +389,15 @@
   #endif
     colorOutput += dugiResultColor;
     if(giDebugDisplay != 0u){
-      // Split the combined probe result into its diffuse and specular parts for the debug channels (see the env-IBL block).
+      // Combined indirect diffuse / specular for the debug channels; the probe-vs-env blend (1 - sky-visibility per lobe) goes
+      // into the brightness-weighted probe-influence heatmap.
       vec3 dugiDiffusePart = (dugiDiffuse * giDiffuseOcclusion) * (vec3(1.0) - dugiDielectricFresnel) * (1.0 - giMetallic);
-      giDebugGIDiffuse += dugiDiffusePart;
-      giDebugGISpecular += dugiResultColor - dugiDiffusePart;
+      vec3 dugiSpecularPart = dugiResultColor - dugiDiffusePart;
+      giDebugIndirectDiffuse += dugiDiffusePart;
+      giDebugIndirectSpecular += dugiSpecularPart;
+      float dugiDiffuseLuminance = dot(dugiDiffusePart, giDebugLuminance);
+      float dugiSpecularLuminance = dot(dugiSpecularPart, giDebugLuminance);
+      giDebugProbeInfluence += vec3((dugiDiffuseLuminance * (1.0 - dugiSkyVisibilityDiffuse)) + (dugiSpecularLuminance * (1.0 - dugiSkyVisibilitySpecular)), dugiDiffuseLuminance + dugiSpecularLuminance, 0.0);
     }
   }
 
@@ -520,23 +534,23 @@
     colorOutput += iblResultColor * iblWeight; // final whole-result env gate (currently 1.0 on every path; the per-mode env reduction lives in the residual weights above)
 
     if(giDebugDisplay != 0u){
-      // Split the environment-IBL result into its diffuse and specular parts for the debug channels: the diffuse part is
-      // (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
+      // Combined indirect diffuse / specular for the debug channels: the diffuse part is (1 - dielectric Fresnel) of the
+      // dielectric term and only on non-metals; the remainder is the specular part. The probe-vs-env blend (probe share) goes
+      // into the separate brightness-weighted probe-influence heatmap instead of an artificial colour split.
       vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
       vec3 iblSpecularPart = iblResultColor - iblDiffusePart;
+      giDebugIndirectDiffuse += iblDiffusePart * iblWeight;
+      giDebugIndirectSpecular += iblSpecularPart * iblWeight;
+      float iblDiffuseLuminance = dot(iblDiffusePart, giDebugLuminance) * iblWeight;
+      float iblSpecularLuminance = dot(iblSpecularPart, giDebugLuminance) * iblWeight;
 #ifdef IBL_GI_PROBES
-      // The env block blends a GI probe with the environment per lobe (iblGIProbe*.w = probe share), so attribute each part
-      // between the GI and IBL debug channels by that probe share - CRH diffuse (w = 1) is fully GI, its specular splits by
-      // roughness (sharp -> IBL env reflection, rough -> GI local SH reflection).
+      // Probe share per lobe (iblGIProbe*.w): CRH / DUGI-SH crossfade the local probe against the environment.
       float giDebugDiffuseProbeShare = clamp(iblGIProbeDiffuse.w, 0.0, 1.0);
       float giDebugSpecularProbeShare = clamp(iblGIProbeSpecular.w, 0.0, 1.0);
-      giDebugGIDiffuse += (iblDiffusePart * giDebugDiffuseProbeShare) * iblWeight;
-      giDebugIBLDiffuse += (iblDiffusePart * (1.0 - giDebugDiffuseProbeShare)) * iblWeight;
-      giDebugGISpecular += (iblSpecularPart * giDebugSpecularProbeShare) * iblWeight;
-      giDebugIBLSpecular += (iblSpecularPart * (1.0 - giDebugSpecularProbeShare)) * iblWeight;
+      giDebugProbeInfluence += vec3((iblDiffuseLuminance * giDebugDiffuseProbeShare) + (iblSpecularLuminance * giDebugSpecularProbeShare), iblDiffuseLuminance + iblSpecularLuminance, 0.0);
 #else
-      giDebugIBLDiffuse += iblDiffusePart * iblWeight;
-      giDebugIBLSpecular += iblSpecularPart * iblWeight;
+      // CVCT env fill / pure environment IBL: all environment (probe share 0); the CVCT cone above adds the probe part.
+      giDebugProbeInfluence += vec3(0.0, iblDiffuseLuminance + iblSpecularLuminance, 0.0);
 #endif
     }
 

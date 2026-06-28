@@ -919,10 +919,9 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // lighting here. Water's indirect terms are approximate (its lighting is a reflection / refraction blend), but the channels
     // still isolate the ambient diffuse and the (probe-blended) specular reflection. 0 = off (normal shading).
     uint giDebugDisplay = (pushConstants.flags >> GI_DEBUG_DISPLAY_PLANETFLAGS_SHIFT) & GI_DEBUG_DISPLAY_VALUE_MASK;
-    vec3 giDebugGIDiffuse = vec3(0.0);
-    vec3 giDebugGISpecular = vec3(0.0);
-    vec3 giDebugIBLSpecular = vec3(0.0);
-    vec3 giDebugIBLDiffuse = vec3(0.0);
+    vec3 giDebugIndirectDiffuse = vec3(0.0);
+    vec3 giDebugIndirectSpecular = vec3(0.0);
+    vec3 giDebugProbeInfluence = vec3(0.0);
     vec3 giDebugDirectLight = colorOutput;
 
     vec3 iblDiffuse = waterDiffuseAmbient(inWorldSpacePosition, normal) * baseColor.xyz;
@@ -962,14 +961,17 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
     vec3 iblSpecular = iblResultColor;
     if(giDebugDisplay != 0u){
-      // Split the ambient IBL result into diffuse and specular for the debug channels (see mesh.frag). Water's diffuse ambient
-      // (waterDiffuseAmbient) carries the probe / sky irradiance, so it doubles as the GI-diffuse channel; the specular
-      // reflection (with any probe glossy already folded in) is the GI- and IBL-specular channel.
+      // Combined indirect diffuse / specular for the debug channels (see mesh.frag). Water's diffuse ambient
+      // (waterDiffuseAmbient) carries the GI-volume probe / sky irradiance, the specular reflection is the environment - so for
+      // the brightness-weighted probe-influence heatmap the diffuse counts as probe and the specular as environment.
       vec3 iblDiffusePart = (iblDiffuse * diffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - metallic);
-      giDebugIBLDiffuse += iblDiffusePart;
-      giDebugGIDiffuse += iblDiffusePart;
-      giDebugIBLSpecular += iblResultColor - iblDiffusePart;
-      giDebugGISpecular += iblResultColor - iblDiffusePart;
+      vec3 iblSpecularPart = iblResultColor - iblDiffusePart;
+      giDebugIndirectDiffuse += iblDiffusePart;
+      giDebugIndirectSpecular += iblSpecularPart;
+      const vec3 giDebugLuminance = vec3(0.2126, 0.7152, 0.0722);
+      float waterDiffuseLuminance = dot(iblDiffusePart, giDebugLuminance);
+      float waterSpecularLuminance = dot(iblSpecularPart, giDebugLuminance);
+      giDebugProbeInfluence += vec3(waterDiffuseLuminance, waterDiffuseLuminance + waterSpecularLuminance, 0.0); // diffuse = probe, specular = environment
     }
 
 //    vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0Dielectric, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
@@ -1042,24 +1044,20 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     // GI debug cycle (Ctrl+Shift+F): replace the blended water colour with the single selected indirect / direct channel.
     if(giDebugDisplay != 0u){
       switch(giDebugDisplay){
-        case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
-          color.xyz = giDebugGIDiffuse;
-          break;
-        }
-        case GI_DEBUG_DISPLAY_GI_SPECULAR: {
-          color.xyz = giDebugGISpecular;
-          break;
-        }
-        case GI_DEBUG_DISPLAY_IBL_SPECULAR: {
-          color.xyz = giDebugIBLSpecular;
-          break;
-        }
-        case GI_DEBUG_DISPLAY_IBL_DIFFUSE: {
-          color.xyz = giDebugIBLDiffuse;
-          break;
-        }
         case GI_DEBUG_DISPLAY_DIRECT_LIGHT: {
           color.xyz = giDebugDirectLight;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_INDIRECT_DIFFUSE: {
+          color.xyz = giDebugIndirectDiffuse;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_INDIRECT_SPECULAR: {
+          color.xyz = giDebugIndirectSpecular;
+          break;
+        }
+        case GI_DEBUG_DISPLAY_PROBE_INFLUENCE: {
+          color.xyz = vec3(giDebugProbeInfluence.x / max(1e-6, giDebugProbeInfluence.y)); // brightness-weighted probe share (0 = env/sky, 1 = probe)
           break;
         }
         default: {
