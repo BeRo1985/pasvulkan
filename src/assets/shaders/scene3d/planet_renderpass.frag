@@ -612,101 +612,22 @@ void main(){
   vec3 giDebugIBLDiffuse = vec3(0.0);
   vec3 giDebugDirectLight = colorOutput;
 
-#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
-  // Environment-IBL residual weights, split into diffuse and specular like mesh.frag: 0 for the GI volume modes (the volume
-  // supplies the indirect; CRH overrides the specular weight below for its roughness crossfade), 1 for the pure-IBL path.
-  float giResidualIBLDiffuseWeight = 0.0;
-  float giResidualIBLSpecularWeight = 0.0;
-#else
-  float giResidualIBLDiffuseWeight = 1.0;
-  float giResidualIBLSpecularWeight = 1.0;
-#endif
-
-#if defined(GLOBAL_ILLUMINATION_DUGI)
-  // RT GI: the probe field provides the diffuse indirect; the probe glossy is blended into the (otherwise off) env specular
-  // source below, and the env-IBL term is occluded by the probe sky-visibility (giIBLWeight, sampled along the reflection
-  // vector so it reflects whether the sky is visible along the reflected ray). Diffuse-irradiance form (storage-agnostic).
-  float dugiSkyVisibility;
-  vec3 dugiIrradiance = dugiSampleIrradiance(inWorldSpacePosition, normal, viewDirection, normalize(reflect(-viewDirection, normal)), dugiSkyVisibility);
-  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    colorOutput += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-    giDebugGIDiffuse += dugiIrradiance * baseColor.xyz * diffuseOcclusion * OneOverPI;
-  }
-  float giIBLWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, perceptualRoughness));
-#elif defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
-  // Cascaded radiance hints: SH volume diffuse (metals demoted) + a roughness crossfade for the specular (matches mesh.frag):
-  // rough surfaces take the local SH reflection (1 - giResidualIBLSpecularWeight), sharp ones the env reflection from the
-  // env-IBL block below (its source is gated by giResidualIBLSpecularWeight). So wet / glossy terrain reflects the environment.
-  vec3 crhSphericalHarmonics[9];
-  globalIlluminationVolumeLookUp(crhSphericalHarmonics, inWorldSpacePosition, vec3(0.0), normal);
-  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    vec3 crhDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, crhSphericalHarmonics))) * mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion;
-    colorOutput += crhDiffuse;
-    giDebugGIDiffuse += crhDiffuse;
-  }
-  giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, perceptualRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
-  vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(inWorldSpacePosition, viewDirection, normal, perceptualRoughness)) * getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, mix(F0Dielectric, baseColor.xyz, metallic), mix(specularWeight, 1.0, metallic)) * specularOcclusion * (1.0 - giResidualIBLSpecularWeight);
-  colorOutput += crhSpecular;
-  giDebugGISpecular += crhSpecular;
-  float giIBLWeight = 1.0;
-#elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-  // Cascaded voxel cone tracing: cone-traced indirect diffuse + specular from the voxel grid (metals demoted on the diffuse,
-  // metal F0 on the specular). The env IBL is off for this mode (residual weights 0, like mesh.frag), so the cones carry the indirect.
-  float giIBLWeight = 1.0;
-  if(dot(baseColor.xyz, vec3(1.0)) > 1e-6){
-    vec4 cvctDiffuse = cvctIndirectDiffuseLight(inWorldSpacePosition, normal);
-    vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(baseColor.xyz, vec3(0.0), metallic) * diffuseOcclusion * OneOverPI;
-    colorOutput += cvctDiffuseColor;
-    giDebugGIDiffuse += cvctDiffuseColor;
-  }
-  vec3 cvctSpecularColor = cvctIndirectSpecularLight(inWorldSpacePosition, normal, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * mix(F0Dielectric, baseColor.xyz, metallic) * specularOcclusion * OneOverPI;
-  colorOutput += cvctSpecularColor;
-  giDebugGISpecular += cvctSpecularColor;
-#else
-  float giIBLWeight = 1.0;
-#endif
-  // Environment IBL sources, each gated by its split residual weight (mesh.frag model): 0 turns the source off (GI modes),
-  // the CRH specular weight gives the sharp side of its crossfade, 1 is the full pure-IBL contribution.
-  vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(normal) * baseColor.xyz * giResidualIBLDiffuseWeight) : vec3(0.0);
-  vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(normal, viewDirection, perceptualRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
-#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
-  // Probe-derived glossy (matches mesh.frag; the planet pass previously had specular only from the environment IBL).
-  // Storage-agnostic: sample the probe field along the reflection vector as a broad prefiltered radiance (E(R)/pi ~ a rough
-  // reflected radiance) and lerp it into the prefiltered specular source by roughness — rough surfaces take the probe (it
-  // carries local colour bleed + correct occlusion, not just the sky), sharp surfaces keep the environment reflection (the
-  // low-resolution probe atlas cannot resolve a sharp reflection; that is the job of the glossy radiance atlas). The split-sum
-  // BRDF term below and the giIBLWeight (sky-visibility) occlusion are unchanged, matching this pass's existing philosophy.
-  {
-    float dugiGlossySky;
-    vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal));
-    vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition, dugiReflectionVector, viewDirection, dugiGlossySky) * OneOverPI; // broad reflection
-#if defined(GI_DUGI_GLOSSY_RADIANCE)
-    // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
-    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
-    dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
-#endif
-    iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
-  }
-#endif
-  vec3 iblSpecularDielectric = iblSpecularMetal;
-  vec3 iblMetalFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, baseColor.xyz, 1.0);
-  vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
-  vec3 iblDielectricFresnel = getIBLGGXFresnel(normal, viewDirection, perceptualRoughness, F0Dielectric, specularWeight);
-  vec3 iblDielectricBRDF = mix(iblDiffuse * diffuseOcclusion, iblSpecularDielectric * specularOcclusion, iblDielectricFresnel);
-  vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * specularOcclusion, metallic); // Dielectric/metallic mix
-  colorOutput += iblResultColor * giIBLWeight;
+  // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
+  vec3 giWorldPos = inWorldSpacePosition;
+  vec3 giNormal = normal;
+  vec3 giViewDir = viewDirection;
+  vec3 giBaseColor = baseColor.xyz;
+  vec3 giF0Dielectric = F0Dielectric;
+  float giMetallic = metallic;
+  float giRoughness = perceptualRoughness;
+  float giSpecularWeight = specularWeight;
+  float giDiffuseOcclusion = diffuseOcclusion;
+  float giSpecularOcclusion = specularOcclusion;
+#define PLANET_FRAGMENT
+#include "gi_surface_shading.glsl"
+#undef PLANET_FRAGMENT
   if(giDebugDisplay != 0u){
-    // Split the environment IBL result into its diffuse and specular parts for the debug channels (see mesh.frag): the diffuse
-    // part is (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
-    vec3 iblDiffusePart = (iblDiffuse * diffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - metallic);
-    giDebugIBLDiffuse += iblDiffusePart * giIBLWeight;
-    giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * giIBLWeight;
-#if defined(GLOBAL_ILLUMINATION_DUGI)
-    // The probe-derived glossy reflection is folded into the environment specular here (not a separate additive term), so the
-    // GI-specular channel mirrors that combined specular.
-    giDebugGISpecular += (iblResultColor - iblDiffusePart) * giIBLWeight;
-#endif
-    // Replace the shaded colour with the single selected indirect / direct lighting channel before it is packed into c below.
+    // GI debug cycle (Ctrl+Shift+F): replace the shaded colour with the single selected indirect / direct lighting channel.
     switch(giDebugDisplay){
       case GI_DEBUG_DISPLAY_GI_DIFFUSE: {
         colorOutput = giDebugGIDiffuse;
