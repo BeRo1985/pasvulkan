@@ -258,6 +258,10 @@
     giDiffuseColor *= dugiIrradiance * OneOverPI;
 
   #if defined(GI_DUGI_GLOSSY_RADIANCE)
+
+    // Weight for the crossfade the probe-field glossy radiance atlas against the IBL environment map by roughness thresholds.
+    float dugiIBLWeight = dugiSkyVisibility * smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
+
     // Full split-sum from the probe field: the probe irradiance is the diffuse source and the prefiltered glossy-radiance atlas
     // the specular source, run through one Fresnel-weighted dielectric / metallic mix — mirroring the environment-IBL block
     // below (which is skipped for this variant). So the indirect diffuse is correctly (1 - F)-weighted here, not added twice.
@@ -297,6 +301,9 @@
     // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
     vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
     vec3 dugiSpecularMetal = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
+    // Crossfade the probe glossy reflection against the environment map by dugiIBLWeight (sky-visibility x roughness): rough
+    // surfaces open to the sky take the broad env reflection, occluded or sharp ones keep the local probe reflection.
+    dugiSpecularMetal = mix(dugiSpecularMetal, getIBLRadianceGGX(giNormal, giViewDir, giRoughness), dugiIBLWeight);
     vec3 dugiSpecularDielectric = dugiSpecularMetal;
     vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiSpecularMetal;
