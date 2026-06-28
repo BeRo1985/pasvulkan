@@ -129,6 +129,20 @@
                   vec3(0.0),                                          //
                   0.0);
 
+    // Cheap good-enough split of the dominant directional light into the GI debug channels (doSingleLight only writes to
+    // colorOutput, not the debug accumulators - a lightweight Lambert + Blinn-Phong estimate is enough for the debug view).
+    if(giDebugDisplay != 0u){
+      vec3 crhDominantLightDirection = -shDominantDirectionalLightDirection; // surface -> light (matches the doSingleLight call above)
+      float crhDominantNdotL = clamp(dot(giNormal, crhDominantLightDirection), 0.0, 1.0);
+      vec3 crhDominantIntensity = (shDominantDirectionalLightColor * giSpecularOcclusion) * crhDominantNdotL;
+      giDebugGIDiffuse += (crhDominantIntensity * mix(giBaseColor, vec3(0.0), giMetallic)) * OneOverPI; // diffuse share (diffuseSpecularFactors.x = 1.0)
+      vec3 crhDominantHalfwayVector = normalize(crhDominantLightDirection + giViewDirection);
+      float crhDominantNdotH = clamp(dot(giNormal, crhDominantHalfwayVector), 0.0, 1.0);
+      float crhDominantShininess = 2.0 / max(1e-4, giAlphaRoughness * giAlphaRoughness); // roughness -> Blinn-Phong exponent
+      vec3 crhDominantSpecularColor = mix(giF0Dielectric * giSpecularWeight, giBaseColor, giMetallic);
+      giDebugGISpecular += (crhDominantIntensity * crhDominantSpecularColor) * (pow(crhDominantNdotH, crhDominantShininess) * (1.0 - giResidualIBLSpecularWeight)); // specular share (diffuseSpecularFactors.y)
+    }
+
   }
 
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
@@ -528,8 +542,21 @@
       // Split the environment-IBL result into its diffuse and specular parts for the debug channels: the diffuse part is
       // (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
       vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
+      vec3 iblSpecularPart = iblResultColor - iblDiffusePart;
+#ifdef IBL_GI_PROBES
+      // The env block blends a GI probe with the environment per lobe (iblGIProbe*.w = probe share), so attribute each part
+      // between the GI and IBL debug channels by that probe share - CRH diffuse (w = 1) is fully GI, its specular splits by
+      // roughness (sharp -> IBL env reflection, rough -> GI local SH reflection).
+      float giDebugDiffuseProbeShare = clamp(iblGIProbeDiffuse.w, 0.0, 1.0);
+      float giDebugSpecularProbeShare = clamp(iblGIProbeSpecular.w, 0.0, 1.0);
+      giDebugGIDiffuse += (iblDiffusePart * giDebugDiffuseProbeShare) * iblWeight;
+      giDebugIBLDiffuse += (iblDiffusePart * (1.0 - giDebugDiffuseProbeShare)) * iblWeight;
+      giDebugGISpecular += (iblSpecularPart * giDebugSpecularProbeShare) * iblWeight;
+      giDebugIBLSpecular += (iblSpecularPart * (1.0 - giDebugSpecularProbeShare)) * iblWeight;
+#else
       giDebugIBLDiffuse += iblDiffusePart * iblWeight;
-      giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
+      giDebugIBLSpecular += iblSpecularPart * iblWeight;
+#endif
     }
 
   }
