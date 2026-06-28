@@ -171,15 +171,45 @@
     DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
 
-    // Diffuse: SH probe (residual + dominant) <=> IBL, blended by the hemisphere sky-visibility
-    // residual + dominant (doSingleLight below) = SH probe diffuse, weighted (1 - skyVisDiffuse); the IBL diffuse takes the
-    // complementary skyVisDiffuse. occ applied once (direct add). The dominant's diffuse share is scaled via doSingleLight.
+    // Diffuse: SH probe (residual + dominant) <=> IBL + transmission, mirroring the oct path. The residual <=> IBL part is the
+    // value dugiDiffuse (occlusion baked, direct-add); the dominant light's diffuse is added separately by doSingleLight below,
+    // both weighted (1 - skyVisDiffuse) against the IBL diffuse's skyVisDiffuse.
     float dugiDiffuseWeight = 1.0 - dugiSkyVisibilityDiffuse;
-    colorOutput += dugiProbeDiffuse * dugiDiffuseWeight;
-    giDebugGIDiffuse += dugiProbeDiffuse * dugiDiffuseWeight;
-    vec3 dugiIBLDiffuse = getIBLDiffuse(giNormal) * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * dugiSkyVisibilityDiffuse;
-    colorOutput += dugiIBLDiffuse;
-    giDebugGIDiffuse += dugiIBLDiffuse;
+    vec3 dugiIBLDiffuse = getIBLDiffuse(giNormal) * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
+    vec3 dugiDiffuse = mix(dugiProbeDiffuse, dugiIBLDiffuse, dugiSkyVisibilityDiffuse); // residual <=> IBL (the dominant is added via doSingleLight)
+#if defined(MESH_FRAGMENT)
+    // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility (mirrors oct).
+    if((giFlags & (1u << 16u)) != 0u){
+      float dugiSkyVisibilityDiffuseBack;
+      vec3 dugiProbeDiffuseTransmission = (dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI) * diffuseTransmissionColorFactor * giDiffuseOcclusion;
+      vec3 dugiIBLDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor * giDiffuseOcclusion;
+      vec3 dugiDiffuseTransmission = mix(dugiProbeDiffuseTransmission, dugiIBLDiffuseTransmission, dugiSkyVisibilityDiffuseBack);
+      if((giFlags & (1u << 12u)) != 0u){
+        dugiDiffuseTransmission = applyVolumeAttenuation(dugiDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
+      }
+      dugiDiffuse = mix(dugiDiffuse, dugiDiffuseTransmission, diffuseTransmissionFactor);
+      dugiDiffuseWeight *= 1.0 - diffuseTransmissionFactor; // the dominant light's diffuse (doSingleLight below) is transmitted by the same amount
+    }
+#if defined(TRANSMISSION)
+    // Transmission
+    if((giFlags & (1u << 11u)) != 0u){
+      vec3 dugiSpecularTransmission = getIBLVolumeRefraction(giNormal,
+                                                            giViewDirection,
+                                                            giRoughness,
+                                                            giBaseColor,
+                                                            giWorldPosition,
+                                                            ior,
+                                                            volumeThickness,
+                                                            volumeAttenuationColor,
+                                                            volumeAttenuationDistance,
+                                                            volumeDispersion) * giDiffuseOcclusion;
+      dugiDiffuse = mix(dugiDiffuse, dugiSpecularTransmission, transmissionFactor);
+      dugiDiffuseWeight *= 1.0 - transmissionFactor; // the dominant light's diffuse (doSingleLight below) is transmitted by the same amount
+    }
+#endif
+#endif
+    colorOutput += dugiDiffuse;
+    giDebugGIDiffuse += dugiDiffuse;
 
     // Specular
     float dugiSpecularWeight = 0.0; // dominant-light specular share (set below); 0 in the RSM pass (no specular)
