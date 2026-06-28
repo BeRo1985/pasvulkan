@@ -923,6 +923,12 @@ void main() {
       vec3 giIridescenceFresnelMetallic = iridescenceFresnelMetallic;
       vec3 giIridescenceFresnelDielectric = iridescenceFresnelDielectric;
       float giIridescenceFactor = iridescenceFactor;
+      // doSingleLight (dominant-light) inputs for the CRH / DUGI-SH paths.
+      vec3 giF90 = F90;
+      vec3 giF90Dielectric = F90Dielectric;
+      float giRefractiveAngle = refractiveAngle;
+      float giTransparency = transparency;
+      float giAlphaRoughness = alphaRoughness;
 #define MESH_FRAGMENT
 #include "gi_surface_shading.glsl"
 #undef MESH_FRAGMENT

@@ -424,6 +424,19 @@ void main(){
   float giSpecularWeight = specularWeight;
   float giDiffuseOcclusion = diffuseOcclusion;
   float giSpecularOcclusion = specularOcclusion;
+  // doSingleLight (dominant-light) inputs for the CRH / DUGI-SH paths. Planet terrain has no sheen / clearcoat material, so
+  // those lobe inputs are neutral; the env-IBL lobe blocks stay MESH_FRAGMENT-only and do not compile here.
+  vec3 giF90 = F90;
+  vec3 giF90Dielectric = F90Dielectric;
+  float giRefractiveAngle = refractiveAngle;
+  float giTransparency = transparency;
+  float giAlphaRoughness = alphaRoughness;
+  vec3 giSheenColor = vec3(0.0);
+  float giSheenRoughness = 0.0;
+  vec3 giClearcoatNormal = giNormal;
+  vec3 giClearcoatFresnel = vec3(0.0);
+  float giClearcoatFactor = 0.0;
+  float giClearcoatRoughness = 1.0;
 #define PLANET_FRAGMENT
 #include "gi_surface_shading.glsl"
 #undef PLANET_FRAGMENT

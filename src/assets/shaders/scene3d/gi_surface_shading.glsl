@@ -10,13 +10,18 @@
 //   - bind the canonical gi* surface inputs, and
 //   - #define exactly one of MESH_FRAGMENT / PLANET_FRAGMENT (and #undef it after the include).
 //
-// Canonical inputs (set by the includer): giWorldPos, giNormal, giViewDir (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
-// giMetallic, giRoughness (perceptual), giSpecularWeight, giDiffuseOcclusion, giSpecularOcclusion (float); giFlags (uint).
-// MESH_FRAGMENT additionally binds the extra-lobe inputs: giSheenColor, giClearcoatNormal, giClearcoatFresnel (vec3);
-// giSheenRoughness, giClearcoatRoughness, giClearcoatFactor, giNdotV (float); giIridescenceFresnelMetallic,
-// giIridescenceFresnelDielectric (vec3); giIridescenceFactor (float). The dominant-light doSingleLight() call and the
-// transmission terms (MESH_FRAGMENT only) additionally use the shader's own native locals directly (F90, refractiveAngle,
-// transmissionFactor, ior, volume*/diffuseTransmission* …), since they only ever compile in mesh.frag.
+// Both mesh and planet now run the SAME GI algorithm (CRH dominant-light extraction, CVCT, DUGI storage-mode path); only the
+// material lobes (sheen / clearcoat / iridescence) and the transmission terms stay MESH_FRAGMENT-only, since planet terrain
+// lacks those material features. The planet passes neutral material values for the shared dominant-light doSingleLight() call.
+//
+// Canonical inputs — set by BOTH includers: giWorldPos, giNormal, giViewDir (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
+// giMetallic, giRoughness (perceptual), giSpecularWeight, giDiffuseOcclusion, giSpecularOcclusion (float). Plus the
+// dominant-light doSingleLight() inputs: giF90, giF90Dielectric (vec3); giRefractiveAngle, giTransparency, giAlphaRoughness
+// (float); giSheenColor, giClearcoatNormal, giClearcoatFresnel (vec3); giSheenRoughness, giClearcoatFactor, giClearcoatRoughness
+// (float) — planet binds material-neutral values for these (no sheen / clearcoat).
+// MESH_FRAGMENT-only inputs (used solely by the extra-lobe blocks): giFlags (uint); giNdotV (float); giIridescenceFresnelMetallic,
+// giIridescenceFresnelDielectric (vec3); giIridescenceFactor (float). The transmission terms (MESH_FRAGMENT only) additionally
+// use mesh's own native locals directly (transmissionFactor, ior, volume*/diffuseTransmission* …), since they only compile there.
 
 {
   // Environment-IBL residual weights, split into diffuse and specular: 0 for the GI-volume modes (the volume supplies the
@@ -46,7 +51,6 @@
     vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
     vec3 crhVolumeSphericalHarmonics[9];
     globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonics, giWorldPos, vec3(0.0), giNormal);
-#if defined(MESH_FRAGMENT)
     // Extract the volume's dominant directional light and shade it analytically (sharper indirect diffuse than a pure cosine
     // decode), then add the remaining residual SH as diffuse so the total stays = the full field's diffuse.
     vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
@@ -62,12 +66,12 @@
                   giNormal,                                           //
                   giBaseColor,                                        //
                   giF0Dielectric,                                     //
-                  F90,                                                //
-                  F90Dielectric,                                      //
+                  giF90,                                              //
+                  giF90Dielectric,                                    //
                   giViewDir,                                          //
-                  refractiveAngle,                                    //
-                  transparency,                                       //
-                  alphaRoughness,                                     //
+                  giRefractiveAngle,                                  //
+                  giTransparency,                                     //
+                  giAlphaRoughness,                                   //
                   giMetallic,                                         //
                   giSheenColor,                                       //
                   giSheenRoughness,                                   //
@@ -78,29 +82,23 @@
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
                   0.0);
-#else // PLANET_FRAGMENT
-    // Simpler form: cosine-lobe decode of the full SH volume (no dominant-light extraction), metals demoted.
-    if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-      vec3 crhDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(giNormal, crhVolumeSphericalHarmonics))) * giDiffuseColor;
-      colorOutput += crhDiffuse;
-      giDebugGIDiffuse += crhDiffuse;
-    }
-#endif
     // Indirect specular — the ROUGH side of a roughness crossfade: the radiance-hints volume sampled along the reflection
     // vector (parallax-offset by roughness). The SHARP side comes from the environment-IBL block below (its env reflection is
     // gated by giResidualIBLSpecularWeight); this term takes the complementary (1 - weight).
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
     vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPos, giViewDir, giNormal, giRoughness));
-#if defined(MESH_FRAGMENT)
-    // Full split-sum BRDF + sheen / clearcoat / iridescence (same as the environment-IBL block).
     vec3 crhMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
     vec3 crhMetalBRDF = crhMetalFresnel * crhSpecular;
     vec3 crhDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 crhDielectricBRDF = crhSpecular * giSpecularOcclusion * crhDielectricFresnel;
+#if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
       crhMetalBRDF = mix(crhMetalBRDF, crhSpecular * giIridescenceFresnelMetallic, giIridescenceFactor);
       crhDielectricBRDF = mix(crhDielectricBRDF, crhSpecular * giSpecularOcclusion * giIridescenceFresnelDielectric, giIridescenceFactor);
     }
+#endif
+    vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
+#if defined(MESH_FRAGMENT)
     vec3 crhSheen = vec3(0.0);
     float crhAlbedoSheenScaling = 1.0;
     if((giFlags & (1u << 7u)) != 0u){ // sheen
@@ -108,11 +106,8 @@
       crhAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
     }
     vec3 crhClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
-    vec3 specularColor = mix(crhDielectricBRDF, crhMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
     specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);                   // sheen modulation
     specularColor = mix(specularColor, crhClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
-#else // PLANET_FRAGMENT
-    vec3 specularColor = crhSpecular * getIBLGGXFresnel(giNormal, giViewDir, giRoughness, mix(giF0Dielectric, giBaseColor, giMetallic), mix(giSpecularWeight, 1.0, giMetallic)) * giSpecularOcclusion;
 #endif
     specularColor *= 1.0 - giResidualIBLSpecularWeight; // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += specularColor;
@@ -122,30 +117,21 @@
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Cascaded voxel cone tracing (CVCT): cone-traced indirect diffuse + specular from the voxel grid
+  // Cascaded voxel cone tracing (CVCT): cone-traced indirect diffuse + specular from the voxel grid (metals demoted on diffuse)
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // Cascaded voxel cone tracing: cone-traced indirect diffuse + specular from the voxel grid (metals demoted on the diffuse).
   if(dot(giBaseColor, vec3(1.0)) > 1e-6){
     vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPos, giNormal);
     vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * OneOverPI;
     colorOutput += cvctDiffuseColor;
     giDebugGIDiffuse += cvctDiffuseColor;
-#if defined(MESH_FRAGMENT)
     iblWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // suppress the (residual-weighted-off) env IBL where the cones already gathered near-field light
-#endif
   }
-#if defined(MESH_FRAGMENT)
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
     vec3 cvctSpecular = cvctIndirectSpecularLight(giWorldPos, giNormal, giViewDir, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * giF0Dielectric * giSpecularOcclusion * OneOverPI;
     colorOutput += cvctSpecular;
     giDebugGISpecular += cvctSpecular;
   }
-#else // PLANET_FRAGMENT
-  vec3 cvctSpecular = cvctIndirectSpecularLight(giWorldPos, giNormal, giViewDir, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * mix(giF0Dielectric, giBaseColor, giMetallic) * giSpecularOcclusion * OneOverPI;
-  colorOutput += cvctSpecular;
-  giDebugGISpecular += cvctSpecular;
-#endif
 
 #elif defined(GLOBAL_ILLUMINATION_DUGI)
 
@@ -154,7 +140,6 @@
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
-#if defined(MESH_FRAGMENT)
   #if GI_DUGI_STORAGE_IS_SH
   // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically by
   // doSingleLight) and add the remaining residual SH as diffuse — mirroring the CRH path. The environment-IBL block below is
@@ -208,7 +193,7 @@
 #elif !defined(REFLECTIVESHADOWMAPOUTPUT)
     // No prefiltered glossy atlas: mirror the CRH specular — dominant light diffuse only (dugiSpecularWeight = 0), and the
     // indirect specular is a roughness crossfade between the env-IBL reflection (sharp) and the local probe SH reflection
-    // (rough), each through the split-sum BRDF + sheen / clearcoat / iridescence.
+    // (rough), each through the split-sum BRDF (+ sheen / clearcoat / iridescence for mesh).
     dugiSpecularWeight = 0.0;
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env), 0 = rough (local SH)
     vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
@@ -217,10 +202,14 @@
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiShReflection;
     vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 dugiDielectricBRDF = dugiShReflection * giSpecularOcclusion * dugiDielectricFresnel;
+#if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
       dugiMetalBRDF = mix(dugiMetalBRDF, dugiShReflection * giIridescenceFresnelMetallic, giIridescenceFactor);
       dugiDielectricBRDF = mix(dugiDielectricBRDF, dugiShReflection * giSpecularOcclusion * giIridescenceFresnelDielectric, giIridescenceFactor);
     }
+#endif
+    vec3 specularColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
+#if defined(MESH_FRAGMENT)
     vec3 dugiSheen = vec3(0.0);
     float dugiAlbedoSheenScaling = 1.0;
     if((giFlags & (1u << 7u)) != 0u){ // sheen
@@ -228,9 +217,9 @@
       dugiAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
     }
     vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
-    vec3 specularColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
     specularColor = fma(specularColor, vec3(dugiAlbedoSheenScaling), dugiSheen);                   // sheen modulation
     specularColor = mix(specularColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
+#endif
     specularColor *= 1.0 - giResidualIBLSpecularWeight;                                            // rough side; env-IBL block adds the sharp side
     colorOutput += specularColor;
     giDebugGISpecular += specularColor;
@@ -242,12 +231,12 @@
                   giNormal,                                           //
                   giBaseColor,                                        //
                   giF0Dielectric,                                     //
-                  F90,                                                //
-                  F90Dielectric,                                      //
+                  giF90,                                              //
+                  giF90Dielectric,                                    //
                   giViewDir,                                          //
-                  refractiveAngle,                                    //
-                  transparency,                                       //
-                  alphaRoughness,                                     //
+                  giRefractiveAngle,                                  //
+                  giTransparency,                                     //
+                  giAlphaRoughness,                                   //
                   giMetallic,                                         //
                   giSheenColor,                                       //
                   giSheenRoughness,                                   //
@@ -260,7 +249,7 @@
                   0.0);
   }
 
- #else // GI_DUGI_STORAGE octahedral
+  #else // GI_DUGI_STORAGE octahedral
 
   // Octahedral storage: dugiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) plus a sky-visibility factor.
   // The probe field replaces the environment-IBL diffuse; the env-IBL specular is kept (block below) but occluded by the probe
@@ -276,23 +265,7 @@
     }
   }
 
- #endif
-
- #else // PLANET_FRAGMENT
-
-  // Planet DUGI: diffuse-irradiance form (storage-agnostic); the probe glossy is blended into the (otherwise off) env specular
-  // source below, and the env-IBL term is occluded by the probe sky-visibility (sampled along the reflection vector).
-  {
-    float dugiSkyVisibility;
-    vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibility);
-    if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-      colorOutput += dugiIrradiance * giBaseColor * giDiffuseOcclusion * OneOverPI;
-      giDebugGIDiffuse += dugiIrradiance * giBaseColor * giDiffuseOcclusion * OneOverPI;
-    }
-    iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, giRoughness));
-  }
-
- #endif
+  #endif
 
 #else
 
@@ -306,8 +279,8 @@
   // Environment IBL (split-sum). Disabled for the SH-DUGI + glossy-radiance variant (its specular is fully probe-derived).
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !(defined(MESH_FRAGMENT) && defined(REFLECTIVESHADOWMAPOUTPUT)) // mesh skips the env IBL for its RSM flux pass; the planet RSM pass keeps it (preserving each shader's original behavior)
-#if !(defined(MESH_FRAGMENT) && defined(GLOBAL_ILLUMINATION_DUGI) && (!defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)) && defined(GI_DUGI_GLOSSY_RADIANCE))
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
+#if !(defined(GLOBAL_ILLUMINATION_DUGI) && (!defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)) && defined(GI_DUGI_GLOSSY_RADIANCE))
   vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight) : vec3(0.0);
 
 #if defined(MESH_FRAGMENT)
@@ -338,7 +311,7 @@
 #endif
 
   vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDir, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
-#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL) && (defined(PLANET_FRAGMENT) || defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE))
+#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE) && defined(GI_DUGI_GLOSSY_RESIDUAL)
   // Blend the probe-derived glossy reflection into the specular source by roughness: rough surfaces take the probe field along
   // the reflection vector (occlusion-aware local colour bleed, not the bright sky cubemap), sharp surfaces keep the
   // environment reflection (the low-res probe atlas cannot resolve a sharp reflection).
@@ -384,7 +357,7 @@
     vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
     giDebugIBLDiffuse += iblDiffusePart * iblWeight;
     giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
-#if defined(GLOBAL_ILLUMINATION_DUGI) && (defined(PLANET_FRAGMENT) || defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE))
+#if defined(GLOBAL_ILLUMINATION_DUGI) && defined(GLOBAL_ILLUMINATION_DUGI_OCT_STORAGE)
     // Octahedral DUGI folds the probe-derived glossy reflection into the environment specular above (not a separate additive
     // term like the SH / voxel cone tracing paths), so the GI-specular channel mirrors that combined specular.
     giDebugGISpecular += (iblResultColor - iblDiffusePart) * iblWeight;
