@@ -613,18 +613,19 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
 }
 
 // Calculate the specular light for a starting position, a normal, the view direction, the aperture angle and the maximal distance
-vec3 cvctIndirectSpecularLight(vec3 from, 
-                               vec3 normal, 
+// Returns vec4: rgb = traced radiance, w = accumulated cone alpha / coverage (1 - w = how much the cone missed -> env-IBL fill).
+vec4 cvctIndirectSpecularLight(vec3 from,
+                               vec3 normal,
                                vec3 viewDirection,
-                               float aperture, 
+                               float aperture,
                                float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cascadeCellSizes[0][0]), 
-                               //normal,  
-                               normalize(reflect(normalize(viewDirection), normal)), 
-                               aperture, 
-                               2.0 * voxelGridData.cascadeCellSizes[0][0], 
-                               maxDistance).xyz;
+  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cascadeCellSizes[0][0]),
+                               //normal,
+                               normalize(reflect(normalize(viewDirection), normal)),
+                               aperture,
+                               2.0 * voxelGridData.cascadeCellSizes[0][0],
+                               maxDistance);
 }
 
 // Calculate the refractive light for a starting position, a normal, the view direction, the aperture angle, the index of refraction and the maximal distance

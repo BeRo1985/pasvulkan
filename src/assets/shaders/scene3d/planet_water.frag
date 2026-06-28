@@ -935,23 +935,23 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 #endif
 #if defined(WATER_CVCT)
     // Cascaded voxel cone tracing: the water reflection is cone-traced from the voxel grid along the reflection vector.
-    iblSpecularMetal = cvctIndirectSpecularLight(inWorldSpacePosition, normal, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24);
+    iblSpecularMetal = cvctIndirectSpecularLight(inWorldSpacePosition, normal, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24).xyz;
 #endif
 #if defined(WATER_DUGI) && defined(GI_DUGI_GLOSSY_RESIDUAL)
-    // Probe-derived glossy, roughness-gated. Water is normally near-mirror (low roughness), so smoothstep(0.3,0.8) keeps this ~inert and
-    // the sharp environment/SSR reflection wins (sharp water reflections are wanted — see waterDiffuseAmbient). It only kicks
-    // in for rough/foamy water, where a broad probe reflection (with local colour bleed) is appropriate. Storage-agnostic
-    // via dugiSampleIrradiance (E(R)/pi ~ broad prefiltered radiance along the reflection vector).
+    // Probe-derived glossy, sky-visibility-gated (matches the DUGI mesh/oct model): where the sky is visible along the
+    // reflection vector, open water reflects the environment sky (getIBLRadianceGGX above); where it is occluded (cave /
+    // overhang), the local probe glossy reflection is used instead, so occluded water no longer reflects the sky. No roughness
+    // gate — water is near-mirror and the env is its sharp reflection. Storage-agnostic via dugiSampleIrradiance (E(R)/pi).
     {
-      float dugiGlossySky;
+      float dugiSkyVisibilitySpecular;
       vec3 dugiReflectionVector = normalize(reflect(-viewDirection, normal));
-      vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition, dugiReflectionVector, viewDirection, dugiGlossySky) * OneOverPI; // broad reflection
+      vec3 dugiGlossyRadiance = dugiSampleIrradiance(inWorldSpacePosition, dugiReflectionVector, viewDirection, dugiSkyVisibilitySpecular) * OneOverPI; // broad reflection + sky-visibility along R
 #if defined(GI_DUGI_GLOSSY_RADIANCE)
       // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
       vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(inWorldSpacePosition, normal, dugiReflectionVector, viewDirection);
       dugiGlossyRadiance = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, perceptualRoughness));
 #endif
-      iblSpecularMetal = mix(iblSpecularMetal, dugiGlossyRadiance, smoothstep(0.3, 0.8, perceptualRoughness));
+      iblSpecularMetal = mix(dugiGlossyRadiance, iblSpecularMetal, dugiSkyVisibilitySpecular);
     }
 #endif
     vec3 iblSpecularDielectric = iblSpecularMetal;

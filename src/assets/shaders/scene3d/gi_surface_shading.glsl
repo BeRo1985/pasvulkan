@@ -25,7 +25,8 @@
 
 {
   // Environment-IBL residual weights, split into diffuse and specular: 0 for the GI-volume modes (the volume supplies the
-  // indirect; CRH overrides the specular weight below for its roughness crossfade), 1 for the pure environment-IBL path.
+  // indirect; CRH overrides the specular weight below for its roughness crossfade, CVCT re-enables both below for its env fill),
+  // 1 for the pure environment-IBL path.
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
   float giResidualIBLDiffuseWeight = 0.0;
   float giResidualIBLSpecularWeight = 0.0;
@@ -33,8 +34,8 @@
   float giResidualIBLDiffuseWeight = 1.0;
   float giResidualIBLSpecularWeight = 1.0;
 #endif
-  // Final environment-IBL gate: the CVCT path lowers it by the cone diffuse occlusion, the DUGI path by the probe
-  // sky-visibility; 1.0 everywhere else.
+  // Final environment-IBL gate applied to the whole env result. The per-mode env reduction now lives in the residual weights
+  // above (CRH's specular crossfade, CVCT's cone coverage) and DUGI skips the env block entirely, so this currently stays 1.0.
   float iblWeight = 1.0;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,17 +121,23 @@
   // Cascaded voxel cone tracing (CVCT): cone-traced indirect diffuse + specular from the voxel grid (metals demoted on diffuse)
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // The environment IBL is the FILL for CVCT: where the cones did not fully gather (1 - cone coverage), the env shows through.
+  // Each path drives its own residual weight from the cone's accumulated alpha - diffuse from the diffuse cone, specular from
+  // the specular cone - so the env diffuse and env specular fade in independently. iblWeight stays 1.0 (the per-mode env
+  // reduction lives in these residual weights now, not in the global gate).
   if(dot(giBaseColor, vec3(1.0)) > 1e-6){
     vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPosition, giNormal);
     vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * OneOverPI;
     colorOutput += cvctDiffuseColor;
     giDebugGIDiffuse += cvctDiffuseColor;
-    iblWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // suppress the (residual-weighted-off) env IBL where the cones already gathered near-field light
+    giResidualIBLDiffuseWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // env diffuse fills where the diffuse cones did not gather
   }
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
-    vec3 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * giF0Dielectric * giSpecularOcclusion * OneOverPI;
-    colorOutput += cvctSpecular;
-    giDebugGISpecular += cvctSpecular;
+    vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24);
+    vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI;
+    colorOutput += cvctSpecularColor;
+    giDebugGISpecular += cvctSpecularColor;
+    giResidualIBLSpecularWeight = clamp(1.0 - cvctSpecular.w, 0.0, 1.0); // env specular fills where the specular cone did not gather
   }
 
 #elif defined(GLOBAL_ILLUMINATION_DUGI)
@@ -444,7 +451,7 @@
   iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen);                  // sheen modulation
   iblResultColor = mix(iblResultColor, iblClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
 #endif
-  colorOutput += iblResultColor * iblWeight; // iblWeight (1 - cone occlusion / sky-visibility) suppresses the env IBL where the GI volume already gathered near-field light; 1.0 on the pure-IBL paths
+  colorOutput += iblResultColor * iblWeight; // final whole-result env gate (currently 1.0 on every path; the per-mode env reduction lives in the residual weights above)
   if(giDebugDisplay != 0u){
     // Split the environment-IBL result into its diffuse and specular parts for the debug channels: the diffuse part is
     // (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
