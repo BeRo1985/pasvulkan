@@ -2171,7 +2171,12 @@ begin
     AABB.Max:=AABB.Min+GridSize;
    end;
    TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
-    AABB.Min:=SnappedPosition-(GridSize*0.5);
+    // The toroidal probe scrolling needs AABBMin to be an EXACT multiple of cellSize, so the shader's continuous grid
+    // coordinate (worldPos-AABBMin)/cellSize and the integer scroll base floor(AABBMin/cellSize) agree — otherwise a sub-cell
+    // residual shifts the probe lattice against the toroidal storage addressing (frame-wise probe jumps). The center snap
+    // (SnapSize) + the scene-AABB clamp above can leave such a residual (e.g. an odd volume size makes GridSize*0.5 a half
+    // cell), so floor-snap AABBMin to cellSize here.
+    AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/CellSize).Floor*CellSize;
     AABB.Max:=AABB.Min+GridSize;
    end;
    else begin
