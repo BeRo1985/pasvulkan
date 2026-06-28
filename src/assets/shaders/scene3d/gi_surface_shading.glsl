@@ -135,7 +135,7 @@
     giResidualIBLDiffuseWeight = 1.0; // no diffuse color, so the env diffuse fills the whole diffuse lobe
   }
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
-    giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
+    giResidualIBLSpecularWeight = smoothstep(GI_SPECULAR_ROUGHNESS_HI, GI_SPECULAR_ROUGHNESS_LO, giRoughness);
     vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24);
     vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI * (1.0 - giResidualIBLSpecularWeight); // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += cvctSpecularColor;
@@ -206,15 +206,15 @@
     // Transmission
     if((giFlags & (1u << 11u)) != 0u){
       vec3 dugiSpecularTransmission = getIBLVolumeRefraction(giNormal,
-                                                            giViewDirection,
-                                                            giRoughness,
-                                                            giBaseColor,
-                                                            giWorldPosition,
-                                                            ior,
-                                                            volumeThickness,
-                                                            volumeAttenuationColor,
-                                                            volumeAttenuationDistance,
-                                                            volumeDispersion) * giDiffuseOcclusion;
+                                                             giViewDirection,
+                                                             giRoughness,
+                                                             giBaseColor,
+                                                             giWorldPosition,
+                                                             ior,
+                                                             volumeThickness,
+                                                             volumeAttenuationColor,
+                                                             volumeAttenuationDistance,
+                                                             volumeDispersion) * giDiffuseOcclusion;
       dugiDiffuse = mix(dugiDiffuse, dugiSpecularTransmission, transmissionFactor);
       dugiDiffuseWeight *= 1.0 - transmissionFactor; // the dominant light's diffuse (doSingleLight below) is transmitted by the same amount
     }
