@@ -256,13 +256,41 @@
     float dugiSkyVisibility;
     vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibility);
     giDiffuseColor *= dugiIrradiance * OneOverPI;
-    colorOutput += giDiffuseColor;
-    giDebugGIDiffuse += giDiffuseColor;
 
-    // Specular radiance
   #if defined(GI_DUGI_GLOSSY_RADIANCE)
-    // Specular: the probe-field glossy radiance atlas
+    // Full split-sum from the probe field: the probe irradiance is the diffuse source and the prefiltered glossy-radiance atlas
+    // the specular source, run through one Fresnel-weighted dielectric / metallic mix — mirroring the environment-IBL block
+    // below (which is skipped for this variant). So the indirect diffuse is correctly (1 - F)-weighted here, not added twice.
     vec3 dugiDiffuse = giDiffuseColor;
+  #if defined(MESH_FRAGMENT)
+    // Diffuse transmission
+    if((giFlags & (1u << 16u)) != 0u){
+      float dugiBackSkyUnused;
+      vec3 dugiDiffuseTransmission = (dugiSampleIrradiance(giWorldPos, -giNormal, giViewDir, dugiBackSkyUnused) * OneOverPI) * diffuseTransmissionColorFactor;
+      if((giFlags & (1u << 12u)) != 0u){
+        dugiDiffuseTransmission = applyVolumeAttenuation(dugiDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
+      }
+      dugiDiffuse = mix(dugiDiffuse, dugiDiffuseTransmission, diffuseTransmissionFactor);
+    }
+  #if defined(TRANSMISSION)
+    // Transmission
+    if((giFlags & (1u << 11u)) != 0u){
+      vec3 dugiSpecularTransmission = getIBLVolumeRefraction(giNormal,
+                                                             giViewDir,
+                                                             giRoughness,
+                                                             giBaseColor,
+                                                             giWorldPos,
+                                                             ior,
+                                                             volumeThickness,
+                                                             volumeAttenuationColor,
+                                                             volumeAttenuationDistance,
+                                                             volumeDispersion);
+      dugiDiffuse = mix(dugiDiffuse, dugiSpecularTransmission, transmissionFactor);
+    }
+  #endif
+  #endif
+    // Specular radiance
+    // Specular: the probe-field glossy radiance atlas
     vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
     float dugiGlossySkyUnused;
     vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPos, dugiReflectionVector, giViewDir, dugiGlossySkyUnused) * OneOverPI; // broad reflection
@@ -293,13 +321,18 @@
     dugiResultColor = mix(dugiResultColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
   #endif
     colorOutput += dugiResultColor;
-    giDebugGISpecular += dugiResultColor;
-#else
-    // Specular fallback from the IBL environment map
-//  iblWeight = dugiSkyVisibility;
-//  giResidualIBLSpecularWeight *= 1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, giRoughness);
+    if(giDebugDisplay != 0u){
+      // Split the combined probe result into its diffuse and specular parts for the debug channels (see the env-IBL block).
+      vec3 dugiDiffusePart = (dugiDiffuse * giDiffuseOcclusion) * (vec3(1.0) - dugiDielectricFresnel) * (1.0 - giMetallic);
+      giDebugGIDiffuse += dugiDiffusePart;
+      giDebugGISpecular += dugiResultColor - dugiDiffusePart;
+    }
+  #else
+    // No glossy atlas: the probe diffuse is added directly and the environment-IBL block below provides the specular reflection.
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
     giResidualIBLSpecularWeight = 1.0;
-#endif
+  #endif
   }
 
   #endif
