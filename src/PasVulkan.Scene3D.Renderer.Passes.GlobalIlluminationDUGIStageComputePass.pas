@@ -117,7 +117,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-       fWarmupFrameCounts:array[0..MaxInFlightFrames-1] of TpvInt32; // per in-flight slot: frames since (re)init, for the convergence warmup hysteresis ramp (kept per-pass; stays in sync since every stage runs the same per-frame logic)
+       fWarmupFrameCount:TpvInt32; // frames since (re)init, for the convergence warmup hysteresis ramp (single shared history; kept per-pass, stays in sync since every stage runs the same per-frame logic)
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
       public
@@ -221,7 +221,7 @@ begin
 
  inherited AcquireVolatileResources;
 
- FillChar(fWarmupFrameCounts,SizeOf(fWarmupFrameCounts),#0); // every slot restarts the convergence warmup on (re)acquire
+ fWarmupFrameCount:=0; // restart the convergence warmup on (re)acquire
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -270,15 +270,15 @@ begin
   // binding 1 (ray-data) + SH irradiance are BDA buffers reached via the master push constant; binding 2 = oct irradiance only.
   if TpvScene3DRendererInstance.GlobalIlluminationDUGIStorageOctahedral then begin
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIIrradianceOctImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
   end;
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 3 = visibility moments (RG32F)
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilityMomentsImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 3 = visibility moments (RG32F)
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilitySkyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky (R8)
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilitySkyImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 4 = visibility sky (R8)
   if TpvScene3DRendererInstance.GlobalIlluminationDUGIGlossyRadiance then begin
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIGlossyImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIGlossyImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false); // binding 5 = glossy prefiltered-radiance atlas
   end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
@@ -317,7 +317,7 @@ begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
- IsFirstFrame:=fInstance.GlobalIlluminationDUGIFirstFrames[aInFlightFrameIndex];
+ IsFirstFrame:=fInstance.GlobalIlluminationDUGIFirstFrame;
 
  // Reconstruct the same per-frame rotation the trace used, so the directions the blend weights against match the traced
  // rays (deterministic from the frame index).
@@ -337,7 +337,7 @@ begin
   PushConstants.Blend:=TpvVector4.InlineableCreate(SteadyHysteresis,0.0,1.0,0.0);
  end else begin
   // Warmup ramp: low hysteresis right after init (probes converge fast) easing up to the steady value over WarmupFrames.
-  WarmupT:=Min(fWarmupFrameCounts[aInFlightFrameIndex]/WarmupFrames,1.0);
+  WarmupT:=Min(fWarmupFrameCount/WarmupFrames,1.0);
   Hysteresis:=(WarmupStartHysteresis*(1.0-WarmupT))+(SteadyHysteresis*WarmupT);
   PushConstants.Blend:=TpvVector4.InlineableCreate(Hysteresis,1.0,0.0,0.0);
  end;
@@ -385,16 +385,16 @@ begin
  // Advance this stage's private warmup counter (every stage runs the identical per-frame logic, so the counters stay in
  // sync; the value is only read for the hysteresis ramp above). Reset on a slot's first frame, then increment (capped).
  if IsFirstFrame then begin
-  fWarmupFrameCounts[aInFlightFrameIndex]:=0;
+  fWarmupFrameCount:=0;
  end;
- if fWarmupFrameCounts[aInFlightFrameIndex]<WarmupFrames then begin
-  inc(fWarmupFrameCounts[aInFlightFrameIndex]);
+ if fWarmupFrameCount<WarmupFrames then begin
+  inc(fWarmupFrameCount);
  end;
 
  // This slot's probe data has now been written once -> subsequent frames blend against it normally. Only the final stage
  // flips it (so every stage this frame saw the pre-flip value); the trace pass ran before all of them this frame.
  if fFinalStage then begin
-  fInstance.GlobalIlluminationDUGIFirstFrames[aInFlightFrameIndex]:=false;
+  fInstance.GlobalIlluminationDUGIFirstFrame:=false;
  end;
 
 end;

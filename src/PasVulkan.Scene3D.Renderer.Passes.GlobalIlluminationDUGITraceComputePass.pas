@@ -220,10 +220,10 @@ begin
   // binding 1 (ray-data) + SH irradiance are BDA buffers reached via the master push constant; binding 2 = oct irradiance only.
   if TpvScene3DRendererInstance.GlobalIlluminationDUGIStorageOctahedral then begin
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIIrradianceOctImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+                                                                  [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIIrradianceOctImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
   end;
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilityMomentsImages[InFlightFrameIndex].VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,fInstance.GlobalIlluminationDUGIVisibilityMomentsImage.VulkanImageView.Handle,VK_IMAGE_LAYOUT_GENERAL)],[],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,0,6,TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
                                                                   fInstance.Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
@@ -322,6 +322,7 @@ var PushConstants:TPushConstants;
     RotationMatrix:TpvMatrix3x3;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     FinalMemoryBarrier:TVkMemoryBarrier;
+    FieldMemoryBarrier:TVkMemoryBarrier;
     ParticleEmitterAddress,ParticleNodeAddress:TVkDeviceAddress;
     ParticleCount:TpvUInt32;
 begin
@@ -342,9 +343,9 @@ begin
  PushConstants.Params.z:=TpvScene3DRendererInstance.GlobalIlluminationDUGIProbesPerCascade;
  PushConstants.Params.w:=TpvScene3DRendererInstance.GlobalIlluminationDUGIRaysPerProbe;
 
- // Multi-bounce feedback strength: 0 on this slot's first frame (the previous probe field is uninitialized garbage), else
- // full. The first-frame state is shared with the probe-update pass (which flips it false after writing the probes).
- if fInstance.GlobalIlluminationDUGIFirstFrames[aInFlightFrameIndex] then begin
+ // Multi-bounce feedback strength: 0 on the first frame (the previous probe field is uninitialized garbage), else full. The
+ // first-frame state is shared with the probe-update pass (which flips it false after writing the probes), single shared field.
+ if fInstance.GlobalIlluminationDUGIFirstFrame then begin
   PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,0.0,1.0,0.0);
  end else begin
   PushConstants.Blend:=TpvVector4.InlineableCreate(0.97,1.0,0.0,0.0);
@@ -375,6 +376,16 @@ begin
  PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
 
  PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1); // bit0 = inactive-probe early-out (runtime A/B toggle); other bits unused by the trace
+
+ // Cross-frame WAR: the probe field is now a single shared resource (one history), no longer per-in-flight. Before this frame's
+ // DUGI compute overwrites it, the previous frame's reads of it must complete — the fragment shaders that sampled the field, and
+ // last frame's trace/update compute reads. A global memory barrier (the field images stay in VK_IMAGE_LAYOUT_GENERAL, so no
+ // layout transition is needed). This is the serialization the per-in-flight duplication used to avoid.
+ FieldMemoryBarrier:=TVkMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                             TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT));
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,1,@FieldMemoryBarrier,0,nil,0,nil);
 
  // Make the host/transfer write of the dugiData buffer's per-frame cascade globals visible to the compute shader (SSBO read).
  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
