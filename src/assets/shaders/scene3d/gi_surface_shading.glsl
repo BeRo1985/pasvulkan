@@ -140,7 +140,7 @@
     vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI * (1.0 - giResidualIBLSpecularWeight); // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += cvctSpecularColor;
     giDebugGISpecular += cvctSpecularColor;
-    giResidualIBLSpecularWeight = mix(giResidualIBLSpecularWeight, 1.0, clamp(1.0 - cvctSpecular.w, 0.0, 1.0)); // env specular fills where the specular cone did not gather
+    giResidualIBLSpecularWeight = mix(clamp(1.0 - cvctSpecular.w, 0.0, 1.0), 1.0, giResidualIBLSpecularWeight); // env specular fills where the specular cone did not gather
   }else{
     giResidualIBLSpecularWeight = 1.0; // no specular color, so the env specular fills the whole specular lobe
   }
