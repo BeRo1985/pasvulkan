@@ -900,9 +900,9 @@ void main() {
       vec3 giDebugDirectLight = colorOutput;
 
       // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
-      vec3 giWorldPos = inWorldSpacePosition;
+      vec3 giWorldPosition = inWorldSpacePosition;
       vec3 giNormal = normal;
-      vec3 giViewDir = viewDirection;
+      vec3 giViewDirection = viewDirection;
       vec3 giBaseColor = baseColor.xyz;
       vec3 giF0Dielectric = F0Dielectric;
       float giMetallic = metallic;

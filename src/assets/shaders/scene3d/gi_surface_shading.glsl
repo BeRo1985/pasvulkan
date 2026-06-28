@@ -14,7 +14,7 @@
 // material lobes (sheen / clearcoat / iridescence) and the transmission terms stay MESH_FRAGMENT-only, since planet terrain
 // lacks those material features. The planet passes neutral material values for the shared dominant-light doSingleLight() call.
 //
-// Canonical inputs - set by BOTH includers: giWorldPos, giNormal, giViewDir (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
+// Canonical inputs - set by BOTH includers: giWorldPosition, giNormal, giViewDirection (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
 // giMetallic, giRoughness (perceptual), giSpecularWeight, giDiffuseOcclusion, giSpecularOcclusion (float). Plus the
 // dominant-light doSingleLight() inputs: giF90, giF90Dielectric (vec3); giRefractiveAngle, giTransparency, giAlphaRoughness
 // (float); giSheenColor, giClearcoatNormal, giClearcoatFresnel (vec3); giSheenRoughness, giClearcoatFactor, giClearcoatRoughness
@@ -50,7 +50,7 @@
   {
     vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
     vec3 crhVolumeSphericalHarmonics[9];
-    globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonics, giWorldPos, vec3(0.0), giNormal);
+    globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonics, giWorldPosition, vec3(0.0), giNormal);
     // Extract the volume's dominant directional light and shade it analytically (sharper indirect diffuse than a pure cosine
     // decode), then add the remaining residual SH as diffuse so the total stays = the full field's diffuse.
     vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
@@ -68,7 +68,7 @@
                   giF0Dielectric,                                     //
                   giF90,                                              //
                   giF90Dielectric,                                    //
-                  giViewDir,                                          //
+                  giViewDirection,                                          //
                   giRefractiveAngle,                                  //
                   giTransparency,                                     //
                   giAlphaRoughness,                                   //
@@ -86,10 +86,10 @@
     // vector (parallax-offset by roughness). The SHARP side comes from the environment-IBL block below (its env reflection is
     // gated by giResidualIBLSpecularWeight); this term takes the complementary (1 - weight).
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
-    vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPos, giViewDir, giNormal, giRoughness));
-    vec3 crhMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
+    vec3 crhSpecular = max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPosition, giViewDirection, giNormal, giRoughness));
+    vec3 crhMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
     vec3 crhMetalBRDF = crhMetalFresnel * crhSpecular;
-    vec3 crhDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
+    vec3 crhDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 crhDielectricBRDF = crhSpecular * giSpecularOcclusion * crhDielectricFresnel;
 #if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
@@ -102,10 +102,10 @@
     vec3 crhSheen = vec3(0.0);
     float crhAlbedoSheenScaling = 1.0;
     if((giFlags & (1u << 7u)) != 0u){ // sheen
-      crhSheen = getIBLRadianceCharlie(giNormal, giViewDir, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+      crhSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
       crhAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
     }
-    vec3 crhClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+    vec3 crhClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
     specularColor = fma(specularColor, vec3(crhAlbedoSheenScaling), crhSheen);                   // sheen modulation
     specularColor = mix(specularColor, crhClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
 #endif
@@ -121,14 +121,14 @@
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if(dot(giBaseColor, vec3(1.0)) > 1e-6){
-    vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPos, giNormal);
+    vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPosition, giNormal);
     vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * OneOverPI;
     colorOutput += cvctDiffuseColor;
     giDebugGIDiffuse += cvctDiffuseColor;
     iblWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // suppress the (residual-weighted-off) env IBL where the cones already gathered near-field light
   }
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
-    vec3 cvctSpecular = cvctIndirectSpecularLight(giWorldPos, giNormal, giViewDir, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * giF0Dielectric * giSpecularOcclusion * OneOverPI;
+    vec3 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * giF0Dielectric * giSpecularOcclusion * OneOverPI;
     colorOutput += cvctSpecular;
     giDebugGISpecular += cvctSpecular;
   }
@@ -148,7 +148,7 @@
   {
     float dugiSpecularWeight = 1.0; // scales the dominant-light specular; the glossy atlas / local SH reflection take the complementary 1-weight
     float dugiSkyVisibility;
-    DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(giWorldPos, giNormal, giViewDir, dugiSkyVisibility);
+    DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibility);
     vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
 #ifdef GI_DUGI_SH_APPROXIMATE_DOMINANT
     // Approximate dominant directional light + residual SH (DC kept), applied to L1 and L2.
@@ -178,10 +178,10 @@
     // Probe-field specular crossfaded by roughness against the dominant directional light: low roughness takes the sharp
     // directional glossy prefiltered-radiance atlas, high roughness the broad dominant-light specular.
     {
-      vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
+      vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
       dugiSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
-      vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
-      vec3 dugiGlossyFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, mix(giF0Dielectric, giBaseColor, giMetallic), mix(giSpecularWeight, 1.0, giMetallic));
+      vec3 dugiGlossyRadiance = dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection);
+      vec3 dugiGlossyFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, mix(giF0Dielectric, giBaseColor, giMetallic), mix(giSpecularWeight, 1.0, giMetallic));
       vec3 specularColor = dugiGlossyRadiance * dugiGlossyFresnel * giSpecularOcclusion * (1.0 - dugiSpecularWeight);
       colorOutput += specularColor;
       giDebugGISpecular += specularColor;
@@ -192,11 +192,11 @@
     // (rough), each through the split-sum BRDF (+ sheen / clearcoat / iridescence for mesh).
     dugiSpecularWeight = 0.0;
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env), 0 = rough (local SH)
-    vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
+    vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
     vec3 dugiShReflection = max(vec3(0.0), DUGI_SH_EVALUATE(dugiRadianceSH, dugiReflectionVector));
-    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
+    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiShReflection;
-    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
+    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 dugiDielectricBRDF = dugiShReflection * giSpecularOcclusion * dugiDielectricFresnel;
 #if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
@@ -209,10 +209,10 @@
     vec3 dugiSheen = vec3(0.0);
     float dugiAlbedoSheenScaling = 1.0;
     if((giFlags & (1u << 7u)) != 0u){ // sheen
-      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDir, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
       dugiAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
     }
-    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
     specularColor = fma(specularColor, vec3(dugiAlbedoSheenScaling), dugiSheen);                   // sheen modulation
     specularColor = mix(specularColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
 #endif
@@ -229,7 +229,7 @@
                   giF0Dielectric,                                     //
                   giF90,                                              //
                   giF90Dielectric,                                    //
-                  giViewDir,                                          //
+                  giViewDirection,                                          //
                   giRefractiveAngle,                                  //
                   giTransparency,                                     //
                   giAlphaRoughness,                                   //
@@ -254,7 +254,7 @@
 
     // Diffuse irradiance from the probe field
     float dugiSkyVisibilitySpecular;
-    vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibilitySpecular);
+    vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, normalize(reflect(-giViewDirection, giNormal)), dugiSkyVisibilitySpecular);
     giDiffuseColor *= dugiIrradiance * OneOverPI;
 
   #if defined(GI_DUGI_GLOSSY_RADIANCE)
@@ -269,14 +269,14 @@
     // sample along the normal: occluded points keep the local probe diffuse, points open to the sky fade to the cleaner IBL
     // diffuse. Diffuse occlusion is applied ONCE by the split-sum below (like the env-IBL block), so it is not folded in here.
     float dugiSkyVisibilityDiffuse;
-    vec3 dugiProbeDiffuse = (dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, dugiSkyVisibilityDiffuse) * OneOverPI) * mix(giBaseColor, vec3(0.0), giMetallic);
+    vec3 dugiProbeDiffuse = (dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse) * OneOverPI) * mix(giBaseColor, vec3(0.0), giMetallic);
     vec3 dugiIBLDiffuse = getIBLDiffuse(giNormal) * mix(giBaseColor, vec3(0.0), giMetallic);
     vec3 dugiDiffuse = mix(dugiProbeDiffuse, dugiIBLDiffuse, dugiSkyVisibilityDiffuse);
   #if defined(MESH_FRAGMENT)
     // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility, mirroring the front diffuse.
     if((giFlags & (1u << 16u)) != 0u){
       float dugiSkyVisibilityDiffuseBack;
-      vec3 dugiProbeDiffuseTransmission = (dugiSampleIrradiance(giWorldPos, -giNormal, giViewDir, dugiSkyVisibilityDiffuseBack) * OneOverPI) * diffuseTransmissionColorFactor;
+      vec3 dugiProbeDiffuseTransmission = (dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI) * diffuseTransmissionColorFactor;
       vec3 dugiIBLDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor;
       vec3 dugiDiffuseTransmission = mix(dugiProbeDiffuseTransmission, dugiIBLDiffuseTransmission, dugiSkyVisibilityDiffuseBack);
       if((giFlags & (1u << 12u)) != 0u){
@@ -288,10 +288,10 @@
     // Transmission
     if((giFlags & (1u << 11u)) != 0u){
       vec3 dugiSpecularTransmission = getIBLVolumeRefraction(giNormal,
-                                                             giViewDir,
+                                                             giViewDirection,
                                                              giRoughness,
                                                              giBaseColor,
-                                                             giWorldPos,
+                                                             giWorldPosition,
                                                              ior,
                                                              volumeThickness,
                                                              volumeAttenuationColor,
@@ -303,11 +303,11 @@
   #endif
     // Specular radiance
     // Specular: the probe-field glossy radiance atlas
-    vec3 dugiReflectionVector = normalize(reflect(-giViewDir, giNormal));
+    vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
     float dugiGlossySkyUnused;
-    vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPos, dugiReflectionVector, giViewDir, dugiGlossySkyUnused) * OneOverPI; // broad reflection
+    vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPosition, dugiReflectionVector, giViewDirection, dugiGlossySkyUnused) * OneOverPI; // broad reflection
     // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
-    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
+    vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection);
     // Crossfade the probe glossy reflection against the environment map by dugiSkyVisibilitySpecular: rough
     // surfaces open to the sky take the broad env reflection, occluded or sharp ones keep the local probe reflection.
     vec3 dugiSpecularMetal = mix(
@@ -316,13 +316,13 @@
                                  dugiGlossyRadiance,
                                  smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness)
                                ),
-                               getIBLRadianceGGX(giNormal, giViewDir, giRoughness),
+                               getIBLRadianceGGX(giNormal, giViewDirection, giRoughness),
                                dugiSkyVisibilitySpecular
                              );
     vec3 dugiSpecularDielectric = dugiSpecularMetal;
-    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
+    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiSpecularMetal;
-    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
+    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 dugiDielectricBRDF = mix(dugiDiffuse * giDiffuseOcclusion, dugiSpecularDielectric * giSpecularOcclusion, dugiDielectricFresnel);
   #if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
@@ -332,10 +332,10 @@
     vec3 dugiSheen = vec3(0.0);
     float dugiAlbedoSheenScaling = 1.0;
     if((giFlags & (1u << 7u)) != 0u){ // sheen
-      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDir, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
       dugiAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
     }
-    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
   #endif
     vec3 dugiResultColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic);   // dielectric / metallic mix
   #if defined(MESH_FRAGMENT)
@@ -388,10 +388,10 @@
   // Transmission
   if((giFlags & (1u << 11u)) != 0u){
     vec3 iblSpecularTransmission = getIBLVolumeRefraction(giNormal,
-                                                          giViewDir,
+                                                          giViewDirection,
                                                           giRoughness,
                                                           giBaseColor,
-                                                          giWorldPos,
+                                                          giWorldPosition,
                                                           ior,
                                                           volumeThickness,
                                                           volumeAttenuationColor,
@@ -402,11 +402,11 @@
 #endif
 #endif
 
-  vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDir, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
+  vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDirection, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
   vec3 iblSpecularDielectric = iblSpecularMetal;
-  vec3 iblMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
+  vec3 iblMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
   vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
-  vec3 iblDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giF0Dielectric, giSpecularWeight);
+  vec3 iblDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
   vec3 iblDielectricBRDF = mix(iblDiffuse * giDiffuseOcclusion, iblSpecularDielectric * giSpecularOcclusion, iblDielectricFresnel);
 #if defined(MESH_FRAGMENT)
   if((giFlags & (1u << 10u)) != 0u){ // iridescence
@@ -416,10 +416,10 @@
   vec3 iblSheen = vec3(0.0);
   float iblAlbedoSheenScaling = 1.0;
   if((giFlags & (1u << 7u)) != 0u){ // sheen
-    iblSheen = getIBLRadianceCharlie(giNormal, giViewDir, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+    iblSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
     iblAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
   }
-  vec3 iblClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDir, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+  vec3 iblClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
 #endif
   vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
 #if defined(MESH_FRAGMENT)
