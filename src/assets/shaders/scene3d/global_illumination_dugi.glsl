@@ -209,8 +209,11 @@
 #ifndef GI_DUGI_PROBE_MAX_OFFSET            // max relocation offset as a fraction of cell size (RTXGI: 0.45, ellipsoid)
   #define GI_DUGI_PROBE_MAX_OFFSET 0.45
 #endif
-#ifndef GI_DUGI_PROBE_MIN_FRONTFACE         // keep this much clear space (in cell sizes) in front of a probe
-  #define GI_DUGI_PROBE_MIN_FRONTFACE 1.0
+#ifndef GI_DUGI_PROBE_MIN_FRONTFACE         // keep this much clear space (in cell sizes) in front of a probe. MUST stay below
+                                            // ~0.9: the relocation backface-escape clearance is 0.5*this, and it has to fit
+                                            // under GI_DUGI_PROBE_MAX_OFFSET (0.45) or in-geometry probes can never be pushed
+                                            // out and just deactivate.
+  #define GI_DUGI_PROBE_MIN_FRONTFACE 0.5
 #endif
 #ifndef GI_DUGI_PROBE_BACKFACE_THRESHOLD    // fixed-ray backface fraction above which a probe counts as inside geometry
   #define GI_DUGI_PROBE_BACKFACE_THRESHOLD 0.25
