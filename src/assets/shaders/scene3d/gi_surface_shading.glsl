@@ -253,11 +253,14 @@
 
   // Octahedral storage: dugiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) plus a sky-visibility factor.
   // The probe field replaces the environment-IBL diffuse; the env-IBL specular is kept (block below) but occluded by the probe
-  // sky-visibility (sampled along the reflection vector) combined with the per-pixel AO.
+  // sky-visibility (sampled along the reflection vector) combined with the per-pixel AO. (DISABLED for now)
   {
     float dugiSkyVisibility;
     vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibility);
-    iblWeight = dugiSkyVisibility * (1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, giRoughness));
+#if !defined(GI_DUGI_GLOSSY_RADIANCE)
+//  iblWeight = dugiSkyVisibility;
+//  giResidualIBLSpecularWeight *= 1.0 - smoothstep(GI_SPECULAR_ROUGHNESS_LO, GI_SPECULAR_ROUGHNESS_HI, giRoughness);
+#endif
     if(dot(giBaseColor, vec3(1.0)) > 1e-6){
       giDiffuseColor *= dugiIrradiance * OneOverPI;
       colorOutput += giDiffuseColor;
