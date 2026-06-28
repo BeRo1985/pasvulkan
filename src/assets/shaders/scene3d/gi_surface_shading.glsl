@@ -32,20 +32,20 @@
 
   // Environment-IBL residual weights, split into diffuse and specular: 0 for the GI-volume modes (the volume supplies the
   // indirect; CRH overrides the specular weight below for its roughness crossfade, CVCT re-enables both for its env fill, and
-  // DUGI-SH drives them from its probe crossfades), 1 for the pure environment-IBL path. DUGI-oct stays fully self-contained.
-#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || (defined(GLOBAL_ILLUMINATION_DUGI) && GI_DUGI_STORAGE_IS_SH)
+  // DUGI drives them from its probe crossfades), 1 for the pure environment-IBL path.
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
 
   // Variables so that these can be overridden by the GI-volume modes (CRH's specular crossfade, CVCT's cone coverage,
-  // DUGI-SH's probe crossfades) and the env block can stay a single, un-gated pass.
+  // DUGI's probe crossfades) and the env block can stay a single, un-gated pass.
 
   float giResidualIBLDiffuseWeight = 0.0;
   float giResidualIBLSpecularWeight = 0.0;
 
   // Final environment-IBL gate applied to the whole env result. The per-mode env reduction now lives in the residual weights
-  // above (CRH / DUGI-SH crossfades, CVCT's cone coverage), so this currently stays 1.0 (DUGI-oct skips the env block).
+  // above (CRH / DUGI crossfades, CVCT's cone coverage), so this currently stays 1.0.
   float iblWeight = 1.0;
 
-#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || (defined(GLOBAL_ILLUMINATION_DUGI) && GI_DUGI_STORAGE_IS_SH)
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_DUGI)
   #define IBL_GI_PROBES
   // xyz = Color, w = Weight/Factor
   vec4 iblGIProbeDiffuse = vec4(0.0);
@@ -53,20 +53,14 @@
   vec4 iblGIProbeSpecular = vec4(0.0);
 #endif
 
-#elif !defined(GLOBAL_ILLUMINATION_DUGI)
+#else
 
-  // Constants so that the compiler can optimize the pure environment-IBL path (no GI-volume) into a single block.
-  // The residual weights are 1.0, so the env diffuse and specular are fully applied; the iblWeight is 1.0, so the
-  // env block is not gated.
+  // Pure environment-IBL path (no GI-volume): constants so the compiler can fold this into a single block. The residual
+  // weights are 1.0 (env diffuse + specular fully applied) and iblWeight is 1.0 (the env block is not gated).
   const float giResidualIBLDiffuseWeight = 1.0;
   const float giResidualIBLSpecularWeight = 1.0;
 
   const float iblWeight = 1.0;
-
-#else
-
-  // DUGI octahedral storage: the env block is skipped entirely (the oct path is fully self-contained), so the residual
-  // weights and iblWeight are not declared here - they are not used at all on that path.
 
 #endif
 
@@ -313,95 +307,43 @@
   // Octahedral storage: dugiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) plus a sky-visibility factor.
   // The probe field replaces the environment-IBL diffuse; the env-IBL specular is kept (block below) but occluded by the probe
   // sky-visibility (sampled along the reflection vector) combined with the per-pixel AO. (DISABLED for now)
-  {
 
-    // Diffuse: probe (local) <=> IBL, blended by the hemisphere sky-visibility (a probe sample along the normal)
-    // occluded points keep the local probe diffuse, points open to the sky fade to the cleaner IBL diffuse. Diffuse occlusion
-    // is applied ONCE by the split-sum below (like the env-IBL block), so it is not folded in here.
+  // The env block below applies the BRDF split-sum, baseColor and occlusion; oct only fills the probes. There is no dominant
+  // light on the oct path, so both residual weights are fully 1.0 (no dominant-vs-indirect crossfade); iblWeight stays 1.0.
+  giResidualIBLDiffuseWeight = 1.0;
+  giResidualIBLSpecularWeight = 1.0;
+
+  // Diffuse: probe (local) <=> IBL, blended by the hemisphere sky-visibility (a probe sample along the normal)
+  {
     float dugiSkyVisibilityDiffuse;
-    vec3 dugiProbeDiffuse = (dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse) * OneOverPI) * mix(giBaseColor, vec3(0.0), giMetallic);
-    vec3 dugiIBLDiffuse = getIBLDiffuse(giNormal) * mix(giBaseColor, vec3(0.0), giMetallic);
-    vec3 dugiDiffuse = mix(dugiProbeDiffuse, dugiIBLDiffuse, dugiSkyVisibilityDiffuse);
-  #if defined(MESH_FRAGMENT)
-    // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility.
-    if((giFlags & (1u << 16u)) != 0u){
-      float dugiSkyVisibilityDiffuseBack;
-      vec3 dugiProbeDiffuseTransmission = (dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI) * diffuseTransmissionColorFactor;
-      vec3 dugiIBLDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor;
-      vec3 dugiDiffuseTransmission = mix(dugiProbeDiffuseTransmission, dugiIBLDiffuseTransmission, dugiSkyVisibilityDiffuseBack);
-      if((giFlags & (1u << 12u)) != 0u){
-        dugiDiffuseTransmission = applyVolumeAttenuation(dugiDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
-      }
-      dugiDiffuse = mix(dugiDiffuse, dugiDiffuseTransmission, diffuseTransmissionFactor);
-    }
-  #if defined(TRANSMISSION)
-    // Transmission
-    if((giFlags & (1u << 11u)) != 0u){
-      vec3 dugiSpecularTransmission = getIBLVolumeRefraction(giNormal,
-                                                             giViewDirection,
-                                                             giRoughness,
-                                                             giBaseColor,
-                                                             giWorldPosition,
-                                                             ior,
-                                                             volumeThickness,
-                                                             volumeAttenuationColor,
-                                                             volumeAttenuationDistance,
-                                                             volumeDispersion);
-      dugiDiffuse = mix(dugiDiffuse, dugiSpecularTransmission, transmissionFactor);
-    }
-  #endif
-  #endif
-    // Specular: probe reflection <=> env sky, blended by the sky-visibility along R
-    // probe reflection = the prefiltered glossy atlas (sharp) fading to the broad probe reflection, or - without the atlas -
-    // just the broad probe reflection; then crossfaded against the environment map (occluded/sharp -> probe, open+rough -> sky).
+    vec3 dugiProbeDiffuse = dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse) * OneOverPI;
+    iblGIProbeDiffuse = vec4(dugiProbeDiffuse, 1.0 - dugiSkyVisibilityDiffuse);
+  }
+
+#if defined(MESH_FRAGMENT)
+   // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility.
+   if((giFlags & (1u << 16u)) != 0u){
+     float dugiSkyVisibilityDiffuseBack;
+     vec3 dugiProbeDiffuseTransmission = dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI;
+     iblGIProbeDiffuseTransmission = vec4(dugiProbeDiffuseTransmission, 1.0 - dugiSkyVisibilityDiffuseBack);
+   }
+#endif
+
+  // Specular: probe reflection <=> env sky, blended by the sky-visibility along R
+  {
     vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
     float dugiSkyVisibilitySpecular;
     vec3 dugiBroadReflection = dugiSampleIrradiance(giWorldPosition, dugiReflectionVector, giViewDirection, dugiSkyVisibilitySpecular) * OneOverPI; // broad reflection + sky-visibility along R
     dugiSkyVisibilitySpecular *= smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
-  #if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE)
+#if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE)
     vec3 dugiProbeReflection = mix(dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection), dugiBroadReflection, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness)); // sharp atlas <-> broad
-  #else
+#else
     vec3 dugiProbeReflection = dugiBroadReflection; // no glossy atlas: just the broad probe reflection
-  #endif
-    vec3 dugiSpecularMetal = mix(dugiProbeReflection, getIBLRadianceGGX(giNormal, giViewDirection, giRoughness), dugiSkyVisibilitySpecular);
-    vec3 dugiSpecularDielectric = dugiSpecularMetal;
-    vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
-    vec3 dugiMetalBRDF = dugiMetalFresnel * dugiSpecularMetal;
-    vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
-    vec3 dugiDielectricBRDF = mix(dugiDiffuse * giDiffuseOcclusion, dugiSpecularDielectric * giSpecularOcclusion, dugiDielectricFresnel);
-  #if defined(MESH_FRAGMENT)
-    if((giFlags & (1u << 10u)) != 0u){ // iridescence
-      dugiMetalBRDF = mix(dugiMetalBRDF, dugiSpecularMetal * giIridescenceFresnelMetallic, giIridescenceFactor);
-      dugiDielectricBRDF = mix(dugiDielectricBRDF, rgbMix(dugiDiffuse * giDiffuseOcclusion, dugiSpecularDielectric * giSpecularOcclusion, giIridescenceFresnelDielectric), giIridescenceFactor);
-    }
-    vec3 dugiSheen = vec3(0.0);
-    float dugiAlbedoSheenScaling = 1.0;
-    if((giFlags & (1u << 7u)) != 0u){ // sheen
-      dugiSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
-      dugiAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
-    }
-    vec3 dugiClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
-  #endif
-    vec3 dugiResultColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic);   // dielectric / metallic mix
-  #if defined(MESH_FRAGMENT)
-    dugiResultColor = fma(dugiResultColor, vec3(dugiAlbedoSheenScaling), dugiSheen);                   // sheen modulation
-    dugiResultColor = mix(dugiResultColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
-  #endif
-    colorOutput += dugiResultColor;
-    if(giDebugDisplay != 0u){
-      // Combined indirect diffuse / specular for the debug channels; the probe-vs-env blend (1 - sky-visibility per lobe) goes
-      // into the brightness-weighted probe-influence heatmap.
-      vec3 dugiDiffusePart = (dugiDiffuse * giDiffuseOcclusion) * (vec3(1.0) - dugiDielectricFresnel) * (1.0 - giMetallic);
-      vec3 dugiSpecularPart = dugiResultColor - dugiDiffusePart;
-      giDebugIndirectDiffuse += dugiDiffusePart;
-      giDebugIndirectSpecular += dugiSpecularPart;
-      float dugiDiffuseLuminance = dot(dugiDiffusePart, giDebugLuminance);
-      float dugiSpecularLuminance = dot(dugiSpecularPart, giDebugLuminance);
-      giDebugProbeInfluence += vec3((dugiDiffuseLuminance * (1.0 - dugiSkyVisibilityDiffuse)) + (dugiSpecularLuminance * (1.0 - dugiSkyVisibilitySpecular)), dugiDiffuseLuminance + dugiSpecularLuminance, 0.0);
-    }
+#endif
+    iblGIProbeSpecular = vec4(dugiProbeReflection, 1.0 - dugiSkyVisibilitySpecular);
   }
 
-  #endif
+#endif
 
 #else
 
@@ -412,12 +354,11 @@
 #endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Environment IBL (split-sum). DUGI-oct is fully self-contained (it folds the env reflection into its own probe<=>IBL blend
-  // in the DUGI scope above), so the env-IBL block is skipped for it; CRH / CVCT / DUGI-SH (via IBL_GI_PROBES) / pure-environment
-  // all run it. Skipped in the reflective-shadow-map pass.
+  // Environment IBL (split-sum). All GI-volume modes feed it: CRH and DUGI (SH + oct) via IBL_GI_PROBES (the probe<=>env blend),
+  // CVCT as an env fill, plus the pure-environment path. Skipped only in the reflective-shadow-map pass.
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !(defined(REFLECTIVESHADOWMAPOUTPUT) || (defined(GLOBAL_ILLUMINATION_DUGI) && !defined(IBL_GI_PROBES)))
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
 
 #if (defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)) && !defined(IBL_GI_PROBES)
   if(iblWeight > 0.0)
