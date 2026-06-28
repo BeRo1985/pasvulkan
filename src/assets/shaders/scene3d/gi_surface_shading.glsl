@@ -131,13 +131,18 @@
     colorOutput += cvctDiffuseColor;
     giDebugGIDiffuse += cvctDiffuseColor;
     giResidualIBLDiffuseWeight = clamp(1.0 - cvctDiffuse.w, 0.0, 1.0); // env diffuse fills where the diffuse cones did not gather
+  }else{
+    giResidualIBLDiffuseWeight = 1.0; // no diffuse color, so the env diffuse fills the whole diffuse lobe
   }
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
+    giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
     vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24);
-    vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI;
+    vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI * (1.0 - giResidualIBLSpecularWeight); // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += cvctSpecularColor;
     giDebugGISpecular += cvctSpecularColor;
-    giResidualIBLSpecularWeight = clamp(1.0 - cvctSpecular.w, 0.0, 1.0); // env specular fills where the specular cone did not gather
+    giResidualIBLSpecularWeight = mix(giResidualIBLSpecularWeight, 1.0, clamp(1.0 - cvctSpecular.w, 0.0, 1.0)); // env specular fills where the specular cone did not gather
+  }else{
+    giResidualIBLSpecularWeight = 1.0; // no specular color, so the env specular fills the whole specular lobe
   }
 
 #elif defined(GLOBAL_ILLUMINATION_DUGI)
