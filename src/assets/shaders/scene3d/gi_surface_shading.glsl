@@ -146,10 +146,12 @@
   // disabled for this variant when the glossy-radiance atlas is on (see its #if guard); the specular comes from the dominant
   // light crossfaded against the glossy atlas, or (atlas off) from the env-IBL block + the local SH reflection like CRH.
   {
+    float dugiDiffuseWeight = 1.0; // scales the dominant-light diffuse; the residual SH diffuse takes the complementary 1-weight
     float dugiSpecularWeight = 1.0; // scales the dominant-light specular; the glossy atlas / local SH reflection take the complementary 1-weight
     float dugiSkyVisibility;
     DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibility);
     vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
+
 #ifdef GI_DUGI_SH_APPROXIMATE_DOMINANT
     // Approximate dominant directional light + residual SH (DC kept), applied to L1 and L2.
 #if GI_DUGI_STORAGE == GI_DUGI_STORAGE_L2_VALUE
@@ -174,7 +176,10 @@
     giDebugGIDiffuse += giDiffuseColor;
     DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
-#if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE) && !defined(REFLECTIVESHADOWMAPOUTPUT)
+
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
+#if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE)
+
     // Probe-field specular crossfaded by roughness against the dominant directional light: low roughness takes the sharp
     // directional glossy prefiltered-radiance atlas, high roughness the broad dominant-light specular.
     {
@@ -186,7 +191,9 @@
       colorOutput += specularColor;
       giDebugGISpecular += specularColor;
     }
-#elif !defined(REFLECTIVESHADOWMAPOUTPUT)
+
+#else
+
     // No prefiltered glossy atlas: mirror the CRH specular - dominant light diffuse only (dugiSpecularWeight = 0), and the
     // indirect specular is a roughness crossfade between the env-IBL reflection (sharp) and the local probe SH reflection
     // (rough), each through the split-sum BRDF (+ sheen / clearcoat / iridescence for mesh).
@@ -198,13 +205,16 @@
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiShReflection;
     vec3 dugiDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
     vec3 dugiDielectricBRDF = dugiShReflection * giSpecularOcclusion * dugiDielectricFresnel;
+
 #if defined(MESH_FRAGMENT)
     if((giFlags & (1u << 10u)) != 0u){ // iridescence
       dugiMetalBRDF = mix(dugiMetalBRDF, dugiShReflection * giIridescenceFresnelMetallic, giIridescenceFactor);
       dugiDielectricBRDF = mix(dugiDielectricBRDF, dugiShReflection * giSpecularOcclusion * giIridescenceFresnelDielectric, giIridescenceFactor);
     }
 #endif
+
     vec3 specularColor = mix(dugiDielectricBRDF, dugiMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
+
 #if defined(MESH_FRAGMENT)
     vec3 dugiSheen = vec3(0.0);
     float dugiAlbedoSheenScaling = 1.0;
@@ -216,20 +226,24 @@
     specularColor = fma(specularColor, vec3(dugiAlbedoSheenScaling), dugiSheen);                   // sheen modulation
     specularColor = mix(specularColor, dugiClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
 #endif
+
     specularColor *= 1.0 - giResidualIBLSpecularWeight;                                            // rough side; env-IBL block adds the sharp side
     colorOutput += specularColor;
     giDebugGISpecular += specularColor;
 #endif
+
+#endif
+
     doSingleLight(shDominantDirectionalLightColor,                    //
                   vec3(giSpecularOcclusion),                          //
-                  vec2(1.0, dugiSpecularWeight),                      // diffuse kept full; dominant specular = dugiSpecularWeight (atlas crossfade when GI_DUGI_GLOSSY_RADIANCE, else 0)
+                  vec2(dugiDiffuseWeight, dugiSpecularWeight),        //
                   -shDominantDirectionalLightDirection,               //
                   giNormal,                                           //
                   giBaseColor,                                        //
                   giF0Dielectric,                                     //
                   giF90,                                              //
                   giF90Dielectric,                                    //
-                  giViewDirection,                                          //
+                  giViewDirection,                                    //
                   giRefractiveAngle,                                  //
                   giTransparency,                                     //
                   giAlphaRoughness,                                   //
@@ -245,7 +259,7 @@
                   0.0);
   }
 
-  #else // GI_DUGI_STORAGE octahedral
+ #else // GI_DUGI_STORAGE octahedral
 
   // Octahedral storage: dugiSampleIrradiance returns the pre-integrated diffuse irradiance E(n) plus a sky-visibility factor.
   // The probe field replaces the environment-IBL diffuse; the env-IBL specular is kept (block below) but occluded by the probe
