@@ -182,7 +182,7 @@
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
-  #if GI_DUGI_STORAGE_IS_SH
+#if GI_DUGI_STORAGE_IS_SH
   // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically by
   // doSingleLight) and add the remaining residual SH as diffuse - mirroring the CRH path. The environment-IBL block below is
   // disabled for this variant when the glossy-radiance atlas is on (see its #if guard); the specular comes from the dominant
