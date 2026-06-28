@@ -16,7 +16,7 @@
   #define GI_GLOSSY_ROUGHNESS_HI 0.45
 #endif
 
-// Roughness gate for the OCT shading path's env/glossy specular reflection: full at/below LO (glossy surfaces reflect the
+// Roughness gate for the shading path's env/glossy specular reflection: full at/below LO (glossy surfaces reflect the
 // sky/environment correctly), faded to zero at/above HI (matte surfaces barely reflect, so they do not pick up the sky colour
 // through the coarse environment cubemap / probe glossy). Tunable; raise HI if too much reflection is lost on semi-glossy
 // surfaces, lower it if matte surfaces still show the sky.
@@ -25,6 +25,14 @@
 #endif
 #ifndef GI_SPECULAR_ROUGHNESS_HI
   #define GI_SPECULAR_ROUGHNESS_HI 0.35
+#endif
+
+// Roughness gate for the shading path's broad specular reflection: full at/below LO (glossy surfaces reflect the broad source correctly), faded to zero at/above HI
+#ifndef GI_BROAD_ROUGHNESS_LO
+  #define GI_BROAD_ROUGHNESS_LO 0.9
+#endif
+#ifndef GI_BROAD_ROUGHNESS_HI
+  #define GI_BROAD_ROUGHNESS_HI 1.0
 #endif
 
 #endif // GI_GLOBALS_GLSL

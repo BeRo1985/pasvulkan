@@ -23,20 +23,48 @@
 // giIridescenceFresnelDielectric (vec3); giIridescenceFactor (float). The transmission terms (MESH_FRAGMENT only) additionally
 // use mesh's own native locals directly (transmissionFactor, ior, volume*/diffuseTransmission* …), since they only compile there.
 
+#undef IBL_GI_PROBES
+
 {
   // Environment-IBL residual weights, split into diffuse and specular: 0 for the GI-volume modes (the volume supplies the
   // indirect; CRH overrides the specular weight below for its roughness crossfade, CVCT re-enables both below for its env fill),
   // 1 for the pure environment-IBL path.
-#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) || defined(GLOBAL_ILLUMINATION_DUGI)
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+
+  // Variables so that these can be overridden by the GI-volume modes (CRH's specular crossfade, CVCT's cone coverage, etc.)
+  // and the env block can stay a single, un-gated pass.
+
   float giResidualIBLDiffuseWeight = 0.0;
   float giResidualIBLSpecularWeight = 0.0;
-#else
-  float giResidualIBLDiffuseWeight = 1.0;
-  float giResidualIBLSpecularWeight = 1.0;
-#endif
+
   // Final environment-IBL gate applied to the whole env result. The per-mode env reduction now lives in the residual weights
   // above (CRH's specular crossfade, CVCT's cone coverage) and DUGI skips the env block entirely, so this currently stays 1.0.
   float iblWeight = 1.0;
+
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+  #define IBL_GI_PROBES
+  // xyz = Color, w = Weight/Factor
+  vec4 iblGIProbeDiffuse = vec4(0.0);
+  vec4 iblGIProbeDiffuseTransmission = vec4(0.0);
+  vec4 iblGIProbeSpecular = vec4(0.0);
+#endif
+
+#elif !defined(GLOBAL_ILLUMINATION_DUGI)
+
+  // Constants so that the compiler can optimize the pure environment-IBL path (no GI-volume) into a single block.
+  // The residual weights are 1.0, so the env diffuse and specular are fully applied; the iblWeight is 1.0, so the
+  // env block is not gated.
+  const float giResidualIBLDiffuseWeight = 1.0;
+  const float giResidualIBLSpecularWeight = 1.0;
+
+  const float iblWeight = 1.0;
+
+#else
+
+  // Other modes like DUGI: the env block is skipped entirely, so the residual weights and iblWeight are 0.0, so that
+  // the env block is fully gated off, so these values are not used at all.
+
+#endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // GI-volume contribution (per technique)
@@ -49,6 +77,7 @@
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   {
+
     vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
     vec3 crhVolumeSphericalHarmonics[9];
     globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonics, giWorldPosition, vec3(0.0), giNormal);
@@ -57,19 +86,38 @@
     vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
     globalIlluminationSphericalHarmonicsExtractAndSubtract(crhVolumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
     vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(giNormal, crhVolumeSphericalHarmonics)));
-    giDiffuseColor *= shResidualDiffuse;
-    colorOutput += giDiffuseColor;
-    giDebugGIDiffuse += giDiffuseColor;
+
+#if 1
+
+    giResidualIBLDiffuseWeight = 1.0;
+    giResidualIBLSpecularWeight = smoothstep(GI_BROAD_ROUGHNESS_HI, GI_BROAD_ROUGHNESS_LO, giRoughness);
+
+    iblWeight = 1.0;
+
+    iblGIProbeDiffuse = vec4(shResidualDiffuse, 1.0);
+
+#if defined(MESH_FRAGMENT)
+    if((giFlags & (1u << 16u)) != 0u){
+      vec3 crhVolumeSphericalHarmonicsBack[9];
+      globalIlluminationVolumeLookUp(crhVolumeSphericalHarmonicsBack, giWorldPosition, vec3(0.0), -giNormal);
+      vec3 shAmbientBack = vec3(0.0), shDominantDirectionalLightColorBack = vec3(0.0), shDominantDirectionalLightDirectionBack = vec3(0.0);
+      globalIlluminationSphericalHarmonicsExtractAndSubtract(crhVolumeSphericalHarmonicsBack, shAmbientBack, shDominantDirectionalLightColorBack, shDominantDirectionalLightDirectionBack);
+      iblGIProbeDiffuseTransmission = vec4(max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(-giNormal, crhVolumeSphericalHarmonicsBack))), 1.0);
+    }
+#endif
+
+    iblGIProbeSpecular = vec4(max(vec3(0.0), globalIlluminationGetSpecularColor(giWorldPosition, giViewDirection, giNormal, giRoughness)), smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
+
     doSingleLight(shDominantDirectionalLightColor,                    //
                   vec3(giSpecularOcclusion),                          //
-                  vec2(1.0, 0.0),                                     // dominant light: diffuse only - the full-field indirect specular reflection below already covers the dominant direction
+                  vec2(1.0, 1.0 - giResidualIBLSpecularWeight),       //
                   -shDominantDirectionalLightDirection,               //
                   giNormal,                                           //
                   giBaseColor,                                        //
                   giF0Dielectric,                                     //
                   giF90,                                              //
                   giF90Dielectric,                                    //
-                  giViewDirection,                                          //
+                  giViewDirection,                                    //
                   giRefractiveAngle,                                  //
                   giTransparency,                                     //
                   giAlphaRoughness,                                   //
@@ -83,6 +131,70 @@
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
                   0.0);
+
+#elif 1
+
+    giDiffuseColor *= shResidualDiffuse;
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
+
+    giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
+
+    doSingleLight(shDominantDirectionalLightColor,                    //
+                  vec3(giSpecularOcclusion),                          //
+                  vec2(1.0, 1.0 - giResidualIBLSpecularWeight),       //
+                  -shDominantDirectionalLightDirection,               //
+                  giNormal,                                           //
+                  giBaseColor,                                        //
+                  giF0Dielectric,                                     //
+                  giF90,                                              //
+                  giF90Dielectric,                                    //
+                  giViewDirection,                                    //
+                  giRefractiveAngle,                                  //
+                  giTransparency,                                     //
+                  giAlphaRoughness,                                   //
+                  giMetallic,                                         //
+                  giSheenColor,                                       //
+                  giSheenRoughness,                                   //
+                  giClearcoatNormal,                                  //
+                  giClearcoatFresnel,                                 //
+                  giClearcoatFactor,                                  //
+                  giClearcoatRoughness,                               //
+                  giSpecularWeight,                                   //
+                  vec3(0.0),                                          //
+                  0.0);
+
+#else
+
+    giDiffuseColor *= shResidualDiffuse;
+    colorOutput += giDiffuseColor;
+    giDebugGIDiffuse += giDiffuseColor;
+
+    doSingleLight(shDominantDirectionalLightColor,                    //
+                  vec3(giSpecularOcclusion),                          //
+                  vec2(1.0, 0.0),                                     // dominant light: diffuse only - the full-field indirect specular reflection below already covers the dominant direction
+                  -shDominantDirectionalLightDirection,               //
+                  giNormal,                                           //
+                  giBaseColor,                                        //
+                  giF0Dielectric,                                     //
+                  giF90,                                              //
+                  giF90Dielectric,                                    //
+                  giViewDirection,                                    //
+                  giRefractiveAngle,                                  //
+                  giTransparency,                                     //
+                  giAlphaRoughness,                                   //
+                  giMetallic,                                         //
+                  giSheenColor,                                       //
+                  giSheenRoughness,                                   //
+                  giClearcoatNormal,                                  //
+                  giClearcoatFresnel,                                 //
+                  giClearcoatFactor,                                  //
+                  giClearcoatRoughness,                               //
+                  giSpecularWeight,                                   //
+                  vec3(0.0),                                          //
+                  0.0);
+
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
     // Indirect specular - the ROUGH side of a roughness crossfade: the radiance-hints volume sampled along the reflection
     // vector (parallax-offset by roughness). The SHARP side comes from the environment-IBL block below (its env reflection is
     // gated by giResidualIBLSpecularWeight); this term takes the complementary (1 - weight).
@@ -113,6 +225,10 @@
     specularColor *= 1.0 - giResidualIBLSpecularWeight; // rough side of the crossfade (env-IBL below is the sharp side)
     colorOutput += specularColor;
     giDebugGISpecular += specularColor;
+#endif
+
+#endif
+
   }
 
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
@@ -401,69 +517,123 @@
   // the DUGI scope above), so the env-IBL block is skipped entirely for DUGI — only CRH / CVCT / pure-environment paths use it.
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if !defined(GLOBAL_ILLUMINATION_DUGI)
-  vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight) : vec3(0.0);
+#if !(defined(REFLECTIVESHADOWMAPOUTPUT) || defined(GLOBAL_ILLUMINATION_DUGI))
+
+#if (defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)) && !defined(IBL_GI_PROBES)
+  if(iblWeight > 0.0)
+#endif
+  {
+
+#ifdef IBL_GI_PROBES
+    vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0)
+                        ? (
+                            (
+                              (iblGIProbeDiffuse.w < 1.0)
+                                ? mix(getIBLDiffuse(giNormal), iblGIProbeDiffuse.xyz, iblGIProbeDiffuse.w)
+                                : iblGIProbeDiffuse.xyz
+                            ) * giBaseColor * giResidualIBLDiffuseWeight
+                         )
+                        : vec3(0.0);
+#else
+    vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight) : vec3(0.0);
+#endif
 
 #if defined(MESH_FRAGMENT)
-  // Diffuse transmission
-  if((giFlags & (1u << 16u)) != 0u){
-    vec3 iblDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor;
-    if((giFlags & (1u << 12u)) != 0u){
-      iblDiffuseTransmission = applyVolumeAttenuation(iblDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
+    // Diffuse transmission
+    if((giFlags & (1u << 16u)) != 0u){
+#ifdef IBL_GI_PROBES
+      vec3 iblDiffuseTransmission = (
+                                     (iblGIProbeDiffuseTransmission.w < 1.0)
+                                       ? mix(getIBLDiffuse(-giNormal), iblGIProbeDiffuseTransmission.xyz, iblGIProbeDiffuseTransmission.w)
+                                       : iblGIProbeDiffuseTransmission.xyz
+                                    ) * diffuseTransmissionColorFactor;
+#else
+      vec3 iblDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor;
+#endif
+      if((giFlags & (1u << 12u)) != 0u){
+        iblDiffuseTransmission = applyVolumeAttenuation(iblDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
+      }
+      iblDiffuse = mix(iblDiffuse, iblDiffuseTransmission, diffuseTransmissionFactor);
     }
-    iblDiffuse = mix(iblDiffuse, iblDiffuseTransmission, diffuseTransmissionFactor);
-  }
 #if defined(TRANSMISSION)
-  // Transmission
-  if((giFlags & (1u << 11u)) != 0u){
-    vec3 iblSpecularTransmission = getIBLVolumeRefraction(giNormal,
-                                                          giViewDirection,
-                                                          giRoughness,
-                                                          giBaseColor,
-                                                          giWorldPosition,
-                                                          ior,
-                                                          volumeThickness,
-                                                          volumeAttenuationColor,
-                                                          volumeAttenuationDistance,
-                                                          volumeDispersion);
-    iblDiffuse = mix(iblDiffuse, iblSpecularTransmission, transmissionFactor);
-  }
+    // Transmission
+    if((giFlags & (1u << 11u)) != 0u){
+      vec3 iblSpecularTransmission = getIBLVolumeRefraction(giNormal,
+                                                            giViewDirection,
+                                                            giRoughness,
+                                                            giBaseColor,
+                                                            giWorldPosition,
+                                                            ior,
+                                                            volumeThickness,
+                                                            volumeAttenuationColor,
+                                                            volumeAttenuationDistance,
+                                                            volumeDispersion);
+      iblDiffuse = mix(iblDiffuse, iblSpecularTransmission, transmissionFactor);
+    }
 #endif
 #endif
 
-  vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDirection, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
-  vec3 iblSpecularDielectric = iblSpecularMetal;
-  vec3 iblMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
-  vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
-  vec3 iblDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
-  vec3 iblDielectricBRDF = mix(iblDiffuse * giDiffuseOcclusion, iblSpecularDielectric * giSpecularOcclusion, iblDielectricFresnel);
+#ifdef IBL_GI_PROBES
+    vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0)
+                               ? (
+                                   (
+                                     (iblGIProbeSpecular.w < 1.0)
+                                       ? mix(getIBLRadianceGGX(giNormal, giViewDirection, giRoughness), iblGIProbeSpecular.xyz, iblGIProbeSpecular.w)
+                                       : iblGIProbeSpecular.xyz
+                                   ) * giResidualIBLSpecularWeight
+                                )
+                               : vec3(0.0);
+#else
+    vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDirection, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
+#endif
+
+    vec3 iblSpecularDielectric = iblSpecularMetal;
+
+    vec3 iblMetalFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giBaseColor, 1.0);
+    vec3 iblMetalBRDF = iblMetalFresnel * iblSpecularMetal;
+
+    vec3 iblDielectricFresnel = getIBLGGXFresnel(giNormal, giViewDirection, giRoughness, giF0Dielectric, giSpecularWeight);
+    vec3 iblDielectricBRDF = mix(iblDiffuse * giDiffuseOcclusion, iblSpecularDielectric * giSpecularOcclusion, iblDielectricFresnel);
+
 #if defined(MESH_FRAGMENT)
-  if((giFlags & (1u << 10u)) != 0u){ // iridescence
-    iblMetalBRDF = mix(iblMetalBRDF, iblSpecularMetal * giIridescenceFresnelMetallic, giIridescenceFactor);
-    iblDielectricBRDF = mix(iblDielectricBRDF, rgbMix(iblDiffuse * giDiffuseOcclusion, iblSpecularDielectric * giSpecularOcclusion, giIridescenceFresnelDielectric), giIridescenceFactor);
-  }
-  vec3 iblSheen = vec3(0.0);
-  float iblAlbedoSheenScaling = 1.0;
-  if((giFlags & (1u << 7u)) != 0u){ // sheen
-    iblSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
-    iblAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
-  }
-  vec3 iblClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+
+    if((giFlags & (1u << 10u)) != 0u){ // iridescence
+      iblMetalBRDF = mix(iblMetalBRDF, iblSpecularMetal * giIridescenceFresnelMetallic, giIridescenceFactor);
+      iblDielectricBRDF = mix(iblDielectricBRDF, rgbMix(iblDiffuse * giDiffuseOcclusion, iblSpecularDielectric * giSpecularOcclusion, giIridescenceFresnelDielectric), giIridescenceFactor);
+    }
+
+    vec3 iblSheen = vec3(0.0);
+
+    float iblAlbedoSheenScaling = 1.0;
+
+    if((giFlags & (1u << 7u)) != 0u){ // sheen
+      iblSheen = getIBLRadianceCharlie(giNormal, giViewDirection, giSheenRoughness, giSheenColor) * giDiffuseOcclusion;
+      iblAlbedoSheenScaling = 1.0 - (max(max(giSheenColor.x, giSheenColor.y), giSheenColor.z) * albedoSheenScalingLUT(giNdotV, giSheenRoughness));
+    }
+
+    vec3 iblClearcoatBRDF = ((giFlags & (1u << 8u)) != 0u) ? (getIBLRadianceGGX(giClearcoatNormal, giViewDirection, giClearcoatRoughness) * giDiffuseOcclusion) : vec3(0.0);
+
 #endif
-  vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
+
+    vec3 iblResultColor = mix(iblDielectricBRDF, iblMetalBRDF * giSpecularOcclusion, giMetallic); // dielectric / metallic mix
+
 #if defined(MESH_FRAGMENT)
-  iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen);                  // sheen modulation
-  iblResultColor = mix(iblResultColor, iblClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
+    iblResultColor = fma(iblResultColor, vec3(iblAlbedoSheenScaling), iblSheen);                  // sheen modulation
+    iblResultColor = mix(iblResultColor, iblClearcoatBRDF, giClearcoatFactor * giClearcoatFresnel); // clearcoat modulation
 #endif
-  colorOutput += iblResultColor * iblWeight; // final whole-result env gate (currently 1.0 on every path; the per-mode env reduction lives in the residual weights above)
-  if(giDebugDisplay != 0u){
-    // Split the environment-IBL result into its diffuse and specular parts for the debug channels: the diffuse part is
-    // (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
-    vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
-    giDebugIBLDiffuse += iblDiffusePart * iblWeight;
-    giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
+
+    colorOutput += iblResultColor * iblWeight; // final whole-result env gate (currently 1.0 on every path; the per-mode env reduction lives in the residual weights above)
+
+    if(giDebugDisplay != 0u){
+      // Split the environment-IBL result into its diffuse and specular parts for the debug channels: the diffuse part is
+      // (1 - dielectric Fresnel) of the dielectric term and only on non-metals; the remainder is the specular part.
+      vec3 iblDiffusePart = (iblDiffuse * giDiffuseOcclusion) * (vec3(1.0) - iblDielectricFresnel) * (1.0 - giMetallic);
+      giDebugIBLDiffuse += iblDiffusePart * iblWeight;
+      giDebugIBLSpecular += (iblResultColor - iblDiffusePart) * iblWeight;
+    }
+
   }
+
 #endif
-#endif
+
 }
