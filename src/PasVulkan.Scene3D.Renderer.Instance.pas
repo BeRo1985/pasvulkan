@@ -3291,7 +3291,7 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination,
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
-   result:=6; // off, overlay, GI diffuse, GI specular, IBL specular, direct light
+   result:=7; // off, overlay, GI diffuse, GI specular, IBL diffuse, IBL specular, direct light
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
@@ -3337,9 +3337,12 @@ begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
     end;
     4:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
     end;
     5:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    6:begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     else begin
@@ -3359,9 +3362,12 @@ begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
     end;
     4:begin
-     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLDiffuse;
     end;
     5:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    6:begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     else begin
@@ -3444,9 +3450,12 @@ begin
      result:='GI specular only';
     end;
     4:begin
-     result:='IBL specular only';
+     result:='IBL diffuse only';
     end;
     5:begin
+     result:='IBL specular only';
+    end;
+    6:begin
      result:='direct light only';
     end;
     else begin
@@ -3467,9 +3476,12 @@ begin
      result:='GI specular only';
     end;
     4:begin
-     result:='IBL specular only';
+     result:='IBL diffuse only';
     end;
     5:begin
+     result:='IBL specular only';
+    end;
+    6:begin
      result:='direct light only';
     end;
     else begin
