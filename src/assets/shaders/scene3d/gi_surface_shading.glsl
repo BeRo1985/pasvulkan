@@ -1,6 +1,6 @@
 // Central global-illumination + environment-IBL surface shading, shared by mesh.frag and the planet terrain / grass passes
 // (planet_water.frag stays a special case with its own reflection/refraction handling). This file is an INLINE STATEMENT
-// BLOCK, not a set of declarations — it is #included at the point in the fragment shader where the analytic direct lighting
+// BLOCK, not a set of declarations - it is #included at the point in the fragment shader where the analytic direct lighting
 // has been accumulated into colorOutput, and it adds the GI-volume + environment-IBL indirect on top.
 //
 // The includer must, BEFORE the #include:
@@ -14,11 +14,11 @@
 // material lobes (sheen / clearcoat / iridescence) and the transmission terms stay MESH_FRAGMENT-only, since planet terrain
 // lacks those material features. The planet passes neutral material values for the shared dominant-light doSingleLight() call.
 //
-// Canonical inputs — set by BOTH includers: giWorldPos, giNormal, giViewDir (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
+// Canonical inputs - set by BOTH includers: giWorldPos, giNormal, giViewDir (vec3); giBaseColor (vec3); giF0Dielectric (vec3);
 // giMetallic, giRoughness (perceptual), giSpecularWeight, giDiffuseOcclusion, giSpecularOcclusion (float). Plus the
 // dominant-light doSingleLight() inputs: giF90, giF90Dielectric (vec3); giRefractiveAngle, giTransparency, giAlphaRoughness
 // (float); giSheenColor, giClearcoatNormal, giClearcoatFresnel (vec3); giSheenRoughness, giClearcoatFactor, giClearcoatRoughness
-// (float) — planet binds material-neutral values for these (no sheen / clearcoat).
+// (float) - planet binds material-neutral values for these (no sheen / clearcoat).
 // MESH_FRAGMENT-only inputs (used solely by the extra-lobe blocks): giFlags (uint); giNdotV (float); giIridescenceFresnelMetallic,
 // giIridescenceFresnelDielectric (vec3); giIridescenceFactor (float). The transmission terms (MESH_FRAGMENT only) additionally
 // use mesh's own native locals directly (transmissionFactor, ior, volume*/diffuseTransmission* …), since they only compile there.
@@ -61,7 +61,7 @@
     giDebugGIDiffuse += giDiffuseColor;
     doSingleLight(shDominantDirectionalLightColor,                    //
                   vec3(giSpecularOcclusion),                          //
-                  vec2(1.0, 0.0),                                     // dominant light: diffuse only — the full-field indirect specular reflection below already covers the dominant direction
+                  vec2(1.0, 0.0),                                     // dominant light: diffuse only - the full-field indirect specular reflection below already covers the dominant direction
                   -shDominantDirectionalLightDirection,               //
                   giNormal,                                           //
                   giBaseColor,                                        //
@@ -82,7 +82,7 @@
                   giSpecularWeight,                                   //
                   vec3(0.0),                                          //
                   0.0);
-    // Indirect specular — the ROUGH side of a roughness crossfade: the radiance-hints volume sampled along the reflection
+    // Indirect specular - the ROUGH side of a roughness crossfade: the radiance-hints volume sampled along the reflection
     // vector (parallax-offset by roughness). The SHARP side comes from the environment-IBL block below (its env reflection is
     // gated by giResidualIBLSpecularWeight); this term takes the complementary (1 - weight).
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (env reflection), 0 = rough (local SH reflection)
@@ -142,7 +142,7 @@
   vec3 giDiffuseColor = mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
   #if GI_DUGI_STORAGE_IS_SH
   // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically by
-  // doSingleLight) and add the remaining residual SH as diffuse — mirroring the CRH path. The environment-IBL block below is
+  // doSingleLight) and add the remaining residual SH as diffuse - mirroring the CRH path. The environment-IBL block below is
   // disabled for this variant when the glossy-radiance atlas is on (see its #if guard); the specular comes from the dominant
   // light crossfaded against the glossy atlas, or (atlas off) from the env-IBL block + the local SH reflection like CRH.
   {
@@ -187,7 +187,7 @@
       giDebugGISpecular += specularColor;
     }
 #elif !defined(REFLECTIVESHADOWMAPOUTPUT)
-    // No prefiltered glossy atlas: mirror the CRH specular — dominant light diffuse only (dugiSpecularWeight = 0), and the
+    // No prefiltered glossy atlas: mirror the CRH specular - dominant light diffuse only (dugiSpecularWeight = 0), and the
     // indirect specular is a roughness crossfade between the env-IBL reflection (sharp) and the local probe SH reflection
     // (rough), each through the split-sum BRDF (+ sheen / clearcoat / iridescence for mesh).
     dugiSpecularWeight = 0.0;
@@ -253,24 +253,32 @@
   {
 
     // Diffuse irradiance from the probe field
-    float dugiSkyVisibility;
-    vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibility);
+    float dugiSkyVisibilitySpecular;
+    vec3 dugiIrradiance = dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, normalize(reflect(-giViewDir, giNormal)), dugiSkyVisibilitySpecular);
     giDiffuseColor *= dugiIrradiance * OneOverPI;
 
   #if defined(GI_DUGI_GLOSSY_RADIANCE)
 
     // Weight for the crossfade the probe-field glossy radiance atlas against the IBL environment map by roughness thresholds.
-    float dugiIBLWeight = dugiSkyVisibility * smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
+    dugiSkyVisibilitySpecular *= smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
 
     // Full split-sum from the probe field: the probe irradiance is the diffuse source and the prefiltered glossy-radiance atlas
-    // the specular source, run through one Fresnel-weighted dielectric / metallic mix — mirroring the environment-IBL block
+    // the specular source, run through one Fresnel-weighted dielectric / metallic mix - mirroring the environment-IBL block
     // below (which is skipped for this variant). So the indirect diffuse is correctly (1 - F)-weighted here, not added twice.
-    vec3 dugiDiffuse = giDiffuseColor;
+    // Probe (local) diffuse + environment (IBL) diffuse, blended by the hemisphere sky-visibility from a dedicated second probe
+    // sample along the normal: occluded points keep the local probe diffuse, points open to the sky fade to the cleaner IBL
+    // diffuse. Diffuse occlusion is applied ONCE by the split-sum below (like the env-IBL block), so it is not folded in here.
+    float dugiSkyVisibilityDiffuse;
+    vec3 dugiProbeDiffuse = (dugiSampleIrradiance(giWorldPos, giNormal, giViewDir, dugiSkyVisibilityDiffuse) * OneOverPI) * mix(giBaseColor, vec3(0.0), giMetallic);
+    vec3 dugiIBLDiffuse = getIBLDiffuse(giNormal) * mix(giBaseColor, vec3(0.0), giMetallic);
+    vec3 dugiDiffuse = mix(dugiProbeDiffuse, dugiIBLDiffuse, dugiSkyVisibilityDiffuse);
   #if defined(MESH_FRAGMENT)
-    // Diffuse transmission
+    // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility, mirroring the front diffuse.
     if((giFlags & (1u << 16u)) != 0u){
-      float dugiBackSkyUnused;
-      vec3 dugiDiffuseTransmission = (dugiSampleIrradiance(giWorldPos, -giNormal, giViewDir, dugiBackSkyUnused) * OneOverPI) * diffuseTransmissionColorFactor;
+      float dugiSkyVisibilityDiffuseBack;
+      vec3 dugiProbeDiffuseTransmission = (dugiSampleIrradiance(giWorldPos, -giNormal, giViewDir, dugiSkyVisibilityDiffuseBack) * OneOverPI) * diffuseTransmissionColorFactor;
+      vec3 dugiIBLDiffuseTransmission = getIBLDiffuse(-giNormal) * diffuseTransmissionColorFactor;
+      vec3 dugiDiffuseTransmission = mix(dugiProbeDiffuseTransmission, dugiIBLDiffuseTransmission, dugiSkyVisibilityDiffuseBack);
       if((giFlags & (1u << 12u)) != 0u){
         dugiDiffuseTransmission = applyVolumeAttenuation(dugiDiffuseTransmission, diffuseTransmissionThickness, volumeAttenuationColor, volumeAttenuationDistance);
       }
@@ -300,10 +308,17 @@
     vec3 dugiGlossyRadiance = dugiSampleIrradiance(giWorldPos, dugiReflectionVector, giViewDir, dugiGlossySkyUnused) * OneOverPI; // broad reflection
     // Sharp prefiltered-radiance atlas for low roughness, fading to the broad source toward HI.
     vec3 dugiSharpGlossy = dugiSampleGlossyRadiance(giWorldPos, giNormal, dugiReflectionVector, giViewDir);
-    vec3 dugiSpecularMetal = mix(dugiSharpGlossy, dugiGlossyRadiance, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness));
-    // Crossfade the probe glossy reflection against the environment map by dugiIBLWeight (sky-visibility x roughness): rough
+    // Crossfade the probe glossy reflection against the environment map by dugiSkyVisibilitySpecular: rough
     // surfaces open to the sky take the broad env reflection, occluded or sharp ones keep the local probe reflection.
-    dugiSpecularMetal = mix(dugiSpecularMetal, getIBLRadianceGGX(giNormal, giViewDir, giRoughness), dugiIBLWeight);
+    vec3 dugiSpecularMetal = mix(
+                               mix(
+                                 dugiSharpGlossy,
+                                 dugiGlossyRadiance,
+                                 smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness)
+                               ),
+                               getIBLRadianceGGX(giNormal, giViewDir, giRoughness),
+                               dugiSkyVisibilitySpecular
+                             );
     vec3 dugiSpecularDielectric = dugiSpecularMetal;
     vec3 dugiMetalFresnel = getIBLGGXFresnel(giNormal, giViewDir, giRoughness, giBaseColor, 1.0);
     vec3 dugiMetalBRDF = dugiMetalFresnel * dugiSpecularMetal;
