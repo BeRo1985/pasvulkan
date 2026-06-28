@@ -3295,7 +3295,7 @@ begin
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
-   result:=4; // off, GI diffuse, IBL specular, direct light
+   result:=5; // off, GI diffuse, GI specular, IBL specular, direct light
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
@@ -3378,6 +3378,9 @@ begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingGISpecular;
     end;
     3:begin
+     fGlobalIlluminationDebugShadingMode:=GIDebugShadingIBLSpecular;
+    end;
+    4:begin
      fGlobalIlluminationDebugShadingMode:=GIDebugShadingDirectLight;
     end;
     else begin
@@ -3484,6 +3487,9 @@ begin
      result:='GI specular only';
     end;
     3:begin
+     result:='IBL specular only';
+    end;
+    4:begin
      result:='direct light only';
     end;
     else begin
