@@ -129,7 +129,8 @@ void main() {
       nrm = voxelRawOctDecode(vec2((ivec2(uvec2((vf.ww >> uvec2(8u, 20u)) & uvec2(0xfffu))) - ivec2(2048)) / 2047.0));
 #endif
       // Which anisotropic side does each axis of this fragment's normal map to (0=X+,1=Y+,2=Z+,3=X-,4=Y-,5=Z-)?
-      uvec3 sideIndices = uvec3((nrm.x > 0.0) ? 0u : 3u, (nrm.y > 0.0) ? 1u : 4u, (nrm.z > 0.0) ? 2u : 5u);
+      // Stored into the OPPOSITE-axis face (face[-normal] = "visible-from" side), mirroring the radiance writer in gi_voxel_radiance_transfer.comp.
+      uvec3 sideIndices = uvec3((nrm.x > 0.0) ? 3u : 0u, (nrm.y > 0.0) ? 4u : 1u, (nrm.z > 0.0) ? 5u : 2u);
       vec3 axisWeights = abs(nrm);
       float sideWeight = ((sideIndices.x == cubeSideIndex) ? axisWeights.x : 0.0) +
                          ((sideIndices.y == cubeSideIndex) ? axisWeights.y : 0.0) +

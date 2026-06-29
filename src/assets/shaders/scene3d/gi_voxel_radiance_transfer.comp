@@ -213,7 +213,7 @@ const vec3 directions[6] = vec3[6](
   vec3(0.0, 0.0, 1.0),
   vec3(-1.0, 0.0, 0.0),
   vec3(0.0, -1.0, 0.0),
-  vec3(0.0, 0.0, -1.0)      
+  vec3(0.0, 0.0, -1.0)
 );
 */
 
@@ -255,10 +255,10 @@ void main(){
 
     float count = 0.0;
 
-    for(uint voxelFragmentIndex = voxelGridContentMetaData.data[volumeIndex + 3], 
+    for(uint voxelFragmentIndex = voxelGridContentMetaData.data[volumeIndex + 3],
              voxelFragmentCounter = 0u,
-             countVoxelFragments = min(1024u, voxelGridContentMetaData.data[volumeIndex + 2]); 
-        (voxelFragmentIndex != 0u) && (voxelFragmentCounter < countVoxelFragments); 
+             countVoxelFragments = min(1024u, voxelGridContentMetaData.data[volumeIndex + 2]);
+        (voxelFragmentIndex != 0u) && (voxelFragmentCounter < countVoxelFragments);
         voxelFragmentCounter++){
 #ifdef GI_VOXEL_CONTENT_FP16
       // FP16 content layout (stride 2 per cell): base/emission as packHalf2x16 (keeps very high HDR), alpha+normal as
@@ -282,9 +282,7 @@ void main(){
       vec3 normal = octDecode(vec2((ivec2(uvec2((volumeFragment.ww >> uvec2(8u, 20u)) & uvec2(0xfffu))) - ivec2(2048)) / 2047.0));
 #endif
 #ifdef VOXEL_RADIANCE_DIRECT_LIGHTING
-      // Diffuse exitant radiance = (albedo / PI) * sum of direct light contributions. The 1/PI is the
-      // emitter's Lambertian BRDF; the receiver applies its own albedo and 1/PI when sampling the voxels.
-      vec3 lighting = voxelEvaluateLighting(voxelWorldPosition, normal) * OneOverPI;
+      vec3 lighting = voxelEvaluateLighting(voxelWorldPosition, normal);
 #else
       vec3 lighting = vec3(1.0);
 #endif
@@ -301,7 +299,10 @@ void main(){
 #endif
       // Unlit base colour + emission (premultiplied), independent of the debug term, for the visualization volume.
       vec4 vizColor = vec4(baseColor.xyz + emissionColor.xyz, 1.0) * baseColor.w;
-      uvec3 anisotropicAxisDirectionSideIndices = uvec3((normal.x > 0.0) ? 0u : 3u, (normal.y > 0.0) ? 1u : 4u, (normal.z > 0.0) ? 2u : 5u);
+      // Store into the OPPOSITE-axis face (face[-normal]): a cone tracing in +D gathers radiance travelling back toward it in -D,
+      // which a surface emits when its normal has a -D component. The mip map generation composites each face front-to-back along
+      // its +axis and the cone reader samples same-sign (face[D]), so a +normal surface must land in the face read from the -normal side.
+      uvec3 anisotropicAxisDirectionSideIndices = uvec3((normal.x > 0.0) ? 3u : 0u, (normal.y > 0.0) ? 4u : 1u, (normal.z > 0.0) ? 5u : 2u);
       [[unroll]] for(uint anisotropicAxisDirectionIndexCounter = 0u; anisotropicAxisDirectionIndexCounter < 3u; anisotropicAxisDirectionIndexCounter++){
         uint anisotropicAxisDirectionIndex = anisotropicAxisDirectionSideIndices[anisotropicAxisDirectionIndexCounter];
         float anisotropicAxisDirectionSideWeight = abs(normal[anisotropicAxisDirectionIndexCounter]);
@@ -313,7 +314,7 @@ void main(){
       voxelFragmentIndex = nextFragmentIndex;
       count += 1.0;
     }
-    
+
     if(count > 0.0){
       [[unroll]] for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
         imageStore(uImageVolume[(cascadeIndex * 6) + anisotropicAxisDirectionIndex], ivec3(volumePosition), volumeColors[anisotropicAxisDirectionIndex] / count);
@@ -335,4 +336,3 @@ void main(){
   }
 
 }
-

@@ -693,10 +693,10 @@ begin
  fVoxelMeshVisualization:=nil;
 
  if fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
-{ fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
+  fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
                                                                    fInstance.Renderer,
                                                                    fInstance.Renderer.Scene3D);//}
-  fVoxelMeshVisualization:=TpvScene3DRendererVoxelMeshVisualization.Create(fInstance,
+{ fVoxelMeshVisualization:=TpvScene3DRendererVoxelMeshVisualization.Create(fInstance,
                                                                            fInstance.Renderer,
                                                                            fInstance.Renderer.Scene3D);//}
  end;

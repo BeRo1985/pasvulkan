@@ -165,7 +165,7 @@
     giResidualIBLDiffuseWeight = 1.0; // no diffuse color, so the env diffuse fills the whole diffuse lobe
   }
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
-    float cvctSpecularFactor = smoothstep(0.0, 1.0, giRoughness);
+    float cvctSpecularFactor = smoothstep(0.0, 0.25, giRoughness);
     vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * cvctSpecularFactor;
     vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion;
     colorOutput += cvctSpecularColor;
