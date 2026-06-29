@@ -139,9 +139,9 @@ layout(set = 3, binding = 2) uniform sampler2DArray uTextureWaterAcceleration;
 #define PLANET_WATER
 #include "planet_renderpass.glsl"
 
-#include "gi_globals.glsl"
+#include "global_illumination_globals.glsl"
 
-#include "gi_debug.glsl"
+#include "global_illumination_debug.glsl"
 
 #define FRAGMENT_SHADER
 

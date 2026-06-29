@@ -1202,7 +1202,7 @@ begin
  end;
 
  // DUGI normally needs hardware ray tracing to trace the probe rays. When it is not available we KEEP DUGI but drive its
- // probe field from a non-raytraced Reflective Shadow Map producer (gi_dugi_trace built with the RSM backend) instead of the ray-query trace; the
+ // probe field from a non-raytraced Reflective Shadow Map producer (global_illumination_dugi_trace built with the RSM backend) instead of the ray-query trace; the
  // probe blend / shading path is producer-agnostic, so only the producer pass differs (wired in the Instance per RaytracingActive).
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin

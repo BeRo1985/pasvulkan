@@ -11735,7 +11735,7 @@ begin
  end;
 
  // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): two fp16 packed into the dispersion/shadow uvec4's .w
- // slot. Always written (every material has a factor/max; defaults 1.0 / +Inf make it a no-op). Read in gi_rt_gather.glsl.
+ // slot. Always written (every material has a factor/max; defaults 1.0 / +Inf make it a no-op). Read in global_illumination_rt_gather.glsl.
  TpvHalfFloat(pointer(@fShaderData.EmissiveGIFactor)^):=fData.EmissiveGIFactor;
  TpvHalfFloat(pointer(@fShaderData.EmissiveGIMax)^):=fData.EmissiveGIMax;
 

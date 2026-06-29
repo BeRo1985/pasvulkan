@@ -21,10 +21,10 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET DUGI_DESCRIPTOR_SET
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #define GLOBAL_ILLUMINATION_DUGI_SAMPLE
-#include "global_illumination_dugi.glsl" // pulls in gi_dugi_data.glsl -> the `dugiData` SSBO (cascade globals + sub-buffer pointers) at this set's binding 0
+#include "global_illumination_dugi.glsl" // pulls in global_illumination_dugi_data.glsl -> the `dugiData` SSBO (cascade globals + sub-buffer pointers) at this set's binding 0
 
 // The DUGI data block — cascade globals + the BDA sub-buffer pointers (probe-data, SH-irradiance, ...) — is the std430 SSBO
-// `dugiData` declared at this set's binding 0 by gi_dugi_data.glsl (via global_illumination_dugi.glsl above). The fragment
+// `dugiData` declared at this set's binding 0 by global_illumination_dugi_data.glsl (via global_illumination_dugi.glsl above). The fragment
 // reads its globals + the probe-data / SH-irradiance pointers from it directly; no separate master UBO any more (the old
 // binding 3 is freed).
 
@@ -75,7 +75,7 @@ vec4 dugiLoadProbeData(const in ivec3 probeCoord, const in int cascadeIndex){
 #if defined(GI_DUGI_GLOSSY_RADIANCE)
 // Glossy prefiltered-radiance octahedral atlas, binding 5. RGB9E5 (default) is sampled as a uint texture (it is not
 // reliably hardware-linear-filterable) and bilinear-filtered manually with a decode per tap; the RGBA16F fallback uses a
-// hardware-bilinear sampler. The guard band (filled by gi_dugi_border_update.comp) makes the edge taps correct either way.
+// hardware-bilinear sampler. The guard band (filled by global_illumination_dugi_border_update.comp) makes the edge taps correct either way.
 #include "rgb9e5.glsl"
 #ifdef GI_DUGI_GLOSSY_RGB9E5
 layout(set = DUGI_DESCRIPTOR_SET, binding = 5) uniform usampler2D uDUGIGlossyRadiance; // R32_UINT alias of the E5B9G9R9 atlas

@@ -43,14 +43,14 @@ layout(set = 1, binding = 1) uniform sampler3D uVoxelGridOcclusion[];
 
 layout(set = 1, binding = 2) uniform sampler3D uVoxelGridRadiance[];
 
-// Unlit base-colour + emission visualization volume (E5B9G9R9 sample view), filled by gi_voxel_radiance_transfer.comp while the
+// Unlit base-colour + emission visualization volume (E5B9G9R9 sample view), filled by global_illumination_voxel_radiance_transfer.comp while the
 // voxel debug visualization is active. This is what the resolved (non-raw) path shows: surface albedo + emission, no lighting.
 layout(set = 1, binding = 3) uniform sampler3D uVoxelGridVisualization[];
 
 #ifdef VOXEL_MESH_VIS_RAW_CONTENT
 // Diagnostic: read the RAW voxelization content (per-voxel linked list) instead of the resolved uVoxelGridRadiance, to tell
 // whether a missing voxel is a voxelization (writer) problem or a radiance-resolve problem. Bound on the viz's own set 0.
-// The accumulation mirrors gi_voxel_radiance_transfer.comp's anisotropic axis-direction weighting, so each cube side shows the
+// The accumulation mirrors global_illumination_voxel_radiance_transfer.comp's anisotropic axis-direction weighting, so each cube side shows the
 // same albedo the resolve would write -> a discrepancy then points at the resolve, not the content.
 #include "rgb9e5.glsl"
 layout(set = 0, binding = 1, std430) readonly buffer VoxelGridContentMetaData { uint data[]; } voxelGridContentMetaData;
@@ -93,7 +93,7 @@ void main() {
 #ifdef VOXEL_MESH_VIS_RAW_CONTENT
   // Raw voxelization content for THIS cube side: traverse the voxel's fragment linked list and accumulate base colour into the
   // anisotropic axis-direction side matching cubeSideIndex (weighted by abs(normal[axis])), then divide by the fragment count
-  // -> exactly what gi_voxel_radiance_transfer.comp writes (albedo path), but read straight from the content, skipping the resolve.
+  // -> exactly what global_illumination_voxel_radiance_transfer.comp writes (albedo path), but read straight from the content, skipping the resolve.
   vec4 voxel = vec4(0.0);
   // Skip coarser-cascade voxels that fall inside a finer cascade's region (same cascade-avoid test as the resolved path), so
   // the higher cascades don't overdraw the finer ground here.
@@ -129,7 +129,7 @@ void main() {
       nrm = voxelRawOctDecode(vec2((ivec2(uvec2((vf.ww >> uvec2(8u, 20u)) & uvec2(0xfffu))) - ivec2(2048)) / 2047.0));
 #endif
       // Which anisotropic side does each axis of this fragment's normal map to (0=X+,1=Y+,2=Z+,3=X-,4=Y-,5=Z-)?
-      // Stored into the OPPOSITE-axis face (face[-normal] = "visible-from" side), mirroring the radiance writer in gi_voxel_radiance_transfer.comp.
+      // Stored into the OPPOSITE-axis face (face[-normal] = "visible-from" side), mirroring the radiance writer in global_illumination_voxel_radiance_transfer.comp.
       uvec3 sideIndices = uvec3((nrm.x > 0.0) ? 3u : 0u, (nrm.y > 0.0) ? 4u : 1u, (nrm.z > 0.0) ? 5u : 2u);
       vec3 axisWeights = abs(nrm);
       float sideWeight = ((sideIndices.x == cubeSideIndex) ? axisWeights.x : 0.0) +

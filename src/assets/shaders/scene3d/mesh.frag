@@ -159,9 +159,9 @@ const int TEXTURE_BASE_INDEX = 10;
 
 #include "mesh_pushconstants.glsl"
 
-#include "gi_globals.glsl"
+#include "global_illumination_globals.glsl"
 
-#include "gi_debug.glsl"
+#include "global_illumination_debug.glsl"
 
 #define REVERSEDZ_BIT 4
 bool reversedZ = (pushConstants.drawFlags & (1u << REVERSEDZ_BIT)) != 0;
@@ -501,7 +501,7 @@ void main() {
   vec3 voxelEmission = textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz;
   // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): per-material factor/max (two fp16 packed into the material's
   // dispersion/shadow uvec4 .w) scaled by the global master regulator (voxelGridData) and clamped — same policy as the
-  // DUGI gather (gi_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
+  // DUGI gather (global_illumination_rt_gather.glsl giGatherShadeHit). The voxel feeds only the GI here, so limiting it at injection is correct.
   vec2 voxelEmissiveGI = unpackHalf2x16(material.dispersionShadowCastMaskShadowReceiveMaskUnused.w);
   voxelEmission = min(voxelEmission * (voxelEmissiveGI.x * voxelGridData.emissiveGIScale), vec3(min(voxelEmissiveGI.y, voxelGridData.emissiveGIMax)));
   vec4 emissionColor = vec4(voxelEmission, baseColor.w);
@@ -898,7 +898,7 @@ void main() {
       vec3 giDebugProbeInfluence = vec3(0.0);
       vec3 giDebugDirectLight = colorOutput;
 
-      // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
+      // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (global_illumination_surface_shading.glsl) ----
       vec3 giWorldPosition = inWorldSpacePosition;
       vec3 giNormal = normal;
       vec3 giViewDirection = viewDirection;
@@ -929,7 +929,7 @@ void main() {
       float giTransparency = transparency;
       float giAlphaRoughness = alphaRoughness;
 #define MESH_FRAGMENT
-#include "gi_surface_shading.glsl"
+#include "global_illumination_surface_shading.glsl"
 #undef MESH_FRAGMENT
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
       vec3 emissiveOutput = vec3(0.0); // No emissive output for RSMs

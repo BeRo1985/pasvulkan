@@ -130,8 +130,8 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 
 #include "planet_wetness.glsl"
 #include "planet_grass.glsl"
-#include "gi_globals.glsl"
-#include "gi_debug.glsl"
+#include "global_illumination_globals.glsl"
+#include "global_illumination_debug.glsl"
 #include "planet_grassflagsmap.glsl"
 
 #define FRAGMENT_SHADER
@@ -412,7 +412,7 @@ void main(){
   vec3 giDebugProbeInfluence = vec3(0.0);
   vec3 giDebugDirectLight = colorOutput;
 
-  // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (gi_surface_shading.glsl) ----
+  // ---- GI / IBL indirect lighting: bind canonical inputs, then include the shared shading (global_illumination_surface_shading.glsl) ----
   vec3 giWorldPosition = inWorldSpacePosition;
   vec3 giNormal = normal;
   vec3 giViewDirection = viewDirection;
@@ -437,7 +437,7 @@ void main(){
   float giClearcoatFactor = 0.0;
   float giClearcoatRoughness = 1.0;
 #define PLANET_FRAGMENT
-#include "gi_surface_shading.glsl"
+#include "global_illumination_surface_shading.glsl"
 #undef PLANET_FRAGMENT
   if(giDebugDisplay != 0u){
     // GI debug cycle (Ctrl+Shift+F): replace the shaded colour with the single selected indirect / direct lighting channel.

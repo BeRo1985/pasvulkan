@@ -95,7 +95,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass }
              Blend:TpvVector4;                   // x = irradiance blend, y = multi-bounce feedback strength, z = first-frame relocation gate (< 0.5 applies the offset)
              EmissiveGIParticleCount:TpvVector4; // x = emissive GI scale, y = emissive GI maximum, z = alive particle count (0 disables particle injection)
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
-             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); 0 here (splat producer has no inactive-probe skip)
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see global_illumination_dugi_pushconstants.glsl); 0 here (splat producer has no inactive-probe skip)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -170,7 +170,7 @@ procedure TpvScene3DRendererPassesGlobalIlluminationDUGIRSMSplatComputePass.Acqu
 var Stream:TStream;
 begin
  inherited AcquirePersistentResources;
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_rsm_splat_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_rsm_splat_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -349,7 +349,7 @@ begin
  end;
 
  // Particle LBVH (software-traced, no hardware RT): alive count + emitter/node buffer addresses, zero when inactive. The splat
- // injects particles through the same shared gi_dugi_particle_inject.glsl as the trace producer.
+ // injects particles through the same shared global_illumination_dugi_particle_inject.glsl as the trace producer.
  ParticleEmitterAddress:=0;
  ParticleNodeAddress:=0;
  ParticleCount:=0;

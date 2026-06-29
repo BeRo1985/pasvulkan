@@ -129,7 +129,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_voxel_occlusion_transfer_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_voxel_occlusion_transfer_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

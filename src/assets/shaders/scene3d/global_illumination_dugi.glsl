@@ -18,7 +18,7 @@
 //    - visibility, always as an octahedral mean / mean-squared distance tile in a 2D atlas, used for the Chebyshev
 //      visibility test that prevents the light leaking that plain irradiance volumes (and radiance hints) suffer from.
 //
-//  The probe radiance is gathered by tracing rays against the scene TLAS; see gi_dugi_trace.comp / gi_dugi_probe_update.comp.
+//  The probe radiance is gathered by tracing rays against the scene TLAS; see global_illumination_dugi_trace.comp / global_illumination_dugi_probe_update.comp.
 // =====================================================================================================================
 
 #include "octahedral.glsl" // octEncode / octDecode (unit vector <-> [-1,1]^2 signed octahedral mapping)
@@ -155,9 +155,9 @@
 #endif
 
 // The glossy / specular shading roughness bands (GI_GLOSSY_ROUGHNESS_*, GI_SPECULAR_ROUGHNESS_*) now live in the
-// shared gi_globals.glsl so all GI modes (cascaded radiance hints / voxel cone tracing) use the same bands, not just DUGI.
+// shared global_illumination_globals.glsl so all GI modes (cascaded radiance hints / voxel cone tracing) use the same bands, not just DUGI.
 // Included here so this technique include (and the DUGI compute passes that pull it) keep the constants self-contained.
-#include "gi_globals.glsl"
+#include "global_illumination_globals.glsl"
 
 // Number of rays traced per probe per frame.
 #ifndef GI_DUGI_RAYS_PER_PROBE
@@ -197,7 +197,7 @@
 // --- Probe relocation + classification (RTXGI-style, compile-time toggle) ---------------------------------------------
 // When enabled, a per-probe "probe data" image stores xyz = world-space relocation offset (probe pushed out of geometry,
 // |offset| <= GI_DUGI_PROBE_MAX_OFFSET * cellSize) and w = state (0 = inactive/inside geometry or empty space -> skipped
-// while shading, 1 = active). A dedicated compute pass (gi_dugi_relocation.comp) traces GI_DUGI_FIXED_RAYS fixed directions
+// while shading, 1 = active). A dedicated compute pass (global_illumination_dugi_relocation.comp) traces GI_DUGI_FIXED_RAYS fixed directions
 // per probe to compute these. The trace origin and the sampler probe world position both add the offset; the sampler skips
 // inactive probes. DEFAULT OFF until the Pascal side (probe-data image + relocation pass + descriptor binding) is wired.
 #ifndef GI_DUGI_PROBE_RELOCATION
@@ -231,14 +231,14 @@
 #define GI_DUGI_PROBE_STATE_ACTIVE   1.0
 
 // Bit flags for the per-pass `flags` push-constant field (set on the Pascal side). Defined here, in the shared core, so both
-// the compute push block (gi_dugi_pushconstants.glsl) and the probe debug-draw shaders (their own push block) can reference them.
+// the compute push block (global_illumination_dugi_pushconstants.glsl) and the probe debug-draw shaders (their own push block) can reference them.
 #define GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT 1u  // trace/update passes skip inactive probes; clear = process every probe (runtime A/B toggle)
 #define GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID 2u  // real per-ray geometry distances available (hardware ray-traced producer); clear = RSM fallback -> classification skips its nearby-geometry test
 
 // Per-probe convergence warmup (always on). Each probe ramps its temporal hysteresis from GI_DUGI_WARMUP_START_HYSTERESIS up
 // to GI_DUGI_STEADY_HYSTERESIS over its first GI_DUGI_WARMUP_FRAMES frames of life, so a freshly-initialized or toroidally-
 // scrolled-in probe converges in a few frames instead of ~100 (kills the scroll-in flicker during fast camera motion). The
-// per-probe age (frames since (re)init) lives in its own BDA buffer (DUGIAgeBuffer in gi_dugi_master.glsl): the visibility
+// per-probe age (frames since (re)init) lives in its own BDA buffer (DUGIAgeBuffer in global_illumination_dugi_master.glsl): the visibility
 // update owns/increments it (reset on firstFrame / scroll-in), the irradiance update reads it back.
 #ifndef GI_DUGI_WARMUP_FRAMES
   #define GI_DUGI_WARMUP_FRAMES 16.0
@@ -299,12 +299,12 @@ const ivec3 uDUGIProbeCounts = ivec3(GI_DUGI_PROBES_X, GI_DUGI_PROBES_Y, GI_DUGI
 // Mirrors the cascaded radiance hints volume uniform layout (one entry per cascade) so the CPU-side snapping code can be
 // shared. AABBMin/Max/Scale/Center are the probe grid bounds in world space; the probes sit on the grid lattice spanning
 // the AABB, i.e. probe (i,j,k) is at AABBMin + (i,j,k) * cellSize, with cellSize = (AABBMax-AABBMin)/(probeCounts-1).
-// The DUGI data block (cascade globals + the BDA sub-buffer pointers) lives in gi_dugi_data.glsl as one std430 readonly SSBO
+// The DUGI data block (cascade globals + the BDA sub-buffer pointers) lives in global_illumination_dugi_data.glsl as one std430 readonly SSBO
 // `dugiData`, declared at the DUGI set's binding 0 (same set/binding the old globals UBO used). Only pulled in when the DUGI
 // set is defined (i.e. a DUGI shader, which has GL_EXT_buffer_reference enabled); constants-only includers skip it. The
 // addressing/sampling helpers below read dugiData.dugiCascade* exactly as before — only the backing storage changed.
 #ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
-#include "gi_dugi_data.glsl"
+#include "global_illumination_dugi_data.glsl"
 #endif
 
 // =====================================================================================================================

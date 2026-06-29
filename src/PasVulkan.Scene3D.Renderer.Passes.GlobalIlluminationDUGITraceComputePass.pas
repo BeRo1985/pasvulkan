@@ -82,7 +82,7 @@ const TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePassMaxPlanetTex
 
 type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass }
      // DUGI ray-tracing PRODUCER pass: traces GI_DUGI_RAYS_PER_PROBE rays per probe against the scene TLAS (via the shared
-     // gi_rt_gather.glsl layer) and writes the shaded radiance + distance into the ray-data image. It is the swappable
+     // global_illumination_rt_gather.glsl layer) and writes the shaded radiance + distance into the ray-data image. It is the swappable
      // "trace technique" half of DUGI (RTXGI's ProbeTraceRGS analog); everything downstream depends only on the ray-data
      // image, not on how it was produced. The technique-agnostic blend lives in the separate ProbeUpdate compute pass.
      TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass=class(TpvFrameGraph.TComputePass)
@@ -93,9 +93,9 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass }
              RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;                   // y = multi-bounce feedback strength (0 on a slot's first frame); x/z unused by the trace (the update owns them)
-             EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match gi_dugi_pushconstants.glsl
+             EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match global_illumination_dugi_pushconstants.glsl
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
-             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); bit0 = inactive-probe early-out
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see global_illumination_dugi_pushconstants.glsl); bit0 = inactive-probe early-out
             end;
             PPushConstants=^TPushConstants;
       private
@@ -145,7 +145,7 @@ procedure TpvScene3DRendererPassesGlobalIlluminationDUGITraceComputePass.Acquire
 var Stream:TStream;
 begin
  inherited AcquirePersistentResources;
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_trace_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_trace_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

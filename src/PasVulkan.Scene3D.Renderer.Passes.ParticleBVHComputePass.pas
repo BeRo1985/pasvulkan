@@ -78,7 +78,7 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesParticleBVHComputePass }
      // Builds a per-frame GPU LBVH over the particle emitters (particles are not in the hardware ray-tracing BLAS) so that
-     // gi_dugi_trace.comp can software-trace them into the DUGI probe irradiance. Pipeline: extract emitters from the billboard
+     // global_illumination_dugi_trace.comp can software-trace them into the DUGI probe irradiance. Pipeline: extract emitters from the billboard
      // vertex buffer -> world AABB -> Morton codes -> LSD radix sort -> Karras hierarchy -> bottom-up AABB refit. Runs before
      // the DUGI trace pass (explicit dependency). All buffers live on the renderer instance.
      TpvScene3DRendererPassesParticleBVHComputePass=class(TpvFrameGraph.TComputePass)

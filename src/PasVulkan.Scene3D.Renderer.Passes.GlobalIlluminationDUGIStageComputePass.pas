@@ -103,8 +103,8 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass }
              RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;                   // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
-             EmissiveGIParticleCount:TpvVector4; // unused by the update stages; present only to byte-match the shared gi_dugi_pushconstants.glsl block
-             ParticleBVH:TpvUInt32Vector4;       // unused by the update stages; present only to byte-match the shared gi_dugi_pushconstants.glsl block
+             EmissiveGIParticleCount:TpvVector4; // unused by the update stages; present only to byte-match the shared global_illumination_dugi_pushconstants.glsl block
+             ParticleBVH:TpvUInt32Vector4;       // unused by the update stages; present only to byte-match the shared global_illumination_dugi_pushconstants.glsl block
              Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask: bit0 = inactive-probe early-out (renderer property), bit1 = fixed-ray geometry valid (RaytracingActive)
             end;
             PPushConstants=^TPushConstants;
@@ -178,22 +178,22 @@ begin
  inherited AcquirePersistentResources;
  case fStage of
   TStage.Irradiance:begin
-   ShaderName:='gi_dugi_irradiance_update_comp.spv';
+   ShaderName:='global_illumination_dugi_irradiance_update_comp.spv';
   end;
   TStage.GlossyRadiance:begin
-   ShaderName:='gi_dugi_glossy_update_comp.spv';
+   ShaderName:='global_illumination_dugi_glossy_update_comp.spv';
   end;
   TStage.Visibility:begin
-   ShaderName:='gi_dugi_visibility_update_comp.spv';
+   ShaderName:='global_illumination_dugi_visibility_update_comp.spv';
   end;
   TStage.Border:begin
-   ShaderName:='gi_dugi_border_update_comp.spv';
+   ShaderName:='global_illumination_dugi_border_update_comp.spv';
   end;
   TStage.Relocation:begin
-   ShaderName:='gi_dugi_relocation_comp.spv';
+   ShaderName:='global_illumination_dugi_relocation_comp.spv';
   end;
   TStage.Classification:begin
-   ShaderName:='gi_dugi_classification_comp.spv';
+   ShaderName:='global_illumination_dugi_classification_comp.spv';
   end;
   else begin
    ShaderName:='';
@@ -237,7 +237,7 @@ begin
  end;
  fVulkanDescriptorPool.Initialize;
 
- // Set 1 = DUGI resources used by the blend: UBO, irradiance (OCT only), visibility. Same shared layout the gi_dugi_*.comp
+ // Set 1 = DUGI resources used by the blend: UBO, irradiance (OCT only), visibility. Same shared layout the global_illumination_dugi_*.comp
  // shaders declare (set 1). Ray-data / probe-data / SH-irradiance are BDA buffers reached via the master push constant. The
  // relocation/classification stages only touch the UBO + the master (they declare neither image), but they share this
  // superset layout — extra layout bindings unused by a shader are valid.
@@ -354,7 +354,7 @@ begin
 
  // Workgroup model per stage:
  //  - one workgroup per probe (octahedral tile, local_size = OCT x OCT, gl_WorkGroupID.x = probe): glossy / visibility / border,
- //    AND the irradiance stage in OCTAHEDRAL storage mode (gi_dugi_irradiance_update.comp's OCT path is per-texel-per-probe).
+ //    AND the irradiance stage in OCTAHEDRAL storage mode (global_illumination_dugi_irradiance_update.comp's OCT path is per-texel-per-probe).
  //  - one thread per probe (local_size_x = 64, gl_GlobalInvocationID.x = probe): irradiance in SH storage mode, relocation,
  //    classification.
  // The irradiance stage thus depends on the storage mode -> NOT a fixed stage set (the SH dispatch starved the OCT path before).

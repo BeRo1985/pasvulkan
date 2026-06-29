@@ -425,7 +425,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationDUGIImage3Ds=array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage3D; // one RGBA16F 3D image per in-flight frame (probe relocation data)
             TGlobalIlluminationDUGIBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer; // per-in-flight BDA storage buffers (ray-data, master, ...)
             // BDA master: device-address pointers to the point-access DUGI sub-buffers; layout must match DUGIMaster in
-            // gi_dugi_master.glsl. Pointers are 0 until their migration phase enables them (ray-data = phase 1).
+            // global_illumination_dugi_master.glsl. Pointers are 0 until their migration phase enables them (ray-data = phase 1).
             TGlobalIlluminationDUGIMasterData=packed record
              RayData:TVkDeviceAddress;       // -> ray-data buffer
              ProbeData:TVkDeviceAddress;     // -> probe-data buffer (0 when relocation off)
@@ -999,7 +999,7 @@ type { TpvScene3DRendererInstance }
        fSelectionOutlineThickness:TpvFloat;
        fDebugDUGIProbes:Boolean;
        fGlobalIlluminationDebugMode:TpvUInt32; // per-GI-mode debug cycle position (0 = off); advanced by CycleGlobalIlluminationDebugMode
-       fGlobalIlluminationDebugShadingMode:TpvUInt32; // derived GI/IBL/direct-light isolation channel pushed to the surface shaders (matches gi_debug.glsl GI_DEBUG_DISPLAY_*)
+       fGlobalIlluminationDebugShadingMode:TpvUInt32; // derived GI/IBL/direct-light isolation channel pushed to the surface shaders (matches global_illumination_debug.glsl GI_DEBUG_DISPLAY_*)
        fGlobalIlluminationDebugRawOutput:Boolean; // true when the active debug shading channel is a raw data value (probe-influence heatmap), not radiance, so the post effects (auto-exposure, bloom, tonemapping, depth of field) must be bypassed like the voxel debug visualization
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
        fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
@@ -3285,7 +3285,7 @@ begin
  end;
 end;
 
-// GI debug shading channel codes — must match gi_debug.glsl (GI_DEBUG_DISPLAY_*) and the surface-shader switch statements.
+// GI debug shading channel codes — must match global_illumination_debug.glsl (GI_DEBUG_DISPLAY_*) and the surface-shader switch statements.
 const GIDebugShadingNone=0;
       GIDebugShadingDirectLight=1;
       GIDebugShadingIndirectDiffuse=2;
@@ -4054,7 +4054,7 @@ begin
 
     // Ray-data is now a BDA storage buffer (vec4 per (probe,ray): rgb = radiance, a = distance). Device-local, full
     // precision, no image-format cap; written by the trace, read by the update/relocation/classification passes via the
-    // DUGI master buffer (gi_dugi_master.glsl). Fully rewritten every frame, so no initial clear is needed.
+    // DUGI master buffer (global_illumination_dugi_master.glsl). Fully rewritten every frame, so no initial clear is needed.
     fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                       TpvSizeInt(CountGlobalIlluminationDUGICascades)*TpvSizeInt(GlobalIlluminationDUGIProbesPerCascade)*TpvSizeInt(GlobalIlluminationDUGIRaysPerProbe)*SizeOf(TpvVector4),
                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
@@ -4068,7 +4068,7 @@ begin
                                                                                       'TpvScene3DRendererInstance.fGlobalIlluminationDUGIRayDataBuffers['+IntToStr(InFlightFrameIndex)+']');
 
     // DUGI data buffer: ONE std430 SSBO holding the cascade globals (offset 0, CPU-written each frame) followed by the BDA
-    // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `dugiData` block (gi_dugi_data.glsl),
+    // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `dugiData` block (global_illumination_dugi_data.glsl),
     // bound at the DUGI set's binding 0 in both the compute passes and the fragment consumers (replaces the old globals UBO
     // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DUGI invocation / fragment) AND
     // host-visible (CPU fills the pointers via UpdateData; the per-frame globals are staged into offset 0). No device-address
@@ -4202,10 +4202,10 @@ begin
    // Binding 0 = dugiData SSBO (cascade globals + the BDA sub-buffer pointers — probe-data + SH-irradiance + ...); binding 2 =
    // octahedral visibility moments (bilinear); binding 4 = visibility sky (bilinear). Binding 1 = octahedral irradiance atlas
    // (bilinear) ONLY in OCT storage mode (SH irradiance is a sub-buffer reached via dugiData). Matches the `dugiData` SSBO in
-   // gi_dugi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
+   // global_illumination_dugi_data.glsl (binding 3, the old master pointer UBO, is gone — folded into binding 0).
    fGlobalIlluminationDUGIDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
    // binding 0 = dugiData SSBO. VERTEX/FRAGMENT always; TASK/MESH only when mesh shaders are supported (else the stage bits
-   // would reference an unsupported feature -> validation error). The gi_dugi_probe_debug.{vert | task+mesh} debug overlay reads
+   // would reference an unsupported feature -> validation error). The global_illumination_dugi_probe_debug.{vert | task+mesh} debug overlay reads
    // the cascade globals here for probe placement + frustum cull; production shading reads it in FRAGMENT.
    if Renderer.Scene3D.MeshShaderSupport then begin
     fGlobalIlluminationDUGIDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),[]);
@@ -10140,7 +10140,7 @@ begin
   end;
   if (aRenderPass=TpvScene3DRendererRenderPass.View) and (fGlobalIlluminationDebugShadingMode<>0) then begin
    // GI debug channel (Ctrl+Shift+F cycle): isolate one indirect/direct lighting channel; only the final view, never the GI producers.
-   MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or ((fGlobalIlluminationDebugShadingMode and 15) shl 28); // GI_DEBUG_DISPLAY_* high bits (gi_debug.glsl)
+   MeshStagePushConstants^.DrawFlags:=MeshStagePushConstants^.DrawFlags or ((fGlobalIlluminationDebugShadingMode and 15) shl 28); // GI_DEBUG_DISPLAY_* high bits (global_illumination_debug.glsl)
   end;
   MeshStagePushConstants^.TextureDepthIndex:=0;
   case aRenderPass of

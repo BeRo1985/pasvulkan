@@ -38,7 +38,7 @@ DUGI_STORAGE_DEFINE="-DGI_DUGI_STORAGE=${DUGI_STORAGE}"
 DUGI_PROBE_RELOCATION=1
 DUGI_PROBE_RELOCATION_DEFINE="-DGI_DUGI_PROBE_RELOCATION=${DUGI_PROBE_RELOCATION}"
 
-# DUGI glossy prefiltered-radiance octahedral atlas (0 = off, 1 = on). Opt-in. When on, the gi_dugi_glossy_update
+# DUGI glossy prefiltered-radiance octahedral atlas (0 = off, 1 = on). Opt-in. When on, the global_illumination_dugi_glossy_update
 # compute pass + the glossy atlas binding (compute set 1 binding 5 / shading set binding 5) are built, and the border + the
 # mesh/planet DUGI fragment variants get the glossy sampling path. This MUST match GlobalIlluminationDUGIGlossyRadiance in
 # PasVulkan.Scene3D.Renderer.Instance.pas. First iteration uses the RGBA16F atlas format (-DGI_DUGI_GLOSSY_RGBA16F); the
@@ -53,8 +53,8 @@ fi
 # VCT voxel content storage encoding (1 = FP16 packHalf2x16, stride 2 / 32 bytes per cell; 0 = RGB9E5, stride 1). FP16 keeps
 # very high HDR base/emission values that RGB9E5 clamps/breaks. The content data buffer is already sized for 32 bytes per cell
 # (stride 2) in PasVulkan.Scene3D.Renderer.Instance.pas, so no Pascal change either way. This MUST be passed identically to the
-# voxelization writer (mesh/particle VOXELIZATION fragment variants) AND both content readers (gi_voxel_radiance_transfer.comp +
-# gi_voxel_occlusion_transfer.comp), otherwise the write/read layouts mismatch.
+# voxelization writer (mesh/particle VOXELIZATION fragment variants) AND both content readers (global_illumination_voxel_radiance_transfer.comp +
+# global_illumination_voxel_occlusion_transfer.comp), otherwise the write/read layouts mismatch.
 VOXEL_CONTENT_FP16=0
 if [ "${VOXEL_CONTENT_FP16}" = "1" ]; then
   VOXEL_CONTENT_FP16_DEFINE="-DGI_VOXEL_CONTENT_FP16"
@@ -64,7 +64,7 @@ fi
 
 # VCT radiance-transfer debug term written into the voxel radiance instead of the final lit colour, to isolate why voxels go
 # black in the voxel-cone-tracing debug visualization: 0 = normal lit (default), 1 = raw albedo (unlit, shows all voxels =
-# coverage), 2 = sun NdotL (grey), 3 = sun shadow (grey), 4 = full lighting (grey). Only affects gi_voxel_radiance_transfer.comp.
+# coverage), 2 = sun NdotL (grey), 3 = sun shadow (grey), 4 = full lighting (grey). Only affects global_illumination_voxel_radiance_transfer.comp.
 VOXEL_RADIANCE_DEBUG_TERM=0
 VOXEL_RADIANCE_DEBUG_TERM_DEFINE="-DVOXEL_RADIANCE_DEBUG_TERM=${VOXEL_RADIANCE_DEBUG_TERM}"
 
@@ -284,13 +284,13 @@ compileshaderarguments=(
   "-V mesh.vert --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
-  "-V gi_voxel_occlusion_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} -o ${tempPath}/gi_voxel_occlusion_transfer_comp.spv"
-  "-V gi_voxel_occlusion_mipmap.comp -o ${tempPath}/gi_voxel_occlusion_mipmap_comp.spv"
+  "-V global_illumination_voxel_occlusion_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} -o ${tempPath}/global_illumination_voxel_occlusion_transfer_comp.spv"
+  "-V global_illumination_voxel_occlusion_mipmap.comp -o ${tempPath}/global_illumination_voxel_occlusion_mipmap_comp.spv"
 
-  "-V gi_voxel_radiance_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/gi_voxel_radiance_transfer_comp.spv"
-  "-V gi_voxel_radiance_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/gi_voxel_radiance_transfer_float_comp.spv"
+  "-V global_illumination_voxel_radiance_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/global_illumination_voxel_radiance_transfer_comp.spv"
+  "-V global_illumination_voxel_radiance_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD ${VOXEL_CONTENT_FP16_DEFINE} ${VOXEL_RADIANCE_DEBUG_TERM_DEFINE} -o ${tempPath}/global_illumination_voxel_radiance_transfer_float_comp.spv"
 
-  "-V gi_voxel_radiance_mipmap.comp -o ${tempPath}/gi_voxel_radiance_mipmap_comp.spv"
+  "-V global_illumination_voxel_radiance_mipmap.comp -o ${tempPath}/global_illumination_voxel_radiance_mipmap_comp.spv"
 
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/mesh_voxelization_1_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/mesh_voxelization_2_geom.spv"
@@ -557,52 +557,52 @@ compileshaderarguments=(
 
   "-V topdownskyocclusionmap_blur.frag -o ${tempPath}/topdownskyocclusionmap_blur_frag.spv"
 
-  "-V gi_cascaded_radiance_hints_inject_cached.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_cached_comp.spv"
+  "-V global_illumination_cascaded_radiance_hints_inject_cached.comp -o ${tempPath}/global_illumination_cascaded_radiance_hints_inject_cached_comp.spv"
 
-  "-V gi_cascaded_radiance_hints_inject_sky.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_sky_comp.spv"
+  "-V global_illumination_cascaded_radiance_hints_inject_sky.comp -o ${tempPath}/global_illumination_cascaded_radiance_hints_inject_sky_comp.spv"
 
-  "-V gi_cascaded_radiance_hints_inject_rsm.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_rsm_comp.spv"
+  "-V global_illumination_cascaded_radiance_hints_inject_rsm.comp -o ${tempPath}/global_illumination_cascaded_radiance_hints_inject_rsm_comp.spv"
 
-  "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
+  "-V global_illumination_cascaded_radiance_hints_bounce.comp -o ${tempPath}/global_illumination_cascaded_radiance_hints_bounce_comp.spv"
 
   # DUGI (dynamic diffuse global illumination). Storage mode defaults to L1 spherical harmonics (GI_DUGI_STORAGE = 0);
   # build the octahedral irradiance variants by adding -DGI_DUGI_STORAGE=1 (and matching the shading variant below).
-  # gi_dugi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
+  # global_illumination_dugi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.
-  "-V gi_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_trace_comp.spv"
-  # Non-raytraced DUGI producer = the SAME gi_dugi_trace.comp built with the Reflective Shadow Map backend (GI_TRACE_BACKEND=2):
+  "-V global_illumination_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_trace_comp.spv"
+  # Non-raytraced DUGI producer = the SAME global_illumination_dugi_trace.comp built with the Reflective Shadow Map backend (GI_TRACE_BACKEND=2):
   # no ray query (no ray-tracing SPIR-V target needed), reads the sun's RSM instead of the TLAS. Probe iteration / relocation /
   # multi-bounce / particle injection / ray-data encode are identical to the ray-query build. Used as the DUGI fallback when
   # hardware ray query is unavailable.
-  "-V gi_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_TRACE_BACKEND=2 -o ${tempPath}/gi_dugi_trace_rsm_comp.spv"
-  # gi_dugi_rsm_splat.comp is the non-raytraced DUGI producer (Reflective Shadow Map VPL splatting), used as the fallback
+  "-V global_illumination_dugi_trace.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_TRACE_BACKEND=2 -o ${tempPath}/global_illumination_dugi_trace_rsm_comp.spv"
+  # global_illumination_dugi_rsm_splat.comp is the non-raytraced DUGI producer (Reflective Shadow Map VPL splatting), used as the fallback
   # when hardware ray query is unavailable. It writes the same dugiData ray-data contract as the trace, so it needs the
   # buffer_reference SPIR-V target; it does NOT ray-trace, so no ray-tracing target is required.
-  "-V gi_dugi_rsm_splat.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_rsm_splat_comp.spv"
-  # irradiance/visibility update read the ray-data via the DUGI master BDA buffer (gi_dugi_master.glsl) -> need the
+  "-V global_illumination_dugi_rsm_splat.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_rsm_splat_comp.spv"
+  # irradiance/visibility update read the ray-data via the DUGI master BDA buffer (global_illumination_dugi_master.glsl) -> need the
   # buffer_reference SPIR-V target even though they don't ray-trace.
-  "-V gi_dugi_irradiance_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_irradiance_update_comp.spv"
-  "-V gi_dugi_visibility_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_visibility_update_comp.spv"
+  "-V global_illumination_dugi_irradiance_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_irradiance_update_comp.spv"
+  "-V global_illumination_dugi_visibility_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_visibility_update_comp.spv"
   # Border also copies the glossy atlas guard band when glossy is on (binding 5); GLOSSY_DEFINE gates that to match the
   # Pascal descriptor layout (which adds binding 5 only when GlobalIlluminationDUGIGlossyRadiance).
-  "-V gi_dugi_border_update.comp ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_border_update_comp.spv"
+  "-V global_illumination_dugi_border_update.comp ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/global_illumination_dugi_border_update_comp.spv"
   # Glossy prefiltered-radiance update. Always built (like the relocation/classification comps) with the RGBA16F atlas
   # format the Pascal side uses; only dispatched when GlobalIlluminationDUGIGlossyRadiance is true (the matching toggle). Reads
   # the ray-data via the DUGI master BDA buffer -> needs the buffer_reference SPIR-V target.
-  "-V gi_dugi_glossy_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_DUGI_GLOSSY_RGBA16F -o ${tempPath}/gi_dugi_glossy_update_comp.spv"
+  "-V global_illumination_dugi_glossy_update.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -DGI_DUGI_GLOSSY_RGBA16F -o ${tempPath}/global_illumination_dugi_glossy_update_comp.spv"
   # Probe relocation + classification (RTXGI-style). Traces fixed rays via ray query (includes raytracing.glsl), hence the
   # explicit ray-tracing SPIR-V target like the DUGI trace. Built with the same DUGI_PROBE_RELOCATION_DEFINE as the rest;
   # only dispatched when GlobalIlluminationDUGIProbeRelocation is true on the Pascal side (the matching toggle).
-  "-V gi_dugi_relocation.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_relocation_comp.spv"
-  "-V gi_dugi_classification.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/gi_dugi_classification_comp.spv"
+  "-V global_illumination_dugi_relocation.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_relocation_comp.spv"
+  "-V global_illumination_dugi_classification.comp --target-env vulkan1.2 ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} -o ${tempPath}/global_illumination_dugi_classification_comp.spv"
   # DUGI probe debug visualization (RendererInstance.DebugDUGIProbes). Procedural octahedral sphere per probe, instanced over
   # all cascades, coloured by the probe's directional irradiance via dugiEvaluateIrradiance (same storage mode as the rest).
-  "-V gi_dugi_probe_debug.vert --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_vert.spv"
-  "-V gi_dugi_probe_debug.frag --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_frag.spv"
+  "-V global_illumination_dugi_probe_debug.vert --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/global_illumination_dugi_probe_debug_vert.spv"
+  "-V global_illumination_dugi_probe_debug.frag --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/global_illumination_dugi_probe_debug_frag.spv"
   # Frustum-culled mesh-shader variant (task -> mesh) of the probe debug overlay; needs the mesh-shader SPIR-V target like the other mesh/task shaders.
-  "-V gi_dugi_probe_debug.task --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_task.spv"
-  "-V gi_dugi_probe_debug.mesh --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/gi_dugi_probe_debug_mesh.spv"
+  "-V global_illumination_dugi_probe_debug.task --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/global_illumination_dugi_probe_debug_task.spv"
+  "-V global_illumination_dugi_probe_debug.mesh --target-env vulkan1.2 -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/global_illumination_dugi_probe_debug_mesh.spv"
 
   "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
   "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"

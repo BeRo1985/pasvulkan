@@ -2,7 +2,7 @@
 #define PARTICLE_BVH_GLSL
 
 // Shared layout for the per-frame GPU-constructed particle LBVH (Morton -> radix sort -> Karras hierarchy -> AABB refit),
-// software-traced from gi_dugi_trace.comp to inject emissive/transparent particles (not in the hardware ray-tracing BLAS)
+// software-traced from global_illumination_dugi_trace.comp to inject emissive/transparent particles (not in the hardware ray-tracing BLAS)
 // into the DUGI probe irradiance. All build shaders bind the same descriptor set (set 0, bindings below); each uses a subset.
 //
 // The array is always processed at the fixed padded size PARTICLE_BVH_CAPACITY (= MaxParticles, a power of two), with the
@@ -32,7 +32,7 @@ struct ParticleBVHNode {
 };
 
 #ifdef PARTICLE_BVH_BINDINGS
-// The build-pass descriptor set (set 0). gi_dugi_trace.comp does NOT include this; it binds emitters+nodes on its own set.
+// The build-pass descriptor set (set 0). global_illumination_dugi_trace.comp does NOT include this; it binds emitters+nodes on its own set.
 
 layout(set = 0, binding = 0, std430) buffer ParticleEmitterBuffer {
   ParticleEmitter emitters[];

@@ -151,7 +151,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_cascaded_radiance_hints_inject_rsm_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_cascaded_radiance_hints_inject_rsm_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

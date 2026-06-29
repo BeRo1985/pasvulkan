@@ -78,7 +78,7 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.IBLDescriptor;
 
 type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass }
-     // Non-raytraced DUGI ray-data PRODUCER (Reflective Shadow Map fallback). This is the SAME gi_dugi_trace shader built with
+     // Non-raytraced DUGI ray-data PRODUCER (Reflective Shadow Map fallback). This is the SAME global_illumination_dugi_trace shader built with
      // the RSM backend (GI_TRACE_BACKEND=2): no hardware ray query — it reads the sun's reflective shadow map (rendered by the
      // ReflectiveShadowMapRenderPass) and gathers the lit RSM texels along each probe ray instead of tracing the TLAS. Probe
      // iteration / relocation / multi-bounce / particle injection / ray-data encode are byte-for-byte identical to the ray-query
@@ -94,9 +94,9 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass }
              RandomRotation2:TpvVector4;         // mat3 column 2 in xyz
              Params:TpvUInt32Vector4;            // x = frameIndex, y = countCascades, z = probesPerCascade, w = raysPerProbe
              Blend:TpvVector4;                   // y = multi-bounce feedback strength (0 on a slot's first frame); z = first-frame flag (relocation offset gate)
-             EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match gi_dugi_pushconstants.glsl
+             EmissiveGIParticleCount:TpvVector4; // x = global GI emissive scale, y = global GI emissive max, z = particle count — must match global_illumination_dugi_pushconstants.glsl
              ParticleBVH:TpvUInt32Vector4;       // particle LBVH device addresses: xy = emitter buffer (uvec2), zw = node buffer (uvec2); 0 when inactive
-             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see gi_dugi_pushconstants.glsl); 0 here (RSM fallback: classification keeps all probes active)
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask (see global_illumination_dugi_pushconstants.glsl); 0 here (RSM fallback: classification keeps all probes active)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -171,8 +171,8 @@ procedure TpvScene3DRendererPassesGlobalIlluminationDUGITraceRSMComputePass.Acqu
 var Stream:TStream;
 begin
  inherited AcquirePersistentResources;
- // The RSM-backend build of gi_dugi_trace (GI_TRACE_BACKEND=2): same producer, no ray query.
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_trace_rsm_comp.spv');
+ // The RSM-backend build of global_illumination_dugi_trace (GI_TRACE_BACKEND=2): same producer, no ray query.
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_trace_rsm_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

@@ -99,7 +99,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
             end;
             PDebugLinesPushConstants=^TDebugLinesPushConstants;
             // DUGI probe debug overlay (RendererInstance.DebugDUGIProbes): one octahedral sphere per probe over all cascades,
-            // coloured by the live-sampled directional irradiance. Matches gi_dugi_probe_debug.vert's push (viewBaseIndex, countViews, flags).
+            // coloured by the live-sampled directional irradiance. Matches global_illumination_dugi_probe_debug.vert's push (viewBaseIndex, countViews, flags).
             TDUGIProbeDebugPushConstants=packed record
              ViewBaseIndex:TpvUInt32;
              CountViews:TpvUInt32;
@@ -582,7 +582,7 @@ begin
 
   if fDUGIProbeDebugMeshShader then begin
    // Frustum-culled task->mesh path: a task workgroup culls a batch of probes, the mesh shader renders one octahedral-sphere band.
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_probe_debug_task.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_probe_debug_task.spv');
    try
     fDUGIProbeDebugTaskShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
    finally
@@ -590,7 +590,7 @@ begin
    end;
    fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fDUGIProbeDebugTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesForwardRenderPass.DUGIProbeDebugTaskShaderModule');
 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_probe_debug_mesh.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_probe_debug_mesh.spv');
    try
     fDUGIProbeDebugMeshShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
    finally
@@ -601,7 +601,7 @@ begin
    fVulkanPipelineShaderStageDUGIProbeDebugTask:=TpvVulkanPipelineShaderStage.Create(TVkShaderStageFlagBits(VK_SHADER_STAGE_TASK_BIT_EXT),fDUGIProbeDebugTaskShaderModule,'main');
    fVulkanPipelineShaderStageDUGIProbeDebugMesh:=TpvVulkanPipelineShaderStage.Create(TVkShaderStageFlagBits(VK_SHADER_STAGE_MESH_BIT_EXT),fDUGIProbeDebugMeshShaderModule,'main');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_probe_debug_vert.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_probe_debug_vert.spv');
    try
     fDUGIProbeDebugVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
    finally
@@ -612,7 +612,7 @@ begin
    fVulkanPipelineShaderStageDUGIProbeDebugVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDUGIProbeDebugVertexShaderModule,'main');
   end;
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_dugi_probe_debug_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('global_illumination_dugi_probe_debug_frag.spv');
   try
    fDUGIProbeDebugFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
   finally
@@ -1063,7 +1063,7 @@ begin
  fVulkanSpaceLinesPipelineLayout.Initialize;
 
  // DUGI probe debug overlay layout: set 0 = global, set 1 = view UBO (binding 0 of the pass set), set 2 = the DUGI probe-field
- // descriptor set (dugiData + irradiance/visibility/glossy), exactly what gi_dugi_probe_debug.{vert | task+mesh}/.frag read.
+ // descriptor set (dugiData + irradiance/visibility/glossy), exactly what global_illumination_dugi_probe_debug.{vert | task+mesh}/.frag read.
  // Push is read in VERTEX+FRAGMENT (vertex path) or TASK+MESH+FRAGMENT (mesh-shader path).
  if assigned(fVulkanPipelineShaderStageDUGIProbeDebugFragment) then begin
   fVulkanDUGIProbeDebugPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
