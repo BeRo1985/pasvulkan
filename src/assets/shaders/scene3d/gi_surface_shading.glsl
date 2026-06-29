@@ -153,7 +153,7 @@
   // reduction lives in these residual weights now, not in the global gate).
   if(dot(giBaseColor, vec3(1.0)) > 1e-6){
     vec4 cvctDiffuse = cvctIndirectDiffuseLight(giWorldPosition, giNormal);
-    vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion * OneOverPI;
+    vec3 cvctDiffuseColor = cvctDiffuse.xyz * mix(giBaseColor, vec3(0.0), giMetallic) * giDiffuseOcclusion;
     colorOutput += cvctDiffuseColor;
     if(giDebugDisplay != 0u){
       giDebugIndirectDiffuse += cvctDiffuseColor;
@@ -167,7 +167,7 @@
   if(dot(giF0Dielectric, vec3(1.0)) > 1e-6){
     float cvctSpecularFactor = smoothstep(0.0, 1.0, giRoughness);
     vec4 cvctSpecular = cvctIndirectSpecularLight(giWorldPosition, giNormal, giViewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(giRoughness), 1e+24) * cvctSpecularFactor;
-    vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion * OneOverPI;
+    vec3 cvctSpecularColor = cvctSpecular.xyz * giF0Dielectric * giSpecularOcclusion;
     colorOutput += cvctSpecularColor;
     if(giDebugDisplay != 0u){
       giDebugIndirectSpecular += cvctSpecularColor;

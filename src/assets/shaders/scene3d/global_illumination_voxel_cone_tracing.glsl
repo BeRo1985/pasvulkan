@@ -76,7 +76,7 @@ float cvctGetTrilinearInterpolatedVoxelOcclusion(const in vec3 position, const i
 vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, const in int mipMapLevel, const in int cascadeIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
   vec3 directionWeights = cvctGetDirectionWeights(direction);
-  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+  ivec3 textureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2) + ivec3(cascadeIndex * 6);
   return (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
          (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
          (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
@@ -86,7 +86,7 @@ vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, co
 vec4 cvctGetTrilinearInterpolatedVoxelRadiance(const in vec3 position, const in vec3 direction, const in float mipMapLevel, const in int cascadeIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
   vec3 directionWeights = cvctGetDirectionWeights(direction);
-  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+  ivec3 textureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2) + ivec3(cascadeIndex * 6);
   return (textureLod(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
          (textureLod(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
          (textureLod(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
@@ -123,7 +123,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   vec3 directionWeights = cvctGetDirectionWeights(direction);
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
-  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4);
+  ivec3 textureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2);
 
   vec4 accumulator = vec4(0.0);
 
@@ -214,9 +214,9 @@ vec4 cvctTraceCascadeCone(uint cascadeIndex,
   bvec3 negativeDirection = lessThan(coneDirection, vec3(0.0));
   vec3 directionWeights = cvctGetDirectionWeights(coneDirection);
   ivec3 textureIndices = ivec3(
-    negativeDirection.x ? 1 : 0, 
-    negativeDirection.y ? 3 : 2, 
-    negativeDirection.z ? 5 : 4
+    negativeDirection.x ? 3 : 0, 
+    negativeDirection.y ? 4 : 1, 
+    negativeDirection.z ? 5 : 2
   ) + ivec3(int(cascadeIndex) * 6);
 
   vec4 accumulator = vec4(0.0);      
@@ -303,7 +303,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
     vec3 cascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex));
 
     // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
-    ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+    ivec3 textureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2) + ivec3(cascadeIndex * 6);
     vec4 radianceSample = (textureLod(uVoxelGridRadiance[textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
                           (textureLod(uVoxelGridRadiance[textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
                           (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z);
@@ -317,7 +317,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
       if(cascadeBlend > 0.0){
         uint nextCascadeIndex = uint(cascadeIndex) + 1u;
         vec3 nextCascadePosition = cvctWorldToTextureSpace(position, nextCascadeIndex);
-        ivec3 nextTextureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(nextCascadeIndex) * 6);
+        ivec3 nextTextureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2) + ivec3(int(nextCascadeIndex) * 6);
         // Recompute diameter and mip map level in the next (coarser) cascade's own normalized space,
         // since it covers a larger world extent the same world-space cone diameter maps to a finer mip there
         float nextDiameter = max(voxelGridData.oneOverGridSizes[nextCascadeIndex >> 2u][nextCascadeIndex & 3u] * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[nextCascadeIndex >> 2u][nextCascadeIndex & 3u]));

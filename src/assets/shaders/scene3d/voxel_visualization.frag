@@ -77,7 +77,7 @@ bool voxelTrace(const in int cascadeIndex,
       ivec3 samplePosition = position >> mipMapLevel;
       bvec3 negativeDirection = lessThan(rayDirection, vec3(0.0));
       vec3 directionWeights = abs(rayDirection);
-      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 3 : 0, negativeDirection.y ? 4 : 1, negativeDirection.z ? 5 : 2) + ivec3(cascadeIndex * 6);
       voxel = (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
               (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
               (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
