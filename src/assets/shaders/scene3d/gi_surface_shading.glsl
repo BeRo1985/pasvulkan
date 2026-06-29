@@ -252,13 +252,23 @@
     vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
     float dugiSkyVisibilitySpecular;
     vec3 dugiBroadReflection = dugiSampleIrradiance(giWorldPosition, dugiReflectionVector, giViewDirection, dugiSkyVisibilitySpecular) * OneOverPI; // broad probe reflection + sky-visibility along R
-    dugiSkyVisibilitySpecular *= smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
 #if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE)
-    vec3 dugiProbeReflection = mix(dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection), dugiBroadReflection, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness)); // sharp atlas <-> broad
+    vec3 dugiProbeReflection = mix(
+                                 dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection),
+                                 dugiBroadReflection,
+                                 smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness) // sharp atlas <-> broad
+                               );
 #else
     vec3 dugiProbeReflection = max(vec3(0.0), DUGI_SH_EVALUATE(dugiRadianceSH, dugiReflectionVector)); // local SH reflection along R (no atlas)
 #endif
-    iblGIProbeSpecular = vec4(dugiProbeReflection, 1.0 - dugiSkyVisibilitySpecular);
+    iblGIProbeSpecular = vec4(
+                           dugiProbeReflection,
+                           mix(
+                             1.0 - dugiSkyVisibilitySpecular,
+                             1.0,
+                             smoothstep(GI_SHARP_ROUGHNESS_LO, GI_SHARP_ROUGHNESS_HI, giRoughness) // rough side of the crossfade (env-IBL below is the sharp side)
+                           )
+                         );
     // Layer 2 (top crossfade): the env block scales the indirect specular (and, on the IBL_GI_PROBES paths, sheen / clearcoat
     // too) by giResidualIBLSpecularWeight; the dominant light takes the complementary (1 - weight) via doSingleLight.
     giResidualIBLSpecularWeight = smoothstep(GI_GLOSSY_ROUGHNESS_HI, GI_GLOSSY_ROUGHNESS_LO, giRoughness); // 1 = sharp (indirect), 0 = rough (dominant)
@@ -334,13 +344,23 @@
     vec3 dugiReflectionVector = normalize(reflect(-giViewDirection, giNormal));
     float dugiSkyVisibilitySpecular;
     vec3 dugiBroadReflection = dugiSampleIrradiance(giWorldPosition, dugiReflectionVector, giViewDirection, dugiSkyVisibilitySpecular) * OneOverPI; // broad reflection + sky-visibility along R
-    dugiSkyVisibilitySpecular *= smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness);
 #if defined(GI_DUGI_GLOSSY_RESIDUAL) && defined(GI_DUGI_GLOSSY_RADIANCE)
-    vec3 dugiProbeReflection = mix(dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection), dugiBroadReflection, smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness)); // sharp atlas <-> broad
+    vec3 dugiProbeReflection = mix(
+                                 dugiSampleGlossyRadiance(giWorldPosition, giNormal, dugiReflectionVector, giViewDirection),
+                                 dugiBroadReflection,
+                                 smoothstep(GI_GLOSSY_ROUGHNESS_LO, GI_GLOSSY_ROUGHNESS_HI, giRoughness) // sharp atlas <-> broad
+                               );
 #else
     vec3 dugiProbeReflection = dugiBroadReflection; // no glossy atlas: just the broad probe reflection
 #endif
-    iblGIProbeSpecular = vec4(dugiProbeReflection, 1.0 - dugiSkyVisibilitySpecular);
+    iblGIProbeSpecular = vec4(
+                           dugiProbeReflection,
+                           mix(
+                             1.0 - dugiSkyVisibilitySpecular,
+                             1.0,
+                             smoothstep(GI_SHARP_ROUGHNESS_LO, GI_SHARP_ROUGHNESS_HI, giRoughness) // rough side of the crossfade (env-IBL below is the sharp side)
+                           )
+                         );
   }
 
 #endif
@@ -376,7 +396,9 @@
                          )
                         : vec3(0.0);
 #else
-    vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0) ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight) : vec3(0.0);
+    vec3 iblDiffuse = (giResidualIBLDiffuseWeight > 0.0)
+                        ? (getIBLDiffuse(giNormal) * giBaseColor * giResidualIBLDiffuseWeight)
+                        : vec3(0.0);
 #endif
 
 #if defined(MESH_FRAGMENT)
@@ -425,7 +447,9 @@
                                 )
                                : vec3(0.0);
 #else
-    vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0) ? (getIBLRadianceGGX(giNormal, giViewDirection, giRoughness) * giResidualIBLSpecularWeight) : vec3(0.0);
+    vec3 iblSpecularMetal = (giResidualIBLSpecularWeight > 0.0)
+                              ? (getIBLRadianceGGX(giNormal, giViewDirection, giRoughness) * giResidualIBLSpecularWeight)
+                              : vec3(0.0);
 #endif
 
     vec3 iblSpecularDielectric = iblSpecularMetal;

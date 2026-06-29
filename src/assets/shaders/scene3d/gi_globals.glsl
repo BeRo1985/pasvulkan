@@ -35,4 +35,12 @@
   #define GI_BROAD_ROUGHNESS_HI 1.0
 #endif
 
+// Roughness gate for the shading path's sharp specular reflection: full at/below LO (glossy surfaces reflect the sharp source correctly), faded to zero at/above HI
+#ifndef GI_SHARP_ROUGHNESS_LO
+  #define GI_SHARP_ROUGHNESS_LO 0.0
+#endif
+#ifndef GI_SHARP_ROUGHNESS_HI
+  #define GI_SHARP_ROUGHNESS_HI 0.1
+#endif
+
 #endif // GI_GLOBALS_GLSL

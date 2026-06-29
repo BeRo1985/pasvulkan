@@ -801,7 +801,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDUGIProbeBaseCells:array[0..CountGlobalIlluminationDUGICascades-1] of TpvVector3; // per cascade: rounded baseCell of the PREVIOUS FRAME's update (single shared field -> the previous update is always last frame), for toroidal scroll re-init
        fGlobalIlluminationDUGIUniformBufferDataArray:TGlobalIlluminationDUGIUniformBufferDataArray;
        // (the separate DUGI globals UBO buffer is gone — globals + sub-buffer pointers now share one SSBO: fGlobalIlluminationDUGIMasterBuffers)
-       // The persistent DUGI probe field is a SINGLE shared resource (one temporal history, RTXGI / WickedEngine style), NOT
+       // The persistent DUGI probe field is a SINGLE shared resource (one shared temporal history), NOT
        // replicated per in-flight frame — replication produced N independently-converging histories that the render alternated
        // between, so unstable probes (relocation / classification / scrolled-in) flickered frame-to-frame. Only the transient
        // ray-data and the per-frame globals master stay per in-flight.
@@ -3946,7 +3946,7 @@ begin
                                                                    CountGlobalIlluminationDUGICascades,
                                                                    TCascadedVolumes.TCascadeVolumeKind.DynamicUnifiedGlobalIllumination);
 
-   // ===== Single shared persistent DUGI probe field (ONE temporal history, RTXGI / WickedEngine style — allocated ONCE, not
+   // ===== Single shared persistent DUGI probe field (ONE temporal history — allocated ONCE, not
    // per in-flight frame; the per-frame ray-data + globals master follow in the loop below). =====
 
    if GlobalIlluminationDUGIStorageOctahedral then begin
