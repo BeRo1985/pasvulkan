@@ -1608,7 +1608,7 @@ if [ -n "$slangcPath" ]; then
 
   echo "Compiling Slang shaders (${slangcPath}) . . ."
 
-  slangFlags="-target spirv -fvk-use-scalar-layout -matrix-layout-row-major -allow-glsl -emit-spirv-directly -I slang"
+  slangFlags="-target spirv -fvk-use-scalar-layout -matrix-layout-row-major -emit-spirv-directly -I slang"
   if [ $DEBUG -eq 1 ]; then
     slangFlags="${slangFlags} -g"
   fi

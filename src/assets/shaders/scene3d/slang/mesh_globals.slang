@@ -56,7 +56,7 @@ public VertexTransform makeVertexTransform(uint meshObjectID, uint viewIndex, Gl
 
   VertexTransform t;
   t.modelMatrix = modelMatrix;
-  t.modelViewMatrix = view.viewMatrix * modelMatrix;
+  t.modelViewMatrix = mulmm(view.viewMatrix, modelMatrix);
   t.adjugateModelMatrix = adjugate(modelMatrix);
   t.modelColumnLengths = float3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
   t.cameraPosition = view.inverseViewMatrix[3].xyz;
@@ -67,7 +67,7 @@ public VertexTransform makeVertexTransform(uint meshObjectID, uint viewIndex, Gl
   t.previousModelViewProjectionMatrix = float4x4(0.0);
   if (velocity) {
     View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-    t.previousModelViewProjectionMatrix = previousView.projectionMatrix * (previousView.viewMatrix * matrixPair.previousModelMatrix);
+    t.previousModelViewProjectionMatrix = mulmm(previousView.projectionMatrix, mulmm(previousView.viewMatrix, matrixPair.previousModelMatrix));
   }
   return t;
 }
@@ -86,13 +86,13 @@ public VertexInputVarying transformVertex(uint globalVertexIndex, GlobalBDAPoint
 
   // Only the tangent (T) and normal (N) of the tangent frame are output downstream, so the
   // bitangent column is not built; both are carried into world space by the adjugate.
-  float3 worldTangent = t.adjugateModelMatrix * normalize(tangent);
-  float3 worldNormal = t.adjugateModelMatrix * normalize(normalSign.xyz);
+  float3 worldTangent = mulmv(t.adjugateModelMatrix, normalize(tangent));
+  float3 worldNormal = mulmv(t.adjugateModelMatrix, normalize(normalSign.xyz));
 
-  float4 viewSpacePosition = t.modelViewMatrix * float4(position, 1.0);
-  float4 clipSpacePosition = t.projectionMatrix * viewSpacePosition;
+  float4 viewSpacePosition = mulmv(t.modelViewMatrix, float4(position, 1.0));
+  float4 clipSpacePosition = mulmv(t.projectionMatrix, viewSpacePosition);
   viewSpacePosition.xyz /= viewSpacePosition.w;
-  float3 worldSpacePosition = (t.modelMatrix * float4(position, 1.0)).xyz;
+  float3 worldSpacePosition = mulmv(t.modelMatrix, float4(position, 1.0)).xyz;
 
   bool debugColors = (pushConstants.drawFlags & 1u) != 0u;
 
@@ -117,7 +117,7 @@ public VertexInputVarying transformVertex(uint globalVertexIndex, GlobalBDAPoint
     // A generation mismatch means the previous-frame vertex is not comparable -> zero motion.
     if (bda.generations[globalVertexIndex] == bda.previousGenerations[globalVertexIndex]) {
       float3 previousPosition = unpackPosition(bda.previousCachedVertices[globalVertexIndex]);
-      previousClipSpace = t.previousModelViewProjectionMatrix * float4(previousPosition, 1.0);
+      previousClipSpace = mulmv(t.previousModelViewProjectionMatrix, float4(previousPosition, 1.0));
     }
   }
   o.currentClipSpace = clipSpacePosition;

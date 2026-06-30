@@ -59,7 +59,7 @@ public struct MeshletPrimitive {
 // (the maximum axis scale). Mirrors sphereTransform in mesh.task / mesh_cull.comp.
 float4 sphereTransform(float4 sphere, float4x4 transform) {
   float maxAxisLengthSq = max(max(dot(transform[0].xyz, transform[0].xyz), dot(transform[1].xyz, transform[1].xyz)), dot(transform[2].xyz, transform[2].xyz));
-  return float4((transform * float4(sphere.xyz, 1.0)).xyz,
+  return float4(mulmv(transform, float4(sphere.xyz, 1.0)).xyz,
                 max(sphere.w * max(1.0, sqrt(maxAxisLengthSq)), 0.0));
 }
 
@@ -116,7 +116,7 @@ bool meshletPassesHiZ(float4 viewSpaceSphere, float zNear, float4x4 projectionMa
 
   float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(int(levels) - 1));
   float sampledDepth = uTextureDepths[depthIndex].SampleLevel(float3(lerp(aabb.xy, aabb.zw, 0.5), float(layer)), level).x;
-  float2 depthZ = (inverseProjectionMatrix * float4((aabb.xy + aabb.zw) - float2(1.0), sampledDepth, 1.0)).zw;
+  float2 depthZ = mulmv(inverseProjectionMatrix, float4((aabb.xy + aabb.zw) - float2(1.0), sampledDepth, 1.0)).zw;
   float depth = -(depthZ.x / depthZ.y);
 
   return !(((-viewSpaceSphere.z) - viewSpaceSphere.w) > depth);
@@ -218,7 +218,7 @@ void viewTaskMain(uint localInvocationIndex : SV_GroupIndex,
       visible = false;
       if (((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled) {
         for (uint viewIndex = 0u; viewIndex < countViews; viewIndex++) {
-          float4 viewSpaceSphere = float4((gViewViewMatrices[viewIndex] * float4(worldSphere.xyz, 1.0)).xyz, worldSphere.w);
+          float4 viewSpaceSphere = float4(mulmv(gViewViewMatrices[viewIndex], float4(worldSphere.xyz, 1.0)).xyz, worldSphere.w);
           if (!frustumCullingSphereTest(gViewFrustums[viewIndex], viewSpaceSphere)) {
             continue;
           }
@@ -406,7 +406,7 @@ void voxelMeshMain(uint localInvocationIndex : SV_GroupIndex,
 
   View view = uView.views[pushConstants.viewBaseIndex];
   float3 cameraPosition = view.inverseViewMatrix[3].xyz;
-  float4x4 modelViewMatrix = view.viewMatrix * modelMatrix;
+  float4x4 modelViewMatrix = mulmm(view.viewMatrix, modelMatrix);
   float3x3 adjugateModelMatrix = adjugate(modelMatrix);
   float3 modelColumnLengths = float3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
 
@@ -423,13 +423,13 @@ void voxelMeshMain(uint localInvocationIndex : SV_GroupIndex,
     float3 worldPos[3];
     for (int v = 0; v < 3; v++) {
       uint globalVertexIndex = bda.meshletVertices[descriptor.vertexOffset + localTri[v]];
-      worldPos[v] = (modelMatrix * float4(unpackPosition(bda.cachedVertices[globalVertexIndex]), 1.0)).xyz;
+      worldPos[v] = mulmv(modelMatrix, float4(unpackPosition(bda.cachedVertices[globalVertexIndex]), 1.0)).xyz;
     }
 
     float3 cascadeSpacePositions[3] = {
-      (worldToCascadeClipSpace * float4(worldPos[0], 1.0)).xyz,
-      (worldToCascadeClipSpace * float4(worldPos[1], 1.0)).xyz,
-      (worldToCascadeClipSpace * float4(worldPos[2], 1.0)).xyz
+      mulmv(worldToCascadeClipSpace, float4(worldPos[0], 1.0)).xyz,
+      mulmv(worldToCascadeClipSpace, float4(worldPos[1], 1.0)).xyz,
+      mulmv(worldToCascadeClipSpace, float4(worldPos[2], 1.0)).xyz
     };
 
     // Dominant-axis projection (same as mesh_voxelization.geom): pick the axis the triangle faces
@@ -473,10 +473,10 @@ void voxelMeshMain(uint localInvocationIndex : SV_GroupIndex,
 
       float3 position = unpackPosition(cv);
       float4 normalSign = unpackNormalSign(cv);
-      float3 worldTangent = adjugateModelMatrix * normalize(unpackTangent(cv));
-      float3 worldNormal = adjugateModelMatrix * normalize(normalSign.xyz);
+      float3 worldTangent = mulmv(adjugateModelMatrix, normalize(unpackTangent(cv)));
+      float3 worldNormal = mulmv(adjugateModelMatrix, normalize(normalSign.xyz));
 
-      float4 viewSpacePosition = modelViewMatrix * float4(position, 1.0);
+      float4 viewSpacePosition = mulmv(modelViewMatrix, float4(position, 1.0));
       viewSpacePosition.xyz /= viewSpacePosition.w;
 
       VoxelVarying o;
@@ -570,7 +570,7 @@ void rsmTaskMain(uint localInvocationIndex : SV_GroupIndex,
     if (((pushConstants.drawFlags & FLAG_MESHLET_CULLING_ENABLED) != 0u) && hasSphere && !distanceCulled) {
       // Test against each view independently; emit one (meshlet, view) entry per visible view.
       for (uint viewIndex = 0u; viewIndex < countViews; viewIndex++) {
-        float4 viewSpaceSphere = float4((gRSMViewMatrices[viewIndex] * float4(worldSphere.xyz, 1.0)).xyz, worldSphere.w);
+        float4 viewSpaceSphere = float4(mulmv(gRSMViewMatrices[viewIndex], float4(worldSphere.xyz, 1.0)).xyz, worldSphere.w);
         if (!frustumCullingSphereTest(gRSMFrustums[viewIndex], viewSpaceSphere)) {
           continue;
         }

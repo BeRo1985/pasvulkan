@@ -3,12 +3,47 @@
 //
 // Matrix convention: with -matrix-layout-row-major Slang loads the matrices in the same GLSL
 // row/column order, so m[i] is column i, m[c][r] is the GLSL element and float3x3(c0, c1, c2) is
-// built from columns -- the indexing ports verbatim, no transpose. The GLSL '*' operator (via
-// -allow-glsl) is the transform / product (m * v, A * B) and lowers to the same SPIR-V as the GLSL
-// shaders; HLSL mul() is avoided because under row-major it reverses the operands (mul(m, v) would
-// compute the transpose M^T * v, mul(A, B) would compute B * A).
+// built from columns -- the indexing ports verbatim, no transpose. For the multiply we use the
+// mulmv / mulvm / mulmm wrappers below, called in GLSL operand order (mulmv(m, v) = GLSL m * v,
+// mulmm(a, b) = GLSL a * b). They hide the one quirk that under row-major HLSL mul() takes the
+// operands reversed; this keeps pure Slang (no -allow-glsl) with GLSL-readable call sites and no
+// raw-mul footgun.
 
 module math;
+
+// GLSL-order matrix-multiply wrappers. Under -matrix-layout-row-major, HLSL mul() reverses the
+// operands -- GPU-verified: mul(v, m) computes M*v, mul(b, a) computes A*B -- so the reversal lives
+// here only and every call site reads in natural GLSL order.
+
+// GLSL m * v
+public float4 mulmv(float4x4 m, float4 v) {
+  return mul(v, m);
+}
+
+// GLSL m * v (3x3)
+public float3 mulmv(float3x3 m, float3 v) {
+  return mul(v, m);
+}
+
+// GLSL v * m (row vector)
+public float4 mulvm(float4 v, float4x4 m) {
+  return mul(m, v);
+}
+
+// GLSL v * m (row vector, 3x3)
+public float3 mulvm(float3 v, float3x3 m) {
+  return mul(m, v);
+}
+
+// GLSL a * b
+public float4x4 mulmm(float4x4 a, float4x4 b) {
+  return mul(b, a);
+}
+
+// GLSL a * b (3x3)
+public float3x3 mulmm(float3x3 a, float3x3 b) {
+  return mul(b, a);
+}
 
 // adjugate(M) = det(M) * transpose(inverse(M)): the robust normal-transform matrix (defined even
 // for singular M, no inverse needed). It carries a det(M) factor; for det(M) >= 0 that is a
@@ -42,10 +77,10 @@ public bool projectSphere(float3 center, const float radius, const float zNear, 
     // Just conservative enough to avoid false negatives.
     center.z = min(-zNear, center.z);  // clamp center to the near plane
 
-    float3 screenMin = (projectionMatrix * float4(center - float2(radius, 0.0).xxy, 1.0)).xyw;
+    float3 screenMin = mulmv(projectionMatrix, float4(center - float2(radius, 0.0).xxy, 1.0)).xyw;
     screenMin.xy /= screenMin.z;
 
-    float3 screenMax = (projectionMatrix * float4(center + float2(radius, 0.0).xxy, 1.0)).xyw;
+    float3 screenMax = mulmv(projectionMatrix, float4(center + float2(radius, 0.0).xxy, 1.0)).xyw;
     screenMax.xy /= screenMax.z;
 
     aabb = fma(
