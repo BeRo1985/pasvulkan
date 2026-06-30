@@ -16,32 +16,32 @@ module math;
 // here only and every call site reads in natural GLSL order.
 
 // GLSL m * v
-public float4 mulmv(float4x4 m, float4 v) {
+[ForceInline] public float4 mulmv(float4x4 m, float4 v) {
   return mul(v, m);
 }
 
 // GLSL m * v (3x3)
-public float3 mulmv(float3x3 m, float3 v) {
+[ForceInline] public float3 mulmv(float3x3 m, float3 v) {
   return mul(v, m);
 }
 
 // GLSL v * m (row vector)
-public float4 mulvm(float4 v, float4x4 m) {
+[ForceInline] public float4 mulvm(float4 v, float4x4 m) {
   return mul(m, v);
 }
 
 // GLSL v * m (row vector, 3x3)
-public float3 mulvm(float3 v, float3x3 m) {
+[ForceInline] public float3 mulvm(float3 v, float3x3 m) {
   return mul(m, v);
 }
 
 // GLSL a * b
-public float4x4 mulmm(float4x4 a, float4x4 b) {
+[ForceInline] public float4x4 mulmm(float4x4 a, float4x4 b) {
   return mul(b, a);
 }
 
 // GLSL a * b (3x3)
-public float3x3 mulmm(float3x3 a, float3x3 b) {
+[ForceInline] public float3x3 mulmm(float3x3 a, float3x3 b) {
   return mul(b, a);
 }
 
