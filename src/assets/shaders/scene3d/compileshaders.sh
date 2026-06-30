@@ -20,7 +20,7 @@ USEBIN2C=0
 DELETEAFTERCOMPILE=1
 
 # Debug mode, if set to 1, debug information will generated and written into the spirv files
-DEBUG=1
+DEBUG=0
 
 # DUGI irradiance storage mode for the dynamic diffuse global illumination shaders: 0 = octahedral atlas (1 image),
 # 1 = L1 spherical harmonics (3 images), 2 = L2 spherical harmonics (7 images, default — for testing/comparison). This MUST match
@@ -1589,6 +1589,54 @@ for index in ${!compileshaderarguments[@]}; do
 done
 
 wait
+
+#############################################
+#        Slang shaders (experimental)       #
+#############################################
+# Additive, parallel Slang port path. The GLSL shaders above stay authoritative; the Slang ones
+# are compiled only when slangc is available, otherwise skipped, so the build never breaks without
+# the Slang toolchain installed. A Slang compile failure warns but does not abort, since the GLSL
+# path is authoritative. The resulting .spv files land in tempPath and are packed alongside the
+# GLSL ones (the packing step below collects every *.spv in tempPath).
+
+slangcPath=$(command -v slangc || true)
+if [ -z "$slangcPath" ] && [ -x "/opt/shader-slang-bin/bin/slangc" ]; then
+  slangcPath="/opt/shader-slang-bin/bin/slangc"
+fi
+
+if [ -n "$slangcPath" ]; then
+
+  echo "Compiling Slang shaders (${slangcPath}) . . ."
+
+  slangFlags="-target spirv -fvk-use-scalar-layout -matrix-layout-row-major -allow-glsl -emit-spirv-directly -I slang"
+  if [ $DEBUG -eq 1 ]; then
+    slangFlags="${slangFlags} -g"
+  fi
+
+  compileSlangShader(){
+    # $1 = output base name, $2 = source .slang, $3 = entry point, $4 = stage
+    if ! ${slangcPath} ${slangFlags} -entry "$3" -stage "$4" "$2" -o "${tempPath}/${1}.spv"; then
+      echo "WARNING: Slang shader $2 ($3) failed to compile. GLSL is authoritative, build continues."
+    fi
+  }
+
+  compileSlangShader "slang_mesh_vert" "slang/mesh.slang" "vertexMain" "vertex"
+  compileSlangShader "slang_mesh_frag" "slang/mesh.slang" "fragmentMain" "fragment"
+
+  # Meshlet path (task + mesh shaders). One entry-point pair per render mode (the mesh-stage output
+  # layout must be a compile-time constant), plus the no-task-shader mesh variant (which drops the
+  # task payload input). View / Voxelization / RSM (layer-routing).
+  compileSlangShader "slang_mesh_view_task"     "slang/mesh_meshlet.slang" "viewTaskMain"       "amplification"
+  compileSlangShader "slang_mesh_view_mesh"     "slang/mesh_meshlet.slang" "viewMeshMain"       "mesh"
+  compileSlangShader "slang_mesh_view_meshnotask" "slang/mesh_meshlet.slang" "viewMeshNoTaskMain" "mesh"
+  compileSlangShader "slang_mesh_voxel_task"    "slang/mesh_meshlet.slang" "voxelTaskMain"      "amplification"
+  compileSlangShader "slang_mesh_voxel_mesh"    "slang/mesh_meshlet.slang" "voxelMeshMain"      "mesh"
+  compileSlangShader "slang_mesh_rsm_task"      "slang/mesh_meshlet.slang" "rsmTaskMain"        "amplification"
+  compileSlangShader "slang_mesh_rsm_mesh"      "slang/mesh_meshlet.slang" "rsmMeshMain"        "mesh"
+
+else
+  echo "slangc not found, skipping Slang shaders (GLSL path unaffected)."
+fi
 
 # Optimize all shaders
 
