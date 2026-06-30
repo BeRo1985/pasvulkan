@@ -1,8 +1,9 @@
 // Task + mesh shader entry points for the meshlet geometry path (Slang port of mesh.task /
 // mesh.mesh). Each render mode (View / Voxelization / RSM) is a separate pair of entry points,
 // because the mesh-stage output layout must be a compile-time constant; the per-mode payload type
-// comes from its IMeshRenderMode implementation while the shared framework — indirect-command pull,
-// per-view setup, world-sphere build, Hi-Z occlusion test, standard vertex transform — lives here.
+// comes from its IMeshRenderMode implementation. The shared framework here is the indirect-command
+// pull, per-view setup, world-sphere build and Hi-Z occlusion test; the fragment-facing varying
+// (VertexInputVarying) and the standard vertex transform live in mesh_globals.
 //
 // Matrix convention as in math.slang: with -matrix-layout-row-major the GLSL row/column order ports
 // verbatim (m[i] = column i, m[c][r] = the GLSL element) and the GLSL '*' operator (via -allow-glsl)
@@ -10,6 +11,7 @@
 
 import gputypes;
 import mesh_bindings;
+import mesh_globals;
 import mesh_meshlet_config;
 import mesh_meshlet_rendermode_view;
 import mesh_meshlet_rendermode_voxel;
@@ -19,29 +21,6 @@ import math;
 import frustum;
 import debug;
 import voxelgriddata;
-
-// --- per-vertex varyings, locations identical to mesh.vert / mesh.mesh so the fragment shader is
-// unchanged. The velocity slots (13/14) are always declared; the velocity spec constant only gates
-// whether they carry a real previous-frame position or just repeat the current one. ---
-
-public struct MeshletVarying {
-  float4 position : SV_Position;
-  [[vk::location(0)]] float3 worldSpacePosition : LOC0;
-  [[vk::location(1)]] float3 viewSpacePosition : LOC1;
-  [[vk::location(2)]] float3 cameraRelativePosition : LOC2;
-  [[vk::location(3)]] float4 tangentSign : LOC3;
-  [[vk::location(4)]] float3 normal : LOC4;
-  [[vk::location(5)]] float2 texCoord0 : LOC5;
-  [[vk::location(6)]] float2 texCoord1 : LOC6;
-  [[vk::location(7)]] float4 color0 : LOC7;
-  [[vk::location(8)]] float3 modelScale : LOC8;
-  [[vk::location(9)]] nointerpolation uint materialID : LOC9;
-  [[vk::location(10)]] nointerpolation uint instanceDataIndex : LOC10;
-  [[vk::location(11)]] nointerpolation int viewIndex : LOC11;
-  [[vk::location(12)]] nointerpolation uint frameIndex : LOC12;
-  [[vk::location(13)]] float4 previousClipSpace : LOC13;
-  [[vk::location(14)]] float4 currentClipSpace : LOC14;
-}
 
 // Per-vertex varyings for the voxelization mesh entry, locations matching the voxelization path of
 // mesh.mesh so the voxelization fragment shader is unchanged. Vertices are not shared (3 per
@@ -143,70 +122,12 @@ bool meshletPassesHiZ(float4 viewSpaceSphere, float zNear, float4x4 projectionMa
   return !(((-viewSpaceSphere.z) - viewSpaceSphere.w) > depth);
 }
 
-// The standard meshlet vertex transform, shared by the View and (later) RSM modes. Produces the
-// full varying set for one meshlet vertex; mirrors the non-voxelization path of mesh.mesh.
-MeshletVarying transformMeshletVertex(uint globalVertexIndex, GlobalBDAPointers bda,
-                                      float4x4 modelMatrix, float4x4 modelViewMatrix,
-                                      float3x3 adjugateModelMatrix, float3 modelColumnLengths,
-                                      float3 cameraPosition, float4x4 projectionMatrix,
-                                      uint instanceDataIndex, int viewIndex, uint frameIndex,
-                                      uint drawFlags, uint meshletGlobalIndex,
-                                      float4x4 previousModelViewProjectionMatrix) {
-  PackedCachedVertex cv = bda.cachedVertices[globalVertexIndex];
-  PackedStaticVertex sv = bda.staticVertices[globalVertexIndex];
-
-  float3 position = unpackPosition(cv);
-  float4 normalSign = unpackNormalSign(cv);
-  float3 tangent = unpackTangent(cv);
-  float3 modelScale = unpackModelScale(cv) * modelColumnLengths;
-
-  // Only the tangent (T) and normal (N) of the tangent frame are output downstream, so the
-  // bitangent column is not built; both are carried into world space by the adjugate.
-  float3 worldTangent = adjugateModelMatrix * normalize(tangent);
-  float3 worldNormal = adjugateModelMatrix * normalize(normalSign.xyz);
-
-  float4 viewSpacePosition = modelViewMatrix * float4(position, 1.0);
-  float4 clipSpacePosition = projectionMatrix * viewSpacePosition;
-  viewSpacePosition.xyz /= viewSpacePosition.w;
-  float3 worldSpacePosition = (modelMatrix * float4(position, 1.0)).xyz;
-
-  bool debugColors = (drawFlags & 1u) != 0u;
-
-  MeshletVarying o;
-  o.position = clipSpacePosition;
-  o.worldSpacePosition = worldSpacePosition;
-  o.viewSpacePosition = viewSpacePosition.xyz;
-  o.cameraRelativePosition = worldSpacePosition - cameraPosition;
-  o.tangentSign = float4(worldTangent, normalSign.w);
-  o.normal = worldNormal;
-  o.texCoord0 = sv.texCoord0;
-  o.texCoord1 = sv.texCoord1;
-  o.color0 = debugColors ? float4(meshletDebugColor(meshletGlobalIndex), 1.0) : unpackColor0(sv);
-  o.modelScale = modelScale;
-  o.materialID = sv.materialID;
-  o.instanceDataIndex = instanceDataIndex | (debugColors ? 0x80000000u : 0u);
-  o.viewIndex = viewIndex;
-  o.frameIndex = frameIndex;
-
-  float4 previousClipSpace = clipSpacePosition;
-  if (velocity) {
-    // A generation mismatch means the previous-frame vertex is not comparable -> zero motion.
-    if (bda.generations[globalVertexIndex] == bda.previousGenerations[globalVertexIndex]) {
-      float3 previousPosition = unpackPosition(bda.previousCachedVertices[globalVertexIndex]);
-      previousClipSpace = previousModelViewProjectionMatrix * float4(previousPosition, 1.0);
-    }
-  }
-  o.currentClipSpace = clipSpacePosition;
-  o.previousClipSpace = previousClipSpace;
-
-  return o;
-}
-
 // Standard meshlet emission (vertex transform + triangle indices), shared by the View task / no-task
 // and RSM mesh entries. The caller resolves meshletGlobalIndex / meshObjectID (from the task payload
-// or the indirect draw command) and the view index (multiview SV_ViewID or the layer-routing index).
+// or the indirect draw command) and the view index (multiview SV_ViewID or the layer-routing index);
+// the per-vertex transform itself is the shared transformVertex from mesh_globals.
 void emitStandardMeshlet(uint localInvocationIndex, uint viewIndex, uint meshletGlobalIndex, uint meshObjectID, GlobalBDAPointers bda,
-                         out vertices MeshletVarying vertices[MAX_MESHLET_VERTICES],
+                         out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
                          out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   MeshletDescriptor descriptor = bda.meshletDescriptors[meshletGlobalIndex];
   uint vertexCount = min(descriptor.vertexCount, MAX_MESHLET_VERTICES);
@@ -214,32 +135,11 @@ void emitStandardMeshlet(uint localInvocationIndex, uint viewIndex, uint meshlet
 
   SetMeshOutputCounts(vertexCount, primitiveCount);
 
-  DrawInfo drawInfo = drawInfoItems[meshObjectID];
-  MatrixPair matrixPair = bda.matrixPairs[drawInfo.matrixID];
-  float4x4 modelMatrix = matrixPair.modelMatrix;
-
-  View view = uView.views[viewIndex];
-
-  float3 cameraPosition = view.inverseViewMatrix[3].xyz;
-  float4x4 modelViewMatrix = view.viewMatrix * modelMatrix;
-  float3x3 adjugateModelMatrix = adjugate(modelMatrix);
-  float3 modelColumnLengths = float3(length(modelMatrix[0].xyz),
-                                     length(modelMatrix[1].xyz),
-                                     length(modelMatrix[2].xyz));
-
-  float4x4 previousModelViewProjectionMatrix = float4x4(0.0);
-  if (velocity) {
-    View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-    previousModelViewProjectionMatrix = previousView.projectionMatrix * (previousView.viewMatrix * matrixPair.previousModelMatrix);
-  }
+  VertexTransform t = makeVertexTransform(meshObjectID, viewIndex, bda);
 
   for (uint i = localInvocationIndex; i < vertexCount; i += MESH_GROUP_SIZE) {
     uint globalVertexIndex = bda.meshletVertices[descriptor.vertexOffset + i];
-    vertices[i] = transformMeshletVertex(globalVertexIndex, bda, modelMatrix, modelViewMatrix,
-                                         adjugateModelMatrix, modelColumnLengths, cameraPosition,
-                                         view.projectionMatrix, drawInfo.instanceDataIndex, int(viewIndex),
-                                         pushConstants.frameIndex, pushConstants.drawFlags, meshletGlobalIndex,
-                                         previousModelViewProjectionMatrix);
+    vertices[i] = transformVertex(globalVertexIndex, bda, t, meshletGlobalIndex);
   }
 
   for (uint i = localInvocationIndex; i < primitiveCount; i += MESH_GROUP_SIZE) {
@@ -360,7 +260,7 @@ void viewMeshMain(uint localInvocationIndex : SV_GroupIndex,
                   uint groupID : SV_GroupID,
                   uint viewID : SV_ViewID,
                   in payload ViewTaskPayload payload,
-                  out vertices MeshletVarying vertices[MAX_MESHLET_VERTICES],
+                  out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
                   out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   uint meshletGlobalIndex = payload.meshletDescriptorBase + payload.meshletLocalIndices[groupID];
   GlobalBDAPointers bda = globalBDAPointersBuffer[0];
@@ -376,7 +276,7 @@ void viewMeshMain(uint localInvocationIndex : SV_GroupIndex,
 void viewMeshNoTaskMain(uint localInvocationIndex : SV_GroupIndex,
                         uint viewID : SV_ViewID,
                         uint drawIndex : SV_DrawIndex,
-                        out vertices MeshletVarying vertices[MAX_MESHLET_VERTICES],
+                        out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
                         out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   GlobalBDAPointers bda = globalBDAPointersBuffer[0];
   MeshDrawCommand* meshDrawCommands = (MeshDrawCommand*)((uint64_t(pushConstants.meshDrawCommandsBDAHigh) << 32) | uint64_t(pushConstants.meshDrawCommandsBDALow));
@@ -714,7 +614,7 @@ void rsmTaskMain(uint localInvocationIndex : SV_GroupIndex,
 void rsmMeshMain(uint localInvocationIndex : SV_GroupIndex,
                  uint groupID : SV_GroupID,
                  in payload RSMTaskPayload payload,
-                 out vertices MeshletVarying vertices[MAX_MESHLET_VERTICES],
+                 out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
                  out indices uint3 triangles[MAX_MESHLET_PRIMITIVES],
                  out primitives MeshletPrimitive primitives[MAX_MESHLET_PRIMITIVES]) {
   uint meshletLocalIndex = payload.meshletLocalIndices[groupID];

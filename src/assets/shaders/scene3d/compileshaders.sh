@@ -1620,8 +1620,8 @@ if [ -n "$slangcPath" ]; then
     fi
   }
 
-  compileSlangShader "slang_mesh_vert" "slang/mesh.slang" "vertexMain" "vertex"
-  compileSlangShader "slang_mesh_frag" "slang/mesh.slang" "fragmentMain" "fragment"
+  compileSlangShader "slang_mesh_vert" "slang/mesh_vertex.slang"   "vertexMain"   "vertex"
+  compileSlangShader "slang_mesh_frag" "slang/mesh_fragment.slang" "fragmentMain" "fragment"
 
   # Meshlet path (task + mesh shaders). One entry-point pair per render mode (the mesh-stage output
   # layout must be a compile-time constant), plus the no-task-shader mesh variant (which drops the
