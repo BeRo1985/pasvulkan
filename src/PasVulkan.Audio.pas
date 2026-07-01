@@ -3605,9 +3605,18 @@ var i:TpvInt32;
     Voice:TpvAudioSoundSampleVoice;
 begin
  AudioEngine.GlobalVoiceManager.DeallocateAllGlobalVoicesForSoundSample(self);
- SoundSamples.Remove(self);
- if length(Name)>0 then begin
-  SoundSamples.HashMap.Delete(Name);
+ // Unlink from the mixer-visible Samples list/HashMap under the audio CriticalSection (symmetric to
+ // TpvAudioSoundSamples.Load's Add). TpvAudio.FillBuffer iterates "for SampleIndex:=0 to Samples.Count-1" under this
+ // CriticalSection, so unlinking here is what stops the mixer from ever iterating onto a sample that is being freed.
+ // The voice objects and buffers below are released only after we are unlinked, hence outside the lock.
+ AudioEngine.CriticalSection.Enter;
+ try
+  SoundSamples.Remove(self);
+  if length(Name)>0 then begin
+   SoundSamples.HashMap.Delete(Name);
+  end;
+ finally
+  AudioEngine.CriticalSection.Leave;
  end;
  for i:=0 to length(Voices)-1 do begin
   Voice:=Voices[i];
@@ -3985,9 +3994,22 @@ end;
 
 destructor TpvAudioSoundMusic.Destroy;
 begin
- SoundMusics.Remove(self);
- if length(Name)>0 then begin
-  SoundMusics.HashMap.Delete(Name);
+ // Unlink ourselves from the mixer-visible Musics list/HashMap under the audio CriticalSection - symmetric to
+ // TpvAudioSoundMusics.Load's Add, and identical to TpvAudioSoundVideo.Destroy. The audio mixing thread iterates
+ // "for i:=0 to Musics.Count-1 do Musics[i].MixTo(...)" in TpvAudio.FillBuffer while holding this very
+ // CriticalSection, so removing ourselves under it is what makes freeing a music safe against the mixer. (The old
+ // code relied on the caller's TpvAudio.Lock, which only toggles the IsReady flag and does NOT hold the lock across
+ // the free - hence the intermittent use-after-free SIGSEGV.) The heavy resources below are released only AFTER we
+ // are unlinked: the mixer can no longer reach us, so they must not be held under the lock (keeps the mixer stall
+ // minimal and avoids doing ov_clear/stream teardown inside the critical section).
+ AudioEngine.CriticalSection.Enter;
+ try
+  SoundMusics.Remove(self);
+  if length(Name)>0 then begin
+   SoundMusics.HashMap.Delete(Name);
+  end;
+ finally
+  AudioEngine.CriticalSection.Leave;
  end;
  if assigned(vf) then begin
   ov_clear(vf);
