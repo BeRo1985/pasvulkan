@@ -1855,6 +1855,8 @@ begin
     finally
      FreeAndNil(SourceStream);
     end;
+   end else begin
+    result:=nil;
    end;
   end;
  end else begin
