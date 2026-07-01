@@ -1087,9 +1087,11 @@ type PpvAudioInt32=^TpvInt32;
        fOnThirdFillBuffer:TpvAudioOnFillBuffer;
        fOutputSampleFrames:TpvInt64; // total sample-frames pushed into the output ring buffer (the global playback clock)
        fOutputLatencyFrames:TpvInt32; // device-internal output latency in frames, set by the backend after the device is opened
+       fPauseLockCount:TpvInt32; // number of outstanding Lock() calls (from any thread); >0 keeps the mixer parked. Guarded by CriticalSection.
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
        procedure CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
        procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
+       procedure WakeThread; // signals the mixing thread's event so a parked thread resumes; safe to call while awake
       public
        Samples:TpvAudioSoundSamples;
        Musics:TpvAudioSoundMusics;
@@ -7480,6 +7482,7 @@ begin
  OuterGainHF:=1.0;
  RingBuffer:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(OutputBufferSize*2);
  Thread:=TpvAudioThread.Create(self);
+ fPauseLockCount:=0;
  IsReady:=true;
  IsMuted:=false;
  IsActive:=true;
@@ -7733,6 +7736,17 @@ var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,
 begin
  CriticalSection.Enter;
  try
+
+  // Pause honoured under the lock: if a Lock() slipped in after the mixer thread had already passed its (unlocked)
+  // IsReady check for this cycle and committed to mixing, bail out here instead of touching any audio structures. This
+  // closes the check-then-act window so that once Lock() has returned, the mixer really is out of Musics/Samples/
+  // Listener for the whole locked region. Emit one buffer of silence (rather than replaying the stale OutputBuffer),
+  // consistent with the mixer being parked. The normal (non-racing) case never reaches here: Lock() sets IsReady:=false,
+  // so the thread loop takes its sleep branch and does not call FillBuffer at all until Unlock() wakes it.
+  if fPauseLockCount>0 then begin
+   FillChar(Pointer(OutputBuffer)^,OutputBufferSize,#0);
+   exit;
+  end;
 
   if assigned(UpdateHook) then begin
    UpdateHook;
@@ -8314,23 +8328,59 @@ begin
  end;
 end;
 
+// Lock/Unlock give a caller a window in which the audio mixing thread (TpvAudioThread.Execute -> FillBuffer) is
+// guaranteed NOT to be mixing, so the caller can safely touch audio structures / read-modify-write mixer-visible state.
+//
+// IMPORTANT: this is deliberately NOT implemented by holding CriticalSection across the caller's region. Callers wrap
+// substantial, lock-taking work in Lock/Unlock (e.g. TGame.UpdateAudio, POCA scripting), so holding the mixer's
+// CriticalSection across those regions would create CriticalSection->game-lock ordering edges and risk deadlock.
+// Instead we only hold CriticalSection for an O(1) flag update and park the mixer via a counter that FillBuffer and the
+// thread loop honour. Thus Lock/Unlock never hold CriticalSection across foreign code -> no new lock-ordering edges ->
+// no deadlock, while still giving true mutual exclusion against the mixing pass.
+//
+// The counter (fPauseLockCount) makes concurrent/nested Lock calls from multiple threads compose correctly (the old
+// single boolean IsReady clobbered itself when two threads locked/unlocked around each other).
 procedure TpvAudio.Lock;
 begin
  CriticalSection.Enter;
  try
-  IsReady:=false;
+  inc(fPauseLockCount);
+  IsReady:=false; // drive the mixer thread into its sleep branch instead of mixing
  finally
   CriticalSection.Leave;
  end;
 end;
 
 procedure TpvAudio.Unlock;
+var DoWake:boolean;
 begin
+ DoWake:=false;
  CriticalSection.Enter;
  try
-  IsReady:=true;
+  if fPauseLockCount>0 then begin
+   dec(fPauseLockCount);
+  end;
+  if fPauseLockCount=0 then begin
+   IsReady:=true;
+   DoWake:=true;
+  end;
  finally
   CriticalSection.Leave;
+ end;
+ // Wake the (possibly parked) mixer thread once the last outstanding lock is released.
+ if DoWake then begin
+  WakeThread;
+ end;
+end;
+
+// Signal the mixing thread's (auto-reset) event so a parked thread resumes at its next loop iteration. Deliberately
+// called OUTSIDE CriticalSection and without taking any other lock, so it can never deadlock. Because the event is
+// auto-reset, a SetEvent issued while the thread is still awake simply latches and is consumed by its next WaitFor (a
+// harmless spurious wake); there is no lost wakeup either. Guarded for teardown (Thread is nil once freed).
+procedure TpvAudio.WakeThread;
+begin
+ if assigned(Thread) then begin
+  Thread.Event.SetEvent;
  end;
 end;
 
@@ -8341,6 +8391,11 @@ begin
   IsActive:=Active;
  finally
   CriticalSection.Leave;
+ end;
+ // IsActive gates the mixer thread's sleep branch, so a false->true transition must wake a parked thread (previously it
+ // could stay asleep forever, since nothing signalled the event on resume). Deactivating needs no wake (it is parking).
+ if Active then begin
+  WakeThread;
  end;
 end;
 
@@ -8362,6 +8417,9 @@ begin
  finally
   CriticalSection.Leave;
  end;
+ // IsMuted does not gate the mixer's sleep branch (it only zeroes the already-mixed output), so the thread is never
+ // parked because of muting - this wake is therefore defensive/symmetric and at worst a harmless spurious wake.
+ WakeThread;
 end;
 
 function TpvAudio.PlaybackPositionInSeconds:TpvDouble;
