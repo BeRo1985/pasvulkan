@@ -1327,8 +1327,8 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
     end;
     Ratio:=Max(1.0+(ScreenAxisDirection.Dot(fMousePosition-fSaveMousePosition)*1e-2),1e-3);
     if fUniformScale then begin
-     // Uniform-restricted (e.g. physics items): drive all axes from the grabbed handle, so the
-     // result stays uniform while the drag direction follows the handle the user actually grabbed.
+     // Uniform-restricted: drive all axes from the grabbed handle, so the result stays uniform
+     // while the drag direction follows the handle the user actually grabbed.
      fScale:=TpvVector3.AllAxis*Ratio;
     end else begin
      case fAction of
