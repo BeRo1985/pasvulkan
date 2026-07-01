@@ -1820,6 +1820,7 @@ begin
    result:=TMemoryStream.Create;
    try
     TMemoryStream(result).LoadFromFile(aFileName);
+    TMemoryStream(result).Seek(0,soBeginning);
    except
     FreeAndNil(result);
     raise;
@@ -1830,6 +1831,7 @@ begin
     result:=TMemoryStream.Create;
     try
      TMemoryStream(result).LoadFromFile(FullFileName);
+     TMemoryStream(result).Seek(0,soBeginning);
     except
      FreeAndNil(result);
      raise;
