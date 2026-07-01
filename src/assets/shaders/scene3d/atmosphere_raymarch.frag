@@ -728,24 +728,59 @@ void main() {
     }
 
     // Extra distance-based extinction boost: fades far away background objects (asteroids, other space objects) into
-    // the atmospheric haze, since the physically correct zenith transmittance alone is too high to occlude them on a
-    // small planet. It is only applied to actual scene geometry (needAerialPerspective), never to sky/space/skybox
-    // pixels (depthIsZFar) - otherwise the sky would be tinted and the starfield/skybox would turn black in space.
-    // rayLength is the distance to the background object. The boost also grows the already accumulated in-scattering
-    // (haze) so distant objects blend into the haze colour instead of turning black. To keep the haze hue stable the
-    // in-scattering is scaled by a single scalar luminance ratio rather than a per-channel ratio (a per-channel
-    // L / (1 - T) over-amplifies the red channel - which has the highest transmittance - and shifts the colour to
-    // magenta/purple).
+    // the atmospheric haze, since the physically correct transmittance alone is too high to occlude them on a small
+    // planet. It is only applied to actual scene geometry (needAerialPerspective), never to sky/space/skybox pixels
+    // (depthIsZFar) - otherwise the sky would be tinted and the starfield/skybox would turn black in space. rayLength
+    // is the distance to the background object.
+    //
+    // Two coupled steps:
+    //   1. Occlusion: drive the object's transmittance down so the (lit) object stops shining through.
+    //   2. Haze fill: cross-fade the in-scattering toward the FULL sky colour of this exact view direction, so the
+    //      occluded object vanishes into the atmosphere instead of into black.
+    // Step 2 is required because the in-scattering accumulated for this pixel is NOT the sky colour: it only covers
+    // the finite camera->object segment and it is additionally scaled down by aerialPerspectiveScale (0.15 in the
+    // planet's atmosphere config), so it is far dimmer than the neighbouring depthIsZFar sky pixels. Cross-fading to
+    // it alone (or just killing transmittance) would leave a dark object silhouette. So we march the atmosphere to
+    // infinity here exactly like a sky pixel does (DepthBufferValue < 0 and tMaxMax < 0 => no depth clamp, no aerial
+    // perspective scale, no sun disc) to obtain the matching sky in-scattering, and blend toward it by the boost
+    // opacity. At full boost the pixel becomes that sky colour and the object disappears; at zero boost nothing
+    // changes.
+    //
+    // This replaces the earlier approach that grew the in-scattering by an unbounded opacityAfter/opacityBefore
+    // ratio, which - wherever the real haze along the ray was thin - amplified the tiny in-scattering by up to ~1e4x
+    // and clipped it to a blown-out white (the reason the asteroids first turned white behind the atmosphere).
     if(needAerialPerspective){
       float distantExtinctionBoost = GetDistantExtinctionBoost(uAtmosphereParameters.atmosphereParameters, originalWorldPos, worldDir, rayLength, viewHeight);
       if(distantExtinctionBoost > 0.0){
-        vec3 boostedTransmittance = transmittance * exp(vec3(-distantExtinctionBoost));
-        const vec3 luminanceWeights = vec3(0.2126, 0.7152, 0.0722);
-        float opacityBefore = max(0.0, 1.0 - dot(transmittance, luminanceWeights));
-        float opacityAfter = max(0.0, 1.0 - dot(boostedTransmittance, luminanceWeights));
-        float hazeGrow = opacityAfter / max(1e-4, opacityBefore);
-        inscattering *= hazeGrow;
-        transmittance = boostedTransmittance;
+
+        // Step 1: occlude the object.
+        transmittance *= exp(vec3(-distantExtinctionBoost));
+
+        // Step 2: fill with the full sky colour of this direction.
+        float boostOpacity = 1.0 - exp(-distantExtinctionBoost);
+        vec3 skyMarchPos = originalWorldPos;
+        if(MoveToTopAtmosphere(skyMarchPos, worldDir, uAtmosphereParameters.atmosphereParameters.TopRadius)){
+          SingleScatteringResult skyResult = IntegrateScatteredLuminance(
+            uTransmittanceLutTexture,
+            uMultiScatteringTexture,
+            uAtmosphereMapTexture,
+            uv,
+            skyMarchPos,
+            worldDir,
+            sunDirection,
+            uAtmosphereParameters.atmosphereParameters,
+            false, // ground
+            0.0,   // sampleCountIni
+            -1.0,  // DepthBufferValue < 0 => integrate the whole sky path, not clamped to the object depth
+            true,  // variableSampleCount (match the neighbouring sky pixels)
+            true,  // mieRayPhase
+            view.inverseViewMatrix * view.inverseProjectionMatrix,
+            -1.0,  // tMaxMax < 0 => infinite
+            reversedZ
+          );
+          // fadeFactor matches the same atmosphere fade already applied to the accumulated in-scattering above.
+          inscattering = mix(inscattering, skyResult.L * fadeFactor, boostOpacity);
+        }
       }
     }
 
