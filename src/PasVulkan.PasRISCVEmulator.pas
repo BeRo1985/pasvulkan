@@ -1909,19 +1909,14 @@ end;
 
 function TpvPasRISCVEmulatorMachineInstance.IsAudioAudible:Boolean;
 begin
- // Default: the emulated machine's audio is always audible. Override to gate it, e.g. so that
- // the sound is only heard while the player is actually interacting with the computer.
  result:=true;
 end;
 
 procedure TpvPasRISCVEmulatorMachineInstance.AudioFillBufferCallback(const aBuffer:Pointer;const aCountSamples:TpvSizeInt);
 begin
- // Always let the emulated sound device drain its produced audio into the (stereo float) buffer,
- // so the guest audio stays in sync regardless of whether it is currently audible. When it is not
- // audible, silence the just-produced result so nothing gets mixed into the master output.
  fMachine.SoundIO.OutputAudioFillBufferCallback(aBuffer,aCountSamples);
  if (aCountSamples>0) and not IsAudioAudible then begin
-  FillChar(aBuffer^,aCountSamples*2*SizeOf(TpvAudioFloat),#0);
+  FillChar(aBuffer^,aCountSamples*2*SizeOf(TpvFloat),#0);
  end;
 end;
 
