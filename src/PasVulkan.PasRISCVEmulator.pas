@@ -183,6 +183,9 @@ type { TpvPasRISCVEmulatorMachineInstance }
        function GetINITRDFileName:TpvRawByteString; virtual; abstract;
        function GetVirtIOBlockImageFileName:TpvRawByteString; virtual; abstract;
        function GetNVMeImageFileName:TpvRawByteString; virtual; abstract;
+       function GetVirtIOBlockImageInMemory:Boolean; virtual;
+       function GetNVMeImageInMemory:Boolean; virtual;
+       function LoadImageIntoMemoryStream(const aFileName:TpvRawByteString):TMemoryStream;
 {$ifdef PasRISCVVirtIOGPUVulkanVenus}
        procedure OnScanoutUpdate(const aScanoutID:TPasRISCVUInt32;const aPixels:Pointer;const aWidth,aHeight,aStride,aFormat:TPasRISCVUInt32);
 {$endif}
@@ -1788,6 +1791,77 @@ begin
  inherited Destroy;
 end;
 
+function TpvPasRISCVEmulatorMachineInstance.GetVirtIOBlockImageInMemory:Boolean;
+begin
+ // Default: use a writeback-capable file-mapped stream when a real file exists.
+ // Override and return true to hold the VirtIO block image purely in memory
+ // (TMemoryStream, all guest writes stay in RAM, nothing is written back to disk).
+ result:=false;
+end;
+
+function TpvPasRISCVEmulatorMachineInstance.GetNVMeImageInMemory:Boolean;
+begin
+ // Default: use a writeback-capable file-mapped stream when a real file exists.
+ // Override and return true to hold the NVMe image purely in memory
+ // (TMemoryStream, all guest writes stay in RAM, nothing is written back to disk).
+ result:=false;
+end;
+
+function TpvPasRISCVEmulatorMachineInstance.LoadImageIntoMemoryStream(const aFileName:TpvRawByteString):TMemoryStream;
+var SourceStream:TStream;
+    FullFileName:TpvRawByteString;
+begin
+ // Loads a disk image from a real file (working directory or assets base path) or
+ // from a packed asset fully into a fresh TMemoryStream. Returns nil when the image
+ // could not be found. The caller takes ownership of the returned stream (AttachStream
+ // will free it later).
+ if length(aFileName)>0 then begin
+  if FileExists(aFileName) then begin
+   result:=TMemoryStream.Create;
+   try
+    TMemoryStream(result).LoadFromFile(aFileName);
+   except
+    FreeAndNil(result);
+    raise;
+   end;
+  end else begin
+   FullFileName:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+aFileName;
+   if FileExists(FullFileName) then begin
+    result:=TMemoryStream.Create;
+    try
+     TMemoryStream(result).LoadFromFile(FullFileName);
+    except
+     FreeAndNil(result);
+     raise;
+    end;
+   end else if pvApplication.Assets.ExistAsset('riscv/'+aFileName) then begin
+    SourceStream:=pvApplication.Assets.GetAssetStream('riscv/'+aFileName);
+    try
+     if assigned(SourceStream) then begin
+      result:=TMemoryStream.Create;
+      try
+       SourceStream.Seek(0,soBeginning);
+       if SourceStream.Size>0 then begin
+        result.CopyFrom(SourceStream,SourceStream.Size);
+       end;
+       result.Seek(0,soBeginning);
+      except
+       FreeAndNil(result);
+       raise;
+      end;
+     end else begin
+      result:=nil;
+     end;
+    finally
+     FreeAndNil(SourceStream);
+    end;
+   end;
+  end;
+ end else begin
+  result:=nil;
+ end;
+end;
+
 procedure TpvPasRISCVEmulatorMachineInstance.AfterMachineCreate;
 begin
  // Default: do nothing. Override to set e.g. FrameBufferDevice.AutomaticRefresh:=true
@@ -1838,7 +1912,18 @@ begin
 
  VirtIOBlockFile:=GetVirtIOBlockImageFileName;
  if assigned(fMachine.VirtIOBlockDevice) then begin
-  if FileExists(VirtIOBlockFile) then begin
+  if GetVirtIOBlockImageInMemory then begin
+   // In-memory only: load the whole image into a TMemoryStream and attach it, so that
+   // all guest writes stay in RAM and are never written back to the underlying file.
+   Stream:=LoadImageIntoMemoryStream(VirtIOBlockFile);
+   if assigned(Stream) then begin
+    try
+     fMachine.VirtIOBlockDevice.AttachStream(Stream);
+    except
+     FreeAndNil(Stream);
+    end;
+   end;
+  end else if FileExists(VirtIOBlockFile) then begin
    Stream:=TPasRISCVFileMappedStream.Create(VirtIOBlockFile,fmOpenReadWrite,true);
    if assigned(Stream) then begin
     try
@@ -1870,7 +1955,18 @@ begin
 
  NVMeFile:=GetNVMeImageFileName;
  if assigned(fMachine.NVMeDevice) then begin
-  if FileExists(NVMeFile) then begin
+  if GetNVMeImageInMemory then begin
+   // In-memory only: load the whole image into a TMemoryStream and attach it, so that
+   // all guest writes stay in RAM and are never written back to the underlying file.
+   Stream:=LoadImageIntoMemoryStream(NVMeFile);
+   if assigned(Stream) then begin
+    try
+     fMachine.NVMeDevice.AttachStream(Stream);
+    except
+     FreeAndNil(Stream);
+    end;
+   end;
+  end else if FileExists(NVMeFile) then begin
    Stream:=TPasRISCVFileMappedStream.Create(NVMeFile,fmOpenReadWrite,true);
    if assigned(Stream) then begin
     try
