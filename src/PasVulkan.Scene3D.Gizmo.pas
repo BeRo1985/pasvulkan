@@ -212,6 +212,7 @@ type { TpvScene3DGizmo }
        fSnapTranslate:TpvScalar;
        fSnapScale:TpvScalar;
        fSnapRotate:TpvScalar;
+       fUniformScale:boolean;
       public
        constructor Create(const aScene3D,aRendererInstance:TObject); reintroduce;
        destructor Destroy; override;
@@ -258,6 +259,7 @@ type { TpvScene3DGizmo }
        property SnapTranslate:TpvScalar read fSnapTranslate write fSnapTranslate;
        property SnapScale:TpvScalar read fSnapScale write fSnapScale;
        property SnapRotate:TpvScalar read fSnapRotate write fSnapRotate;
+       property UniformScale:boolean read fUniformScale write fUniformScale;
      end;
 
 implementation
@@ -287,6 +289,7 @@ begin
  fSnapTranslate:=0.0;
  fSnapScale:=0.0;
  fSnapRotate:=0.0;
+ fUniformScale:=false;
  fScene3D:=aScene3D;
 end;
 
@@ -679,6 +682,11 @@ begin
     end;
    end;
   end;
+ end;
+ // When restricted to uniform scaling, fold any per-axis scale handle grab into the
+ // uniform ScaleXYZ action.
+ if fUniformScale and (result in [TAction.ScaleX,TAction.ScaleY,TAction.ScaleZ]) then begin
+  result:=TAction.ScaleXYZ;
  end;
 end;
 
