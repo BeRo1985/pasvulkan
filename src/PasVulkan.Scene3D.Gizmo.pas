@@ -1304,42 +1304,42 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
   fSaveMousePosition:=fMousePosition;
  end;
  procedure ProcessScale;
- var Delta,Axis,BaseVector:TpvVector3;
-     Ratio:TpvScalar;
+ var Ratio:TpvScalar;
+     AxisIndex:TpvSizeInt;
+     ScreenAxisDirection:TpvVector2;
      DeltaMatrixScale:TpvMatrix4x4;
  begin
-  Delta:=(fRayOrigin+(fRayDirection*abs(IntersectRayPlane(fRayOrigin,fRayDirection,fTranslationPlane))))-
-         (fModelLocalMatrix.Translation.xyz+(fRelativeOrigin*fScreenFactor));
   case fAction of
    TAction.ScaleX,TAction.ScaleY,TAction.ScaleZ:begin
+    // Per-axis scaling: project the mouse movement onto the on-screen direction of the axis
+    // handle (which is flipped toward the camera via fAxisFactors), so dragging along the
+    // visible handle enlarges and back shrinks — consistent for all three axes regardless of
+    // the viewing side, matching the uniform ScaleXYZ feel.
     case fAction of
      TAction.ScaleX:begin
-      Axis:=fModelLocalMatrix.Right.xyz;
+      AxisIndex:=0;
      end;
      TAction.ScaleY:begin
-      Axis:=fModelLocalMatrix.Up.xyz;
+      AxisIndex:=1;
      end;
      else {TAction.ScaleZ:}begin
-      Axis:=fModelLocalMatrix.Forwards.xyz;
+      AxisIndex:=2;
      end;
     end;
-    Delta:=Axis.Dot(Delta)*Axis;
-    // The X and Y drag directions are inverted relative to Z, so flip their delta to give all
-    // three axes the same scale direction convention.
-    if fAction<>TAction.ScaleZ then begin
-     Delta:=-Delta;
+    ScreenAxisDirection:=WorldToPositionEx(DirectionUnary[AxisIndex]*(fAxisFactors[AxisIndex]*fScreenFactor),fModelViewProjectionMatrix)-fScreenSquareCenter;
+    if ScreenAxisDirection.Length>1e-6 then begin
+     ScreenAxisDirection:=ScreenAxisDirection.Normalize;
     end;
-    BaseVector:=fTranslationPlaneOrigin-fModelLocalMatrix.Translation.xyz;
-    Ratio:=Axis.Dot(BaseVector+Delta)/Axis.Dot(BaseVector);
+    Ratio:=Max(1.0+(ScreenAxisDirection.Dot(fMousePosition-fSaveMousePosition)*1e-2),1e-3);
     case fAction of
      TAction.ScaleX:begin
-      fScale.x:=Max(Ratio,1e-3);
+      fScale.x:=Ratio;
      end;
      TAction.ScaleY:begin
-      fScale.y:=Max(Ratio,1e-3);
+      fScale.y:=Ratio;
      end;
      else {TAction.ScaleZ:}begin
-      fScale.z:=Max(Ratio,1e-3);
+      fScale.z:=Ratio;
      end;
     end;
    end;
