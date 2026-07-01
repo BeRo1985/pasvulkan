@@ -683,11 +683,6 @@ begin
    end;
   end;
  end;
- // When restricted to uniform scaling, fold any per-axis scale handle grab into the
- // uniform ScaleXYZ action.
- if fUniformScale and (result in [TAction.ScaleX,TAction.ScaleY,TAction.ScaleZ]) then begin
-  result:=TAction.ScaleXYZ;
- end;
 end;
 
 procedure TpvScene3DGizmo.DrawGrid(const aInFlightFrameIndex:TpvSizeInt;const aGridSize:TpvScalar);
@@ -1331,15 +1326,21 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
      ScreenAxisDirection:=ScreenAxisDirection.Normalize;
     end;
     Ratio:=Max(1.0+(ScreenAxisDirection.Dot(fMousePosition-fSaveMousePosition)*1e-2),1e-3);
-    case fAction of
-     TAction.ScaleX:begin
-      fScale.x:=Ratio;
-     end;
-     TAction.ScaleY:begin
-      fScale.y:=Ratio;
-     end;
-     else {TAction.ScaleZ:}begin
-      fScale.z:=Ratio;
+    if fUniformScale then begin
+     // Uniform-restricted (e.g. physics items): drive all axes from the grabbed handle, so the
+     // result stays uniform while the drag direction follows the handle the user actually grabbed.
+     fScale:=TpvVector3.AllAxis*Ratio;
+    end else begin
+     case fAction of
+      TAction.ScaleX:begin
+       fScale.x:=Ratio;
+      end;
+      TAction.ScaleY:begin
+       fScale.y:=Ratio;
+      end;
+      else {TAction.ScaleZ:}begin
+       fScale.z:=Ratio;
+      end;
      end;
     end;
    end;
