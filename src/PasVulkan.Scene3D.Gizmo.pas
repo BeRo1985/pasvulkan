@@ -1325,7 +1325,8 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
     end;
     Delta:=Axis.Dot(Delta)*Axis;
     BaseVector:=fTranslationPlaneOrigin-fModelLocalMatrix.Translation.xyz;
-    Ratio:=Axis.Dot(BaseVector+Delta)/Axis.Dot(BaseVector);
+    // Negate the drag delta to match the ScaleXYZ direction convention.
+    Ratio:=Axis.Dot(BaseVector-Delta)/Axis.Dot(BaseVector);
     case fAction of
      TAction.ScaleX:begin
       fScale.x:=Max(Ratio,1e-3);
