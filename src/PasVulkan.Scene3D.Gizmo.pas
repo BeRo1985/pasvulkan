@@ -1339,7 +1339,8 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
     end;
    end;
    else {TAction.ScaleXYZ:}begin
-    fScale:=TpvVector3.AllAxis*Max(1.0+(((fMousePosition.x-fSaveMousePosition.x)+(fMousePosition.y-fSaveMousePosition.y))*1e-2),1e-3);
+    // Screen Y grows downward, so subtract the vertical delta: dragging up enlarges, down shrinks.
+    fScale:=TpvVector3.AllAxis*Max(1.0+(((fMousePosition.x-fSaveMousePosition.x)-(fMousePosition.y-fSaveMousePosition.y))*1e-2),1e-3);
    end;
   end;
   fScale.x:=Max(fScale.x,1e-3);
