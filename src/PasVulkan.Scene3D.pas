@@ -3581,6 +3581,13 @@ type EpvScene3D=class(Exception);
                      // per-in-flight-frame copy after the last master state change (Active/ModelMatrix/
                      // InstanceDataIndex/add/remove) of any render instance; 0 = fully settled, both loops skippable
                      fRenderInstanceChangeCounter:TPasMPInt32;
+                     // Cached result of the phase-2 render-instance bounding box combine, restored when the
+                     // settled instance skips the global render instance processing (TInstance.Update overwrites
+                     // fBoundingBox with the node-based one each frame)
+                     fRenderInstancesSettledBoundingBox:TpvAABB;
+                     // Per-in-flight-frame active-render-passes generation at the time of the last worklist
+                     // enqueue; a mismatch forces re-enqueuing so the per-render-instance draw infos get refreshed
+                     fRenderInstancesEnqueuedRenderPassesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fPreallocatedRenderInstances:TRenderInstances; // For virtual instance auto-assignment
                      fAvailablePreallocatedRenderInstances:TRenderInstances; // Free pool for virtual instances
                      fMaxRenderInstanceCount:TpvSizeInt; // Count of preallocated render instances for bookkeeping
@@ -31473,33 +31480,51 @@ begin
 {$ifdef UpdateProfilingTimes}
   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
-  fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
   if fUseRenderInstances then begin
-   fMeshBoundingBox:=fBoundingBox;
-   if fRenderInstances.Count>0 then begin
-    TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-    try
-     CountRenderInstances:=fRenderInstances.Count;
+   if (TPasMPInterlocked.Read(fRenderInstanceChangeCounter)<=0) and
+      (not fSceneInstance.fUpdatedOriginTransform) and
+      (length(fLightNodes)=0) and
+      (fRenderInstancesEnqueuedRenderPassesGenerations[aInFlightFrameIndex]=fActiveRenderPassesGenerations[aInFlightFrameIndex]) then begin
+    // Fully settled render instances: every per-in-flight-frame slot already carries exactly this
+    // state, so phase 1/2 of the global render instance processing can be skipped for this instance.
+    // Just restore the cached phase-2 combined bounding box, which the node-based bounding box
+    // computation of TInstance.Update overwrote earlier in this frame.
+    fBoundingBox:=fRenderInstancesSettledBoundingBox;
+   end else begin
+    fMeshBoundingBox:=fBoundingBox;
+    fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+    if fRenderInstances.Count>0 then begin
+     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+     try
+      CountRenderInstances:=fRenderInstances.Count;
 {$ifdef FlatParallelPhase1Populate}
-     // Pre-size the per-instance output array so Phase 1 can atomic-append into it lock-free. Count:=0 here;
-     // Phase 1 grows it back via TPasMPInterlocked.Add on Count.
-     if length(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items)<CountRenderInstances then begin
-      fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Resize(CountRenderInstances);
-     end;
-     fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
+      // Pre-size the per-instance output array so Phase 1 can atomic-append into it lock-free. Count:=0 here;
+      // Phase 1 grows it back via TPasMPInterlocked.Add on Count.
+      if length(fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items)<CountRenderInstances then begin
+       fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Resize(CountRenderInstances);
+      end;
+      fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
 {$endif}
-     if CountRenderInstances>0 then begin
-      StartIndex:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceWorkListCount,CountRenderInstances);
-      // Plain block copy of the object references, avoiding per-item indexer calls
-      Move(fRenderInstances.RawItems[0],fSceneInstance.fGlobalRenderInstanceWorkList[StartIndex],CountRenderInstances*SizeOf(TpvScene3D.TGroup.TInstance.TRenderInstance));
+      if CountRenderInstances>0 then begin
+       StartIndex:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceWorkListCount,CountRenderInstances);
+       // Plain block copy of the object references, avoiding per-item indexer calls
+       Move(fRenderInstances.RawItems[0],fSceneInstance.fGlobalRenderInstanceWorkList[StartIndex],CountRenderInstances*SizeOf(TpvScene3D.TGroup.TInstance.TRenderInstance));
+      end;
+     finally
+      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
      end;
-    finally
-     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+    end;
+    // Add Instance to phase 2 list
+    Index:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceInstanceCount,1);
+    fSceneInstance.fGlobalRenderInstanceInstances[Index]:=Self;
+    fRenderInstancesEnqueuedRenderPassesGenerations[aInFlightFrameIndex]:=fActiveRenderPassesGenerations[aInFlightFrameIndex];
+    // One more in-flight frame slot gets refreshed by this enqueue
+    if TPasMPInterlocked.Read(fRenderInstanceChangeCounter)>0 then begin
+     TPasMPInterlocked.Decrement(fRenderInstanceChangeCounter);
     end;
    end;
-   // Add Instance to phase 2 list
-   Index:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceInstanceCount,1);
-   fSceneInstance.fGlobalRenderInstanceInstances[Index]:=Self;
+  end else begin
+   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -39962,6 +39987,10 @@ begin
     for RenderInstanceIndex:=1 to GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count-1 do begin
      GroupInstance.fBoundingBox.DirectCombine(GroupInstance.fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[RenderInstanceIndex].BoundingBox);
     end;
+    // Cache for the settled skip in UpdateRenderInstances (the node-based bounding box computation of
+    // TInstance.Update overwrites fBoundingBox every frame, but the combine result stays constant while
+    // the render instances are settled)
+    GroupInstance.fRenderInstancesSettledBoundingBox:=GroupInstance.fBoundingBox;
    end;
 
    // UpdateBoundingVolumes (deferred from DAG processing)
