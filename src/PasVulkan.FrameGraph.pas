@@ -1312,6 +1312,9 @@ type EpvFrameGraph=class(Exception);
        fLastTimerQueryResults:TpvTimerQuery.TResults;
        fCPUTimeValues:TPassCPUTimeValues;
        fLastCPUTimeValues:TPassCPUTimeValues;
+       // Wall time of the slowest single pass Update call of the last TpvFrameGraph.Update, for profiling
+       fUpdateMaxPassTime:TpvDouble;
+       fUpdateMaxPassName:TpvRawByteString;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames);
        destructor Destroy; override;
@@ -1410,6 +1413,8 @@ type EpvFrameGraph=class(Exception);
        property DrawSwapChainImageIndex:TpvSizeInt read fDrawSwapChainImageIndex;
        property DrawPreviousInFlightFrameIndex:TpvSizeInt read fDrawPreviousInFlightFrameIndex;
        property DrawInFlightFrameIndex:TpvSizeInt read fDrawInFlightFrameIndex;
+       property UpdateMaxPassTime:TpvDouble read fUpdateMaxPassTime;
+       property UpdateMaxPassName:TpvRawByteString read fUpdateMaxPassName;
        property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
        property TimerQueries:TpvTimerQueries read fTimerQueries;
        property LastTimerQueryResults:TpvTimerQuery.TResults read fLastTimerQueryResults;
@@ -7747,7 +7752,19 @@ var QueueIndex,Index,SubpassIndex:TpvSizeInt;
     PhysicalCustomPass:TPhysicalCustomPass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
+    StartTime,EndTime:TpvHighResolutionTime;
+ procedure TrackPass(const aPass:TPass);
+ var Time:TpvDouble;
+ begin
+  Time:=pvApplication.HighResolutionTimer.ToFloatSeconds(EndTime-StartTime)*1000.0;
+  if Time>fUpdateMaxPassTime then begin
+   fUpdateMaxPassTime:=Time;
+   fUpdateMaxPassName:=aPass.fName;
+  end;
+ end;
 begin
+ fUpdateMaxPassTime:=0.0;
+ fUpdateMaxPassName:='';
  for QueueIndex:=0 to fQueues.Count-1 do begin
   Queue:=fQueues[QueueIndex];
   for Index:=0 to Queue.fPhysicalPasses.Count-1 do begin
@@ -7755,21 +7772,33 @@ begin
    if assigned(PhysicalPass) then begin
     if PhysicalPass is TPhysicalComputePass then begin
      PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
+     StartTime:=pvApplication.HighResolutionTimer.GetTime;
      PhysicalComputePass.fComputePass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+     EndTime:=pvApplication.HighResolutionTimer.GetTime;
+     TrackPass(PhysicalComputePass.fComputePass);
      PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
     end else if PhysicalPass is TPhysicalTransferPass then begin
      PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
+     StartTime:=pvApplication.HighResolutionTimer.GetTime;
      PhysicalTransferPass.fTransferPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+     EndTime:=pvApplication.HighResolutionTimer.GetTime;
+     TrackPass(PhysicalTransferPass.fTransferPass);
      PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalTransferPass.fTransferPass.fFlags;
     end else if PhysicalPass is TPhysicalCustomPass then begin
      PhysicalCustomPass:=TPhysicalCustomPass(PhysicalPass);
+     StartTime:=pvApplication.HighResolutionTimer.GetTime;
      PhysicalCustomPass.fCustomPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+     EndTime:=pvApplication.HighResolutionTimer.GetTime;
+     TrackPass(PhysicalCustomPass.fCustomPass);
      PhysicalCustomPass.fCustomPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalCustomPass.fCustomPass.fFlags;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
      for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
       PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
+      StartTime:=pvApplication.HighResolutionTimer.GetTime;
       PhysicalRenderPassSubpass.fRenderPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
+      EndTime:=pvApplication.HighResolutionTimer.GetTime;
+      TrackPass(PhysicalRenderPassSubpass.fRenderPass);
       PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubpass.fRenderPass.fFlags;
      end;
     end;
