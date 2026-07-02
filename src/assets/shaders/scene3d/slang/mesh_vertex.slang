@@ -6,11 +6,12 @@
 import gputypes;
 import mesh_bindings;
 import mesh_globals;
+import mesh_meshlet_config;  // velocity link-time constant
 
 [shader("vertex")]
-VertexInputVarying vertexMain(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID, uint viewID : SV_ViewID) {
+VertexInputVarying<velocity> vertexMain(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID, uint viewID : SV_ViewID) {
   uint viewIndex = pushConstants.viewBaseIndex + viewID;
   GlobalBDAPointers bda = globalBDAPointersBuffer[0];
   VertexTransform t = makeVertexTransform(instanceID, viewIndex, bda);
-  return transformVertex(vertexID, bda, t, instanceID);
+  return transformVertex<velocity>(vertexID, bda, t, instanceID);
 }

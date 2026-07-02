@@ -5,9 +5,12 @@
 import gputypes;
 import mesh_bindings;
 import mesh_globals;
+import mesh_meshlet_config;  // velocity link-time constant
 
+// The input type must match the vertex / mesh output (same velocity value), so the fragment is
+// variant per velocity too. The debug shading itself uses only always-present fields.
 [shader("pixel")]
-float4 fragmentMain(VertexInputVarying input) : SV_Target0 {
+float4 fragmentMain(VertexInputVarying<velocity> input) : SV_Target0 {
   float3 debugColor = float3(frac(float(input.materialID) * 0.125), frac(input.texCoord0));
   return float4(debugColor, 1.0);
 }

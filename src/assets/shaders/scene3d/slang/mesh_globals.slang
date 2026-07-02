@@ -7,15 +7,16 @@ module mesh_globals;
 
 import gputypes;
 import mesh_bindings;
-import mesh_meshlet_config;  // velocity spec constant
+import mesh_meshlet_config;  // velocity link-time constant
 import utils;
 import math;
 import debug;
 
 // Per-vertex varyings, locations identical to mesh.vert / mesh.mesh, so the fragment shader is the
-// same for the vertex-stage and mesh-shader geometry paths. The velocity slots (13/14) are always
-// declared; the velocity spec constant only gates whether they carry a real previous-frame position.
-public struct VertexInputVarying {
+// same for the vertex-stage and mesh-shader geometry paths. The velocity slots (13/14) are pruned
+// via Conditional when the compile-time HasVelocity is false, so non-TAA passes carry no velocity
+// interpolants (and, for mesh shaders, no velocity mesh-output memory).
+public struct VertexInputVarying<bool HasVelocity> {
   public float4 position : SV_Position;
   [[vk::location(0)]] public float3 worldSpacePosition : LOC0;
   [[vk::location(1)]] public float3 viewSpacePosition : LOC1;
@@ -30,8 +31,8 @@ public struct VertexInputVarying {
   [[vk::location(10)]] public nointerpolation uint instanceDataIndex : LOC10;
   [[vk::location(11)]] public nointerpolation int viewIndex : LOC11;
   [[vk::location(12)]] public nointerpolation uint frameIndex : LOC12;
-  [[vk::location(13)]] public float4 previousClipSpace : LOC13;
-  [[vk::location(14)]] public float4 currentClipSpace : LOC14;
+  [[vk::location(13)]] public Conditional<float4, HasVelocity> previousClipSpace : LOC13;
+  [[vk::location(14)]] public Conditional<float4, HasVelocity> currentClipSpace : LOC14;
 }
 
 // Per-draw transform state (matrices + per-instance ids), computed once per draw / meshlet and
@@ -75,7 +76,7 @@ public VertexTransform makeVertexTransform(uint meshObjectID, uint viewIndex, Gl
 // The standard per-vertex transform shared by the vertex-stage and mesh-shader paths. debugColorID
 // feeds the per-id debug color (the meshlet index for the mesh path, the instance index for the
 // vertex path).
-public VertexInputVarying transformVertex(uint globalVertexIndex, GlobalBDAPointers bda, VertexTransform t, uint debugColorID) {
+public VertexInputVarying<HasVelocity> transformVertex<bool HasVelocity>(uint globalVertexIndex, GlobalBDAPointers bda, VertexTransform t, uint debugColorID) {
   PackedCachedVertex cv = bda.cachedVertices[globalVertexIndex];
   PackedStaticVertex sv = bda.staticVertices[globalVertexIndex];
 
@@ -96,7 +97,7 @@ public VertexInputVarying transformVertex(uint globalVertexIndex, GlobalBDAPoint
 
   bool debugColors = (pushConstants.drawFlags & 1u) != 0u;
 
-  VertexInputVarying o;
+  VertexInputVarying<HasVelocity> o;
   o.position = clipSpacePosition;
   o.worldSpacePosition = worldSpacePosition;
   o.viewSpacePosition = viewSpacePosition.xyz;
@@ -112,8 +113,10 @@ public VertexInputVarying transformVertex(uint globalVertexIndex, GlobalBDAPoint
   o.viewIndex = t.viewIndex;
   o.frameIndex = pushConstants.frameIndex;
 
+  // The velocity slots exist only when HasVelocity; the assignments below are discarded by the
+  // Conditional when it is false (and this whole block is compile-time-eliminated).
   float4 previousClipSpace = clipSpacePosition;
-  if (velocity) {
+  if (HasVelocity) {
     // A generation mismatch means the previous-frame vertex is not comparable -> zero motion.
     if (bda.generations[globalVertexIndex] == bda.previousGenerations[globalVertexIndex]) {
       float3 previousPosition = unpackPosition(bda.previousCachedVertices[globalVertexIndex]);

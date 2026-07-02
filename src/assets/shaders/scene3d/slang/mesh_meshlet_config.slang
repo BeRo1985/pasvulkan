@@ -1,18 +1,21 @@
 // Compile-time configuration for the mesh-shader path.
 //
-// The boolean/int axes are specialization constants, set at pipeline creation via
-// VkSpecializationInfo, so a single SPIR-V per render-mode entry point covers all flag combinations
-// without a build-time permutation explosion. Axes that change the entry-point I/O signature are
-// separate entry points instead: the render mode (View / Voxelization / RSM), because each needs a
-// different compile-time mesh output layout, and the no-task-shader variant, because it drops the
-// task payload input. The shared per-mode logic goes through the render-mode structs.
+// The boolean/int axes are link-time constants (extern static const): their values are supplied by a
+// tiny provider module at link, so each flag combination is a distinct SPIR-V variant (1:1 with the
+// GLSL -D variant set). Link-time constants are needed because the varying pruning drives them
+// through Conditional<T, flag>, which requires a compile-time value (a specialization constant is
+// rejected there). Pure control-flow flags (cullPass / selectionMask) could later be collapsed to
+// [SpecializationConstant] to reduce the variant count, since only their declaration changes -- the
+// if(flag) usage stays identical. The render mode (View / Voxelization / RSM) and the no-task-shader
+// variant remain separate entry points (they change the entry I/O signature).
 
 module mesh_meshlet_config;
 
-// Specialization constants (resolved at pipeline creation).
-[SpecializationConstant] public const bool velocity      = false;
-[SpecializationConstant] public const int  cullPass       = 1;     // 0 = frustum only, 1 = + Hi-Z
-[SpecializationConstant] public const bool selectionMask = false;
+// Link-time constants, provided by a small provider module at link (extern = value comes from
+// another module). Declared without a default so a variant must always bind a value.
+public extern static const bool velocity;
+public extern static const int  cullPass;       // 0 = frustum only, 1 = + Hi-Z
+public extern static const bool selectionMask;
 
 // A render mode parameterizes the task / mesh entry points with its task->mesh payload type (the
 // capacity differs sharply: View / RSM emit at most one entry per meshlet, Voxelization one per

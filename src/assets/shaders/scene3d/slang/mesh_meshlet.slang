@@ -127,7 +127,7 @@ bool meshletPassesHiZ(float4 viewSpaceSphere, float zNear, float4x4 projectionMa
 // or the indirect draw command) and the view index (multiview SV_ViewID or the layer-routing index);
 // the per-vertex transform itself is the shared transformVertex from mesh_globals.
 void emitStandardMeshlet(uint localInvocationIndex, uint viewIndex, uint meshletGlobalIndex, uint meshObjectID, GlobalBDAPointers bda,
-                         out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
+                         out vertices VertexInputVarying<velocity> vertices[MAX_MESHLET_VERTICES],
                          out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   MeshletDescriptor descriptor = bda.meshletDescriptors[meshletGlobalIndex];
   uint vertexCount = min(descriptor.vertexCount, MAX_MESHLET_VERTICES);
@@ -139,7 +139,7 @@ void emitStandardMeshlet(uint localInvocationIndex, uint viewIndex, uint meshlet
 
   for (uint i = localInvocationIndex; i < vertexCount; i += MESH_GROUP_SIZE) {
     uint globalVertexIndex = bda.meshletVertices[descriptor.vertexOffset + i];
-    vertices[i] = transformVertex(globalVertexIndex, bda, t, meshletGlobalIndex);
+    vertices[i] = transformVertex<velocity>(globalVertexIndex, bda, t, meshletGlobalIndex);
   }
 
   for (uint i = localInvocationIndex; i < primitiveCount; i += MESH_GROUP_SIZE) {
@@ -260,7 +260,7 @@ void viewMeshMain(uint localInvocationIndex : SV_GroupIndex,
                   uint groupID : SV_GroupID,
                   uint viewID : SV_ViewID,
                   in payload ViewTaskPayload payload,
-                  out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
+                  out vertices VertexInputVarying<velocity> vertices[MAX_MESHLET_VERTICES],
                   out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   uint meshletGlobalIndex = payload.meshletDescriptorBase + payload.meshletLocalIndices[groupID];
   GlobalBDAPointers bda = globalBDAPointersBuffer[0];
@@ -276,7 +276,7 @@ void viewMeshMain(uint localInvocationIndex : SV_GroupIndex,
 void viewMeshNoTaskMain(uint localInvocationIndex : SV_GroupIndex,
                         uint viewID : SV_ViewID,
                         uint drawIndex : SV_DrawIndex,
-                        out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
+                        out vertices VertexInputVarying<velocity> vertices[MAX_MESHLET_VERTICES],
                         out indices uint3 triangles[MAX_MESHLET_PRIMITIVES]) {
   GlobalBDAPointers bda = globalBDAPointersBuffer[0];
   MeshDrawCommand* meshDrawCommands = (MeshDrawCommand*)((uint64_t(pushConstants.meshDrawCommandsBDAHigh) << 32) | uint64_t(pushConstants.meshDrawCommandsBDALow));
@@ -614,7 +614,7 @@ void rsmTaskMain(uint localInvocationIndex : SV_GroupIndex,
 void rsmMeshMain(uint localInvocationIndex : SV_GroupIndex,
                  uint groupID : SV_GroupID,
                  in payload RSMTaskPayload payload,
-                 out vertices VertexInputVarying vertices[MAX_MESHLET_VERTICES],
+                 out vertices VertexInputVarying<velocity> vertices[MAX_MESHLET_VERTICES],
                  out indices uint3 triangles[MAX_MESHLET_PRIMITIVES],
                  out primitives MeshletPrimitive primitives[MAX_MESHLET_PRIMITIVES]) {
   uint meshletLocalIndex = payload.meshletLocalIndices[groupID];

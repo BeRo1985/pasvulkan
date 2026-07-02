@@ -1613,26 +1613,51 @@ if [ -n "$slangcPath" ]; then
     slangFlags="${slangFlags} -g"
   fi
 
+  slangProviders="slang/providers"   # link-time-constant (extern static const) value providers
+
   compileSlangShader(){
-    # $1 = output base name, $2 = source .slang, $3 = entry point, $4 = stage
-    if ! ${slangcPath} ${slangFlags} -entry "$3" -stage "$4" "$2" -o "${tempPath}/${1}.spv"; then
-      echo "WARNING: Slang shader $2 ($3) failed to compile. GLSL is authoritative, build continues."
+    # $1 = output base, $2 = source .slang, $3 = entry, $4 = stage, $5.. = link-time-constant provider .slang files.
+    # The providers bind the extern static const flag values for this variant; unreferenced flags are
+    # dead-code-eliminated so their provider is simply omitted.
+    local out="$1" src="$2" entry="$3" stage="$4"; shift 4
+    if ! ${slangcPath} ${slangFlags} -entry "$entry" -stage "$stage" "$src" "$@" -o "${tempPath}/${out}.spv"; then
+      echo "WARNING: Slang shader $src ($entry) failed to compile. GLSL is authoritative, build continues."
     fi
   }
 
-  compileSlangShader "slang_mesh_vert" "slang/mesh_vertex.slang"   "vertexMain"   "vertex"
-  compileSlangShader "slang_mesh_frag" "slang/mesh_fragment.slang" "fragmentMain" "fragment"
+  # Stage-1 link-time-constant variant set: the extern static const flags (velocity / cullPass /
+  # selectionMask) are bound per variant by a provider module, giving one SPIR-V per flag combo (1:1
+  # with the GLSL -D variants). velocity prunes the velocity varyings (13/14) via Conditional;
+  # cullPass / selectionMask are task-side control flow. The exact combos the engine instantiates are
+  # reconciled against the Pascal pipeline configs later (0b) -- this covers the known flag axes.
 
-  # Meshlet path (task + mesh shaders). One entry-point pair per render mode (the mesh-stage output
-  # layout must be a compile-time constant), plus the no-task-shader mesh variant (which drops the
-  # task payload input). View / Voxelization / RSM (layer-routing).
-  compileSlangShader "slang_mesh_view_task"     "slang/mesh_meshlet.slang" "viewTaskMain"       "amplification"
-  compileSlangShader "slang_mesh_view_mesh"     "slang/mesh_meshlet.slang" "viewMeshMain"       "mesh"
-  compileSlangShader "slang_mesh_view_meshnotask" "slang/mesh_meshlet.slang" "viewMeshNoTaskMain" "mesh"
-  compileSlangShader "slang_mesh_voxel_task"    "slang/mesh_meshlet.slang" "voxelTaskMain"      "amplification"
-  compileSlangShader "slang_mesh_voxel_mesh"    "slang/mesh_meshlet.slang" "voxelMeshMain"      "mesh"
-  compileSlangShader "slang_mesh_rsm_task"      "slang/mesh_meshlet.slang" "rsmTaskMain"        "amplification"
-  compileSlangShader "slang_mesh_rsm_mesh"      "slang/mesh_meshlet.slang" "rsmMeshMain"        "mesh"
+  # Vertex / fragment stages (velocity axis).
+  compileSlangShader "slang_mesh_vert_novel" "slang/mesh_vertex.slang"   "vertexMain"   "vertex"   "$slangProviders/velocity_off.slang"
+  compileSlangShader "slang_mesh_vert_vel"   "slang/mesh_vertex.slang"   "vertexMain"   "vertex"   "$slangProviders/velocity_on.slang"
+  compileSlangShader "slang_mesh_frag_novel" "slang/mesh_fragment.slang" "fragmentMain" "fragment" "$slangProviders/velocity_off.slang"
+  compileSlangShader "slang_mesh_frag_vel"   "slang/mesh_fragment.slang" "fragmentMain" "fragment" "$slangProviders/velocity_on.slang"
+
+  # View mode: task (cullPass 0/1 with selectionMask off, plus the x-ray selectionMask variant) + mesh
+  # (velocity on/off) + the no-task-shader mesh variant. cullPass is still textually referenced inside
+  # the selectionMask=true branch's dead sibling, so the x-ray variant must bind a (never-used) cullPass
+  # too -- link-time symbol resolution runs before that branch is eliminated.
+  compileSlangShader "slang_mesh_view_task_cull0"       "slang/mesh_meshlet.slang" "viewTaskMain"       "amplification" "$slangProviders/selectionmask_off.slang" "$slangProviders/cullpass_0.slang"
+  compileSlangShader "slang_mesh_view_task_cull1"       "slang/mesh_meshlet.slang" "viewTaskMain"       "amplification" "$slangProviders/selectionmask_off.slang" "$slangProviders/cullpass_1.slang"
+  compileSlangShader "slang_mesh_view_task_selmask"     "slang/mesh_meshlet.slang" "viewTaskMain"       "amplification" "$slangProviders/selectionmask_on.slang" "$slangProviders/cullpass_0.slang"
+  compileSlangShader "slang_mesh_view_mesh_novel"       "slang/mesh_meshlet.slang" "viewMeshMain"       "mesh"          "$slangProviders/velocity_off.slang"
+  compileSlangShader "slang_mesh_view_mesh_vel"         "slang/mesh_meshlet.slang" "viewMeshMain"       "mesh"          "$slangProviders/velocity_on.slang"
+  compileSlangShader "slang_mesh_view_meshnotask_novel" "slang/mesh_meshlet.slang" "viewMeshNoTaskMain" "mesh"          "$slangProviders/velocity_off.slang"
+  compileSlangShader "slang_mesh_view_meshnotask_vel"   "slang/mesh_meshlet.slang" "viewMeshNoTaskMain" "mesh"          "$slangProviders/velocity_on.slang"
+
+  # Voxelization mode: no link-time flags (culls by cascade AABB, own varyings, no velocity).
+  compileSlangShader "slang_mesh_voxel_task" "slang/mesh_meshlet.slang" "voxelTaskMain" "amplification"
+  compileSlangShader "slang_mesh_voxel_mesh" "slang/mesh_meshlet.slang" "voxelMeshMain" "mesh"
+
+  # RSM / layer-routing mode: task (cullPass 0/1) + mesh (velocity on/off).
+  compileSlangShader "slang_mesh_rsm_task_cull0" "slang/mesh_meshlet.slang" "rsmTaskMain" "amplification" "$slangProviders/cullpass_0.slang"
+  compileSlangShader "slang_mesh_rsm_task_cull1" "slang/mesh_meshlet.slang" "rsmTaskMain" "amplification" "$slangProviders/cullpass_1.slang"
+  compileSlangShader "slang_mesh_rsm_mesh_novel" "slang/mesh_meshlet.slang" "rsmMeshMain" "mesh"          "$slangProviders/velocity_off.slang"
+  compileSlangShader "slang_mesh_rsm_mesh_vel"   "slang/mesh_meshlet.slang" "rsmMeshMain" "mesh"          "$slangProviders/velocity_on.slang"
 
 else
   echo "slangc not found, skipping Slang shaders (GLSL path unaffected)."

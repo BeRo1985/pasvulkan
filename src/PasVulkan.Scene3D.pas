@@ -4778,7 +4778,7 @@ type EpvScene3D=class(Exception);
        fDebugMeshletSpherePairsGeneration:TPasMPUInt64;
        fDebugMeshletSpherePairsUploadedGeneration:TPasMPUInt64;
       private
-       // TInstance.Update profiling accumulators (in milliseconds)
+       // TInstance.Update profiling accumulators (in milliseconds, converted from the tick accumulators below at the end of Update)
        fInstanceTimeResetSum:TpvDouble;
        fInstanceTimeBaseOverwriteTimeSum:TpvDouble;
        fInstanceTimeAnimationTimeSum:TpvDouble;
@@ -4789,6 +4789,26 @@ type EpvScene3D=class(Exception);
        fInstanceTimeSkinsSum:TpvDouble;
        fInstanceTimeBoundingSum:TpvDouble;
        fInstanceTimeRenderInstanceSum:TpvDouble;
+       // Thread-safe tick accumulators, updated via TPasMPInterlocked.Add from the parallel DAG instance updates
+       fInstanceTimeResetTicks:TPasMPInt64;
+       fInstanceTimeBaseOverwriteTicks:TPasMPInt64;
+       fInstanceTimeAnimationTicks:TPasMPInt64;
+       fInstanceTimeLightTicks:TPasMPInt64;
+       fInstanceTimeCameraTicks:TPasMPInt64;
+       fInstanceTimeMaterialTicks:TPasMPInt64;
+       fInstanceTimeProcessNodesTicks:TPasMPInt64;
+       fInstanceTimeSkinsTicks:TPasMPInt64;
+       fInstanceTimeBoundingTicks:TPasMPInt64;
+       fInstanceTimeRenderInstanceTicks:TPasMPInt64;
+       // DAG parallelism instrumentation (per Update call)
+       fInstanceUpdateMaxTicks:TPasMPInt64;
+       fInstanceUpdateMaxInstance:TpvScene3D.TGroup.TInstance;
+       fInstanceUpdateMaxTime:TpvDouble;
+       fInstanceUpdateMaxName:TpvUTF8String;
+       fInstanceUpdateMaxRenderInstances:TpvSizeInt;
+       fCountUpdatedInstances:TPasMPInt32;
+       fCountDirectedAcyclicGraphLeafInstances:TpvSizeInt;
+       fCountGroupInstancesTotal:TpvSizeInt;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
@@ -5328,6 +5348,12 @@ type EpvScene3D=class(Exception);
        property InstanceTimeSkinsSum:TpvDouble read fInstanceTimeSkinsSum;
        property InstanceTimeBoundingSum:TpvDouble read fInstanceTimeBoundingSum;
        property InstanceTimeRenderInstanceSum:TpvDouble read fInstanceTimeRenderInstanceSum;
+       property InstanceUpdateMaxTime:TpvDouble read fInstanceUpdateMaxTime;
+       property InstanceUpdateMaxName:TpvUTF8String read fInstanceUpdateMaxName;
+       property InstanceUpdateMaxRenderInstances:TpvSizeInt read fInstanceUpdateMaxRenderInstances;
+       property CountUpdatedInstances:TPasMPInt32 read fCountUpdatedInstances;
+       property CountDirectedAcyclicGraphLeafInstances:TpvSizeInt read fCountDirectedAcyclicGraphLeafInstances;
+       property CountGroupInstancesTotal:TpvSizeInt read fCountGroupInstancesTotal;
        property ProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap read fProceduralTextureImageHookStringHashMap;
        property GPULODEnabled:boolean read fGPULODEnabled write fGPULODEnabled;
        property LODTransformAllLevels:boolean read fLODTransformAllLevels write fLODTransformAllLevels;
@@ -31393,8 +31419,14 @@ end;
 procedure TpvScene3D.TGroup.TInstance.UpdateRenderInstances(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 {$ifdef FlatParallelRenderInstanceUpdates}
 var Index,StartIndex,CountRenderInstances:TpvSizeInt;
+{$ifdef UpdateProfilingTimes}
+    StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+{$endif}
 begin
  if aInFlightFrameIndex>=0 then begin
+{$ifdef UpdateProfilingTimes}
+  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
   fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
   if fUseRenderInstances then begin
    fMeshBoundingBox:=fBoundingBox;
@@ -31412,9 +31444,8 @@ begin
 {$endif}
      if CountRenderInstances>0 then begin
       StartIndex:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceWorkListCount,CountRenderInstances);
-      for Index:=0 to CountRenderInstances-1 do begin
-       fSceneInstance.fGlobalRenderInstanceWorkList[StartIndex+Index]:=fRenderInstances[Index];
-      end;
+      // Plain block copy of the object references, avoiding per-item indexer calls
+      Move(fRenderInstances.RawItems[0],fSceneInstance.fGlobalRenderInstanceWorkList[StartIndex],CountRenderInstances*SizeOf(TpvScene3D.TGroup.TInstance.TRenderInstance));
      end;
     finally
      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
@@ -31424,6 +31455,10 @@ begin
    Index:=TPasMPInterlocked.Add(fSceneInstance.fGlobalRenderInstanceInstanceCount,1);
    fSceneInstance.fGlobalRenderInstanceInstances[Index]:=Self;
   end;
+{$ifdef UpdateProfilingTimes}
+  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeRenderInstanceTicks,EndCPUTime-StartCPUTime);
+{$endif}
  end;
 end;
 {$else}
@@ -31473,6 +31508,7 @@ begin
     try
      for Index:=0 to fRenderInstances.Count-1 do begin
       RenderInstance:=fRenderInstances[Index];
+      RenderInstance.fWorkActive:=RenderInstance.fActive;
       if RenderInstance.fWorkActive then begin
        // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
        if (not fSceneInstance.fUpdatedOriginTransform) and
@@ -31676,7 +31712,7 @@ begin
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeRenderInstanceSum:=fSceneInstance.fInstanceTimeRenderInstanceSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeRenderInstanceTicks,EndCPUTime-StartCPUTime);
 {$endif}
  end;
 end;
@@ -31695,7 +31731,7 @@ begin
   fBoundingSpheres[aInFlightFrameIndex]:=TpvSphere.CreateFromAABB(fBoundingBox);
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
  end;
 end;
@@ -31726,7 +31762,7 @@ begin
   ResetLights(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeResetSum:=fSceneInstance.fInstanceTimeResetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeResetTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -31738,7 +31774,7 @@ begin
   ResetCameras(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeCameraTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -31747,7 +31783,7 @@ begin
   ResetMaterials(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeMaterialTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
   ResetNodes(ActiveAnimationProcessing);
@@ -31756,9 +31792,6 @@ begin
    fSkins[Index].Used:=false;
   end;
 
-{$ifdef UpdateProfilingTimes}
-  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-{$endif}
   if ActiveAnimationProcessing then begin
 
    WeightSum:=0.0;
@@ -31774,23 +31807,32 @@ begin
     WeightOverFactor:=1.0/WeightSum;
    end;
 
-   for Index:=-1 to length(fAnimations)-2 do begin
-    Animation:=fAnimations[Index+1];
+{$ifdef UpdateProfilingTimes}
+   StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+   if length(fAnimations)>0 then begin
+    Animation:=fAnimations[0];
     if Animation.fFactor>0.0 then begin
-     if Index<0 then begin
-      ProcessBaseOverwrite(Animation.fFactor);
-     end else if (Animation.fFactor*WeightOverFactor)>1e-3 then begin
-      ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
-     end;
+     ProcessBaseOverwrite(Animation.fFactor);
     end;
    end;
+{$ifdef UpdateProfilingTimes}
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBaseOverwriteTicks,EndCPUTime-StartCPUTime);
+   StartCPUTime:=EndCPUTime;
+{$endif}
+   for Index:=0 to length(fAnimations)-2 do begin
+    Animation:=fAnimations[Index+1];
+    if (Animation.fFactor>0.0) and ((Animation.fFactor*WeightOverFactor)>1e-3) then begin
+     ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+    end;
+   end;
+{$ifdef UpdateProfilingTimes}
+   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeAnimationTicks,EndCPUTime-StartCPUTime);
+{$endif}
 
   end;
-{$ifdef UpdateProfilingTimes}
-  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeAnimationTimeSum:=fSceneInstance.fInstanceTimeAnimationTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-  fSceneInstance.fInstanceTimeBaseOverwriteTimeSum:=fSceneInstance.fInstanceTimeBaseOverwriteTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-{$endif}
 
  end;
 
@@ -31811,7 +31853,7 @@ begin
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeLightSum:=fSceneInstance.fInstanceTimeLightSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeLightTicks,EndCPUTime-StartCPUTime);
 {$endif}
  end;
 end;
@@ -31831,7 +31873,7 @@ begin
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeCameraTicks,EndCPUTime-StartCPUTime);
 {$endif}
  end;
 end;
@@ -31860,7 +31902,7 @@ begin
  end;
 {$ifdef UpdateProfilingTimes}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
- fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+ TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeMaterialTicks,EndCPUTime-StartCPUTime);
 {$endif}
 end;
 
@@ -31889,7 +31931,7 @@ begin
   end;
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-  fSceneInstance.fInstanceTimeProcessNodesSum:=fSceneInstance.fInstanceTimeProcessNodesSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+  TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeProcessNodesTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
   if aInFlightFrameIndex>=0 then begin
@@ -31934,7 +31976,7 @@ begin
  ProcessSkins(aInFlightFrameIndex);
 {$ifdef UpdateProfilingTimes}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
- fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+ TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeSkinsTicks,EndCPUTime-StartCPUTime);
 {$endif}
 end;
 
@@ -31983,7 +32025,7 @@ begin
    end;
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-   fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -31992,7 +32034,7 @@ begin
    ProcessBoundingSceneBoxNodes(aInFlightFrameIndex,aScene);
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-   fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
   end;
@@ -32096,7 +32138,7 @@ begin
 
 {$ifdef UpdateProfilingTimes}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
- fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+ TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 end;
@@ -32214,13 +32256,13 @@ begin
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
   try
    for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances[Index];
-    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fWorkActive) or
-       ((RenderInstance.fWorkActive and
+    RenderInstance:=fRenderInstances.RawItems[Index];
+    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fActive) or
+       ((RenderInstance.fActive and
         (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
          (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
           (not CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D))))) or
-        ((not RenderInstance.fWorkActive) and
+        ((not RenderInstance.fActive) and
          ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
      RenderInstanceDirty:=true;
      break;
@@ -32252,8 +32294,8 @@ begin
     TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
     try
      for Index:=0 to fRenderInstances.Count-1 do begin
-      RenderInstance:=fRenderInstances[Index];
-      if RenderInstance.fWorkActive then begin
+      RenderInstance:=fRenderInstances.RawItems[Index];
+      if RenderInstance.fActive then begin
        TPasMPInterlocked.BitwiseOr(RenderInstance.fActiveMask,TpvUInt32(1) shl aInFlightFrameIndex);
        RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrices[PreviousInFlightFrameIndex];
        RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
@@ -32318,36 +32360,16 @@ begin
   fWorkModelMatrix:=fModelMatrix;
  end;
 
- if fActive then begin
-  if fUseRenderInstances then begin
-   if fRenderInstances.Count>0 then begin
-    IsActive:=false;
-    for Index:=0 to fRenderInstances.Count-1 do begin
-     RenderInstance:=fRenderInstances[Index];
-     RenderInstance.fWorkActive:=RenderInstance.fActive;
-     if RenderInstance.fWorkActive then begin
-      IsActive:=true;
-     end;
-    end;
-   end else begin
-    IsActive:=false;
-   end;
-  end else begin
-   IsActive:=true;
-  end;
- end else begin
-  IsActive:=false;
- end;
-
  // GPU-driven: no CPU frustum culling, all active instances always go to GPU
+ // The per-render-instance fWorkActive snapshot is taken in ProcessGlobalRenderInstances phase 1 in
+ // parallel, so here just an early-exit check whether any render instance is active at all
  if fActive then begin
   if fUseRenderInstances and (fRenderInstances.Count>0) then begin
    CanUpdate:=false;
    for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances[Index];
-    RenderInstance.fWorkActive:=RenderInstance.fActive;
-    if RenderInstance.fWorkActive then begin
+    if fRenderInstances.RawItems[Index].fActive then begin
      CanUpdate:=true;
+     break;
     end;
    end;
   end else begin
@@ -32355,7 +32377,8 @@ begin
   end;
   IsActive:=CanUpdate;
  end else begin
-  CanUpdate:=fActive;
+  IsActive:=false;
+  CanUpdate:=false;
  end;
 
  if IsActive then begin
@@ -32539,27 +32562,6 @@ begin
   fWorkModelMatrix:=fModelMatrix;
  end;
 
- if fActive then begin
-  if fUseRenderInstances then begin
-   if fRenderInstances.Count>0 then begin
-    IsActive:=false;
-    for Index:=0 to fRenderInstances.Count-1 do begin
-     RenderInstance:=fRenderInstances[Index];
-     RenderInstance.fWorkActive:=RenderInstance.fActive;
-     if RenderInstance.fWorkActive then begin
-      IsActive:=true;
-     end;
-    end;
-   end else begin
-    IsActive:=false;
-   end;
-  end else begin
-   IsActive:=true;
-  end;
- end else begin
-  IsActive:=false;
- end;
-
  // GPU-driven: no CPU frustum culling, all active instances always go to GPU
  if fActive then begin
   if fUseRenderInstances and (fRenderInstances.Count>0) then begin
@@ -32576,7 +32578,8 @@ begin
   end;
   IsActive:=CanUpdate;
  end else begin
-  CanUpdate:=fActive;
+  IsActive:=false;
+  CanUpdate:=false;
  end;
 
 {if aInFlightFrameIndex>=0 then begin
@@ -32747,7 +32750,7 @@ begin
     ResetLights(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeResetSum:=fSceneInstance.fInstanceTimeResetSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeResetTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -32759,7 +32762,7 @@ begin
     ResetCameras(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeCameraTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -32768,7 +32771,7 @@ begin
     ResetMaterials(ActiveAnimationProcessing);
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeMaterialTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     ResetNodes(ActiveAnimationProcessing);
@@ -32777,9 +32780,6 @@ begin
      fSkins[Index].Used:=false;
     end;
 
-{$ifdef UpdateProfilingTimes}
-    StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-{$endif}
     if ActiveAnimationProcessing then begin
 
      WeightSum:=0.0;
@@ -32795,23 +32795,32 @@ begin
       WeightOverFactor:=1.0/WeightSum;
      end;
 
-     for Index:=-1 to length(fAnimations)-2 do begin
-      Animation:=fAnimations[Index+1];
+{$ifdef UpdateProfilingTimes}
+     StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
+     if length(fAnimations)>0 then begin
+      Animation:=fAnimations[0];
       if Animation.fFactor>0.0 then begin
-       if Index<0 then begin
-        ProcessBaseOverwrite(Animation.fFactor);
-       end else if (Animation.fFactor*WeightOverFactor)>1e-3 then begin
-        ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
-       end;
+       ProcessBaseOverwrite(Animation.fFactor);
       end;
      end;
+{$ifdef UpdateProfilingTimes}
+     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBaseOverwriteTicks,EndCPUTime-StartCPUTime);
+     StartCPUTime:=EndCPUTime;
+{$endif}
+     for Index:=0 to length(fAnimations)-2 do begin
+      Animation:=fAnimations[Index+1];
+      if (Animation.fFactor>0.0) and ((Animation.fFactor*WeightOverFactor)>1e-3) then begin
+       ProcessAnimation(Index,Animation.fTime,Animation.fFactor);
+      end;
+     end;
+{$ifdef UpdateProfilingTimes}
+     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeAnimationTicks,EndCPUTime-StartCPUTime);
+{$endif}
 
     end;
-{$ifdef UpdateProfilingTimes}
-    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeAnimationTimeSum:=fSceneInstance.fInstanceTimeAnimationTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-    fSceneInstance.fInstanceTimeBaseOverwriteTimeSum:=fSceneInstance.fInstanceTimeBaseOverwriteTimeSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
-{$endif}
 
     if aInFlightFrameIndex>=0 then begin
 
@@ -32823,7 +32832,7 @@ begin
      end;
 {$ifdef UpdateProfilingTimes}
      EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-     fSceneInstance.fInstanceTimeLightSum:=fSceneInstance.fInstanceTimeLightSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeLightTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -32834,7 +32843,7 @@ begin
      end;
 {$ifdef UpdateProfilingTimes}
      EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-     fSceneInstance.fInstanceTimeCameraSum:=fSceneInstance.fInstanceTimeCameraSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeCameraTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     end;
@@ -32855,7 +32864,7 @@ begin
     end;
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeMaterialSum:=fSceneInstance.fInstanceTimeMaterialSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeMaterialTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     Dirty:=fDirtyCounter>0;
@@ -32871,7 +32880,7 @@ begin
     end;
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeProcessNodesSum:=fSceneInstance.fInstanceTimeProcessNodesSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeProcessNodesTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     if aInFlightFrameIndex>=0 then begin
@@ -32891,7 +32900,7 @@ begin
     ProcessSkins(aInFlightFrameIndex);
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-    fSceneInstance.fInstanceTimeSkinsSum:=fSceneInstance.fInstanceTimeSkinsSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeSkinsTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     fNodeMatricesArray[aInFlightFrameIndex][0]:=fWorkModelMatrix;
@@ -32944,7 +32953,7 @@ begin
      end;
 {$ifdef UpdateProfilingTimes}
      EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-     fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
 {$ifdef UpdateProfilingTimes}
@@ -32953,7 +32962,7 @@ begin
      ProcessBoundingSceneBoxNodes(aInFlightFrameIndex,Scene);
 {$ifdef UpdateProfilingTimes}
      EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-     fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     end;
@@ -32992,7 +33001,7 @@ begin
    end;
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
-   fSceneInstance.fInstanceTimeBoundingSum:=fSceneInstance.fInstanceTimeBoundingSum+pvApplication.HighResolutionTimer.ToFloatSeconds(EndCPUTime-StartCPUTime)*1000.0;
+   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeBoundingTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
    UpdateRenderInstances(aInFlightFrameIndex,false);
@@ -34465,6 +34474,25 @@ begin
   fInstanceTimeSkinsSum:=0.0;
   fInstanceTimeBoundingSum:=0.0;
   fInstanceTimeRenderInstanceSum:=0.0;
+
+  fInstanceTimeResetTicks:=0;
+  fInstanceTimeBaseOverwriteTicks:=0;
+  fInstanceTimeAnimationTicks:=0;
+  fInstanceTimeLightTicks:=0;
+  fInstanceTimeCameraTicks:=0;
+  fInstanceTimeMaterialTicks:=0;
+  fInstanceTimeProcessNodesTicks:=0;
+  fInstanceTimeSkinsTicks:=0;
+  fInstanceTimeBoundingTicks:=0;
+  fInstanceTimeRenderInstanceTicks:=0;
+
+  fInstanceUpdateMaxTicks:=0;
+  fInstanceUpdateMaxInstance:=nil;
+  fInstanceUpdateMaxTime:=0.0;
+  fInstanceUpdateMaxName:='';
+  fCountUpdatedInstances:=0;
+  fCountDirectedAcyclicGraphLeafInstances:=0;
+  fCountGroupInstancesTotal:=0;
 
   fBlueNoise2DTexture:=nil;
 
@@ -39337,8 +39365,31 @@ begin
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
+{$ifdef UpdateProfilingTimes}
+var StartCPUTime,EndCPUTime:TpvHighResolutionTime;
+    Ticks,OldTicks:TPasMPInt64;
+{$endif}
 begin
+{$ifdef UpdateProfilingTimes}
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+{$endif}
  aInstance.Update(fDirectedAcyclicGraphInFlightFrameIndex);
+{$ifdef UpdateProfilingTimes}
+ EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+ Ticks:=EndCPUTime-StartCPUTime;
+ TPasMPInterlocked.Increment(fCountUpdatedInstances);
+ repeat
+  OldTicks:=TPasMPInterlocked.Read(fInstanceUpdateMaxTicks);
+  if Ticks<=OldTicks then begin
+   break;
+  end;
+  if TPasMPInterlocked.CompareExchange(fInstanceUpdateMaxTicks,Ticks,OldTicks)=OldTicks then begin
+   // Benign race on the instance pointer, it is only for display purposes and resolved single-threadedly at the end of Update
+   fInstanceUpdateMaxInstance:=aInstance;
+   break;
+  end;
+ until false;
+{$endif}
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphInstanceRecursive(const aInstance:TpvScene3D.TGroup.TInstance);
@@ -39593,6 +39644,8 @@ begin
   if assigned(RenderInstance) then begin
    Instance:=RenderInstance.fInstance;
    if assigned(Instance) then begin
+    // Take the per-render-instance active snapshot here in parallel instead of serially in TInstance.Update
+    RenderInstance.fWorkActive:=RenderInstance.fActive;
     if RenderInstance.fWorkActive then begin
      // Per-RI skip check: if nothing changed for this IFF, skip expensive processing
      if (not fUpdatedOriginTransform) and
@@ -39999,16 +40052,19 @@ begin
   try
 
    // Initialize profiling accumulators
-   fInstanceTimeResetSum:=0.0;
-   fInstanceTimeBaseOverwriteTimeSum:=0.0;
-   fInstanceTimeAnimationTimeSum:=0.0;
-   fInstanceTimeLightSum:=0.0;
-   fInstanceTimeCameraSum:=0.0;
-   fInstanceTimeMaterialSum:=0.0;
-   fInstanceTimeProcessNodesSum:=0.0;
-   fInstanceTimeSkinsSum:=0.0;
-   fInstanceTimeBoundingSum:=0.0;
-   fInstanceTimeRenderInstanceSum:=0.0;
+   fInstanceTimeResetTicks:=0;
+   fInstanceTimeBaseOverwriteTicks:=0;
+   fInstanceTimeAnimationTicks:=0;
+   fInstanceTimeLightTicks:=0;
+   fInstanceTimeCameraTicks:=0;
+   fInstanceTimeMaterialTicks:=0;
+   fInstanceTimeProcessNodesTicks:=0;
+   fInstanceTimeSkinsTicks:=0;
+   fInstanceTimeBoundingTicks:=0;
+   fInstanceTimeRenderInstanceTicks:=0;
+   fInstanceUpdateMaxTicks:=0;
+   fInstanceUpdateMaxInstance:=nil;
+   fCountUpdatedInstances:=0;
 
    PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fGroupInstances.Sort;
@@ -40064,6 +40120,33 @@ begin
    finally
     fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].ReleaseRead;
    end;
+
+{$ifdef UpdateProfilingTimes}
+   // Convert the thread-safe tick accumulators into the millisecond sums, single-threadedly after the parallel DAG update
+   fInstanceTimeResetSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeResetTicks)*1000.0;
+   fInstanceTimeBaseOverwriteTimeSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeBaseOverwriteTicks)*1000.0;
+   fInstanceTimeAnimationTimeSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeAnimationTicks)*1000.0;
+   fInstanceTimeLightSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeLightTicks)*1000.0;
+   fInstanceTimeCameraSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeCameraTicks)*1000.0;
+   fInstanceTimeMaterialSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeMaterialTicks)*1000.0;
+   fInstanceTimeProcessNodesSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeProcessNodesTicks)*1000.0;
+   fInstanceTimeSkinsSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeSkinsTicks)*1000.0;
+   fInstanceTimeBoundingSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeBoundingTicks)*1000.0;
+   fInstanceTimeRenderInstanceSum:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceTimeRenderInstanceTicks)*1000.0;
+   fInstanceUpdateMaxTime:=pvApplication.HighResolutionTimer.ToFloatSeconds(fInstanceUpdateMaxTicks)*1000.0;
+   if assigned(fInstanceUpdateMaxInstance) and assigned(fInstanceUpdateMaxInstance.Group) then begin
+    fInstanceUpdateMaxName:=fInstanceUpdateMaxInstance.Group.Name;
+    if length(fInstanceUpdateMaxName)=0 then begin
+     fInstanceUpdateMaxName:=TpvUTF8String(ExtractFileName(String(fInstanceUpdateMaxInstance.Group.FileName)));
+    end;
+    fInstanceUpdateMaxRenderInstances:=fInstanceUpdateMaxInstance.fRenderInstances.Count;
+   end else begin
+    fInstanceUpdateMaxName:='';
+    fInstanceUpdateMaxRenderInstances:=0;
+   end;
+   fCountDirectedAcyclicGraphLeafInstances:=fDirectedAcyclicGraphLeafInstances.Count;
+   fCountGroupInstancesTotal:=fGroupInstances.Count;
+{$endif}
 
   finally
    fGroupInstanceListLock.Release;
@@ -40145,6 +40228,10 @@ begin
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Skin Time: '+ConvertDoubleToString(fInstanceTimeSkinsSum,omFixed,5)+' ms');
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Bounding Time: '+ConvertDoubleToString(fInstanceTimeBoundingSum,omFixed,5)+' ms');
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Render Instance Time: '+ConvertDoubleToString(fInstanceTimeRenderInstanceSum,omFixed,5)+' ms');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Max Instance Update Time: '+ConvertDoubleToString(fInstanceUpdateMaxTime,omFixed,5)+' ms ('+String(fInstanceUpdateMaxName)+')');
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count Updated Instances: '+IntToStr(fCountUpdatedInstances));
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count DAG Leaf Instances: '+IntToStr(fCountDirectedAcyclicGraphLeafInstances));
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count Group Instances: '+IntToStr(fCountGroupInstancesTotal));
 end;
 
 procedure TpvScene3D.CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
@@ -40648,7 +40735,7 @@ begin
      if GroupInstance.fUseRenderInstances then begin
       for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
        RenderInstance:=GroupInstance.fRenderInstances[RenderInstanceIndex];
-       if RenderInstance.fWorkActive then begin
+       if RenderInstance.fActive then begin
         MatrixID:=RenderInstance.fMatrixID;
         for MeshletIndex:=0 to MeshletCount-1 do begin
          Pair.SphereIndex:=SphereBase+MeshletIndex;
