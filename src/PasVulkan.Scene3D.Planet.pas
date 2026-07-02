@@ -28970,6 +28970,12 @@ begin
        if Planet.fData.fLODActive then begin
         fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 5); // PLANET_TERRAIN_FLAG_TASK_LOD
        end;
+      end else if fMode in [TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion] then begin
+       // The cascaded shadow map planet cull passes (TCullPass with CascadedShadowMap) already write the
+       // per-tile visibility bitmap of the shadow map view instance every frame (cascade frusta + horizon
+       // culling), so let the task shader consume it here too, instead of emitting all tiles of a whole
+       // planet unculled into all four cascades (twice, cull depth phase 0 and the final shadow map pass)
+       fPlanetPushConstants.Flags:=fPlanetPushConstants.Flags or (TpvUInt32(1) shl 4); // PLANET_TERRAIN_FLAG_FRUSTUM_CULL
       end;
       fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin

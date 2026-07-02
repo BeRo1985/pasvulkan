@@ -768,10 +768,12 @@ compileshaderarguments=(
   "-V planet_water.frag -DUNDERWATER -o ${tempPath}/planet_water_underwater_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_underwater_bufref_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -o ${tempPath}/planet_water_underwater_raytracing_frag.spv"
-  # DUGI (RT-based GI) variant of the underwater fullscreen pass — RT only, 'dugi' segment last; DUGI feeds the shore-foam
-  # ambient term here (the underwater base color is refracted scene color, already lit). WATER_CAUSTICS gets no DUGI variant:
-  # that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
+  # DUGI probe-field GI variant of the underwater fullscreen pass — 'dugi' segment last; the probe field feeds the shore-foam
+  # ambient term here (the underwater base color is refracted scene color, already lit). Not RT-bound: the underwater filename
+  # uses _raytracing or _bufref, so both are compiled (mirrors planet_renderpass/planet_grass bufref_dugi). WATER_CAUSTICS gets
+  # no DUGI variant: that pass is purely additive refracted-sun light with no diffuse/ambient term for the probe field to feed.
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_underwater_raytracing_dugi_frag.spv"
+  "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_DUGI ${DUGI_STORAGE_DEFINE} ${DUGI_PROBE_RELOCATION_DEFINE} ${GLOSSY_DEFINE} -o ${tempPath}/planet_water_underwater_bufref_dugi_frag.spv"
   # Cascaded radiance hints underwater variants (not RT-bound; the underwater filename uses _raytracing or _bufref, so both):
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_underwater_raytracing_crh_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS -o ${tempPath}/planet_water_underwater_bufref_crh_frag.spv"
