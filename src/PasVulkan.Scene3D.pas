@@ -3400,6 +3400,10 @@ type EpvScene3D=class(Exception);
                             fTag:TpvUInt64;
                             fMeshletVisibilityBufferRange:TpvBufferRangeAllocator.TBufferRange;
                             procedure SetActive(const aActive:boolean); inline;
+                            procedure MarkChanged; inline;
+                            procedure SetRawActive(const aActive:boolean); inline;
+                            procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4D); inline;
+                            procedure SetInstanceDataIndex(const aInstanceDataIndex:TpvUInt32); inline;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -3409,18 +3413,18 @@ type EpvScene3D=class(Exception);
                             procedure UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
                             procedure RemoveLights;
                            public
-                            property ModelMatrix:TpvMatrix4x4D read fModelMatrix write fModelMatrix;
+                            property ModelMatrix:TpvMatrix4x4D read fModelMatrix write SetModelMatrix;
                             property ModelMatrices:TRenderInstanceMatrixInstances read fModelMatrices;
                             property NodeMeshObjectIDs:TpvUInt32DynamicArray read fNodeMeshObjectIDs;
                             property ApplyCameraRelativeTransform:TPasMPBool32 read fApplyCameraRelativeTransform write fApplyCameraRelativeTransform;
                            public
-                            property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write fInstanceDataIndex;
+                            property InstanceDataIndex:TpvUInt32 read fInstanceDataIndex write SetInstanceDataIndex;
                             property InstanceDataIndices:TRenderInstanceDataIndices read fInstanceDataIndices;
                            public
                             property Tag:TpvUInt64 read fTag write fTag;
                            published
                             property Active:Boolean read fActive write SetActive;
-                            property RawActive:Boolean read fActive write fActive;
+                            property RawActive:Boolean read fActive write SetRawActive;
                             property ActiveMask:TPasMPUInt32 read fActiveMask write fActiveMask;
                           end;
                           TRenderInstances=TpvObjectGenericList<TRenderInstance>;
@@ -3573,6 +3577,10 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeightsArray:array[0..MaxInFlightFrames-1] of TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
+                     // Countdown of in-flight frames that still need the per-render-instance dirty check and
+                     // per-in-flight-frame copy after the last master state change (Active/ModelMatrix/
+                     // InstanceDataIndex/add/remove) of any render instance; 0 = fully settled, both loops skippable
+                     fRenderInstanceChangeCounter:TPasMPInt32;
                      fPreallocatedRenderInstances:TRenderInstances; // For virtual instance auto-assignment
                      fAvailablePreallocatedRenderInstances:TRenderInstances; // Free pool for virtual instances
                      fMaxRenderInstanceCount:TpvSizeInt; // Count of preallocated render instances for bookkeeping
@@ -26622,6 +26630,8 @@ begin
 
  fTag:=0;
 
+ MarkChanged;
+
 {$ifdef MeshShaderDebug}
  fInstance.DumpMeshletMeshObjectIDs(self);
 {$endif}
@@ -26633,6 +26643,8 @@ var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
     NodeMeshObjectID:TpvUInt32;
 begin
+
+ MarkChanged;
 
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
   RemoveLights;
@@ -26760,8 +26772,40 @@ procedure TpvScene3D.TGroup.TInstance.TRenderInstance.SetActive(const aActive:bo
 begin
  if fActive<>aActive then begin
   fActive:=aActive;
+  MarkChanged;
   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
   fSceneInstance.InvalidateDirectedAcyclicGraph;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.MarkChanged;
+begin
+ if assigned(fInstance) then begin
+  TPasMPInterlocked.Write(fInstance.fRenderInstanceChangeCounter,TPasMPInt32(MaxInFlightFrames));
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.SetRawActive(const aActive:boolean);
+begin
+ if fActive<>aActive then begin
+  fActive:=aActive;
+  MarkChanged;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4D);
+begin
+ if not CompareMem(@fModelMatrix,@aModelMatrix,SizeOf(TpvMatrix4x4D)) then begin
+  fModelMatrix:=aModelMatrix;
+  MarkChanged;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.SetInstanceDataIndex(const aInstanceDataIndex:TpvUInt32);
+begin
+ if fInstanceDataIndex<>aInstanceDataIndex then begin
+  fInstanceDataIndex:=aInstanceDataIndex;
+  MarkChanged;
  end;
 end;
 
@@ -27161,6 +27205,8 @@ begin
  fRenderInstanceLock:=0;
 
  fRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create;
+
+ fRenderInstanceChangeCounter:=MaxInFlightFrames;
  fRenderInstances.OwnsObjects:=true;
 
  fPreallocatedRenderInstances:=nil; // For virtual instance auto-assignment
@@ -32212,7 +32258,7 @@ var Index,PerInFlightFrameRenderInstanceIndex,WorkInFlightFrameIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
-    RenderInstanceDirty:boolean;
+    RenderInstanceDirty,RenderInstancesSettled:boolean;
     PreviousInFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -32252,24 +32298,32 @@ begin
  end;
 
  RenderInstanceDirty:=fSceneInstance.fUpdatedOriginTransform;
+ RenderInstancesSettled:=false;
  if fUseRenderInstances and (fRenderInstances.Count>0) and not RenderInstanceDirty then begin
-  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
-  try
-   for Index:=0 to fRenderInstances.Count-1 do begin
-    RenderInstance:=fRenderInstances.RawItems[Index];
-    if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fActive) or
-       ((RenderInstance.fActive and
-        (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
-         (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
-          (not CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D))))) or
-        ((not RenderInstance.fActive) and
-         ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
-     RenderInstanceDirty:=true;
-     break;
+  if TPasMPInterlocked.Read(fRenderInstanceChangeCounter)>0 then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fRenderInstanceLock);
+   try
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances.RawItems[Index];
+     if (RenderInstance.fWorkActives[aInFlightFrameIndex]<>RenderInstance.fActive) or
+        ((RenderInstance.fActive and
+         (((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))=0) or
+          (RenderInstance.fInstanceDataIndices[aInFlightFrameIndex]<>RenderInstance.fInstanceDataIndex) or
+           (not CompareMem(@RenderInstance.fLastModelMatrices[aInFlightFrameIndex],@RenderInstance.fModelMatrix,SizeOf(TpvMatrix4x4D))))) or
+         ((not RenderInstance.fActive) and
+          ((RenderInstance.fActiveMask and (TpvUInt32(1) shl aInFlightFrameIndex))<>0))) then begin
+      RenderInstanceDirty:=true;
+      break;
+     end;
     end;
+   finally
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
    end;
-  finally
-   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
+  end else begin
+   // Fully settled: no master state change (Active/ModelMatrix/InstanceDataIndex/add/remove) since at
+   // least MaxInFlightFrames frames, so every in-flight frame slot already carries exactly this state
+   // and both the per-render-instance dirty check and the per-in-flight-frame copy can be skipped
+   RenderInstancesSettled:=true;
   end;
  end;
 
@@ -32285,7 +32339,7 @@ begin
    UpdateBoundingVolumes(aInFlightFrameIndex,true);
   end;
 
- end else begin
+ end else if not RenderInstancesSettled then begin
 
   // Copy per-InFlightFrame RenderInstance data
   if fUseRenderInstances then begin
@@ -32309,6 +32363,8 @@ begin
      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fRenderInstanceLock);
     end;
    end;
+   // One more in-flight frame slot is refreshed now
+   TPasMPInterlocked.Decrement(fRenderInstanceChangeCounter);
   end;
 
  end;
@@ -33656,7 +33712,7 @@ begin
      Count:=aNonVirtualInstance.fPreallocatedRenderInstanceCounter+((aNonVirtualInstance.fPreallocatedRenderInstanceCounter+1) shr 1);
      while aNonVirtualInstance.fPreallocatedRenderInstances.Count<Count do begin
       RenderInstance:=aNonVirtualInstance.CreateRenderInstance;
-      RenderInstance.fActive:=false;
+      RenderInstance.RawActive:=false;
       aNonVirtualInstance.fPreallocatedRenderInstances.Add(RenderInstance);
      end;
     end;
@@ -33668,7 +33724,7 @@ begin
       if VirtualRenderInstance.fActive then begin
        RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
        inc(Index);
-       RenderInstance.fActive:=true;
+       RenderInstance.RawActive:=true;
        RenderInstance.ModelMatrix:=VirtualRenderInstance.ModelMatrix;
        RenderInstance.InstanceDataIndex:=VirtualRenderInstance.InstanceDataIndex;
        RenderInstance.fAssignedVirtualInstance:=self;
@@ -33680,7 +33736,7 @@ begin
      end;
     end else begin
      RenderInstance:=aNonVirtualInstance.fPreallocatedRenderInstances.RawItems[Index];
-     RenderInstance.fActive:=true;
+     RenderInstance.RawActive:=true;
      RenderInstance.ModelMatrix:=fModelMatrix;
      RenderInstance.InstanceDataIndex:=0;
      RenderInstance.fAssignedVirtualInstance:=self;
@@ -44954,7 +45010,7 @@ begin
      for RenderInstanceIndex:=0 to NonVirtualInstance.fPreallocatedRenderInstances.Count-1 do begin
       RenderInstance:=NonVirtualInstance.fPreallocatedRenderInstances.RawItems[RenderInstanceIndex];
       if RenderInstance.fActive then begin
-       RenderInstance.fActive:=false;
+       RenderInstance.RawActive:=false;
        RenderInstance.fAssignedVirtualInstance:=nil;
        RenderInstance.fAssignedVirtualInstanceRenderInstance:=nil;
       end else begin
