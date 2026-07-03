@@ -490,6 +490,9 @@ type TpvScene3DPlanets=class;
               fWaterSimulationCountUnderThresholdFrames:TpvSizeInt;
               fWaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt;
               fWaterSimulationThreshold:TpvFloat;
+              // Last downloaded per-step maximum absolute water height difference, for debug display of
+              // whether the water simulation actually settles or keeps oscillating forever
+              fWaterSimulationLastMaxAbsoluteHeightDifference:TpvFloat;
               fWaterVisibilityBuffer:TpvVulkanBuffer;
               fBlendMiniMapBuffer:TpvVulkanBuffer;
               fWaterRippleImages:array[0..1] of TpvScene3DRendererImage2D; // R16G16_SFLOAT ping-pong (r=height, g=velocity) for the GPU ripple subsystem
@@ -704,6 +707,8 @@ type TpvScene3DPlanets=class;
               property WaterSimulationCountUnderThresholdFrames:TpvSizeInt read fWaterSimulationCountUnderThresholdFrames write fWaterSimulationCountUnderThresholdFrames;
               property WaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt read fWaterSimulationMaximumCountUnderThresholdFrames write fWaterSimulationMaximumCountUnderThresholdFrames;
               property WaterSimulationThreshold:TpvFloat read fWaterSimulationThreshold write fWaterSimulationThreshold;
+              property WaterSimulationLastMaxAbsoluteHeightDifference:TpvFloat read fWaterSimulationLastMaxAbsoluteHeightDifference;
+              property WaterActive:TPasMPBool32 read fWaterActive;
              published
               property VisualMeshVertexBufferUpdateIndex:TPasMPInt32 read fVisualMeshVertexBufferUpdateIndex;
               property VisualMeshVertexBufferRenderIndex:TPasMPInt32 read fVisualMeshVertexBufferRenderIndex;
@@ -3268,6 +3273,13 @@ type TpvScene3DPlanets=class;
        fWaterUVWaveFactor:TpvFloat;                // Overall UV wave contribution multiplier (0=off, 1=full).
        fWaterWaveWindFactor:TpvFloat;              // Multiplier for wind-based Gerstner contribution (0=off, 1=full).
        fWaterUVWaveScale:TpvFloat;                 // Oct UV coordinate scale before wave phases (higher = finer ripples).
+       // Auto-pause of the water simulation: freeze when the per-step maximum absolute water height change
+       // (meters) stays below the threshold for the given number of consecutive frames. The flat-grid pipe
+       // model never reaches an exact equal-radius equilibrium on the distorted octahedral sphere grid
+       // (residual mm-scale oscillation), so the threshold must sit above that noise, otherwise still
+       // water wobbles like jelly forever.
+       fWaterSimulationSettleThreshold:TpvFloat;
+       fWaterSimulationSettleFrames:TpvSizeInt;
        fWaterWaveDisplaceAmplitude:TpvFloat;       // Per-vertex height displacement amplitude in meters (0=disabled).
        fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
        fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
@@ -3678,6 +3690,8 @@ type TpvScene3DPlanets=class;
        property WaterUVWaveFactor:TpvFloat read fWaterUVWaveFactor write fWaterUVWaveFactor;
        property WaterWaveWindFactor:TpvFloat read fWaterWaveWindFactor write fWaterWaveWindFactor;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
+       property WaterSimulationSettleThreshold:TpvFloat read fWaterSimulationSettleThreshold write fWaterSimulationSettleThreshold;
+       property WaterSimulationSettleFrames:TpvSizeInt read fWaterSimulationSettleFrames write fWaterSimulationSettleFrames;
        property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
        property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
        property WaterDisplaceHeightHighThreshold:TpvFloat read fWaterDisplaceHeightHighThreshold write fWaterDisplaceHeightHighThreshold;
@@ -4585,6 +4599,8 @@ begin
  fWaterSimulationMaximumCountUnderThresholdFrames:=64;
 
  fWaterSimulationThreshold:=1e-6;
+
+ fWaterSimulationLastMaxAbsoluteHeightDifference:=0.0;
 
  fWaterVisibilityBuffer:=nil;
 
@@ -19082,6 +19098,8 @@ begin
                                               Value,
                                               SizeOf(TpvFloat));
 
+ fPlanet.fData.fWaterSimulationLastMaxAbsoluteHeightDifference:=Value;
+
  if abs(Value)<fPlanet.fData.fWaterSimulationThreshold then begin
   if fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames then begin
    inc(fPlanet.fData.fWaterSimulationCountUnderThresholdFrames);
@@ -19104,6 +19122,8 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
 
  fTimeStep:=fPlanet.fWaterRainSettings.fTimeStep;
+ fPlanet.fData.fWaterSimulationThreshold:=fPlanet.fWaterSimulationSettleThreshold;
+ fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames:=fPlanet.fWaterSimulationSettleFrames;
  fPushConstants.Attenuation:=fPlanet.fWaterRainSettings.fAttenuation;
  fPushConstants.Strength:=fPlanet.fWaterRainSettings.fStrength;
  fPushConstants.MinTotalFlow:=fPlanet.fWaterRainSettings.fMinTotalFlow;
@@ -32869,6 +32889,8 @@ begin
  fWaterUVWaveFactor:=1.0; // full contribution by default
  fWaterWaveWindFactor:=1.0; // full wind-wave contribution by default
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
+ fWaterSimulationSettleThreshold:=1e-6; // legacy engine default; override via JSON "water"."simulation"."settlethreshold"
+ fWaterSimulationSettleFrames:=64;
  fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
  fWaterDisplaceHeightLowThreshold:=0.0;  // fade starts at water depth 0 m
  fWaterDisplaceHeightHighThreshold:=0.5; // full displacement at 0.5 m depth
@@ -37194,7 +37216,8 @@ begin
 end;
 
 procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
-var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject,JSONCausticObject,JSONRainSplashObject:TPasJSONItemObject;
+var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject,JSONCausticObject,JSONRainSplashObject,
+    JSONSimulationObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
@@ -37204,6 +37227,12 @@ begin
    JSONWaterObject:=TPasJSONItemObject(JSONItem);
   end else begin
    JSONWaterObject:=JSONRootObject;
+  end;
+  JSONItem:=JSONWaterObject.Properties['simulation'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONSimulationObject:=TPasJSONItemObject(JSONItem);
+   fWaterSimulationSettleThreshold:=TPasJSON.GetNumber(JSONSimulationObject.Properties['settlethreshold'],fWaterSimulationSettleThreshold);
+   fWaterSimulationSettleFrames:=Round(TPasJSON.GetNumber(JSONSimulationObject.Properties['settleframes'],fWaterSimulationSettleFrames));
   end;
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);

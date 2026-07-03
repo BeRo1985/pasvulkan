@@ -139,6 +139,7 @@ void main(){
 
   // Wave height displacement: UV chop (computeWaveDisplacement) + Gerstner swell (computeGerstnerDisplacement).
   // Only applied where water is present (sphereHeightData.y > 1e-6).
+#if !PLANET_WATER_DISABLE_PROCEDURAL_HEIGHT
   if(sphereHeightData.y > 1e-6){
     vec4 dp0 = vec4(unpackHalf2x16(planetData.waterDisplaceParams.x), unpackHalf2x16(planetData.waterDisplaceParams.y));
     float displaceAmpl = dp0.x;
@@ -164,6 +165,7 @@ void main(){
       }
     }
   }
+#endif
 
   vec3 localPosition = sphereNormal * ((sphereHeight > 1e-6) ? clamp(sphereHeight, planetData.bottomRadiusTopRadiusHeightMapScale.x * 0.5, planetData.bottomRadiusTopRadiusHeightMapScale.y) : 1e-6);
 

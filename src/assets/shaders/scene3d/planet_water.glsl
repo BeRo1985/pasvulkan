@@ -1,6 +1,14 @@
 #ifndef PLANET_WATER_GLSL
 #define PLANET_WATER_GLSL
 
+// DEBUG: 1 = disable ALL procedural water height additions (GPU ripples, rain splashes, UV chop waves,
+// Gerstner swell), so the rendered water geometry is purely the simulated/interpolated water height map.
+// For isolating the "jelly wobble on still water" issue. Set back to 0 for normal operation.
+#define PLANET_WATER_DISABLE_PROCEDURAL_HEIGHT 0
+
+// 1 = sample the water column map with the SAME bilinear basis as the terrain height map instead of bicubic.
+#define PLANET_WATER_BILINEAR_WATERMAP 0
+
 #include "octahedral.glsl"
 
 #include "octahedralmap.glsl"
@@ -21,7 +29,7 @@
 // t1 = c / q
 // This approach ensures that the terms added to compute 'q' always have the same sign, thus avoiding
 // the catastrophic cancellation that can occur in the OldSolveQuadraticRoots function. By doing so,
-// this solveQuadraticRoots provides more reliable and accurate results, particularly in edge cases 
+// this solveQuadraticRoots provides more reliable and accurate results, particularly in edge cases
 // where precision is crucial.
 bool solveQuadraticRoots(float a, float b, float c, out vec2 t){
   float discriminant = (b * b) - ((a * c) * 4.0);
@@ -37,7 +45,7 @@ bool solveQuadraticRoots(float a, float b, float c, out vec2 t){
       if(t.x > t.y){
         t = t.yx;
       }
-    }  
+    }
     return true;
   }
 }
@@ -71,9 +79,9 @@ bool solveQuadraticRoots(float a, float b, float c, out vec2 t){
 bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out float time){
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
-  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
-                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0, 
-                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w), 
+  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection),
+                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0,
+                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w),
                                     t);
   if(result){
     if(t.x > t.y){
@@ -84,7 +92,7 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out floa
       if(t.x < 0.0){
         result = false;
       }
-    }    
+    }
     time = t.x;
   }
   return result;
@@ -93,9 +101,9 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out floa
 bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2 times){
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
-  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
-                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0, 
-                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w), 
+  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection),
+                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0,
+                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w),
                                     t);
   if(result){
     if(t.x > t.y){
@@ -106,7 +114,7 @@ bool intersectRaySphere(vec4 sphere, vec3 rayOrigin, vec3 rayDirection, out vec2
       if(t.x < 0.0){
         result = false;
       }
-    }    
+    }
     times = t;
   }
   return result;
@@ -116,8 +124,8 @@ float getWaves(vec2 position, int iterations){
   vec2 frequencyTimeMultiplier = vec2(1.0, 2.0);
   float weight = 1.0;
   vec2 result = vec2(0.0);
-  float time = pushConstants.time; 
-  float r = 0.0; 
+  float time = pushConstants.time;
+  float r = 0.0;
   for(int i = 0; i < iterations; i++){
     vec2 p = sin(vec2(r) + vec2(0.0, 1.5707963267948966));
     vec2 sinCosX = sin((vec2(dot(p, position) * frequencyTimeMultiplier.x) + (time * frequencyTimeMultiplier.y)) + vec2(0.0, 1.5707963267948966));
@@ -226,15 +234,15 @@ float getWaterRainSplashHeight(vec2 uv, float time){
 
       // Hash 2: phase offset so drops don't all spawn simultaneously.
       uint h2 = h1 ^ 0xdeadbeafu;
-      h2 ^= (h2 >> 13u); 
-      h2 *= 0xb5297a4du; 
+      h2 ^= (h2 >> 13u);
+      h2 *= 0xb5297a4du;
       h2 ^= (h2 >> 13u);
       float birthPhase = float(h2 & 0xffffu) * oneOver65535; // 0..1
 
       // Hash 3: spawn gate — skip this cell if its density roll exceeds the rain level.
       uint h3 = h2 ^ 0xc0ffee00u;
-      h3 ^= (h3 >> 15u); 
-      h3 *= 0x1b873593u; 
+      h3 ^= (h3 >> 15u);
+      h3 *= 0x1b873593u;
       h3 ^= (h3 >> 15u);
       if((float(h3 & 0xffffu) * oneOver65535) > spawnGate){
         continue;
@@ -271,7 +279,7 @@ float getWaterRainSplashHeight(vec3 n, float time){
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
   return getWaterRainSplashHeight(uv, time);
 #else
-  return 0.0; 
+  return 0.0;
 #endif
 }
 
@@ -296,7 +304,14 @@ vec2 getWaterRainSplashSlope(vec2 uv, float time){
 }
 
 float getWaterHeightData(vec2 uv){
-  float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // But for the water map, we use bicubic interpolation to get a smoother water surface
+#if PLANET_WATER_BILINEAR_WATERMAP
+  float h = texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // Linear, matching the terrain height reconstruction basis
+#else
+  float h = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERMAP], uv).x; // Bicubic, for smoother water surface reconstruction
+#endif
+#if PLANET_WATER_DISABLE_PROCEDURAL_HEIGHT
+  return h; // DEBUG: no ripple / rain splash height additions
+#else
 #ifdef PLANET_DATA_GLSL
   vec2 splashDepthThresh = unpackHalf2x16(planetData.waterRainSplashParams2.y); // depthThresholdLow, depthThresholdHigh
   float splashFade = smoothstep(splashDepthThresh.x, max(splashDepthThresh.y, splashDepthThresh.x + 1e-6), h);
@@ -304,19 +319,20 @@ float getWaterHeightData(vec2 uv){
   float splashFade = smoothstep(1e-4, 1e-3, h); // Fallback: fade out ripple/splash contribution on shallow water based on fixed depth thresholds when planet data is not available (e.g. in prepass shaders that don't bind the planet data SSBO)
 #endif
   return h + ((splashFade > 1e-5) ? ((getWaterRippleHeight(uv) + (getWaterRainSplashHeight(uv, pushConstants.time) * splashFade))) : 0.0); // Additive GPU ripple + rain splash contribution, faded out on shallow water via JSON depth thresholds
+#endif
 }
 
 float getWaterHeightData(vec3 n){
-  return getWaterHeightData(octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy)));    
+  return getWaterHeightData(octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy)));
 }
 
 vec2 getSphereHeightData(vec2 uv){
   return vec2(
-    mix( 
+    mix(
       planetBottomRadius,
       planetTopRadius,
       texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-    ),         
+    ),
     getWaterHeightData(uv) // But for the water map, we use bicubic interpolation to get a smoother water surface, and it already adds the ripple contribution
   );
 }
@@ -324,17 +340,17 @@ vec2 getSphereHeightData(vec2 uv){
 vec2 getSphereHeightData(vec3 n){
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
   return vec2(
-    mix( 
+    mix(
       planetBottomRadius,
       planetTopRadius,
       texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-    ),         
+    ),
     getWaterHeightData(uv)
   );
 }
 
 float getSphereHeight(vec3 n, int i){
-  return mix( 
+  return mix(
            planetBottomRadius,
            planetTopRadius,
            texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], n).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
@@ -343,7 +359,7 @@ float getSphereHeight(vec3 n, int i){
 }
 
 float getSphereHeight(vec2 uv){
-  return mix( 
+  return mix(
            planetBottomRadius,
            planetTopRadius,
            texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
@@ -357,14 +373,14 @@ float getSphereHeight(vec3 n){
 
 float getSphereHeightEx(vec2 uv){
   float h = getWaterHeightData(uv); // Bicubic water height + additive GPU ripple contribution
-  return (h > 1e-7) 
-          ? (mix( 
+  return (h > 1e-7)
+          ? (mix(
               planetBottomRadius,
               planetTopRadius,
               texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
              ) +
              h)
-          : -1.0; 
+          : -1.0;
 }
 
 float mapHeight(vec3 p, float h){
@@ -387,7 +403,7 @@ vec3 mapNormal(vec3 p){
       mapEx(p + e.xyy, i) - mapEx(p - e.xyy, i),
       mapEx(p + e.yxy, i) - mapEx(p - e.yxy, i),
       mapEx(p + e.yyx, i) - mapEx(p - e.yyx, i)
-    )  
+    )
   );
 }
 
@@ -395,21 +411,21 @@ const int MAX_MARCHING_STEPS = 256;
 
 const float PRECISION = 1e-2;
 
-float INFINITY = uintBitsToFloat(0x7f800000u); 
+float INFINITY = uintBitsToFloat(0x7f800000u);
 
 int countSteps = 0;
 
 // Accelerated ray marching based on https://www.researchgate.net/publication/329152815_Accelerating_Sphere_Tracing
 bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, float q, out float hitTime){
-  float previousR = 0.0; 
+  float previousR = 0.0;
   float currentR = 0.0;
   float nextR = INFINITY;
   float stepDistance = 0.0;
   float time = startTime;
 #if 0
-  vec2 closest = vec2(INFINITY, 0.0);    
+  vec2 closest = vec2(INFINITY, 0.0);
 #endif
-  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
+  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (nextR >= PRECISION) && (time < maxTime); i++){
     float currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin)) * raySign;
 #if 0
@@ -428,11 +444,11 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
     currentR = nextR * q;
     stepDistance = currentR + ((w * currentR) * (((stepDistance - previousR) + currentR) / ((stepDistance + previousR) - currentR)));
     countSteps++;
-  }    
+  }
   bool hit = false;
   if((time <= maxTime) && (nextR < PRECISION)){
     hit = true;
-    hitTime = min(time, maxTime);    
+    hitTime = min(time, maxTime);
 #if 0
   }else if((closest.x < 1e-2) && (closest.y <= maxTime)){
     hit = true;
@@ -445,11 +461,11 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
 bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime){
 
   bool hit = false;
-  
+
   float t = startTime;
 
-  float timeStep = max(1.0, maxTime) / (float(MAX_MARCHING_STEPS) * 0.125); 
-  
+  float timeStep = max(1.0, maxTime) / (float(MAX_MARCHING_STEPS) * 0.125);
+
   float closest = INFINITY;
   float closestT = 0.0;
 
@@ -457,7 +473,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   float secondClosestT = 0.0;
   float previousDT = 0.0;
 
-  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
+  float raySign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;
 
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (t < maxTime); i++){
 
@@ -468,26 +484,26 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
       closest = dt;
       closestT = t;
     }
-    
+
     if((secondClosest > dt) && (previousDT < dt)){
         secondClosest = dt;
         secondClosestT = t;
-    }      
+    }
 
     if(dt < PRECISION){
       hit = true;
       hitTime = t;
       break;
-    }    
+    }
 
     t += (clamp(abs(dt) * 0.1, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0));
-    
+
     previousDT = dt;
 
     countSteps++;
-    
-  }       
-  
+
+  }
+
 #if 0
   if((!hit) && (closest < 1e-2)){
     hit = true;
@@ -497,15 +513,15 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
 
   return hit;
 
-} 
+}
 
 vec3 getRaySphereIntersections(vec4 sphere, vec3 rayOrigin, vec3 rayDirection){
-#if 1 
+#if 1
   vec3 sphereCenterToRayOrigin = rayOrigin - sphere.xyz;
   vec2 t;
-  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection), 
-                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0, 
-                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w), 
+  bool result = solveQuadraticRoots(dot(rayDirection, rayDirection),
+                                    dot(rayDirection, sphereCenterToRayOrigin) * 2.0,
+                                    dot(sphereCenterToRayOrigin, sphereCenterToRayOrigin) - (sphere.w * sphere.w),
                                     t);
   return result ? vec3(t, 10) : vec3(0.0);
 #else
@@ -545,7 +561,7 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
     float stride = rayMarchStride * (planetTopRadius * 2.0) / (end - start);
 
     for(int t = 0; t < maxSteps; t++){
-    
+
       if((float(t) * stride) > 1.0){
         break;
       }
@@ -554,14 +570,14 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
 
       float radius = length(point);
       vec3 unit = point / radius;
-            
+
       float rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
 
       float height = clamp((getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius), 0.0, 1.0);
 
       if(height >= rayHeight){
- 
-        if(float(t) < 0.5){          
+
+        if(float(t) < 0.5){
           return (hitTime = start) < maxTime;
         }
 
@@ -574,7 +590,7 @@ bool planetRayMarching(vec3 rayOrigin, vec3 rayDirection, float maxTime, out flo
           point = startPoint + (offset * midpoint);
           unit = point / (radius = length(point));
           rayHeight = (radius - planetBottomRadius) / (planetTopRadius - planetBottomRadius);
-          height = clamp((getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius), 0.0, 1.0); 
+          height = clamp((getSphereHeight(unit) - planetBottomRadius) / (planetTopRadius - planetBottomRadius), 0.0, 1.0);
 
           if(height >= rayHeight){
             upper = midpoint;
