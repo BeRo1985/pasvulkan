@@ -3410,6 +3410,7 @@ type EpvScene3D=class(Exception);
                             procedure AfterConstruction; override;
                             procedure BeforeDestruction; override;
                             procedure Remove;
+                            procedure ForceClearInstanceDataIndex;
                             procedure UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
                             procedure RemoveLights;
                            public
@@ -26649,9 +26650,26 @@ destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
 var Index:TpvSizeInt;
     Light:TpvScene3D.TLight;
     NodeMeshObjectID:TpvUInt32;
+    NeedForceClearInstanceDataIndex:boolean;
 begin
 
  MarkChanged;
+
+ // Force-clear any still referenced instance data slot down into the GPU draw infos before the mesh object IDs
+ // are given back for reuse below, so a destroyed render instance can not leave GPU draw infos behind that still
+ // point at a possibly still selected instance data slot (selection outline) or an already recycled one.
+ NeedForceClearInstanceDataIndex:=fInstanceDataIndex<>0;
+ if not NeedForceClearInstanceDataIndex then begin
+  for Index:=Low(TRenderInstanceDataIndices) to High(TRenderInstanceDataIndices) do begin
+   if fInstanceDataIndices[Index]<>0 then begin
+    NeedForceClearInstanceDataIndex:=true;
+    break;
+   end;
+  end;
+ end;
+ if NeedForceClearInstanceDataIndex then begin
+  ForceClearInstanceDataIndex;
+ end;
 
  if assigned(fLights) and (length(fInstance.fLightNodes)>0) then begin
   RemoveLights;
@@ -26814,6 +26832,42 @@ begin
   fInstanceDataIndex:=aInstanceDataIndex;
   MarkChanged;
  end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.ForceClearInstanceDataIndex;
+var Index:TpvSizeInt;
+    NodeMeshObjectID:TpvUInt32;
+    CurrentDrawInfo:PGPUDrawInfo;
+begin
+
+ // Forced teardown variant of SetInstanceDataIndex: the normal setter only changes the master value and relies
+ // on the per-in-flight-frame render instance update to propagate it into the GPU draw infos, but that update
+ // skips inactive render instances, so a plain clear shortly before a deactivate or teardown never reaches the
+ // GPU side and the selection outline pass keeps seeing the stale instance data slot. Therefore zero the master
+ // value, all per-in-flight-frame copies and the master GPU draw infos of all mesh nodes directly, with an
+ // unconditional dirty mark, so ProcessDrawInfoDirtyQueue re-syncs every in-flight frame GPU buffer regardless
+ // of the state of this render instance.
+
+ fInstanceDataIndex:=0;
+
+ for Index:=Low(TRenderInstanceDataIndices) to High(TRenderInstanceDataIndices) do begin
+  fInstanceDataIndices[Index]:=0;
+ end;
+
+ for Index:=0 to length(fNodeMeshObjectIDs)-1 do begin
+  NodeMeshObjectID:=fNodeMeshObjectIDs[Index];
+  if NodeMeshObjectID>0 then begin
+   CurrentDrawInfo:=fSceneInstance.AcquireDrawInfo(NodeMeshObjectID,true);
+   try
+    CurrentDrawInfo^.InstanceDataIndex:=0;
+   finally
+    fSceneInstance.ReleaseDrawInfo(NodeMeshObjectID,true);
+   end;
+  end;
+ end;
+
+ MarkChanged;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.TRenderInstance.UpdateLights(const aInFlightFrameIndex:TpvSizeInt);
