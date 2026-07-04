@@ -7,7 +7,7 @@ if [ ! -d ".git" ]; then
   exit 1
 fi
 
-# Check if the script is run from the original author by checking if the home directory /home/bero is present, which is the home directory of the original author 
+# Check if the script is run from the original author by checking if the home directory /home/bero is present, which is the home directory of the original author
 if [ ! -d "/home/bero" ]; then
   echo "This script must be run only from the original author"
   exit 1
@@ -20,15 +20,20 @@ if [ -z "$commit_message" ]; then
 fi
 
 # Save the current directory in a variable
-OLD_DIR="$(pwd)" 
+OLD_DIR="$(pwd)"
 
 # Copy modified files from the kraft submodule to the real directory of the kraft GIT repository
 cp -f externals/kraft/README.md ../kraft/README.md
 cp -f externals/kraft/src/kraft.pas ../kraft/src/kraft.pas
 cp -f externals/kraft/src/KraftArcadeCarPhysics.pas ../kraft/src/KraftArcadeCarPhysics.pas
 cp -f externals/kraft/src/KraftRayCastVehicle.pas ../kraft/src/KraftRayCastVehicle.pas
+cp -f externals/kraft/sandbox/UnitDemo*.pas ../kraft/sandbox/
+cp -f externals/kraft/sandbox/UnitFormMain.pas ../kraft/sandbox/UnitFormMain.pas
+cp -f externals/kraft/sandbox/UnitFormMain.lfm ../kraft/sandbox/UnitFormMain.lfm
+cp -f externals/kraft/sandbox/kraftsandbox.lpi ../kraft/sandbox/kraftsandbox.lpi
+cp -f externals/kraft/sandbox/kraftsandbox.lpr ../kraft/sandbox/kraftsandbox.lpr
 
-# Clean the kraft submodule from the local changes 
+# Clean the kraft submodule from the local changes
 cd externals/kraft
 git stash # Stash the local changes
 git stash drop # Drop the stashed local changes
