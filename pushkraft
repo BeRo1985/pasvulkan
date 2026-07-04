@@ -42,6 +42,7 @@ cd "${OLD_DIR}"
 
 # Commit the changes in the kraft GIT repository
 cd ../kraft
+git add src/kraft.pas src/KraftArcadeCarPhysics.pas src/KraftRayCastVehicle.pas sandbox/UnitDemo*.pas sandbox/UnitFormMain.pas sandbox/UnitFormMain.lfm sandbox/kraftsandbox.lpi sandbox/kraftsandbox.lpr README.md
 git commit -a -m "$commit_message"
 git push
 cd "${OLD_DIR}"
