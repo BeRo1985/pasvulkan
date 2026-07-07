@@ -522,6 +522,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
               fBlockQuote:boolean;
               fMark:boolean;
               fThink:boolean;
+              fHeader:boolean;
              public
               property Kind:TLayoutItemKind read fKind write fKind;
               property X:TpvMarkDownRendererFloat read fX write fX;
@@ -539,6 +540,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
               property BlockQuote:boolean read fBlockQuote write fBlockQuote;
               property Mark:boolean read fMark write fMark;
               property Think:boolean read fThink write fThink;
+              property Header:boolean read fHeader write fHeader;
             end;
 
             TLayoutItemList=class
@@ -716,6 +718,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fBGColor:TpvVector4;
        fFontColor:TpvVector4;
        fFontQuoteColor:TpvVector4;
+       fFontHeaderColor:TpvVector4;
 
        fHTMLDoc:THTML;
 
@@ -725,6 +728,8 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fMarkActive:boolean;
        // current inline think state
        fThinkActive:boolean;
+       // current heading (h1..h6) state
+       fHeaderActive:boolean;
 
        // pick the best available face for the given style/mono combination,
        // falling back gracefully to the plain proportional font
@@ -803,6 +808,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        property BGColor:TpvVector4 read fBGColor write fBGColor;
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property FontQuoteColor:TpvVector4 read fFontQuoteColor write fFontQuoteColor;
+       property FontHeaderColor:TpvVector4 read fFontHeaderColor write fFontHeaderColor;
 
        property BaseFontSize:TpvMarkDownRendererFloat read fBaseFontSize write fBaseFontSize;
 
@@ -1928,12 +1934,15 @@ begin
  fBGColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fFontColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
  fFontQuoteColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
+ // headings default to the normal text color until the host assigns an accent
+ fFontHeaderColor:=fFontColor;
 
  fHTMLDoc:=THTML.Create;
 
  fBaselineShiftCurrent:=0;
  fMarkActive:=false;
  fThinkActive:=false;
+ fHeaderActive:=false;
 
 end;
 
@@ -2227,6 +2236,7 @@ begin
    Item.BlockQuote:=aIsBlockQuote;
    Item.Mark:=fMarkActive;
    Item.Think:=fThinkActive;
+   Item.Header:=fHeaderActive;
 
    RectX:=Item.X;
    RectY:=Item.Y;
@@ -3381,6 +3391,7 @@ var ChildIndex:TpvMarkDownRendererInt32;
     PrevBaselineShift:TpvMarkDownRendererFloat;
     PrevMark:boolean;
     PrevThink:boolean;
+    PrevHeader:boolean;
     PreviousLineX:TpvMarkDownRendererFloat;
     PreviousIndent:TpvMarkDownRendererFloat;
  procedure Push;
@@ -3392,6 +3403,7 @@ var ChildIndex:TpvMarkDownRendererInt32;
   PrevBaselineShift:=fBaselineShiftCurrent;
   PrevMark:=fMarkActive;
   PrevThink:=fThinkActive;
+  PrevHeader:=fHeaderActive;
  end;
  procedure Pop;
  begin
@@ -3402,6 +3414,7 @@ var ChildIndex:TpvMarkDownRendererInt32;
   fBaselineShiftCurrent:=PrevBaselineShift;
   fMarkActive:=PrevMark;
   fThinkActive:=PrevThink;
+  fHeaderActive:=PrevHeader;
  end;
 begin
  if not assigned(aNode) then begin
@@ -3503,6 +3516,7 @@ begin
   end else if (length(TagUpper)>=2) and (TagUpper[1]='H') and (TagUpper[2] in ['1'..'6']) then begin
    HeaderLevel:=Ord(TagUpper[2])-Ord('0');
    HeaderFontSizeValue:=HeaderFontSize(HeaderLevel,fBaseFontSize);
+   fHeaderActive:=true;
    if fLineX<>0 then begin
     ParagraphBreak(aCanvas);
    end;
@@ -3725,6 +3739,8 @@ begin
      aCanvas.Color:=ConvertSRGBToLinear(fFontMarkColor);
     end else if Item.Think then begin
      aCanvas.Color:=ConvertSRGBToLinear(fFontThinkColor);
+    end else if Item.Header and not (Item.Code or Item.BlockQuote) then begin
+     aCanvas.Color:=ConvertSRGBToLinear(fFontHeaderColor);
     end;
     TextColor:=aCanvas.Color;
 

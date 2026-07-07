@@ -56,7 +56,11 @@ type { TScreenMarkdown }
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanFontSpriteAtlas:TpvSpriteAtlas;
        fVulkanCanvas:TpvCanvas;
-       fVulkanFont:TpvFont;
+       fFontRegular:TpvFont;
+       fFontBold:TpvFont;
+       fFontItalic:TpvFont;
+       fFontBoldItalic:TpvFont;
+       fFontMono:TpvFont;
        fMarkDownRenderer:TpvMarkDownRenderer;
        fLayoutWidth:TpvFloat;
        fContentWidth:TpvFloat;
@@ -64,6 +68,7 @@ type { TScreenMarkdown }
        fScrollY:TpvFloat;
        fReady:boolean;
        function GetSampleMarkDown:TpvUTF8String;
+       function LoadFont(const aAssetName:TpvUTF8String):TpvFont;
       public
 
        constructor Create; override;
@@ -171,6 +176,8 @@ begin
  fMarkDownRenderer.BGColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
  fMarkDownRenderer.FontColor:=TpvVector4.Create(0.9,0.9,0.9,1.0);
  fMarkDownRenderer.FontQuoteColor:=TpvVector4.Create(0.6,0.75,0.9,1.0);
+ // soft pastel coral for headings, to sit next to the blue quote and green code accents
+ fMarkDownRenderer.FontHeaderColor:=TpvVector4.Create(0.94,0.62,0.62,1.0);
  fMarkDownRenderer.BGCodeColor:=TpvVector4.Create(0.12,0.12,0.14,1.0);
  fMarkDownRenderer.FontCodeColor:=TpvVector4.Create(0.7,0.9,0.7,1.0);
  fMarkDownRenderer.BGMarkColor:=TpvVector4.Create(0.9,0.85,0.2,1.0);
@@ -188,10 +195,34 @@ begin
  inherited Destroy;
 end;
 
-procedure TScreenMarkdown.Show;
+function TScreenMarkdown.LoadFont(const aAssetName:TpvUTF8String):TpvFont;
 var Stream:TStream;
-    Index:TpvInt32;
     TrueTypeFont:TpvTrueTypeFont;
+begin
+ // build one signed-distance-field face into the shared font atlas; the range
+ // is kept to Latin-1 to keep the atlas small (widen it for other scripts)
+ Stream:=pvApplication.Assets.GetAssetStream(aAssetName);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   result:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
+                                          TrueTypeFont,
+                                          [TpvFontCodePointRange.Create(0,255)],
+                                          true,
+                                          2,
+                                          1);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+end;
+
+procedure TScreenMarkdown.Show;
+var Index:TpvInt32;
 begin
  inherited Show;
 
@@ -229,25 +260,12 @@ begin
  fVulkanFontSpriteAtlas.MipMaps:=false;
  fVulkanFontSpriteAtlas.UseConvexHullTrimming:=false;
 
- // build the signed-distance-field font atlas from the bundled TrueType font
- Stream:=pvApplication.Assets.GetAssetStream('fonts/vga.ttf');
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
-                                               TrueTypeFont,
-                                               [TpvFontCodePointRange.Create(0,65535)],
-                                               true,
-                                               2,
-                                               1);
-  finally
-   TrueTypeFont.Free;
-  end;
- finally
-  Stream.Free;
- end;
+ // build all faces into the shared signed-distance-field font atlas
+ fFontRegular:=LoadFont('fonts/notosans.ttf');
+ fFontBold:=LoadFont('fonts/notosansbold.ttf');
+ fFontItalic:=LoadFont('fonts/notosansitalic.ttf');
+ fFontBoldItalic:=LoadFont('fonts/notosansbolditalic.ttf');
+ fFontMono:=LoadFont('fonts/notomono.ttf');
 
  fVulkanFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
                                fVulkanGraphicsCommandBuffer,
@@ -256,10 +274,13 @@ begin
                                fVulkanTransferCommandBuffer,
                                fVulkanTransferCommandBufferFence);
 
- // only a single face is bundled here, so use it for both proportional and
- // monospace slots; the bold/italic variants fall back to it in SelectFont
- fMarkDownRenderer.Font:=fVulkanFont;
- fMarkDownRenderer.MonoFont:=fVulkanFont;
+ // proportional Noto Sans family + Noto Mono for code; the monospace
+ // bold/italic slots stay unset and fall back to MonoFont in SelectFont
+ fMarkDownRenderer.Font:=fFontRegular;
+ fMarkDownRenderer.BoldFont:=fFontBold;
+ fMarkDownRenderer.ItalicFont:=fFontItalic;
+ fMarkDownRenderer.BoldItalicFont:=fFontBoldItalic;
+ fMarkDownRenderer.MonoFont:=fFontMono;
 
  // force a re-layout on the next Update
  fLayoutWidth:=-1.0;
@@ -270,8 +291,15 @@ procedure TScreenMarkdown.Hide;
 var Index:TpvInt32;
 begin
  fMarkDownRenderer.Font:=nil;
+ fMarkDownRenderer.BoldFont:=nil;
+ fMarkDownRenderer.ItalicFont:=nil;
+ fMarkDownRenderer.BoldItalicFont:=nil;
  fMarkDownRenderer.MonoFont:=nil;
- FreeAndNil(fVulkanFont);
+ FreeAndNil(fFontRegular);
+ FreeAndNil(fFontBold);
+ FreeAndNil(fFontItalic);
+ FreeAndNil(fFontBoldItalic);
+ FreeAndNil(fFontMono);
  FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
