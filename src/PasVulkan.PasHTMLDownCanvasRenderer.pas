@@ -328,20 +328,20 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
      TpvMarkDownRendererRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
 
-     TMarkdownRendererInt8={$if declared(UInt8)}Int8{$else}ShortInt{$ifend};
-     PMarkdownRendererInt8=^TMarkdownRendererInt8;
+     TpvMarkDownRendererInt8={$if declared(UInt8)}Int8{$else}ShortInt{$ifend};
+     PpvMarkDownRendererInt8=^TpvMarkDownRendererInt8;
 
-     TMarkdownRendererUInt8={$if declared(UInt8)}UInt8{$else}Byte{$ifend};
-     PMarkdownRendererUInt8=^TMarkdownRendererUInt8;
+     TpvMarkDownRendererUInt8={$if declared(UInt8)}UInt8{$else}Byte{$ifend};
+     PpvMarkDownRendererUInt8=^TpvMarkDownRendererUInt8;
 
      TpvMarkDownRendererUInt8Array=array[0..65535] of TpvMarkDownRendererUInt8;
      PpvMarkDownRendererUInt8Array=^TpvMarkDownRendererUInt8Array;
 
-     TMarkdownRendererInt16={$if declared(UInt8)}Int16{$else}SmallInt{$ifend};
-     PMarkdownRendererInt16=^TMarkdownRendererInt16;
+     TpvMarkDownRendererInt16={$if declared(UInt8)}Int16{$else}SmallInt{$ifend};
+     PpvMarkDownRendererInt16=^TpvMarkDownRendererInt16;
 
-     TMarkdownRendererUInt16={$if declared(UInt8)}UInt16{$else}Word{$ifend};
-     PMarkdownRendererUInt16=^TMarkdownRendererUInt16;
+     TpvMarkDownRendererUInt16={$if declared(UInt8)}UInt16{$else}Word{$ifend};
+     PpvMarkDownRendererUInt16=^TpvMarkDownRendererUInt16;
 
      TpvMarkDownRendererInt32={$if declared(Int32)}Int32{$else}LongInt{$ifend};
      PpvMarkDownRendererInt32=^TpvMarkDownRendererInt32;
@@ -706,10 +706,6 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fMonoItalicFont:TpvFont;
        fMonoBoldItalicFont:TpvFont;
 
-       // pick the best available face for the given style/mono combination,
-       // falling back gracefully to the plain proportional font
-       function SelectFont(const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono:boolean):TpvFont;
-
        fBGCodeColor:TpvVector4;
        fFontCodeColor:TpvVector4;
        fBGMarkColor:TpvVector4;
@@ -729,6 +725,10 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fMarkActive:boolean;
        // current inline think state
        fThinkActive:boolean;
+
+       // pick the best available face for the given style/mono combination,
+       // falling back gracefully to the plain proportional font
+       function SelectFont(const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono:boolean):TpvFont;
 
        function DIP(const aValue:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 
@@ -2050,7 +2050,7 @@ var HashString:RawByteString;
     SelectedFont:TpvFont;
 begin
  if length(aText)>0 then begin
-  Size:=SizeOf(aFontSize)+SizeOf(aFontStyle)+SizeOf(TMarkdownRendererUInt8)+SizeOf(TMarkdownRendererUInt8)+SizeOf(TMarkdownRendererUInt8)+length(aText);
+  Size:=SizeOf(aFontSize)+SizeOf(aFontStyle)+SizeOf(TpvMarkDownRendererUInt8)+SizeOf(TpvMarkDownRendererUInt8)+SizeOf(TpvMarkDownRendererUInt8)+length(aText);
   HashString:='';
   SetLength(HashString,Size);
   Move(aFontSize,HashString[1],SizeOf(aFontSize));
@@ -2061,16 +2061,16 @@ begin
    HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+1]:=#0;
   end;
   if aUseCode then begin
-   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TMarkdownRendererUInt8)*1)+1]:=#1;
+   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TpvMarkDownRendererUInt8)*1)+1]:=#1;
   end else begin
-   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TMarkdownRendererUInt8)*1)+1]:=#0;
+   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TpvMarkDownRendererUInt8)*1)+1]:=#0;
   end;
   if aIsBlockQuote then begin
-   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TMarkdownRendererUInt8)*2)+1]:=#1;
+   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TpvMarkDownRendererUInt8)*2)+1]:=#1;
   end else begin
-   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TMarkdownRendererUInt8)*2)+1]:=#0;
+   HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TpvMarkDownRendererUInt8)*2)+1]:=#0;
   end;
-  Move(aText[1],HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TMarkdownRendererUInt8)*3)+1],length(aText));
+  Move(aText[1],HashString[SizeOf(aFontSize)+SizeOf(aFontStyle)+(SizeOf(TpvMarkDownRendererUInt8)*3)+1],length(aText));
   if fTextSizeCacheHashMap.TryGet(HashString,TextSizeCacheItem) then begin
    aWidth:=TextSizeCacheItem.Width;
    aHeight:=TextSizeCacheItem.Height;
@@ -2263,14 +2263,14 @@ var Index,TextLength:TpvMarkDownRendererInt32;
   end;
  end;
 
- function NextUTF8CharLenAt(const aString:TpvMarkDownRendererUTF8String;const aPosition:TMarkdownRendererInt32):TMarkdownRendererInt32;
- var ByteValue:TMarkdownRendererUInt8;
+ function NextUTF8CharLenAt(const aString:TpvMarkDownRendererUTF8String;const aPosition:TpvMarkDownRendererInt32):TpvMarkDownRendererInt32;
+ var ByteValue:TpvMarkDownRendererUInt8;
  begin
   if (aPosition<1) or (aPosition>length(aString)) then begin
    result:=0;
    exit;
   end;
-  ByteValue:=TMarkdownRendererUInt8(aString[aPosition]);
+  ByteValue:=TpvMarkDownRendererUInt8(aString[aPosition]);
   if ByteValue<$80 then begin
    result:=1;
   end else if (ByteValue and $e0)=$c0 then begin
@@ -2744,7 +2744,7 @@ begin
  end;
 end;
 
-function TpvMarkDownRenderer.GetAttrInt(const aNode:THTML.TNode;const aKey:TMarkdownRendererUTF8String;const aDefaultValue:TpvMarkDownRendererInt32):TpvMarkDownRendererInt32;
+function TpvMarkDownRenderer.GetAttrInt(const aNode:THTML.TNode;const aKey:TpvMarkDownRendererUTF8String;const aDefaultValue:TpvMarkDownRendererInt32):TpvMarkDownRendererInt32;
 var TagParameter:THTML.TTagParameter;
 begin
  TagParameter:=aNode.TagParameters.FindByName(aKey);
