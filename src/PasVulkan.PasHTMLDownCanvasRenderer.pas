@@ -311,28 +311,17 @@ unit PasVulkan.PasHTMLDownCanvasRenderer;
 {$longstrings on}
 {$openstrings on}
 {$scopedenums on}
-{$ifdef PasHTMLDownCanvasRendererFMX}
- {$define FMX}
-{$else}
- {$undef FMX}
-{$endif}
 
 interface
 
 uses SysUtils,Classes,Math,
      {$ifdef fpc}Types,{$endif}
-     {$ifdef PasHTMLDownCanvasRendererFMX}
-      System.Types,
-      System.UITypes,
-      FMX.Types,
-      FMX.Graphics
-     {$else}
-      {$ifdef fpc}
-       Graphics
-      {$else}
-       VCL.Graphics
-      {$endif}
-     {$endif},
+     Vulkan,
+     PasVulkan.Types,
+     PasVulkan.Math,
+     PasVulkan.Framework,
+     PasVulkan.Canvas,
+     PasVulkan.Font,
      PasHTMLDown;
 
 type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}AnsiString{$ifend};
@@ -382,6 +371,17 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
      PpvMarkDownRendererPointer=^TpvMarkDownRendererPointer;
 
      TpvMarkDownRendererFloat=Single;
+
+     { TpvMarkDownRendererFontStyle }
+     TpvMarkDownRendererFontStyle=
+      (
+       Bold,
+       Italic,
+       Underline,
+       StrikeOut
+      );
+
+     TpvMarkDownRendererFontStyles=set of TpvMarkDownRendererFontStyle;
 
      { TpvMarkDownRendererStringHashMap<TpvMarkDownRendererHashMapValue> }
      TpvMarkDownRendererStringHashMap<TpvMarkDownRendererHashMapValue>=class
@@ -507,13 +507,13 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
             TLayoutItem=class
              private
               fKind:TLayoutItemKind;
-              fX:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+              fX:TpvMarkDownRendererFloat;
+              fY:TpvMarkDownRendererFloat;
+              fWidth:TpvMarkDownRendererFloat;
+              fHeight:TpvMarkDownRendererFloat;
               fText:TpvMarkDownRendererUTF8String;
-              fFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fFontStyle:TFontStyles;
+              fFontSize:TpvMarkDownRendererFloat;
+              fFontStyle:TpvMarkDownRendererFontStyles;
               fLinkHref:TpvMarkDownRendererUTF8String;
               fMetaA:TpvMarkDownRendererInt32;
               fMetaB:TpvMarkDownRendererInt32;
@@ -524,13 +524,13 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
               fThink:boolean;
              public
               property Kind:TLayoutItemKind read fKind write fKind;
-              property X:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fX write fX;
-              property Y:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fY write fY;
-              property Width:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fWidth write fWidth;
-              property Height:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fHeight write fHeight;
+              property X:TpvMarkDownRendererFloat read fX write fX;
+              property Y:TpvMarkDownRendererFloat read fY write fY;
+              property Width:TpvMarkDownRendererFloat read fWidth write fWidth;
+              property Height:TpvMarkDownRendererFloat read fHeight write fHeight;
               property Text:TpvMarkDownRendererUTF8String read fText write fText;
-              property FontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fFontSize write fFontSize;
-              property FontStyle:TFontStyles read fFontStyle write fFontStyle;
+              property FontSize:TpvMarkDownRendererFloat read fFontSize write fFontSize;
+              property FontStyle:TpvMarkDownRendererFontStyles read fFontStyle write fFontStyle;
               property LinkHref:TpvMarkDownRendererUTF8String read fLinkHref write fLinkHref;
               property MetaA:TpvMarkDownRendererInt32 read fMetaA write fMetaA;
               property MetaB:TpvMarkDownRendererInt32 read fMetaB write fMetaB;
@@ -559,16 +559,16 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
             //=== Link hit rects ==========================================================
             TLinkHitRect=class
              private
-              fX:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fW:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-              fH:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+              fX:TpvMarkDownRendererFloat;
+              fY:TpvMarkDownRendererFloat;
+              fW:TpvMarkDownRendererFloat;
+              fH:TpvMarkDownRendererFloat;
               fHref:TpvMarkDownRendererUTF8String;
              public
-              property X:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fX write fX;
-              property Y:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fY write fY;
-              property W:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fW write fW;
-              property H:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fH write fH;
+              property X:TpvMarkDownRendererFloat read fX write fX;
+              property Y:TpvMarkDownRendererFloat read fY write fY;
+              property W:TpvMarkDownRendererFloat read fW write fW;
+              property H:TpvMarkDownRendererFloat read fH write fH;
               property Href:TpvMarkDownRendererUTF8String read fHref write fHref;
             end;
 
@@ -581,7 +581,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
               constructor Create;
               destructor Destroy; override;
               procedure Clear;
-              procedure Add(const aX,aY,aWidth,aHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aHref:TpvMarkDownRendererUTF8String);
+              procedure Add(const aX,aY,aWidth,aHeight:TpvMarkDownRendererFloat;const aHref:TpvMarkDownRendererUTF8String);
               function GetItem(const aIndex:TpvMarkDownRendererInt32):TLinkHitRect;
               property Count:TpvMarkDownRendererInt32 read fCount;
               property Items[const Index:TpvMarkDownRendererInt32]:TLinkHitRect read GetItem; default;
@@ -654,8 +654,8 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
             end;
 
             TTextSizeCacheItem=record
-             Width:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-             Height:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+             Width:TpvMarkDownRendererFloat;
+             Height:TpvMarkDownRendererFloat;
             end;
 
             TTextSizeCacheHashMap=TpvMarkDownRendererStringHashMap<TTextSizeCacheItem>;
@@ -665,86 +665,86 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        // items/layout state
 
        fItems:TLayoutItemList;
-       fCalculatedWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fCalculatedHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fMaxWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fCalculatedWidth:TpvMarkDownRendererFloat;
+       fCalculatedHeight:TpvMarkDownRendererFloat;
+       fMaxWidth:TpvMarkDownRendererFloat;
 
-       fLineX:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fLineY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fLineWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fLineHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fLineX:TpvMarkDownRendererFloat;
+       fLineY:TpvMarkDownRendererFloat;
+       fLineWidth:TpvMarkDownRendererFloat;
+       fLineHeight:TpvMarkDownRendererFloat;
        // per line overhang handling for superscript/subscript
-       fLineAboveExtra:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}; // extra pixels above line top due to superscripts
-       fLineBelowExtra:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}; // extra pixels below baseline due to subscripts
+       fLineAboveExtra:TpvMarkDownRendererFloat; // extra pixels above line top due to superscripts
+       fLineBelowExtra:TpvMarkDownRendererFloat; // extra pixels below baseline due to subscripts
        fLineItemStartIndex:TpvMarkDownRendererInt32; // index of first item in current line
        fLinkRectStartIndex:TpvMarkDownRendererInt32; // index of first link rect in current line
-       fParagraphSpacing:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fIndentStep:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       fCurrentIndent:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fParagraphSpacing:TpvMarkDownRendererFloat;
+       fIndentStep:TpvMarkDownRendererFloat;
+       fCurrentIndent:TpvMarkDownRendererFloat;
 
        fTextSizeCacheHashMap:TTextSizeCacheHashMap;
 
        fListDepth:TpvMarkDownRendererInt32;
        fOrderedListDepthCount:array[0..31] of TpvMarkDownRendererInt32;
 
-       fBaseFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fBaseFontSize:TpvMarkDownRendererFloat;
        fNeedSpaceBeforeNextText:boolean;
 
        fLinkRects:TLinkHitRectList;
 
-       fTargetDPI:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fTargetDPI:TpvMarkDownRendererFloat;
        fFontName:TpvMarkDownRendererUTF8String;
        fMonoFontName:TpvMarkDownRendererUTF8String;
 
-       fBGCodeColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fFontCodeColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fBGMarkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fFontMarkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fBGThinkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fFontThinkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
+       fBGCodeColor:TpvVector4;
+       fFontCodeColor:TpvVector4;
+       fBGMarkColor:TpvVector4;
+       fFontMarkColor:TpvVector4;
+       fBGThinkColor:TpvVector4;
+       fFontThinkColor:TpvVector4;
 
-       fBGColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fFontColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-       fFontQuoteColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
+       fBGColor:TpvVector4;
+       fFontColor:TpvVector4;
+       fFontQuoteColor:TpvVector4;
 
        fHTMLDoc:THTML;
 
        // current inline baseline shift (negative=up for <sup>, positive=down for <sub>)
-       fBaselineShiftCurrent:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       fBaselineShiftCurrent:TpvMarkDownRendererFloat;
        // current inline mark highlight state
        fMarkActive:boolean;
        // current inline think state
        fThinkActive:boolean;
 
 {$ifdef FMX}
-       fCurrentFontColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
+       fCurrentFontColor:TpvVector4;
 {$endif}
 
-       function DIP(const aValue:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       function DIP(const aValue:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 
        procedure Clear;
        procedure BeginLayout;
        procedure EndLayout;
 
-       procedure NewLine(const aCanvas:TCanvas);
-       procedure ParagraphBreak(const aCanvas:TCanvas);
+       procedure NewLine(const aCanvas:TpvCanvas);
+       procedure ParagraphBreak(const aCanvas:TpvCanvas);
 
-       procedure ApplyFont(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
-       procedure MeasureText(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean;out aWidth,aHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
-       function MeasureTextWidth(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-       function MeasureTextHeight(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       procedure ApplyFont(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
+       procedure MeasureText(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean;out aWidth,aHeight:TpvMarkDownRendererFloat);
+       function MeasureTextWidth(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):TpvMarkDownRendererFloat;
+       function MeasureTextHeight(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):TpvMarkDownRendererFloat;
 
-       procedure ShiftCurrentLineItems(const aDeltaY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
-       procedure FlushTextRun(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aDryRun:boolean);
-       procedure LayoutTextWrapped(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aPreserveWhitespace,aDryRun:boolean);
-       procedure LayoutHR(const aCanvas:TCanvas;const aIsBlockQuote:Boolean);
-       procedure LayoutBullet(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aIsBlockQuote:Boolean);
+       procedure ShiftCurrentLineItems(const aDeltaY:TpvMarkDownRendererFloat);
+       procedure FlushTextRun(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aDryRun:boolean);
+       procedure LayoutTextWrapped(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aPreserveWhitespace,aDryRun:boolean);
+       procedure LayoutHR(const aCanvas:TpvCanvas;const aIsBlockQuote:Boolean);
+       procedure LayoutBullet(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aIsBlockQuote:Boolean);
 
-       procedure LayoutCodeBlock(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
+       procedure LayoutCodeBlock(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat);
 
-       function HeaderFontSize(const aLevel:TpvMarkDownRendererInt32;const aBase:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+       function HeaderFontSize(const aLevel:TpvMarkDownRendererInt32;const aBase:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 
-       procedure TraverseHTML(const aCanvas:TCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};aFontStyle:TFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
+       procedure TraverseHTML(const aCanvas:TpvCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:TpvMarkDownRendererFloat;aFontStyle:TpvMarkDownRendererFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
 
        // tables
        function ExtractNodeText(const aNode:THTML.TNode):TpvMarkDownRendererUTF8String;
@@ -752,9 +752,9 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
        procedure CollectTable(const aNode:THTML.TNode;out aTableModel:TTable);
        procedure NormalizeTable(var aTableModel:TTable);
-       procedure MeasureTableColumns(const aCanvas:TCanvas;const aTableModel:TTable;var aMinCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aPrefCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aIsBlockQuote:Boolean);
-       procedure DistributeColumns(const aAvailable:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aMinCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aPrefCol:array of  {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aColumnWidth:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aIsBlockQuote:Boolean);
-       procedure LayoutTable(const aCanvas:TCanvas;var aTableModel:TTable;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aIsBlockQuote:Boolean);
+       procedure MeasureTableColumns(const aCanvas:TpvCanvas;const aTableModel:TTable;var aMinCol:array of TpvMarkDownRendererFloat;var aPrefCol:array of TpvMarkDownRendererFloat;const aIsBlockQuote:Boolean);
+       procedure DistributeColumns(const aAvailable:TpvMarkDownRendererFloat;var aMinCol:array of TpvMarkDownRendererFloat;var aPrefCol:array of  TpvMarkDownRendererFloat;var aColumnWidth:array of TpvMarkDownRendererFloat;const aIsBlockQuote:Boolean);
+       procedure LayoutTable(const aCanvas:TpvCanvas;var aTableModel:TTable;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aIsBlockQuote:Boolean);
 
       public
        constructor Create;
@@ -762,29 +762,29 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
        // aIsHTML=false => MarkDownToHTML
        procedure Parse(const aMarkDownOrHTML:TpvMarkDownRendererUTF8String;const IsHTML:boolean);
-       procedure Calculate(const aCanvas:TCanvas;const aMaxWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aContentWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aContentHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
-       procedure Render(const aCanvas:TCanvas;const aLeftPosition,aTopPosition:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
-       function HitTestLink(const aX,aY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aHref:TpvMarkDownRendererUTF8String):boolean;
+       procedure Calculate(const aCanvas:TpvCanvas;const aMaxWidth:TpvMarkDownRendererFloat;out aContentWidth:TpvMarkDownRendererFloat;out aContentHeight:TpvMarkDownRendererFloat);
+       procedure Render(const aCanvas:TpvCanvas;const aLeftPosition,aTopPosition:TpvMarkDownRendererFloat);
+       function HitTestLink(const aX,aY:TpvMarkDownRendererFloat;out aHref:TpvMarkDownRendererUTF8String):boolean;
 
        // Public properties
-       property CalculatedWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fCalculatedWidth;
-       property CalculatedHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fCalculatedHeight;
-       property TargetDPI:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fTargetDPI write fTargetDPI;
+       property CalculatedWidth:TpvMarkDownRendererFloat read fCalculatedWidth;
+       property CalculatedHeight:TpvMarkDownRendererFloat read fCalculatedHeight;
+       property TargetDPI:TpvMarkDownRendererFloat read fTargetDPI write fTargetDPI;
        property FontName:TpvMarkDownRendererUTF8String read fFontName write fFontName;
        property MonoFontName:TpvMarkDownRendererUTF8String read fMonoFontName write fMonoFontName;
 
-       property BGCodeColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fBGCodeColor write fBGCodeColor;
-       property FontCodeColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fFontCodeColor write fFontCodeColor;
-       property BGMarkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fBGMarkColor write fBGMarkColor;
-       property FontMarkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fFontMarkColor write fFontMarkColor;
-       property BGThinkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fBGThinkColor write fBGThinkColor;
-       property FontThinkColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fFontThinkColor write fFontThinkColor;
+       property BGCodeColor:TpvVector4 read fBGCodeColor write fBGCodeColor;
+       property FontCodeColor:TpvVector4 read fFontCodeColor write fFontCodeColor;
+       property BGMarkColor:TpvVector4 read fBGMarkColor write fBGMarkColor;
+       property FontMarkColor:TpvVector4 read fFontMarkColor write fFontMarkColor;
+       property BGThinkColor:TpvVector4 read fBGThinkColor write fBGThinkColor;
+       property FontThinkColor:TpvVector4 read fFontThinkColor write fFontThinkColor;
 
-       property BGColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fBGColor write fBGColor;
-       property FontColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fFontColor write fFontColor;
-       property FontQuoteColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif} read fFontQuoteColor write fFontQuoteColor;
+       property BGColor:TpvVector4 read fBGColor write fBGColor;
+       property FontColor:TpvVector4 read fFontColor write fFontColor;
+       property FontQuoteColor:TpvVector4 read fFontQuoteColor write fFontQuoteColor;
 
-       property BaseFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif} read fBaseFontSize write fBaseFontSize;
+       property BaseFontSize:TpvMarkDownRendererFloat read fBaseFontSize write fBaseFontSize;
 
      end;
 
@@ -1678,7 +1678,7 @@ begin
  fCount:=0;
 end;
 
-procedure TpvMarkDownRenderer.TLinkHitRectList.Add(const aX,aY,aWidth,aHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aHref:TpvMarkDownRendererUTF8String);
+procedure TpvMarkDownRenderer.TLinkHitRectList.Add(const aX,aY,aWidth,aHeight:TpvMarkDownRendererFloat;const aHref:TpvMarkDownRendererUTF8String);
 var RectObj:TLinkHitRect;
 begin
  inc(fCount);
@@ -1930,7 +1930,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvMarkDownRenderer.DIP(const aValue:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+function TpvMarkDownRenderer.DIP(const aValue:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 begin
  // scale integer based on target DPI (reference 96)
 {$ifdef FMX}
@@ -1978,7 +1978,7 @@ begin
  // reserved for future batching hooks
 end;
 
-procedure TpvMarkDownRenderer.ApplyFont(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
+procedure TpvMarkDownRenderer.ApplyFont(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
 begin
  if aUseMono then begin
   if length(fMonoFontName)>0 then begin
@@ -2028,7 +2028,7 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.MeasureText(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean;out aWidth,aHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
+procedure TpvMarkDownRenderer.MeasureText(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean;out aWidth,aHeight:TpvMarkDownRendererFloat);
 var HashString:RawByteString;
     Size:TpvMarkDownRendererInt32;
     TextSizeCacheItem:TTextSizeCacheItem;
@@ -2082,29 +2082,29 @@ begin
  end;
 end;
 
-function TpvMarkDownRenderer.MeasureTextWidth(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+function TpvMarkDownRenderer.MeasureTextWidth(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):TpvMarkDownRendererFloat;
 {begin
  ApplyFont(aCanvas,aFontSize,aFontStyle,aUseMono,aUseCode,aIsBlockQuote);
  result:=aCanvas.TextWidth(aText);
 end;}
-var Width,Height:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+var Width,Height:TpvMarkDownRendererFloat;
 begin 
  MeasureText(aCanvas,aText,aFontSize,aFontStyle,aUseMono,aUseCode,aIsBlockQuote,Width,Height);
  result:=Width;
 end;
 
-function TpvMarkDownRenderer.MeasureTextHeight(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+function TpvMarkDownRenderer.MeasureTextHeight(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean):TpvMarkDownRendererFloat;
 {begin
  ApplyFont(aCanvas,aFontSize,aFontStyle,aUseMono,aUseCode,aIsBlockQuote);
  result:=aCanvas.TextHeight(MaxHeightString);
 end;}
-var Width,Height:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+var Width,Height:TpvMarkDownRendererFloat;
 begin
  MeasureText(aCanvas,MaxHeightString,aFontSize,aFontStyle,aUseMono,aUseCode,aIsBlockQuote,Width,Height);
  result:=Height;
 end;
 
-procedure TpvMarkDownRenderer.NewLine(const aCanvas:TCanvas);
+procedure TpvMarkDownRenderer.NewLine(const aCanvas:TpvCanvas);
 begin
  fLineX:=0;
  // advance by top overhang + content height + below overhang
@@ -2118,7 +2118,7 @@ begin
  fNeedSpaceBeforeNextText:=false;
 end;
 
-procedure TpvMarkDownRenderer.ParagraphBreak(const aCanvas:TCanvas);
+procedure TpvMarkDownRenderer.ParagraphBreak(const aCanvas:TpvCanvas);
 begin
  if fLineX<>0 then begin
   NewLine(aCanvas);
@@ -2130,7 +2130,7 @@ begin
  fLinkRectStartIndex:=fLinkRects.Count;
 end;
  
-procedure TpvMarkDownRenderer.ShiftCurrentLineItems(const aDeltaY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
+procedure TpvMarkDownRenderer.ShiftCurrentLineItems(const aDeltaY:TpvMarkDownRendererFloat);
 var Index:TpvMarkDownRendererInt32;
     Item:TLayoutItem;
     LinkObj:TLinkHitRect;
@@ -2158,10 +2158,10 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.FlushTextRun(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aDryRun:boolean);
+procedure TpvMarkDownRenderer.FlushTextRun(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aDryRun:boolean);
 var Item:TLayoutItem;
     TextHeight,TextWidth,RectX,RectY,
-    BaselineShift,TopOver,BottomOver,DeltaY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    BaselineShift,TopOver,BottomOver,DeltaY:TpvMarkDownRendererFloat;
 begin
 
  if length(aText)>0 then begin
@@ -2236,11 +2236,11 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.LayoutTextWrapped(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aPreserveWhitespace,aDryRun:boolean);
+procedure TpvMarkDownRenderer.LayoutTextWrapped(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aLinkHref:TpvMarkDownRendererUTF8String;const aUseMono,aUseCode,aIsBlockQuote:boolean;const aPreserveWhitespace,aDryRun:boolean);
 var Index,TextLength:TpvMarkDownRendererInt32;
     Character:ansichar;
     WordBuffer,LineBuffer,LocalText:TpvMarkDownRendererUTF8String;
-    TextHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    TextHeight:TpvMarkDownRendererFloat;
     NeedSpace:boolean;
 
  procedure FlushCurrentLine;
@@ -2273,7 +2273,7 @@ var Index,TextLength:TpvMarkDownRendererInt32;
  procedure BreakLongWord(const aWord:TpvMarkDownRendererUTF8String);
  var CharPos,WordLen,CharLen:TpvMarkDownRendererInt32;
      CharBuffer,CurrentChar:TpvMarkDownRendererUTF8String;
-     CharWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+     CharWidth:TpvMarkDownRendererFloat;
  begin
 
   WordLen:=length(aWord);
@@ -2314,7 +2314,7 @@ var Index,TextLength:TpvMarkDownRendererInt32;
 
  procedure AddWordToLine(const aWord:TpvMarkDownRendererUTF8String);
  var TestLine:TpvMarkDownRendererUTF8String;
-     TestWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+     TestWidth:TpvMarkDownRendererFloat;
  begin
 
   if length(aWord)>0 then begin
@@ -2464,9 +2464,9 @@ begin
 
 end;
 
-procedure TpvMarkDownRenderer.LayoutHR(const aCanvas:TCanvas;const aIsBlockQuote:Boolean);
+procedure TpvMarkDownRenderer.LayoutHR(const aCanvas:TpvCanvas;const aIsBlockQuote:Boolean);
 var Item:TLayoutItem;
-    YLine:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    YLine:TpvMarkDownRendererFloat;
 begin
  if fLineX<>0 then begin
   ParagraphBreak(aCanvas);
@@ -2484,9 +2484,9 @@ begin
  ParagraphBreak(aCanvas);
 end;
 
-procedure TpvMarkDownRenderer.LayoutBullet(const aCanvas:TCanvas;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aIsBlockQuote:Boolean);
+procedure TpvMarkDownRenderer.LayoutBullet(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aIsBlockQuote:Boolean);
 var Item:TLayoutItem;
-    FontHeight,DeltaY,Size:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    FontHeight,DeltaY,Size:TpvMarkDownRendererFloat;
 begin
  FontHeight:=MeasureTextHeight(aCanvas,aFontSize,aFontStyle,false,false,aIsBlockQuote);
  if fLineHeight<FontHeight then begin
@@ -2497,15 +2497,15 @@ begin
  Size:=DIP(6);
  Item.Width:=Size;
  Item.Height:=Size;
- DeltaY:={$ifdef FMX}(FontHeight-Size)*0.5{$else}(FontHeight-Size) div 2{$endif};
+ DeltaY:=(FontHeight-Size)*0.5;
  Item.X:=fCurrentIndent+DIP(2);
  Item.Y:=fLineY+DeltaY;
 end;
 
-procedure TpvMarkDownRenderer.LayoutCodeBlock(const aCanvas:TCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
+procedure TpvMarkDownRenderer.LayoutCodeBlock(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat);
 var Pass,Index,TextLength,LineStart,LineEnd,OldItemStart,OldLinkStart:TpvMarkDownRendererInt32;
     OldLineY,OldLineHeight,OldAbove,OldBelow,
-    OldBaseline,MaxWidth,BlockHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    OldBaseline,MaxWidth,BlockHeight:TpvMarkDownRendererFloat;
     LineText,ProcessedText:TpvMarkDownRendererUTF8String;
     BackgroundItem:TLayoutItem;
 begin
@@ -2686,7 +2686,7 @@ begin
 
 end;
 
-function TpvMarkDownRenderer.HeaderFontSize(const aLevel:TpvMarkDownRendererInt32;const aBase:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif}):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+function TpvMarkDownRenderer.HeaderFontSize(const aLevel:TpvMarkDownRendererInt32;const aBase:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 begin
  case aLevel of
   1:begin 
@@ -2953,15 +2953,15 @@ begin
  aTableModel.fRows:=NewRows;
 end;
 
-procedure TpvMarkDownRenderer.MeasureTableColumns(const aCanvas:TCanvas;const aTableModel:TTable;var aMinCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aPrefCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aIsBlockQuote:Boolean);
+procedure TpvMarkDownRenderer.MeasureTableColumns(const aCanvas:TpvCanvas;const aTableModel:TTable;var aMinCol:array of TpvMarkDownRendererFloat;var aPrefCol:array of TpvMarkDownRendererFloat;const aIsBlockQuote:Boolean);
 var ColumnIndex,RowIndex,TotalColumns,LocalIndex,Span:TpvMarkDownRendererInt32;
     Cell:TTableCell;
-    MinimumWord,PreferredNoWrap:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    MinimumWord,PreferredNoWrap:TpvMarkDownRendererFloat;
 
- function MaxWordWidth(const Text:TpvMarkDownRendererUTF8String):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+ function MaxWordWidth(const Text:TpvMarkDownRendererUTF8String):TpvMarkDownRendererFloat;
  var ScanIndex:TpvMarkDownRendererInt32;
      WordBuffer:TpvMarkDownRendererUTF8String;
-     BestWidth,Current:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+     BestWidth,Current:TpvMarkDownRendererFloat;
  begin
   BestWidth:=0;
   WordBuffer:='';
@@ -2989,7 +2989,7 @@ var ColumnIndex,RowIndex,TotalColumns,LocalIndex,Span:TpvMarkDownRendererInt32;
   result:=BestWidth;
  end;
 
- function NoWrapWidth(const Text:TpvMarkDownRendererUTF8String):{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+ function NoWrapWidth(const Text:TpvMarkDownRendererUTF8String):TpvMarkDownRendererFloat;
  begin
   result:=MeasureTextWidth(aCanvas,Text,fBaseFontSize,[],false,false,aIsBlockQuote);
  end;
@@ -3049,9 +3049,9 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.DistributeColumns(const aAvailable:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aMinCol:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aPrefCol:array of  {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};var aColumnWidth:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aIsBlockQuote:Boolean);
+procedure TpvMarkDownRenderer.DistributeColumns(const aAvailable:TpvMarkDownRendererFloat;var aMinCol:array of TpvMarkDownRendererFloat;var aPrefCol:array of  TpvMarkDownRendererFloat;var aColumnWidth:array of TpvMarkDownRendererFloat;const aIsBlockQuote:Boolean);
 var TotalColumns,IndexColumn:TpvMarkDownRendererInt32;
-    TotalMin,TotalPref,Extra,Remain,Room,Denom,SpanVal:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    TotalMin,TotalPref,Extra,Remain,Room,Denom,SpanVal:TpvMarkDownRendererFloat;
 begin
 
  TotalColumns:=length(aColumnWidth);
@@ -3116,15 +3116,15 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.LayoutTable(const aCanvas:TCanvas;var aTableModel:TTable;const aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};const aFontStyle:TFontStyles;const aIsBlockQuote:Boolean);
+procedure TpvMarkDownRenderer.LayoutTable(const aCanvas:TpvCanvas;var aTableModel:TTable;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aIsBlockQuote:Boolean);
 var RowIndex,ColumnIndex,Span,IndexSpan,TotalColumns:TpvMarkDownRendererInt32;
-    PrefCol:array of  {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-    MinCol,ColWidth:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-    RowHeights:array of {$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    PrefCol:array of  TpvMarkDownRendererFloat;
+    MinCol,ColWidth:array of TpvMarkDownRendererFloat;
+    RowHeights:array of TpvMarkDownRendererFloat;
     AvailableWidth,GridSize,CellPadding,
-    CellWidth,TextWidth,StartX,StartY,CurrentY,CurrentX:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    CellWidth,TextWidth,StartX,StartY,CurrentY,CurrentX:TpvMarkDownRendererFloat;
     SavedIndent,SavedAbove,SavedBelow,SavedMax,SavedX,SavedY,SavedLH,
-    SavedBaseline:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    SavedBaseline:TpvMarkDownRendererFloat;
     SavedItemStart,SavedLinkStart:TpvMarkDownRendererInt32;
     Cell:TTableCell;
     RectItem:TLayoutItem;
@@ -3133,7 +3133,7 @@ var RowIndex,ColumnIndex,Span,IndexSpan,TotalColumns:TpvMarkDownRendererInt32;
     SavedItems:TLayoutItemList;
     SavedLinkRects:TLinkHitRectList;
     SavedNeed:boolean;
-    CellFontStyle:TFontStyles;
+    CellFontStyle:TpvMarkDownRendererFontStyles;
 begin
  if fLineX<>0 then begin
   ParagraphBreak(aCanvas);
@@ -3390,25 +3390,25 @@ begin
 end;
 {$endif}
 
-procedure TpvMarkDownRenderer.TraverseHTML(const aCanvas:TCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};aFontStyle:TFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
+procedure TpvMarkDownRenderer.TraverseHTML(const aCanvas:TpvCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:TpvMarkDownRendererFloat;aFontStyle:TpvMarkDownRendererFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
 var ChildIndex:TpvMarkDownRendererInt32;
     ChildNode:THTML.TNode;
     TagUpper:TpvMarkDownRendererUTF8String;
     ListIsOrdered:boolean;
     HeaderLevel:TpvMarkDownRendererInt32;
-    HeaderFontSizeValue:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    HeaderFontSizeValue:TpvMarkDownRendererFloat;
     Accumulator:TpvMarkDownRendererUTF8String;
     TableModel:TTable;
     TagParameter:THTML.TTagParameter;
-    PrevFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-    PrevFontStyle:TFontStyles;
+    PrevFontSize:TpvMarkDownRendererFloat;
+    PrevFontStyle:TpvMarkDownRendererFontStyles;
     PrevLinkHref:TpvMarkDownRendererUTF8String;
     PrevUseMono:boolean;
-    PrevBaselineShift:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    PrevBaselineShift:TpvMarkDownRendererFloat;
     PrevMark:boolean;
     PrevThink:boolean;
-    PreviousLineX:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-    PreviousIndent:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    PreviousLineX:TpvMarkDownRendererFloat;
+    PreviousIndent:TpvMarkDownRendererFloat;
  procedure Push;
  begin
   PrevFontSize:=aFontSize;
@@ -3570,58 +3570,27 @@ begin
   end else if TagUpper='CODE' then begin
    aUseMono:=true;
   end else if (TagUpper='STRONG') or (TagUpper='B') then begin
-{$ifdef FMX}
-   Include(aFontStyle,TFontStyle.fsBold);
-{$else}
-   Include(aFontStyle,fsBold);
-{$endif}
+   Include(aFontStyle,TpvMarkDownRendererFontStyle.Bold);
   end else if (TagUpper='EM') or (TagUpper='I') then begin
-{$ifdef FMX}
-   Include(aFontStyle,TFontStyle.fsItalic);
-{$else}
-   Include(aFontStyle,fsItalic);
-{$endif}
+   Include(aFontStyle,TpvMarkDownRendererFontStyle.Italic);
   end else if TagUpper='DEL' then begin
-{$ifdef FMX}
-   Include(aFontStyle,TFontStyle.fsStrikeOut);
-{$else}
-   Include(aFontStyle,fsStrikeOut);
-{$endif}
+   Include(aFontStyle,TpvMarkDownRendererFontStyle.StrikeOut);
   end else if TagUpper='MARK' then begin
    fMarkActive:=true;
   end else if TagUpper='THINK' then begin
    fThinkActive:=true;
-{$ifdef FMX}
-   Include(aFontStyle,TFontStyle.fsItalic);
+   Include(aFontStyle,TpvMarkDownRendererFontStyle.Italic);
    aFontSize:=Max(1,aFontSize*0.9);
-{$else}
-   Include(aFontStyle,fsItalic);
-   aFontSize:=Max(1,(aFontSize*9) div 10);
-{$endif}
   end else if TagUpper='SUP' then begin
    // superscript - smaller font and baseline up
-{$ifdef FMX}
    aFontSize:=Max(1,aFontSize*0.75);
    fBaselineShiftCurrent:=fBaselineShiftCurrent-((MeasureTextHeight(aCanvas,aFontSize,aFontStyle,aUseMono,false,aIsBlockQuote)+1)*0.5);
-{$else}
-   aFontSize:=Max(1,(aFontSize*3) div 4);
-   dec(fBaselineShiftCurrent,(MeasureTextHeight(aCanvas,aFontSize,aFontStyle,aUseMono,false,aIsBlockQuote)+1) div 2);
-{$endif}
   end else if TagUpper='SUB' then begin
    // subscript - smaller font and baseline down
-{$ifdef FMX}
    aFontSize:=Max(1,aFontSize*0.75);
    fBaselineShiftCurrent:=fBaselineShiftCurrent+((MeasureTextHeight(aCanvas,aFontSize,aFontStyle,aUseMono,false,aIsBlockQuote)+1)*0.333333333);
-{$else}
-   aFontSize:=Max(1,(aFontSize*3) div 4);
-   inc(fBaselineShiftCurrent,(MeasureTextHeight(aCanvas,aFontSize,aFontStyle,aUseMono,false,aIsBlockQuote)+1) div 3);
-{$endif}
   end else if TagUpper='A' then begin
-{$ifdef FMX}
-   Include(aFontStyle,TFontStyle.fsUnderline);
-{$else}
-   Include(aFontStyle,fsUnderline);
-{$endif}
+   Include(aFontStyle,TpvMarkDownRendererFontStyle.Underline);
    TagParameter:=aNode.TagParameters.FindByName('HREF');
    if assigned(TagParameter) then begin
     aLinkHref:=ConvertEntities(TagParameter.Value,THTML.TCharset.UTF_8,true);
@@ -3654,7 +3623,7 @@ begin
 
  if aNode.NodeType=THTML.TNodeType.Text then begin
   if length(aNode.Text)>0 then begin
-   LayoutTextWrapped(aCanvas,{$ifdef FMX}RawByteStringToUTF8String(aNode.Text){$else}aNode.Text{$endif},aFontSize,aFontStyle,aLinkHref,aUseMono,false,aIsBlockQuote,false,false);
+   LayoutTextWrapped(aCanvas,aNode.Text,aFontSize,aFontStyle,aLinkHref,aUseMono,false,aIsBlockQuote,false,false);
   end;
  end else begin
   if assigned(aNode.Children) then begin
@@ -3688,9 +3657,9 @@ begin
  end;
 end;
 
-procedure TpvMarkDownRenderer.Calculate(const aCanvas:TCanvas;const aMaxWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aContentWidth:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aContentHeight:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
-var CurrentFontSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
-    CurrentFontStyle:TFontStyles;
+procedure TpvMarkDownRenderer.Calculate(const aCanvas:TpvCanvas;const aMaxWidth:TpvMarkDownRendererFloat;out aContentWidth:TpvMarkDownRendererFloat;out aContentHeight:TpvMarkDownRendererFloat);
+var CurrentFontSize:TpvMarkDownRendererFloat;
+    CurrentFontStyle:TpvMarkDownRendererFontStyles;
     CurrentLinkHref:TpvMarkDownRendererUTF8String;
     UseMono:boolean;
 {$ifdef FMX}
@@ -3742,17 +3711,17 @@ begin
  EndLayout;
 end;
 
-procedure TpvMarkDownRenderer.Render(const aCanvas:TCanvas;const aLeftPosition,aTopPosition:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif});
+procedure TpvMarkDownRenderer.Render(const aCanvas:TpvCanvas;const aLeftPosition,aTopPosition:TpvMarkDownRendererFloat);
 var Index:TpvMarkDownRendererInt32;
     Item:TLayoutItem;
-    OldStyle:TFontStyles;
-    OldSize:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};
+    OldStyle:TpvMarkDownRendererFontStyles;
+    OldSize:TpvMarkDownRendererFloat;
     OldName:TpvMarkDownRendererUTF8String;
 {$ifndef FMX}
     OldBrushStyle:TBrushStyle;
     OldPenStyle:TPenStyle;
-    OldPenColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
-    OldBrushColor:{$ifdef FMX}TAlphaColor{$else}TColor{$endif};
+    OldPenColor:TpvVector4;
+    OldBrushColor:TpvVector4;
 {$endif}
 {$ifdef FMX}
     r:TRectF;
@@ -3934,7 +3903,7 @@ begin
 
 end;
 
-function TpvMarkDownRenderer.HitTestLink(const aX,aY:{$ifdef FMX}TpvMarkDownRendererFloat{$else}TpvMarkDownRendererInt32{$endif};out aHref:TpvMarkDownRendererUTF8String):boolean;
+function TpvMarkDownRenderer.HitTestLink(const aX,aY:TpvMarkDownRendererFloat;out aHref:TpvMarkDownRendererUTF8String):boolean;
 var Index:TpvMarkDownRendererInt32;
     RectObj:TLinkHitRect;
 begin
