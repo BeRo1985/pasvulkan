@@ -693,8 +693,22 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fLinkRects:TLinkHitRectList;
 
        fTargetDPI:TpvMarkDownRendererFloat;
-       fFontName:TpvMarkDownRendererUTF8String;
-       fMonoFontName:TpvMarkDownRendererUTF8String;
+
+       // proportional font faces (one TpvFont instance per style variant)
+       fFont:TpvFont;
+       fBoldFont:TpvFont;
+       fItalicFont:TpvFont;
+       fBoldItalicFont:TpvFont;
+
+       // monospace font faces (for code spans/blocks)
+       fMonoFont:TpvFont;
+       fMonoBoldFont:TpvFont;
+       fMonoItalicFont:TpvFont;
+       fMonoBoldItalicFont:TpvFont;
+
+       // pick the best available face for the given style/mono combination,
+       // falling back gracefully to the plain proportional font
+       function SelectFont(const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono:boolean):TpvFont;
 
        fBGCodeColor:TpvVector4;
        fFontCodeColor:TpvVector4;
@@ -715,10 +729,6 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fMarkActive:boolean;
        // current inline think state
        fThinkActive:boolean;
-
-{$ifdef FMX}
-       fCurrentFontColor:TpvVector4;
-{$endif}
 
        function DIP(const aValue:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 
@@ -770,8 +780,18 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        property CalculatedWidth:TpvMarkDownRendererFloat read fCalculatedWidth;
        property CalculatedHeight:TpvMarkDownRendererFloat read fCalculatedHeight;
        property TargetDPI:TpvMarkDownRendererFloat read fTargetDPI write fTargetDPI;
-       property FontName:TpvMarkDownRendererUTF8String read fFontName write fFontName;
-       property MonoFontName:TpvMarkDownRendererUTF8String read fMonoFontName write fMonoFontName;
+       // proportional font faces (the host assigns whichever variants it has;
+       // unassigned variants fall back to the plain Font in SelectFont)
+       property Font:TpvFont read fFont write fFont;
+       property BoldFont:TpvFont read fBoldFont write fBoldFont;
+       property ItalicFont:TpvFont read fItalicFont write fItalicFont;
+       property BoldItalicFont:TpvFont read fBoldItalicFont write fBoldItalicFont;
+
+       // monospace font faces
+       property MonoFont:TpvFont read fMonoFont write fMonoFont;
+       property MonoBoldFont:TpvFont read fMonoBoldFont write fMonoBoldFont;
+       property MonoItalicFont:TpvFont read fMonoItalicFont write fMonoItalicFont;
+       property MonoBoldItalicFont:TpvFont read fMonoBoldItalicFont write fMonoBoldItalicFont;
 
        property BGCodeColor:TpvVector4 read fBGCodeColor write fBGCodeColor;
        property FontCodeColor:TpvVector4 read fFontCodeColor write fFontCodeColor;
@@ -1886,32 +1906,28 @@ begin
  fBaseFontSize:=12;
  fNeedSpaceBeforeNextText:=false;
  fTargetDPI:=96;
- fFontName:='Sans Serif';
- fMonoFontName:='Monospace';
 
-{$ifdef FMX}
- fBGCodeColor:=TColorRec.cINFOBK;
- fFontCodeColor:=TColorRec.cINFOTEXT;
- fBGMarkColor:=TColorRec.cHIGHLIGHT;
- fFontMarkColor:=TColorRec.cHIGHLIGHTTEXT;
- fBGThinkColor:=TColorRec.cWINDOW;
- fFontThinkColor:=TColorRec.cGRAYTEXT;
+ // font faces are supplied by the host through the Font/BoldFont/... properties
+ fFont:=nil;
+ fBoldFont:=nil;
+ fItalicFont:=nil;
+ fBoldItalicFont:=nil;
+ fMonoFont:=nil;
+ fMonoBoldFont:=nil;
+ fMonoItalicFont:=nil;
+ fMonoBoldItalicFont:=nil;
 
- fBGColor:=TColorRec.cWINDOW;
- fFontColor:=TColorRec.cWINDOWTEXT;
- fFontQuoteColor:=TColorRec.cWINDOWFRAME;
-{$else}
- fBGCodeColor:=clInfoBk;
- fFontCodeColor:=clInfoText;
- fBGMarkColor:=clYellow;
- fFontMarkColor:=clBlack;
- fBGThinkColor:=clWindow;
- fFontThinkColor:=clGrayText;
+ // default colors as sRGB TpvVector4 (converted to linear at draw time)
+ fBGCodeColor:=TpvVector4.Create(0.95,0.95,0.86,1.0);
+ fFontCodeColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ fBGMarkColor:=TpvVector4.Create(1.0,1.0,0.0,1.0);
+ fFontMarkColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ fBGThinkColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fFontThinkColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
 
- fBGColor:=clWindow;
- fFontColor:=clWindowText;
- fFontQuoteColor:=clWindowFrame;
-{$endif}
+ fBGColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fFontColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ fFontQuoteColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
 
  fHTMLDoc:=THTML.Create;
 
@@ -1932,12 +1948,8 @@ end;
 
 function TpvMarkDownRenderer.DIP(const aValue:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 begin
- // scale integer based on target DPI (reference 96)
-{$ifdef FMX}
+ // scale value based on target DPI (reference 96)
  result:=(aValue*fTargetDPI)/96.0;
-{$else}
- result:=(aValue*fTargetDPI+48) div 96;
-{$endif}
 end;
 
 procedure TpvMarkDownRenderer.Clear;
@@ -1978,60 +1990,64 @@ begin
  // reserved for future batching hooks
 end;
 
-procedure TpvMarkDownRenderer.ApplyFont(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
+function TpvMarkDownRenderer.SelectFont(const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono:boolean):TpvFont;
+var IsBold,IsItalic:boolean;
 begin
+ IsBold:=TpvMarkDownRendererFontStyle.Bold in aFontStyle;
+ IsItalic:=TpvMarkDownRendererFontStyle.Italic in aFontStyle;
+ result:=nil;
  if aUseMono then begin
-  if length(fMonoFontName)>0 then begin
-{$ifdef FMX}
-   if aCanvas.Font.Family<>fMonoFontName then begin
-    aCanvas.Font.Family:=fMonoFontName;
-   end;
-{$else}
-   aCanvas.Font.Name:=fMonoFontName;
-{$endif}
+  if IsBold and IsItalic then begin
+   result:=fMonoBoldItalicFont;
+  end;
+  if (not assigned(result)) and IsBold then begin
+   result:=fMonoBoldFont;
+  end;
+  if (not assigned(result)) and IsItalic then begin
+   result:=fMonoItalicFont;
+  end;
+  if not assigned(result) then begin
+   result:=fMonoFont;
   end;
  end else begin
-  if length(fFontName)>0 then begin
-{$ifdef FMX}
-   if aCanvas.Font.Family<>fFontName then begin
-    aCanvas.Font.Family:=fFontName;
-   end;
-{$else}
-   aCanvas.Font.Name:=fFontName;
-{$endif}
+  if IsBold and IsItalic then begin
+   result:=fBoldItalicFont;
+  end;
+  if (not assigned(result)) and IsBold then begin
+   result:=fBoldFont;
+  end;
+  if (not assigned(result)) and IsItalic then begin
+   result:=fItalicFont;
   end;
  end;
- if aCanvas.Font.Size<>aFontSize then begin
-  aCanvas.Font.Size:=aFontSize;
+ // fall back to the plain proportional font when the requested variant (or any
+ // monospace face) has not been assigned by the host
+ if not assigned(result) then begin
+  result:=fFont;
  end;
- if aCanvas.Font.Style<>aFontStyle then begin
-  aCanvas.Font.Style:=aFontStyle;
- end;
+end;
+
+procedure TpvMarkDownRenderer.ApplyFont(const aCanvas:TpvCanvas;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean);
+var FontColor:TpvVector4;
+begin
+ aCanvas.Font:=SelectFont(aFontStyle,aUseMono);
+ // negative font size means the size is specified in pixels (see TpvFont.GetScaleFactor)
+ aCanvas.FontSize:=-aFontSize;
  if aIsBlockQuote then begin
-{$ifdef FMX}
-  fCurrentFontColor:=fFontQuoteColor;
-{$else}
-  aCanvas.Font.Color:=fFontQuoteColor;
-{$endif}
+  FontColor:=fFontQuoteColor;
  end else if aUseCode then begin
-{$ifdef FMX}
-  fCurrentFontColor:=fFontCodeColor;
-{$else}
-  aCanvas.Font.Color:=fFontCodeColor;
-{$endif}
+  FontColor:=fFontCodeColor;
  end else begin
-{$ifdef FMX}
-  fCurrentFontColor:=fFontColor;
-{$else}
-  aCanvas.Font.Color:=fFontColor;
-{$endif}
+  FontColor:=fFontColor;
  end;
+ aCanvas.Color:=ConvertSRGBToLinear(FontColor);
 end;
 
 procedure TpvMarkDownRenderer.MeasureText(const aCanvas:TpvCanvas;const aText:TpvMarkDownRendererUTF8String;const aFontSize:TpvMarkDownRendererFloat;const aFontStyle:TpvMarkDownRendererFontStyles;const aUseMono,aUseCode,aIsBlockQuote:boolean;out aWidth,aHeight:TpvMarkDownRendererFloat);
 var HashString:RawByteString;
     Size:TpvMarkDownRendererInt32;
     TextSizeCacheItem:TTextSizeCacheItem;
+    SelectedFont:TpvFont;
 begin
  if length(aText)>0 then begin
   Size:=SizeOf(aFontSize)+SizeOf(aFontStyle)+SizeOf(TMarkdownRendererUInt8)+SizeOf(TMarkdownRendererUInt8)+SizeOf(TMarkdownRendererUInt8)+length(aText);
@@ -2059,19 +2075,15 @@ begin
    aWidth:=TextSizeCacheItem.Width;
    aHeight:=TextSizeCacheItem.Height;
   end else begin
-   ApplyFont(aCanvas,aFontSize,aFontStyle,aUseMono,aUseCode,aIsBlockQuote);
-{$ifdef fpc}
-   aWidth:=aCanvas.TextWidth(aText);
-   aHeight:=aCanvas.TextHeight(aText+MaxHeightString);
-{$else}
-{$ifdef fmx}
-   aWidth:=aCanvas.TextWidth(aText);
-   aHeight:=aCanvas.TextHeight(aText+MaxHeightString);
-{$else}
-   aWidth:=aCanvas.TextWidth(UTF8Decode(aText));
-   aHeight:=aCanvas.TextHeight(UTF8Decode(aText+MaxHeightString));
-{$endif}
-{$endif}
+   SelectedFont:=SelectFont(aFontStyle,aUseMono);
+   if assigned(SelectedFont) then begin
+    // negative size means pixels; measure with the style-appropriate font face
+    aWidth:=SelectedFont.TextWidth(aText,-aFontSize);
+    aHeight:=SelectedFont.TextHeight(aText+MaxHeightString,-aFontSize);
+   end else begin
+    aWidth:=0;
+    aHeight:=0;
+   end;
    TextSizeCacheItem.Width:=aWidth;
    TextSizeCacheItem.Height:=aHeight;
    fTextSizeCacheHashMap.Add(HashString,TextSizeCacheItem);   
@@ -3025,21 +3037,12 @@ begin
    end else begin
     LocalIndex:=0;
     while LocalIndex<Span do begin
-{$ifdef FMX}
      if (MinimumWord/Span)>aMinCol[ColumnIndex+LocalIndex] then begin
       aMinCol[ColumnIndex+LocalIndex]:=MinimumWord/Span;
      end;
      if (PreferredNoWrap/Span)>aPrefCol[ColumnIndex+LocalIndex] then begin
       aPrefCol[ColumnIndex+LocalIndex]:=PreferredNoWrap/Span;
      end;
-{$else}
-     if (MinimumWord div Span)>aMinCol[ColumnIndex+LocalIndex] then begin
-      aMinCol[ColumnIndex+LocalIndex]:=MinimumWord div Span;
-     end;
-     if (PreferredNoWrap div Span)>aPrefCol[ColumnIndex+LocalIndex] then begin
-      aPrefCol[ColumnIndex+LocalIndex]:=PreferredNoWrap div Span;
-     end;
-{$endif}
      inc(LocalIndex);
     end;
    end;
@@ -3075,25 +3078,13 @@ begin
   Extra:=aAvailable-TotalPref;
   IndexColumn:=0;
   while IndexColumn<TotalColumns do begin
-{$ifdef FMX}
    aColumnWidth[IndexColumn]:=aPrefCol[IndexColumn]+(Extra/TotalColumns);
-{$else}
-   aColumnWidth[IndexColumn]:=aPrefCol[IndexColumn]+(Extra div TotalColumns);
-{$endif}
    inc(IndexColumn);
   end;
-{$ifdef FMX}
   Remain:=Floor(Extra-(trunc(Extra/TotalColumns)*TotalColumns));
-{$else}
-  Remain:=Extra mod TotalColumns;
-{$endif}
   IndexColumn:=0;
   while IndexColumn<Remain do begin
-{$ifdef FMX}
    aColumnWidth[IndexColumn]:=aColumnWidth[IndexColumn]+1.0;
-{$else}
-   inc(aColumnWidth[IndexColumn]);
-{$endif}
    inc(IndexColumn);
   end;
  end else begin
@@ -3103,11 +3094,7 @@ begin
   while IndexColumn<TotalColumns do begin
    SpanVal:=aPrefCol[IndexColumn]-aMinCol[IndexColumn];
    if Denom>0 then begin
-{$ifdef FMX}
     aColumnWidth[IndexColumn]:=aMinCol[IndexColumn]+((SpanVal*Room)/Denom);
-{$else}
-    aColumnWidth[IndexColumn]:=aMinCol[IndexColumn]+((SpanVal*Room) div Denom);
-{$endif}
    end else begin
     aColumnWidth[IndexColumn]:=aMinCol[IndexColumn];
    end;
@@ -3376,19 +3363,6 @@ begin
  NewLine(aCanvas);
  ParagraphBreak(aCanvas);
 end;
-
-{$ifdef FMX}
-function RawByteStringToUTF8String(aString:RawByteString):UTF8String;
-var UTF8Str:UTF8String;
-begin
- SetCodePage(aString,0,false);
- SetLength(UTF8Str,Length(aString));
- if Length(aString)>0 then begin
-  Move(aString[1],UTF8Str[1],Length(UTF8Str));
- end;
- result:=UTF8Str;
-end;
-{$endif}
 
 procedure TpvMarkDownRenderer.TraverseHTML(const aCanvas:TpvCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:TpvMarkDownRendererFloat;aFontStyle:TpvMarkDownRendererFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
 var ChildIndex:TpvMarkDownRendererInt32;
@@ -3662,9 +3636,6 @@ var CurrentFontSize:TpvMarkDownRendererFloat;
     CurrentFontStyle:TpvMarkDownRendererFontStyles;
     CurrentLinkHref:TpvMarkDownRendererUTF8String;
     UseMono:boolean;
-{$ifdef FMX}
-    ta,tb:uint64;
-{$endif}
 begin
  if not assigned(aCanvas) then begin
   aContentWidth:=0;
@@ -3691,17 +3662,10 @@ begin
   CurrentFontStyle:=[];
   CurrentLinkHref:='';
   UseMono:=false;
-{$ifdef FMX}
-  ta:=TThread.GetTickCount64;
-{$endif}
   TraverseHTML(aCanvas,fHTMLDoc.RootNode,true,CurrentFontSize,CurrentFontStyle,CurrentLinkHref,UseMono,false);
   if fLineX<>0 then begin
    NewLine(aCanvas);
   end;
-{$ifdef FMX}
-  tb:=TThread.GetTickCount64;
-//writeln(tb-ta);
-{$endif}
   fCalculatedHeight:=fLineY;
  end;
 
@@ -3714,192 +3678,113 @@ end;
 procedure TpvMarkDownRenderer.Render(const aCanvas:TpvCanvas;const aLeftPosition,aTopPosition:TpvMarkDownRendererFloat);
 var Index:TpvMarkDownRendererInt32;
     Item:TLayoutItem;
-    OldStyle:TpvMarkDownRendererFontStyles;
-    OldSize:TpvMarkDownRendererFloat;
-    OldName:TpvMarkDownRendererUTF8String;
-{$ifndef FMX}
-    OldBrushStyle:TBrushStyle;
-    OldPenStyle:TPenStyle;
-    OldPenColor:TpvVector4;
-    OldBrushColor:TpvVector4;
-{$endif}
-{$ifdef FMX}
-    r:TRectF;
-    State:TCanvasSaveState;
-{$endif}
+    OldFont:TpvFont;
+    OldFontSize,Lx,Ty,LineY,LineThickness:TpvMarkDownRendererFloat;
+    OldColor,TextColor:TpvVector4;
+    OldHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+    OldVerticalAlignment:TpvCanvasTextVerticalAlignment;
 begin
  if not assigned(aCanvas) then begin
   exit;
  end;
 
+ // remember the canvas state which we are going to modify, restore it afterwards
+ OldFont:=aCanvas.Font;
+ OldFontSize:=aCanvas.FontSize;
+ OldColor:=aCanvas.Color;
+ OldHorizontalAlignment:=aCanvas.TextHorizontalAlignment;
+ OldVerticalAlignment:=aCanvas.TextVerticalAlignment;
+
+ // the layout coordinates address the top-left corner of each item
+ aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+ aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+
  Index:=0;
  while Index<fItems.Count do begin
 
-{$ifdef FMX}
-  OldStyle:=aCanvas.Font.Style;
-  OldSize:=aCanvas.Font.Size;
-  OldName:=aCanvas.Font.Family;
-  State:=aCanvas.SaveState;
-{$else}
-  OldStyle:=aCanvas.Font.Style;
-  OldSize:=aCanvas.Font.Size;
-  OldName:=aCanvas.Font.Name;
-  OldBrushStyle:=aCanvas.Brush.Style;
-  OldPenStyle:=aCanvas.Pen.Style;
-  OldPenColor:=aCanvas.Pen.Color;
-  OldBrushColor:=aCanvas.Brush.Color;
-{$endif}
-
-  aCanvas.Font.Style:=[];
-
   Item:=fItems[Index];
+  Lx:=aLeftPosition+Item.X;
+  Ty:=aTopPosition+Item.Y;
+
   case Item.Kind of
+
    TLayoutItemKind.LayoutText:begin
-{$ifdef FMX}
-    r:=TRectF.Create(aLeftPosition+Item.X,
-                     aTopPosition+Item.Y,
-                     aLeftPosition+Item.X+Item.Width,
-                     aTopPosition+Item.Y+Item.Height);
-    if Item.Code then begin
-//   aCanvas.Fill.Color:=fBGCodeColor;
-     aCanvas.Fill.Color:=fFontCodeColor;
-    end else if Item.Mark then begin
-     aCanvas.Fill.Color:=fBGMarkColor;
-     aCanvas.FillRect(r,1.0);
-     aCanvas.Fill.Color:=fFontMarkColor;
+
+    // highlight background for <mark>/<think> runs
+    if Item.Mark then begin
+     aCanvas.Color:=ConvertSRGBToLinear(fBGMarkColor);
+     aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
     end else if Item.Think then begin
-     aCanvas.Fill.Color:=fBGThinkColor;
-     aCanvas.FillRect(r,1.0);
-     aCanvas.Fill.Color:=fFontThinkColor;
-    end else begin
-//   aCanvas.Fill.Color:=fBGColor;
-     aCanvas.Fill.Color:=fFontColor;
+     aCanvas.Color:=ConvertSRGBToLinear(fBGThinkColor);
+     aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
     end;
-    ApplyFont(aCanvas,Item.FontSize,Item.FontStyle,Item.Mono,Item.Code,Item.BlockQuote);
-    aCanvas.FillText(r,Item.Text,false,1.0,[],TTextAlign.Leading,TTextAlign.Leading);
-{$else}
-    if Item.Code then begin
-     aCanvas.Brush.Color:=fBGCodeColor;
-     aCanvas.Pen.Color:=fFontCodeColor;
-    end else if Item.Mark then begin
-     aCanvas.Brush.Color:=fBGMarkColor;
-     aCanvas.Pen.Color:=fFontMarkColor;
-    end else if Item.Think then begin
-     aCanvas.Brush.Color:=fBGThinkColor;
-     aCanvas.Pen.Color:=fFontThinkColor;
-    end else begin
-     aCanvas.Brush.Color:=fBGColor;
-     aCanvas.Pen.Color:=fFontColor;
-    end;
-    // background for mark/think highlight
-    if Item.Mark or Item.Think then begin
-     aCanvas.Brush.Style:=bsSolid;
-     aCanvas.Pen.Style:=psClear;
-     aCanvas.Rectangle(aLeftPosition+Item.X,
-                       aTopPosition+Item.Y,
-                       aLeftPosition+Item.X+Item.Width,
-                       aTopPosition+Item.Y+Item.Height);
-    end;
-    // draw text
-    aCanvas.Brush.Style:=bsClear;
-    aCanvas.Pen.Style:=psClear;
+
+    // select the style-appropriate font face and base text color
     ApplyFont(aCanvas,Item.FontSize,Item.FontStyle,Item.Mono,Item.Code,Item.BlockQuote);
     if Item.Mark then begin
-     aCanvas.Font.Color:=fFontMarkColor;
+     aCanvas.Color:=ConvertSRGBToLinear(fFontMarkColor);
     end else if Item.Think then begin
-     aCanvas.Font.Color:=fFontThinkColor;
+     aCanvas.Color:=ConvertSRGBToLinear(fFontThinkColor);
     end;
-{$ifdef fpc}
-    aCanvas.TextOut(aLeftPosition+Item.X,aTopPosition+Item.Y,Item.Text);
-{$else}
-    aCanvas.TextOut(aLeftPosition+Item.X,aTopPosition+Item.Y,UTF8Decode(Item.Text));
-{$endif}
-{$endif}
+    TextColor:=aCanvas.Color;
+
+    aCanvas.DrawText(Item.Text,Lx,Ty);
+
+    // TpvFont has no built-in underline/strikeout, so draw them explicitly
+    if (TpvMarkDownRendererFontStyle.Underline in Item.FontStyle) or
+       (TpvMarkDownRendererFontStyle.StrikeOut in Item.FontStyle) then begin
+     LineThickness:=Max(1.0,Item.FontSize*(1.0/16.0));
+     aCanvas.Color:=TextColor;
+     if TpvMarkDownRendererFontStyle.Underline in Item.FontStyle then begin
+      LineY:=Ty+(Item.Height*0.88);
+      aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,LineY,Item.Width,LineThickness));
+     end;
+     if TpvMarkDownRendererFontStyle.StrikeOut in Item.FontStyle then begin
+      LineY:=Ty+(Item.Height*0.5);
+      aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,LineY,Item.Width,LineThickness));
+     end;
+    end;
+
    end;
+
    TLayoutItemKind.LayoutHR:begin
-{$ifdef FMX}
-    aCanvas.Stroke.Color:=fFontColor;
-    aCanvas.Stroke.Thickness:=1.0;
-    aCanvas.Stroke.Dash:=TStrokeDash.Solid;
-    aCanvas.DrawLine(TPointF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y+0.5),
-                     TPointF.Create(aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+0.5),1.0);
-{$else}
-    aCanvas.Brush.Style:=bsClear;
-    aCanvas.Pen.Style:=psSolid;
-    aCanvas.Pen.Color:=fFontColor;
-    aCanvas.Brush.Color:=fFontColor;
-    aCanvas.MoveTo(aLeftPosition+Item.X,aTopPosition+Item.Y);
-    aCanvas.LineTo(aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y);
-{$endif}
+    aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
+    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Max(1.0,Item.Height)));
    end;
+
    TLayoutItemKind.LayoutBullet:begin
-{$ifdef FMX}
-    aCanvas.Stroke.Color:=fFontColor;
-    aCanvas.Stroke.Thickness:=1.0;
-    aCanvas.Stroke.Dash:=TStrokeDash.Solid;
-    aCanvas.Fill.Color:=fFontColor;
-    aCanvas.FillEllipse(TRectF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height),1.0);
-{$else}
-    aCanvas.Brush.Style:=bsSolid;
-    aCanvas.Pen.Style:=psSolid;
-    aCanvas.Pen.Color:=fFontColor;
-    aCanvas.Brush.Color:=fFontColor;
-    aCanvas.Ellipse(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height);
-{$endif}
+    aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
+    aCanvas.DrawFilledEllipse(Lx+(Item.Width*0.5),Ty+(Item.Height*0.5),Item.Width*0.5,Item.Height*0.5);
    end;
+
    TLayoutItemKind.LayoutRect:begin
-{$ifdef FMX}
-    aCanvas.Stroke.Color:=fFontColor;
-    aCanvas.Stroke.Thickness:=1.0;
-    aCanvas.Stroke.Dash:=TStrokeDash.Solid; 
-    aCanvas.Fill.Color:=fBGColor;
-    aCanvas.FillRect(TRectF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height),1.0);
-    aCanvas.DrawRect(TRectF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height),1.0);
-{$else}
-    aCanvas.Brush.Style:=bsClear;
-    aCanvas.Pen.Style:=psSolid;
-    aCanvas.Pen.Color:=fFontColor;
-    aCanvas.Brush.Color:=fBGColor;
-    aCanvas.Rectangle(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height);
-{$endif}
+    aCanvas.Color:=ConvertSRGBToLinear(fBGColor);
+    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
+    aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
+    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),1.0);
    end;
+
    TLayoutItemKind.LayoutCodeBG:begin
-{$ifdef FMX}
-    aCanvas.Stroke.Color:=fFontColor;
-    aCanvas.Stroke.Thickness:=1.0;
-    aCanvas.Stroke.Dash:=TStrokeDash.Solid;
-    aCanvas.Fill.Color:=fBGCodeColor;
-    aCanvas.FillRect(TRectF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height),1.0);
-    aCanvas.DrawRect(TRectF.Create(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height),1.0);
-{$else}
-    aCanvas.Brush.Style:=bsSolid;
-    aCanvas.Pen.Style:=psDot;
-    aCanvas.Brush.Color:=fBGCodeColor;
-    aCanvas.Pen.Color:=fFontColor;
-    aCanvas.Rectangle(aLeftPosition+Item.X,aTopPosition+Item.Y,aLeftPosition+Item.X+Item.Width,aTopPosition+Item.Y+Item.Height);
-{$endif}
+    aCanvas.Color:=ConvertSRGBToLinear(fBGCodeColor);
+    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
+    aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
+    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),1.0);
    end;
+
    else begin
    end;
-  end;
 
-{$ifdef FMX}
-  aCanvas.RestoreState(State);
-  aCanvas.Font.Style:=OldStyle;
-  aCanvas.Font.Size:=OldSize;
-  aCanvas.Font.Family:=OldName;
-{$else}
-  aCanvas.Font.Style:=OldStyle;
-  aCanvas.Font.Size:=OldSize;
-  aCanvas.Font.Name:=OldName;
-  aCanvas.Brush.Style:=OldBrushStyle;
-  aCanvas.Pen.Style:=OldPenStyle;
-  aCanvas.Brush.Color:=OldBrushColor;
-  aCanvas.Pen.Color:=OldPenColor;
-{$endif}
+  end;
 
   inc(Index);
  end;
+
+ // restore the previous canvas state
+ aCanvas.Font:=OldFont;
+ aCanvas.FontSize:=OldFontSize;
+ aCanvas.Color:=OldColor;
+ aCanvas.TextHorizontalAlignment:=OldHorizontalAlignment;
+ aCanvas.TextVerticalAlignment:=OldVerticalAlignment;
 
 end;
 
