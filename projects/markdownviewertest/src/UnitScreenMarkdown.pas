@@ -1,4 +1,4 @@
-unit UnitScreenConsole;
+unit UnitScreenMarkdown;
 {$ifdef fpc}
  {$mode delphi}
  {$ifdef cpu386}
@@ -28,8 +28,6 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
-     PUCU,
-     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -38,18 +36,13 @@ uses SysUtils,
      PasVulkan.Canvas,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont,
-     PasVulkan.Console;
+     PasVulkan.PasHTMLDownCanvasRenderer;
 
-type { TScreenConsole }
+type { TScreenMarkdown }
 
-     TScreenConsole=class(TpvApplicationScreen)
+     TScreenMarkdown=class(TpvApplicationScreen)
       public
-       const FontWidth=8;
-             FontHeight=16;
-             ScreenWidth=640;
-             ScreenHeight=400;
-             CanvasWidth=ScreenWidth*4;
-             CanvasHeight=ScreenHeight*4;
+       const Margin=24.0;
       private
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -61,15 +54,16 @@ type { TScreenConsole }
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
-       fVulkanSpriteAtlas:TpvSpriteAtlas;
        fVulkanFontSpriteAtlas:TpvSpriteAtlas;
        fVulkanCanvas:TpvCanvas;
        fVulkanFont:TpvFont;
+       fMarkDownRenderer:TpvMarkDownRenderer;
+       fLayoutWidth:TpvFloat;
+       fContentWidth:TpvFloat;
+       fContentHeight:TpvFloat;
+       fScrollY:TpvFloat;
        fReady:boolean;
-       fConsole:TpvConsole;
-       procedure CansoleOnSetDrawColor(const aColor:TpvVector4);
-       procedure ConsoleOnDrawRect(const aX0,aY0,aX1,aY1:TpvFloat);
-       procedure ConsoleOnDrawCodePoint(const aCodePoint:TpvUInt32;const aX,aY:TpvFloat);
+       function GetSampleMarkDown:TpvUTF8String;
       public
 
        constructor Create; override;
@@ -110,43 +104,94 @@ implementation
 
 uses UnitApplication;
 
-{ TScreenConsole }
+{ TScreenMarkdown }
 
-constructor TScreenConsole.Create;
+function TScreenMarkdown.GetSampleMarkDown:TpvUTF8String;
+begin
+ result:='# PasVulkan Markdown Renderer'+#10+
+         ''+#10+
+         'This is a **TpvCanvas** rendering test for *PasVulkan.PasHTMLDownCanvasRenderer*.'+#10+
+         ''+#10+
+         '## Inline formatting'+#10+
+         ''+#10+
+         'Text can be **bold**, *italic*, ~~struck through~~ and contain `inline code`.'+#10+
+         'You can also mix ***bold and italic*** together.'+#10+
+         ''+#10+
+         '## Lists'+#10+
+         ''+#10+
+         '- First item'+#10+
+         '- Second item with a [link](https://rosseaux.net)'+#10+
+         '- Third item'+#10+
+         ''+#10+
+         '1. One'+#10+
+         '2. Two'+#10+
+         '3. Three'+#10+
+         ''+#10+
+         '## Blockquote'+#10+
+         ''+#10+
+         '> The quick brown fox jumps over the lazy dog.'+#10+
+         ''+#10+
+         '## Code block'+#10+
+         ''+#10+
+         '```'+#10+
+         'procedure Hello;'+#10+
+         'begin'+#10+
+         ' writeln(''Hello, world!'');'+#10+
+         'end;'+#10+
+         '```'+#10+
+         ''+#10+
+         '## Table'+#10+
+         ''+#10+
+         '| Name | Value |'+#10+
+         '| ---- | ----- |'+#10+
+         '| Alpha | 1 |'+#10+
+         '| Beta | 2 |'+#10+
+         ''+#10+
+         '---'+#10+
+         ''+#10+
+         'That is the end of the sample document.'+#10;
+end;
+
+constructor TScreenMarkdown.Create;
 begin
 
  inherited Create;
 
  fReady:=false;
 
- fConsole:=TpvConsole.Create;
- fConsole.SetChrDim(80,25);
- fConsole.WriteLine(#0#15'Console Test');
- fConsole.WriteLine('');
- fConsole.WriteLine(#0#14'This is just a test, so don''t worry! '#1);
- fConsole.WriteLine('');
- fConsole.WriteLine(#0#12'Use the '#0#14'"'#0#13'force'#0#14'"'#0#12' of this '#0#$9b'blinking-capable'#0#12' console!');
- fConsole.WriteLine('');
- fConsole.UpdateScreen;
+ fScrollY:=0.0;
+ fLayoutWidth:=-1.0;
+ fContentWidth:=0.0;
+ fContentHeight:=0.0;
+
+ fMarkDownRenderer:=TpvMarkDownRenderer.Create;
+ fMarkDownRenderer.BaseFontSize:=16;
+
+ // dark theme so the document is readable on the black clear color
+ fMarkDownRenderer.BGColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ fMarkDownRenderer.FontColor:=TpvVector4.Create(0.9,0.9,0.9,1.0);
+ fMarkDownRenderer.FontQuoteColor:=TpvVector4.Create(0.6,0.75,0.9,1.0);
+ fMarkDownRenderer.BGCodeColor:=TpvVector4.Create(0.12,0.12,0.14,1.0);
+ fMarkDownRenderer.FontCodeColor:=TpvVector4.Create(0.7,0.9,0.7,1.0);
+ fMarkDownRenderer.BGMarkColor:=TpvVector4.Create(0.9,0.85,0.2,1.0);
+ fMarkDownRenderer.FontMarkColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+ fMarkDownRenderer.BGThinkColor:=TpvVector4.Create(0.1,0.1,0.1,1.0);
+ fMarkDownRenderer.FontThinkColor:=TpvVector4.Create(0.55,0.55,0.55,1.0);
+
+ fMarkDownRenderer.Parse(GetSampleMarkDown,false);
 
 end;
 
-destructor TScreenConsole.Destroy;
+destructor TScreenMarkdown.Destroy;
 begin
- FreeAndNil(fConsole);
+ FreeAndNil(fMarkDownRenderer);
  inherited Destroy;
 end;
 
-procedure TScreenConsole.Show;
-const CacheVersionGUID:TGUID='{8591FC7C-8BC8-4724-BA68-EDF89292CF32}';
+procedure TScreenMarkdown.Show;
 var Stream:TStream;
-    Index,x,y:TpvInt32;
-    RawSprite:pointer;
+    Index:TpvInt32;
     TrueTypeFont:TpvTrueTypeFont;
-    RecreateCacheFiles:boolean;
-    CacheStoragePath,CacheStorageFile:string;
-    FileStream:TFileStream;
-    CacheStorageCacheVersionGUID:TGUID;
 begin
  inherited Show;
 
@@ -180,93 +225,28 @@ begin
                                  pvApplication.VulkanPipelineCache,
                                  MaxInFlightFrames);
 
- fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,true);
- fVulkanSpriteAtlas.UseConvexHullTrimming:=false;
-
  fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false);
  fVulkanFontSpriteAtlas.MipMaps:=false;
  fVulkanFontSpriteAtlas.UseConvexHullTrimming:=false;
 
- RecreateCacheFiles:=true;
-
- if pvApplication.Files.IsCacheStorageAvailable then begin
-
-  CacheStoragePath:=IncludeTrailingPathDelimiter(pvApplication.Files.GetCacheStoragePath);
-
-  CacheStorageFile:=CacheStoragePath+'terminal_cache_version.dat';
-
-  if FileExists(CacheStorageFile) and
-     FileExists(CacheStoragePath+'terminal_font.dat') and
-     FileExists(CacheStoragePath+'terminal_spriteatlas.zip') then begin
-
-   FileStream:=TFileStream.Create(CacheStorageFile,fmOpenRead or fmShareDenyWrite);
-   try
-    FileStream.Read(CacheStorageCacheVersionGUID,SizeOf(TGUID));
-   finally
-    FileStream.Free;
-   end;
-
-   if CompareMem(@CacheStorageCacheVersionGUID,@CacheVersionGUID,SizeOf(TGUID)) then begin
-
-    //RecreateCacheFiles:=false;
-
-   end;
-
-  end;
-
- end else begin
-
-  CacheStoragePath:='';
-
- end;
-
- if RecreateCacheFiles then begin
-
-  Stream:=pvApplication.Assets.GetAssetStream('fonts/vga.ttf');
+ // build the signed-distance-field font atlas from the bundled TrueType font
+ Stream:=pvApplication.Assets.GetAssetStream('fonts/vga.ttf');
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
   try
-   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-   try
-    TrueTypeFont.Size:=-64;
-    TrueTypeFont.Hinting:=false;
-    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
-                                                TrueTypeFont,
-                                                [TpvFontCodePointRange.Create(0,65535)],
-                                                true,
-                                                2,
-                                                1);
-    if length(CacheStoragePath)>0 then begin
-     fVulkanFont.SaveToFile(CacheStoragePath+'terminal_font.dat');
-    end;
-   finally
-    TrueTypeFont.Free;
-   end;
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(fVulkanFontSpriteAtlas,
+                                               TrueTypeFont,
+                                               [TpvFontCodePointRange.Create(0,65535)],
+                                               true,
+                                               2,
+                                               1);
   finally
-   Stream.Free;
+   TrueTypeFont.Free;
   end;
-
-  if length(CacheStoragePath)>0 then begin
-
-   fVulkanFontSpriteAtlas.SaveToFile(CacheStoragePath+'terminal_font_spriteatlas.zip',true);
-
-   fVulkanSpriteAtlas.SaveToFile(CacheStoragePath+'terminal_spriteatlas.zip',true);
-
-   FileStream:=TFileStream.Create(CacheStoragePath+'terminal_cache_version.dat',fmCreate);
-   try
-    FileStream.Write(CacheVersionGUID,SizeOf(TGUID));
-   finally
-    FileStream.Free;
-   end;
-
-  end;
-
- end else begin
-
-  fVulkanFontSpriteAtlas.LoadFromFile(CacheStoragePath+'terminal_font_spriteatlas.zip');
-
-  fVulkanFont:=TpvFont.CreateFromFile(fVulkanFontSpriteAtlas,CacheStoragePath+'terminal_font.dat');
-
-  fVulkanSpriteAtlas.LoadFromFile(CacheStoragePath+'terminal_spriteatlas.zip');
-
+ finally
+  Stream.Free;
  end;
 
  fVulkanFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
@@ -276,21 +256,23 @@ begin
                                fVulkanTransferCommandBuffer,
                                fVulkanTransferCommandBufferFence);
 
- fVulkanSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                           fVulkanGraphicsCommandBuffer,
-                           fVulkanGraphicsCommandBufferFence,
-                           pvApplication.VulkanDevice.TransferQueue,
-                           fVulkanTransferCommandBuffer,
-                           fVulkanTransferCommandBufferFence);    //}
+ // only a single face is bundled here, so use it for both proportional and
+ // monospace slots; the bold/italic variants fall back to it in SelectFont
+ fMarkDownRenderer.Font:=fVulkanFont;
+ fMarkDownRenderer.MonoFont:=fVulkanFont;
+
+ // force a re-layout on the next Update
+ fLayoutWidth:=-1.0;
 
 end;
 
-procedure TScreenConsole.Hide;
+procedure TScreenMarkdown.Hide;
 var Index:TpvInt32;
 begin
+ fMarkDownRenderer.Font:=nil;
+ fMarkDownRenderer.MonoFont:=nil;
  FreeAndNil(fVulkanFont);
  FreeAndNil(fVulkanFontSpriteAtlas);
- FreeAndNil(fVulkanSpriteAtlas);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxInFlightFrames-1 do begin
@@ -307,22 +289,22 @@ begin
  inherited Hide;
 end;
 
-procedure TScreenConsole.Resume;
+procedure TScreenMarkdown.Resume;
 begin
  inherited Resume;
 end;
 
-procedure TScreenConsole.Pause;
+procedure TScreenMarkdown.Pause;
 begin
  inherited Pause;
 end;
 
-procedure TScreenConsole.Resize(const aWidth,aHeight:TpvInt32);
+procedure TScreenMarkdown.Resize(const aWidth,aHeight:TpvInt32);
 begin
  inherited Resize(aWidth,aHeight);
 end;
 
-procedure TScreenConsole.AfterCreateSwapChain;
+procedure TScreenMarkdown.AfterCreateSwapChain;
 var Index:TpvInt32;
 begin
  inherited AfterCreateSwapChain;
@@ -341,8 +323,8 @@ begin
                                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
                                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
                                                                                                                              ),
                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                             )],
@@ -354,44 +336,24 @@ begin
                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED,
                                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                                                             ),
                                                                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                  ),
                                          []);
-  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
-                                         0,
-                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
-                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
-                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
-  fVulkanRenderPass.AddSubpassDependency(0,
-                                         VK_SUBPASS_EXTERNAL,
-                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
-                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
-                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
-  fVulkanRenderPass.Initialize;
-
-  fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
-  fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
-  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
-  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
-{ fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+ fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                         0,
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
  fVulkanRenderPass.AddSubpassDependency(0,
                                         VK_SUBPASS_EXTERNAL,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
  fVulkanRenderPass.Initialize;
@@ -399,25 +361,19 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
- fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;  }
+ fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanCanvas.VulkanRenderPass:=fVulkanRenderPass;
  fVulkanCanvas.CountBuffers:=pvApplication.CountInFlightFrames;
-{if pvApplication.Width<pvApplication.Height then begin
-  fVulkanCanvas.Width:=(720*pvApplication.Width) div pvApplication.Height;
-  fVulkanCanvas.Height:=720;
- end else begin
-  fVulkanCanvas.Width:=1280;
-  fVulkanCanvas.Height:=(1280*pvApplication.Height) div pvApplication.Width;
- end;}
-{fVulkanCanvas.Width:=640;
- fVulkanCanvas.Height:=400;}
  fVulkanCanvas.Width:=pvApplication.Width;
  fVulkanCanvas.Height:=pvApplication.Height;
  fVulkanCanvas.Viewport.x:=0;
  fVulkanCanvas.Viewport.y:=0;
  fVulkanCanvas.Viewport.width:=pvApplication.Width;
  fVulkanCanvas.Viewport.height:=pvApplication.Height;
+
+ // window size changed, so the document has to be laid out again
+ fLayoutWidth:=-1.0;
 
  for Index:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
@@ -426,100 +382,71 @@ begin
 
 end;
 
-procedure TScreenConsole.BeforeDestroySwapChain;
+procedure TScreenMarkdown.BeforeDestroySwapChain;
 begin
  fVulkanCanvas.VulkanRenderPass:=nil;
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenConsole.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-begin
- result:=fConsole.KeyEvent(aKeyEvent);
-end;
-
-function TScreenConsole.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-begin
- result:=false;
- if fReady then begin
-  case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.Down:begin
-   end;
-   TpvApplicationInputPointerEventType.Up:begin
-   end;
-   TpvApplicationInputPointerEventType.Motion:begin
-   end;
-   TpvApplicationInputPointerEventType.Drag:begin
-   end;
-  end;
- end;
-end;
-
-function TScreenConsole.Scrolled(const aRelativeAmount:TpvVector2):boolean;
+function TScreenMarkdown.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
 end;
 
-function TScreenConsole.CanBeParallelProcessed:boolean;
+function TScreenMarkdown.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=false;
+end;
+
+function TScreenMarkdown.Scrolled(const aRelativeAmount:TpvVector2):boolean;
+begin
+ // simple mouse-wheel vertical scrolling through the document
+ fScrollY:=fScrollY+(aRelativeAmount.y*(fMarkDownRenderer.BaseFontSize*3.0));
+ result:=true;
+end;
+
+function TScreenMarkdown.CanBeParallelProcessed:boolean;
 begin
  result:=true;
 end;
 
-procedure TScreenConsole.Check(const aDeltaTime:TpvDouble);
+procedure TScreenMarkdown.Check(const aDeltaTime:TpvDouble);
 begin
  inherited Check(aDeltaTime);
 end;
 
-procedure TScreenConsole.CansoleOnSetDrawColor(const aColor:TpvVector4);
-begin
- fVulkanCanvas.Color:=ConvertSRGBToLinear(aColor);
-end;
-
-procedure TScreenConsole.ConsoleOnDrawRect(const aX0,aY0,aX1,aY1:TpvFloat);
-begin
- fVulkanCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aX0,aY0,aX1,aY1));
-end;
-
-procedure TScreenConsole.ConsoleOnDrawCodePoint(const aCodePoint:TpvUInt32;const aX,aY:TpvFloat);
-begin
- fVulkanCanvas.DrawTextCodePoint(aCodePoint,aX,aY);
-end;
-
-procedure TScreenConsole.Update(const aDeltaTime:TpvDouble);
-var Scale:TpvFloat;
+procedure TScreenMarkdown.Update(const aDeltaTime:TpvDouble);
+var MaxWidth,MaxScrollY:TpvFloat;
 begin
 
  inherited Update(aDeltaTime);
 
- fConsole.OnSetDrawColor:=CansoleOnSetDrawColor;
- fConsole.OnDrawRect:=ConsoleOnDrawRect;
- fConsole.OnDrawCodePoint:=ConsoleOnDrawCodePoint;
-
  fVulkanCanvas.Start(pvApplication.UpdateInFlightFrameIndex);
 
- // Scaled to fit within the canvas while preserving its aspect ratio and centered, with possible black borders
- if (fVulkanCanvas.Width/fVulkanCanvas.Height)<(640.0/400.0) then begin
-  Scale:=fVulkanCanvas.Width/640;
-//fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*TpvMatrix4x4.CreateTranslation(0,(fVulkanCanvas.Height-(400*Scale))*0.5,0);
- end else begin
-  Scale:=fVulkanCanvas.Height/400;
-//fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*TpvMatrix4x4.CreateTranslation((fVulkanCanvas.Width-(640*Scale))*0.5,0,0);
- end;
- // More unified way to scale for also to include a possible additional scaling factor on top of the aspect ratio preserving scaling and
- // optional flipping of the axes (for example for rendering to a texture) as well as a translation to center the content.
- fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.CreateTranslation(-ScreenWidth*0.5,-ScreenHeight*0.5,0)*
-                           TpvMatrix4x4.CreateScale(Scale,Scale,1.0)*
-                           TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0);
+ fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
  fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
- fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ // (re-)calculate the layout whenever the available width changed
+ MaxWidth:=fVulkanCanvas.Width-(Margin*2.0);
+ if MaxWidth<1.0 then begin
+  MaxWidth:=1.0;
+ end;
+ if fLayoutWidth<>MaxWidth then begin
+  fMarkDownRenderer.Calculate(fVulkanCanvas,MaxWidth,fContentWidth,fContentHeight);
+  fLayoutWidth:=MaxWidth;
+ end;
 
- fVulkanCanvas.Font:=fVulkanFont;
+ // clamp the scroll offset to the actual content height
+ MaxScrollY:=Max(0.0,(fContentHeight+(Margin*2.0))-fVulkanCanvas.Height);
+ if fScrollY<0.0 then begin
+  fScrollY:=0.0;
+ end else if fScrollY>MaxScrollY then begin
+  fScrollY:=MaxScrollY;
+ end;
 
- fVulkanCanvas.FontSize:=-16;
-
- fConsole.Draw(aDeltaTime);
+ fMarkDownRenderer.Render(fVulkanCanvas,Margin,Margin-fScrollY);
 
  fVulkanCanvas.Stop;
 
@@ -527,8 +454,7 @@ begin
 
 end;
 
-procedure TScreenConsole.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-const Offsets:array[0..0] of TVkDeviceSize=(0);
+procedure TScreenMarkdown.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     VulkanSwapChain:TpvVulkanSwapChain;
 begin

@@ -54,7 +54,7 @@ var Application:TApplication=nil;
 
 implementation
 
-uses UnitScreenConsole;
+uses UnitScreenMarkdown;
 
 constructor TApplication.Create;
 begin
@@ -76,7 +76,7 @@ begin
  end;
  Title:='markdownviewertest';
  PathName:='markdownviewertest.pasvulkan';
- StartScreen:=TScreenConsole;
+ StartScreen:=TScreenMarkdown;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
