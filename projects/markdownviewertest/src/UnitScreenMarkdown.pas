@@ -435,6 +435,15 @@ begin
    KEYCODE_ESCAPE:begin
     pvApplication.Terminate;
    end;
+   KEYCODE_HOME:begin
+    fScrollY:=0;
+   end;
+   KEYCODE_END:begin
+    fScrollY:=Infinity;
+   end;
+   KEYCODE_SPACE:begin
+    fScrollY:=fScrollY+480.0;
+   end;
    else begin
    end;
   end;
