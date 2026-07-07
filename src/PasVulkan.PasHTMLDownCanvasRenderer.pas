@@ -2224,7 +2224,7 @@ begin
    Item:=fItems.NewItem;
    Item.Kind:=TLayoutItemKind.LayoutText;
    Item.X:=fCurrentIndent+fLineX;
-    Item.Y:=fLineY+fLineAboveExtra+BaselineShift; // apply baseline shift and top overhang
+   Item.Y:=fLineY+fLineAboveExtra+BaselineShift; // apply baseline shift and top overhang
    Item.Width:=TextWidth;
    Item.Height:=TextHeight;
    Item.Text:=aText;
@@ -2633,6 +2633,8 @@ begin
   Index:=1;
   LineStart:=1;
 
+  fCurrentIndent:=fCurrentIndent+DIP(4);
+
   while Index<=TextLength do begin
 
    case ProcessedText[Index] of
@@ -2705,6 +2707,7 @@ begin
 
  end;
 
+ fCurrentIndent:=fCurrentIndent-DIP(4);
 
 end;
 
@@ -3777,14 +3780,14 @@ begin
     aCanvas.Color:=ConvertSRGBToLinear(fBGColor);
     aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
     aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
-    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),1.0);
+    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),2.0);
    end;
 
    TLayoutItemKind.LayoutCodeBG:begin
     aCanvas.Color:=ConvertSRGBToLinear(fBGCodeColor);
     aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height));
     aCanvas.Color:=ConvertSRGBToLinear(fFontColor);
-    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),1.0);
+    aCanvas.DrawStrokeRectangle(TpvRect.CreateRelative(Lx,Ty,Item.Width,Item.Height),2.0);
    end;
 
    else begin
