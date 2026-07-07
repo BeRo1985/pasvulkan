@@ -37,3 +37,6 @@
 [submodule "externals/pinja"]
 	path = externals/pinja
 	url = https://git.rosseaux.net/BeRo1985/pinja.git
+[submodule "externals/pashtmldown"]
+	path = externals/pashtmldown
+	url = https://git.rosseaux.net/BeRo1985/pashtmldown.git
