@@ -67,6 +67,10 @@ type { TScreenMarkdown }
        fContentHeight:TpvFloat;
        fScrollY:TpvFloat;
        fReady:boolean;
+       fKeyUp:boolean;
+       fKeyDown:boolean;
+       fKeyPageUp:boolean;
+       fKeyPageDown:boolean;
        function GetSampleMarkDown:TpvUTF8String;
        function LoadFont(const aAssetName:TpvUTF8String):TpvFont;
       public
@@ -163,6 +167,12 @@ begin
  inherited Create;
 
  fReady:=false;
+
+ fKeyUp:=false;
+ fKeyDown:=false;
+
+ fKeyPageUp:=false;
+ fKeyPageDown:=false;
 
  fScrollY:=0.0;
  fLayoutWidth:=-1.0;
@@ -419,7 +429,34 @@ end;
 
 function TScreenMarkdown.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=false;
+ result:=inherited KeyEvent(aKeyEvent);
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_ESCAPE:begin
+    pvApplication.Terminate;
+   end;
+   else begin
+   end;
+  end;
+ end;
+ if aKeyEvent.KeyEventType in [TpvApplicationInputKeyEventType.Down,TpvApplicationInputKeyEventType.Up] then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_UP,KEYCODE_W:begin
+    fKeyUp:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_DOWN,KEYCODE_S:begin
+    fKeyDown:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_PAGEUP:begin
+    fKeyPageUp:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    fKeyPageDown:=aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down;
+   end;
+   else begin
+   end;
+  end;
+ end;
 end;
 
 function TScreenMarkdown.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
@@ -430,7 +467,7 @@ end;
 function TScreenMarkdown.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  // simple mouse-wheel vertical scrolling through the document
- fScrollY:=fScrollY+(aRelativeAmount.y*(fMarkDownRenderer.BaseFontSize*3.0));
+ fScrollY:=fScrollY-(aRelativeAmount.y*(fMarkDownRenderer.BaseFontSize*3.0));
  result:=true;
 end;
 
@@ -468,6 +505,11 @@ begin
 
  // clamp the scroll offset to the actual content height
  MaxScrollY:=Max(0.0,(fContentHeight+(Margin*2.0))-fVulkanCanvas.Height);
+ if fKeyUp<>fKeyDown then begin
+  fScrollY:=fScrollY+((aDeltaTime*128.0)*(((ord(fKeyDown) and 1)*2)-1));
+ end else if fKeyPageUp<>fKeyPageDown then begin
+  fScrollY:=fScrollY+((aDeltaTime*(fVulkanCanvas.Height*4.0))*(((ord(fKeyPageDown) and 1)*2)-1));
+ end;
  if fScrollY<0.0 then begin
   fScrollY:=0.0;
  end else if fScrollY>MaxScrollY then begin
