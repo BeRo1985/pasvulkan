@@ -1,0 +1,94 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water activity map for the calm-surface normal handling of the planet water rendering.
+//
+// The pipe simulation never reaches an exact constant-radius equilibrium on the distorted octahedral grid, so
+// still water keeps a static high-frequency wobble that shows up on the specular surface. Physically, calm water
+// is an equipotential surface, so its correct normal is simply the radial normal. To blend the rendered normal
+// toward the radial normal only where the water is actually at rest, the fragment shader needs a per-region
+// "how active is the water here" signal. That signal is dH/dt: the per-step change of the simulated water height.
+//
+// This pass builds a small downsampled activity map from the two water height ping-pong buffers. For each
+// downsampled cell it takes the maximum absolute height change over the corresponding full-resolution block
+// (so local sloshing is captured even where the net change cancels) and combines it with a decayed previous
+// value, so the activity fades out smoothly once the water calms down. Regional resolution is intentional: rest
+// is a regional phenomenon and a soft, low-frequency calm factor avoids hard per-texel seams in the blend.
+//
+// When the simulation is frozen the two height buffers stop changing, so the max difference settles at the last
+// (low) residual pump level, which maps to "calm" and thus to the radial normal. No explicit clear on freeze is
+// needed. The activity image is kept in VK_IMAGE_LAYOUT_GENERAL (like the ripple images) so this pass can read
+// and write it while the fragment stage samples it, without layout transitions.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint waterHeightMapResolution; // Full resolution of the water height ping-pong buffers
+  uint activityMapResolution; // Resolution of the downsampled activity image
+  uint activityMapShift; // log2(waterHeightMapResolution / activityMapResolution)
+  float decayFactor; // Per-update decay of the previous activity value (0..1)
+} pushConstants;
+
+layout(set = 0, binding = 0, std430) readonly buffer InWaterHeightMapPrevious {
+  float values[];
+} inWaterHeightMapPrevious;
+
+layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapCurrent {
+  float values[];
+} inWaterHeightMapCurrent;
+
+layout(set = 0, binding = 2, r32f) uniform image2D uImageWaterActivityMap;
+
+/* clang-format on */
+
+// Sane upper bound so an uninitialized (garbage) previous value cannot survive the decay; real dH/dt is far below.
+const float ACTIVITY_MAX = 4.0;
+
+void main(){
+
+  const ivec2 activityTexel = ivec2(gl_GlobalInvocationID.xy);
+
+  if(any(greaterThanEqual(activityTexel, ivec2(int(pushConstants.activityMapResolution))))){
+    return;
+  }
+
+  const int blockSize = 1 << int(pushConstants.activityMapShift);
+  const ivec2 blockOrigin = activityTexel * blockSize;
+  const int resolution = int(pushConstants.waterHeightMapResolution);
+
+  // Maximum absolute per-step height change over the full-resolution block that maps to this activity cell.
+  float maximumDelta = 0.0;
+  for(int dy = 0; dy < blockSize; dy++){
+    const int y = blockOrigin.y + dy;
+    if(y >= resolution){
+      break;
+    }
+    for(int dx = 0; dx < blockSize; dx++){
+      const int x = blockOrigin.x + dx;
+      if(x >= resolution){
+        break;
+      }
+      const uint index = (uint(y) * uint(resolution)) + uint(x);
+      const float delta = abs(inWaterHeightMapCurrent.values[index] - inWaterHeightMapPrevious.values[index]);
+      maximumDelta = max(maximumDelta, delta);
+    }
+  }
+
+  // Combine with the decayed previous activity so the signal fades out smoothly once the water calms down. The
+  // previous value is clamped so an uninitialized image cannot leave a permanently high activity behind.
+  const float previousActivity = clamp(imageLoad(uImageWaterActivityMap, activityTexel).x, 0.0, ACTIVITY_MAX);
+  const float newActivity = max(maximumDelta, previousActivity * pushConstants.decayFactor);
+
+  imageStore(uImageWaterActivityMap, activityTexel, vec4(newActivity, 0.0, 0.0, 0.0));
+
+}

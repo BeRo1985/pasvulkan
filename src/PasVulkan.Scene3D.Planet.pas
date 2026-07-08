@@ -483,6 +483,7 @@ type TpvScene3DPlanets=class;
               fWaterMetricMapBuffer:TpvVulkanBuffer; // Static octahedral metric field (5 floats per texel); only allocated when the metric aware compensation is enabled, nil otherwise
               fWaterMiniMapBuffer:TpvVulkanBuffer;
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
+              fWaterActivityMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled water activity map (dH/dt), GENERAL layout, read-write by the activity pass, sampled for the calm-surface normal blend
               fWaterMaxAbsoluteHeightDifferenceBuffer:TpvVulkanBuffer;
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
@@ -1685,6 +1686,13 @@ type TpvScene3DPlanets=class;
                     WaterHeightMapResolution:TpvUInt32;
                    end;
                    PMetricBakePushConstants=^TMetricBakePushConstants;
+                   TActivityPushConstants=packed record
+                    WaterHeightMapResolution:TpvUInt32;
+                    ActivityMapResolution:TpvUInt32;
+                    ActivityMapShift:TpvUInt32;
+                    DecayFactor:TpvFloat;
+                   end;
+                   PActivityPushConstants=^TActivityPushConstants;
                    { TWaterRipplesSimulation (nested) }
                    // GPU water ripple subsystem integrated into the water simulation so that
                    // timestep-sync and queue-family ownership of the ripple ping-pong images
@@ -1795,6 +1803,9 @@ type TpvScene3DPlanets=class;
               fMetricBakeComputeShaderModule:TpvVulkanShaderModule; // Only created when the metric aware compensation is enabled
               fMetricBakeComputeShaderStage:TpvVulkanPipelineShaderStage;
               fMetricBakePipeline:TpvVulkanComputePipeline;
+              fActivityComputeShaderModule:TpvVulkanShaderModule; // Water activity map pass (feeds the calm-surface normal blend)
+              fActivityComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fActivityPipeline:TpvVulkanComputePipeline;
               fWaterDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fWaterDescriptorPool:TpvVulkanDescriptorPool;
               fWaterDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
@@ -1813,18 +1824,23 @@ type TpvScene3DPlanets=class;
               fMetricBakeDescriptorSetLayout:TpvVulkanDescriptorSetLayout; // Only created when the metric aware compensation is enabled
               fMetricBakeDescriptorPool:TpvVulkanDescriptorPool;
               fMetricBakeDescriptorSet:TpvVulkanDescriptorSet;
+              fActivityDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fActivityDescriptorPool:TpvVulkanDescriptorPool;
+              fActivityDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Ping-pong, selected by the current water buffer index
               fPipelineLayout:TpvVulkanPipelineLayout;
               fRainfallPipelineLayout:TpvVulkanPipelineLayout;
               fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
               fModificationPipelineLayout:TpvVulkanPipelineLayout;
               fDownsamplePipelineLayout:TpvVulkanPipelineLayout;
               fMetricBakePipelineLayout:TpvVulkanPipelineLayout; // Only created when the metric aware compensation is enabled
+              fActivityPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
               fRainfallPushConstants:TRainfallPushConstants;
               fInterpolationPushConstants:TInterpolationPushConstants;
               fModificationPushConstants:TModificationPushConstants;
               fDownsamplePushConstants:TDownsamplePushConstants;
               fMetricBakePushConstants:TMetricBakePushConstants;
+              fActivityPushConstants:TActivityPushConstants;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
               fTimeAccumulator:TpvDouble;
@@ -3302,6 +3318,12 @@ type TpvScene3DPlanets=class;
        // the equilibrium matches the real cell shapes. The initial value comes from the constructor (it decides
        // whether the metric buffer is allocated at all); the property can be toggled live for A/B comparison.
        fWaterSimulationMetricCompensation:LongBool;
+       // Render-side water surface normal toggle: sample the simulated water height with a wider normal stencil so
+       // the static octahedral wobble on still water averages out of the specular normal. Live switchable for A/B.
+       fWaterCoarseSimNormal:LongBool;
+       // Render-side water surface normal toggle: blend the normal toward the radial normal where the water is calm
+       // (uses the downsampled activity map), so still water renders as the smooth equipotential surface it is.
+       fWaterCalmSurfaceNormal:LongBool;
        fWaterWaveDisplaceAmplitude:TpvFloat;       // Per-vertex height displacement amplitude in meters (0=disabled).
        fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
        fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
@@ -3716,6 +3738,8 @@ type TpvScene3DPlanets=class;
        property WaterSimulationSettleThreshold:TpvFloat read fWaterSimulationSettleThreshold write fWaterSimulationSettleThreshold;
        property WaterSimulationSettleFrames:TpvSizeInt read fWaterSimulationSettleFrames write fWaterSimulationSettleFrames;
        property WaterSimulationMetricCompensation:LongBool read fWaterSimulationMetricCompensation write fWaterSimulationMetricCompensation;
+       property WaterCoarseSimNormal:LongBool read fWaterCoarseSimNormal write fWaterCoarseSimNormal;
+       property WaterCalmSurfaceNormal:LongBool read fWaterCalmSurfaceNormal write fWaterCalmSurfaceNormal;
        property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
        property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
        property WaterDisplaceHeightHighThreshold:TpvFloat read fWaterDisplaceHeightHighThreshold write fWaterDisplaceHeightHighThreshold;
@@ -5322,6 +5346,22 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapImage.ImageView');
 
+   // Downsampled water activity map for the calm-surface normal handling. Stays in GENERAL layout (like the ripple
+   // images) so the activity compute pass can read and write it while the fragment stage samples it.
+   fWaterActivityMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                            fPlanet.fWaterMiniMapResolution,
+                                                            fPlanet.fWaterMiniMapResolution,
+                                                            VK_FORMAT_R32_SFLOAT,
+                                                            false,
+                                                            VK_SAMPLE_COUNT_1_BIT,
+                                                            VK_IMAGE_LAYOUT_GENERAL,
+                                                            WaterHeightMapImageSharingMode,
+                                                            WaterHeightMapImageQueueFamilyIndices,
+                                                            pvAllocationGroupIDScene3DPlanetStatic,
+                                                            'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterActivityMapImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterActivityMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterActivityMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterActivityMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterActivityMapImage.ImageView');
+
    fHeightMiniMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                 fPlanet.fHeightMiniMapResolution*fPlanet.fHeightMiniMapResolution*SizeOf(TpvFloat),
                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -5965,6 +6005,8 @@ begin
  FreeAndNil(fWaterMiniMapBuffer);
 
  FreeAndNil(fWaterMiniMapImage);
+
+ FreeAndNil(fWaterActivityMapImage);
 
  FreeAndNil(fHeightMiniMapBuffer);
 
@@ -19017,6 +19059,93 @@ begin
 
   end;
 
+  // Water activity map pass: builds the downsampled dH/dt activity that drives the calm-surface normal blend. It is
+  // always created (the activity image is tiny); the dispatch itself only runs when the calm-surface handling is on.
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_activity_comp.spv');
+  try
+   fActivityComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fActivityComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fActivityComputeShaderModule');
+  fActivityComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fActivityComputeShaderModule,'main');
+
+  fActivityDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fActivityDescriptorSetLayout.AddBinding(0, // InWaterHeightMapPrevious
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+  fActivityDescriptorSetLayout.AddBinding(1, // InWaterHeightMapCurrent
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+  fActivityDescriptorSetLayout.AddBinding(2, // uImageWaterActivityMap
+                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          [],
+                                          0);
+  fActivityDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorSetLayout');
+
+  fActivityPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fActivityPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TActivityPushConstants));
+  fActivityPipelineLayout.AddDescriptorSetLayout(fActivityDescriptorSetLayout);
+  fActivityPipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fActivityPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fActivityPipelineLayout');
+
+  fActivityDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                          TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                          2);
+  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*2);
+  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1*2);
+  fActivityDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorPool');
+
+  for Index:=0 to 1 do begin
+   fActivityDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fActivityDescriptorPool,fActivityDescriptorSetLayout);
+   fActivityDescriptorSets[Index].WriteToDescriptorSet(0, // Previous height = the other ping-pong buffer
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fPlanet.fData.fWaterHeightMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+   fActivityDescriptorSets[Index].WriteToDescriptorSet(1, // Current height = the buffer selected by the water buffer index
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+   fActivityDescriptorSets[Index].WriteToDescriptorSet(2, // uImageWaterActivityMap
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                      fPlanet.fData.fWaterActivityMapImage.VulkanImageView.Handle,
+                                                                                      VK_IMAGE_LAYOUT_GENERAL)],
+                                                       [],
+                                                       [],
+                                                       false);
+   fActivityDescriptorSets[Index].Flush;
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorSets['+IntToStr(Index)+']');
+  end;
+
+  fActivityPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                     pvApplication.VulkanPipelineCache,
+                                                     TVkPipelineCreateFlags(0),
+                                                     fActivityComputeShaderStage,
+                                                     fActivityPipelineLayout,
+                                                     nil,
+                                                     0);
+
 { fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=-1e-4; //1e-4;
@@ -19124,6 +19253,15 @@ begin
  FreeAndNil(fMetricBakeDescriptorSetLayout);
  FreeAndNil(fMetricBakeComputeShaderStage);
  FreeAndNil(fMetricBakeComputeShaderModule);
+
+ FreeAndNil(fActivityPipeline);
+ FreeAndNil(fActivityDescriptorSets[1]);
+ FreeAndNil(fActivityDescriptorSets[0]);
+ FreeAndNil(fActivityDescriptorPool);
+ FreeAndNil(fActivityPipelineLayout);
+ FreeAndNil(fActivityDescriptorSetLayout);
+ FreeAndNil(fActivityComputeShaderStage);
+ FreeAndNil(fActivityComputeShaderModule);
 
  FreeAndNil(fDownsamplePipeline);
 
@@ -19744,6 +19882,84 @@ begin
   end;
 
   First:=false;
+
+ end;
+
+ // Update the water activity map for the calm-surface normal handling, when enabled and the simulation actually ran
+ // this frame. When the simulation is frozen the activity keeps its last (low, settled) value, which maps to calm
+ // and thus to the radial normal, so no update is needed then.
+ if fPlanet.fWaterCalmSurfaceNormal and DoDownsample then begin
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterActivity',[0.5,0.5,0.5,1.0]);
+
+  SourceBufferIndex:=fPlanet.fData.fWaterBufferIndex and 1;
+
+  // The simulation just wrote the current height buffer; make it visible to the activity pass, and order the
+  // activity image read-modify-write against the previous frame's write.
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterActivityMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    1,@ImageMemoryBarrier);
+
+  fActivityPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+  fActivityPushConstants.ActivityMapResolution:=fPlanet.fWaterMiniMapResolution;
+  fActivityPushConstants.ActivityMapShift:=fPlanet.fWaterMiniMapResolutionShift;
+  fActivityPushConstants.DecayFactor:=0.9;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fActivityPipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fActivityPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fActivityDescriptorSets[SourceBufferIndex].Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fActivityPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TActivityPushConstants),
+                                  @fActivityPushConstants);
+
+  aCommandBuffer.CmdDispatch((fPlanet.fWaterMiniMapResolution+15) shr 4,
+                             (fPlanet.fWaterMiniMapResolution+15) shr 4,
+                             1);
+
+  // Make the updated activity image visible to the fragment stage that samples it for the calm-surface blend.
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterActivityMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 
@@ -33098,6 +33314,10 @@ begin
  // Set from the constructor so it is known before the data resources are created, so that the metric buffer is
  // only allocated when the metric aware compensation is actually requested (zero cost when disabled).
  fWaterSimulationMetricCompensation:=aWaterMetricCompensation;
+
+ fWaterCoarseSimNormal:=false; // Render-side normal toggle, default off, switched live or via JSON "water"."coarsesimnormal"
+
+ fWaterCalmSurfaceNormal:=false; // Render-side normal toggle, default off, switched live or via JSON "water"."calmsurfacenormal"
  fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
  fWaterDisplaceHeightLowThreshold:=0.0;  // fade starts at water depth 0 m
  fWaterDisplaceHeightHighThreshold:=0.5; // full displacement at 0.5 m depth
@@ -33775,14 +33995,17 @@ begin
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                            TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                          fInFlightFrameDataList[InFlightFrameIndex].fGrassAgeMapImage.VulkanImageView.Handle,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)];
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle, // Slot 31: water activity map (stays in GENERAL layout, read-write by the activity pass)
+                                                         fData.fWaterActivityMapImage.VulkanImageView.Handle,
+                                                         VK_IMAGE_LAYOUT_GENERAL)];
 
    try
 
     fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
     fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                    0,
-                                                                   31,
+                                                                   32,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                    DescriptorImageInfos,
                                                                    [],
@@ -34823,7 +35046,7 @@ begin
  // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture + 16 smoothed brushes + 2 water ripple ping-pong images + water minimap + grass age map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   31,
+                   32, // 31 planet textures + water activity map (slot 31)
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -34855,7 +35078,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(31+1)*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(32+1)*aCountInFlightFrames);
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -36802,6 +37025,12 @@ begin
    if InFlightFrameData.fParallaxMappingActive then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 2);
    end;
+   if fWaterCoarseSimNormal then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 3); // PLANET_WATER_FLAG_COARSE_SIM_NORMAL
+   end;
+   if fWaterCalmSurfaceNormal then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 4); // PLANET_WATER_FLAG_CALM_SURFACE_NORMAL
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
    fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
@@ -37444,6 +37673,8 @@ begin
    // at construction time (the app preparses this same flag and passes it down), so this only affects the toggle.
    fWaterSimulationMetricCompensation:=TPasJSON.GetBoolean(JSONSimulationObject.Properties['metriccompensation'],fWaterSimulationMetricCompensation);
   end;
+  fWaterCoarseSimNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['coarsesimnormal'],fWaterCoarseSimNormal);
+  fWaterCalmSurfaceNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['calmsurfacenormal'],fWaterCalmSurfaceNormal);
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);
   fWaterBaseColor:=JSONToVector3(JSONWaterObject.Properties['basecolor'],fWaterBaseColor);

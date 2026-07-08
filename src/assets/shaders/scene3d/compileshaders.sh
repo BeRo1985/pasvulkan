@@ -740,6 +740,7 @@ compileshaderarguments=(
   "-V planet_water_simulation_waterheight.comp -o ${tempPath}/planet_water_simulation_waterheight_comp.spv"
   "-V planet_water_simulation_waterheight.comp -DUSE_FP16 -o ${tempPath}/planet_water_simulation_waterheight_fp16_comp.spv"
   "-V planet_water_metric_bake.comp -o ${tempPath}/planet_water_metric_bake_comp.spv"
+  "-V planet_water_activity.comp -o ${tempPath}/planet_water_activity_comp.spv"
   "-V planet_water_simulation_rainfall.comp -o ${tempPath}/planet_water_simulation_rainfall_comp.spv"
 
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"

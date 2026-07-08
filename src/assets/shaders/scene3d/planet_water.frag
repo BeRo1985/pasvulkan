@@ -399,6 +399,9 @@ vec3 getWaterNormal(vec3 position){
 
 #if 1
   float texScale = 1.0 / 4096.0;
+  if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_COARSE_SIM_NORMAL) != 0u){
+    texScale *= PLANET_WATER_COARSE_SIM_NORMAL_STEP; // Wider stencil averages out the high-frequency simulation wobble
+  }
 
   vec3 normal;
 
@@ -474,9 +477,18 @@ vec3 getWaterNormal(vec3 position){
       safeNormalize(cross(h - e, g - e)) + // Triangle EHG
       safeNormalize(cross(g - e, d - e)) + // Triangle EGD
       safeNormalize(cross(d - e, a - e))   // Triangle EDA
-    );   
+    );
 
-  }       
+    // Blend the simulated base normal toward the radial normal where the water is calm, so still water renders as
+    // the smooth equipotential surface it physically is. The procedural detail (rain splash) is applied afterward,
+    // and active water keeps its full simulated normal because its activity stays above the threshold.
+    if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_CALM_SURFACE_NORMAL) != 0u){
+      float activity = texture(uPlanetTextures[PLANET_TEXTURE_WATERACTIVITYMAP], euv).x;
+      float calm = 1.0 - smoothstep(PLANET_WATER_CALM_ACTIVITY_LOW, PLANET_WATER_CALM_ACTIVITY_HIGH, activity);
+      normal = safeNormalize(mix(normal, n, calm));
+    }
+
+  }
 
   return applyWaterRainSplashNormal(n, normal);
 #else
@@ -1387,7 +1399,15 @@ void main(){
 
       hitDepth = delinearizeDepth(viewSpacePosition.z);
 
-      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
+      vec3 waterNormal = mapNormal(hitPoint);
+      // Blend the simulated normal toward the radial normal where the water is calm (same rationale as getWaterNormal).
+      if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_CALM_SURFACE_NORMAL) != 0u){
+        vec3 radialNormal = normalize(hitPoint);
+        float activity = texture(uPlanetTextures[PLANET_TEXTURE_WATERACTIVITYMAP], octPlanetUnsignedEncode(radialNormal)).x;
+        float calm = 1.0 - smoothstep(PLANET_WATER_CALM_ACTIVITY_LOW, PLANET_WATER_CALM_ACTIVITY_HIGH, activity);
+        waterNormal = normalize(mix(waterNormal, radialNormal, calm));
+      }
+      workNormal = normalize((planetModelMatrix * vec4(waterNormal, 0.0)).xyz) * (underWater ? -1.0 : 1.0);
 
       cameraRelativePosition = worldSpacePosition - cameraPosition.xyz;
 

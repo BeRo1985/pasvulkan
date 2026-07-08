@@ -9,6 +9,28 @@
 // 1 = sample the water column map with the SAME bilinear basis as the terrain height map instead of bicubic.
 #define PLANET_WATER_BILINEAR_WATERMAP 0
 
+// Water surface normal handling toggles, driven by planetData.flagsResolutions.x (per-planet render state). The
+// pipe simulation cannot reach an exact constant-radius equilibrium on the distorted octahedral grid, so still
+// water keeps a static high-frequency wobble in the simulated column that shows up on the specular surface.
+#define PLANET_WATER_FLAG_COARSE_SIM_NORMAL (1u << 3u) // Sample the simulated height with a wider stencil so the high-frequency wobble averages out
+#define PLANET_WATER_FLAG_CALM_SURFACE_NORMAL (1u << 4u) // Blend the surface normal toward the radial normal where the water is calm (uses the activity map)
+
+// Stencil widening factor for the coarse simulated-normal step (tuning knob, overridable at compile time).
+#ifndef PLANET_WATER_COARSE_SIM_NORMAL_STEP
+#define PLANET_WATER_COARSE_SIM_NORMAL_STEP 4.0
+#endif
+
+// Activity thresholds (per-step height change in meters) that map to the calm factor for the calm-surface normal.
+// At or below LOW the water counts as fully at rest (the normal goes fully radial), at or above HIGH as fully
+// active (the simulated normal is kept). The residual pump noise (~0.001-0.002 m/step) should sit below HIGH so
+// that settled water reads as calm. Tuning knobs, overridable at compile time.
+#ifndef PLANET_WATER_CALM_ACTIVITY_LOW
+#define PLANET_WATER_CALM_ACTIVITY_LOW 0.001
+#endif
+#ifndef PLANET_WATER_CALM_ACTIVITY_HIGH
+#define PLANET_WATER_CALM_ACTIVITY_HIGH 0.01
+#endif
+
 #include "octahedral.glsl"
 
 #include "octahedralmap.glsl"
@@ -396,7 +418,13 @@ float map(vec3 p){
 }
 
 vec3 mapNormal(vec3 p){
-  vec2 e = vec2(1e-2, 0.0); // 0.01 meters for now for the epsilon for the normal calculation
+  float eps = 1e-2; // 0.01 meters base epsilon for the normal calculation
+#ifdef PLANET_DATA_GLSL
+  if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_COARSE_SIM_NORMAL) != 0u){
+    eps *= PLANET_WATER_COARSE_SIM_NORMAL_STEP; // Wider stencil averages out the high-frequency simulation wobble
+  }
+#endif
+  vec2 e = vec2(eps, 0.0);
   const int i = 37;
   return normalize(
     vec3(
