@@ -788,7 +788,18 @@ begin
     fCameraSpeed:=fCameraSpeed*2.0;
    end;
    KEYCODE_O:begin
-    fCameraMode:=TCameraMode.Orbit;
+    // Ctrl+Shift+O: cycle the global-illumination debug view (overlays + isolated GI/IBL/direct-light channels, per GI mode).
+    // Plain O (no Ctrl+Shift) keeps switching to the orbit camera mode.
+    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+     if assigned(fRendererInstance) then begin
+      fRendererInstance.CycleGlobalIlluminationDebugMode;
+      pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Global illumination debug mode: '+fRendererInstance.GlobalIlluminationDebugModeName);
+     end;
+     result:=true;
+     exit;
+    end else begin
+     fCameraMode:=TCameraMode.Orbit;
+    end;
    end;
    KEYCODE_P:begin
     fCameraMode:=TCameraMode.FirstPerson;
@@ -867,18 +878,6 @@ begin
       end else begin
        pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Debug draw meshlet bounding spheres disabled');
       end;
-     end;
-     result:=true;
-     exit;
-    end;
-   end;
-   KEYCODE_F:begin
-    // Ctrl+Shift+F: cycle the global-illumination debug view (overlays + isolated GI/IBL/direct-light channels, per GI mode).
-    // Plain F (no Ctrl+Shift) falls through to the camera-movement handler below.
-    if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.SHIFT])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
-     if assigned(fRendererInstance) then begin
-      fRendererInstance.CycleGlobalIlluminationDebugMode;
-      pvApplication.Log(LOG_INFO,'TScreenMain.KeyEvent','Global illumination debug mode: '+fRendererInstance.GlobalIlluminationDebugModeName);
      end;
      result:=true;
      exit;
