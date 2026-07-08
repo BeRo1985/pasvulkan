@@ -480,12 +480,15 @@ type TpvScene3DPlanets=class;
               fWaterHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
+              fWaterMetricMapBuffer:TpvVulkanBuffer; // Static octahedral metric field (5 floats per texel); only allocated when the metric aware compensation is enabled, nil otherwise
               fWaterMiniMapBuffer:TpvVulkanBuffer;
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
               fWaterMaxAbsoluteHeightDifferenceBuffer:TpvVulkanBuffer;
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
               fWaterFirst:TPasMPBool32;
+              fWaterMetricBaked:TPasMPBool32; // Set after the static metric field has been baked once; the field only depends on resolution and projection, so it survives height map reloads
+
               fWaterActive:TPasMPBool32;
               fWaterSimulationCountUnderThresholdFrames:TpvSizeInt;
               fWaterSimulationMaximumCountUnderThresholdFrames:TpvSizeInt;
@@ -1641,6 +1644,7 @@ type TpvScene3DPlanets=class;
 
                     PrecipitationAtmosphereMapShift:TpvUInt32; // The shift for the precipitation atmosphere map relative to the water height map
                     FrameIndex:TpvUInt32; // The current frame index, used for random number generation
+                    MetricCompensationEnabled:TpvUInt32; // Non-zero enables the metric aware octahedral compensation via the baked metric map
 
                    end;
                    PPushConstants=^TPushConstants;
@@ -1677,6 +1681,10 @@ type TpvScene3DPlanets=class;
                     TargetMipMapLevel:TpvUInt32;
                    end;
                    PDownsamplePushConstants=^TDownsamplePushConstants;
+                   TMetricBakePushConstants=packed record
+                    WaterHeightMapResolution:TpvUInt32;
+                   end;
+                   PMetricBakePushConstants=^TMetricBakePushConstants;
                    { TWaterRipplesSimulation (nested) }
                    // GPU water ripple subsystem integrated into the water simulation so that
                    // timestep-sync and queue-family ownership of the ripple ping-pong images
@@ -1784,6 +1792,9 @@ type TpvScene3DPlanets=class;
               fDownsampleComputeShaderModule:TpvVulkanShaderModule;
               fDownsampleComputeShaderStage:TpvVulkanPipelineShaderStage;
               fDownsamplePipeline:TpvVulkanComputePipeline;
+              fMetricBakeComputeShaderModule:TpvVulkanShaderModule; // Only created when the metric aware compensation is enabled
+              fMetricBakeComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fMetricBakePipeline:TpvVulkanComputePipeline;
               fWaterDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fWaterDescriptorPool:TpvVulkanDescriptorPool;
               fWaterDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
@@ -1799,16 +1810,21 @@ type TpvScene3DPlanets=class;
               fDownsampleDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDownsampleDescriptorPool:TpvVulkanDescriptorPool;
               fDownsampleDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
+              fMetricBakeDescriptorSetLayout:TpvVulkanDescriptorSetLayout; // Only created when the metric aware compensation is enabled
+              fMetricBakeDescriptorPool:TpvVulkanDescriptorPool;
+              fMetricBakeDescriptorSet:TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fRainfallPipelineLayout:TpvVulkanPipelineLayout;
               fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
               fModificationPipelineLayout:TpvVulkanPipelineLayout;
               fDownsamplePipelineLayout:TpvVulkanPipelineLayout;
+              fMetricBakePipelineLayout:TpvVulkanPipelineLayout; // Only created when the metric aware compensation is enabled
               fPushConstants:TPushConstants;
               fRainfallPushConstants:TRainfallPushConstants;
               fInterpolationPushConstants:TInterpolationPushConstants;
               fModificationPushConstants:TModificationPushConstants;
               fDownsamplePushConstants:TDownsamplePushConstants;
+              fMetricBakePushConstants:TMetricBakePushConstants;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
               fTimeAccumulator:TpvDouble;
@@ -3280,6 +3296,12 @@ type TpvScene3DPlanets=class;
        // water wobbles like jelly forever.
        fWaterSimulationSettleThreshold:TpvFloat;
        fWaterSimulationSettleFrames:TpvSizeInt;
+       // Metric aware octahedral compensation of the pipe simulation. The flat grid pipe model assumes uniform
+       // cells; on the distorted octahedral sphere grid the equilibrium is not an exact equal radius surface, so
+       // still water keeps oscillating on the mm scale. When enabled, a baked metric field reweights the flow so
+       // the equilibrium matches the real cell shapes. The initial value comes from the constructor (it decides
+       // whether the metric buffer is allocated at all); the property can be toggled live for A/B comparison.
+       fWaterSimulationMetricCompensation:LongBool;
        fWaterWaveDisplaceAmplitude:TpvFloat;       // Per-vertex height displacement amplitude in meters (0=disabled).
        fWaterDisplaceHeightLowThreshold:TpvFloat;  // Water depth below which displacement fades to 0.
        fWaterDisplaceHeightHighThreshold:TpvFloat; // Water depth above which displacement is at full strength.
@@ -3529,7 +3551,8 @@ type TpvScene3DPlanets=class;
                           const aAtmosphereMiniMapResolutionShift:TpvSizeInt=2;
                           const aPrecipitationMiniMapResolutionShift:TpvSizeInt=2;
                           const aHeightMiniMapResolutionShift:TpvSizeInt=4;
-                          const aUseHeightMapSmoothing:Boolean=true); reintroduce;
+                          const aUseHeightMapSmoothing:Boolean=true;
+                          const aWaterMetricCompensation:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -3692,6 +3715,7 @@ type TpvScene3DPlanets=class;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
        property WaterSimulationSettleThreshold:TpvFloat read fWaterSimulationSettleThreshold write fWaterSimulationSettleThreshold;
        property WaterSimulationSettleFrames:TpvSizeInt read fWaterSimulationSettleFrames write fWaterSimulationSettleFrames;
+       property WaterSimulationMetricCompensation:LongBool read fWaterSimulationMetricCompensation write fWaterSimulationMetricCompensation;
        property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
        property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
        property WaterDisplaceHeightHighThreshold:TpvFloat read fWaterDisplaceHeightHighThreshold write fWaterDisplaceHeightHighThreshold;
@@ -5239,6 +5263,31 @@ begin
                                               );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMapBuffer');
 
+   // Static octahedral metric field for the metric aware compensation: five floats per texel (relative cell area
+   // plus four direction conductances), same resolution and octahedral addressing as the water height map. Only
+   // allocated when the compensation was requested at construction time, so a disabled feature costs zero memory.
+   if fPlanet.fWaterSimulationMetricCompensation then begin
+    fWaterMetricMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                  fPlanet.fWaterMapResolution*fPlanet.fWaterMapResolution*5*SizeOf(TpvFloat),
+                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                  fPlanet.fGlobalBufferSharingMode,
+                                                  fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                  0,
+                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  [],
+                                                  0,
+                                                  pvAllocationGroupIDScene3DPlanetStatic,
+                                                  'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMetricMapBuffer'
+                                                 );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMetricMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMetricMapBuffer');
+   end;
+
    fWaterMiniMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -5910,6 +5959,8 @@ begin
  FreeAndNil(fWaterHeightMapBuffers[1]);
 
  FreeAndNil(fWaterFlowMapBuffer);
+
+ FreeAndNil(fWaterMetricMapBuffer);
 
  FreeAndNil(fWaterMiniMapBuffer);
 
@@ -18489,6 +18540,12 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        [],
                                        0);
+  fWaterDescriptorSetLayout.AddBinding(6, // WaterMetricMap (only read when the metric aware compensation is enabled; bound to a dummy buffer otherwise)
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       [],
+                                       0);
   fWaterDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fDescriptorSetLayout');
 
@@ -18597,7 +18654,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        4);
   fWaterDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*4);
-  fWaterDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5*4);
+  fWaterDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),6*4);
   fWaterDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fDescriptorPool');
@@ -18671,6 +18728,27 @@ begin
                                                     [fPlanet.fData.fPrecipitationAtmosphereMapBuffer.DescriptorBufferInfo],
                                                     [],
                                                     false);
+   if assigned(fPlanet.fData.fWaterMetricMapBuffer) then begin
+    fWaterDescriptorSets[Index].WriteToDescriptorSet(6, // WaterMetricMap
+                                                     0,
+                                                     1,
+                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                     [],
+                                                     [fPlanet.fData.fWaterMetricMapBuffer.DescriptorBufferInfo],
+                                                     [],
+                                                     false);
+   end else begin
+    // The metric aware compensation is disabled, so no metric buffer was allocated. Bind the flow map buffer as
+    // a harmless placeholder to satisfy the descriptor set layout; binding 6 is never read in that case.
+    fWaterDescriptorSets[Index].WriteToDescriptorSet(6, // WaterMetricMap placeholder
+                                                     0,
+                                                     1,
+                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                     [],
+                                                     [fPlanet.fData.fWaterFlowMapBuffer.DescriptorBufferInfo],
+                                                     [],
+                                                     false);
+   end;
    fWaterDescriptorSets[Index].Flush;
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fPass2DescriptorSets['+IntToStr(Index)+']');
 
@@ -18880,6 +18958,65 @@ begin
                                                        nil,
                                                        0);
 
+  // Metric bake pass: only created when the metric aware compensation is enabled and the metric buffer exists. It
+  // fills the static metric field once from the octahedral geometry (see planet_water_metric_bake.comp), driven by
+  // the fWaterMetricBaked flag in the Execute method.
+  if assigned(fPlanet.fData.fWaterMetricMapBuffer) then begin
+
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_metric_bake_comp.spv');
+   try
+    fMetricBakeComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
+   fVulkanDevice.DebugUtils.SetObjectName(fMetricBakeComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fMetricBakeComputeShaderModule');
+   fMetricBakeComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMetricBakeComputeShaderModule,'main');
+
+   fMetricBakeDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+   fMetricBakeDescriptorSetLayout.AddBinding(0, // OutWaterMetricMap
+                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                             [],
+                                             0);
+   fMetricBakeDescriptorSetLayout.Initialize;
+   fVulkanDevice.DebugUtils.SetObjectName(fMetricBakeDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fMetricBakeDescriptorSetLayout');
+
+   fMetricBakePipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+   fMetricBakePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMetricBakePushConstants));
+   fMetricBakePipelineLayout.AddDescriptorSetLayout(fMetricBakeDescriptorSetLayout);
+   fMetricBakePipelineLayout.Initialize;
+   fVulkanDevice.DebugUtils.SetObjectName(fMetricBakePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fMetricBakePipelineLayout');
+
+   fMetricBakeDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                             TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                             1);
+   fMetricBakeDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+   fMetricBakeDescriptorPool.Initialize;
+   fVulkanDevice.DebugUtils.SetObjectName(fMetricBakeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fMetricBakeDescriptorPool');
+
+   fMetricBakeDescriptorSet:=TpvVulkanDescriptorSet.Create(fMetricBakeDescriptorPool,fMetricBakeDescriptorSetLayout);
+   fMetricBakeDescriptorSet.WriteToDescriptorSet(0, // OutWaterMetricMap
+                                                 0,
+                                                 1,
+                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                 [],
+                                                 [fPlanet.fData.fWaterMetricMapBuffer.DescriptorBufferInfo],
+                                                 [],
+                                                 false);
+   fMetricBakeDescriptorSet.Flush;
+   fVulkanDevice.DebugUtils.SetObjectName(fMetricBakeDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fMetricBakeDescriptorSet');
+
+   fMetricBakePipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                        pvApplication.VulkanPipelineCache,
+                                                        TVkPipelineCreateFlags(0),
+                                                        fMetricBakeComputeShaderStage,
+                                                        fMetricBakePipelineLayout,
+                                                        nil,
+                                                        0);
+
+  end;
+
 { fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=-1e-4; //1e-4;
@@ -18978,6 +19115,15 @@ destructor TpvScene3DPlanet.TWaterSimulation.Destroy;
 begin
 
  FreeAndNil(fWaterRipplesSimulation);
+
+ // Metric bake pass resources (only created when the metric aware compensation is enabled; FreeAndNil is nil safe otherwise).
+ FreeAndNil(fMetricBakePipeline);
+ FreeAndNil(fMetricBakeDescriptorSet);
+ FreeAndNil(fMetricBakeDescriptorPool);
+ FreeAndNil(fMetricBakePipelineLayout);
+ FreeAndNil(fMetricBakeDescriptorSetLayout);
+ FreeAndNil(fMetricBakeComputeShaderStage);
+ FreeAndNil(fMetricBakeComputeShaderModule);
 
  FreeAndNil(fDownsamplePipeline);
 
@@ -19145,6 +19291,13 @@ begin
  end;
  fPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
  fPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
+ // Enable the metric aware compensation only when it was requested and the metric buffer actually exists. It can
+ // be toggled live via the WaterSimulationMetricCompensation property for A/B comparison once the buffer is there.
+ if assigned(fPlanet.fData.fWaterMetricMapBuffer) and fPlanet.fWaterSimulationMetricCompensation then begin
+  fPushConstants.MetricCompensationEnabled:=1;
+ end else begin
+  fPushConstants.MetricCompensationEnabled:=0;
+ end;
  fRainfallPushConstants.RainIntensity:=fPlanet.fWaterRainSettings.fRainIntensity;
  fRainfallPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
  fRainfallPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
@@ -19239,6 +19392,55 @@ begin
  end else begin
   fTimeAccumulator:=0.0;
  end;//}
+
+ // One-time metric bake: fill the static octahedral metric field before the simulation passes read it. Runs once
+ // per data lifetime; the field only depends on resolution and projection, so it survives height map reloads.
+ if assigned(fMetricBakePipeline) and not fPlanet.fData.fWaterMetricBaked then begin
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterMetricBake',[0.5,0.5,0.5,1.0]);
+
+  fMetricBakePushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMetricBakePipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fMetricBakePipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fMetricBakeDescriptorSet.Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fMetricBakePipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TMetricBakePushConstants),
+                                  @fMetricBakePushConstants);
+
+  aCommandBuffer.CmdDispatch((fPlanet.fWaterMapResolution+15) shr 4,
+                             (fPlanet.fWaterMapResolution+15) shr 4,
+                             1);
+
+  // Make the baked metric field visible to the simulation passes that read it.
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterMetricMapBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+  fPlanet.fData.fWaterMetricBaked:=true;
+
+ end;
 
  First:=true;
 
@@ -32765,7 +32967,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aAtmosphereMiniMapResolutionShift:TpvSizeInt;
                                     const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
                                     const aHeightMiniMapResolutionShift:TpvSizeInt;
-                                    const aUseHeightMapSmoothing:Boolean);
+                                    const aUseHeightMapSmoothing:Boolean;
+                                    const aWaterMetricCompensation:Boolean);
 var InFlightFrameIndex,Index,Resolution,x,y,CountUsedBrushes:TpvSizeInt;
     Pixel:TpvUInt32;
     BrushUsed:Boolean;
@@ -32891,6 +33094,10 @@ begin
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
  fWaterSimulationSettleThreshold:=1e-6; // legacy engine default; override via JSON "water"."simulation"."settlethreshold"
  fWaterSimulationSettleFrames:=64;
+
+ // Set from the constructor so it is known before the data resources are created, so that the metric buffer is
+ // only allocated when the metric aware compensation is actually requested (zero cost when disabled).
+ fWaterSimulationMetricCompensation:=aWaterMetricCompensation;
  fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
  fWaterDisplaceHeightLowThreshold:=0.0;  // fade starts at water depth 0 m
  fWaterDisplaceHeightHighThreshold:=0.5; // full displacement at 0.5 m depth
@@ -37233,6 +37440,9 @@ begin
    JSONSimulationObject:=TPasJSONItemObject(JSONItem);
    fWaterSimulationSettleThreshold:=TPasJSON.GetNumber(JSONSimulationObject.Properties['settlethreshold'],fWaterSimulationSettleThreshold);
    fWaterSimulationSettleFrames:=Round(TPasJSON.GetNumber(JSONSimulationObject.Properties['settleframes'],fWaterSimulationSettleFrames));
+   // Live A/B toggle state of the metric aware compensation. Whether the metric buffer actually exists is decided
+   // at construction time (the app preparses this same flag and passes it down), so this only affects the toggle.
+   fWaterSimulationMetricCompensation:=TPasJSON.GetBoolean(JSONSimulationObject.Properties['metriccompensation'],fWaterSimulationMetricCompensation);
   end;
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);

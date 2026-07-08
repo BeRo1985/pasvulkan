@@ -34,6 +34,7 @@ layout(push_constant) uniform PushConstants {
 
   uint precipitationAtmosphereMapShift; // The shift for the precipitation atmosphere map relative to the water height map
   uint frameIndex; // The current frame index, used for random number generation
+  uint metricCompensationEnabled; // Non-zero enables the metric aware octahedral compensation via the baked WaterMetricMap
 
 } pushConstants;
 
@@ -91,6 +92,13 @@ layout(set = 0, binding = 5, std430) buffer PrecipitationAtmosphereMap {
   _float values[];
 } precipitationAtmosphereMap;
 
+// Static octahedral metric field for the metric aware compensation, baked once per resolution by
+// planet_water_metric_bake.comp. Flat float array with a stride of five values per texel, same resolution and
+// octahedral addressing as the water height map. Only read when pushConstants.metricCompensationEnabled is set.
+layout(set = 0, binding = 6, std430) readonly buffer WaterMetricMap {
+  float values[]; // Five factors per texel: areaScale, kEast, kSouth, kWest, kNorth
+} waterMetricMap;
+
 #include "pcg.glsl"
 
 #include "octahedral.glsl"
@@ -106,6 +114,23 @@ uint getIndex(ivec2 position){
 uint getFlowMapIndex(ivec2 position){
   position = (((position + ivec2(int(pushConstants.waterHeightMapBorder))) % ivec2(int(waterHeightMapResolutionWithBorder))) + ivec2(int(waterHeightMapResolutionWithBorder))) % ivec2(int(waterHeightMapResolutionWithBorder));
   return (position.y * waterHeightMapResolutionWithBorder) + position.x;
+}
+
+// Baked octahedral metric factors for a texel, used by the metric aware compensation.
+struct WaterMetric {
+  float areaScale; // Relative cell area, used as an extra divisor in the water height update
+  vec4 conductance; // Relative edge conductance per direction, order East, South, West, North
+};
+
+WaterMetric getWaterMetric(ivec2 position){
+  const uint base = getIndex(position) * 5u;
+  WaterMetric metric;
+  metric.areaScale = waterMetricMap.values[base + 0u];
+  metric.conductance = vec4(waterMetricMap.values[base + 1u],
+                            waterMetricMap.values[base + 2u],
+                            waterMetricMap.values[base + 3u],
+                            waterMetricMap.values[base + 4u]);
+  return metric;
 }
 
 #endif

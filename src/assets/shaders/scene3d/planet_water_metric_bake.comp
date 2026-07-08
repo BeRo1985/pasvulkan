@@ -1,0 +1,131 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Static metric bake for the metric aware octahedral compensation of the pipe based water simulation.
+//
+// The pipe based water simulation assumes a flat uniform grid (all cells equal area, all pipes equal
+// length and cross section). On the octahedral sphere grid this assumption is violated: with the equal
+// area planet mapping the cell areas stay nearly constant, but the cell shapes are stretched and sheared,
+// so pipe lengths and shared edge lengths vary per texel and per direction. That direction dependent
+// distortion is what keeps still water from reaching an exact equal radius equilibrium.
+//
+// This pass bakes, once per water map resolution, five static per texel factors:
+//   [0]   areaScale : relative cell area A_cell / A_nominal (used as an extra divisor in the height update)
+//   [1..4] k_dir    : relative edge conductance edge / pipeLength per direction, order East, South, West, North
+//
+// Everything is derived numerically from the octahedral decode of the 3x3 texel window, so it is correct
+// for both the equal area and the non equal area planet mapping without any analytic Jacobian. The edge
+// conductances are defined symmetrically across the shared edge (k East of a cell equals k West of its
+// eastern neighbor), so the mass accounting of the simulation stays consistent.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint waterHeightMapResolution; // The resolution of the water height map (metric field has the same resolution and addressing)
+} pushConstants;
+
+// The metric field is a flat float array with a stride of five values per texel, addressed exactly like the
+// water height map via getIndex (octahedral wrapped). Layout per texel: areaScale, kEast, kSouth, kWest, kNorth.
+layout(set = 0, binding = 0, std430) writeonly buffer OutWaterMetricMap {
+  float values[];
+} outWaterMetricMap;
+
+#include "octahedral.glsl"
+
+/* clang-format on */
+
+const float PI = 3.14159265358979323846;
+
+uint getIndex(ivec2 position){
+  const ivec2 wrappedPosition = wrapOctahedralTexelCoordinates(position, ivec2(int(pushConstants.waterHeightMapResolution)));
+  return uint((wrappedPosition.y * int(pushConstants.waterHeightMapResolution)) + wrappedPosition.x);
+}
+
+// Unit sphere direction of the cell center at texel position, octahedral wrapped at the map edges.
+vec3 cellDirection(ivec2 position){
+  const vec2 uv = (vec2(wrapOctahedralTexelCoordinates(position, ivec2(int(pushConstants.waterHeightMapResolution)))) + vec2(0.5)) / vec2(pushConstants.waterHeightMapResolution);
+  return normalize(octPlanetUnsignedDecode(uv));
+}
+
+void main(){
+
+  const ivec2 position = ivec2(gl_GlobalInvocationID.xy);
+
+  if(any(greaterThanEqual(position, ivec2(int(pushConstants.waterHeightMapResolution))))){
+    return;
+  }
+
+  const int resolution = int(pushConstants.waterHeightMapResolution);
+
+  // Sample the unit sphere directions of the full 3x3 window around the current texel. Index [dx + 1][dy + 1]
+  // with dx, dy in { -1, 0, +1 }, so the axis convention matches the simulation: +x = East, +y = South.
+  vec3 sampleDirection[3][3];
+  for(int ix = 0; ix < 3; ix++){
+    for(int iy = 0; iy < 3; iy++){
+      sampleDirection[ix][iy] = cellDirection(position + ivec2(ix - 1, iy - 1));
+    }
+  }
+
+  const vec3 center = sampleDirection[1][1];
+  const vec3 east   = sampleDirection[2][1];
+  const vec3 west   = sampleDirection[0][1];
+  const vec3 south  = sampleDirection[1][2];
+  const vec3 north  = sampleDirection[1][0];
+
+  const float epsilon = 1e-9;
+
+  // Pipe lengths: distances between the cell centers along the four cardinal directions.
+  const float pipeLengthEast  = max(epsilon, distance(center, east));
+  const float pipeLengthSouth = max(epsilon, distance(center, south));
+  const float pipeLengthWest  = max(epsilon, distance(center, west));
+  const float pipeLengthNorth = max(epsilon, distance(center, north));
+
+  // Local cell extents: the average neighbor distance along each texel axis, evaluated at the involved cells.
+  // extentX is the width along the x axis, extentY the width along the y axis.
+  const float extentXCenter = 0.5 * (pipeLengthEast + pipeLengthWest);
+  const float extentYCenter = 0.5 * (pipeLengthSouth + pipeLengthNorth);
+
+  const float extentYEast  = 0.5 * (distance(east, sampleDirection[2][2]) + distance(east, sampleDirection[2][0]));
+  const float extentYWest  = 0.5 * (distance(west, sampleDirection[0][2]) + distance(west, sampleDirection[0][0]));
+  const float extentXSouth = 0.5 * (distance(south, sampleDirection[2][2]) + distance(south, sampleDirection[0][2]));
+  const float extentXNorth = 0.5 * (distance(north, sampleDirection[2][0]) + distance(north, sampleDirection[0][0]));
+
+  // Shared edge lengths, averaged over both adjacent cells so that they are symmetric across the edge.
+  // The edge between a cell and its eastern neighbor runs along the y axis, so it uses the y extents, and so on.
+  const float edgeEast  = 0.5 * (extentYCenter + extentYEast);
+  const float edgeWest  = 0.5 * (extentYCenter + extentYWest);
+  const float edgeSouth = 0.5 * (extentXCenter + extentXSouth);
+  const float edgeNorth = 0.5 * (extentXCenter + extentXNorth);
+
+  // Relative edge conductance per direction (edge length over pipe length). For an undistorted quasi square
+  // cell edge and pipe length are equal, so this is close to one and only the distortion shows up.
+  const vec4 conductance = vec4(
+    edgeEast  / pipeLengthEast,
+    edgeSouth / pipeLengthSouth,
+    edgeWest  / pipeLengthWest,
+    edgeNorth / pipeLengthNorth
+  );
+
+  // Relative cell area: the flat quad area spanned by the diagonals of the four neighbors, normalized against
+  // the nominal texel area on the unit sphere (total sphere area 4*PI divided by resolution squared).
+  const float cellArea = 0.5 * length(cross(east - west, south - north));
+  const float nominalCellArea = (4.0 * PI) / float(resolution * resolution);
+  const float areaScale = max(epsilon, cellArea / max(epsilon, nominalCellArea));
+
+  const uint base = getIndex(position) * 5u;
+  outWaterMetricMap.values[base + 0u] = areaScale;
+  outWaterMetricMap.values[base + 1u] = conductance.x;
+  outWaterMetricMap.values[base + 2u] = conductance.y;
+  outWaterMetricMap.values[base + 3u] = conductance.z;
+  outWaterMetricMap.values[base + 4u] = conductance.w;
+
+}

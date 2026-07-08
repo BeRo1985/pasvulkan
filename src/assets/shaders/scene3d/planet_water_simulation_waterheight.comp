@@ -135,7 +135,15 @@ void main(){
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 2][gl_LocalInvocationID.x + 1].w + // ivec2( 0,  1)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 1][gl_LocalInvocationID.x + 0].x + // ivec2(-1,  0)
                                  sharedFlowMapValues[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1].y;  // ivec2( 0, -1)
-      const float flowDivergence = ((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / pushConstants.pipeLengthSquared;
+      // Metric aware compensation: divide the volume change by the baked relative cell area, so a
+      // larger distorted cell needs proportionally more volume for the same height change. With the equal area
+      // planet mapping this factor stays close to one; it becomes significant only for a non equal area mapping.
+      // When the feature is disabled areaScale is one, so the height update is bit identical to before.
+      float areaScale = 1.0;
+      if(pushConstants.metricCompensationEnabled != 0u){
+        areaScale = getWaterMetric(ivec2(position)).areaScale;
+      }
+      const float flowDivergence = ((totalOutFlow - totalInFlow) * pushConstants.deltaTime) / (pushConstants.pipeLengthSquared * areaScale);
 #endif
  
       // Read the water height from the input water height map

@@ -124,7 +124,16 @@ void main(){
                                        dot(sharedHeights[gl_LocalInvocationID.y + 0][gl_LocalInvocationID.x + 1], vec2(1.0))  // ivec2( 0, -1)
                                      ); 
 
-      const vec4 newFlow = max(vec4(0.0), heightDifferences * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
+      // Metric aware compensation: weight each of the four directions by the baked relative edge
+      // conductance so the equilibrium of the flat grid pipe model matches the distorted octahedral cell shapes.
+      // The conductance order East, South, West, North matches the heightDifferences order above. When the feature
+      // is disabled the conductance stays at one, so the resulting flow is bit identical to the previous behavior.
+      vec4 conductance = vec4(1.0);
+      if(pushConstants.metricCompensationEnabled != 0u){
+        conductance = getWaterMetric(wrappedPosition).conductance;
+      }
+
+      const vec4 newFlow = max(vec4(0.0), heightDifferences * conductance * pushConstants.crossSectionalPipeArea * pushConstants.gravity * pushConstants.compensationFactor * pushConstants.deltaTime);
 
 #ifdef USE_COMPACT_FLOW
       outFlow = (vec2(newFlow.x - newFlow.z, newFlow.y - newFlow.w) * pushConstants.strength) + (oldFlow * pushConstants.attenuation);
