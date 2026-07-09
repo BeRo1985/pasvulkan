@@ -124,7 +124,7 @@ begin
          '## Inline formatting'+#10+
          ''+#10+
          'Text can be **bold**, *italic*, ~~struck through~~ and contain `inline code`.'+#10+
-         'You can also mix ***bold and italic*** together.'+#10+
+         'You can also mix ***bold and italic*** together. **a**+**b** = c'+#10+
          ''+#10+
          '## Lists'+#10+
          ''+#10+
