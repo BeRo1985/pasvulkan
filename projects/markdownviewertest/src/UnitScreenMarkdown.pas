@@ -111,7 +111,15 @@ type { TScreenMarkdown }
 
 implementation
 
-uses {$if defined(Windows)}Windows,ShellApi,{$elseif defined(fpc) and defined(unix)}Unix,{$ifend}UnitApplication;
+uses {$if defined(Windows)}Windows,ShellApi,{$elseif defined(fpc) and defined(unix)}BaseUnix,{$ifend}UnitApplication;
+
+{$if defined(fpc) and defined(unix)}
+// posix_spawn instead of fork/fpSystem: it doesn't duplicate the address space
+// of a process that carries big Vulkan/driver state (glibc implements it with a
+// vfork-style CLONE_VM, on macOS it is a real spawn syscall), and it can't
+// deadlock the way a forked child of a multithreaded process can
+function posix_spawn(aPID:pPid;aPath:PAnsiChar;aFileActions:pointer;aAttr:pointer;aArgv:PPAnsiChar;aEnvp:PPAnsiChar):cint; cdecl; external 'c' name 'posix_spawn';
+{$ifend}
 
 // hand an external http(s) link over to the OS default browser
 procedure OpenURLInBrowser(const aURL:TpvUTF8String);
@@ -120,11 +128,23 @@ begin
  ShellExecute(0,'open',PChar(String(aURL)),nil,nil,SW_SHOWNORMAL);
 end;
 {$elseif defined(fpc) and defined(unix)}
-var SanitizedURL:TpvUTF8String;
+var ChildPID:TPid;
+    CommandLine:TpvRawByteString;
+    Argv:array[0..3] of PAnsiChar;
 begin
  // single-quote the URL for the shell; embedded single quotes get URL-escaped
- SanitizedURL:=TpvUTF8String(StringReplace(String(aURL),'''','%27',[rfReplaceAll]));
- fpSystem({$if defined(darwin)}'open '''{$else}'xdg-open '''{$ifend}+String(SanitizedURL)+''' &');
+ CommandLine:={$if defined(darwin)}'open '''{$else}'xdg-open '''{$ifend}+RawByteString(StringReplace(String(aURL),'''','%27',[rfReplaceAll]))+''' >/dev/null 2>&1 &';
+ Argv[0]:='sh';
+ Argv[1]:='-c';
+ Argv[2]:=PAnsiChar(CommandLine);
+ Argv[3]:=nil;
+ ChildPID:=0;
+ if posix_spawn(@ChildPID,'/bin/sh',nil,nil,PPAnsiChar(@Argv[0]),envp)=0 then begin
+  // the shell backgrounds the opener and exits right away, so this returns
+  // immediately, leaves no zombie behind and never waits on the browser
+  repeat
+  until (FpWaitPid(ChildPID,nil,0)<>-1) or (fpgeterrno<>ESysEINTR);
+ end;
 end;
 {$else}
 begin
