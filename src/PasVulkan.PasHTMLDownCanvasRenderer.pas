@@ -662,6 +662,9 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
             TTextSizeCacheHashMap=TpvMarkDownRendererStringHashMap<TTextSizeCacheItem>;
 
+            // anchor name => layout Y position (for in-document links like [x](#section))
+            TAnchorHashMap=TpvMarkDownRendererStringHashMap<TpvMarkDownRendererFloat>;
+
       private
        
        // items/layout state
@@ -694,6 +697,9 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
        fLinkRects:TLinkHitRectList;
 
+       fAnchors:TAnchorHashMap;
+       fAnchorSuppressCount:TpvMarkDownRendererInt32; // >0 while laying out table cells (local coordinate sub-layouts)
+
        fTargetDPI:TpvMarkDownRendererFloat;
 
        // proportional font faces (one TpvFont instance per style variant)
@@ -719,6 +725,10 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        fFontColor:TpvVector4;
        fFontQuoteColor:TpvVector4;
        fFontHeaderColor:TpvVector4;
+       // link text color; only applied when the host has assigned it, so existing
+       // hosts that don't set it keep rendering links in the normal text color
+       fFontLinkColor:TpvVector4;
+       fFontLinkColorSet:boolean;
 
        fHTMLDoc:THTML;
 
@@ -759,6 +769,12 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
        function HeaderFontSize(const aLevel:TpvMarkDownRendererInt32;const aBase:TpvMarkDownRendererFloat):TpvMarkDownRendererFloat;
 
+       // anchors (in-document link targets)
+       function MakeAnchorName(const aText:TpvMarkDownRendererUTF8String):TpvMarkDownRendererUTF8String;
+       procedure AddAnchor(const aName:TpvMarkDownRendererUTF8String;const aY:TpvMarkDownRendererFloat);
+
+       procedure SetFontLinkColor(const aValue:TpvVector4);
+
        procedure TraverseHTML(const aCanvas:TpvCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:TpvMarkDownRendererFloat;aFontStyle:TpvMarkDownRendererFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
 
        // tables
@@ -780,6 +796,8 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        procedure Calculate(const aCanvas:TpvCanvas;const aMaxWidth:TpvMarkDownRendererFloat;out aContentWidth:TpvMarkDownRendererFloat;out aContentHeight:TpvMarkDownRendererFloat);
        procedure Render(const aCanvas:TpvCanvas;const aLeftPosition,aTopPosition:TpvMarkDownRendererFloat);
        function HitTestLink(const aX,aY:TpvMarkDownRendererFloat;out aHref:TpvMarkDownRendererUTF8String):boolean;
+       // resolves an in-document link target ("#section" or "section") to its layout Y position
+       function ResolveAnchor(const aName:TpvMarkDownRendererUTF8String;out aY:TpvMarkDownRendererFloat):boolean;
 
        // Public properties
        property CalculatedWidth:TpvMarkDownRendererFloat read fCalculatedWidth;
@@ -809,6 +827,7 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property FontQuoteColor:TpvVector4 read fFontQuoteColor write fFontQuoteColor;
        property FontHeaderColor:TpvVector4 read fFontHeaderColor write fFontHeaderColor;
+       property FontLinkColor:TpvVector4 read fFontLinkColor write SetFontLinkColor;
 
        property BaseFontSize:TpvMarkDownRendererFloat read fBaseFontSize write fBaseFontSize;
 
@@ -1890,6 +1909,9 @@ begin
  fItems:=TLayoutItemList.Create;
  fLinkRects:=TLinkHitRectList.Create;
 
+ fAnchors:=TAnchorHashMap.Create(-1.0);
+ fAnchorSuppressCount:=0;
+
  fCalculatedWidth:=0;
  fCalculatedHeight:=0;
  fMaxWidth:=0;
@@ -1936,6 +1958,9 @@ begin
  fFontQuoteColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
  // headings default to the normal text color until the host assigns an accent
  fFontHeaderColor:=fFontColor;
+ // links keep the normal text color until the host assigns an accent
+ fFontLinkColor:=fFontColor;
+ fFontLinkColorSet:=false;
 
  fHTMLDoc:=THTML.Create;
 
@@ -1950,6 +1975,7 @@ destructor TpvMarkDownRenderer.Destroy;
 begin
  FreeAndNil(fItems);
  FreeAndNil(fLinkRects);
+ FreeAndNil(fAnchors);
  FreeAndNil(fHTMLDoc);
  FreeAndNil(fTextSizeCacheHashMap);
  inherited Destroy;
@@ -1965,6 +1991,8 @@ procedure TpvMarkDownRenderer.Clear;
 begin
  fItems.Clear;
  fLinkRects.Clear;
+ fAnchors.Clear;
+ fAnchorSuppressCount:=0;
  fCalculatedWidth:=0;
  fCalculatedHeight:=0;
  fMaxWidth:=0;
@@ -2735,6 +2763,71 @@ begin
  end;
 end;
 
+function TpvMarkDownRenderer.MakeAnchorName(const aText:TpvMarkDownRendererUTF8String):TpvMarkDownRendererUTF8String;
+var Index:TpvMarkDownRendererInt32;
+    CurrentChar:ansichar;
+begin
+ // GitHub-style heading slug: lowercase, spaces become hyphens, ASCII punctuation
+ // is dropped and UTF-8 multi-byte sequences are kept as-is
+ result:='';
+ for Index:=1 to length(aText) do begin
+  CurrentChar:=aText[Index];
+  case CurrentChar of
+   'A'..'Z':begin
+    result:=result+ansichar(TpvUInt8(TpvUInt8(CurrentChar)+(ord('a')-ord('A'))));
+   end;
+   'a'..'z','0'..'9','-','_',#128..#255:begin
+    result:=result+CurrentChar;
+   end;
+   #9,#32:begin
+    result:=result+'-';
+   end;
+   else begin
+   end;
+  end;
+ end;
+end;
+
+procedure TpvMarkDownRenderer.AddAnchor(const aName:TpvMarkDownRendererUTF8String;const aY:TpvMarkDownRendererFloat);
+var UniqueName:TpvMarkDownRendererUTF8String;
+    SuffixIndex:TpvMarkDownRendererInt32;
+begin
+ if (fAnchorSuppressCount>0) or (length(aName)=0) then begin
+  exit;
+ end;
+ // deduplicate repeated names with -1/-2/... suffixes, as GitHub does for headings
+ UniqueName:=aName;
+ SuffixIndex:=0;
+ while fAnchors.ExistKey(UniqueName) do begin
+  inc(SuffixIndex);
+  UniqueName:=aName+'-'+TpvMarkDownRendererUTF8String(IntToStr(SuffixIndex));
+ end;
+ fAnchors.Add(UniqueName,aY);
+end;
+
+function TpvMarkDownRenderer.ResolveAnchor(const aName:TpvMarkDownRendererUTF8String;out aY:TpvMarkDownRendererFloat):boolean;
+var AnchorName:TpvMarkDownRendererUTF8String;
+begin
+ AnchorName:=aName;
+ if (length(AnchorName)>0) and (AnchorName[1]='#') then begin
+  Delete(AnchorName,1,1);
+ end;
+ // normalize the same way as when the anchors were recorded
+ AnchorName:=MakeAnchorName(Trim(AnchorName));
+ if length(AnchorName)>0 then begin
+  result:=fAnchors.TryGet(AnchorName,aY);
+ end else begin
+  aY:=-1.0;
+  result:=false;
+ end;
+end;
+
+procedure TpvMarkDownRenderer.SetFontLinkColor(const aValue:TpvVector4);
+begin
+ fFontLinkColor:=aValue;
+ fFontLinkColorSet:=true;
+end;
+
 function TpvMarkDownRenderer.ExtractNodeText(const aNode:THTML.TNode):TpvMarkDownRendererUTF8String;
 var ChildIndex:TpvMarkDownRendererInt32;
 begin
@@ -3146,6 +3239,11 @@ begin
   exit;
  end;
 
+ // table cells lay out in local sub-coordinates, so anchors recorded inside them
+ // would carry wrong document Y positions; suppress anchor recording meanwhile
+ inc(fAnchorSuppressCount);
+ try
+
  GridSize:=DIP(1);
  CellPadding:=DIP(4);
 
@@ -3375,6 +3473,10 @@ begin
  fLineY:=CurrentY;
  NewLine(aCanvas);
  ParagraphBreak(aCanvas);
+
+ finally
+  dec(fAnchorSuppressCount);
+ end;
 end;
 
 procedure TpvMarkDownRenderer.TraverseHTML(const aCanvas:TpvCanvas;const aNode:THTML.TNode;const aIsBlock:boolean;aFontSize:TpvMarkDownRendererFloat;aFontStyle:TpvMarkDownRendererFontStyles;aLinkHref:TpvMarkDownRendererUTF8String;aUseMono,aIsBlockQuote:boolean);
@@ -3523,6 +3625,8 @@ begin
    if fLineX<>0 then begin
     ParagraphBreak(aCanvas);
    end;
+   // register a GitHub-style anchor slug for this heading at its layout Y position
+   AddAnchor(MakeAnchorName(Trim(ExtractNodeText(aNode))),fLineY);
    if assigned(aNode.Children) then begin
     ChildIndex:=0;
     while ChildIndex<aNode.Children.Count do begin
@@ -3581,12 +3685,20 @@ begin
    aFontSize:=Max(1,aFontSize*0.75);
    fBaselineShiftCurrent:=fBaselineShiftCurrent+((MeasureTextHeight(aCanvas,aFontSize,aFontStyle,aUseMono,false,aIsBlockQuote)+1)*0.333333333);
   end else if TagUpper='A' then begin
-   Include(aFontStyle,TpvMarkDownRendererFontStyle.Underline);
    TagParameter:=aNode.TagParameters.FindByName('HREF');
    if assigned(TagParameter) then begin
+    Include(aFontStyle,TpvMarkDownRendererFontStyle.Underline);
     aLinkHref:=ConvertEntities(TagParameter.Value,THTML.TCharset.UTF_8,true);
    end else begin
     aLinkHref:='';
+   end;
+   // <a name="x"> / <a id="x"> registers an in-document anchor at the current layout Y position
+   TagParameter:=aNode.TagParameters.FindByName('NAME');
+   if not assigned(TagParameter) then begin
+    TagParameter:=aNode.TagParameters.FindByName('ID');
+   end;
+   if assigned(TagParameter) then begin
+    AddAnchor(MakeAnchorName(Trim(ConvertEntities(TagParameter.Value,THTML.TCharset.UTF_8,true))),fLineY);
    end;
   end else if TagUpper='IMG' then begin
    TagParameter:=aNode.TagParameters.FindByName('ALT');
@@ -3742,6 +3854,8 @@ begin
      aCanvas.Color:=ConvertSRGBToLinear(fFontMarkColor);
     end else if Item.Think then begin
      aCanvas.Color:=ConvertSRGBToLinear(fFontThinkColor);
+    end else if fFontLinkColorSet and (length(Item.LinkHref)>0) and not Item.Code then begin
+     aCanvas.Color:=ConvertSRGBToLinear(fFontLinkColor);
     end else if Item.Header and not (Item.Code or Item.BlockQuote) then begin
      aCanvas.Color:=ConvertSRGBToLinear(fFontHeaderColor);
     end;

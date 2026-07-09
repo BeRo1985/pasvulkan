@@ -111,7 +111,25 @@ type { TScreenMarkdown }
 
 implementation
 
-uses UnitApplication;
+uses {$if defined(Windows)}Windows,ShellApi,{$elseif defined(fpc) and defined(unix)}Unix,{$ifend}UnitApplication;
+
+// hand an external http(s) link over to the OS default browser
+procedure OpenURLInBrowser(const aURL:TpvUTF8String);
+{$if defined(Windows)}
+begin
+ ShellExecute(0,'open',PChar(String(aURL)),nil,nil,SW_SHOWNORMAL);
+end;
+{$elseif defined(fpc) and defined(unix)}
+var SanitizedURL:TpvUTF8String;
+begin
+ // single-quote the URL for the shell; embedded single quotes get URL-escaped
+ SanitizedURL:=TpvUTF8String(StringReplace(String(aURL),'''','%27',[rfReplaceAll]));
+ fpSystem({$if defined(darwin)}'open '''{$else}'xdg-open '''{$ifend}+String(SanitizedURL)+''' &');
+end;
+{$else}
+begin
+end;
+{$ifend}
 
 { TScreenMarkdown }
 
@@ -120,6 +138,15 @@ begin
  result:='# PasVulkan Markdown Renderer'+#10+
          ''+#10+
          'This is a **TpvCanvas** rendering test for *PasVulkan.PasHTMLDownCanvasRenderer*.'+#10+
+         ''+#10+
+         '## Contents'+#10+
+         ''+#10+
+         '- [Inline formatting](#inline-formatting)'+#10+
+         '- [Lists](#lists)'+#10+
+         '- [Blockquote](#blockquote)'+#10+
+         '- [Code block](#code-block)'+#10+
+         '- [Table](#table)'+#10+
+         '- [Links and anchors](#links-and-anchors)'+#10+
          ''+#10+
          '## Inline formatting'+#10+
          ''+#10+
@@ -156,9 +183,16 @@ begin
          '| Alpha | 1 |'+#10+
          '| Beta | 2 |'+#10+
          ''+#10+
+         '## Links and anchors'+#10+
+         ''+#10+
+         'Links are clickable: heading anchors like [Contents](#contents) scroll inside the'+#10+
+         'document, external links like [rosseaux.net](https://rosseaux.net) open in the browser.'+#10+
+         'Explicit targets also work: <a name="explicit-anchor"></a>this line carries the'+#10+
+         'anchor [#explicit-anchor](#explicit-anchor).'+#10+
+         ''+#10+
          '---'+#10+
          ''+#10+
-         'That is the end of the sample document.'+#10;
+         'That is the end of the sample document. [Back to top](#pasvulkan-markdown-renderer)'+#10;
 end;
 
 constructor TScreenMarkdown.Create;
@@ -194,6 +228,8 @@ begin
  fMarkDownRenderer.FontMarkColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
  fMarkDownRenderer.BGThinkColor:=TpvVector4.Create(0.1,0.1,0.1,1.0);
  fMarkDownRenderer.FontThinkColor:=TpvVector4.Create(0.55,0.55,0.55,1.0);
+ // light blue for clickable links, to stand out from the plain text
+ fMarkDownRenderer.FontLinkColor:=TpvVector4.Create(0.4,0.65,1.0,1.0);
 
  fMarkDownRenderer.Parse(GetSampleMarkDown,false);
 
@@ -469,8 +505,29 @@ begin
 end;
 
 function TScreenMarkdown.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Href:TpvMarkDownRendererUTF8String;
+    AnchorY:TpvMarkDownRendererFloat;
 begin
  result:=false;
+ // left click on a link: scroll to in-document anchors, open external http(s)
+ // links in the OS default browser (the canvas covers the whole window 1:1,
+ // so the pointer position only has to be shifted by the render offset)
+ if fReady and
+    (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Down) and
+    (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
+  if fMarkDownRenderer.HitTestLink(aPointerEvent.Position.x-Margin,
+                                   (aPointerEvent.Position.y-Margin)+fScrollY,
+                                   Href) then begin
+   if (length(Href)>0) and (Href[1]='#') then begin
+    if fMarkDownRenderer.ResolveAnchor(Href,AnchorY) then begin
+     fScrollY:=AnchorY; // clamped against the content height in Update
+    end;
+   end else if (Copy(String(Href),1,7)='http://') or (Copy(String(Href),1,8)='https://') then begin
+    OpenURLInBrowser(Href);
+   end;
+   result:=true;
+  end;
+ end;
 end;
 
 function TScreenMarkdown.Scrolled(const aRelativeAmount:TpvVector2):boolean;
