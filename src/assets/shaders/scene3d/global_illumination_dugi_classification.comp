@@ -73,14 +73,20 @@ void main(){
   float backfaceFraction = float(backfaceCount) / float(GI_DUGI_FIXED_RAYS);
 
   // The "not inside geometry" target state: ACTIVE normally, but with the nearby-geometry test a probe whose own cell holds no
-  // geometry (only far / sky hits) is INACTIVE, so the gather skips probes that contribute only distant/sky light. The test is
-  // only applied when the producer wrote real per-ray geometry distances (FIXED_RAY_GEOMETRY_VALID flag); the RSM fallback
-  // leaves it clear, so every fixed ray is a far miss there and all probes stay ACTIVE.
+  // geometry (only far / sky hits) is deactivated, so the trace/update passes skip probes that contribute only distant/sky
+  // light. With GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE (runtime A/B toggle) such a probe is written as EMPTY (0.5) instead of
+  // INACTIVE (0.0): still frozen compute-side, but the SHADING gather keeps sampling its last valid data — otherwise a
+  // shading point whose upper cage probes are all empty-space-deactivated renormalizes 100% of the weight onto the probes
+  // on the far side of a slab (the through-slab leak). The test is only applied when the producer wrote real per-ray
+  // geometry distances (FIXED_RAY_GEOMETRY_VALID flag); the RSM fallback leaves it clear, so every fixed ray is a far miss
+  // there and all probes stay ACTIVE.
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
   float activeState = (nearbyGeometry ||
                        ((pushConstants.flags & GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID) == 0u)
                       ) ? GI_DUGI_PROBE_STATE_ACTIVE
-                        : GI_DUGI_PROBE_STATE_INACTIVE;
+                        : (((pushConstants.flags & GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE) != 0u)
+                             ? GI_DUGI_PROBE_STATE_EMPTY
+                             : GI_DUGI_PROBE_STATE_INACTIVE);
 #else
   float activeState = GI_DUGI_PROBE_STATE_ACTIVE;
 #endif

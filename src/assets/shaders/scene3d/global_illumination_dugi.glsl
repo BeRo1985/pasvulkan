@@ -245,8 +245,8 @@ vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
 
 // --- Probe relocation + classification (RTXGI-style, compile-time toggle) ---------------------------------------------
 // When enabled, a per-probe "probe data" image stores xyz = world-space relocation offset (probe pushed out of geometry,
-// |offset| <= GI_DUGI_PROBE_MAX_OFFSET * cellSize) and w = state (0 = inactive/inside geometry or empty space -> skipped
-// while shading, 1 = active). A dedicated compute pass (global_illumination_dugi_relocation.comp) traces GI_DUGI_FIXED_RAYS fixed directions
+// |offset| <= GI_DUGI_PROBE_MAX_OFFSET * cellSize) and w = state (0 = inactive/inside geometry -> skipped while shading,
+// 0.5 = empty space/no nearby geometry -> frozen but still sampleable, 1 = active; see the state thresholds below). A dedicated compute pass (global_illumination_dugi_relocation.comp) traces GI_DUGI_FIXED_RAYS fixed directions
 // per probe to compute these. The trace origin and the sampler probe world position both add the offset; the sampler skips
 // inactive probes. DEFAULT OFF until the Pascal side (probe-data image + relocation pass + descriptor binding) is wired.
 #ifndef GI_DUGI_PROBE_RELOCATION
@@ -277,12 +277,23 @@ vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
   #define GI_DUGI_PROBE_CLASSIFY_NEARBY 1
 #endif
 #define GI_DUGI_PROBE_STATE_INACTIVE 0.0
+#define GI_DUGI_PROBE_STATE_EMPTY    0.5
 #define GI_DUGI_PROBE_STATE_ACTIVE   1.0
+
+// State thresholds. The compute-side early-outs (trace random rays + the blending passes) skip everything below TRACE_MIN,
+// so BOTH inactive kinds (inside geometry AND empty space) stay fixed-rays-only/frozen (the perf win). The SHADING gather
+// skips only probes below SAMPLE_MIN — i.e. only inside-geometry probes (state 0, data unusable); an EMPTY probe (state
+// 0.5, written by the classification when GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE is set) keeps contributing its last valid data
+// to the 8-probe cage. Without that, a shading point whose upper cage probes are all empty-space-deactivated hands 100% of
+// the renormalized weight to the probes on the far side of a slab — the remaining through-slab leak path.
+#define GI_DUGI_PROBE_STATE_TRACE_MIN  0.75
+#define GI_DUGI_PROBE_STATE_SAMPLE_MIN 0.25
 
 // Bit flags for the per-pass `flags` push-constant field (set on the Pascal side). Defined here, in the shared core, so both
 // the compute push block (global_illumination_dugi_pushconstants.glsl) and the probe debug-draw shaders (their own push block) can reference them.
 #define GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT 1u  // trace/update passes skip inactive probes; clear = process every probe (runtime A/B toggle)
 #define GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID 2u  // real per-ray geometry distances available (hardware ray-traced producer); clear = RSM fallback -> classification skips its nearby-geometry test
+#define GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE       4u  // classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes -> they stay sampleable in the shading gather (runtime A/B toggle)
 
 // Per-probe convergence warmup (always on). Each probe ramps its temporal hysteresis from GI_DUGI_WARMUP_START_HYSTERESIS up
 // to GI_DUGI_STEADY_HYSTERESIS over its first GI_DUGI_WARMUP_FRAMES frames of life, so a freshly-initialized or toroidally-
@@ -573,8 +584,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
       vec4 probeData = dugiLoadProbeData(physProbeCoord, cascadeIndex);
-      if(probeData.w < 0.5){
-        continue; // inactive probe (classified inside geometry / empty space) — skip it in the gather
+      if(probeData.w < GI_DUGI_PROBE_STATE_SAMPLE_MIN){
+        continue; // inside-geometry probe (data unusable) — skip it in the gather; EMPTY (0.5) probes stay sampleable
       }
       probeWorld += probeData.xyz; // relocation offset (probe pushed out of geometry)
 #endif
@@ -754,8 +765,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
       vec4 probeData = dugiLoadProbeData(physProbeCoord, cascadeIndex);
-      if(probeData.w < 0.5){
-        continue;
+      if(probeData.w < GI_DUGI_PROBE_STATE_SAMPLE_MIN){
+        continue; // inside-geometry probe only; EMPTY (0.5) probes stay sampleable
       }
       probeWorld += probeData.xyz;
 #endif
@@ -861,8 +872,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       vec3 probeWorld = dugiProbeGridToWorld(probeCoord, cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
       vec4 probeData = dugiLoadProbeData(physProbeCoord, cascadeIndex);
-      if(probeData.w < 0.5){
-        continue; // inactive probe (classified inside geometry / empty space) — skip it in the gather
+      if(probeData.w < GI_DUGI_PROBE_STATE_SAMPLE_MIN){
+        continue; // inside-geometry probe (data unusable) — skip it in the gather; EMPTY (0.5) probes stay sampleable
       }
       probeWorld += probeData.xyz; // relocation offset (probe pushed out of geometry)
 #endif

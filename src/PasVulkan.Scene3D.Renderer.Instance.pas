@@ -1003,6 +1003,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDebugRawOutput:Boolean; // true when the active debug shading channel is a raw data value (probe-influence heatmap), not radiance, so the post effects (auto-exposure, bloom, tonemapping, depth of field) must be bypassed like the voxel debug visualization
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
        fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
+       fGlobalIlluminationDUGIEmptyProbeSample:Boolean; // runtime A/B toggle: when true the classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes, so the shading gather keeps sampling their last valid data (anti through-slab leak); compute-side they stay frozen either way
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1333,6 +1334,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDebugRawOutput:Boolean read fGlobalIlluminationDebugRawOutput; // post effects bypass these raw debug channels (see ApplyGlobalIlluminationDebugMode)
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
        property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable (A/B); false = keep all probes active (no inactive-probe early-out)
+       property GlobalIlluminationDUGIEmptyProbeSample:Boolean read fGlobalIlluminationDUGIEmptyProbeSample write fGlobalIlluminationDUGIEmptyProbeSample; // runtime-toggleable (A/B); true = no-nearby-geometry probes stay sampleable in the shading gather (EMPTY state instead of INACTIVE)
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -2305,6 +2307,7 @@ begin
 
  fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
  fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime for A/B
+ fGlobalIlluminationDUGIEmptyProbeSample:=true; // default on: empty-space probes keep their last valid data sampleable in the shading gather (anti through-slab leak); false = old behavior (skipped like inside-geometry probes)
 
  fDebugDrawMeshletBoundingSpheres:=false;
 

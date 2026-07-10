@@ -105,7 +105,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationDUGIStageComputePass }
              Blend:TpvVector4;                   // x = hysteresis, z = firstFrame (1 = ignore the uninitialized previous probe data); y/w unused here
              EmissiveGIParticleCount:TpvVector4; // unused by the update stages; present only to byte-match the shared global_illumination_dugi_pushconstants.glsl block
              ParticleBVH:TpvUInt32Vector4;       // unused by the update stages; present only to byte-match the shared global_illumination_dugi_pushconstants.glsl block
-             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask: bit0 = inactive-probe early-out (renderer property), bit1 = fixed-ray geometry valid (RaytracingActive)
+             Flags:TpvUInt32;                    // GI_DUGI_FLAG_* bitmask: bit0 = inactive-probe early-out (renderer property), bit1 = fixed-ray geometry valid (RaytracingActive), bit2 = empty-probe sample (renderer property)
             end;
             PPushConstants=^TPushConstants;
       private
@@ -346,8 +346,10 @@ begin
  DescriptorSet:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,1,1,@DescriptorSet,0,nil); // bind set 1 only (set 0 unused)
  // bit0 = inactive-probe early-out (renderer property, A/B toggle); bit1 = fixed-ray geometry valid (hardware ray-traced producer ->
- // classification applies its nearby-geometry test; clear for the RSM fallback so it keeps all probes active).
- PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1) or (TpvUInt32(ord(fInstance.Scene3D.RaytracingActive) and 1) shl 1);
+ // classification applies its nearby-geometry test; clear for the RSM fallback so it keeps all probes active); bit2 = empty-probe
+ // sample (renderer property, A/B toggle: classification writes EMPTY instead of INACTIVE for no-nearby-geometry probes, so the
+ // shading gather keeps sampling their last valid data - anti through-slab leak).
+ PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1) or (TpvUInt32(ord(fInstance.Scene3D.RaytracingActive) and 1) shl 1) or (TpvUInt32(ord(fInstance.GlobalIlluminationDUGIEmptyProbeSample) and 1) shl 2);
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants),@PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);

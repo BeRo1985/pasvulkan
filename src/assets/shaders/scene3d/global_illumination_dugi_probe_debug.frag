@@ -38,9 +38,12 @@ void main(){
   // so the debug spheres show the shading-scale value.
   vec3 irradiance = dugiDecodeIrradiance(dugiEvaluateIrradiance(inProbeCoord, inCascadeIndex, normalize(inDirection)).rgb) * GI_DUGI_OCT_IRRADIANCE_SCALE;
 #endif
-  // Inactive (relocation-deactivated) probes are dimmed + tinted red so the debug view shows which probes the renderer skips.
-  if(inActive < 0.5){
+  // Inside-geometry probes (state 0, skipped everywhere) are dimmed + tinted red; EMPTY probes (state 0.5, frozen but still
+  // sampled by the shading gather) are dimmed + tinted blue, so the debug view shows all three probe lifecycle states.
+  if(inActive < GI_DUGI_PROBE_STATE_SAMPLE_MIN){
     irradiance = mix(irradiance * 0.1, vec3(0.25, 0.0, 0.0), 0.5);
+  }else if(inActive < GI_DUGI_PROBE_STATE_TRACE_MIN){
+    irradiance = mix(irradiance * 0.1, vec3(0.0, 0.0, 0.25), 0.5);
   }
   outFragColor = vec4(irradiance, 1.0);
 }
