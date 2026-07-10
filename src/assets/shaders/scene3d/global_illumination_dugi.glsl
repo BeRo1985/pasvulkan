@@ -73,6 +73,26 @@ vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
   return pow(max(encodedValue, vec3(0.0)), vec3(GI_DUGI_IRRADIANCE_ENCODING_GAMMA));
 }
 
+// --- Cosine-hemispherical sky fraction (octahedral storage only, compile-time toggle) ---------------------------------
+// When on, the irradiance update integrates, per octahedral texel, the fraction of rays that escaped to the sky with the
+// SAME cosine weights as the irradiance, into the atlas' otherwise-free ALPHA channel (linear, not gamma-encoded) — a true
+// hemispherical openness measure along the texel direction, unlike the visibility atlas' narrow pow-50 sky lobe (which
+// keeps gating only the specular). The shading then blends the diffuse back toward the environment IBL in open areas:
+// probe weight = dugiCoverage * (1 - skyFraction). This trades a BOUNDED sky double-count under partial cover (the probe
+// already contains the sky it sees through openings; at most ~+25% sky at half openness) for the crisp environment diffuse
+// in fully open areas. When off (0), the diffuse stays pure probe-only inside the coverage (the spatial dugiCoverage fade
+// alone) and the alpha channel holds a constant 1.0. The SH storage modes have no free channel and always behave like off.
+// Mirrored in compileshaders.sh (DUGI_SKY_FRACTION); the irradiance-update producer and the fragment consumers MUST be
+// built with the same value, otherwise the shading misreads the constant-1.0 alpha as "fully open".
+#ifndef GI_DUGI_SKY_FRACTION
+  #define GI_DUGI_SKY_FRACTION 1
+#endif
+#if (GI_DUGI_STORAGE_IS_SH == 0) && (GI_DUGI_SKY_FRACTION != 0)
+  #define GI_DUGI_SKY_FRACTION_ACTIVE 1
+#else
+  #define GI_DUGI_SKY_FRACTION_ACTIVE 0
+#endif
+
 // Storage-order-agnostic spherical-harmonics aliases: the sampling/update/shading code is written once against these
 // (DUGI_SH_*), only the per-texel (un)packing of the coefficients into the RGBA16F image set is storage-specific.
 #if GI_DUGI_STORAGE == GI_DUGI_STORAGE_L2_VALUE
@@ -474,9 +494,10 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       return max(vec3(0.0), DUGI_SH_EVALUATE(sh, normalize(normal)));
     }
   #else
-    // Octahedral irradiance atlas (RGBA16F). Returns the raw perceptually ENCODED stored value (pow(A, 1/GAMMA), see
-    // GI_DUGI_IRRADIANCE_ENCODING_GAMMA above); the cage gather below decodes once after its weight normalization.
-    vec3 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal);
+    // Octahedral irradiance atlas (RGBA16F). Returns the raw perceptually ENCODED stored value in rgb (pow(A, 1/GAMMA), see
+    // GI_DUGI_IRRADIANCE_ENCODING_GAMMA above) plus the LINEAR cosine-hemispherical sky fraction in a (constant 1.0 when
+    // GI_DUGI_SKY_FRACTION is off); the cage gather below decodes the rgb once after its weight normalization.
+    vec4 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal);
   #endif
 
   // Visibility octahedral atlas (RGBA16F): x = mean distance, y = mean distance squared (Chebyshev), z = sky visibility
@@ -517,9 +538,14 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
   // ---------------------------------------------------------------------------------------------------------------------
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
-  //  weighting (the DUGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
+  //  weighting (the DUGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance; with
+  //  GI_DUGI_SKY_FRACTION on it additionally returns the cage-blended cosine-hemispherical sky fraction along the normal.
   // ---------------------------------------------------------------------------------------------------------------------
-  vec3 dugiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, const in int cascadeIndex, out float skyVisibility){
+  vec3 dugiSampleIrradianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, const in int cascadeIndex, out float skyVisibility
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+                                     , out float skyFraction
+#endif
+                                     ){
     // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
     // light leaking through thin geometry; the base probe, the trilinear fractions and the Chebyshev distToProbe below are
     // all measured from this lifted position, so the interpolation cell matches the visibility test.
@@ -531,6 +557,9 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     vec3 sumIrradiance = vec3(0.0);
     float sumSkyVisibility = 0.0;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+    float sumSkyFraction = 0.0;
+#endif
     float sumWeight = 0.0;
 
     for(int i = 0; i < 8; i++){
@@ -580,9 +609,18 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
       weight *= trilinearWeight;
 
-      // OCT storage: dugiEvaluateIrradiance returns the perceptually ENCODED atlas value, so this weighted sum interpolates
-      // in encoded space (the leak suppressor); the decode happens once after the normalization below. SH storage sums linear.
+      // OCT storage: dugiEvaluateIrradiance returns the perceptually ENCODED atlas value in rgb, so this weighted sum
+      // interpolates in encoded space (the leak suppressor); the decode happens once after the normalization below. Its a
+      // channel carries the LINEAR cosine-hemispherical sky fraction (same fetch, no extra bandwidth). SH storage sums linear.
+#if GI_DUGI_STORAGE_IS_SH
       sumIrradiance += dugiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
+#else
+      vec4 irradianceSample = dugiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal);
+      sumIrradiance += irradianceSample.rgb * weight;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+      sumSkyFraction += irradianceSample.a * weight;
+#endif
+#endif
 
       // Sky visibility for IBL occlusion, sampled along the requested direction (the reflection vector for the specular gate,
       // or the normal for the diffuse hemisphere) — how open that direction is to the sky at this probe.
@@ -594,6 +632,9 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     if(sumWeight > 0.0){
       skyVisibility = clamp(sumSkyVisibility / sumWeight, 0.0, 1.0);
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+      skyFraction = clamp(sumSkyFraction / sumWeight, 0.0, 1.0);
+#endif
 #if GI_DUGI_STORAGE_IS_SH
       return sumIrradiance / sumWeight;
 #else
@@ -603,6 +644,9 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 #endif
     } else {
       skyVisibility = 0.0;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+      skyFraction = 0.0;
+#endif
       return vec3(0.0);
     }
 
@@ -611,8 +655,14 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   // Select cascade by AABB containment with fade-based blending between cascades, then sample. Returns diffuse irradiance
   // (sampled along the normal); skyVisibility (out) is the IBL occlusion factor measured along skyVisibilityDirection (1 =
   // fully open to the sky, 0 = enclosed), 1 outside all cascades. Pass the reflection vector as skyVisibilityDirection to
-  // gate the IBL specular by "is the sky visible along the reflected ray" instead of along the normal.
-  vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, out float skyVisibility){
+  // gate the IBL specular by "is the sky visible along the reflected ray" instead of along the normal. With
+  // GI_DUGI_SKY_FRACTION on, skyFraction (out) is the cascade-blended cosine-hemispherical sky fraction along the normal
+  // (the diffuse probe <=> env blend input), 1 outside all cascades.
+  vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in vec3 skyVisibilityDirection, out float skyVisibility
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+                            , out float skyFraction
+#endif
+                            ){
     int cascadeIndex = 0;
     while(((cascadeIndex + 1) < GI_DUGI_CASCADES) &&
           (any(lessThan(worldPosition, dugiData.dugiCascadeAABBMin[cascadeIndex].xyz)) ||
@@ -622,6 +672,9 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     vec3 result = vec3(0.0);
     float sumSkyVisibility = 0.0;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+    float sumSkyFraction = 0.0;
+#endif
     float sumWeight = 0.0;
     float current = 1.0;
     for(int c = cascadeIndex; c < GI_DUGI_CASCADES; c++){
@@ -642,7 +695,13 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
       if(weight > 1e-6){
         float cascadeSkyVisibility;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+        float cascadeSkyFraction;
+        result += dugiSampleIrradianceInCascade(worldPosition, normal, viewDirection, skyVisibilityDirection, c, cascadeSkyVisibility, cascadeSkyFraction) * weight;
+        sumSkyFraction += cascadeSkyFraction * weight;
+#else
         result += dugiSampleIrradianceInCascade(worldPosition, normal, viewDirection, skyVisibilityDirection, c, cascadeSkyVisibility) * weight;
+#endif
         sumSkyVisibility += cascadeSkyVisibility * weight;
         sumWeight += weight;
       }
@@ -651,12 +710,20 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
     }
     skyVisibility = (sumWeight > 0.0) ? clamp(sumSkyVisibility / sumWeight, 0.0, 1.0) : 1.0;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+    skyFraction = (sumWeight > 0.0) ? clamp(sumSkyFraction / sumWeight, 0.0, 1.0) : 1.0;
+#endif
     return result;
   }
 
   // Backward-compatible overload: sky visibility measured along the surface normal (the diffuse-hemisphere openness).
   vec3 dugiSampleIrradiance(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, out float skyVisibility){
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+    float unusedSkyFraction;
+    return dugiSampleIrradiance(worldPosition, normal, viewDirection, normal, skyVisibility, unusedSkyFraction);
+#else
     return dugiSampleIrradiance(worldPosition, normal, viewDirection, normal, skyVisibility);
+#endif
   }
 
 #if defined(GI_DUGI_GLOSSY_RADIANCE)

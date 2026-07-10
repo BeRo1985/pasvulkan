@@ -173,11 +173,22 @@ void main(){
   DUGIRayDataBuffer rayData = dugiData.rayData; // hoist the master->sub-pointer deref out of the ray loop
   vec3 sum = vec3(0.0);
   float sumWeight = 0.0;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+  // Cosine-hemispherical sky fraction for the atlas alpha channel: a stored ray distance beyond the local visibility scale
+  // marks a sky miss (hits are clamped to it in the ray-data encode, same convention as the visibility update), integrated
+  // with the SAME cosine weights as the irradiance. The ray-data element is loaded anyway, so this costs no extra bandwidth.
+  float sumSky = 0.0;
+  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiData.dugiCascadeCellSizes[cascadeIndex].x, 1e-2);
+#endif
   for(uint r = GI_DUGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = dugiTraceRayDirection(r, randomRotation);
     float weight = max(0.0, dot(texelDirection, rayDirection));
     if(weight > 0.0){
-      sum += dugiLoadRay(rayData, globalProbeIndex, r, raysPerProbe).rgb * weight;
+      vec4 ray = dugiLoadRay(rayData, globalProbeIndex, r, raysPerProbe);
+      sum += ray.rgb * weight;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+      sumSky += ((ray.a > visibilityMaxDistance) ? 1.0 : 0.0) * weight;
+#endif
       sumWeight += weight;
     }
   }
@@ -185,15 +196,21 @@ void main(){
   // irradiance E is applied at SHADING sample time (split, like RTXGI), NOT here: the multibounce trace reads this atlas raw and
   // feeding back PI*A would amplify the feedback loop (open-sky scenes blow up). So the stored/feedback value stays A.
   vec3 irradiance = (sumWeight > 1e-6) ? (sum / sumWeight) : vec3(0.0);
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+  float skyFraction = (sumWeight > 1e-6) ? (sumSky / sumWeight) : 1.0;
+#else
+  const float skyFraction = 1.0; // alpha channel unused/constant when the sky fraction is off
+#endif
 
   // Perceptual encoding (RTXGI probeIrradianceEncodingGamma): the atlas holds pow(A, 1/GAMMA), and BOTH the temporal
   // hysteresis blend below and all sample-time interpolation run in this encoded space (the samplers decode once after
   // their weight normalization) — interpolating in the compressed space is what keeps a bright probe from leaking through
   // the Chebyshev weight floor into dark neighbors. See GI_DUGI_IRRADIANCE_ENCODING_GAMMA in global_illumination_dugi.glsl.
-  vec3 encodedIrradiance = dugiEncodeIrradiance(irradiance);
+  // The alpha channel (sky fraction) stays LINEAR — a 0..1 visibility fraction, blended with the same hysteresis.
+  vec4 encodedIrradiance = vec4(dugiEncodeIrradiance(irradiance), skyFraction);
 
   ivec2 atlasTexel = dugiProbeTileOrigin(probeCoord, cascadeIndex, GI_DUGI_IRRADIANCE_OCT_FULL) + localTexel;
-  vec3 previous = imageLoad(uDUGIIrradianceOct, atlasTexel).rgb;
+  vec4 previous = imageLoad(uDUGIIrradianceOct, atlasTexel);
 
   // Guard against uninitialized NaN/Inf (images are not cleared) and discard stale history: firstFrame (blend.z) =
   // uninitialized garbage, or the probe just toroidally scrolled into the volume (stored data is for a different world
@@ -204,7 +221,7 @@ void main(){
   // here; the change is compared in the encoded space, like RTXGI's tone-mapped delta).
   // NaN-safe discard: a zero blend weight is not enough, because mix(cur, NaN, 0.0) = cur + NaN*0.0 = NaN; select the fresh value.
   bool discardPrevious = firstFrame || any(isnan(previous)) || any(isinf(previous));
-  imageStore(uDUGIIrradianceOct, atlasTexel, vec4(discardPrevious ? encodedIrradiance : mix(encodedIrradiance, previous, dugiAdaptiveHysteresis(hysteresis, encodedIrradiance, previous)), 1.0));
+  imageStore(uDUGIIrradianceOct, atlasTexel, discardPrevious ? encodedIrradiance : mix(encodedIrradiance, previous, dugiAdaptiveHysteresis(hysteresis, encodedIrradiance.rgb, previous.rgb)));
 
 }
 

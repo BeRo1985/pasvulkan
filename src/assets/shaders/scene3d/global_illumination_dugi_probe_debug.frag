@@ -30,11 +30,13 @@ layout(location = 3) flat in float inActive;       // relocation state: 1 = acti
 layout(location = 0) out vec4 outFragColor;
 
 void main(){
+#if GI_DUGI_STORAGE_IS_SH
   vec3 irradiance = dugiEvaluateIrradiance(inProbeCoord, inCascadeIndex, normalize(inDirection));
-#if !GI_DUGI_STORAGE_IS_SH
-  // The octahedral atlas loader returns the perceptually ENCODED A = E/PI (this direct per-probe read bypasses the cage
-  // gather that normally decodes); decode + apply the sample-time PI here so the debug spheres show the shading-scale value.
-  irradiance = dugiDecodeIrradiance(irradiance) * GI_DUGI_OCT_IRRADIANCE_SCALE;
+#else
+  // The octahedral atlas loader returns the perceptually ENCODED A = E/PI in rgb (this direct per-probe read bypasses the
+  // cage gather that normally decodes) plus the sky fraction in a (not visualized here); decode + apply the sample-time PI
+  // so the debug spheres show the shading-scale value.
+  vec3 irradiance = dugiDecodeIrradiance(dugiEvaluateIrradiance(inProbeCoord, inCascadeIndex, normalize(inDirection)).rgb) * GI_DUGI_OCT_IRRADIANCE_SCALE;
 #endif
   // Inactive (relocation-deactivated) probes are dimmed + tinted red so the debug view shows which probes the renderer skips.
   if(inActive < 0.5){

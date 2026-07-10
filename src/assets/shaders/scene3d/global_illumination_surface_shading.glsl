@@ -332,19 +332,35 @@
   // fade band (spatial dugiCoverage, NOT sky-visibility). The probe field already contains the sky seen through openings
   // (plus its multibounce), so the former sky-visibility-driven env blend double-counted the sky under partial cover
   // (up to +25% sky at half openness, bleeding a cell-width under roofs). Sky-visibility keeps gating only the specular.
+  // With GI_DUGI_SKY_FRACTION on, the cosine-hemispherical sky fraction (irradiance atlas alpha) additionally blends the
+  // diffuse back toward the crisp env IBL in open areas — probe weight = coverage * (1 - skyFraction) — accepting the
+  // bounded sky double-count under partial cover in exchange (see global_illumination_dugi.glsl).
   float dugiProbeCoverage = dugiCoverage(giWorldPosition);
   {
     float dugiSkyVisibilityDiffuse;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+    float dugiSkyFractionDiffuse;
+    vec3 dugiProbeDiffuse = dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, giNormal, dugiSkyVisibilityDiffuse, dugiSkyFractionDiffuse) * OneOverPI;
+    iblGIProbeDiffuse = vec4(dugiProbeDiffuse, dugiProbeCoverage * (1.0 - dugiSkyFractionDiffuse));
+#else
     vec3 dugiProbeDiffuse = dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse) * OneOverPI;
     iblGIProbeDiffuse = vec4(dugiProbeDiffuse, dugiProbeCoverage);
+#endif
   }
 
 #if defined(MESH_FRAGMENT)
-   // Diffuse transmission - back side (-normal), probe <=> IBL blended by the same spatial probe-field coverage.
+   // Diffuse transmission - back side (-normal), probe <=> IBL blended by the same spatial probe-field coverage (with
+   // GI_DUGI_SKY_FRACTION on additionally by the back-side hemisphere's sky fraction, mirroring the front side).
    if((giFlags & (1u << 16u)) != 0u){
      float dugiSkyVisibilityDiffuseBack;
+#if GI_DUGI_SKY_FRACTION_ACTIVE
+     float dugiSkyFractionDiffuseBack;
+     vec3 dugiProbeDiffuseTransmission = dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, -giNormal, dugiSkyVisibilityDiffuseBack, dugiSkyFractionDiffuseBack) * OneOverPI;
+     iblGIProbeDiffuseTransmission = vec4(dugiProbeDiffuseTransmission, dugiProbeCoverage * (1.0 - dugiSkyFractionDiffuseBack));
+#else
      vec3 dugiProbeDiffuseTransmission = dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI;
      iblGIProbeDiffuseTransmission = vec4(dugiProbeDiffuseTransmission, dugiProbeCoverage);
+#endif
    }
 #endif
 

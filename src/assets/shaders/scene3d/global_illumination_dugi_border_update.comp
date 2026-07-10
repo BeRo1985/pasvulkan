@@ -108,8 +108,10 @@ void main(){
     ivec2 fullOrigin = dugiProbeTileOrigin(probeCoord, cascadeIndex, GI_DUGI_IRRADIANCE_OCT_FULL) - ivec2(1);
     ivec2 src;
     if(dugiBorderSource(t, GI_DUGI_IRRADIANCE_OCT_SIZE, src)){
-      vec3 value = imageLoad(uDUGIIrradianceOct, fullOrigin + src).rgb;
-      imageStore(uDUGIIrradianceOct, fullOrigin + t, vec4(value, 1.0));
+      // Full vec4 copy: the alpha channel carries the cosine-hemispherical sky fraction (GI_DUGI_SKY_FRACTION; constant
+      // 1.0 when off), which needs the same guard band for correct bilinear taps as the encoded irradiance in rgb.
+      vec4 value = imageLoad(uDUGIIrradianceOct, fullOrigin + src);
+      imageStore(uDUGIIrradianceOct, fullOrigin + t, value);
     }
   }
 #endif
