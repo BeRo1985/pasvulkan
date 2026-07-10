@@ -188,11 +188,12 @@
 #if GI_DUGI_STORAGE_IS_SH
   // SH storage (L1 or L2): sample the radiance SH field, extract its dominant directional light (shaded analytically by
   // doSingleLight) and feed the residual SH diffuse + local SH / atlas reflection into the shared IBL_GI_PROBES env block
-  // below - exactly like the CRH path. The env block does the probe <=> IBL crossfade (by sky-visibility), the BRDF split-sum,
-  // the transmission and the debug attribution; only the dominant light's diffuse / specular shares are added here (doSingleLight).
+  // below - exactly like the CRH path. The env block does the probe <=> IBL crossfade (diffuse by the spatial probe-field
+  // coverage, specular by sky-visibility along R), the BRDF split-sum, the transmission and the debug attribution; only the
+  // dominant light's diffuse / specular shares are added here (doSingleLight).
   {
     float dugiSkyVisibilityDiffuse;
-    DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse); // SH radiance field + sky-visibility along the normal (diffuse hemisphere)
+    DUGI_SH_TYPE dugiRadianceSH = dugiSampleRadianceSH(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse); // SH radiance field (the sky-visibility out is unused for the diffuse since the env blend is coverage-based)
     vec3 shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
 
     // Dominant directional light extraction + residual SH probe diffuse (mirrors the CRH path)
@@ -216,23 +217,27 @@
     DUGI_SH_TYPE shResidual = dugiRadianceSH; // extract-and-subtract leaves the residual (DC-zeroed) field in dugiRadianceSH
 #endif
 
-    // Diffuse: feed the raw residual SH radiance into the shared env block as a probe (it does probe <=> IBL by sky-visibility,
-    // then baseColor, occlusion, transmission and the BRDF split-sum). The probe <=> IBL weight is 1 - sky-visibility along the
-    // normal (occluded -> probe, open -> env), mirroring the oct path.
+    // Diffuse: feed the raw residual SH radiance into the shared env block as a probe (it does the probe <=> IBL blend,
+    // then baseColor, occlusion, transmission and the BRDF split-sum). The probe <=> IBL weight is the SPATIAL probe-field
+    // coverage (probe-only inside the cascades, env-IBL diffuse only past the outermost fade band, CRH-parity): the probe
+    // field already contains the sky seen through openings (plus its multibounce), so the former sky-visibility-driven env
+    // blend double-counted the sky under partial cover (mirrors the oct path; sky-visibility keeps gating only the specular).
     giResidualIBLDiffuseWeight = 1.0;
     iblWeight = 1.0;
-    iblGIProbeDiffuse = vec4(dugiRawProbeDiffuse, 1.0 - dugiSkyVisibilityDiffuse);
+    float dugiProbeCoverage = dugiCoverage(giWorldPosition);
+    iblGIProbeDiffuse = vec4(dugiRawProbeDiffuse, dugiProbeCoverage);
 
-    // Dominant-light diffuse share added by doSingleLight below: 1 - sky-visibility, reduced by any transmission so the
-    // dominant light is transmitted by the same amount as the rest of the diffuse.
-    float dugiDiffuseWeight = 1.0 - dugiSkyVisibilityDiffuse;
+    // Dominant-light diffuse share added by doSingleLight below: the same spatial coverage as the residual (the dominant
+    // light is probe-derived too), reduced by any transmission so the dominant light is transmitted by the same amount as
+    // the rest of the diffuse.
+    float dugiDiffuseWeight = dugiProbeCoverage;
 #if defined(MESH_FRAGMENT)
     // Diffuse transmission - back side (-normal): feed the raw back-side probe into the env block's transmission slot; it blends
-    // it against getIBLDiffuse(-N) by 1 - back sky-visibility and applies diffuseTransmissionColorFactor + volume attenuation.
+    // it against getIBLDiffuse(-N) by the same spatial coverage and applies diffuseTransmissionColorFactor + volume attenuation.
     if((giFlags & (1u << 16u)) != 0u){
       float dugiSkyVisibilityDiffuseBack;
       vec3 dugiRawProbeDiffuseTransmission = dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI;
-      iblGIProbeDiffuseTransmission = vec4(dugiRawProbeDiffuseTransmission, 1.0 - dugiSkyVisibilityDiffuseBack);
+      iblGIProbeDiffuseTransmission = vec4(dugiRawProbeDiffuseTransmission, dugiProbeCoverage);
       dugiDiffuseWeight *= 1.0 - diffuseTransmissionFactor; // the dominant light's diffuse (doSingleLight below) is transmitted by the same amount
     }
 #if defined(TRANSMISSION)
@@ -323,19 +328,23 @@
   giResidualIBLDiffuseWeight = 1.0;
   giResidualIBLSpecularWeight = 1.0;
 
-  // Diffuse: probe (local) <=> IBL, blended by the hemisphere sky-visibility (a probe sample along the normal)
+  // Diffuse: probe-only inside the probe-field coverage (CRH-parity), env-IBL diffuse only past the outermost cascade's
+  // fade band (spatial dugiCoverage, NOT sky-visibility). The probe field already contains the sky seen through openings
+  // (plus its multibounce), so the former sky-visibility-driven env blend double-counted the sky under partial cover
+  // (up to +25% sky at half openness, bleeding a cell-width under roofs). Sky-visibility keeps gating only the specular.
+  float dugiProbeCoverage = dugiCoverage(giWorldPosition);
   {
     float dugiSkyVisibilityDiffuse;
     vec3 dugiProbeDiffuse = dugiSampleIrradiance(giWorldPosition, giNormal, giViewDirection, dugiSkyVisibilityDiffuse) * OneOverPI;
-    iblGIProbeDiffuse = vec4(dugiProbeDiffuse, 1.0 - dugiSkyVisibilityDiffuse);
+    iblGIProbeDiffuse = vec4(dugiProbeDiffuse, dugiProbeCoverage);
   }
 
 #if defined(MESH_FRAGMENT)
-   // Diffuse transmission - back side (-normal), probe <=> IBL blended by the back-side hemisphere sky-visibility.
+   // Diffuse transmission - back side (-normal), probe <=> IBL blended by the same spatial probe-field coverage.
    if((giFlags & (1u << 16u)) != 0u){
      float dugiSkyVisibilityDiffuseBack;
      vec3 dugiProbeDiffuseTransmission = dugiSampleIrradiance(giWorldPosition, -giNormal, giViewDirection, dugiSkyVisibilityDiffuseBack) * OneOverPI;
-     iblGIProbeDiffuseTransmission = vec4(dugiProbeDiffuseTransmission, 1.0 - dugiSkyVisibilityDiffuseBack);
+     iblGIProbeDiffuseTransmission = vec4(dugiProbeDiffuseTransmission, dugiProbeCoverage);
    }
 #endif
 

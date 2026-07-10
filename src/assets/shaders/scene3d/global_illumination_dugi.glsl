@@ -496,6 +496,26 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 #endif
 
   // ---------------------------------------------------------------------------------------------------------------------
+  //  Spatial probe-field coverage at a world position: 1 deep inside the outermost cascade, smoothly fading to 0 across its
+  //  outer fade band (the same AABBFadeStart/End the cascade blend uses), 0 outside. The shading uses this — NOT the sky
+  //  visibility — as the probe <=> environment-IBL DIFFUSE weight: inside coverage the probe field already contains the sky
+  //  seen through openings (plus its multibounce), so a sky-visibility-driven env addition double-counts the sky under
+  //  partial cover; the env diffuse only takes over where the probe field ends (beyond it, distant fragments would
+  //  otherwise sample the clamped border probes of the outermost cascade).
+  // ---------------------------------------------------------------------------------------------------------------------
+  float dugiCoverage(const in vec3 worldPosition){
+    const int cascadeIndex = GI_DUGI_CASCADES - 1;
+    if(any(lessThan(worldPosition, dugiData.dugiCascadeAABBMin[cascadeIndex].xyz)) ||
+       any(greaterThan(worldPosition, dugiData.dugiCascadeAABBMax[cascadeIndex].xyz))){
+      return 0.0;
+    }
+    vec3 fade = smoothstep(dugiData.dugiCascadeAABBFadeStart[cascadeIndex].xyz,
+                           dugiData.dugiCascadeAABBFadeEnd[cascadeIndex].xyz,
+                           abs(worldPosition - dugiData.dugiCascadeAABBCenter[cascadeIndex].xyz));
+    return 1.0 - clamp(max(max(fade.x, fade.y), fade.z), 0.0, 1.0);
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------
   //  Sample the irradiance field at a world position for a surface with the given normal, with Chebyshev visibility
   //  weighting (the DUGI leak-reduction term) and trilinear + backface weighting. Returns diffuse irradiance.
   // ---------------------------------------------------------------------------------------------------------------------
