@@ -3312,6 +3312,12 @@ type TpvScene3DPlanets=class;
        // water wobbles like jelly forever.
        fWaterSimulationSettleThreshold:TpvFloat;
        fWaterSimulationSettleFrames:TpvSizeInt;
+       // Manual master switch for the whole water flow simulation stepping. When false the pipe model step loop is
+       // skipped entirely (the water surface freezes in place but keeps rendering), so the expensive per-frame water
+       // simulation compute cost drops to near zero. Independent of the auto-pause settle logic above; meant to be
+       // toggled live (e.g. via a debug hotkey) for A/B comparison and for GPUs where the flat-grid pipe model is
+       // disproportionally slow. Default is on.
+       fWaterSimulationEnabled:LongBool;
        // Metric aware octahedral compensation of the pipe simulation. The flat grid pipe model assumes uniform
        // cells; on the distorted octahedral sphere grid the equilibrium is not an exact equal radius surface, so
        // still water keeps oscillating on the mm scale. When enabled, a baked metric field reweights the flow so
@@ -3737,6 +3743,7 @@ type TpvScene3DPlanets=class;
        property WaterUVWaveScale:TpvFloat read fWaterUVWaveScale write fWaterUVWaveScale;
        property WaterSimulationSettleThreshold:TpvFloat read fWaterSimulationSettleThreshold write fWaterSimulationSettleThreshold;
        property WaterSimulationSettleFrames:TpvSizeInt read fWaterSimulationSettleFrames write fWaterSimulationSettleFrames;
+       property WaterSimulationEnabled:LongBool read fWaterSimulationEnabled write fWaterSimulationEnabled;
        property WaterSimulationMetricCompensation:LongBool read fWaterSimulationMetricCompensation write fWaterSimulationMetricCompensation;
        property WaterCoarseSimNormal:LongBool read fWaterCoarseSimNormal write fWaterCoarseSimNormal;
        property WaterCalmSurfaceNormal:LongBool read fWaterCalmSurfaceNormal write fWaterCalmSurfaceNormal;
@@ -19523,7 +19530,12 @@ begin
  end;
 
 //fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
- if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
+ if not fPlanet.fWaterSimulationEnabled then begin
+  // Manual master switch is off: keep the accumulator at zero so the pipe model step loop below is skipped
+  // entirely. The water surface freezes in place but still renders, dropping the per-frame simulation cost to
+  // near zero.
+  fTimeAccumulator:=0.0;
+ end else if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
   fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
  end else if fPlanet.fData.fWaterFirst then begin
   fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),0.1); // Limit to 100ms for avoid too long frame times
@@ -33310,6 +33322,8 @@ begin
  fWaterUVWaveScale:=10.0; // moderate UV scale for visible ripples
  fWaterSimulationSettleThreshold:=1e-6; // legacy engine default; override via JSON "water"."simulation"."settlethreshold"
  fWaterSimulationSettleFrames:=64;
+
+ fWaterSimulationEnabled:=true; // Master water simulation stepping switch, default on; toggled live for A/B / perf debugging
 
  // Set from the constructor so it is known before the data resources are created, so that the metric buffer is
  // only allocated when the metric aware compensation is actually requested (zero cost when disabled).
