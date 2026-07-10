@@ -2153,6 +2153,8 @@ type EpvApplication=class(Exception)
 
        procedure ProcessOldPathNames;
 
+       procedure CreatePathNames;
+
       public
 
        constructor Create; reintroduce; virtual;
@@ -3185,7 +3187,7 @@ end;
 
 {$ifdef unix}
 
-function GetAppDataCacheStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataCacheStoragePath(Postfix:TpvApplicationRawByteString;const aCreateDirectoryIfNotExists:boolean=true):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -3230,7 +3232,7 @@ begin
   end;
  end;
  result:=IncludeTrailingPathDelimiter(result)+'cache';
- if not DirectoryExists(result) then begin
+ if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
   CreateDir(result);
  end;
 {$else}
@@ -3247,7 +3249,7 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=IncludeTrailingPathDelimiter(result)+Postfix;
-  if not DirectoryExists(result) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
    CreateDir(result);
   end;
  end;
@@ -3256,7 +3258,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataLocalStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataLocalStoragePath(Postfix:TpvApplicationRawByteString;const aCreateDirectoryIfNotExists:boolean=true):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -3301,7 +3303,7 @@ begin
   end;
  end;
  result:=IncludeTrailingPathDelimiter(result)+'local';
- if not DirectoryExists(result) then begin
+ if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
   CreateDir(result);
  end;
 {$else}
@@ -3322,7 +3324,7 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=IncludeTrailingPathDelimiter(result)+Postfix;
-  if not DirectoryExists(result) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
    CreateDir(result);
   end;
  end;
@@ -3330,7 +3332,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataRoamingStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataRoamingStoragePath(Postfix:TpvApplicationRawByteString;const aCreateDirectoryIfNotExists:boolean=true):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -3375,7 +3377,7 @@ begin
   end;
  end;
  result:=IncludeTrailingPathDelimiter(result)+'roaming';
- if not DirectoryExists(result) then begin
+ if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
   CreateDir(result);
  end;
 {$else}
@@ -3392,7 +3394,7 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=IncludeTrailingPathDelimiter(result)+Postfix;
-  if not DirectoryExists(result) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(result) then begin
    CreateDir(result);
   end;
  end;
@@ -3428,7 +3430,7 @@ begin
  end;
 end;
 
-function GetAppDataCacheStoragePath(Postfix:string):string;
+function GetAppDataCacheStoragePath(Postfix:string;const aCreateDirectoryIfNotExists:boolean=true):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
      TSHGetKnownFolderPath=function(const rfid:TGUID;dwFlags:DWord;hToken:THandle;out ppszPath:PWideChar):HResult; stdcall;
 const LocalLowGUID:TGUID='{A520A1A4-1780-4FF6-BD18-167343C5AF16}';
@@ -3535,14 +3537,14 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
-  if not DirectoryExists(String(result)) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(String(result)) then begin
    CreateDir(String(result));
   end;
  end;
  result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
-function GetAppDataLocalStoragePath(Postfix:string):string;
+function GetAppDataLocalStoragePath(Postfix:string;const aCreateDirectoryIfNotExists:boolean=true):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_LOCALAPPDATA=$001c;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -3624,14 +3626,14 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
-  if not DirectoryExists(String(result)) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(String(result)) then begin
    CreateDir(String(result));
   end;
  end;
  result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
-function GetAppDataRoamingStoragePath(Postfix:string):string;
+function GetAppDataRoamingStoragePath(Postfix:string;const aCreateDirectoryIfNotExists:boolean=true):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_APPDATA=$001a;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -3710,7 +3712,7 @@ begin
  end;
  if length(Postfix)>0 then begin
   result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
-  if not DirectoryExists(String(result)) then begin
+  if aCreateDirectoryIfNotExists and not DirectoryExists(String(result)) then begin
    CreateDir(String(result));
   end;
  end;
@@ -9465,13 +9467,13 @@ begin
    OldPathName:=fOldPathNames.Items[Index];
    if (length(OldPathName)>0) and (OldPathName<>fPathName) then begin
 
-    OldPaths[0]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataCacheStoragePath(String(OldPathName))));
+    OldPaths[0]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataCacheStoragePath(String(OldPathName),false)));
     NewPaths[0]:=ExcludeTrailingPathDelimiter(fCacheStoragePath);
 
-    OldPaths[1]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataLocalStoragePath(String(OldPathName))));
+    OldPaths[1]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataLocalStoragePath(String(OldPathName),false)));
     NewPaths[1]:=ExcludeTrailingPathDelimiter(fLocalStoragePath);
 
-    OldPaths[2]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataRoamingStoragePath(String(OldPathName))));
+    OldPaths[2]:=TpvUTF8String(ExcludeTrailingPathDelimiter(GetAppDataRoamingStoragePath(String(OldPathName),false)));
     NewPaths[2]:=ExcludeTrailingPathDelimiter(fRoamingStoragePath);
 
     for PartIndex:=0 to 2 do begin
@@ -9507,6 +9509,15 @@ begin
 
  end;
 
+end;
+
+procedure TpvApplication.CreatePathNames;
+begin
+{$if (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
+ fCacheStoragePath:=TpvUTF8String(GetAppDataCacheStoragePath(String(fPathName),true));
+ fLocalStoragePath:=TpvUTF8String(GetAppDataLocalStoragePath(String(fPathName),true));
+ fRoamingStoragePath:=TpvUTF8String(GetAppDataRoamingStoragePath(String(fPathName),true));
+{$ifend}
 end;
 
 procedure TpvApplication.ClearDelayedObjectsToFree;
@@ -16817,11 +16828,11 @@ begin
 
 {$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
 
- fCacheStoragePath:=TpvUTF8String(GetAppDataCacheStoragePath(String(fPathName)));
+ fCacheStoragePath:=TpvUTF8String(GetAppDataCacheStoragePath(String(fPathName),false));
 
- fLocalStoragePath:=TpvUTF8String(GetAppDataLocalStoragePath(String(fPathName)));
+ fLocalStoragePath:=TpvUTF8String(GetAppDataLocalStoragePath(String(fPathName),false));
 
- fRoamingStoragePath:=TpvUTF8String(GetAppDataRoamingStoragePath(String(fPathName)));
+ fRoamingStoragePath:=TpvUTF8String(GetAppDataRoamingStoragePath(String(fPathName),false));
 
 {$if defined(Windows)}
  fExternalStoragePath:='C:\';
@@ -16845,6 +16856,8 @@ begin
  fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 
  ProcessOldPathNames;
+
+ CreatePathNames;
 
  ReadConfig;
 
