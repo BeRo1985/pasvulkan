@@ -1401,6 +1401,7 @@ type EpvScene3D=class(Exception);
                      EmissiveTexture:TTextureReference;
                      EmissiveGIFactor:TpvFloat; // PASVULKAN_materials_emissive_gi: GI-only emissive multiplier (1.0 = unchanged)
                      EmissiveGIMax:TpvFloat;    // PASVULKAN_materials_emissive_gi: GI-only emissive upper clamp (+Inf = unbounded)
+                     EmissiveGIBackface:Boolean; // PASVULKAN_materials_emissive_gi: emit from the geometric BACK side of a double-sided surface in the GI ray gather (default false = frontface-only, which prevents emissive light leaking through thin double-sided sheets, e.g. a glowing ceiling stripe lighting the floor above it)
                      PBRMetallicRoughness:TPBRMetallicRoughness;
                      PBRSpecularGlossiness:TPBRSpecularGlossiness;
                      PBRSheen:TPBRSheen;
@@ -1440,6 +1441,7 @@ type EpvScene3D=class(Exception);
                      EmissiveTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      EmissiveGIFactor:1.0;
                      EmissiveGIMax:Infinity; // +Inf -> unbounded GI emissive by default (packs to fp16 +Inf = 0x7C00)
+                     EmissiveGIBackface:false; // frontface-only GI emission by default (no emissive leaking through thin double-sided sheets)
                      PBRMetallicRoughness:(
                       BaseColorFactor:(x:1.0;y:1.0;z:1.0;w:1.0);
                       BaseColorTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
@@ -4338,7 +4340,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($0000000f);
+             PVMFVersion=TpVUInt32($00000010);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -10430,6 +10432,8 @@ begin
 
    fData.EmissiveGIMax:=StreamIO.ReadFloat;
 
+   fData.EmissiveGIBackface:=StreamIO.ReadBoolean;
+
   end;
 
   begin
@@ -10826,6 +10830,8 @@ begin
    StreamIO.WriteFloat(fData.EmissiveGIFactor);
 
    StreamIO.WriteFloat(fData.EmissiveGIMax);
+
+   StreamIO.WriteBoolean(fData.EmissiveGIBackface);
 
   end;
 
@@ -11436,21 +11442,25 @@ begin
    LoadHologramFromJSON(aSourceMaterial.Extensions.Properties['PASVULKAN_hologram']);
   end;
 
-  // PASVULKAN_materials_emissive_gi: GI-only emissive limitation. Default = no-op (factor 1.0, max +Inf). Read from
-  // material.extras first (Blender custom properties "emissiveGIFactor" / "emissiveGIMax" -> authorable without an
-  // exporter plugin), then let the dedicated extension {"factor","max"} override.
+  // PASVULKAN_materials_emissive_gi: GI-only emissive limitation. Default = no-op (factor 1.0, max +Inf) with
+  // frontface-only GI emission (backface false). Read from material.extras first (Blender custom properties
+  // "emissiveGIFactor" / "emissiveGIMax" / "emissiveGIBackface" -> authorable without an exporter plugin), then let the
+  // dedicated extension {"factor","max","backface"} override.
   fData.EmissiveGIFactor:=1.0;
   fData.EmissiveGIMax:=Infinity;
+  fData.EmissiveGIBackface:=false;
   if assigned(aSourceMaterial.Extras) and (aSourceMaterial.Extras is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(aSourceMaterial.Extras);
    fData.EmissiveGIFactor:=TPasJSON.GetNumber(JSONObject.Properties['emissiveGIFactor'],fData.EmissiveGIFactor);
    fData.EmissiveGIMax:=TPasJSON.GetNumber(JSONObject.Properties['emissiveGIMax'],fData.EmissiveGIMax);
+   fData.EmissiveGIBackface:=TPasJSON.GetBoolean(JSONObject.Properties['emissiveGIBackface'],fData.EmissiveGIBackface);
   end;
   JSONItem:=aSourceMaterial.Extensions.Properties['PASVULKAN_materials_emissive_gi'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONObject:=TPasJSONItemObject(JSONItem);
    fData.EmissiveGIFactor:=TPasJSON.GetNumber(JSONObject.Properties['factor'],fData.EmissiveGIFactor);
    fData.EmissiveGIMax:=TPasJSON.GetNumber(JSONObject.Properties['max'],fData.EmissiveGIMax);
+   fData.EmissiveGIBackface:=TPasJSON.GetBoolean(JSONObject.Properties['backface'],fData.EmissiveGIBackface);
   end;
 
   JSONItem:=aSourceMaterial.Extensions.Properties['MSFT_lod'];
@@ -11590,6 +11600,9 @@ begin
  end;
  if fData.DoubleSided then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 6);
+ end;
+ if fData.EmissiveGIBackface then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 20);
  end;
  fShaderData.Textures0:=0;
  fShaderData.Textures1:=0;

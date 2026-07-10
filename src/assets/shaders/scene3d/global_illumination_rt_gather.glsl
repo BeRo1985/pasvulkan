@@ -266,13 +266,18 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
       Material material = uMaterials.materials[geometryItem.materialIndex];
 
-      // Double-sided when the material's face-culling mode is None (flags bits 4..5 == 0; see TpvScene3D.EncodeModeFlags).
-      s.doubleSided = (((material.alphaCutOffFlagsTex0Tex1.y >> 4u) & 3u) == 0u);
+      // Double-sided when the material's double-sided flag is set (flags bit 6; see TpvScene3D.TMaterial.FillShaderData).
+      // The former decode here tested "(flags >> 4) & 3 == 0", which is "alpha mode == opaque" (bits 4/5 = mask/blend), NOT
+      // double-sided — it treated ALL opaque materials as double-sided, disabling the single-sided backface handling
+      // (radiance blackout + Majercik distance shortening + relocation/classification backface counting) almost everywhere.
+      s.doubleSided = (material.alphaCutOffFlagsTex0Tex1.y & (1u << 6u)) != 0u;
 
       // glTF double-sided semantics: a back-facing hit on a double-sided material is shaded as a FRONT face with the normal
       // flipped toward the ray (the flip already happened above). So it is not a "behind/inside geometry" backface — clear the
       // flag, and the whole downstream GI path (radiance gather, ray-data distance encode, relocation/classification backface
       // count, irradiance blend) then treats it exactly like any front-face hit. Single-sided backfaces keep backface == true.
+      // The GEOMETRIC side is remembered for the emission gate below.
+      bool geometricBackface = s.backface;
       if(s.doubleSided){
         s.backface = false;
       }
@@ -282,6 +287,14 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
 
       // Emissive (texture index 4, sRGB) modulated by the emissive factor (xyz) and strength (w) and vertex color.
       s.emission = raytracingTextureFetch(material, 4, vec4(1.0), true, texCoords).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * vertexColor.xyz;
+
+      // Per-material GI backface-emission gate (PASVULKAN_materials_emissive_gi "backface" -> flags bit 20, default OFF):
+      // a surface hit from its geometric BACK side only contributes emission when the material opts in. This keeps a
+      // double-sided emissive sheet (e.g. a glowing ceiling stripe) from injecting its light through itself into the probes
+      // on its far side — the floor above would glow. Front-face hits and the rest of the shading are unaffected.
+      if(geometricBackface && ((material.alphaCutOffFlagsTex0Tex1.y & (1u << 20u)) == 0u)){
+        s.emission = vec3(0.0);
+      }
 
       // Per-material GI emissive limitation (PASVULKAN_materials_emissive_gi): two fp16 packed into the .w of the
       // dispersion/shadow-mask uvec4 (the formerly-"Unused" slot). x = factor, y = max. Applied GI-only in giGatherShadeHit.
