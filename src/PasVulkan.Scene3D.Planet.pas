@@ -105,6 +105,16 @@ type TpvScene3DPlanets=class;
 
      EpvScene3DPlanet=class(Exception);
 
+     // Water flow simulation numeric precision. Selects which pipe-model compute shader variant (FP16 or FP32) is
+     // loaded for the water simulation. Auto lets the constructor pick the variant per device; FP16/FP32 force the
+     // respective variant. Exposed via the Advanced graphics settings.
+     TpvScene3DPlanetWaterSimulationPrecisionMode=
+      (
+       Auto, // Resolve per GPU architecture (default)
+       FP16, // Force 16-bit float water simulation shaders
+       FP32  // Force 32-bit float water simulation shaders
+      );
+
      { TpvScene3DPlanet }
      TpvScene3DPlanet=class
       public
@@ -3580,7 +3590,8 @@ type TpvScene3DPlanets=class;
                           const aPrecipitationMiniMapResolutionShift:TpvSizeInt=2;
                           const aHeightMiniMapResolutionShift:TpvSizeInt=4;
                           const aUseHeightMapSmoothing:Boolean=true;
-                          const aWaterMetricCompensation:Boolean=false); reintroduce;
+                          const aWaterMetricCompensation:Boolean=false;
+                          const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode=TpvScene3DPlanetWaterSimulationPrecisionMode.Auto); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -33196,7 +33207,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aPrecipitationMiniMapResolutionShift:TpvSizeInt;
                                     const aHeightMiniMapResolutionShift:TpvSizeInt;
                                     const aUseHeightMapSmoothing:Boolean;
-                                    const aWaterMetricCompensation:Boolean);
+                                    const aWaterMetricCompensation:Boolean;
+                                    const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode);
 var InFlightFrameIndex,Index,Resolution,x,y,CountUsedBrushes:TpvSizeInt;
     Pixel:TpvUInt32;
     BrushUsed:Boolean;
@@ -33565,6 +33577,27 @@ begin
  if assigned(fVulkanDevice) then begin
 
   fUse16Bit:=fVulkanDevice.Shader16BitStorageFeaturesKHR.storageBuffer16BitAccess<>VK_FALSE;
+
+  // Resolve the requested water simulation precision into fUse16Bit. FP16 additionally requires device 16-bit
+  // storage support. In Auto mode the FP32 variant is selected for NVIDIA devices with a device id at or above the
+  // threshold below and the FP16 variant otherwise; the threshold is a tunable heuristic (adjust here if a specific
+  // device needs the other variant). FP16/FP32 force the choice explicitly.
+  case aWaterSimulationPrecisionMode of
+   TpvScene3DPlanetWaterSimulationPrecisionMode.FP32:begin
+    fUse16Bit:=false;
+   end;
+   TpvScene3DPlanetWaterSimulationPrecisionMode.FP16:begin
+    // Keep fUse16Bit as-is (still limited by device 16-bit storage support).
+   end;
+   else begin
+    // Auto
+    if fUse16Bit and
+       (TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA) and
+       (fVulkanDevice.PhysicalDevice.Properties.deviceID>=TpvUInt32($2b00)) then begin
+     fUse16Bit:=false;
+    end;
+   end;
+  end;
 
   if TpvScene3D(fScene3D).PlanetWaterSimulationUseParallelQueue and
      (TpvScene3D(fScene3D).PlanetWaterSimulationQueueFamilyIndex<>fVulkanDevice.UniversalQueueFamilyIndex) and
