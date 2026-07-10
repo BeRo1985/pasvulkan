@@ -111,15 +111,9 @@ type { TScreenMarkdown }
 
 implementation
 
-uses {$if defined(fpc) and defined(unix)}BaseUnix,{$ifend}UnitApplication;
+uses {$if defined(Windows)}Windows,ShellApi,{$elseif defined(fpc) and defined(unix)}BaseUnix,{$ifend}UnitApplication;
 
-{$if defined(Windows)}
-// declared directly against shell32, so the Windows/ShellApi units don't have to
-// be pulled into the uses clause, where they would shadow SysUtils routines like
-// DeleteFile for the whole implementation section
-const SW_SHOWNORMAL=1;
-function ShellExecuteW(aWnd:THandle;aOperation,aFileName,aParameters,aDirectory:PWideChar;aShowCommand:TpvInt32):THandle; stdcall; external 'shell32.dll' name 'ShellExecuteW';
-{$elseif defined(fpc) and defined(unix)}
+{$if defined(fpc) and defined(unix)}
 // posix_spawn instead of fork/fpSystem: it doesn't duplicate the address space
 // of a process that carries big Vulkan/driver state (glibc implements it with a
 // vfork-style CLONE_VM, on macOS it is a real spawn syscall), and it can't
