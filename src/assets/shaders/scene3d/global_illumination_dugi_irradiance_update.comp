@@ -186,6 +186,12 @@ void main(){
   // feeding back PI*A would amplify the feedback loop (open-sky scenes blow up). So the stored/feedback value stays A.
   vec3 irradiance = (sumWeight > 1e-6) ? (sum / sumWeight) : vec3(0.0);
 
+  // Perceptual encoding (RTXGI probeIrradianceEncodingGamma): the atlas holds pow(A, 1/GAMMA), and BOTH the temporal
+  // hysteresis blend below and all sample-time interpolation run in this encoded space (the samplers decode once after
+  // their weight normalization) — interpolating in the compressed space is what keeps a bright probe from leaking through
+  // the Chebyshev weight floor into dark neighbors. See GI_DUGI_IRRADIANCE_ENCODING_GAMMA in global_illumination_dugi.glsl.
+  vec3 encodedIrradiance = dugiEncodeIrradiance(irradiance);
+
   ivec2 atlasTexel = dugiProbeTileOrigin(probeCoord, cascadeIndex, GI_DUGI_IRRADIANCE_OCT_FULL) + localTexel;
   vec3 previous = imageLoad(uDUGIIrradianceOct, atlasTexel).rgb;
 
@@ -194,10 +200,11 @@ void main(){
   // cell) — in both cases take the freshly computed value instead of blending against it.
   bool firstFrame = (pushConstants.blend.z > 0.5) || dugiProbeScrolledIn(probeCoord, cascadeIndex);
   float hysteresis = dugiProbeAgeHysteresis(probeCoord, cascadeIndex);
-  // Lower the hysteresis when this texel's irradiance changed a lot -> fast re-convergence on lighting changes (per texel here).
+  // Lower the hysteresis when this texel's irradiance changed a lot -> fast re-convergence on lighting changes (per texel
+  // here; the change is compared in the encoded space, like RTXGI's tone-mapped delta).
   // NaN-safe discard: a zero blend weight is not enough, because mix(cur, NaN, 0.0) = cur + NaN*0.0 = NaN; select the fresh value.
   bool discardPrevious = firstFrame || any(isnan(previous)) || any(isinf(previous));
-  imageStore(uDUGIIrradianceOct, atlasTexel, vec4(discardPrevious ? irradiance : mix(irradiance, previous, dugiAdaptiveHysteresis(hysteresis, irradiance, previous)), 1.0));
+  imageStore(uDUGIIrradianceOct, atlasTexel, vec4(discardPrevious ? encodedIrradiance : mix(encodedIrradiance, previous, dugiAdaptiveHysteresis(hysteresis, encodedIrradiance, previous)), 1.0));
 
 }
 

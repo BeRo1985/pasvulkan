@@ -31,6 +31,11 @@ layout(location = 0) out vec4 outFragColor;
 
 void main(){
   vec3 irradiance = dugiEvaluateIrradiance(inProbeCoord, inCascadeIndex, normalize(inDirection));
+#if !GI_DUGI_STORAGE_IS_SH
+  // The octahedral atlas loader returns the perceptually ENCODED A = E/PI (this direct per-probe read bypasses the cage
+  // gather that normally decodes); decode + apply the sample-time PI here so the debug spheres show the shading-scale value.
+  irradiance = dugiDecodeIrradiance(irradiance) * GI_DUGI_OCT_IRRADIANCE_SCALE;
+#endif
   // Inactive (relocation-deactivated) probes are dimmed + tinted red so the debug view shows which probes the renderer skips.
   if(inActive < 0.5){
     irradiance = mix(irradiance * 0.1, vec3(0.25, 0.0, 0.0), 0.5);

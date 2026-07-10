@@ -565,8 +565,9 @@ compileshaderarguments=(
 
   "-V global_illumination_cascaded_radiance_hints_bounce.comp -o ${tempPath}/global_illumination_cascaded_radiance_hints_bounce_comp.spv"
 
-  # DUGI (dynamic diffuse global illumination). Storage mode defaults to L1 spherical harmonics (GI_DUGI_STORAGE = 0);
-  # build the octahedral irradiance variants by adding -DGI_DUGI_STORAGE=1 (and matching the shading variant below).
+  # DUGI (dynamic unified global illumination). Storage mode: GI_DUGI_STORAGE = 0 octahedral irradiance atlas, 1 = L1
+  # spherical harmonics, 2 = L2 spherical harmonics — always passed explicitly via DUGI_STORAGE_DEFINE (see the DUGI_STORAGE
+  # block at the top of this script, which must match the Pascal side).
   # global_illumination_dugi_trace.comp traces rays via ray query (it includes raytracing.glsl), so it needs the ray tracing SPIR-V target.
   # RAYTRACING is #defined inside the shader (not via -D) to avoid a macro redefinition clash, so the auto target-env
   # logic below (which keys off "-DRAYTRACING") does not trigger here; set the target explicitly.

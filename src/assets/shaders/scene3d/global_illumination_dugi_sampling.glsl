@@ -21,6 +21,7 @@
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET DUGI_DESCRIPTOR_SET
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 #define GLOBAL_ILLUMINATION_DUGI_SAMPLE
+#define GI_DUGI_OCT_IRRADIANCE_SCALE 3.14159265358979 // shading sample-time PI of the A = E/PI split, applied after the cage decode (the producers keep 1.0; see global_illumination_dugi.glsl)
 #include "global_illumination_dugi.glsl" // pulls in global_illumination_dugi_data.glsl -> the `dugiData` SSBO (cascade globals + sub-buffer pointers) at this set's binding 0
 
 // The DUGI data block — cascade globals + the BDA sub-buffer pointers (probe-data, SH-irradiance, ...) — is the std430 SSBO
@@ -51,9 +52,12 @@
 
   vec3 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
     vec2 uv = dugiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DUGI_IRRADIANCE_OCT_SIZE, GI_DUGI_IRRADIANCE_OCT_FULL);
-    // The atlas stores the cosine-weighted MEAN incident radiance A = E/PI; multiply by PI here (split, like RTXGI) to return the
-    // full irradiance integral E (matches the SH path; shading then applies albedo/PI). The trace's own multibounce read stays raw.
-    return max(vec3(0.0), textureLod(uDUGIIrradianceOct, uv, 0.0).rgb) * 3.14159265358979;
+    // The atlas stores the cosine-weighted MEAN incident radiance A = E/PI, perceptually ENCODED (pow(A, 1/GAMMA), see
+    // GI_DUGI_IRRADIANCE_ENCODING_GAMMA): return the raw encoded sample so both the hardware bilinear of this fetch and the
+    // 8-probe cage weighting interpolate in encoded space; dugiSampleIrradianceInCascade decodes once after its weight
+    // normalization and applies the sample-time PI of the A = E/PI split there (GI_DUGI_OCT_IRRADIANCE_SCALE above, like
+    // RTXGI; shading then applies albedo/PI). The trace's own multibounce read stays on the A scale (scale 1.0).
+    return max(vec3(0.0), textureLod(uDUGIIrradianceOct, uv, 0.0).rgb);
   }
 
 #endif

@@ -30,6 +30,9 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 2, rgba16f) unifo
 vec3 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal){
   vec2 uv = dugiProbeOctUV(probeCoord, cascadeIndex, normal, GI_DUGI_IRRADIANCE_OCT_SIZE, GI_DUGI_IRRADIANCE_OCT_FULL);
   ivec2 texel = ivec2(uv * vec2(dugiAtlasSize(GI_DUGI_IRRADIANCE_OCT_FULL)));
+  // Raw perceptually ENCODED atlas value (pow(A, 1/GAMMA), see GI_DUGI_IRRADIANCE_ENCODING_GAMMA); the cage gather
+  // (dugiSampleIrradianceInCascade) decodes once after its weight normalization. The producers keep the
+  // GI_DUGI_OCT_IRRADIANCE_SCALE default of 1.0, so the multi-bounce feedback stays on the stored A = E/PI scale.
   return max(vec3(0.0), imageLoad(uDUGIIrradianceOctRead, texel).rgb);
 }
 #endif

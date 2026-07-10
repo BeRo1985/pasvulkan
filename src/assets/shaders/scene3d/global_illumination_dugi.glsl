@@ -14,7 +14,8 @@
 //  irradiance volume, we keep GI_DUGI_CASCADES nested probe grids that snap to the camera, so a small per-cascade probe
 //  count covers both near and far field. Each probe stores:
 //    - irradiance, either as L1 spherical harmonics in a 3D volume (GI_DUGI_STORAGE_SH, default) or as an octahedral
-//      irradiance tile in a 2D atlas (GI_DUGI_STORAGE_OCT) - switchable via the GI_DUGI_STORAGE define.
+//      irradiance tile in a 2D atlas (GI_DUGI_STORAGE_OCT, stored perceptually encoded — see
+//      GI_DUGI_IRRADIANCE_ENCODING_GAMMA below) - switchable via the GI_DUGI_STORAGE define.
 //    - visibility, always as an octahedral mean / mean-squared distance tile in a 2D atlas, used for the Chebyshev
 //      visibility test that prevents the light leaking that plain irradiance volumes (and radiance hints) suffer from.
 //
@@ -43,6 +44,34 @@
 #else
   #define GI_DUGI_STORAGE_IS_SH 0
 #endif
+
+// --- Perceptual irradiance encoding (octahedral storage only) ---------------------------------------------------------
+// The octahedral irradiance atlas stores pow(A, 1 / GI_DUGI_IRRADIANCE_ENCODING_GAMMA) instead of the linear A = E/PI
+// (RTXGI's probeIrradianceEncodingGamma): ALL interpolation — the hardware bilinear of the atlas fetch AND the 8-probe cage
+// weighting in dugiSampleIrradianceInCascade — happens in this perceptually encoded space, decoded (pow GAMMA) only once
+// after the weight normalization. Interpolating in the compressed space weights bright outlier probes far less than linear
+// interpolation does, which is what keeps a bright probe behind a wall from leaking through the Chebyshev weight floor
+// (0.05) into its dark neighbors: at a 100:1 probe contrast and 1% leak weight, linear interpolation leaks ~100x the dark
+// value, encoded interpolation only ~1.3x. The SH storage modes are unaffected (a linear basis cannot be stored nonlinearly).
+#ifndef GI_DUGI_IRRADIANCE_ENCODING_GAMMA
+  #define GI_DUGI_IRRADIANCE_ENCODING_GAMMA 5.0
+#endif
+
+// Linear scale a consumer applies AFTER the cage decode (see dugiSampleIrradianceInCascade): the fragment shading consumers
+// define PI here (global_illumination_dugi_sampling.glsl — the sample-time half of the A = E/PI split), while the trace/RSM
+// producers keep the 1.0 default so the multi-bounce feedback stays on the stored A scale (feeding back PI*A would amplify
+// the feedback loop; open-sky scenes blow up).
+#ifndef GI_DUGI_OCT_IRRADIANCE_SCALE
+  #define GI_DUGI_OCT_IRRADIANCE_SCALE 1.0
+#endif
+
+vec3 dugiEncodeIrradiance(const in vec3 linearValue){
+  return pow(max(linearValue, vec3(0.0)), vec3(1.0 / GI_DUGI_IRRADIANCE_ENCODING_GAMMA));
+}
+
+vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
+  return pow(max(encodedValue, vec3(0.0)), vec3(GI_DUGI_IRRADIANCE_ENCODING_GAMMA));
+}
 
 // Storage-order-agnostic spherical-harmonics aliases: the sampling/update/shading code is written once against these
 // (DUGI_SH_*), only the per-texel (un)packing of the coefficients into the RGBA16F image set is storage-specific.
@@ -445,7 +474,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       return max(vec3(0.0), DUGI_SH_EVALUATE(sh, normalize(normal)));
     }
   #else
-    // Octahedral irradiance atlas (RGBA16F).
+    // Octahedral irradiance atlas (RGBA16F). Returns the raw perceptually ENCODED stored value (pow(A, 1/GAMMA), see
+    // GI_DUGI_IRRADIANCE_ENCODING_GAMMA above); the cage gather below decodes once after its weight normalization.
     vec3 dugiEvaluateIrradiance(const in ivec3 probeCoord, const in int cascadeIndex, const in vec3 normal);
   #endif
 
@@ -530,6 +560,8 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
       }
       weight *= trilinearWeight;
 
+      // OCT storage: dugiEvaluateIrradiance returns the perceptually ENCODED atlas value, so this weighted sum interpolates
+      // in encoded space (the leak suppressor); the decode happens once after the normalization below. SH storage sums linear.
       sumIrradiance += dugiEvaluateIrradiance(physProbeCoord, cascadeIndex, normal) * weight;
 
       // Sky visibility for IBL occlusion, sampled along the requested direction (the reflection vector for the specular gate,
@@ -542,7 +574,13 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
 
     if(sumWeight > 0.0){
       skyVisibility = clamp(sumSkyVisibility / sumWeight, 0.0, 1.0);
+#if GI_DUGI_STORAGE_IS_SH
       return sumIrradiance / sumWeight;
+#else
+      // Decode the encoded-space interpolation result back to linear (see GI_DUGI_IRRADIANCE_ENCODING_GAMMA) and apply the
+      // consumer's linear scale (PI for shading — the sample-time half of the A = E/PI split — 1.0 for the producers' feedback).
+      return dugiDecodeIrradiance(sumIrradiance / sumWeight) * GI_DUGI_OCT_IRRADIANCE_SCALE;
+#endif
     } else {
       skyVisibility = 0.0;
       return vec3(0.0);
