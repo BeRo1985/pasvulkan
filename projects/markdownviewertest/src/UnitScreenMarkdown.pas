@@ -592,7 +592,7 @@ begin
  end;
 
  // clamp the scroll offset to the actual content height
- MaxScrollY:=Max(0.0,(fContentHeight+(Margin*2.0))-fVulkanCanvas.Height);
+ MaxScrollY:=Math.Max(0.0,(fContentHeight+(Margin*2.0))-fVulkanCanvas.Height);
  if fKeyUp<>fKeyDown then begin
   fScrollY:=fScrollY+((aDeltaTime*128.0)*(((ord(fKeyDown) and 1)*2)-1));
  end else if fKeyPageUp<>fKeyPageDown then begin
