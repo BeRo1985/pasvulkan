@@ -178,7 +178,7 @@ void main(){
   // marks a sky miss (hits are clamped to it in the ray-data encode, same convention as the visibility update), integrated
   // with the SAME cosine weights as the irradiance. The ray-data element is loaded anyway, so this costs no extra bandwidth.
   float sumSky = 0.0;
-  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiData.dugiCascadeCellSizes[cascadeIndex].x, 1e-2);
+  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiMaxCellSize(cascadeIndex), 1e-2);
 #endif
   for(uint r = GI_DUGI_RAY_START; r < raysPerProbe; r++){
     vec3 rayDirection = dugiTraceRayDirection(r, randomRotation);

@@ -170,7 +170,7 @@ void main(){
   ivec3 probeCoord = dugiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
 
   float tMax = max(dugiData.dugiCascadeCellSizes[cascadeIndex].w, 1e-2);
-  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+  float cellSize = dugiMaxCellSize(cascadeIndex); // for the ray-data visibility clamp; must match the update passes' scale (anisotropic cells)
 
   // Thread 0 resolves the (relocated, toroidal) probe world position once into shared memory — the rest of the workgroup reads
   // it back after the barrier (avoids GI_DUGI_RAYS_PER_PROBE redundant relocation-buffer reads of the same probe).

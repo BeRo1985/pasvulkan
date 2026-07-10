@@ -383,6 +383,21 @@ vec3 dugiWorldToProbeGrid(const in vec3 worldPosition, const in int cascadeIndex
 vec3 dugiProbeGridToWorld(const in ivec3 probeCoord, const in int cascadeIndex){
   return dugiData.dugiCascadeAABBMin[cascadeIndex].xyz + (vec3(probeCoord) * dugiData.dugiCascadeCellSizes[cascadeIndex].xyz);
 }
+
+// The per-axis probe spacing can be ANISOTROPIC (vertical denser than horizontal, RTXGI probeSpacing-style; see the
+// GlobalIlluminationInitialCellSize / GlobalIlluminationCellSizeMultiplicationFactor renderer-instance properties). The
+// scalar consumers pick the conservative axis: the surface bias uses the SMALLEST spacing (a small bias never overshoots
+// the thin axis), the visibility distance scale (Chebyshev clamp / sky-miss convention) the LARGEST (identical to the old
+// isotropic behavior on the coarsest axis, and producer + consumers stay consistent by sharing these helpers).
+float dugiMinCellSize(const in int cascadeIndex){
+  vec3 cellSizes = dugiData.dugiCascadeCellSizes[cascadeIndex].xyz;
+  return min(cellSizes.x, min(cellSizes.y, cellSizes.z));
+}
+
+float dugiMaxCellSize(const in int cascadeIndex){
+  vec3 cellSizes = dugiData.dugiCascadeCellSizes[cascadeIndex].xyz;
+  return max(cellSizes.x, max(cellSizes.y, cellSizes.z));
+}
 #endif
 
 // Linear probe index within a cascade from integer probe coordinates.
@@ -560,7 +575,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
     // Surface bias (along normal + towards camera, scaled by the cascade cell size) to reduce probe self-shadowing AND
     // light leaking through thin geometry; the base probe, the trilinear fractions and the Chebyshev distToProbe below are
     // all measured from this lifted position, so the interpolation cell matches the visibility test.
-    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiMinCellSize(cascadeIndex);
 
     vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
@@ -745,7 +760,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   //  cosine-convolved irradiance along the normal. Returns prefiltered radiance (the caller applies the split-sum BRDF).
   // ---------------------------------------------------------------------------------------------------------------------
   vec3 dugiSampleGlossyRadianceInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 reflectionDirection, const in vec3 viewDirection, const in int cascadeIndex){
-    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiMinCellSize(cascadeIndex);
 
     vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));
@@ -851,7 +866,7 @@ vec2 dugiProbeOctUV(const in ivec3 probeCoord, const in int cascadeIndex, const 
   // ---------------------------------------------------------------------------------------------------------------------
   DUGI_SH_TYPE dugiSampleRadianceSHInCascade(const in vec3 worldPosition, const in vec3 normal, const in vec3 viewDirection, const in int cascadeIndex, out float skyVisibility){
     // Surface bias (see dugiSampleIrradianceInCascade): lift along normal + towards camera, scaled by the cell size.
-    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+    vec3 biasedPosition = worldPosition + ((normal * GI_DUGI_NORMAL_BIAS) + (viewDirection * GI_DUGI_VIEW_BIAS)) * dugiMinCellSize(cascadeIndex);
 
     vec3 gridCoord = dugiWorldToProbeGrid(biasedPosition, cascadeIndex);
     ivec3 baseProbe = ivec3(floor(gridCoord));

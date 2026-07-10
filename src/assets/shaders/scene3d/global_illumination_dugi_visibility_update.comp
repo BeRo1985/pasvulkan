@@ -66,7 +66,7 @@ void main(){
   // Local depth scale for the visibility statistics (~1.5 * cell size): hits are clamped to it in the ray-data encode, and a
   // stored ray distance beyond it marks a sky miss (the encode leaves misses unclamped). Keeps far hits / sky from inflating
   // the mean/mean^2 and masking nearby thin-slab occluders.
-  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiData.dugiCascadeCellSizes[cascadeIndex].x, 1e-2);
+  float visibilityMaxDistance = max(GI_DUGI_VISIBILITY_MAX_DISTANCE_SCALE * dugiMaxCellSize(cascadeIndex), 1e-2);
 
   // Cooperatively load this probe's rays (direction + raw distance) into shared memory ONCE for the whole workgroup. Each
   // thread loads a strided subset; the 256 threads (16x16) cover the <=128 rays in a single iteration. Then barrier so every

@@ -39,7 +39,10 @@ void main(){
   int probeIndexInCascade = int(globalProbeIndex % pushConstants.params.z);
   ivec3 probeCoord = dugiProbeCoordFromIndex(probeIndexInCascade); // physical storage slot
 
-  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+  // Per-axis cell sizes (can be anisotropic): the clearance scales use the SMALLEST axis (conservative — a probe pushed by
+  // the fine-axis scale never overshoots it), while the max-offset test below is the RTXGI-style PER-AXIS ellipsoid.
+  vec3 cellSizes = dugiData.dugiCascadeCellSizes[cascadeIndex].xyz;
+  float cellSize = min(cellSizes.x, min(cellSizes.y, cellSizes.z));
 
   // Hoist the master->sub-pointer derefs once.
   DUGIRayDataBuffer rayData = dugiData.rayData;
@@ -109,11 +112,12 @@ void main(){
     }
   }
 
-  // Commit the candidate only if it stays inside the |offset / cellSize| <= GI_DUGI_PROBE_MAX_OFFSET ellipsoid; otherwise
-  // keep the previous offset (clamping to the boundary instead would leave the probe sitting on the rim and jittering). A
-  // probe that would need to move further than this to escape geometry stays put and gets marked INACTIVE by classification.
+  // Commit the candidate only if it stays inside the |offset / cellSizes| <= GI_DUGI_PROBE_MAX_OFFSET ellipsoid (per axis,
+  // like RTXGI's probeSpacing-relative offset limit — anisotropic cells give an anisotropic ellipsoid); otherwise keep the
+  // previous offset (clamping to the boundary instead would leave the probe sitting on the rim and jittering). A probe that
+  // would need to move further than this to escape geometry stays put and gets marked INACTIVE by classification.
   if(fullOffset.x < 1e26){
-    vec3 normalizedOffset = fullOffset / cellSize;
+    vec3 normalizedOffset = fullOffset / cellSizes;
     if(dot(normalizedOffset, normalizedOffset) < (GI_DUGI_PROBE_MAX_OFFSET * GI_DUGI_PROBE_MAX_OFFSET)){
       offset = fullOffset;
     }

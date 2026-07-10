@@ -551,6 +551,8 @@ type { TpvScene3DRendererInstance }
                      fAABB:TpvAABB;
                      fCellSize:TpvScalar;
                      fSnapSize:TpvScalar;
+                     fCellSizes:TpvVector3; // per-axis probe spacing — can be ANISOTROPIC for the DUGI kind (vertical denser than horizontal, RTXGI probeSpacing-style); the isotropic kinds fill (CellSize,CellSize,CellSize)
+                     fSnapSizes:TpvVector3;
                      fOffset:TpvVector3;
                      fBorderCells:TpvInt32;
                      fDelta:TIntVector4;
@@ -1004,6 +1006,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
        fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
        fGlobalIlluminationDUGIEmptyProbeSample:Boolean; // runtime A/B toggle: when true the classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes, so the shading gather keeps sampling their last valid data (anti through-slab leak); compute-side they stay frozen either way
+       fGlobalIlluminationInitialCellSize:TpvVector3; // per-axis probe spacing of the innermost GI probe cascade (RTXGI probeSpacing-style, world units; consumed per frame by the DUGI cascaded-volume update, so it is runtime-tunable — changing it re-snaps the field and the probes reconverge through the warmup)
+       fGlobalIlluminationCellSizeMultiplicationFactor:TpvVector3; // per-axis per-cascade spacing growth (the last cascade stays at the scene-covering maximum); the vertical default is denser than the horizontal one so stacked floor/ceiling decks stay separable across more cascades
        fDebugDrawMeshletBoundingSpheres:Boolean;
        fDebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers;
        fDebugMeshletSphereComputeShaderModule:TpvVulkanShaderModule;
@@ -1335,6 +1339,8 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
        property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable (A/B); false = keep all probes active (no inactive-probe early-out)
        property GlobalIlluminationDUGIEmptyProbeSample:Boolean read fGlobalIlluminationDUGIEmptyProbeSample write fGlobalIlluminationDUGIEmptyProbeSample; // runtime-toggleable (A/B); true = no-nearby-geometry probes stay sampleable in the shading gather (EMPTY state instead of INACTIVE)
+       property GlobalIlluminationInitialCellSize:TpvVector3 read fGlobalIlluminationInitialCellSize write fGlobalIlluminationInitialCellSize; // runtime-tunable per-axis probe spacing of GI cascade 0 (currently consumed by the DUGI probe field)
+       property GlobalIlluminationCellSizeMultiplicationFactor:TpvVector3 read fGlobalIlluminationCellSizeMultiplicationFactor write fGlobalIlluminationCellSizeMultiplicationFactor; // runtime-tunable per-axis per-cascade spacing growth (currently consumed by the DUGI probe field; (4,4,4) restores the old isotropic progression)
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
        property DebugMeshletSphereLineBuffers:TpvVulkanInFlightFrameBuffers read fDebugMeshletSphereLineBuffers;
       public
@@ -2030,6 +2036,7 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
 var CascadeIndex,BorderCells:TpvSizeInt;
     CellSize,MaximumCascadeCellSize:TpvDouble;
     SnapSize,MaxAxisSize:TpvDouble;
+    CellSizeVector,SnapSizeVector:TpvVector3;
     InFlightFrameState:PInFlightFrameState;
     ViewPosition:TpvVector3;
     ViewDirection:TpvVector3;
@@ -2112,15 +2119,23 @@ begin
     end;
    end;
    TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
+    // Per-axis (anisotropic) probe spacing, tunable via the renderer-instance properties GlobalIlluminationInitialCellSize
+    // and GlobalIlluminationCellSizeMultiplicationFactor (RTXGI probeSpacing-style; the vertical axis is typically kept
+    // denser than the horizontal ones so stacked floor/ceiling decks stay separable across more cascades — a deck sandwich
+    // thinner than the local cell puts both sides into the same probe cell, which no sampling weight can fix). The last
+    // cascade stays isotropic at the scene-covering maximum.
     if CascadeIndex=(fCountCascades-1) then begin
-     CellSize:=MaximumCascadeCellSize;//}
+     CellSizeVector:=TpvVector3.InlineableCreate(MaximumCascadeCellSize,MaximumCascadeCellSize,MaximumCascadeCellSize);
     end else if CascadeIndex=0 then begin
-     CellSize:=Min(1.0,MaximumCascadeCellSize);
+     CellSizeVector:=TpvVector3.InlineableCreate(Min(fRendererInstance.fGlobalIlluminationInitialCellSize.x,MaximumCascadeCellSize),
+                                                 Min(fRendererInstance.fGlobalIlluminationInitialCellSize.y,MaximumCascadeCellSize),
+                                                 Min(fRendererInstance.fGlobalIlluminationInitialCellSize.z,MaximumCascadeCellSize));
     end else begin
-     CellSize:=Min(CellSize*4.0,MaximumCascadeCellSize);//}
- {  end else begin
-     CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));//}
+     CellSizeVector:=TpvVector3.InlineableCreate(Min(CellSizeVector.x*fRendererInstance.fGlobalIlluminationCellSizeMultiplicationFactor.x,MaximumCascadeCellSize),
+                                                 Min(CellSizeVector.y*fRendererInstance.fGlobalIlluminationCellSizeMultiplicationFactor.y,MaximumCascadeCellSize),
+                                                 Min(CellSizeVector.z*fRendererInstance.fGlobalIlluminationCellSizeMultiplicationFactor.z,MaximumCascadeCellSize));
     end;
+    CellSize:=Max(CellSizeVector.x,Max(CellSizeVector.y,CellSizeVector.z)); // legacy scalar (the DUGI data path reads fCellSizes)
    end;
    else begin
     if CascadeIndex=(fCountCascades-1) then begin
@@ -2150,15 +2165,24 @@ begin
    end;
    TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
     SnapSize:=CellSize*2.0;
+    SnapSizeVector:=CellSizeVector*2.0;
    end;
    else begin
     SnapSize:=CellSize;
    end;
   end;
 
-  SnappedPosition:=(GridCenter/SnapSize).Round*SnapSize;
-
-  GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
+  case fCascadeVolumeKind of
+   TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
+    // Per-axis snapping and grid extents, so the anisotropic probe lattice stays aligned per axis.
+    SnappedPosition:=(GridCenter/SnapSizeVector).Round*SnapSizeVector;
+    GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSizeVector.x,fVolumeSize*CellSizeVector.y,fVolumeSize*CellSizeVector.z);
+   end;
+   else begin
+    SnappedPosition:=(GridCenter/SnapSize).Round*SnapSize;
+    GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
+   end;
+  end;
 
   BorderCells:=fCountCascades-CascadeIndex;
 
@@ -2177,8 +2201,8 @@ begin
     // coordinate (worldPos-AABBMin)/cellSize and the integer scroll base floor(AABBMin/cellSize) agree — otherwise a sub-cell
     // residual shifts the probe lattice against the toroidal storage addressing (frame-wise probe jumps). The center snap
     // (SnapSize) + the scene-AABB clamp above can leave such a residual (e.g. an odd volume size makes GridSize*0.5 a half
-    // cell), so floor-snap AABBMin to cellSize here.
-    AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/CellSize).Floor*CellSize;
+    // cell), so floor-snap AABBMin to cellSize here (per axis, since the DUGI cells can be anisotropic).
+    AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/CellSizeVector).Floor*CellSizeVector;
     AABB.Max:=AABB.Min+GridSize;
    end;
    else begin
@@ -2194,6 +2218,16 @@ begin
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
   Cascade.fSnapSize:=SnapSize;
+  case fCascadeVolumeKind of
+   TCascadeVolumeKind.DynamicUnifiedGlobalIllumination:begin
+    Cascade.fCellSizes:=CellSizeVector;
+    Cascade.fSnapSizes:=SnapSizeVector;
+   end;
+   else begin
+    Cascade.fCellSizes:=TpvVector3.InlineableCreate(CellSize,CellSize,CellSize);
+    Cascade.fSnapSizes:=TpvVector3.InlineableCreate(SnapSize,SnapSize,SnapSize);
+   end;
+  end;
   Cascade.fOffset:=GridCenter-SnappedPosition;
   Cascade.fBorderCells:=BorderCells;
 
@@ -2203,9 +2237,9 @@ begin
    Cascade.fDelta.z:=1000;
    Cascade.fDelta.w:=-1;
   end else begin
-   Cascade.fDelta.x:=trunc(floor((Cascade.fAABB.Min.x-Cascade.fLastAABB.Min.x)/CellSize));
-   Cascade.fDelta.y:=trunc(floor((Cascade.fAABB.Min.y-Cascade.fLastAABB.Min.y)/CellSize));
-   Cascade.fDelta.z:=trunc(floor((Cascade.fAABB.Min.z-Cascade.fLastAABB.Min.z)/CellSize));
+   Cascade.fDelta.x:=trunc(floor((Cascade.fAABB.Min.x-Cascade.fLastAABB.Min.x)/Cascade.fCellSizes.x));
+   Cascade.fDelta.y:=trunc(floor((Cascade.fAABB.Min.y-Cascade.fLastAABB.Min.y)/Cascade.fCellSizes.y));
+   Cascade.fDelta.z:=trunc(floor((Cascade.fAABB.Min.z-Cascade.fLastAABB.Min.z)/Cascade.fCellSizes.z));
    if (Cascade.fDelta.x<>0) or (Cascade.fDelta.y<>0) or (Cascade.fDelta.z<>0) then begin
     Cascade.fDelta.w:=1;
    end else begin
@@ -2308,6 +2342,8 @@ begin
  fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
  fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime for A/B
  fGlobalIlluminationDUGIEmptyProbeSample:=true; // default on: empty-space probes keep their last valid data sampleable in the shading gather (anti through-slab leak); false = old behavior (skipped like inside-geometry probes)
+ fGlobalIlluminationInitialCellSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // cascade-0 probe spacing (world units, per axis)
+ fGlobalIlluminationCellSizeMultiplicationFactor:=TpvVector3.InlineableCreate(4.0,2.0,4.0); // vertical grows only x2 per cascade (RTXGI keeps the vertical probe spacing ~2x denser than the horizontal, e.g. Sponza 1.02/0.5/0.45, Tunnel 5/2.5/5), so stacked track decks stay separable; (4,4,4) = old isotropic progression
 
  fDebugDrawMeshletBoundingSpheres:=false;
 
@@ -9023,6 +9059,7 @@ var CascadeIndex:TpvSizeInt;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     Extent:TpvVector3;
     s:TpvScalar;
+    NextCellSizes:TpvVector3;
     BaseCell,PrevBaseCell:TpvVector3;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     GlobalIlluminationRadianceHintsRSMUniformBufferData:PGlobalIlluminationRadianceHintsRSMUniformBufferData;
@@ -9039,20 +9076,21 @@ begin
  for CascadeIndex:=0 to CountGlobalIlluminationDUGICascades-1 do begin
   Cascade:=fGlobalIlluminationDUGICascadedVolumes.Cascades[CascadeIndex];
   Extent:=Cascade.fAABB.Max-Cascade.fAABB.Min;
-  s:=fGlobalIlluminationDUGICascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationDUGICascades-1)].fCellSize*2.0;
+  NextCellSizes:=fGlobalIlluminationDUGICascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationDUGICascades-1)].fCellSizes*2.0;
   DUGIData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Min,0.0);
   DUGIData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fAABB.Max,0.0);
   DUGIData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extent,0.0);
-  // CellSizes.w = maximum probe ray distance: the cascade diagonal so probes can see geometry across the whole cascade.
-  DUGIData^.CellSizes[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fCellSize,Cascade.fCellSize,Cascade.fCellSize,Extent.Length);
+  // CellSizes.xyz = per-axis probe spacing (can be anisotropic), .w = maximum probe ray distance: the cascade diagonal so
+  // probes can see geometry across the whole cascade.
+  DUGIData^.CellSizes[CascadeIndex]:=TpvVector4.InlineableCreate(Cascade.fCellSizes,Extent.Length);
   DUGIData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((Cascade.fAABB.Min+Cascade.fAABB.Max)*0.5)+Cascade.fOffset,0.0);
-  DUGIData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-(Cascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
-  DUGIData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-Cascade.fSnapSize,0.0);
-  // Toroidal scroll base cell: AABBMin is snapped to whole cellSize increments, so floor(AABBMin/cellSize) is the integer
-  // world-cell offset of the cascade min corner. The shader maps logical<->physical probe slots by this (mod probeCount),
-  // keeping a world-fixed probe's history on the same texel as the volume scrolls; the previous value (the PREVIOUS FRAME's,
-  // since the field is now a single shared history) lets the shader re-initialize probes that just scrolled in.
-  BaseCell:=(Cascade.fAABB.Min/Cascade.fCellSize).Round;
+  DUGIData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-(Cascade.fSnapSizes+NextCellSizes),0.0);
+  DUGIData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate((Extent*0.5)-Cascade.fSnapSizes,0.0);
+  // Toroidal scroll base cell: AABBMin is snapped to whole cellSize increments (per axis), so floor(AABBMin/cellSize) is the
+  // integer world-cell offset of the cascade min corner. The shader maps logical<->physical probe slots by this (mod
+  // probeCount), keeping a world-fixed probe's history on the same texel as the volume scrolls; the previous value (the
+  // PREVIOUS FRAME's, since the field is now a single shared history) lets the shader re-initialize probes that just scrolled in.
+  BaseCell:=(Cascade.fAABB.Min/Cascade.fCellSizes).Round;
   PrevBaseCell:=fGlobalIlluminationDUGIProbeBaseCells[CascadeIndex];
   DUGIData^.ProbeScroll[CascadeIndex].x:=Trunc(BaseCell.x);
   DUGIData^.ProbeScroll[CascadeIndex].y:=Trunc(BaseCell.y);

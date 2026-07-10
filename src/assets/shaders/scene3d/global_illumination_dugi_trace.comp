@@ -345,7 +345,7 @@ void main(){
 
   float tMin = 1e-3;
   float tMax = max(dugiData.dugiCascadeCellSizes[cascadeIndex].w, 1e-2);
-  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+  float cellSize = dugiMaxCellSize(cascadeIndex); // for the ray-data visibility clamp; must match the update passes' scale (anisotropic cells)
 
   // Trace via the swappable backend (ray-query by default). Emissive meshes + all analytic lights + ray-traced shadows are
   // handled in the gather layer; optional multi-bounce feedback samples the previous frame's irradiance field at the hit.

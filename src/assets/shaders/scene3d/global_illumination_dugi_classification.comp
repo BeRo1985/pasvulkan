@@ -41,9 +41,9 @@ void main(){
   vec4 probeData = dugiLoadProbeDataBuffer(probeDataBuf, probeCoord, cascadeIndex);
 
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
-  // The probe's (relocated) world position + cell size, for the voxel-plane "nearby geometry" test below. The fixed rays
-  // were traced from the relocated position, so the cell-boundary planes are measured from it too.
-  float cellSize = dugiData.dugiCascadeCellSizes[cascadeIndex].x;
+  // The probe's (relocated) world position + per-axis cell sizes, for the voxel-plane "nearby geometry" test below. The
+  // fixed rays were traced from the relocated position, so the cell-boundary planes are measured from it too.
+  vec3 cellSizes = dugiData.dugiCascadeCellSizes[cascadeIndex].xyz;
   vec3 probeWorld = dugiProbeGridToWorld(dugiProbeLogicalCoord(probeCoord, cascadeIndex), cascadeIndex);
 #if GI_DUGI_PROBE_RELOCATION
   probeWorld += probeData.xyz; // relocation offset (owned by the relocation pass, already written this frame)
@@ -60,10 +60,10 @@ void main(){
     }
 #if GI_DUGI_PROBE_CLASSIFY_NEARBY
     // A frontface ray hits geometry WITHIN the probe's own cell iff its hit distance is no farther than the nearest crossing
-    // of the cell-boundary planes (one cell size away along each axis in the ray's octant). The distance to the axis plane is
-    // cellSize / |dir.axis|; the nearest of the three bounds the cell along this ray.
+    // of the cell-boundary planes (one cell size away along each axis in the ray's octant, per axis since the cells can be
+    // anisotropic). The distance to the axis plane is cellSize.axis / |dir.axis|; the nearest of the three bounds the cell.
     vec3 dir = dugiTraceRayDirection(uint(i), mat3(1.0)); // fixed rays are unrotated
-    float maxDistance = min(cellSize / max(abs(dir.x), 1e-6), min(cellSize / max(abs(dir.y), 1e-6), cellSize / max(abs(dir.z), 1e-6)));
+    float maxDistance = min(cellSizes.x / max(abs(dir.x), 1e-6), min(cellSizes.y / max(abs(dir.y), 1e-6), cellSizes.z / max(abs(dir.z), 1e-6)));
     if(signedDist <= maxDistance){
       nearbyGeometry = true;
     }
