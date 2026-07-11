@@ -2337,6 +2337,8 @@ type EpvApplication=class(Exception)
 
        property FramePacingMode:TpvApplicationFramePacingMode read fFramePacingMode write fFramePacingMode;
 
+       property DisablePresentTiming:boolean read fDisablePresentTiming write fDisablePresentTiming; // force VK_EXT_present_timing off (e.g. via --disable-present-timing) for capture tools like Nsight
+
        property FramePacingStrategy:TpvApplicationFramePacingStrategy read fFramePacingStrategy write fFramePacingStrategy;
 
        property LowLatencyMode:TpvApplicationLowLatencyMode read fLowLatencyMode write fLowLatencyMode;
@@ -10024,7 +10026,7 @@ begin
   // disturbed by it. Detect such a tool via its implicit instance layer, or an explicit override, and then skip the
   // extension entirely; the present-timing feature is only chained into device creation when this extension is
   // enabled, so PresentTimingSupport stays false and every present-timing code path disables itself downstream.
-  fDisablePresentTiming:=length(GetEnvironmentVariable('PASVULKAN_DISABLE_PRESENT_TIMING'))>0;
+  fDisablePresentTiming:=fDisablePresentTiming or (length(GetEnvironmentVariable('PASVULKAN_DISABLE_PRESENT_TIMING'))>0);
   if not fDisablePresentTiming and assigned(fVulkanInstance) then begin
    for Index:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     if (Pos('nomad',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
