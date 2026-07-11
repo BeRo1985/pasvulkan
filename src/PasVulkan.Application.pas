@@ -1807,6 +1807,7 @@ type EpvApplication=class(Exception)
        fFramePacingPresentTimingRefreshDuration:TpvUInt64; // from VK_EXT_present_timing, in nanoseconds
        fFramePacingPresentTimingTimeDomainID:TpvUInt64; // from vkGetSwapchainTimeDomainPropertiesEXT
        fFramePacingPresentTimingAvailable:boolean;
+       fDisablePresentTiming:boolean; // set when a graphics capture/injection tool (Nsight, RenderDoc) or override is detected
        fFramePacingEffectiveInterval:TpvInt64; // computed pacing interval, consumed by FramePacingAndFrameRateLimiter
 
        // Present timing feedback state (VulkanPresentTimingFeedback mode)
@@ -9197,6 +9198,7 @@ begin
  fFramePacingPresentTimingRefreshDuration:=0;
  fFramePacingPresentTimingTimeDomainID:=0;
  fFramePacingPresentTimingAvailable:=false;
+ fDisablePresentTiming:=false;
  fFramePacingEffectiveInterval:=0;
 
  fPresentTimingFeedbackRefreshDuration:=0;
@@ -10017,7 +10019,28 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
   end;
 
-  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0 then begin
+  // VK_EXT_present_timing chains present-timing structs into the VkPresentInfoKHR pNext chain. Graphics
+  // capture/injection tools (NVIDIA Nsight Graphics/Systems, RenderDoc) do not handle those and their captures get
+  // disturbed by it. Detect such a tool via its implicit instance layer, or an explicit override, and then skip the
+  // extension entirely; the present-timing feature is only chained into device creation when this extension is
+  // enabled, so PresentTimingSupport stays false and every present-timing code path disables itself downstream.
+  fDisablePresentTiming:=length(GetEnvironmentVariable('PASVULKAN_DISABLE_PRESENT_TIMING'))>0;
+  if (not fDisablePresentTiming) and assigned(fVulkanInstance) then begin
+   for Index:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
+    if (Pos('nomad',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
+       (Pos('nsight',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
+       (Pos('gpu_trace',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
+       (Pos('renderdoc',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) then begin
+     fDisablePresentTiming:=true;
+     break;
+    end;
+   end;
+  end;
+  if fDisablePresentTiming then begin
+   Log(LOG_INFO,'TpvApplication.CreateVulkanDevice','VK_EXT_present_timing disabled (graphics capture tool or PASVULKAN_DISABLE_PRESENT_TIMING override detected)');
+  end;
+
+  if (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_TIMING_EXTENSION_NAME)>=0) and not fDisablePresentTiming then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
   end;
 
