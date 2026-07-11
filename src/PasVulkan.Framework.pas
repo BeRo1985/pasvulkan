@@ -59,6 +59,7 @@ unit PasVulkan.Framework;
  {$endif}
 {$endif}
 {-$define PasVulkanQueueDiag}
+{-$define PasVulkanRenderPassCopyGuard} // remove the dash to trap engine vkCmdCopyBuffer calls issued inside an active render pass, with a backtrace
 
 interface
 
@@ -2033,6 +2034,9 @@ type EpvVulkanException=class(Exception);
        fCommandPool:TpvVulkanCommandPool;
        fLevel:TVkCommandBufferLevel;
        fCommandBufferHandle:TVkCommandBuffer;
+{$ifdef PasVulkanRenderPassCopyGuard}
+       fRenderPassNestingLevel:TpvInt32; // >0 while inside a render pass instance; read by the CmdCopyBuffer render-pass guard
+{$endif}
 //     fFence:TpvVulkanFence;
       public
        constructor Create(const aCommandPool:TpvVulkanCommandPool;
@@ -19502,6 +19506,9 @@ begin
  CommandBufferBeginInfo.flags:=aFlags;
  CommandBufferBeginInfo.pInheritanceInfo:=aInheritanceInfo;
  VulkanCheckResult(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
+{$ifdef PasVulkanRenderPassCopyGuard}
+ fRenderPassNestingLevel:=0;
+{$endif}
 end;
 
 procedure TpvVulkanCommandBuffer.BeginRecordingPrimary;
@@ -19662,8 +19669,40 @@ begin
  fDevice.fDeviceVulkan.CmdDispatchIndirect(fCommandBufferHandle,buffer,offset);
 end;
 
+{$ifdef PasVulkanRenderPassCopyGuard}
+var VulkanRenderPassCopyGuardLogCount:TpvInt32=0; // rate-limit: only the first few offending copies are dumped
+{$endif}
+
 procedure TpvVulkanCommandBuffer.CmdCopyBuffer(srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TpvUInt32;const aRegions:PVkBufferCopy);
+{$ifdef PasVulkanRenderPassCopyGuard}
+var Frame,Addr:Pointer;
+    Depth:TpvInt32;
+{$endif}
 begin
+{$ifdef PasVulkanRenderPassCopyGuard}
+ // Diagnostic: a vkCmdCopyBuffer issued while a render pass instance is active is a Vulkan spec violation
+ // (VUID-vkCmdCopyBuffer-renderpass). Dump the caller backtrace so the offending engine call site can be found.
+ // If this never fires while a capture tool still reports the error, the copy comes from the tool, not the engine.
+ if (fRenderPassNestingLevel>0) and (VulkanRenderPassCopyGuardLogCount<64) then begin
+  inc(VulkanRenderPassCopyGuardLogCount);
+  VulkanDebugLn('[RenderPassCopyGuard] vkCmdCopyBuffer issued INSIDE an active render pass (nesting level '+TpvUTF8String(IntToStr(fRenderPassNestingLevel))+') - backtrace:');
+{$ifdef fpc}
+  Frame:=get_frame;
+  Addr:=get_caller_addr(Frame);
+  Frame:=get_caller_frame(Frame);
+  Depth:=0;
+  while assigned(Addr) and (Depth<32) do begin
+   VulkanDebugLn('[RenderPassCopyGuard]   '+TpvUTF8String(BackTraceStrFunc(Addr)));
+   if not assigned(Frame) then begin
+    break;
+   end;
+   Addr:=get_caller_addr(Frame);
+   Frame:=get_caller_frame(Frame);
+   inc(Depth);
+  end;
+{$endif}
+ end;
+{$endif}
  fDevice.fDeviceVulkan.CmdCopyBuffer(fCommandBufferHandle,srcBuffer,dstBuffer,regionCount,aRegions);
 end;
 
@@ -19770,6 +19809,9 @@ end;
 procedure TpvVulkanCommandBuffer.CmdBeginRenderPass(const aRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents);
 begin
  fDevice.fDeviceVulkan.CmdBeginRenderPass(fCommandBufferHandle,aRenderPassBegin,contents);
+{$ifdef PasVulkanRenderPassCopyGuard}
+ inc(fRenderPassNestingLevel);
+{$endif}
 end;
 
 procedure TpvVulkanCommandBuffer.CmdNextSubpass(contents:TVkSubpassContents);
@@ -19780,6 +19822,11 @@ end;
 procedure TpvVulkanCommandBuffer.CmdEndRenderPass;
 begin
  fDevice.fDeviceVulkan.CmdEndRenderPass(fCommandBufferHandle);
+{$ifdef PasVulkanRenderPassCopyGuard}
+ if fRenderPassNestingLevel>0 then begin
+  dec(fRenderPassNestingLevel);
+ end;
+{$endif}
 end;
 
 procedure TpvVulkanCommandBuffer.CmdExecuteCommands(commandBufferCount:TpvUInt32;const aCommandBuffers:PVkCommandBuffer);
