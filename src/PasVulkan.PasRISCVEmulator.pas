@@ -118,6 +118,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
              FontHeight=16;
              ScreenWidth=640;
              ScreenHeight=400;
+             ScreenFrameBufferSize=ScreenWidth*ScreenHeight*SizeOf(TpvUInt32); // Actually used visible part at the begin of a TFrameBuffer
              MaxScreenWidth=2048;
              MaxScreenHeight=2048;
        type TFrameBuffer=array[0..(MaxScreenWidth*MaxScreenHeight)-1] of TpvUInt32;
@@ -2277,12 +2278,12 @@ begin
   fFrameBufferGenerations[Index]:=High(TpvUInt64);
   fFrameBufferTextureGenerations[Index]:=High(TpvUInt64);
   fFrameBufferTextureBuffers[Index]:=TpvVulkanBuffer.Create(aDevice,
-                                                            SizeOf(TpvPasRISCVEmulatorMachineInstance.TFrameBuffer),
+                                                            TpvPasRISCVEmulatorMachineInstance.ScreenFrameBufferSize,
                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                             [],
-                                                            0,
-                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), // required host-visible, so that MemoryStaging.Upload can take the non-blocking persistent-mapped fast path
+                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT), // prefer cached host memory for fast CPU writes (no device-local write-combined BAR memory)
                                                             0,
                                                             0,
                                                             0,
@@ -3043,9 +3044,9 @@ begin
  if fFrameBufferGenerations[pvApplication.UpdateInFlightFrameIndex]<>fFrameBufferGeneration then begin
   fFrameBufferGenerations[pvApplication.UpdateInFlightFrameIndex]:=fFrameBufferGeneration;
   if fSerialConsoleMode then begin
-   fFrameBuffers[pvApplication.UpdateInFlightFrameIndex]:=fSerialConsoleTerminalFrameBuffer;
+   Move(fSerialConsoleTerminalFrameBuffer,fFrameBuffers[pvApplication.UpdateInFlightFrameIndex],TpvPasRISCVEmulatorMachineInstance.ScreenFrameBufferSize);
   end else begin
-   fFrameBuffers[pvApplication.UpdateInFlightFrameIndex]:=fGraphicsFrameBuffer;
+   Move(fGraphicsFrameBuffer,fFrameBuffers[pvApplication.UpdateInFlightFrameIndex],TpvPasRISCVEmulatorMachineInstance.ScreenFrameBufferSize);
   end;
   inc(fContentGeneration);
  end;
@@ -3082,7 +3083,7 @@ begin
                                                   fFrameBuffers[aInFlightFrameIndex][0],
                                                   fFrameBufferTextureBuffers[aInFlightFrameIndex],
                                                   0,
-                                                  SizeOf(TpvPasRISCVEmulatorMachineInstance.TFrameBuffer)
+                                                  TpvPasRISCVEmulatorMachineInstance.ScreenFrameBufferSize
                                                  );
 
   fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'ComputerCoreRenderCanvasUpload',[0.5,1.0,0.25,1.0]);
