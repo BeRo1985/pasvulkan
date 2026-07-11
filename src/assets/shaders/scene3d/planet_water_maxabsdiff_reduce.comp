@@ -1,0 +1,60 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Atomic free parallel max reduction of the per workgroup water height difference maxima produced by
+// planet_water_simulation_waterheight.comp. That shader used to fold its per workgroup maximum into a single global
+// value with atomicMax, which serialized all (up to 65536) workgroups on one cache line and was the dominant cost of
+// the water simulation on GPUs with expensive single address atomic contention. Instead every workgroup now writes its
+// maximum into its own slot (no atomic), and this shader reduces the whole slot array to a single value in two cheap
+// passes: pass A reduces the per workgroup array to one value per 256 element block, pass B reduces those blocks to the
+// final maximum. The values are floatBitsToUint of non negative height differences, so a plain unsigned max is
+// equivalent to a float max (no conversion needed) and monotonic.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+#define WORKGROUP_SIZE 256
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint count; // number of valid input elements (elements at or above this index contribute zero)
+} pushConstants;
+
+layout(set = 0, binding = 0, std430) readonly buffer InValues {
+  uint values[];
+} inValues;
+
+layout(set = 0, binding = 1, std430) writeonly buffer OutValues {
+  uint values[];
+} outValues;
+
+shared uint sharedSubgroupMaxValues[64]; // per subgroup maxima; 64 >= gl_NumSubgroups for any subgroup size >= 4 with 256 invocations
+
+void main(){
+
+  uint index = gl_GlobalInvocationID.x;
+
+  // Non negative height difference bit patterns order like unsigned integers, so an unsigned max equals a float max.
+  uint value = (index < pushConstants.count) ? inValues.values[index] : 0u;
+
+  uint subgroupMaxValue = subgroupMax(value);
+  if(subgroupElect()){
+    sharedSubgroupMaxValues[gl_SubgroupID] = subgroupMaxValue;
+  }
+
+  memoryBarrierShared();
+  barrier();
+
+  if(gl_LocalInvocationIndex == 0u){
+    uint workGroupMaxValue = 0u;
+    for(uint subgroupIndex = 0u; subgroupIndex < gl_NumSubgroups; subgroupIndex++){
+      workGroupMaxValue = max(workGroupMaxValue, sharedSubgroupMaxValues[subgroupIndex]);
+    }
+    outValues.values[gl_WorkGroupID.x] = workGroupMaxValue;
+  }
+
+}

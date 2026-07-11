@@ -20,6 +20,10 @@
 #extension GL_EXT_shader_16bit_storage : enable
 #endif
 
+// Subgroup ops for the water height difference max reduction (replaces the former barrier heavy shared memory tree reduction).
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
 /* clang-format off */
 
 #define WORKGROUP_SIZE 16
@@ -36,6 +40,7 @@ shared vec4 sharedFlowMapValues[WORKGROUP_SIZE + 2][WORKGROUP_SIZE + 2]; // WORK
 #endif
 
 shared float sharedHeightDifferences[WORKGROUP_SIZE * WORKGROUP_SIZE];
+shared float sharedSubgroupMaxDifferences[64]; // per subgroup maxima for the subgroup based reduction; 64 >= gl_NumSubgroups for any subgroup size >= 4 (256 invocations)
 
 #ifdef USE_COMPACT_FLOW
 
@@ -178,79 +183,31 @@ void main(){
     
   }
 
-  // Perform a parallel max reduction to calculate the total absolute height differences
+  // Reduce the per cell absolute height difference to the workgroup maximum with subgroup operations, replacing the
+  // former shared memory tree reduction that needed eight barrier() steps. That barrier heavy pattern is the dominant
+  // cost of this shader on GPUs that stall on it. Here each invocation reduces its own value within its subgroup with
+  // subgroupMax (no barrier), the elected lane of each subgroup writes the subgroup maximum to shared memory, and
+  // after a single barrier the first invocation folds the per subgroup maxima and updates the global maximum. The
+  // result is identical, so the settle detection is unchanged.
+
+  float subgroupMaxDifference = subgroupMax(sharedHeightDifferences[gl_LocalInvocationIndex]);
+  if(subgroupElect()){
+    sharedSubgroupMaxDifferences[gl_SubgroupID] = subgroupMaxDifference;
+  }
 
   memoryBarrierShared();
   barrier();
 
-#if WORKGROUP_SIZE != 16   
-
-  // Automatic unrolled version of the parallel max reduction for WORKGROUP_SIZE != 16
-  
-  [[unroll]] for(uint i = 128u; i > 0u; i >>= 1u){
-    if(gl_LocalInvocationIndex < i){
-      sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + i]);
+  if(gl_LocalInvocationIndex == 0){
+    float workGroupMaxDifference = 0.0;
+    for(uint subgroupIndex = 0u; subgroupIndex < gl_NumSubgroups; subgroupIndex++){
+      workGroupMaxDifference = max(workGroupMaxDifference, sharedSubgroupMaxDifferences[subgroupIndex]);
     }
-    memoryBarrierShared();
-    barrier();
+    // Write this workgroup's maximum into its own slot without any atomic. Every workgroup (65536 for a 4096 water map)
+    // writes a distinct slot, so there is no contention at all; planet_water_maxabsdiff_reduce.comp then folds the whole
+    // per workgroup array down to the single global maximum in two cheap passes. This replaces the former single address
+    // atomicMax that serialized all workgroups on one cache line and dominated the water simulation cost.
+    waterMaxHeightDifference.values[(gl_WorkGroupID.y * gl_NumWorkGroups.x) + gl_WorkGroupID.x] = floatBitsToUint(workGroupMaxDifference);
   }
-
-#else
-
-  // Manual unrolled version of the parallel max reduction for WORKGROUP_SIZE == 16
-
-  if(gl_LocalInvocationIndex < 128){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 128]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 64){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 64]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 32){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 32]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 16){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 16]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 8){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 8]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 4){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 4]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 2){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 2]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-  if(gl_LocalInvocationIndex < 1){
-    sharedHeightDifferences[gl_LocalInvocationIndex] = max(sharedHeightDifferences[gl_LocalInvocationIndex], sharedHeightDifferences[gl_LocalInvocationIndex + 1]);
-  }
-  memoryBarrierShared();
-  barrier();
-
-#endif
-
-  if(inBounds && (gl_LocalInvocationIndex == 0)){
-    atomicMax(waterMaxHeightDifference.value, floatBitsToUint(sharedHeightDifferences[0]));
-  }    
 
 }

@@ -85,7 +85,7 @@ layout(set = 0, binding = 3, std430) coherent buffer WaterFlowMap {
 #endif
 
 layout(set = 0, binding = 4, std430) coherent buffer WaterMaxHeightDifference {
-  uint value;
+  uint values[]; // one slot per workgroup: planet_water_simulation_waterheight.comp writes its per workgroup height difference maximum here without any atomic; planet_water_maxabsdiff_reduce.comp reduces the whole array to the single global maximum afterwards
 } waterMaxHeightDifference;
 
 layout(set = 0, binding = 5, std430) buffer PrecipitationAtmosphereMap {

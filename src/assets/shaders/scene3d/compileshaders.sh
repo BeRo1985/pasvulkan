@@ -746,9 +746,10 @@ compileshaderarguments=(
   "-V planet_water_simulation_outflow.comp -DUSE_HEIGHTMAP_BUFFER -o ${tempPath}/planet_water_simulation_outflow_buffer_comp.spv"
   "-V planet_water_simulation_outflow.comp -DUSE_FP16 -o ${tempPath}/planet_water_simulation_outflow_fp16_comp.spv"
   "-V planet_water_simulation_outflow.comp -DUSE_HEIGHTMAP_BUFFER -DUSE_FP16 -o ${tempPath}/planet_water_simulation_outflow_buffer_fp16_comp.spv"
-  "-V planet_water_simulation_waterheight.comp -o ${tempPath}/planet_water_simulation_waterheight_comp.spv"
-  "-V planet_water_simulation_waterheight.comp -DUSE_FP16 -o ${tempPath}/planet_water_simulation_waterheight_fp16_comp.spv"
+  "-V planet_water_simulation_waterheight.comp --target-env vulkan1.2 -o ${tempPath}/planet_water_simulation_waterheight_comp.spv"
+  "-V planet_water_simulation_waterheight.comp --target-env vulkan1.2 -DUSE_FP16 -o ${tempPath}/planet_water_simulation_waterheight_fp16_comp.spv"
   "-V planet_water_metric_bake.comp -o ${tempPath}/planet_water_metric_bake_comp.spv"
+  "-V planet_water_maxabsdiff_reduce.comp --target-env vulkan1.2 -o ${tempPath}/planet_water_maxabsdiff_reduce_comp.spv"
   "-V planet_water_activity.comp -o ${tempPath}/planet_water_activity_comp.spv"
   "-V planet_water_simulation_rainfall.comp -o ${tempPath}/planet_water_simulation_rainfall_comp.spv"
 

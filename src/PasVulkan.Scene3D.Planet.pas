@@ -495,6 +495,8 @@ type TpvScene3DPlanets=class;
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
               fWaterActivityMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled water activity map (dH/dt), GENERAL layout, read-write by the activity pass, sampled for the calm-surface normal blend
               fWaterMaxAbsoluteHeightDifferenceBuffer:TpvVulkanBuffer;
+              fWaterMaxAbsHeightDiffPerWorkgroupBuffer:TpvVulkanBuffer; // one uint slot per water height workgroup: atomic free per workgroup maxima (binding 4 of the water height pass), reduced by the two pass reduce shader
+              fWaterMaxAbsHeightDiffPartialsBuffer:TpvVulkanBuffer; // intermediate partials (one uint per 256 element block) for the two pass reduction
               fWaterBufferIndex:TpvUInt32;
               fWaterFrameIndex:TpvUInt32;
               fWaterFirst:TPasMPBool32;
@@ -1696,6 +1698,10 @@ type TpvScene3DPlanets=class;
                     WaterHeightMapResolution:TpvUInt32;
                    end;
                    PMetricBakePushConstants=^TMetricBakePushConstants;
+                   TMaxAbsDiffReducePushConstants=packed record
+                    Count:TpvUInt32; // number of valid input elements for this reduction pass
+                   end;
+                   PMaxAbsDiffReducePushConstants=^TMaxAbsDiffReducePushConstants;
                    TActivityPushConstants=packed record
                     WaterHeightMapResolution:TpvUInt32;
                     ActivityMapResolution:TpvUInt32;
@@ -1850,6 +1856,15 @@ type TpvScene3DPlanets=class;
               fModificationPushConstants:TModificationPushConstants;
               fDownsamplePushConstants:TDownsamplePushConstants;
               fMetricBakePushConstants:TMetricBakePushConstants;
+              fMaxAbsDiffReduceComputeShaderModule:TpvVulkanShaderModule;
+              fMaxAbsDiffReduceComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fMaxAbsDiffReducePipeline:TpvVulkanComputePipeline;
+              fMaxAbsDiffReduceDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fMaxAbsDiffReduceDescriptorPool:TpvVulkanDescriptorPool;
+              fMaxAbsDiffReduceDescriptorSetPassA:TpvVulkanDescriptorSet; // in = per workgroup buffer, out = partials buffer
+              fMaxAbsDiffReduceDescriptorSetPassB:TpvVulkanDescriptorSet; // in = partials buffer, out = final single value buffer
+              fMaxAbsDiffReducePipelineLayout:TpvVulkanPipelineLayout;
+              fMaxAbsDiffReducePushConstants:TMaxAbsDiffReducePushConstants;
               fActivityPushConstants:TActivityPushConstants;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
@@ -4646,6 +4661,8 @@ begin
  fWaterMiniMapImage:=nil;
 
  fWaterMaxAbsoluteHeightDifferenceBuffer:=nil;
+ fWaterMaxAbsHeightDiffPerWorkgroupBuffer:=nil;
+ fWaterMaxAbsHeightDiffPartialsBuffer:=nil;
 
  fWaterBufferIndex:=0;
 
@@ -5435,6 +5452,50 @@ begin
                                                                   ); 
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMaxAbsoluteHeightDifferenceBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsoluteHeightDifferenceBuffer');
 
+   // Atomic free water height difference reduction buffers (device local, GPU only): one uint slot per water height
+   // workgroup, plus one partials slot per 256 element block. The water height pass writes its per workgroup maximum
+   // into fWaterMaxAbsHeightDiffPerWorkgroupBuffer (no atomic), which planet_water_maxabsdiff_reduce.comp then folds
+   // down to the single value in fWaterMaxAbsoluteHeightDifferenceBuffer via the partials buffer (pass A, pass B).
+   fWaterMaxAbsHeightDiffPerWorkgroupBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                    TpvSizeInt(((TpvSizeInt(fPlanet.fWaterMapResolution)+15) shr 4)*((TpvSizeInt(fPlanet.fWaterMapResolution)+15) shr 4))*SizeOf(TpvUInt32),
+                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                    fPlanet.fGlobalBufferSharingMode,
+                                                                    fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                    0,
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                    0,
+                                                                    pvAllocationGroupIDScene3DPlanetStatic,
+                                                                    'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsHeightDiffPerWorkgroupBuffer'
+                                                                   );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMaxAbsHeightDiffPerWorkgroupBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsHeightDiffPerWorkgroupBuffer');
+
+   fWaterMaxAbsHeightDiffPartialsBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                256*SizeOf(TpvUInt32), // one partial per 256 element block; 256 partials cover up to 65536 workgroups (4096 water map)
+                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                fPlanet.fGlobalBufferSharingMode,
+                                                                fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                0,
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                [TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                0,
+                                                                pvAllocationGroupIDScene3DPlanetStatic,
+                                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsHeightDiffPartialsBuffer'
+                                                               );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMaxAbsHeightDiffPartialsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMaxAbsHeightDiffPartialsBuffer');
+
   end;
 
   fWaterVisibilityBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
@@ -6031,6 +6092,8 @@ begin
  FreeAndNil(fHeightMiniMapImage);
 
  FreeAndNil(fWaterMaxAbsoluteHeightDifferenceBuffer);
+ FreeAndNil(fWaterMaxAbsHeightDiffPerWorkgroupBuffer);
+ FreeAndNil(fWaterMaxAbsHeightDiffPartialsBuffer);
 
  FreeAndNil(fWaterVisibilityBuffer);
 
@@ -18772,12 +18835,12 @@ begin
                                                     [fPlanet.fData.fWaterFlowMapBuffer.DescriptorBufferInfo],
                                                     [],
                                                     false);
-   fWaterDescriptorSets[Index].WriteToDescriptorSet(4, // fWaterMaxAbsoluteHeightDifferenceBuffer
+   fWaterDescriptorSets[Index].WriteToDescriptorSet(4, // fWaterMaxAbsHeightDiffPerWorkgroupBuffer (per workgroup maxima, no atomic; reduced afterwards)
                                                     0,
                                                     1,
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                     [],
-                                                    [fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.DescriptorBufferInfo],
+                                                    [fPlanet.fData.fWaterMaxAbsHeightDiffPerWorkgroupBuffer.DescriptorBufferInfo],
                                                     [],
                                                     false);
    fWaterDescriptorSets[Index].WriteToDescriptorSet(5, // PrecipitationAtmosphereMap
@@ -19077,6 +19140,67 @@ begin
 
   end;
 
+  // Atomic free water height difference reduction: one compute pipeline (planet_water_maxabsdiff_reduce.comp) run in
+  // two passes via two descriptor sets. Pass A reduces the per workgroup buffer into the partials buffer, pass B
+  // reduces the partials buffer into the single final value buffer that the CPU reads for the settle detection.
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_maxabsdiff_reduce_comp.spv');
+  try
+   fMaxAbsDiffReduceComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReduceComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReduceComputeShaderModule');
+  fMaxAbsDiffReduceComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fMaxAbsDiffReduceComputeShaderModule,'main');
+
+  fMaxAbsDiffReduceDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fMaxAbsDiffReduceDescriptorSetLayout.AddBinding(0, // InValues
+                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  [],
+                                                  0);
+  fMaxAbsDiffReduceDescriptorSetLayout.AddBinding(1, // OutValues
+                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                  1,
+                                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                  [],
+                                                  0);
+  fMaxAbsDiffReduceDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReduceDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReduceDescriptorSetLayout');
+
+  fMaxAbsDiffReducePipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fMaxAbsDiffReducePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMaxAbsDiffReducePushConstants));
+  fMaxAbsDiffReducePipelineLayout.AddDescriptorSetLayout(fMaxAbsDiffReduceDescriptorSetLayout);
+  fMaxAbsDiffReducePipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReducePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReducePipelineLayout');
+
+  fMaxAbsDiffReduceDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                  2);
+  fMaxAbsDiffReduceDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),4); // 2 bindings x 2 sets
+  fMaxAbsDiffReduceDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReduceDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReduceDescriptorPool');
+
+  fMaxAbsDiffReduceDescriptorSetPassA:=TpvVulkanDescriptorSet.Create(fMaxAbsDiffReduceDescriptorPool,fMaxAbsDiffReduceDescriptorSetLayout);
+  fMaxAbsDiffReduceDescriptorSetPassA.WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fPlanet.fData.fWaterMaxAbsHeightDiffPerWorkgroupBuffer.DescriptorBufferInfo],[],false);
+  fMaxAbsDiffReduceDescriptorSetPassA.WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fPlanet.fData.fWaterMaxAbsHeightDiffPartialsBuffer.DescriptorBufferInfo],[],false);
+  fMaxAbsDiffReduceDescriptorSetPassA.Flush;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReduceDescriptorSetPassA.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReduceDescriptorSetPassA');
+
+  fMaxAbsDiffReduceDescriptorSetPassB:=TpvVulkanDescriptorSet.Create(fMaxAbsDiffReduceDescriptorPool,fMaxAbsDiffReduceDescriptorSetLayout);
+  fMaxAbsDiffReduceDescriptorSetPassB.WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fPlanet.fData.fWaterMaxAbsHeightDiffPartialsBuffer.DescriptorBufferInfo],[],false);
+  fMaxAbsDiffReduceDescriptorSetPassB.WriteToDescriptorSet(1,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],[fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.DescriptorBufferInfo],[],false);
+  fMaxAbsDiffReduceDescriptorSetPassB.Flush;
+  fVulkanDevice.DebugUtils.SetObjectName(fMaxAbsDiffReduceDescriptorSetPassB.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fMaxAbsDiffReduceDescriptorSetPassB');
+
+  fMaxAbsDiffReducePipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                            pvApplication.VulkanPipelineCache,
+                                                            TVkPipelineCreateFlags(0),
+                                                            fMaxAbsDiffReduceComputeShaderStage,
+                                                            fMaxAbsDiffReducePipelineLayout,
+                                                            nil,
+                                                            0);
+
   // Water activity map pass: builds the downsampled dH/dt activity that drives the calm-surface normal blend. It is
   // always created (the activity image is tiny); the dispatch itself only runs when the calm-surface handling is on.
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_activity_comp.spv');
@@ -19271,6 +19395,14 @@ begin
  FreeAndNil(fMetricBakeDescriptorSetLayout);
  FreeAndNil(fMetricBakeComputeShaderStage);
  FreeAndNil(fMetricBakeComputeShaderModule);
+ FreeAndNil(fMaxAbsDiffReducePipeline);
+ FreeAndNil(fMaxAbsDiffReduceDescriptorSetPassA);
+ FreeAndNil(fMaxAbsDiffReduceDescriptorSetPassB);
+ FreeAndNil(fMaxAbsDiffReduceDescriptorPool);
+ FreeAndNil(fMaxAbsDiffReducePipelineLayout);
+ FreeAndNil(fMaxAbsDiffReduceDescriptorSetLayout);
+ FreeAndNil(fMaxAbsDiffReduceComputeShaderStage);
+ FreeAndNil(fMaxAbsDiffReduceComputeShaderModule);
 
  FreeAndNil(fActivityPipeline);
  FreeAndNil(fActivityDescriptorSets[1]);
@@ -19830,11 +19962,21 @@ begin
                                                          0,
                                                          fPlanet.fData.fWaterHeightMapBuffers[DestinationBufferIndex].Size);
 
+  // Synchronize this substep's per workgroup height difference maxima: the next substep's water height pass overwrites
+  // them (WAW), and after the loop the reduce pass A reads them (RAW).
+  BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterMaxAbsHeightDiffPerWorkgroupBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterMaxAbsHeightDiffPerWorkgroupBuffer.Size);
+
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
-                                    2,@BufferMemoryBarriers[0],
+                                    3,@BufferMemoryBarriers[0],
                                     0,nil);
 (*
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -19905,6 +20047,62 @@ begin
   end;
 
   First:=false;
+
+ end;
+
+ // Atomic free reduction of the per workgroup water height difference maxima (written by the water height pass without
+ // any atomic) down to the single value that the CPU reads for the settle detection. Runs only when at least one
+ // simulation substep executed this frame (DoDownsample). Pass A reduces the per workgroup buffer into the partials
+ // buffer, pass B reduces the partials buffer into the final value buffer. This replaces the former single address
+ // atomicMax that serialized all workgroups and dominated the water simulation cost.
+ if DoDownsample then begin
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterMaxAbsDiffReduce',[0.5,0.5,0.5,1.0]);
+
+  // Pass A: per workgroup buffer -> partials buffer (one workgroup of 256 invocations per 256 element block). The per
+  // workgroup writes were already made visible by the water height pass output barrier above.
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fMaxAbsDiffReducePipeline.Handle);
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fMaxAbsDiffReducePipelineLayout.Handle,0,1,@fMaxAbsDiffReduceDescriptorSetPassA.Handle,0,nil);
+  fMaxAbsDiffReducePushConstants.Count:=TpvUInt32(((fPlanet.fWaterMapResolution+15) shr 4)*((fPlanet.fWaterMapResolution+15) shr 4)); // number of water height workgroups
+  aCommandBuffer.CmdPushConstants(fMaxAbsDiffReducePipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMaxAbsDiffReducePushConstants),@fMaxAbsDiffReducePushConstants);
+  aCommandBuffer.CmdDispatch((fMaxAbsDiffReducePushConstants.Count+255) shr 8,1,1);
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterMaxAbsHeightDiffPartialsBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterMaxAbsHeightDiffPartialsBuffer.Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  // Pass B: partials buffer -> final single value buffer (one workgroup reduces the up to 256 partials to one value).
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fMaxAbsDiffReducePipelineLayout.Handle,0,1,@fMaxAbsDiffReduceDescriptorSetPassB.Handle,0,nil);
+  fMaxAbsDiffReducePushConstants.Count:=(fMaxAbsDiffReducePushConstants.Count+255) shr 8; // number of partials produced by pass A
+  aCommandBuffer.CmdPushConstants(fMaxAbsDiffReducePipelineLayout.Handle,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TMaxAbsDiffReducePushConstants),@fMaxAbsDiffReducePushConstants);
+  aCommandBuffer.CmdDispatch(1,1,1);
+
+  // Final value written -> readable by the host download in PrepareSimulation (and by any subsequent shader access).
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterMaxAbsoluteHeightDifferenceBuffer.Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 
