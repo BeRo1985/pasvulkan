@@ -3,6 +3,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_vote : enable
 
 /* clang-format off */
 
@@ -107,6 +110,12 @@ void main() {
   ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 #endif
 
+  // Per invocation contribution to the global depth min/max; out of bounds invocations keep the identities so the
+  // subgroup reduction (after the bounds check below) ignores them.
+  uint contributedMinDepthUI = 0xffffffffu;
+  uint contributedMaxDepthUI = 0u;
+  bool contributedCenter = false;
+
 #ifdef MULTIVIEW
   if (all(greaterThanEqual(invocationPosition, ivec3(0))) && all(lessThan(invocationPosition, destinationTextureSize)))
 #else
@@ -150,13 +159,9 @@ void main() {
     uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
     uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
 
-    atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
-    atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
-
-    if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-      atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
-      atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
-    }
+    contributedMinDepthUI = minDepthUI;
+    contributedMaxDepthUI = maxDepthUI;
+    contributedCenter = all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7));
 
 #else
 
@@ -168,18 +173,31 @@ void main() {
 
     uint depthUI = floatBitsToUint(linearizeDepth(depth));
 
-    atomicMin(nearestFarthestDepthBuffer.x, depthUI);
-    atomicMax(nearestFarthestDepthBuffer.z, depthUI);
-
-    if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-      atomicMin(nearestFarthestDepthBuffer.y, depthUI);
-      atomicMax(nearestFarthestDepthBuffer.w, depthUI);
-    }
+    contributedMinDepthUI = depthUI;
+    contributedMaxDepthUI = depthUI;
+    contributedCenter = all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7));
 
 #endif
     
     imageStore(uDestinationTexture, invocationPosition, vec4(depth));
 
+  }
+
+  // Subgroup aggregated global depth min/max: reduce the per invocation contributions within the subgroup and let one
+  // elected lane do the atomics, instead of one atomicMin/atomicMax per invocation on the same four addresses (which
+  // serialized all invocations on those cache lines under contention).
+  uint subgroupMinDepthUI = subgroupMin(contributedMinDepthUI);
+  uint subgroupMaxDepthUI = subgroupMax(contributedMaxDepthUI);
+  uint subgroupCenterMinDepthUI = subgroupMin(contributedCenter ? contributedMinDepthUI : 0xffffffffu);
+  uint subgroupCenterMaxDepthUI = subgroupMax(contributedCenter ? contributedMaxDepthUI : 0u);
+  bool subgroupHasCenter = subgroupAny(contributedCenter);
+  if(subgroupElect()){
+    atomicMin(nearestFarthestDepthBuffer.x, subgroupMinDepthUI);
+    atomicMax(nearestFarthestDepthBuffer.z, subgroupMaxDepthUI);
+    if(subgroupHasCenter){
+      atomicMin(nearestFarthestDepthBuffer.y, subgroupCenterMinDepthUI);
+      atomicMax(nearestFarthestDepthBuffer.w, subgroupCenterMaxDepthUI);
+    }
   }
 
 #elif defined(REDUCTION)

@@ -6,6 +6,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
 
 /* clang-format off */
 
@@ -24,10 +26,21 @@ layout(set = 0, binding = 1, std430) buffer Data {
 void main(){  
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
   ivec2 texSize = ivec2(textureSize(uImageAtmosphereMap, 0).xy);
-  if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
-    uint value = floatBitsToUint(clamp(texelFetch(uImageAtmosphereMap, texel, 0).x, 0.0, 1.0)); // Convert to uint, but only positive values, so that it can be used for atomic min/max operations
-    atomicMin(data.minValue, value);
-    atomicMax(data.maxValue, value);
+  // Subgroup aggregated min/max: reduce within the subgroup and let one elected lane do the two atomics, instead of
+  // one atomicMin/atomicMax per texel on the same two addresses (which serialized all invocations under contention).
+  bool inBounds = all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize));
+  uint minInput = 0xffffffffu; // identity for min, used by out of bounds invocations so they do not affect the result
+  uint maxInput = 0u;          // identity for max
+  if(inBounds){
+    uint value = floatBitsToUint(clamp(texelFetch(uImageAtmosphereMap, texel, 0).x, 0.0, 1.0)); // only non-negative values, so the uint bit pattern orders like the float
+    minInput = value;
+    maxInput = value;
+  }
+  uint subgroupMinValue = subgroupMin(minInput);
+  uint subgroupMaxValue = subgroupMax(maxInput);
+  if(subgroupElect()){
+    atomicMin(data.minValue, subgroupMinValue);
+    atomicMax(data.maxValue, subgroupMaxValue);
   }
 }
 
