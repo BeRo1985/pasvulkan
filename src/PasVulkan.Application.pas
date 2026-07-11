@@ -12321,6 +12321,8 @@ begin
 
 end;
 
+var VulkanPresentTimingDecisionLogged:boolean=false; // one-shot diagnostic: prints the resolved present-timing chaining decision on the first present
+
 function TpvApplication.PresentVulkanBackBuffer:boolean;
 var PresentIdKHR:TVkPresentIdKHR;
     PresentId2KHR:TVkPresentId2KHR;
@@ -12414,6 +12416,11 @@ begin
    PresentIdKHR.pPresentIds:=@fVulkanPresentID;
    inc(fVulkanPresentID);
    PresentNext:=@PresentIdKHR;
+  end;
+
+  if not VulkanPresentTimingDecisionLogged then begin
+   VulkanPresentTimingDecisionLogged:=true;
+   Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','present-timing decision: DisablePresentTiming='+BoolToStr(fDisablePresentTiming,true)+', PresentTimingSupport='+BoolToStr(assigned(fVulkanDevice) and fVulkanDevice.PresentTimingSupport,true)+', FramePacingPresentTimingAvailable='+BoolToStr(fFramePacingPresentTimingAvailable,true));
   end;
 
   // Chain VK_EXT_present_timing info when available, to request

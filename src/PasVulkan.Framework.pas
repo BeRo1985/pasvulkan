@@ -12347,7 +12347,7 @@ begin
 
    fPresentWaitSupport:=fPresentWaitFeatures.presentWait<>VK_FALSE;
 
-   fPresentTimingSupport:=fPresentTimingFeatures.presentTiming<>VK_FALSE;
+   fPresentTimingSupport:=false; // VK_EXT_present_timing hard-disabled in code (validation/Nsight pNext noise); original: fPresentTimingFeatures.presentTiming<>VK_FALSE
 
    fPresentID2Support:=fPresentID2Features.presentId2<>VK_FALSE;
 
