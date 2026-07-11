@@ -491,7 +491,8 @@ type TpvScene3DPlanets=class;
               fWaterHeightMapBuffers:array[0..1] of TpvVulkanBuffer; // Double-buffered
               fWaterFlowMapBuffer:TpvVulkanBuffer;
               fWaterMetricMapBuffer:TpvVulkanBuffer; // Static octahedral metric field (5 floats per texel); only allocated when the metric aware compensation is enabled, nil otherwise
-              fWaterMiniMapBuffer:TpvVulkanBuffer;
+              fWaterMiniMapBuffer:TpvVulkanBuffer; // DEVICE_LOCAL downsample output (the downsample compute shader must not scatter writes into host memory - that made a single 257x257 dispatch cost ~8 ms even on an RTX 5080)
+              fWaterMiniMapHostBuffer:TpvVulkanBuffer; // host-visible, persistent-mapped readback copy of fWaterMiniMapBuffer for the CPU puddle detection (filled by one contiguous device->host CmdCopyBuffer)
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
               fWaterActivityMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled water activity map (dH/dt), GENERAL layout, read-write by the activity pass, sampled for the calm-surface normal blend
               fWaterMaxAbsoluteHeightDifferenceBuffer:TpvVulkanBuffer;
@@ -4669,6 +4670,8 @@ begin
 
  fWaterMiniMapBuffer:=nil;
 
+ fWaterMiniMapHostBuffer:=nil;
+
  fWaterMiniMapImage:=nil;
 
  fWaterMaxAbsoluteHeightDifferenceBuffer:=nil;
@@ -5358,25 +5361,49 @@ begin
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMetricMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMetricMapBuffer');
    end;
 
+   // DEVICE_LOCAL: the downsample compute shader writes here. A host-visible destination made this single dispatch
+   // cost multiple milliseconds (scattered per-workgroup PCIe writes into system memory); device-local keeps it on-GPU.
    fWaterMiniMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                fPlanet.fGlobalBufferSharingMode,
                                                fPlanet.fGlobalBufferQueueFamilyIndices,
                                                0,
-                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
-                                               0,
                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                0,
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                               0,
+                                               0,
+                                               [],
                                                0,
                                                pvAllocationGroupIDScene3DPlanetStatic,
                                                'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapBuffer'
                                               );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapBuffer');
+
+   // host-visible, persistent-mapped readback copy for the CPU-side puddle detection (filled by one contiguous
+   // device->host CmdCopyBuffer after the downsample, so MemoryStaging.Download stays a cheap non-blocking Move)
+   fWaterMiniMapHostBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                   fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                   fPlanet.fGlobalBufferSharingMode,
+                                                   fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                   0,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                   0,
+                                                   pvAllocationGroupIDScene3DPlanetStatic,
+                                                   'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffer'
+                                                  );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapHostBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffer');
 
    fWaterMiniMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                         fPlanet.fWaterMiniMapResolution,
@@ -6093,6 +6120,8 @@ begin
  FreeAndNil(fWaterMetricMapBuffer);
 
  FreeAndNil(fWaterMiniMapBuffer);
+
+ FreeAndNil(fWaterMiniMapHostBuffer);
 
  FreeAndNil(fWaterMiniMapImage);
 
@@ -19526,7 +19555,7 @@ begin
    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
                                                 aCommandBuffer,
                                                 aFence,
-                                                fPlanet.fData.fWaterMiniMapBuffer,
+                                                fPlanet.fData.fWaterMiniMapHostBuffer,
                                                 0,
                                                 fPlanet.fData.fWaterMiniMapData[0],
                                                 fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
@@ -19563,6 +19592,7 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
+    WaterMiniMapBufferCopy:TVkBufferCopy;
     WaterModificationItem:PWaterModificationItem;
     DoDownsample,DoInterpolate,First:Boolean;
     MaximumTimeAccumulator:TpvDouble;
@@ -20327,6 +20357,29 @@ begin
                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       1,
                                       @BufferImageCopy);
+
+  // One contiguous device->host copy of the downsampled minimap for the CPU-side puddle detection readback
+  // (PrepareSimulation reads fWaterMiniMapHostBuffer via a cheap persistent-mapped Move). fWaterMiniMapBuffer is
+  // still in TRANSFER_READ from the barrier above, so it feeds both the image copy and this buffer copy.
+  WaterMiniMapBufferCopy:=TVkBufferCopy.Create(0,0,fPlanet.fData.fWaterMiniMapBuffer.Size);
+  aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterMiniMapBuffer.Handle,
+                               fPlanet.fData.fWaterMiniMapHostBuffer.Handle,
+                               1,
+                               @WaterMiniMapBufferCopy);
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterMiniMapHostBuffer.Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterMiniMapHostBuffer.Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
