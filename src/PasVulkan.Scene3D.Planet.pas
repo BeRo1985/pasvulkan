@@ -35777,6 +35777,7 @@ var SubmitInfo:TVkSubmitInfo;
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
     GrassAgeMapSyncWaitValue:TpvUInt64;
 {$endif}
+    StartWaitTime:TpvHighResolutionTime;
 begin
 
  // Ends + submits the planet update command buffer on the update queue, building
@@ -35833,6 +35834,8 @@ begin
  end;
 {$endif}
 
+ StartWaitTime:=pvApplication.HighResolutionTimer.GetTime;
+
  if (CountWaitSemaphores>0) or (CountSignalSemaphores>0) then begin
 
   CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
@@ -35874,6 +35877,8 @@ begin
                                      true);
 
  end;
+
+ Scene3D.AddPlanetUpdateSubmitWaitTicks(pvApplication.HighResolutionTimer.GetTime-StartWaitTime);
 
 end;
 
@@ -37099,10 +37104,13 @@ begin
 end;
 
 procedure TpvScene3DPlanet.WaitOnceOnPreviousFrameForCheck;
+var StartTime:TpvHighResolutionTime;
 begin
  if TpvScene3D(fScene3D).PlanetSingleBuffers and fWaitOnceOnPreviousFrameForCheckFirst then begin
   fWaitOnceOnPreviousFrameForCheckFirst:=false;
+  StartTime:=pvApplication.HighResolutionTimer.GetTime;
   TpvScene3D(fScene3D).SharedBufferTimelineSemaphore.WaitFor(TpvScene3D(fScene3D).SharedBufferTimelineCounter);
+  TpvScene3D(fScene3D).AddSharedBufferSemaphoreWaitTicks(pvApplication.HighResolutionTimer.GetTime-StartTime);
  end;
 end;
 

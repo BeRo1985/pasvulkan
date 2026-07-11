@@ -4513,6 +4513,8 @@ type EpvScene3D=class(Exception);
        fVulkanPlanetSimulationFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fSharedBufferTimelineSemaphore:TpvVulkanTimelineSemaphore;
        fSharedBufferTimelineCounter:TpvUInt64;
+       fPlanetUpdateSubmitWaitTicks:TPasMPInt64; // Update-thread GPU-sync stalls: planet update-queue submits incl. fence waits (SubmitUpdateCommandBuffer)
+       fSharedBufferSemaphoreWaitTicks:TPasMPInt64; // Update-thread GPU-sync stalls: host waits on the shared-buffer timeline semaphore
        fDebugDumpReadyTimelineSemaphore:TpvVulkanTimelineSemaphore;
        fDebugDumpReadyCounter:TpvUInt64;
        fDebugDumpReadyInFlightFrameValues:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -5300,6 +5302,10 @@ type EpvScene3D=class(Exception);
        property PlanetWaterSimulationTimelineCounter:TpvUInt64 read fPlanetWaterSimulationTimelineCounter;
        property PlanetWaterSimulationTimelineLock:TPasMPSlimReaderWriterLock read fPlanetWaterSimulationTimelineLock;
        function AcquirePlanetWaterSimulationTimelineSequence(out aWaitValue:TpvUInt64):TpvUInt64;
+       procedure AddPlanetUpdateSubmitWaitTicks(const aTicks:TpvInt64);
+       function FetchAndResetPlanetUpdateSubmitWaitTicks:TpvInt64;
+       procedure AddSharedBufferSemaphoreWaitTicks(const aTicks:TpvInt64);
+       function FetchAndResetSharedBufferSemaphoreWaitTicks:TpvInt64;
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
        property PlanetGrassAgeMapSyncTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncTimelineSemaphore;
        property PlanetGrassAgeMapSyncReverseTimelineSemaphore:TpvVulkanTimelineSemaphore read fPlanetGrassAgeMapSyncReverseTimelineSemaphore;
@@ -35635,6 +35641,8 @@ begin
    fSharedBufferTimelineCounter:=0;
    fWaitOnceOnPreviousFrameFirst:=false;
    fSharedBufferTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
+   fPlanetUpdateSubmitWaitTicks:=0;
+   fSharedBufferSemaphoreWaitTicks:=0;
 
    fDebugDumpReadyTimelineSemaphore:=TpvVulkanTimelineSemaphore.Create(fVulkanDevice,0);
    fDebugDumpReadyCounter:=0;
@@ -40825,10 +40833,13 @@ begin
 end;
 
 procedure TpvScene3D.WaitOnceOnPreviousFrame;
+var StartTime:TpvHighResolutionTime;
 begin
  if fWaitOnceOnPreviousFrameFirst then begin
   fWaitOnceOnPreviousFrameFirst:=false;
+  StartTime:=pvApplication.HighResolutionTimer.GetTime;
   fSharedBufferTimelineSemaphore.WaitFor(fSharedBufferTimelineCounter);
+  AddSharedBufferSemaphoreWaitTicks(pvApplication.HighResolutionTimer.GetTime-StartTime);
  end;
 end;
 
@@ -41019,6 +41030,26 @@ begin
  finally
   fPlanetWaterSimulationTimelineLock.Release;
  end;
+end;
+
+procedure TpvScene3D.AddPlanetUpdateSubmitWaitTicks(const aTicks:TpvInt64);
+begin
+ TPasMPInterlocked.Add(fPlanetUpdateSubmitWaitTicks,aTicks);
+end;
+
+function TpvScene3D.FetchAndResetPlanetUpdateSubmitWaitTicks:TpvInt64;
+begin
+ result:=TPasMPInterlocked.Exchange(fPlanetUpdateSubmitWaitTicks,TpvInt64(0));
+end;
+
+procedure TpvScene3D.AddSharedBufferSemaphoreWaitTicks(const aTicks:TpvInt64);
+begin
+ TPasMPInterlocked.Add(fSharedBufferSemaphoreWaitTicks,aTicks);
+end;
+
+function TpvScene3D.FetchAndResetSharedBufferSemaphoreWaitTicks:TpvInt64;
+begin
+ result:=TPasMPInterlocked.Exchange(fSharedBufferSemaphoreWaitTicks,TpvInt64(0));
 end;
 
 {$ifdef PasVulkanPlanetGrassAgeMapSyncSemaphore}
