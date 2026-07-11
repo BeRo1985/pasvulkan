@@ -10025,7 +10025,7 @@ begin
   // extension entirely; the present-timing feature is only chained into device creation when this extension is
   // enabled, so PresentTimingSupport stays false and every present-timing code path disables itself downstream.
   fDisablePresentTiming:=length(GetEnvironmentVariable('PASVULKAN_DISABLE_PRESENT_TIMING'))>0;
-  if (not fDisablePresentTiming) and assigned(fVulkanInstance) then begin
+  if not fDisablePresentTiming and assigned(fVulkanInstance) then begin
    for Index:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     if (Pos('nomad',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
        (Pos('nsight',LowerCase(TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index])))>0) or
@@ -12420,7 +12420,7 @@ begin
   if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
      fPresentTimingFeedbackInitialized and
      assigned(fVulkanDevice) and
-     fVulkanDevice.PresentTimingSupport then begin
+     fVulkanDevice.PresentTimingSupport and not fDisablePresentTiming then begin
    ComputePresentTimingTarget(PresentTimingInfoEXT);
    FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
    PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
@@ -12431,7 +12431,7 @@ begin
   end else if (fFramePacingMode<>TpvApplicationFramePacingMode.None) and
               fFramePacingPresentTimingAvailable and
               assigned(fVulkanDevice) and
-              fVulkanDevice.PresentTimingSupport then begin
+              fVulkanDevice.PresentTimingSupport and not fDisablePresentTiming then begin
    // Simple present timing: request presentation at the nearest refresh cycle for consistent pacing
    FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
    PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
