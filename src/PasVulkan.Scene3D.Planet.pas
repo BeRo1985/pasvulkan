@@ -762,6 +762,7 @@ type TpvScene3DPlanets=class;
             TWaterRainSettings=class
              private
               fTimeStep:TpvDouble;
+              fMaximumTimeStepsPerFrame:TpvInt32;
               fAttenuation:TpvFloat;
               fStrength:TpvFloat;
               fMinTotalFlow:TpvFloat;
@@ -780,6 +781,7 @@ type TpvScene3DPlanets=class;
               procedure Assign(const aJSONItem:TPasJSONItem);
              public
               property TimeStep:TpvDouble read fTimeStep write fTimeStep;
+              property MaximumTimeStepsPerFrame:TpvInt32 read fMaximumTimeStepsPerFrame write fMaximumTimeStepsPerFrame;
               property Attenuation:TpvFloat read fAttenuation write fAttenuation;
               property Strength:TpvFloat read fStrength write fStrength;
               property MinTotalFlow:TpvFloat read fMinTotalFlow write fMinTotalFlow;
@@ -9639,6 +9641,7 @@ constructor TpvScene3DPlanet.TWaterRainSettings.Create;
 begin
  inherited Create;
  fTimeStep:=1.0/60.0;
+ fMaximumTimeStepsPerFrame:=2; // Cap the catch-up substeps per frame: after frame hitches the accumulator would otherwise burst up to six full-map simulation steps into a single frame (GPU spikes), so let the water simulation rather slow down under load than pile up
 {$if true}  
  fAttenuation:=1.0;
  fStrength:=1.0;
@@ -9681,8 +9684,10 @@ begin
   if assigned(JSONItem) then begin
    fTimeStep:=TPasJSON.GetNumber(JSONItem,fTimeStep);
   end else begin
-   fTimeStep:=1.0/Max(1,TPasJSON.GetNumber(JSONRootObject.Properties['framerate'],1.0/fTimeStep));  
+   fTimeStep:=1.0/Max(1,TPasJSON.GetNumber(JSONRootObject.Properties['framerate'],1.0/fTimeStep));
   end;
+
+  fMaximumTimeStepsPerFrame:=Max(1,TPasJSON.GetInt64(JSONRootObject.Properties['maxstepsperframe'],fMaximumTimeStepsPerFrame));
 
   JSONItem:=JSONRootObject.Properties['water'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
@@ -19560,6 +19565,7 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     BufferImageCopy:TVkBufferImageCopy;
     WaterModificationItem:PWaterModificationItem;
     DoDownsample,DoInterpolate,First:Boolean;
+    MaximumTimeAccumulator:TpvDouble;
 begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterSimulation',[0.5,0.5,0.5,1.0]);
@@ -19682,15 +19688,20 @@ begin
  end;
 
 //fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+ // The accumulator cap doubles as the per-frame substep limit: each full-map substep costs real GPU time
+ // (multiple passes over the whole water map), so after frame hitches the former 100ms cap burst up to six
+ // substeps into a single frame, spiking the GPU (and through that the frame time again). Capping at
+ // MaximumTimeStepsPerFrame*TimeStep lets the water simulation slow down under load instead of piling up.
+ MaximumTimeAccumulator:=fTimeStep*Max(1,fPlanet.fWaterRainSettings.fMaximumTimeStepsPerFrame);
  if not fPlanet.fWaterSimulationEnabled then begin
   // Manual master switch is off: keep the accumulator at zero so the pipe model step loop below is skipped
   // entirely. The water surface freezes in place but still renders, dropping the per-frame simulation cost to
   // near zero.
   fTimeAccumulator:=0.0;
  end else if fPlanet.fData.fWaterActive and (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames<fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) then begin
-  fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,0.1); // Limit to 100ms for avoid too long frame times
+  fTimeAccumulator:=Min(fTimeAccumulator+aDeltaTime,MaximumTimeAccumulator);
  end else if fPlanet.fData.fWaterFirst then begin
-  fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),0.1); // Limit to 100ms for avoid too long frame times
+  fTimeAccumulator:=Min(Max(fTimeStep,fTimeAccumulator+aDeltaTime),MaximumTimeAccumulator);
  end else begin
   fTimeAccumulator:=0.0;
  end;//}

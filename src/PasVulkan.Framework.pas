@@ -1002,6 +1002,19 @@ type EpvVulkanException=class(Exception);
       private
        fDevice:TpvVulkanDevice;
        fEnabled:boolean;
+       // VK_EXT_debug_utils is an instance extension whose object-name and label commands operate on device-level
+       // dispatchable objects. The Vulkan loader only guarantees these via vkGetInstanceProcAddr; vkGetDeviceProcAddr
+       // returns them only when a layer (validation, RenderDoc, Nsight, ...) provides the device dispatch, so without
+       // validation layers the device command table entries can be nil. These fields therefore hold the effective
+       // pointers resolved in Initialize, preferring the device-level command and falling back to the instance-level
+       // one, so GPU labels/object names work for capture tools with --debug-labels alone (no validation layers).
+       fSetObjectNameEXT:TvkSetDebugUtilsObjectNameEXT;
+       fCmdBeginLabelEXT:TvkCmdBeginDebugUtilsLabelEXT;
+       fCmdEndLabelEXT:TvkCmdEndDebugUtilsLabelEXT;
+       fCmdInsertLabelEXT:TvkCmdInsertDebugUtilsLabelEXT;
+       fQueueBeginLabelEXT:TvkQueueBeginDebugUtilsLabelEXT;
+       fQueueEndLabelEXT:TvkQueueEndDebugUtilsLabelEXT;
+       fQueueInsertLabelEXT:TvkQueueInsertDebugUtilsLabelEXT;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -10451,7 +10464,17 @@ constructor TpvVulkanDeviceDebugUtils.Create(const aDevice:TpvVulkanDevice);
 begin
  inherited Create;
  fDevice:=aDevice;
+ // Only the instance-extension flag can be resolved here: this constructor runs during device construction,
+ // before the device command table (fDevice.Commands) exists. The effective command pointers are resolved later
+ // in Initialize (called after the device commands are loaded).
  fEnabled:=fDevice.fInstance.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0;
+ fSetObjectNameEXT:=nil;
+ fCmdBeginLabelEXT:=nil;
+ fCmdEndLabelEXT:=nil;
+ fCmdInsertLabelEXT:=nil;
+ fQueueBeginLabelEXT:=nil;
+ fQueueEndLabelEXT:=nil;
+ fQueueInsertLabelEXT:=nil;
 end;
 
 destructor TpvVulkanDeviceDebugUtils.Destroy;
@@ -10462,6 +10485,37 @@ end;
 procedure TpvVulkanDeviceDebugUtils.Initialize;
 begin
  fEnabled:=fDevice.fInstance.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0;
+ if fEnabled and assigned(fDevice.Commands) then begin
+  // Prefer the device-level command, fall back to the instance-level one (see the field comments above).
+  fSetObjectNameEXT:=fDevice.Commands.Commands.SetDebugUtilsObjectNameEXT;
+  if not assigned(fSetObjectNameEXT) then begin
+   fSetObjectNameEXT:=fDevice.fInstance.Commands.Commands.SetDebugUtilsObjectNameEXT;
+  end;
+  fCmdBeginLabelEXT:=fDevice.Commands.Commands.CmdBeginDebugUtilsLabelEXT;
+  if not assigned(fCmdBeginLabelEXT) then begin
+   fCmdBeginLabelEXT:=fDevice.fInstance.Commands.Commands.CmdBeginDebugUtilsLabelEXT;
+  end;
+  fCmdEndLabelEXT:=fDevice.Commands.Commands.CmdEndDebugUtilsLabelEXT;
+  if not assigned(fCmdEndLabelEXT) then begin
+   fCmdEndLabelEXT:=fDevice.fInstance.Commands.Commands.CmdEndDebugUtilsLabelEXT;
+  end;
+  fCmdInsertLabelEXT:=fDevice.Commands.Commands.CmdInsertDebugUtilsLabelEXT;
+  if not assigned(fCmdInsertLabelEXT) then begin
+   fCmdInsertLabelEXT:=fDevice.fInstance.Commands.Commands.CmdInsertDebugUtilsLabelEXT;
+  end;
+  fQueueBeginLabelEXT:=fDevice.Commands.Commands.QueueBeginDebugUtilsLabelEXT;
+  if not assigned(fQueueBeginLabelEXT) then begin
+   fQueueBeginLabelEXT:=fDevice.fInstance.Commands.Commands.QueueBeginDebugUtilsLabelEXT;
+  end;
+  fQueueEndLabelEXT:=fDevice.Commands.Commands.QueueEndDebugUtilsLabelEXT;
+  if not assigned(fQueueEndLabelEXT) then begin
+   fQueueEndLabelEXT:=fDevice.fInstance.Commands.Commands.QueueEndDebugUtilsLabelEXT;
+  end;
+  fQueueInsertLabelEXT:=fDevice.Commands.Commands.QueueInsertDebugUtilsLabelEXT;
+  if not assigned(fQueueInsertLabelEXT) then begin
+   fQueueInsertLabelEXT:=fDevice.fInstance.Commands.Commands.QueueInsertDebugUtilsLabelEXT;
+  end;
+ end;
 end;
 
 procedure TpvVulkanDeviceDebugUtils.SetObjectName(const aObject:TVkUInt64;
@@ -10469,13 +10523,13 @@ procedure TpvVulkanDeviceDebugUtils.SetObjectName(const aObject:TVkUInt64;
                                                   const aName:TpvRawByteString);
 var DebugUtilsObjectNameInfoEXT:TVkDebugUtilsObjectNameInfoEXT;
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.SetDebugUtilsObjectNameEXT) then begin
+ if fEnabled and assigned(fSetObjectNameEXT) then begin
   FillChar(DebugUtilsObjectNameInfoEXT,SizeOf(TVkDebugUtilsObjectNameInfoEXT),#0);
   DebugUtilsObjectNameInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
   DebugUtilsObjectNameInfoEXT.objectType:=aObjectType;
   DebugUtilsObjectNameInfoEXT.objectHandle:=aObject;
   DebugUtilsObjectNameInfoEXT.pObjectName:=PAnsiChar(aName);
-  VulkanCheckResult(fDevice.Commands.SetDebugUtilsObjectNameEXT(fDevice.Handle,@DebugUtilsObjectNameInfoEXT));
+  VulkanCheckResult(fSetObjectNameEXT(fDevice.Handle,@DebugUtilsObjectNameInfoEXT));
  end;
 end;
 
@@ -10503,7 +10557,7 @@ procedure TpvVulkanDeviceDebugUtils.CmdBufLabelBegin(const aCommandBuffer:TpvVul
                                                      const aColor:array of TVkFloat);
 var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.CmdBeginDebugUtilsLabelEXT) then begin
+ if fEnabled and assigned(fCmdBeginLabelEXT) then begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
@@ -10527,7 +10581,7 @@ begin
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
   end;
-  fDevice.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
+  fCmdBeginLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
  end;
 end;
 
@@ -10536,7 +10590,7 @@ procedure TpvVulkanDeviceDebugUtils.CmdBufLabelInsert(const aCommandBuffer:TpvVu
                                                       const aColor:array of TVkFloat);
 var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.CmdInsertDebugUtilsLabelEXT) then begin
+ if fEnabled and assigned(fCmdInsertLabelEXT) then begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
@@ -10560,14 +10614,14 @@ begin
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
   end;
-  fDevice.Commands.CmdInsertDebugUtilsLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
+  fCmdInsertLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
  end;
 end;
 
 procedure TpvVulkanDeviceDebugUtils.CmdBufLabelEnd(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
-  fDevice.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
+ if fEnabled and assigned(fCmdEndLabelEXT) then begin
+  fCmdEndLabelEXT(aCommandBuffer.Handle);
  end;
 end;
 
@@ -10576,7 +10630,7 @@ procedure TpvVulkanDeviceDebugUtils.QueueLabelBegin(const aQueue:TpvVulkanQueue;
                                                     const aColor:array of TVkFloat);
 var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.QueueBeginDebugUtilsLabelEXT) then begin
+ if fEnabled and assigned(fQueueBeginLabelEXT) then begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
@@ -10600,7 +10654,7 @@ begin
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
   end;
-  fDevice.Commands.QueueBeginDebugUtilsLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
+  fQueueBeginLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
  end;
 end;
 
@@ -10609,7 +10663,7 @@ procedure TpvVulkanDeviceDebugUtils.QueueLabelInsert(const aQueue:TpvVulkanQueue
                                                      const aColor:array of TVkFloat);
 var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.QueueInsertDebugUtilsLabelEXT) then begin
+ if fEnabled and assigned(fQueueInsertLabelEXT) then begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
@@ -10633,14 +10687,14 @@ begin
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
   end;
-  fDevice.Commands.QueueInsertDebugUtilsLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
+  fQueueInsertLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
  end;
 end;
 
 procedure TpvVulkanDeviceDebugUtils.QueueLabelEnd(const aQueue:TpvVulkanQueue);
 begin
- if fEnabled and assigned(fDevice.Commands.Commands.QueueEndDebugUtilsLabelEXT) then begin
-  fDevice.Commands.QueueEndDebugUtilsLabelEXT(aQueue.Handle);
+ if fEnabled and assigned(fQueueEndLabelEXT) then begin
+  fQueueEndLabelEXT(aQueue.Handle);
  end;
 end;
 
@@ -12385,6 +12439,10 @@ begin
   finally
    FreeMem(DeviceCommands);
   end;
+
+  // Resolve the debug utils command pointers now that the device command table exists, so the queue object
+  // naming below (and everything after) already uses them (with instance-level fallback). Re-run harmlessly later.
+  fDebugUtils.Initialize;
 
   if (fTransferQueueFamilyIndex<0) and ((fGraphicsQueueFamilyIndex>=0) or (fComputeQueueFamilyIndex>=0)) then begin
    // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
