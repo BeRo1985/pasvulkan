@@ -5370,7 +5370,7 @@ begin
                                                             fPlanet.fWaterMiniMapResolution,
                                                             fPlanet.fWaterMiniMapResolution,
                                                             VK_FORMAT_R32_SFLOAT,
-                                                            false,
+                                                            true, // aStorage: bound as a VK_DESCRIPTOR_TYPE_STORAGE_IMAGE (read-write by the water activity pass), so it needs VK_IMAGE_USAGE_STORAGE_BIT
                                                             VK_SAMPLE_COUNT_1_BIT,
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             WaterHeightMapImageSharingMode,
