@@ -3276,6 +3276,14 @@ type TpvScene3DPlanets=class;
        fVulkanUpdateFence:TpvVulkanFence;
        fVulkanUpdateCommandPool:TpvVulkanCommandPool;
        fVulkanUpdateCommandBuffer:TpvVulkanCommandBuffer;
+       // Double-buffered command buffers for the asynchronous per-frame TransferData submit, so that the update
+       // thread doesn't have to host-wait on the GPU (which would serialize it against the water simulation
+       // timeline and the grass age map sync timeline); the fence of a slot is only waited on when the slot is
+       // reused one TransferData call later, when the GPU has long finished it
+       fVulkanTransferDataCommandBuffers:array[0..1] of TpvVulkanCommandBuffer;
+       fVulkanTransferDataFences:array[0..1] of TpvVulkanFence;
+       fVulkanTransferDataFencePendings:array[0..1] of Boolean;
+       fVulkanTransferDataIndex:TpvSizeInt;
        fVulkanUniversalQueue:TpvVulkanQueue;
        fVulkanUniversalFence:TpvVulkanFence;
        fVulkanUniversalCommandPool:TpvVulkanCommandPool;
@@ -3634,6 +3642,7 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetRainStreakMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetRainStreakMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;       
        procedure BeginUpdate;
+       procedure SubmitOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence;const aWaitOnHost:Boolean);
        procedure SubmitUpdateCommandBuffer;
        procedure EndUpdate;
        procedure FlushUpdate;
@@ -33909,6 +33918,14 @@ begin
   fVulkanUpdateFence:=TpvVulkanFence.Create(fVulkanDevice);
   fVulkanDevice.DebugUtils.SetObjectName(fVulkanUpdateFence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.fVulkanUpdateFence');
 
+  for Index:=0 to 1 do begin
+   fVulkanTransferDataCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanUpdateCommandPool);
+   fVulkanTransferDataFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
+   fVulkanDevice.DebugUtils.SetObjectName(fVulkanTransferDataFences[Index].Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.fVulkanTransferDataFences['+IntToStr(Index)+']');
+   fVulkanTransferDataFencePendings[Index]:=false;
+  end;
+  fVulkanTransferDataIndex:=0;
+
   fVulkanUniversalQueue:=fVulkanDevice.UniversalQueue;
 
   fVulkanUniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
@@ -34580,6 +34597,17 @@ begin
  FreeAndNil(fVulkanUpdateFence);
 
  FreeAndNil(fVulkanUpdateCommandBuffer);
+
+ if fVulkanTransferDataFencePendings[0] and assigned(fVulkanTransferDataFences[0]) then begin
+  fVulkanTransferDataFences[0].WaitFor;
+ end;
+ if fVulkanTransferDataFencePendings[1] and assigned(fVulkanTransferDataFences[1]) then begin
+  fVulkanTransferDataFences[1].WaitFor;
+ end;
+ FreeAndNil(fVulkanTransferDataFences[0]);
+ FreeAndNil(fVulkanTransferDataFences[1]);
+ FreeAndNil(fVulkanTransferDataCommandBuffers[0]);
+ FreeAndNil(fVulkanTransferDataCommandBuffers[1]);
 
  FreeAndNil(fVulkanUpdateCommandPool);
 
@@ -35761,7 +35789,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.SubmitUpdateCommandBuffer;
+procedure TpvScene3DPlanet.SubmitOnUpdateQueue(const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence;const aWaitOnHost:Boolean);
 var SubmitInfo:TVkSubmitInfo;
     TimelineSubmitInfo:TVkTimelineSemaphoreSubmitInfo;
     WaitSemaphoreHandles:array[0..1] of TVkSemaphore;
@@ -35780,15 +35808,14 @@ var SubmitInfo:TVkSubmitInfo;
     StartWaitTime:TpvHighResolutionTime;
 begin
 
- // Ends + submits the planet update command buffer on the update queue, building
+ // Submits an already-ended command buffer on the update queue, building
  // the wait/signal semaphore set out of:
  //  - the water-simulation timeline (update <-> parallel water queue ping-pong), and
  //  - (approach B) the grass-age-map cross-queue sync timeline, so the update
  //    queue's TransferTo cannot race the universal-queue grass-age-map passes.
  // When neither applies, falls back to the plain Execute (fence-only) path.
- // Shared by EndUpdate and FlushUpdate.
-
- fVulkanUpdateCommandBuffer.EndRecording;
+ // With aWaitOnHost=false the fence is left pending for a deferred wait by the caller,
+ // so the update thread doesn't stall behind the GPU-side timeline waits.
 
  Scene3D:=TpvScene3D(fScene3D);
 
@@ -35838,7 +35865,7 @@ begin
 
  if (CountWaitSemaphores>0) or (CountSignalSemaphores>0) then begin
 
-  CmdBufHandle:=fVulkanUpdateCommandBuffer.Handle;
+  CmdBufHandle:=aCommandBuffer.Handle;
 
   FillChar(TimelineSubmitInfo,SizeOf(TVkTimelineSemaphoreSubmitInfo),#0);
   TimelineSubmitInfo.sType:=VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
@@ -35863,22 +35890,36 @@ begin
    SubmitInfo.pSignalSemaphores:=@SignalSemaphoreHandles[0];
   end;
 
-  fVulkanUpdateQueue.Submit(1,@SubmitInfo,fVulkanUpdateFence);
-  fVulkanUpdateFence.WaitFor;
-  fVulkanUpdateFence.Reset;
+  fVulkanUpdateQueue.Submit(1,@SubmitInfo,aFence);
+  if aWaitOnHost then begin
+   aFence.WaitFor;
+   aFence.Reset;
+  end;
 
  end else begin
 
-  fVulkanUpdateCommandBuffer.Execute(fVulkanUpdateQueue,
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                     nil,
-                                     nil,
-                                     fVulkanUpdateFence,
-                                     true);
+  aCommandBuffer.Execute(fVulkanUpdateQueue,
+                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                         nil,
+                         nil,
+                         aFence,
+                         aWaitOnHost);
 
  end;
 
  Scene3D.AddPlanetUpdateSubmitWaitTicks(pvApplication.HighResolutionTimer.GetTime-StartWaitTime);
+
+end;
+
+procedure TpvScene3DPlanet.SubmitUpdateCommandBuffer;
+begin
+
+ // Ends + submits the shared planet update command buffer synchronously (host waits until the GPU
+ // is done, so the command buffer can be immediately reused). Shared by EndUpdate and FlushUpdate.
+
+ fVulkanUpdateCommandBuffer.EndRecording;
+
+ SubmitOnUpdateQueue(fVulkanUpdateCommandBuffer,fVulkanUpdateFence,true);
 
 end;
 
@@ -37007,6 +37048,8 @@ end;
 
 procedure TpvScene3DPlanet.TransferData(const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -37045,55 +37088,69 @@ begin
 
    // Cross-queue sync (approach B): the update-queue submit that contains
    // TransferTo waits on the grass-age-map sync timeline (GPU-level, in
-   // SubmitUpdateCommandBuffer / EndUpdate) so its layout transition of the
-   // master grass age map cannot race with the universal-queue grass-age-map
-   // passes. See PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+   // SubmitOnUpdateQueue) so its layout transition of the master grass age
+   // map cannot race with the universal-queue grass-age-map passes. See
+   // PasVulkan.Scene3D.Planet.GrassAgeMapSync.inc.
+
+   // The submit is asynchronous via a double-buffered command buffer ring: the GPU-side timeline waits
+   // (water simulation ping-pong + grass age map sync) would otherwise stall the update thread for
+   // milliseconds every frame while the GPU catches up (the grass age map simulations bump their
+   // generation every frame, so this path runs every frame). The slot fence is only waited on when the
+   // slot is reused one TransferData call later, when the GPU has long finished the old submit.
 
    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-    BeginUpdate;
+
+    fVulkanTransferDataIndex:=(fVulkanTransferDataIndex+1) and 1;
+    CommandBuffer:=fVulkanTransferDataCommandBuffers[fVulkanTransferDataIndex];
+    Fence:=fVulkanTransferDataFences[fVulkanTransferDataIndex];
+
+    if fVulkanTransferDataFencePendings[fVulkanTransferDataIndex] then begin
+     fVulkanTransferDataFencePendings[fVulkanTransferDataIndex]:=false;
+     Fence.WaitFor;
+     Fence.Reset;
+    end;
+
+    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    CommandBuffer.BeginRecording;
+
+    InFlightFrameData.AcquireOnUpdateQueue(CommandBuffer);
+
+    fData.TransferTo(CommandBuffer,
+                     InFlightFrameData,
+                     InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
+                     InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
+                     InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration,
+                     InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration,
+                     InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration,
+                     InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration
+                    );
+
+    InFlightFrameData.ReleaseOnUpdateQueue(CommandBuffer);
+
+    CommandBuffer.EndRecording;
+
+    // The timeline sequence acquisition and the queue submit inside SubmitOnUpdateQueue must stay atomic
+    // against other update-queue submits (otherwise interleaved acquires could enqueue submissions whose
+    // timeline waits are signaled by later submissions on the same queue, which would deadlock the queue),
+    // so take the same lock under which EndUpdate submits
+    TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
+    try
+     SubmitOnUpdateQueue(CommandBuffer,Fence,false);
+    finally
+     TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCommandBufferLock);
+    end;
+
+    fVulkanTransferDataFencePendings[fVulkanTransferDataIndex]:=true;
+
    end;
-   try
 
-{   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
-     fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
-     fVisualMeshVertexGeneration.Execute(fVulkanUpdateCommandBuffer);
-     fVisualMeshDistanceGeneration.Execute(fVulkanUpdateCommandBuffer);
-     fData.fVisualMeshVertexBufferNextRenderIndex:=fData.fVisualMeshVertexBufferUpdateIndex and 1;
-     fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
-    end;}
-
-    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-     InFlightFrameData.AcquireOnUpdateQueue(fVulkanUpdateCommandBuffer);
-    end;
-
-    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-     fData.TransferTo(fVulkanUpdateCommandBuffer,
-                      InFlightFrameData,
-                      InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration,
-                      InFlightFrameData.fBlendMapGeneration<>fData.fBlendMapGeneration,
-                      InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration,
-                      InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration,
-                      InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration,
-                      InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration
-                     );
-    end;
-    InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
-    InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
-    InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
-    InFlightFrameData.fGrassAgeMapGeneration:=fData.fGrassAgeMapGeneration;
-    InFlightFrameData.fGrassFlagsMapGeneration:=fData.fGrassFlagsMapGeneration;
-    InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
-    InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
-
-    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-     InFlightFrameData.ReleaseOnUpdateQueue(fVulkanUpdateCommandBuffer);
-    end;
-
-   finally
-    if not TpvScene3D(fScene3D).PlanetSingleBuffers then begin
-     EndUpdate;
-    end;
-   end;
+   InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+   InFlightFrameData.fBlendMapGeneration:=fData.fBlendMapGeneration;
+   InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
+   InFlightFrameData.fGrassAgeMapGeneration:=fData.fGrassAgeMapGeneration;
+   InFlightFrameData.fGrassFlagsMapGeneration:=fData.fGrassFlagsMapGeneration;
+   InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
+   InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
 
    fInFlightFrameReady[aInFlightFrameIndex]:=true;
 
