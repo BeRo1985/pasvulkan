@@ -4830,6 +4830,7 @@ type EpvScene3D=class(Exception);
        fInstanceUpdateMaxName:TpvUTF8String;
        fInstanceUpdateMaxRenderInstances:TpvSizeInt;
        fCountUpdatedInstances:TPasMPInt32;
+       fCountNonSkippedInstances:TPasMPInt32; // Instances which took the full (non-dirty-skipped) update path
        fCountDirectedAcyclicGraphLeafInstances:TpvSizeInt;
        fCountGroupInstancesTotal:TpvSizeInt;
        fMeshGenerationCounter:TpvUInt32;
@@ -5375,6 +5376,7 @@ type EpvScene3D=class(Exception);
        property InstanceUpdateMaxName:TpvUTF8String read fInstanceUpdateMaxName;
        property InstanceUpdateMaxRenderInstances:TpvSizeInt read fInstanceUpdateMaxRenderInstances;
        property CountUpdatedInstances:TPasMPInt32 read fCountUpdatedInstances;
+       property CountNonSkippedInstances:TPasMPInt32 read fCountNonSkippedInstances;
        property CountDirectedAcyclicGraphLeafInstances:TpvSizeInt read fCountDirectedAcyclicGraphLeafInstances;
        property CountGroupInstancesTotal:TpvSizeInt read fCountGroupInstancesTotal;
        property ProceduralTextureImageHookStringHashMap:TProceduralTextureImageHookStringHashMap read fProceduralTextureImageHookStringHashMap;
@@ -32594,6 +32596,10 @@ begin
 
   end else begin
 
+{$ifdef UpdateProfilingTimes}
+   TPasMPInterlocked.Increment(fSceneInstance.fCountNonSkippedInstances);
+{$endif}
+
    if InstanceUpdateDirtySkipped then begin
     if fInstanceUpdateDirtyCounter>0 then begin
      dec(fInstanceUpdateDirtyCounter);
@@ -32899,6 +32905,10 @@ begin
    end;
 
   end else begin
+
+{$ifdef UpdateProfilingTimes}
+   TPasMPInterlocked.Increment(fSceneInstance.fCountNonSkippedInstances);
+{$endif}
 
    // Store current animation state for next frame's dirty check
    if ActiveAnimationProcessing then begin
@@ -34670,6 +34680,7 @@ begin
   fInstanceUpdateMaxTime:=0.0;
   fInstanceUpdateMaxName:='';
   fCountUpdatedInstances:=0;
+  fCountNonSkippedInstances:=0;
   fCountDirectedAcyclicGraphLeafInstances:=0;
   fCountGroupInstancesTotal:=0;
 
@@ -40248,6 +40259,7 @@ begin
    fInstanceUpdateMaxTicks:=0;
    fInstanceUpdateMaxInstance:=nil;
    fCountUpdatedInstances:=0;
+   fCountNonSkippedInstances:=0;
 
    PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    fGroupInstances.Sort;
