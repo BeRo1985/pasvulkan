@@ -503,10 +503,10 @@ begin
 
  fGlobalIlluminationVoxelCountBounces:=2;
 
- fFastSky:=true;
- fFastAerialPerspective:=true;
- fAtmosphereBlueNoise:=false;
- fAtmosphereShadows:=false;
+ fFastSky:=false;
+ fFastAerialPerspective:=false;
+ fAtmosphereBlueNoise:=true;
+ fAtmosphereShadows:=true;
 
 end;
 
