@@ -465,6 +465,13 @@ type TpvScene3DAtmosphere=class;
               DistantExtinctionBoostPathFadeExpScale:TpvFloat; // Exponent applied to the normalised atmosphere-path-length fade (outside regime); default 2.0
               DistantExtinctionBoostOutsideFactorExpScale:TpvFloat; // Exponent applied to the inside/outside blending factor; default 2.0
               DistantExtinctionBoostAltitudeFadeExpScale:TpvFloat; // Exponent applied to the altitude-density fade (inside regime); default 1.0
+              SkyShadowSoftenStrength:TpvFloat; // Master strength for fading the volumetric shadow of far/high sky samples toward unshadowed; 0.0 = feature disabled (default)
+              SkyShadowSoftenStartHeight:TpvFloat; // Sample altitude (above BottomRadius) where the height-based softening starts ramping up
+              SkyShadowSoftenInvHeightRange:TpvFloat; // Reciprocal of the altitude range over which the height-based softening ramps from 0 to 1
+              SkyShadowSoftenStartDistance:TpvFloat; // Along-ray sample distance where the distance-based softening starts ramping up
+              SkyShadowSoftenInvDistanceRange:TpvFloat; // Reciprocal of the along-ray distance range over which the distance-based softening ramps from 0 to 1
+              SkyShadowSoftenStartSunLightDot:TpvFloat; // cosTheta = dot(SunDir, WorldDir) at/above which the god-ray cone around the sun stays fully sharp
+              SkyShadowSoftenInvSunLightDotRange:TpvFloat; // Reciprocal of the cosTheta range over which the sun-angle gate ramps from 0 (toward the sun) to 1 (away)
               Intensity:TpvFloat;
               MiePhaseFunctionG:TpvFloat;
               SunAngularRadius:TpvFloat;
@@ -672,7 +679,15 @@ type TpvScene3DAtmosphere=class;
               DistantExtinctionBoostPathFadeExpScale:TpvFloat;
               DistantExtinctionBoostOutsideFactorExpScale:TpvFloat;
               DistantExtinctionBoostAltitudeFadeExpScale:TpvFloat;
-              _DistantExtinctionBoostReserved:TpvFloat; // padding to keep AtmosphereCullingParameters (uvec4 → align 16) at a 16-byte-aligned offset
+              SkyShadowSoftenStrength:TpvFloat;
+              SkyShadowSoftenStartHeight:TpvFloat;
+              SkyShadowSoftenInvHeightRange:TpvFloat;
+              SkyShadowSoftenStartDistance:TpvFloat;
+              SkyShadowSoftenInvDistanceRange:TpvFloat;
+              SkyShadowSoftenStartSunLightDot:TpvFloat;
+              SkyShadowSoftenInvSunLightDotRange:TpvFloat;
+              _SkyShadowSoftenReserved0:TpvFloat;
+              _SkyShadowSoftenReserved1:TpvFloat; // padding to keep AtmosphereCullingParameters (uvec4 → align 16) at a 16-byte-aligned offset
 
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
@@ -1498,7 +1513,16 @@ begin
  DistantExtinctionBoostOutsideFactorExpScale:=2.0;
  DistantExtinctionBoostAltitudeFadeExpScale:=1.0;
 
- // Intensity 
+ // Sky shadow softening (disabled by default; opt-in per atmosphere to soften far/high sky shadow bands and the planet-limb terminator)
+ SkyShadowSoftenStrength:=0.0;
+ SkyShadowSoftenStartHeight:=0.0;
+ SkyShadowSoftenInvHeightRange:=1.0;
+ SkyShadowSoftenStartDistance:=0.0;
+ SkyShadowSoftenInvDistanceRange:=1.0;
+ SkyShadowSoftenStartSunLightDot:=1.0;
+ SkyShadowSoftenInvSunLightDotRange:=1.0;
+
+ // Intensity
  Intensity:=1.0;
 
  // Rayleigh scattering
@@ -1592,6 +1616,14 @@ begin
   DistantExtinctionBoostPathFadeExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostpathfadeexpscale'],DistantExtinctionBoostPathFadeExpScale);
   DistantExtinctionBoostOutsideFactorExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostoutsidefactorexpscale'],DistantExtinctionBoostOutsideFactorExpScale);
   DistantExtinctionBoostAltitudeFadeExpScale:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionboostaltitudefadeexpscale'],DistantExtinctionBoostAltitudeFadeExpScale);
+
+  SkyShadowSoftenStrength:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsoftenstrength'],SkyShadowSoftenStrength);
+  SkyShadowSoftenStartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsoftenstartheight'],SkyShadowSoftenStartHeight);
+  SkyShadowSoftenInvHeightRange:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsofteninvheightrange'],SkyShadowSoftenInvHeightRange);
+  SkyShadowSoftenStartDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsoftenstartdistance'],SkyShadowSoftenStartDistance);
+  SkyShadowSoftenInvDistanceRange:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsofteninvdistancerange'],SkyShadowSoftenInvDistanceRange);
+  SkyShadowSoftenStartSunLightDot:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsoftenstartsunlightdot'],SkyShadowSoftenStartSunLightDot);
+  SkyShadowSoftenInvSunLightDotRange:=TPasJSON.GetNumber(JSONRootObject.Properties['skyshadowsofteninvsunlightdotrange'],SkyShadowSoftenInvSunLightDotRange);
   
   Intensity:=TPasJSON.GetNumber(JSONRootObject.Properties['intensity'],Intensity);
 
@@ -1684,6 +1716,13 @@ begin
  result.Add('distantextinctionboostpathfadeexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostPathFadeExpScale));
  result.Add('distantextinctionboostoutsidefactorexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostOutsideFactorExpScale));
  result.Add('distantextinctionboostaltitudefadeexpscale',TPasJSONItemNumber.Create(DistantExtinctionBoostAltitudeFadeExpScale));
+ result.Add('skyshadowsoftenstrength',TPasJSONItemNumber.Create(SkyShadowSoftenStrength));
+ result.Add('skyshadowsoftenstartheight',TPasJSONItemNumber.Create(SkyShadowSoftenStartHeight));
+ result.Add('skyshadowsofteninvheightrange',TPasJSONItemNumber.Create(SkyShadowSoftenInvHeightRange));
+ result.Add('skyshadowsoftenstartdistance',TPasJSONItemNumber.Create(SkyShadowSoftenStartDistance));
+ result.Add('skyshadowsofteninvdistancerange',TPasJSONItemNumber.Create(SkyShadowSoftenInvDistanceRange));
+ result.Add('skyshadowsoftenstartsunlightdot',TPasJSONItemNumber.Create(SkyShadowSoftenStartSunLightDot));
+ result.Add('skyshadowsofteninvsunlightdotrange',TPasJSONItemNumber.Create(SkyShadowSoftenInvSunLightDotRange));
  result.Add('intensity',TPasJSONItemNumber.Create(Intensity));
  result.Add('rayleighdensity0',SaveDensityLayer(RayleighDensity.Layers[0]));
  result.Add('rayleighdensity1',SaveDensityLayer(RayleighDensity.Layers[1]));
@@ -2006,7 +2045,16 @@ begin
  DistantExtinctionBoostPathFadeExpScale:=aAtmosphereParameters.DistantExtinctionBoostPathFadeExpScale;
  DistantExtinctionBoostOutsideFactorExpScale:=aAtmosphereParameters.DistantExtinctionBoostOutsideFactorExpScale;
  DistantExtinctionBoostAltitudeFadeExpScale:=aAtmosphereParameters.DistantExtinctionBoostAltitudeFadeExpScale;
- _DistantExtinctionBoostReserved:=0.0;
+
+ SkyShadowSoftenStrength:=aAtmosphereParameters.SkyShadowSoftenStrength;
+ SkyShadowSoftenStartHeight:=aAtmosphereParameters.SkyShadowSoftenStartHeight;
+ SkyShadowSoftenInvHeightRange:=aAtmosphereParameters.SkyShadowSoftenInvHeightRange;
+ SkyShadowSoftenStartDistance:=aAtmosphereParameters.SkyShadowSoftenStartDistance;
+ SkyShadowSoftenInvDistanceRange:=aAtmosphereParameters.SkyShadowSoftenInvDistanceRange;
+ SkyShadowSoftenStartSunLightDot:=aAtmosphereParameters.SkyShadowSoftenStartSunLightDot;
+ SkyShadowSoftenInvSunLightDotRange:=aAtmosphereParameters.SkyShadowSoftenInvSunLightDotRange;
+ _SkyShadowSoftenReserved0:=0.0;
+ _SkyShadowSoftenReserved1:=0.0;
 
  Flags:=0;
 

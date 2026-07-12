@@ -219,7 +219,15 @@ struct AtmosphereParameters {
   float distantExtinctionBoostPathFadeExpScale; // Exponent applied to the normalised atmosphere-path-length fade in the outside-atmosphere regime (default 2.0: square = grazing limb paths suppressed faster)
   float distantExtinctionBoostOutsideFactorExpScale; // Exponent applied to the inside/outside blending factor (0 = inside regime, 1 = outside regime); default 2.0
   float distantExtinctionBoostAltitudeFadeExpScale; // Exponent applied to the altitude-density fade in the inside-atmosphere regime; default 1.0 (linear, kept as-is)
-  float _distantExtinctionBoostReserved; // reserved for future use / padding so that the following CullingParameters struct (which starts with uvec4, alignment 16) stays 16-byte aligned
+  float skyShadowSoftenStrength; // Master strength for fading the volumetric shadow of far/high sky samples toward unshadowed; 0.0 = feature disabled (default, exact no-op)
+  float skyShadowSoftenStartHeight; // Sample altitude (above BottomRadius) at which the height-based softening starts ramping up
+  float skyShadowSoftenInvHeightRange; // Reciprocal of the altitude range over which the height-based softening ramps from 0 to 1
+  float skyShadowSoftenStartDistance; // Along-ray sample distance at which the distance-based softening starts ramping up
+  float skyShadowSoftenInvDistanceRange; // Reciprocal of the along-ray distance range over which the distance-based softening ramps from 0 to 1
+  float skyShadowSoftenStartSunLightDot; // cosTheta = dot(SunDir, WorldDir) at/above which the god-ray cone around the sun stays fully sharp (softening gated to 0 there)
+  float skyShadowSoftenInvSunLightDotRange; // Reciprocal of the cosTheta range over which the sun-angle gate ramps from 0 (toward the sun) to 1 (away from the sun)
+  float _skyShadowSoftenReserved0; // reserved for future use / padding
+  float _skyShadowSoftenReserved1; // reserved for future use / padding so that the following CullingParameters struct (which starts with uvec4, alignment 16) stays 16-byte aligned
 
   AtmosphereCullingParameters CullingParameters;
 
@@ -987,6 +995,21 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
       }
     }
 #endif
+
+    // Fade the volumetric shadow of far / high-altitude sky samples toward unshadowed, so that under-sampled
+    // crepuscular bands and the hard planet-limb terminator dissolve into the open sky, while near, low-altitude
+    // samples (the real god-rays cast by nearby occluders) stay sharp. The sun-angle gate keeps the bright
+    // forward-scattering cone around the sun fully sharp. All knobs are buffer-driven so the strength is live
+    // tunable; at strength 0.0 this whole block is an exact no-op.
+    if(Atmosphere.skyShadowSoftenStrength > 0.0){
+      float sampleAltitude = pHeight - Atmosphere.BottomRadius;
+      float softenByHeight = clamp((sampleAltitude - Atmosphere.skyShadowSoftenStartHeight) * Atmosphere.skyShadowSoftenInvHeightRange, 0.0, 1.0);
+      float softenByDistance = clamp((t - Atmosphere.skyShadowSoftenStartDistance) * Atmosphere.skyShadowSoftenInvDistanceRange, 0.0, 1.0);
+      float softenBySunAngle = clamp((Atmosphere.skyShadowSoftenStartSunLightDot - cosTheta) * Atmosphere.skyShadowSoftenInvSunLightDotRange, 0.0, 1.0);
+      float soften = (max(softenByHeight, softenByDistance) * softenBySunAngle) * Atmosphere.skyShadowSoftenStrength;
+      shadow = mix(shadow, 1.0, soften);
+      earthShadow = mix(earthShadow, 1.0, soften);
+    }
 
     vec3 S = globalL * ((earthShadow * shadow * TransmittanceToSun * PhaseTimesScattering) + (multiScatteredLuminance * medium.scattering));
 
