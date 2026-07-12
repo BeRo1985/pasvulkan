@@ -350,7 +350,12 @@ begin
   PushConstants.MeshDrawCommandsBDA:=fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].DeviceAddress;
  end;
 
- MaxCommands:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex];
+ // maxDrawCount must be bounded by the SELECTION LIST command buffer's own capacity (the draw fetches its commands
+ // from there), NOT by the main draw buffer's command-count variable: that variable grows with the scene
+ // (fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes, ~11071) while this selection list buffer may still be
+ // at its previous size, so using it directly makes vkCmdDrawIndexedIndirectCount read out of bounds (VUID-03143).
+ // Deriving it from the real buffer size is overrun-safe regardless; the count buffer clamps the actual draw count.
+ MaxCommands:=fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].Size div SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 

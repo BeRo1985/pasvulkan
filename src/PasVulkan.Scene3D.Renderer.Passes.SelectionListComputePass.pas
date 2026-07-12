@@ -96,6 +96,11 @@ type { TpvScene3DRendererPassesSelectionListComputePass }
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       // Tracks which input command buffer instance is currently written into each descriptor set, so Update can
+       // follow the renderer instance's buffer recreation (the per-in-flight-frame GPU draw command input buffer is
+       // freed and recreated with a larger size when the scene outgrows it - a once-written descriptor set would
+       // otherwise keep dispatching with the destroyed buffer: VUID-vkCmdDispatch-None-08114 / VUID-vkDestroyBuffer-buffer-00922)
+       fLastInputDrawIndexedIndirectCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
       public
@@ -206,6 +211,7 @@ begin
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],
    [fInstance.SelectionListDrawIndexedIndirectCommandCountBuffers[InFlightFrameIndex].DescriptorBufferInfo],[],false);
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  fLastInputDrawIndexedIndirectCommandBuffers[InFlightFrameIndex]:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex];
  end;
 
 end;
@@ -217,6 +223,7 @@ begin
  FreeAndNil(fPipelineLayout);
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
+  fLastInputDrawIndexedIndirectCommandBuffers[InFlightFrameIndex]:=nil;
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
@@ -237,6 +244,22 @@ begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
+ // Follow the renderer instance's input command buffer recreation (grow-on-demand resize frees the old buffer via
+ // the deferred free queue): rewrite our descriptor set binding 0 whenever the buffer instance changed, otherwise
+ // this pass would keep dispatching with the destroyed old buffer (VUID-vkCmdDispatch-None-08114 /
+ // VUID-vkDestroyBuffer-buffer-00922). This must happen HERE in Execute (render thread) and not in Update: Update
+ // runs pipelined against the still-pending GPU work of the previous frame with the same in-flight frame index
+ // (VUID-vkUpdateDescriptorSets-None-03047), while at Execute time this index' frame graph command buffer has just
+ // been reset for re-recording - which is only possible after its fence wait - so the descriptor set is guaranteed
+ // to not be referenced by any pending command buffer anymore, and the rewrite lands before the bind below.
+ if assigned(fVulkanDescriptorSets[aInFlightFrameIndex]) and
+    (fLastInputDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex]<>fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex]) then begin
+  fLastInputDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex]:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex];
+  fVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,0,1,TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),[],
+   [fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].DescriptorBufferInfo],[],false);
+  fVulkanDescriptorSets[aInFlightFrameIndex].Flush;
+ end;
+
  TotalCommands:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex];
 
  // Clear the selection count to 0 before the build dispatch.
@@ -256,7 +279,11 @@ begin
  if fInstance.Scene3D.CountSelectedInstances>0 then begin
 
   PushConstants.TotalCommands:=TotalCommands;
-  PushConstants.MaxOutputCommands:=TotalCommands; // selection list sized to the input command capacity
+  // The selection list buffer was sized to the input command capacity AT ITS CREATION TIME, but the input command
+  // capacity grows on demand while the selection list buffer does not - so clamp the output capacity to the REAL
+  // buffer size, otherwise the shader's overflow guard uses a too-large limit and writes out of bounds (the source
+  // of the garbage draw counts behind VUID-vkCmdDrawIndexedIndirectCount-maxDrawCount-03143).
+  PushConstants.MaxOutputCommands:=TpvUInt32(Min(TpvUInt64(TotalCommands),TpvUInt64(fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].Size div SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))));
   PushConstants.SelectedThreshold:=0.0;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);

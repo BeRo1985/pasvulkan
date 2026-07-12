@@ -20223,12 +20223,24 @@ begin
                                                    VK_QUEUE_FAMILY_IGNORED,
                                                    fPlanet.fData.fWaterActivityMapImage.VulkanImage.Handle,
                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
+  // On the parallel water simulation queue (compute-only), the FRAGMENT_SHADER dst stage is invalid and
+  // unnecessary: the fragment-shader visibility of this image is established on the universal queue side
+  // (AcquireWaterOnUniversalQueue) plus the queue semaphore, so restrict the dst stage to compute here.
+  if TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationUseParallelQueue then begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end else begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end;
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -20394,14 +20406,25 @@ begin
                                                                                    0,
                                                                                    1));
 
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    0,
-                                    0,nil,
-                                    0,nil,
-                                    1,@ImageMemoryBarrier);
+  // Same as above: graphics stages are invalid on the parallel (compute-only) water queue; the fragment/vertex
+  // visibility of the minimap image is handled on the universal queue acquire + semaphore, so use compute here.
+  if TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationUseParallelQueue then begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end else begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end;
 
   inc(fDownsampleProcessedGeneration);
 

@@ -11070,7 +11070,12 @@ begin
 
    fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]:=Count+((Count+1) shr 1);
 
-   fScene3D.AddToFreeQueue(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex],1);
+   // -1 => defer the free by fCountInFlightFrames. Pass-side descriptor sets that reference this buffer
+   // (e.g. TpvScene3DRendererPassesSelectionListComputePass) follow the recreation in their per-frame Update,
+   // which can lag this resize by up to one frame - during that window one more submission may still reference
+   // the old buffer, so it must outlive all in-flight frames (a literal 1 was too short for that lag window:
+   // VUID-vkDestroyBuffer-buffer-00922). Also consistent with the visibility buffers below.
+   fScene3D.AddToFreeQueue(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex],-1);
 
    // Grow-only output buffer size tracking
    if Renderer.Scene3D.MeshShaders then begin
