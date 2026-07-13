@@ -831,6 +831,8 @@ type TpvMarkDownRendererUTF8String={$if declared(UTF8String)}UTF8String{$else}An
 
        property BaseFontSize:TpvMarkDownRendererFloat read fBaseFontSize write fBaseFontSize;
 
+       property ParagraphSpacing:TpvMarkDownRendererFloat read fParagraphSpacing write fParagraphSpacing;
+
      end;
 
 function IntLog2(x:TpvMarkDownRendererUInt32):TpvMarkDownRendererUInt32;
