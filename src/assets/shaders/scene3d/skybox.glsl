@@ -13,11 +13,15 @@ layout(push_constant) uniform PushConstants {
   float skyBoxBrightnessFactor; //
   uint widthHeight;    // low 16 bits: width, high 16 bits: height
 
-  uint mode;           // 0: cube map, 1: realtime starlight
+  uint mode;           // 0: cube map, 1: realtime starlight, 2: color key, 3: gradient
   // Cached reprojection fields (always present, GLSL can truncate at pipeline layout level)
   uint countAllViews;  // Total view count, previous views stored at [viewBaseIndex + countAllViews]
   uint frameIndex;     // For stochastic refresh
   float skyBoxIntensityFactor;
+
+  vec4 gradientTopColor;      // rgb = top colour,    w = star intensity
+  vec4 gradientHorizonColor;  // rgb = horizon colour, w = sun size
+  vec4 gradientBottomColor;   // rgb = bottom colour,  w = sun brightness
 
 } pushConstants;
 

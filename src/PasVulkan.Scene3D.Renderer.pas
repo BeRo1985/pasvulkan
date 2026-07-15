@@ -195,6 +195,8 @@ type TpvScene3DRenderer=class;
       private
        fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
+       fGradientEnvironment:TObject; // TpvScene3DRendererGradientEnvironment, opaque here to avoid a circular unit reference
+
        fEnvironmentSphericalHarmonicsBuffer:TpvVulkanBuffer;
        fEnvironmentSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
        fEnvironmentSphericalHarmonics:TpvScene3DRendererImageBasedLightingSphericalHarmonics;
@@ -305,6 +307,7 @@ type TpvScene3DRenderer=class;
        property LensDirt:TpvScene3DRendererLensDirt read fLensDirt write fLensDirt;
        property LensStar:TpvScene3DRendererLensStar read fLensStar write fLensStar;
        property ImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps read fImageBasedLightingEnvMapCubeMaps;
+       property GradientEnvironment:TObject read fGradientEnvironment; // TpvScene3DRendererGradientEnvironment; per-frame rebaked gradient-sky IBL (EnvironmentMode = Gradient)
        property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
        property CheckShadowMapSampler:TpvVulkanSampler read fCheckShadowMapSampler;
        property GeneralSampler:TpvVulkanSampler read fGeneralSampler;
@@ -329,7 +332,8 @@ type TpvScene3DRenderer=class;
 implementation
 
 uses PasVulkan.Scene3D.Assets,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.GradientEnvironment;
 
 { TpvScene3DRendererBaseObject }
 
@@ -1633,6 +1637,15 @@ begin
 
  fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fRepeatedSampler,fEnvironmentCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
 
+ // The stylized gradient sky drives its own per-frame rebaked IBL cube maps, which replace the
+ // static environment map above for the primary IBL triplet (see the IBL descriptor). The static
+ // chain still exists as the secondary-triplet fallback, exactly like the normal non-atmosphere sky.
+ if fScene3D.EnvironmentMode=TpvScene3DEnvironmentMode.Gradient then begin
+  fGradientEnvironment:=TpvScene3DRendererGradientEnvironment.Create(fScene3D,self);
+  TpvScene3DRendererGradientEnvironment(fGradientEnvironment).AcquirePersistentResources;
+  TpvScene3DRendererGradientEnvironment(fGradientEnvironment).AcquireVolatileResources;
+ end;
+
  UniversalQueue:=fVulkanDevice.UniversalQueue;
  try
 
@@ -1908,6 +1921,12 @@ begin
  FreeAndNil(fSheenEBRDF);
 
  FreeAndNil(fImageBasedLightingEnvMapCubeMaps);
+
+ if assigned(fGradientEnvironment) then begin
+  TpvScene3DRendererGradientEnvironment(fGradientEnvironment).ReleaseVolatileResources;
+  TpvScene3DRendererGradientEnvironment(fGradientEnvironment).ReleasePersistentResources;
+  FreeAndNil(fGradientEnvironment);
+ end;
 
  FreeAndNil(fEnvironmentSphericalHarmonics);
 

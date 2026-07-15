@@ -133,8 +133,32 @@ void main(){
       break;
     }
     case 2u:{
-      // Transparent color key magenta 
+      // Transparent color key magenta
       outFragColor = vec4(1.0, 0.0, 1.0, 1.0);
+      break;
+    }
+    case 3u:{
+      // Stylized gradient sky: a vertical top/horizon/bottom colour ramp, a sun disk
+      // tinted by the horizon colour, and optional cheap hash stars in the upper sky.
+      float upness = direction.y;
+      float ramp = pow(clamp(abs(upness), 0.0, 1.0), 0.5);
+      vec3 skyColor = (upness >= 0.0)
+                        ? mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientTopColor.xyz, ramp)
+                        : mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientBottomColor.xyz, ramp);
+      float sunSize = pushConstants.gradientHorizonColor.w;
+      float sunBrightness = pushConstants.gradientBottomColor.w;
+      float sunAmount = max(0.0, dot(direction, -normalize(pushConstants.lightDirection.xyz)));
+      float sunDisk = smoothstep(1.0 - sunSize, 1.0 - (sunSize * 0.25), sunAmount);
+      skyColor += (pushConstants.gradientHorizonColor.xyz * sunBrightness) * sunDisk;
+      float starIntensity = pushConstants.gradientTopColor.w;
+      if((starIntensity > 0.0) && (upness > 0.0)){
+        vec3 cell = floor(direction * 220.0);
+        float hash = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        float star = step(0.9985, hash) * starIntensity * smoothstep(0.0, 0.25, upness);
+        skyColor += vec3(star);
+      }
+      skyColor *= pushConstants.skyBoxBrightnessFactor;
+      outFragColor = vec4(clamp(skyColor, vec3(-65504.0), vec3(65504.0)), 1.0);
       break;
     }
     default:{

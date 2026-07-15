@@ -97,6 +97,12 @@ type { TpvScene3DRendererSkyBox }
              FrameIndex:TpvUInt32;
              SkyBoxIntensityFactor:TpvFloat;
 
+             // Gradient sky palette (Mode 3); rgb = colour, w packs a scalar. The
+             // three vec4 keep the record at 128 bytes (the portable push-constant limit).
+             GradientTopColor:TpvVector4;      // rgb = top colour,    w = star intensity
+             GradientHorizonColor:TpvVector4;  // rgb = horizon colour, w = sun size
+             GradientBottomColor:TpvVector4;   // rgb = bottom colour,  w = sun brightness
+
             end;
             PPushConstants=^TPushConstants;
       private
@@ -692,6 +698,9 @@ begin
    TpvScene3DEnvironmentMode.TransparentColorKey:begin
     PushConstants.Mode:=2;
    end;
+   TpvScene3DEnvironmentMode.Gradient:begin
+    PushConstants.Mode:=3;
+   end;
    else begin
     PushConstants.Mode:=0;
    end;
@@ -702,6 +711,10 @@ begin
  PushConstants.FrameIndex:=fFrameIndex;
 
  PushConstants.SkyBoxIntensityFactor:=fScene3D.SkyBoxIntensityFactor;
+
+ PushConstants.GradientTopColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientTopColor,fScene3D.SkyGradientStarIntensity);
+ PushConstants.GradientHorizonColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientHorizonColor,fScene3D.SkyGradientSunSize);
+ PushConstants.GradientBottomColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientBottomColor,fScene3D.SkyGradientSunBrightness);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
 

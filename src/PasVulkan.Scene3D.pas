@@ -164,7 +164,8 @@ type EpvScene3D=class(Exception);
        Sky,
        Starlight,
        CachedStarlight,
-       TransparentColorKey
+       TransparentColorKey,
+       Gradient
       );
      PpvScene3DEnvironmentMode=^TpvScene3DEnvironmentMode;
 
@@ -4789,6 +4790,12 @@ type EpvScene3D=class(Exception);
        fEnvironmentTextureImage:TpvScene3D.TImage;
        fEnvironmentMode:TpvScene3DEnvironmentMode;
        fEnvironmentIntensityFactor:TpvFloat;
+       fSkyGradientTopColor:TpvVector3;
+       fSkyGradientHorizonColor:TpvVector3;
+       fSkyGradientBottomColor:TpvVector3;
+       fSkyGradientStarIntensity:TpvFloat;
+       fSkyGradientSunSize:TpvFloat;
+       fSkyGradientSunBrightness:TpvFloat;
       private
        fRendererInstanceLock:TPasMPCriticalSection;
        fRendererInstanceList:TpvObjectList;
@@ -5245,6 +5252,16 @@ type EpvScene3D=class(Exception);
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
        property EnvironmentIntensityFactor:TpvFloat read fEnvironmentIntensityFactor write fEnvironmentIntensityFactor;
+      public
+       // Stylized gradient sky palette (EnvironmentMode/SkyBoxMode = Gradient): a
+       // vertical top/horizon/bottom colour ramp plus a sun disk and stars. The sun
+       // disk colour is derived from the horizon colour, scaled by SunBrightness.
+       property SkyGradientTopColor:TpvVector3 read fSkyGradientTopColor write fSkyGradientTopColor;
+       property SkyGradientHorizonColor:TpvVector3 read fSkyGradientHorizonColor write fSkyGradientHorizonColor;
+       property SkyGradientBottomColor:TpvVector3 read fSkyGradientBottomColor write fSkyGradientBottomColor;
+       property SkyGradientStarIntensity:TpvFloat read fSkyGradientStarIntensity write fSkyGradientStarIntensity;
+       property SkyGradientSunSize:TpvFloat read fSkyGradientSunSize write fSkyGradientSunSize;
+       property SkyGradientSunBrightness:TpvFloat read fSkyGradientSunBrightness write fSkyGradientSunBrightness;
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
@@ -35105,6 +35122,13 @@ begin
   fEnvironmentMode:=TpvScene3DEnvironmentMode.Sky;
 
   fSkyBoxIntensityFactor:=1e-4;
+
+  fSkyGradientTopColor:=TpvVector3.InlineableCreate(0.05,0.12,0.30);
+  fSkyGradientHorizonColor:=TpvVector3.InlineableCreate(0.35,0.45,0.65);
+  fSkyGradientBottomColor:=TpvVector3.InlineableCreate(0.08,0.10,0.14);
+  fSkyGradientStarIntensity:=0.0;
+  fSkyGradientSunSize:=0.04;
+  fSkyGradientSunBrightness:=6.0;
 
   fEnvironmentIntensityFactor:=1e-4;
 

@@ -1130,6 +1130,7 @@ type { TpvScene3DRendererInstance }
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure ProcessAtmospheresForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure ProcessGradientEnvironmentForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure DispatchDebugMeshletSpheres(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        // Debug: read back the cascaded voxel-cone-tracing content data + meta-data buffers (GPU) and write a human-readable dump
@@ -1438,11 +1439,13 @@ type { TpvScene3DRendererInstance }
 implementation
 
 uses PasVulkan.Scene3D.Atmosphere,
+     PasVulkan.Scene3D.Renderer.GradientEnvironment,
     {PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.RaytracingBuildUpdatePass,}
      PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AtmosphereProcessCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.GradientEnvironmentProcessCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.MeshFilterComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
      PasVulkan.Scene3D.Renderer.Passes.SelectionListComputePass,
@@ -1572,6 +1575,7 @@ type TpvScene3DRendererInstancePasses=class
        fRaytracingBuildUpdatePass:TpvScene3DRendererPassesRaytracingBuildUpdatePass;}
        fAtmospherePrecipitationWaitCustomPass:TpvScene3DRendererPassesAtmospherePrecipitationWaitCustomPass;
        fAtmosphereProcessCustomPass:TpvScene3DRendererPassesAtmosphereProcessCustomPass;
+       fGradientEnvironmentProcessCustomPass:TpvScene3DRendererPassesGradientEnvironmentProcessCustomPass;
        fCascadedShadowMapMeshCullPass0ComputePass:TpvScene3DRendererPassesMeshCullPass0ComputePass;
        fCascadedShadowMapCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCascadedShadowMapCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
@@ -5397,11 +5401,23 @@ begin
 
  end;
 
+ // The stylized gradient sky bakes its IBL cube maps in a lightweight custom pass. Unlike the
+ // atmosphere it has no incoming dependencies (it only reads the scene's palette); its consumers
+ // declare an explicit dependency on it, so it is scheduled before the shading that samples it.
+ if fScene3D.EnvironmentMode=TpvScene3DEnvironmentMode.Gradient then begin
+  TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass:=TpvScene3DRendererPassesGradientEnvironmentProcessCustomPass.Create(fFrameGraph,self);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass:=nil;
+ end;
+
  begin
 
   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+  end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
   end;
 { TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
@@ -5478,6 +5494,9 @@ begin
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
   end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+  end;
 { TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -5494,6 +5513,9 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridBuildComputePass:=TpvScene3DRendererPassesFrustumClusterGridBuildComputePass.Create(fFrameGraph,self);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridBuildComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+ end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridBuildComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
  end;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridBuildComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
@@ -5527,6 +5549,9 @@ begin
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+   end;
    case Renderer.ShadowMode of
     TpvScene3DRendererShadowMode.None,
     TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
@@ -5543,6 +5568,9 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapMeshFilterComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
    end;
 {  TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
@@ -5627,12 +5655,18 @@ begin
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
     end;
+    if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+    end;
    end else begin
     // No hardware ray query: render the sun's Reflective Shadow Map (mesh filter -> RSM render pass), then the RSM-backend
     // trace producer reads it. The RSM mesh filter wants the cascaded shadow map for shadowed flux; depend on it only if it exists here.
     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.ReflectiveShadowMap);
     if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
      TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+    end;
+    if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+     TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
     end;
     case Renderer.ShadowMode of
      TpvScene3DRendererShadowMode.None,
@@ -5661,6 +5695,9 @@ begin
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
       TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
      end;
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+     end;
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
       TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGITraceRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
      end;
@@ -5669,6 +5706,9 @@ begin
      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
       TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+     end;
+     if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+      TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
      end;
      if assigned(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass) then begin
       TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationDUGIRSMSplatComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fParticleBVHComputePass);
@@ -5718,6 +5758,9 @@ begin
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+   end;
 {  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingMetaClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
@@ -5750,6 +5793,9 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass:=TpvScene3DRendererPassesMeshFilterComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.Voxelization);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fVoxelizationMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
    end;
    case Renderer.ShadowMode of
     TpvScene3DRendererShadowMode.None,
@@ -5810,6 +5856,9 @@ begin
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
   end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+  end;
 //TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
 { if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
@@ -5830,6 +5879,9 @@ begin
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
    end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
+   end;
    case Renderer.ShadowMode of
     TpvScene3DRendererShadowMode.None,
     TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
@@ -5846,6 +5898,9 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMeshFilterComputePass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
    end;
    case Renderer.ShadowMode of
     TpvScene3DRendererShadowMode.None,
@@ -5917,6 +5972,9 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardComputePass);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereProcessCustomPass);
+ end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGradientEnvironmentProcessCustomPass);
  end;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereCloudShadowRenderPass);
@@ -11780,6 +11838,23 @@ begin
 
  finally
   TpvScene3DAtmospheres(fScene3D.Atmospheres).Lock.ReleaseRead;
+ end;
+
+end;
+
+procedure TpvScene3DRendererInstance.ProcessGradientEnvironmentForFrame(const aInFlightFrameIndex:TpvInt32;const aCommandBuffer:TpvVulkanCommandBuffer);
+var GradientEnvironment:TpvScene3DRendererGradientEnvironment;
+begin
+
+ if aInFlightFrameIndex<0 then begin
+  exit;
+ end;
+
+ if assigned(Renderer) then begin
+  GradientEnvironment:=TpvScene3DRendererGradientEnvironment(Renderer.GradientEnvironment);
+  if assigned(GradientEnvironment) then begin
+   GradientEnvironment.Execute(aInFlightFrameIndex,aCommandBuffer);
+  end;
  end;
 
 end;

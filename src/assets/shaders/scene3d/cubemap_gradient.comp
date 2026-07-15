@@ -1,0 +1,80 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+/* clang-format on */
+
+// Raw radiance cube map for the stylized gradient sky, used as the IBL source (its
+// mip chain is prefiltered into GGX/Charlie/Lambertian afterwards). It evaluates the
+// same vertical top/horizon/bottom ramp plus horizon-tinted sun disk as the visible
+// skybox (skybox.frag case 3u), so reflections match the sky. Stars are intentionally
+// omitted here: the high-frequency hash would only add noise to the prefiltered map.
+
+layout(push_constant, std140) uniform PushConstants {
+  vec4 gradientTopColor;      // rgb = top colour,     w = star intensity (ignored for IBL)
+  vec4 gradientHorizonColor;  // rgb = horizon colour, w = sun size
+  vec4 gradientBottomColor;   // rgb = bottom colour,  w = sun brightness
+  vec4 lightDirection;        // xyz = primary light direction, w = radiance intensity factor
+} pushConstants;
+
+#ifdef USE_RGB9E5
+layout(set = 0, binding = 0, r32ui) writeonly uniform uimageCube uDestinationTexture;
+#elif defined(USE_RGBA32F)
+layout(set = 0, binding = 0, rgba32f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_RGBA16F)
+layout(set = 0, binding = 0, rgba16f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_R11G11B10F)
+layout(set = 0, binding = 0, r11f_g11f_b10f) writeonly uniform imageCube uDestinationTexture;
+#elif defined(USE_RGBA8)
+layout(set = 0, binding = 0, rgba8) writeonly uniform imageCube uDestinationTexture;
+#else
+layout(set = 0, binding = 0) writeonly uniform imageCube uDestinationTexture;
+#endif
+
+ivec2 destinationTextureSize = imageSize(uDestinationTexture);
+
+#include "cubemap.glsl"
+
+#ifdef USE_RGB9E5
+#include "rgb9e5.glsl"
+#endif
+
+void main() {
+
+  ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
+  if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
+
+    vec3 direction = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
+
+    float upness = direction.y;
+    float ramp = pow(clamp(abs(upness), 0.0, 1.0), 0.5);
+    vec3 skyColor = (upness >= 0.0)
+                      ? mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientTopColor.xyz, ramp)
+                      : mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientBottomColor.xyz, ramp);
+
+    float sunSize = pushConstants.gradientHorizonColor.w;
+    float sunBrightness = pushConstants.gradientBottomColor.w;
+    float sunAmount = max(0.0, dot(direction, -normalize(pushConstants.lightDirection.xyz)));
+    float sunDisk = smoothstep(1.0 - sunSize, 1.0 - (sunSize * 0.25), sunAmount);
+    skyColor += (pushConstants.gradientHorizonColor.xyz * sunBrightness) * sunDisk;
+
+    skyColor *= pushConstants.lightDirection.w;
+
+    skyColor = clamp(skyColor, vec3(0.0), vec3(65504.0));
+
+#ifdef USE_RGB9E5
+    imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(skyColor)));
+#else
+    imageStore(uDestinationTexture, uvw, vec4(skyColor, 1.0));
+#endif
+
+  }
+
+}

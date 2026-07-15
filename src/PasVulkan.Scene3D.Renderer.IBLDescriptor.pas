@@ -122,7 +122,8 @@ implementation
 uses PasVulkan.Scene3D,
      PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.GradientEnvironment;
 
 constructor TpvScene3DRendererIBLDescriptor.Create(const aVulkanDevice:TpvVulkanDevice;const aDescriptorSet:TpvVulkanDescriptorSet;const aBinding:TpvSizeInt;const aSampler:TVkSampler);
 begin
@@ -230,15 +231,33 @@ procedure TpvScene3DRendererIBLDescriptor.SetFrom(const aScene3D,aRendererInstan
 var Index:TpvSizeInt;
     Atmosphere:TpvScene3DAtmosphere;
     AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
+    GradientEnvironment:TpvScene3DRendererGradientEnvironment;
     OK:Boolean;
 begin
 
  if assigned(aRendererInstance) then begin
 
+  // Resolve the stylized gradient-sky IBL, if active and already baked. It overrides only the
+  // primary triplet below, mirroring how the static environment map feeds the normal
+  // non-atmosphere sky; the secondary triplet keeps its usual reflection-probe/atmosphere/static
+  // fallback path untouched.
+  GradientEnvironment:=nil;
+  if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) and
+     (TpvScene3D(aScene3D).EnvironmentMode=TpvScene3DEnvironmentMode.Gradient) then begin
+   GradientEnvironment:=TpvScene3DRendererGradientEnvironment(TpvScene3DRendererInstance(aRendererInstance).Renderer.GradientEnvironment);
+   if assigned(GradientEnvironment) and not GradientEnvironment.Ready then begin
+    GradientEnvironment:=nil;
+   end;
+  end;
+
   if assigned(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps) then begin
    SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.GGXDescriptorImageInfos[aInFlightFrameIndex].imageView);
    SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[aInFlightFrameIndex].imageView);
    SetLambertianImageView(TpvScene3DRendererInstance(aRendererInstance).ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[aInFlightFrameIndex].imageView);
+  end else if assigned(GradientEnvironment) then begin
+   SetGGXImageView(GradientEnvironment.GGXCubeMapTexture.VulkanImageView.Handle);
+   SetCharlieImageView(GradientEnvironment.CharlieCubeMapTexture.VulkanImageView.Handle);
+   SetLambertianImageView(GradientEnvironment.LambertianCubeMapTexture.VulkanImageView.Handle);
   end else if assigned(TpvScene3DRendererInstance(aRendererInstance).Renderer) then begin
    SetGGXImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo.imageView);
    SetCharlieImageView(TpvScene3DRendererInstance(aRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo.imageView);
