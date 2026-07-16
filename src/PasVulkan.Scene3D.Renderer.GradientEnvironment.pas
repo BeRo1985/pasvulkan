@@ -388,7 +388,7 @@ begin
  fPushConstants.GradientTopColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientTopColor,fScene3D.SkyGradientStarIntensity);
  fPushConstants.GradientHorizonColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientHorizonColor,fScene3D.SkyGradientSunSize);
  fPushConstants.GradientBottomColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientBottomColor,fScene3D.SkyGradientSunBrightness);
- fPushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,fScene3D.SkyBoxBrightnessFactor);
+ fPushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,fScene3D.GradientEnvironmentIntensityFactor);
 
  // Gradient fill pass: write the raw radiance cube map (mip 0, all six faces).
 

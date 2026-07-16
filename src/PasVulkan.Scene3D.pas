@@ -4796,6 +4796,7 @@ type EpvScene3D=class(Exception);
        fSkyGradientStarIntensity:TpvFloat;
        fSkyGradientSunSize:TpvFloat;
        fSkyGradientSunBrightness:TpvFloat;
+       fGradientEnvironmentIntensityFactor:TpvFloat;
       private
        fRendererInstanceLock:TPasMPCriticalSection;
        fRendererInstanceList:TpvObjectList;
@@ -5262,6 +5263,7 @@ type EpvScene3D=class(Exception);
        property SkyGradientStarIntensity:TpvFloat read fSkyGradientStarIntensity write fSkyGradientStarIntensity;
        property SkyGradientSunSize:TpvFloat read fSkyGradientSunSize write fSkyGradientSunSize;
        property SkyGradientSunBrightness:TpvFloat read fSkyGradientSunBrightness write fSkyGradientSunBrightness;
+       property GradientEnvironmentIntensityFactor:TpvFloat read fGradientEnvironmentIntensityFactor write fGradientEnvironmentIntensityFactor;
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
@@ -35129,6 +35131,7 @@ begin
   fSkyGradientStarIntensity:=0.0;
   fSkyGradientSunSize:=0.04;
   fSkyGradientSunBrightness:=6.0;
+  fGradientEnvironmentIntensityFactor:=1.0;
 
   fEnvironmentIntensityFactor:=1e-4;
 
