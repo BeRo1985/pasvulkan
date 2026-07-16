@@ -120,7 +120,8 @@ uses {$if defined(Unix)}
      PasVulkan.Resources,
      PasVulkan.VirtualReality,
      PasVulkan.Collections,
-     PasVulkan.NVIDIA.AfterMath;
+     PasVulkan.NVIDIA.AfterMath,
+     PasJSON;
 
 const MaxSwapChainImages=3;
 
@@ -656,6 +657,9 @@ type EpvApplication=class(Exception)
        fID:TpvUInt64;
        fKey:TpvApplicationInputKey;
        fKeyActions:TpvApplicationInputKeyActions;
+       // When set, this shortcut matches its key regardless of the currently-held modifiers (used e.g.
+       // for held movement keys). Consulted as a fallback in TpvApplicationInput.GetKeyShortcut.
+       fAnyKeyModifiers:boolean;
       public
        constructor Create(const aApplication:TpvApplication;
                           const aKeyCode:TpvInt32;
@@ -672,6 +676,7 @@ type EpvApplication=class(Exception)
        property KeyCode:TpvInt32 read fKey.KeyCode write fKey.KeyCode;
        property ScanCode:TpvInt32 read fKey.ScanCode write fKey.ScanCode;
        property KeyModifiers:TpvApplicationInputKeyModifiers read fKey.KeyModifiers write fKey.KeyModifiers;
+       property AnyKeyModifiers:boolean read fAnyKeyModifiers write fAnyKeyModifiers;
      end;
 
      TpvApplicationInputKeyShortcuts=TpvObjectGenericList<TpvApplicationInputKeyShortcut>;
@@ -695,6 +700,12 @@ type EpvApplication=class(Exception)
        procedure AddKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
        procedure RemoveKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut);
        function HasKeyShortcut(const aShortcut:TpvApplicationInputKeyShortcut):boolean;
+       // True while any key bound to this action is currently held (modifier-agnostic live poll).
+       function IsPressed:boolean;
+       // True if aKeyCode is bound to this action (modifier-agnostic).
+       function HasKeyCode(const aKeyCode:TpvInt32):boolean;
+       // Human-readable list of the bound key names (for HUD/menu display).
+       function KeyNames(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
       published
        property ID:TpvUInt64 read fID write fID;
        property Name:TpvUTF8String read fName write fName;
@@ -1185,7 +1196,8 @@ type EpvApplication=class(Exception)
                                const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
        function AddKeyShortcut(const aKeyCode:TpvInt32;
                                const aScanCode:TpvInt32;
-                               const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+                               const aKeyModifiers:TpvApplicationInputKeyModifiers;
+                               const aAnyKeyModifiers:boolean=false):TpvApplicationInputKeyShortcut;
        procedure RemoveKeyShortcut(const aKeyShortcut:TpvApplicationInputKeyShortcut); overload;
        procedure RemoveKeyShortcut(const aKeyCode:TpvInt32;
                                    const aScanCode:TpvInt32;
@@ -1193,6 +1205,13 @@ type EpvApplication=class(Exception)
        function AddKeyAction(const aName:TpvUTF8String='';
                              const aDescription:TpvUTF8String=''):TpvApplicationInputKeyAction;
        procedure RemoveKeyAction(const aKeyAction:TpvApplicationInputKeyAction); overload;
+       // Key-action lookup / poll / rebind / (de)serialization helpers (all built on the existing
+       // key-action + key-shortcut model; no existing behaviour is changed).
+       function GetKeyActionByName(const aName:TpvUTF8String):TpvApplicationInputKeyAction;
+       function IsKeyActionPressed(const aName:TpvUTF8String):boolean;
+       procedure RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+       function SaveKeyBindingsToJSON:TPasJSONItem;
+       procedure LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
        function GetAccelerometerX:TpvFloat;
@@ -3884,6 +3903,54 @@ begin
  result:=fKeyShortcuts.IndexOf(aShortcut)>=0;
 end;
 
+function TpvApplicationInputKeyAction.IsPressed:boolean;
+var Index:TpvSizeInt;
+    Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ result:=false;
+ if assigned(fApplication) then begin
+  for Index:=0 to fKeyShortcuts.Count-1 do begin
+   Shortcut:=fKeyShortcuts[Index];
+   if assigned(Shortcut) and (Shortcut.fKey.KeyCode>=0) and fApplication.Input.IsKeyPressed(Shortcut.fKey.KeyCode) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInputKeyAction.HasKeyCode(const aKeyCode:TpvInt32):boolean;
+var Index:TpvSizeInt;
+    Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ result:=false;
+ for Index:=0 to fKeyShortcuts.Count-1 do begin
+  Shortcut:=fKeyShortcuts[Index];
+  if assigned(Shortcut) and (Shortcut.fKey.KeyCode=aKeyCode) then begin
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
+function TpvApplicationInputKeyAction.KeyNames(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
+var Index:TpvSizeInt;
+    Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ result:='';
+ if assigned(fApplication) then begin
+  for Index:=0 to fKeyShortcuts.Count-1 do begin
+   Shortcut:=fKeyShortcuts[Index];
+   if assigned(Shortcut) then begin
+    if length(result)>0 then begin
+     result:=result+aSeparator;
+    end;
+    result:=result+TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.KeyCode));
+   end;
+  end;
+ end;
+end;
+
 constructor TpvApplicationInputKeyEvent.Create(const aKeyEventType:TpvApplicationInputKeyEventType;
                                                const aKeyCode:TpvInt32;
                                                const aScanCode:TpvInt32;
@@ -5366,6 +5433,7 @@ function TpvApplicationInput.GetKeyShortcut(const aKeyCode:TpvInt32;
                                             const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
 var KeyModifiers:TpvApplicationInputKeyModifiers;
     Key:TpvApplicationInputKey;
+    Candidate:TpvApplicationInputKeyShortcut;
 begin
  KeyModifiers:=aKeyModifiers*pvApplicationInputKeyModifierKeyShortcutMask;
 
@@ -5391,11 +5459,28 @@ begin
   end;
  end;
 
+ // Modifier-agnostic fallback: a shortcut registered with AnyKeyModifiers matches its key even when
+ // modifiers are held (e.g. holding a movement key while Shift is down). Only consulted after the
+ // strict lookups above failed and modifiers were actually held, so strict shortcuts stay strict.
+ result:=nil;
+ if (KeyModifiers<>[]) and (aKeyCode>=0) then begin
+  Key:=TpvApplicationInputKey.Create(aKeyCode,-1,[]);
+  Candidate:=fKeyShortcutHashMap[Key];
+  if not (assigned(Candidate) and Candidate.fAnyKeyModifiers) then begin
+   Key:=TpvApplicationInputKey.Create(aKeyCode,aScanCode,[]);
+   Candidate:=fKeyShortcutHashMap[Key];
+  end;
+  if assigned(Candidate) and Candidate.fAnyKeyModifiers then begin
+   result:=Candidate;
+  end;
+ end;
+
 end;
 
 function TpvApplicationInput.AddKeyShortcut(const aKeyCode:TpvInt32;
                                             const aScanCode:TpvInt32;
-                                            const aKeyModifiers:TpvApplicationInputKeyModifiers):TpvApplicationInputKeyShortcut;
+                                            const aKeyModifiers:TpvApplicationInputKeyModifiers;
+                                            const aAnyKeyModifiers:boolean=false):TpvApplicationInputKeyShortcut;
 var KeyModifiers:TpvApplicationInputKeyModifiers;
     Key:TpvApplicationInputKey;
 begin
@@ -5411,6 +5496,9 @@ begin
   finally
    fKeyShortcuts.Add(result);
   end;
+ end;
+ if aAnyKeyModifiers then begin
+  result.fAnyKeyModifiers:=true;
  end;
 end;
 
@@ -5467,6 +5555,227 @@ begin
     fKeyActions.Delete(Index);
    finally
     aKeyAction.Free;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInput.GetKeyActionByName(const aName:TpvUTF8String):TpvApplicationInputKeyAction;
+var Index:TpvSizeInt;
+    Action:TpvApplicationInputKeyAction;
+begin
+ result:=nil;
+ for Index:=0 to fKeyActions.Count-1 do begin
+  Action:=fKeyActions[Index];
+  if assigned(Action) and (Action.fName=aName) then begin
+   result:=Action;
+   exit;
+  end;
+ end;
+end;
+
+function TpvApplicationInput.IsKeyActionPressed(const aName:TpvUTF8String):boolean;
+var Action:TpvApplicationInputKeyAction;
+begin
+ Action:=GetKeyActionByName(aName);
+ result:=assigned(Action) and Action.IsPressed;
+end;
+
+procedure TpvApplicationInput.RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+var Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ if not assigned(aAction) then begin
+  exit;
+ end;
+ // 1. Detach this key code from every action (drop its shortcut object entirely so no other action
+ //    keeps it) - keep bindings unique per key.
+ Shortcut:=GetKeyShortcut(aKeyCode,-1,[]);
+ if assigned(Shortcut) then begin
+  RemoveKeyShortcut(Shortcut);
+ end;
+ // 2. Remove all existing shortcuts of this action; free any that become orphaned.
+ while aAction.fKeyShortcuts.Count>0 do begin
+  Shortcut:=aAction.fKeyShortcuts[0];
+  aAction.RemoveKeyShortcut(Shortcut);
+  if Shortcut.fKeyActions.Count=0 then begin
+   RemoveKeyShortcut(Shortcut);
+  end;
+ end;
+ // 3. Bind the new sole key (modifier-agnostic, so held movement keys keep working with modifiers).
+ Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ aAction.AddKeyShortcut(Shortcut);
+end;
+
+function pvApplicationInputKeyModifierName(const aModifier:TpvApplicationInputKeyModifier):TpvApplicationRawByteString;
+begin
+ case aModifier of
+  TpvApplicationInputKeyModifier.LSHIFT:begin
+   result:='lshift';
+  end;
+  TpvApplicationInputKeyModifier.RSHIFT:begin
+   result:='rshift';
+  end;
+  TpvApplicationInputKeyModifier.LCTRL:begin
+   result:='lctrl';
+  end;
+  TpvApplicationInputKeyModifier.RCTRL:begin
+   result:='rctrl';
+  end;
+  TpvApplicationInputKeyModifier.LALT:begin
+   result:='lalt';
+  end;
+  TpvApplicationInputKeyModifier.RALT:begin
+   result:='ralt';
+  end;
+  TpvApplicationInputKeyModifier.LMETA:begin
+   result:='lmeta';
+  end;
+  TpvApplicationInputKeyModifier.RMETA:begin
+   result:='rmeta';
+  end;
+  TpvApplicationInputKeyModifier.NUM:begin
+   result:='num';
+  end;
+  TpvApplicationInputKeyModifier.CAPS:begin
+   result:='caps';
+  end;
+  TpvApplicationInputKeyModifier.SCROLL:begin
+   result:='scroll';
+  end;
+  TpvApplicationInputKeyModifier.MODE:begin
+   result:='mode';
+  end;
+  TpvApplicationInputKeyModifier.RESERVED:begin
+   result:='reserved';
+  end;
+  TpvApplicationInputKeyModifier.CTRL:begin
+   result:='ctrl';
+  end;
+  TpvApplicationInputKeyModifier.SHIFT:begin
+   result:='shift';
+  end;
+  TpvApplicationInputKeyModifier.ALT:begin
+   result:='alt';
+  end;
+  TpvApplicationInputKeyModifier.META:begin
+   result:='meta';
+  end;
+  else begin
+   result:='';
+  end;
+ end;
+end;
+
+function pvApplicationStringToInputKeyModifier(const aName:TpvApplicationRawByteString;out aModifier:TpvApplicationInputKeyModifier):boolean;
+var Modifier:TpvApplicationInputKeyModifier;
+begin
+ result:=false;
+ for Modifier:=Low(TpvApplicationInputKeyModifier) to High(TpvApplicationInputKeyModifier) do begin
+  if pvApplicationInputKeyModifierName(Modifier)=aName then begin
+   aModifier:=Modifier;
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
+function pvApplicationKeyModifiersToJSON(const aKeyModifiers:TpvApplicationInputKeyModifiers):TPasJSONItem;
+var Modifier:TpvApplicationInputKeyModifier;
+begin
+ // Saved compactly as an array of the active modifier names, e.g. ["shift","alt"].
+ result:=TPasJSONItemArray.Create;
+ for Modifier:=Low(TpvApplicationInputKeyModifier) to High(TpvApplicationInputKeyModifier) do begin
+  if Modifier in aKeyModifiers then begin
+   TPasJSONItemArray(result).Add(TPasJSONItemString.Create(pvApplicationInputKeyModifierName(Modifier)));
+  end;
+ end;
+end;
+
+function pvApplicationJSONToKeyModifiers(const aJSON:TPasJSONItem):TpvApplicationInputKeyModifiers;
+var Index:TpvSizeInt;
+    Modifier:TpvApplicationInputKeyModifier;
+begin
+ // Accepts either an array of names ["shift","alt"] or an object of bools {"shift":true,...}.
+ result:=[];
+ if assigned(aJSON) then begin
+  if aJSON is TPasJSONItemArray then begin
+   for Index:=0 to TPasJSONItemArray(aJSON).Count-1 do begin
+    if pvApplicationStringToInputKeyModifier(TpvApplicationRawByteString(TPasJSON.GetString(TPasJSONItemArray(aJSON).Items[Index],'')),Modifier) then begin
+     Include(result,Modifier);
+    end;
+   end;
+  end else if aJSON is TPasJSONItemObject then begin
+   for Index:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
+    if TPasJSON.GetBoolean(TPasJSONItemObject(aJSON).Values[Index],false) and
+       pvApplicationStringToInputKeyModifier(TpvApplicationRawByteString(TPasJSONItemObject(aJSON).Keys[Index]),Modifier) then begin
+     Include(result,Modifier);
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInput.SaveKeyBindingsToJSON:TPasJSONItem;
+var ActionIndex,ShortcutIndex:TpvSizeInt;
+    Action:TpvApplicationInputKeyAction;
+    Shortcut:TpvApplicationInputKeyShortcut;
+    ShortcutsArray:TPasJSONItemArray;
+    ShortcutObject:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ for ActionIndex:=0 to fKeyActions.Count-1 do begin
+  Action:=fKeyActions[ActionIndex];
+  if assigned(Action) then begin
+   ShortcutsArray:=TPasJSONItemArray.Create;
+   for ShortcutIndex:=0 to Action.fKeyShortcuts.Count-1 do begin
+    Shortcut:=Action.fKeyShortcuts[ShortcutIndex];
+    if assigned(Shortcut) then begin
+     ShortcutObject:=TPasJSONItemObject.Create;
+     ShortcutObject.Add('key',TPasJSONItemNumber.Create(Shortcut.fKey.KeyCode));
+     ShortcutObject.Add('scan',TPasJSONItemNumber.Create(Shortcut.fKey.ScanCode));
+     ShortcutObject.Add('modifiers',pvApplicationKeyModifiersToJSON(Shortcut.fKey.KeyModifiers));
+     ShortcutObject.Add('any',TPasJSONItemBoolean.Create(Shortcut.fAnyKeyModifiers));
+     ShortcutsArray.Add(ShortcutObject);
+    end;
+   end;
+   TPasJSONItemObject(result).Add(Action.fName,ShortcutsArray);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInput.LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
+var PropertyIndex,ShortcutIndex:TpvSizeInt;
+    Action:TpvApplicationInputKeyAction;
+    Shortcut:TpvApplicationInputKeyShortcut;
+    ShortcutsItem,ShortcutItem:TPasJSONItem;
+    ShortcutsArray:TPasJSONItemArray;
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  for PropertyIndex:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
+   Action:=GetKeyActionByName(TpvUTF8String(TPasJSONItemObject(aJSON).Keys[PropertyIndex]));
+   if assigned(Action) then begin
+    // Replace this action's shortcuts with the stored set.
+    while Action.fKeyShortcuts.Count>0 do begin
+     Shortcut:=Action.fKeyShortcuts[0];
+     Action.RemoveKeyShortcut(Shortcut);
+     if Shortcut.fKeyActions.Count=0 then begin
+      RemoveKeyShortcut(Shortcut);
+     end;
+    end;
+    ShortcutsItem:=TPasJSONItemObject(aJSON).Values[PropertyIndex];
+    if assigned(ShortcutsItem) and (ShortcutsItem is TPasJSONItemArray) then begin
+     ShortcutsArray:=TPasJSONItemArray(ShortcutsItem);
+     for ShortcutIndex:=0 to ShortcutsArray.Count-1 do begin
+      ShortcutItem:=ShortcutsArray.Items[ShortcutIndex];
+      if assigned(ShortcutItem) and (ShortcutItem is TPasJSONItemObject) then begin
+       Shortcut:=AddKeyShortcut(TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['key'],-1.0))),
+                                TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['scan'],-1.0))),
+                                pvApplicationJSONToKeyModifiers(TPasJSONItemObject(ShortcutItem).Properties['modifiers']),
+                                TPasJSON.GetBoolean(TPasJSONItemObject(ShortcutItem).Properties['any'],false));
+       Action.AddKeyShortcut(Shortcut);
+      end;
+     end;
+    end;
    end;
   end;
  end;
