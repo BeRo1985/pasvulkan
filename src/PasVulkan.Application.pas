@@ -5741,6 +5741,7 @@ end;
 
 procedure TpvApplicationInput.LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
 var PropertyIndex,ShortcutIndex:TpvSizeInt;
+    KeyCodeValue:TpvInt32;
     Action:TpvApplicationInputKeyAction;
     Shortcut:TpvApplicationInputKeyShortcut;
     ShortcutsItem,ShortcutItem:TPasJSONItem;
@@ -5763,12 +5764,22 @@ begin
      ShortcutsArray:=TPasJSONItemArray(ShortcutsItem);
      for ShortcutIndex:=0 to ShortcutsArray.Count-1 do begin
       ShortcutItem:=ShortcutsArray.Items[ShortcutIndex];
-      if assigned(ShortcutItem) and (ShortcutItem is TPasJSONItemObject) then begin
-       Shortcut:=AddKeyShortcut(TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['key'],-1.0))),
-                                TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['scan'],-1.0))),
-                                pvApplicationJSONToKeyModifiers(TPasJSONItemObject(ShortcutItem).Properties['modifiers']),
-                                TPasJSON.GetBoolean(TPasJSONItemObject(ShortcutItem).Properties['any'],false));
-       Action.AddKeyShortcut(Shortcut);
+      if assigned(ShortcutItem) then begin
+       if ShortcutItem is TPasJSONItemObject then begin
+        // Full shortcut form: {"key":..,"scan":..,"modifiers":[..],"any":..}
+        Shortcut:=AddKeyShortcut(TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['key'],-1.0))),
+                                 TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['scan'],-1.0))),
+                                 pvApplicationJSONToKeyModifiers(TPasJSONItemObject(ShortcutItem).Properties['modifiers']),
+                                 TPasJSON.GetBoolean(TPasJSONItemObject(ShortcutItem).Properties['any'],false));
+        Action.AddKeyShortcut(Shortcut);
+       end else if (ShortcutItem is TPasJSONItemNumber) or (ShortcutItem is TPasJSONItemString) then begin
+        // Shorthand form: a bare key code (no scan code, no modifiers, modifier-agnostic).
+        KeyCodeValue:=TpvInt32(round(TPasJSON.GetNumber(ShortcutItem,-1.0)));
+        if KeyCodeValue>=0 then begin
+         Shortcut:=AddKeyShortcut(KeyCodeValue,-1,[],true);
+         Action.AddKeyShortcut(Shortcut);
+        end;
+       end;
       end;
      end;
     end;
