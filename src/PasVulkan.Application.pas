@@ -5549,11 +5549,9 @@ begin
  if assigned(aKeyAction) then begin
   Index:=fKeyActions.IndexOf(aKeyAction);
   if Index>=0 then begin
-   try
-    fKeyActions.Delete(Index);
-   finally
-    aKeyAction.Free;
-   end;
+   // fKeyActions owns its items, so deleting from the list frees the action. A separate Free would
+   // double-free.
+   fKeyActions.Delete(Index);
   end;
  end;
 end;
