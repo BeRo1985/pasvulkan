@@ -186,6 +186,14 @@ type { TpvScene3DRendererInstance }
               EarlyOutSampling
              );
             TRaytracingFlags=set of TRaytracingFlag;
+            // Atmosphere-independent distance fog colour source. None (default) means the fog pass
+            // is not even created, so projects that never enable it (e.g. planetgame1) are unaffected.
+            TFogMode=
+             (
+              None,
+              FixedColor,
+              EnvironmentColor
+             );
             { TInFlightFrameState }
             TInFlightFrameState=record
 
@@ -923,6 +931,14 @@ type { TpvScene3DRendererInstance }
        fLensflareFactor:TpvScalar;
        fLensNormalization:boolean;
       private
+       fFogMode:TpvScene3DRendererInstance.TFogMode;
+       fFogColor:TpvVector3;
+       fFogDensity:TpvScalar;
+       fFogDensityMultiplier:TpvScalar;
+       fFogHeightFalloff:TpvScalar;
+       fFogHeightBase:TpvScalar;
+       fFogEnvironmentLOD:TpvScalar;
+      private
        fTAAHistoryColorImages:TArray2DImages;
        fTAAHistoryDepthImages:TArray2DImages;
        fTAAHistoryVelocityImages:TArray2DImages;
@@ -1287,6 +1303,17 @@ type { TpvScene3DRendererInstance }
        property LensflareFactor:TpvScalar read fLensflareFactor write fLensflareFactor;
        property LensNormalization:boolean read fLensNormalization write fLensNormalization;
       public
+       // Atmosphere-independent distance fog. FogMode defaults to None (the fog pass is not created).
+       // FogMode must be set before the instance acquires its resources (it gates pass creation);
+       // the colour/density knobs are read every frame, so FogDensityMultiplier drives fog zones.
+       property FogMode:TpvScene3DRendererInstance.TFogMode read fFogMode write fFogMode;
+       property FogColor:TpvVector3 read fFogColor write fFogColor;
+       property FogDensity:TpvScalar read fFogDensity write fFogDensity;
+       property FogDensityMultiplier:TpvScalar read fFogDensityMultiplier write fFogDensityMultiplier;
+       property FogHeightFalloff:TpvScalar read fFogHeightFalloff write fFogHeightFalloff;
+       property FogHeightBase:TpvScalar read fFogHeightBase write fFogHeightBase;
+       property FogEnvironmentLOD:TpvScalar read fFogEnvironmentLOD write fFogEnvironmentLOD;
+      public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
        property TAAHistoryVelocityImages:TArray2DImages read fTAAHistoryVelocityImages;
@@ -1526,6 +1553,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.DeepAndFastApproximateOrderIndependentTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.OrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.FogRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LuminanceHistogramComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LuminanceAverageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LuminanceAdaptationRenderPass,
@@ -1671,6 +1699,7 @@ type TpvScene3DRendererInstancePasses=class
        fDeepAndFastApproximateOrderIndependentTransparencyRenderPass:TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyRenderPass;
        fDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass;
        fOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesOrderIndependentTransparencyResolveRenderPass;
+       fFogRenderPass:TpvScene3DRendererPassesFogRenderPass;
        fLuminanceHistogramComputePass:TpvScene3DRendererPassesLuminanceHistogramComputePass;
        fLuminanceAverageComputePass:TpvScene3DRendererPassesLuminanceAverageComputePass;
        fLuminanceAdaptationRenderPass:TpvScene3DRendererPassesLuminanceAdaptationRenderPass;
@@ -2477,6 +2506,14 @@ begin
  fBloomFactor:=0.9;
  fLensflareFactor:=0.1;
  fLensNormalization:=true;
+
+ fFogMode:=TpvScene3DRendererInstance.TFogMode.None;
+ fFogColor:=TpvVector3.InlineableCreate(0.55,0.62,0.72);
+ fFogDensity:=0.02;
+ fFogDensityMultiplier:=1.0;
+ fFogHeightFalloff:=0.0;
+ fFogHeightBase:=0.0;
+ fFogEnvironmentLOD:=3.0;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
@@ -6296,6 +6333,17 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  if assigned(LastOutputResource) and
     (LastOutputResource.Resource.Name='resource_combinedopaquetransparency_final_msaa_color') then begin
   TpvScene3DRendererInstancePasses(fPasses).fOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+ end;
+
+ // Atmosphere-independent distance fog, at the very start of the HDR post-process chain: it fogs
+ // the composited opaque+transparent scene colour before luminance/DoF/bloom/tonemap. Only created
+ // when enabled (FogMode <> None), so it is a no-op for projects that never opt in. It reads the raw
+ // depth mip pyramid directly, so it must run after the depth mip-map pass.
+ if fFogMode<>TpvScene3DRendererInstance.TFogMode.None then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=TpvScene3DRendererPassesFogRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=nil;
  end;
 
  AntialiasingFirstPass:=nil;
