@@ -21,7 +21,7 @@ layout(push_constant, std140) uniform PushConstants {
   vec4 gradientTopColor;      // rgb = top colour,     w = star intensity (ignored for IBL)
   vec4 gradientHorizonColor;  // rgb = horizon colour, w = sun size
   vec4 gradientBottomColor;   // rgb = bottom colour,  w = sun brightness
-  vec4 lightDirection;        // xyz = primary light direction, w = radiance intensity factor
+  vec4 lightDirection;        // xyz = primary light direction, w = sky brightness factor
 } pushConstants;
 
 #ifdef USE_RGB9E5
