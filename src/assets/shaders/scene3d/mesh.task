@@ -426,8 +426,8 @@ void main(){
 
             float depth = -(depthZ.x / depthZ.y);
 
-            if(((-viewSpaceSphere.z) - viewSpaceSphere.w) > depth){
-              continue; // Occluded by HiZ
+            if((((-viewSpaceSphere.z) - viewSpaceSphere.w) > depth) && ((cmd.cmd1.w & 1u) == 0u)){
+              continue; // Occluded by HiZ -- but keep meshlets of a PASS0-committed object (cmd1.w bit 0) as a 1-frame HiZ-staleness net, mirroring mesh_cull.comp FLAG_KEEP_PASS0_FOR_RENDERING
             }
           }
         }

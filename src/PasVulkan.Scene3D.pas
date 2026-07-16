@@ -798,6 +798,7 @@ type EpvScene3D=class(Exception);
              ColorEnd:TpvVector4;
              Velocity:TpvVector3;
              Gravity:TpvVector3;
+             Drag:TpvFloat;
              Age:TpvDouble;
              LifeTime:TpvDouble;
              LastTime:TpvFloat;
@@ -5111,7 +5112,8 @@ type EpvScene3D=class(Exception);
                             const aColorEnd:TpvVector4;
                             const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
-                            const aAdditiveBlending:boolean):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+                            const aAdditiveBlending:boolean;
+                            const aDrag:TpvFloat=0.0):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aOrientation:TpvQuaternion;
@@ -44264,6 +44266,9 @@ begin
     if (Particle^.Age>=Particle^.LifeTime) or IsZero(Particle^.LifeTime) then begin
      fParticleAliveBitmap[ParticleAliveBitmapIndex]:=fParticleAliveBitmap[ParticleAliveBitmapIndex] and not (TpvUInt32(1) shl ParticleBitIndex);
     end else begin
+     if Particle^.Drag>0.0 then begin
+      Particle^.Velocity:=Particle^.Velocity*(1.0-Min(1.0,Particle^.Drag*aDeltaTime));
+     end;
      Particle^.Position:=Particle^.Position+(Particle^.Velocity*aDeltaTime);
      Particle^.Velocity:=Particle^.Velocity+(Particle^.Gravity*aDeltaTime);
      Particle^.Time:=Particle^.Age/Particle^.LifeTime;
@@ -44392,7 +44397,8 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aColorEnd:TpvVector4;
                                 const aLifeTime:TpvDouble;
                                 const aTextureID:TpvUInt32;
-                                const aAdditiveBlending:boolean):TpvSizeInt;
+                                const aAdditiveBlending:boolean;
+                                const aDrag:TpvFloat):TpvSizeInt;
 var Particle:PParticle;
 begin
  // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
@@ -44404,6 +44410,7 @@ begin
  Particle^.Position:=aPosition;
  Particle^.Velocity:=aVelocity;
  Particle^.Gravity:=aGravity;
+ Particle^.Drag:=aDrag;
  Particle^.RotationStart:=aRotationStart;
  Particle^.RotationEnd:=aRotationEnd;
  Particle^.SizeStart:=aSizeStart;
