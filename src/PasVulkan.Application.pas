@@ -5508,12 +5508,10 @@ begin
  if assigned(aKeyShortcut) then begin
   Index:=fKeyShortcuts.IndexOf(aKeyShortcut);
   if Index>=0 then begin
-   try
-    fKeyShortcuts.Delete(Index);
-    fKeyShortcutHashMap.Delete(aKeyShortcut.fKey);
-   finally
-    aKeyShortcut.Free;
-   end;
+   // fKeyShortcuts owns its items: remove from the hash map first (while the shortcut is still alive so
+   // its fKey is valid), then let the owning list free it. A separate Free would double-free.
+   fKeyShortcutHashMap.Delete(aKeyShortcut.fKey);
+   fKeyShortcuts.Delete(Index);
   end;
  end;
 end;
