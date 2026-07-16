@@ -24,8 +24,6 @@ layout(push_constant) uniform PushConstants {
   float heightFalloff;     // exponential world-height falloff, 0 = disabled
   float heightBase;        // world Y at which the height falloff starts
   float environmentLOD;    // cube-map LOD for the environment-colour variant
-  float reversedZ;         // 1.0 = reversed-Z depth buffer, 0.0 = normal
-  float pad0;              //
 } pushConstants;
 
 struct View {
@@ -53,21 +51,29 @@ void main(){
   color.xyz = clamp(color.xyz, vec3(0.0), vec3(65504.0));
 
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+  mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
   mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
   mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
 
-  // Skybox / background sits on the far plane (reversed-Z: 0.0, normal-Z: 1.0); leave it as is.
-  bool isBackground = (pushConstants.reversedZ > 0.5) ? (rawDepth <= 0.0) : (rawDepth >= 1.0);
-  if(isBackground){
+  // Reversed-Z is read straight from the projection matrix (as the atmosphere pass does), so this is
+  // robust to the engine's reversed-Z infinite-far setup. The far plane (sky / no geometry) is left
+  // untouched, otherwise the fog would replace the whole sky.
+  bool reversedZ = projectionMatrix[2][3] < -1e-7;
+  bool hasGeometry = reversedZ ? (rawDepth > 0.0) : (rawDepth < 1.0);
+  if(!hasGeometry){
     outFragColor = color;
     return;
   }
 
-  // View-space position of this pixel (camera at the origin).
+  // View-space position of this pixel (camera at the origin); bail out on any degenerate reconstruction.
   vec4 viewPositionH = inverseProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0)), rawDepth, 1.0);
   vec3 viewPosition = viewPositionH.xyz / viewPositionH.w;
+  if(any(isinf(viewPosition)) || any(isnan(viewPosition))){
+    outFragColor = color;
+    return;
+  }
   float dist = length(viewPosition);
 
   float density = pushConstants.density * pushConstants.densityMultiplier;

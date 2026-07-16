@@ -94,8 +94,6 @@ type { TpvScene3DRendererPassesFogRenderPass }
              HeightFalloff:TpvFloat;
              HeightBase:TpvFloat;
              EnvironmentLOD:TpvFloat;
-             ReversedZ:TpvFloat;
-             Pad0:TpvFloat;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -440,8 +438,6 @@ begin
  PushConstants.HeightFalloff:=fInstance.FogHeightFalloff;
  PushConstants.HeightBase:=fInstance.FogHeightBase;
  PushConstants.EnvironmentLOD:=fInstance.FogEnvironmentLOD;
- PushConstants.ReversedZ:=IfThen(InFlightFrameState^.ZFar<0.0,1.0,0.0);
- PushConstants.Pad0:=0.0;
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
