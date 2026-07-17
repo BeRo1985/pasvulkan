@@ -1210,6 +1210,7 @@ type EpvApplication=class(Exception)
        function GetKeyActionByName(const aName:TpvUTF8String):TpvApplicationInputKeyAction;
        function IsKeyActionPressed(const aName:TpvUTF8String):boolean;
        procedure RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+       procedure AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
        function SaveKeyBindingsToJSON:TPasJSONItem;
        procedure LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
@@ -5598,6 +5599,28 @@ begin
   end;
  end;
  // 3. Bind the new sole key (modifier-agnostic, so held movement keys keep working with modifiers).
+ Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ aAction.AddKeyShortcut(Shortcut);
+end;
+
+procedure TpvApplicationInput.AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+var Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ if not assigned(aAction) then begin
+  exit;
+ end;
+ // Adds aKeyCode as an ADDITIONAL binding of aAction (a secondary/tertiary key), keeping the existing
+ // ones - unlike RebindActionToSoleKey which replaces them. Bindings stay unique per key.
+ // No-op if the action already carries this key.
+ if aAction.HasKeyCode(aKeyCode) then begin
+  exit;
+ end;
+ // Detach the key from every other action first (drop its shortcut object so no one else keeps it).
+ Shortcut:=GetKeyShortcut(aKeyCode,-1,[]);
+ if assigned(Shortcut) then begin
+  RemoveKeyShortcut(Shortcut);
+ end;
+ // Append the key to this action, leaving its current shortcuts in place.
  Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
  aAction.AddKeyShortcut(Shortcut);
 end;
