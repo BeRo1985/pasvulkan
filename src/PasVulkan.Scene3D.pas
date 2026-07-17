@@ -799,6 +799,7 @@ type EpvScene3D=class(Exception);
              Velocity:TpvVector3;
              Gravity:TpvVector3;
              Drag:TpvFloat;
+             FadeIn:TpvFloat;
              Age:TpvDouble;
              LifeTime:TpvDouble;
              LastTime:TpvFloat;
@@ -5113,7 +5114,8 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvDouble;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean;
-                            const aDrag:TpvFloat=0.0):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+                            const aDrag:TpvFloat=0.0;
+                            const aFadeIn:TpvFloat=0.0):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aOrientation:TpvQuaternion;
@@ -44285,7 +44287,7 @@ var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
     CountVertices,TextureID:TpvUInt32;
     Particle:PParticle;
-    Time,Rotation:TpvFloat;
+    Time,Rotation,FadeFactor:TpvFloat;
     Position:TpvVector3;
     Size:TpvVector2;
     HalfFloatColor:TpvHalfFloatVector4;
@@ -44333,6 +44335,28 @@ begin
     HalfFloatColor.w:=FloatLerp(Particle^.ColorStart.w,Particle^.ColorEnd.w,Time);
 
     TextureID:=Particle^.TextureID;
+
+    // Optional fade-in/out envelope: the intensity ramps up over the first FadeIn fraction of
+    // the lifetime, then ramps back down to zero over the rest (zero FadeIn keeps the plain
+    // lerped color). Set the color's start and end equal for a constant base that the envelope
+    // shapes on its own. For additive particles (texture ID MSB set) the added intensity lives
+    // in the RGB, so the envelope scales the whole colour; for premultiplied-alpha ones the
+    // shader scales RGB by the alpha, so the envelope only touches the alpha.
+    if Particle^.FadeIn>0.0 then begin
+     if Time<Particle^.FadeIn then begin
+      FadeFactor:=Time/Particle^.FadeIn;
+     end else begin
+      FadeFactor:=1.0-((Time-Particle^.FadeIn)/(1.0-Particle^.FadeIn));
+     end;
+     if (TextureID and TpvUInt32($80000000))<>0 then begin
+      HalfFloatColor.x:=HalfFloatColor.x*FadeFactor;
+      HalfFloatColor.y:=HalfFloatColor.y*FadeFactor;
+      HalfFloatColor.z:=HalfFloatColor.z*FadeFactor;
+      HalfFloatColor.w:=HalfFloatColor.w*FadeFactor;
+     end else begin
+      HalfFloatColor.w:=HalfFloatColor.w*FadeFactor;
+     end;
+    end;
 
     // Each particle has an oversized triangle that contains the actual particle quad.
     // This might increase overdraw, but it reduces the number of vertices used.
@@ -44398,7 +44422,8 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aLifeTime:TpvDouble;
                                 const aTextureID:TpvUInt32;
                                 const aAdditiveBlending:boolean;
-                                const aDrag:TpvFloat):TpvSizeInt;
+                                const aDrag:TpvFloat;
+                                const aFadeIn:TpvFloat):TpvSizeInt;
 var Particle:PParticle;
 begin
  // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
@@ -44411,6 +44436,7 @@ begin
  Particle^.Velocity:=aVelocity;
  Particle^.Gravity:=aGravity;
  Particle^.Drag:=aDrag;
+ Particle^.FadeIn:=aFadeIn;
  Particle^.RotationStart:=aRotationStart;
  Particle^.RotationEnd:=aRotationEnd;
  Particle^.SizeStart:=aSizeStart;
