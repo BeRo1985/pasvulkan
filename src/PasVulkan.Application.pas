@@ -713,6 +713,85 @@ type EpvApplication=class(Exception)
        property KeyShortcuts:TpvApplicationInputKeyShortcuts read fKeyShortcuts write fKeyShortcuts;
      end;
 
+     // Poll-based gamepad action binding model (analogous to the keyboard key action / key shortcut pair)
+     TpvApplicationInputGamepadElementKind=
+      (
+       None,
+       Button,
+       Axis
+      );
+
+     TpvApplicationInputGamepadAction=class;
+
+     TpvApplicationInputGamepadActions=TpvObjectGenericList<TpvApplicationInputGamepadAction>;
+
+     TpvApplicationInputGamepadBinding=class
+      private
+       fApplication:TpvApplication;
+       fID:TpvUInt64;
+       fKind:TpvApplicationInputGamepadElementKind;
+       fIndex:TpvInt32;   // GAME_CONTROLLER_BUTTON_* for Button, GAME_CONTROLLER_AXIS_* for Axis
+       fInvert:boolean;   // Axis only: negate the raw value so either half-axis can drive an action
+       fGamepadActions:TpvApplicationInputGamepadActions;
+      public
+       constructor Create(const aApplication:TpvApplication;
+                          const aKind:TpvApplicationInputGamepadElementKind;
+                          const aIndex:TpvInt32;
+                          const aInvert:boolean=false); reintroduce;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AddGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+       procedure RemoveGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+       function HasGamepadAction(const aAction:TpvApplicationInputGamepadAction):boolean;
+       // Signed value of this element across all attached game controllers (the largest magnitude):
+       // a button reads 0.0/1.0, an axis reads its raw value negated when Invert is set.
+       function Value:TpvFloat;
+       // True while the element is active (button held, or axis past aThreshold in its direction).
+       function IsActive(const aThreshold:TpvFloat=0.5):boolean;
+       // Human-readable element name for HUD/menu, e.g. "A", "LT", "Left Stick X-".
+       function ElementName:TpvUTF8String;
+      published
+       property ID:TpvUInt64 read fID write fID;
+       property Kind:TpvApplicationInputGamepadElementKind read fKind write fKind;
+       property Index:TpvInt32 read fIndex write fIndex;
+       property Invert:boolean read fInvert write fInvert;
+     end;
+
+     TpvApplicationInputGamepadBindings=TpvObjectGenericList<TpvApplicationInputGamepadBinding>;
+
+     TpvApplicationInputGamepadAction=class
+      private
+       fApplication:TpvApplication;
+       fID:TpvUInt64;
+       fName:TpvUTF8String;
+       fDescription:TpvUTF8String;
+       fGamepadBindings:TpvApplicationInputGamepadBindings;
+      public
+       constructor Create(const aApplication:TpvApplication;
+                          const aName:TpvUTF8String='';
+                          const aDescription:TpvUTF8String=''); reintroduce;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure AddGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+       procedure RemoveGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+       function HasGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding):boolean;
+       // True while any bound element is active (digital poll).
+       function IsPressed(const aThreshold:TpvFloat=0.5):boolean;
+       // Signed analog value of the bound elements (largest magnitude), for stick/trigger-driven actions.
+       function Value:TpvFloat;
+       // True if (aKind,aIndex) is bound to this action.
+       function HasElement(const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32):boolean;
+       // Human-readable list of the bound element names (for HUD/menu display).
+       function BindingNames(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
+      published
+       property ID:TpvUInt64 read fID write fID;
+       property Name:TpvUTF8String read fName write fName;
+       property Description:TpvUTF8String read fDescription write fDescription;
+       property GamepadBindings:TpvApplicationInputGamepadBindings read fGamepadBindings write fGamepadBindings;
+     end;
+
      TpvApplicationInputKeyEvent=record
       public
        KeyEventType:TpvApplicationInputKeyEventType;
@@ -1179,6 +1258,10 @@ type EpvApplication=class(Exception)
        fKeyShortcutIDCounter:TpvUInt64;
        fKeyActions:TpvApplicationInputKeyActions;
        fKeyActionIDCounter:TpvUInt64;
+       fGamepadBindings:TpvApplicationInputGamepadBindings;
+       fGamepadBindingIDCounter:TpvUInt64;
+       fGamepadActions:TpvApplicationInputGamepadActions;
+       fGamepadActionIDCounter:TpvUInt64;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLScanCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
@@ -1213,6 +1296,20 @@ type EpvApplication=class(Exception)
        procedure AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
        function SaveKeyBindingsToJSON:TPasJSONItem;
        procedure LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
+       // Gamepad action helpers (poll / rebind / (de)serialize), analogous to the key action helpers above
+       function AddGamepadAction(const aName:TpvUTF8String;const aDescription:TpvUTF8String=''):TpvApplicationInputGamepadAction;
+       function AddGamepadBinding(const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean=false):TpvApplicationInputGamepadBinding;
+       procedure RemoveGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+       procedure RemoveGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+       function GetGamepadActionByName(const aName:TpvUTF8String):TpvApplicationInputGamepadAction;
+       function IsGamepadActionPressed(const aName:TpvUTF8String):boolean;
+       function GamepadActionValue(const aName:TpvUTF8String):TpvFloat;
+       // Replace all of the action's bindings with the single given element.
+       procedure RebindGamepadActionToSole(const aAction:TpvApplicationInputGamepadAction;const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean=false);
+       // Append an element to the action (no-op if already bound); keeps existing bindings.
+       procedure AddGamepadElementToAction(const aAction:TpvApplicationInputGamepadAction;const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean=false);
+       function SaveGamepadBindingsToJSON:TPasJSONItem;
+       procedure LoadGamepadBindingsFromJSON(const aJSON:TPasJSONItem);
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
        function GetAccelerometerX:TpvFloat;
@@ -5405,10 +5502,16 @@ begin
  fKeyShortcutIDCounter:=0;
  fKeyActions:=TpvApplicationInputKeyActions.Create;
  fKeyActionIDCounter:=0;
+ fGamepadBindings:=TpvApplicationInputGamepadBindings.Create(true);
+ fGamepadBindingIDCounter:=0;
+ fGamepadActions:=TpvApplicationInputGamepadActions.Create;
+ fGamepadActionIDCounter:=0;
 end;
 
 destructor TpvApplicationInput.Destroy;
 begin
+ FreeAndNil(fGamepadActions);
+ FreeAndNil(fGamepadBindings);
  FreeAndNil(fKeyActions);
  FreeAndNil(fKeyShortcuts);
  FreeAndNil(fKeyShortcutHashMap);
@@ -5802,6 +5905,458 @@ begin
          Shortcut:=AddKeyShortcut(KeyCodeValue,-1,[],true);
          Action.AddKeyShortcut(Shortcut);
         end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+constructor TpvApplicationInputGamepadBinding.Create(const aApplication:TpvApplication;
+                                                     const aKind:TpvApplicationInputGamepadElementKind;
+                                                     const aIndex:TpvInt32;
+                                                     const aInvert:boolean);
+begin
+ inherited Create;
+ fApplication:=aApplication;
+ fID:=0;
+ fKind:=aKind;
+ fIndex:=aIndex;
+ fInvert:=aInvert;
+ fGamepadActions:=TpvApplicationInputGamepadActions.Create(false);
+end;
+
+destructor TpvApplicationInputGamepadBinding.Destroy;
+begin
+ FreeAndNil(fGamepadActions);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationInputGamepadBinding.AfterConstruction;
+var Action:TpvApplicationInputGamepadAction;
+begin
+ inherited AfterConstruction;
+ for Action in fGamepadActions do begin
+  if Action.fGamepadBindings.IndexOf(self)<0 then begin
+   Action.fGamepadBindings.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputGamepadBinding.BeforeDestruction;
+var Index:TpvInt32;
+    Action:TpvApplicationInputGamepadAction;
+begin
+ for Action in fGamepadActions do begin
+  Index:=Action.fGamepadBindings.IndexOf(self);
+  if Index>=0 then begin
+   Action.fGamepadBindings.Delete(Index);
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvApplicationInputGamepadBinding.AddGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+begin
+ if fGamepadActions.IndexOf(aAction)<0 then begin
+  fGamepadActions.Add(aAction);
+  if aAction.fGamepadBindings.IndexOf(self)<0 then begin
+   aAction.fGamepadBindings.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputGamepadBinding.RemoveGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+var Index:TpvInt32;
+begin
+ Index:=fGamepadActions.IndexOf(aAction);
+ if Index>=0 then begin
+  fGamepadActions.Delete(Index);
+  Index:=aAction.fGamepadBindings.IndexOf(self);
+  if Index>=0 then begin
+   aAction.fGamepadBindings.Delete(Index);
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadBinding.HasGamepadAction(const aAction:TpvApplicationInputGamepadAction):boolean;
+begin
+ result:=fGamepadActions.IndexOf(aAction)>=0;
+end;
+
+function TpvApplicationInputGamepadBinding.Value:TpvFloat;
+var Index:TpvSizeInt;
+    Joystick:TpvApplicationJoystick;
+    v:TpvFloat;
+begin
+ // Largest-magnitude signal across all attached game controllers.
+ result:=0.0;
+ if not assigned(fApplication) then begin
+  exit;
+ end;
+ for Index:=0 to fApplication.Input.GetJoystickCount-1 do begin
+  Joystick:=fApplication.Input.GetJoystickByIndex(Index);
+  if assigned(Joystick) and Joystick.IsGameController then begin
+   case fKind of
+    TpvApplicationInputGamepadElementKind.Button:begin
+     if Joystick.GetGameControllerButton(fIndex) then begin
+      v:=1.0;
+     end else begin
+      v:=0.0;
+     end;
+    end;
+    TpvApplicationInputGamepadElementKind.Axis:begin
+     v:=Joystick.GetGameControllerAxis(fIndex);
+     if fInvert then begin
+      v:=-v;
+     end;
+    end;
+    else begin
+     v:=0.0;
+    end;
+   end;
+   if abs(v)>abs(result) then begin
+    result:=v;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadBinding.IsActive(const aThreshold:TpvFloat):boolean;
+begin
+ result:=Value>=aThreshold;
+end;
+
+function TpvApplicationInputGamepadBinding.ElementName:TpvUTF8String;
+const ButtonNames:array[0..20] of TpvUTF8String=
+       ('A','B','X','Y','Back','Guide','Start','Left Stick','Right Stick','LB','RB',
+        'D-Pad Up','D-Pad Down','D-Pad Left','D-Pad Right','Misc1','Paddle1','Paddle2','Paddle3','Paddle4','Touchpad');
+      AxisNames:array[0..5] of TpvUTF8String=
+       ('Left Stick X','Left Stick Y','Right Stick X','Right Stick Y','LT','RT');
+begin
+ result:='';
+ case fKind of
+  TpvApplicationInputGamepadElementKind.Button:begin
+   if (fIndex>=low(ButtonNames)) and (fIndex<=high(ButtonNames)) then begin
+    result:=ButtonNames[fIndex];
+   end else begin
+    result:='Button '+TpvUTF8String(IntToStr(fIndex));
+   end;
+  end;
+  TpvApplicationInputGamepadElementKind.Axis:begin
+   if (fIndex>=low(AxisNames)) and (fIndex<=high(AxisNames)) then begin
+    result:=AxisNames[fIndex];
+   end else begin
+    result:='Axis '+TpvUTF8String(IntToStr(fIndex));
+   end;
+   // Sticks distinguish direction; triggers are unidirectional so they get no sign suffix.
+   if fIndex<=GAME_CONTROLLER_AXIS_RIGHTY then begin
+    if fInvert then begin
+     result:=result+'-';
+    end else begin
+     result:=result+'+';
+    end;
+   end;
+  end;
+  else begin
+   result:='';
+  end;
+ end;
+end;
+
+constructor TpvApplicationInputGamepadAction.Create(const aApplication:TpvApplication;
+                                                    const aName:TpvUTF8String;
+                                                    const aDescription:TpvUTF8String);
+begin
+ inherited Create;
+ fApplication:=aApplication;
+ fID:=0;
+ fName:=aName;
+ fDescription:=aDescription;
+ fGamepadBindings:=TpvApplicationInputGamepadBindings.Create(false);
+end;
+
+destructor TpvApplicationInputGamepadAction.Destroy;
+begin
+ FreeAndNil(fGamepadBindings);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationInputGamepadAction.AfterConstruction;
+var Binding:TpvApplicationInputGamepadBinding;
+begin
+ inherited AfterConstruction;
+ for Binding in fGamepadBindings do begin
+  if Binding.fGamepadActions.IndexOf(self)<0 then begin
+   Binding.fGamepadActions.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputGamepadAction.BeforeDestruction;
+var Index:TpvInt32;
+    Binding:TpvApplicationInputGamepadBinding;
+begin
+ for Binding in fGamepadBindings do begin
+  Index:=Binding.fGamepadActions.IndexOf(self);
+  if Index>=0 then begin
+   Binding.fGamepadActions.Delete(Index);
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvApplicationInputGamepadAction.AddGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+begin
+ if fGamepadBindings.IndexOf(aBinding)<0 then begin
+  fGamepadBindings.Add(aBinding);
+  if aBinding.fGamepadActions.IndexOf(self)<0 then begin
+   aBinding.fGamepadActions.Add(self);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInputGamepadAction.RemoveGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+var Index:TpvInt32;
+begin
+ Index:=fGamepadBindings.IndexOf(aBinding);
+ if Index>=0 then begin
+  fGamepadBindings.Delete(Index);
+  Index:=aBinding.fGamepadActions.IndexOf(self);
+  if Index>=0 then begin
+   aBinding.fGamepadActions.Delete(Index);
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadAction.HasGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding):boolean;
+begin
+ result:=fGamepadBindings.IndexOf(aBinding)>=0;
+end;
+
+function TpvApplicationInputGamepadAction.IsPressed(const aThreshold:TpvFloat):boolean;
+var Index:TpvSizeInt;
+    Binding:TpvApplicationInputGamepadBinding;
+begin
+ result:=false;
+ for Index:=0 to fGamepadBindings.Count-1 do begin
+  Binding:=fGamepadBindings[Index];
+  if assigned(Binding) and Binding.IsActive(aThreshold) then begin
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadAction.Value:TpvFloat;
+var Index:TpvSizeInt;
+    Binding:TpvApplicationInputGamepadBinding;
+    v:TpvFloat;
+begin
+ result:=0.0;
+ for Index:=0 to fGamepadBindings.Count-1 do begin
+  Binding:=fGamepadBindings[Index];
+  if assigned(Binding) then begin
+   v:=Binding.Value;
+   if abs(v)>abs(result) then begin
+    result:=v;
+   end;
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadAction.HasElement(const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32):boolean;
+var Index:TpvSizeInt;
+    Binding:TpvApplicationInputGamepadBinding;
+begin
+ result:=false;
+ for Index:=0 to fGamepadBindings.Count-1 do begin
+  Binding:=fGamepadBindings[Index];
+  if assigned(Binding) and (Binding.fKind=aKind) and (Binding.fIndex=aIndex) then begin
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
+function TpvApplicationInputGamepadAction.BindingNames(const aSeparator:TpvUTF8String):TpvUTF8String;
+var Index:TpvSizeInt;
+    Binding:TpvApplicationInputGamepadBinding;
+begin
+ result:='';
+ for Index:=0 to fGamepadBindings.Count-1 do begin
+  Binding:=fGamepadBindings[Index];
+  if assigned(Binding) then begin
+   if length(result)>0 then begin
+    result:=result+aSeparator;
+   end;
+   result:=result+Binding.ElementName;
+  end;
+ end;
+end;
+
+function TpvApplicationInput.AddGamepadAction(const aName:TpvUTF8String;const aDescription:TpvUTF8String):TpvApplicationInputGamepadAction;
+begin
+ result:=GetGamepadActionByName(aName);
+ if not assigned(result) then begin
+  result:=TpvApplicationInputGamepadAction.Create(pvApplication,aName,aDescription);
+  inc(fGamepadActionIDCounter);
+  result.fID:=fGamepadActionIDCounter;
+  fGamepadActions.Add(result);
+ end;
+end;
+
+function TpvApplicationInput.AddGamepadBinding(const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean):TpvApplicationInputGamepadBinding;
+begin
+ // Gamepad bindings are not deduplicated (the same element may drive different actions per context).
+ result:=TpvApplicationInputGamepadBinding.Create(pvApplication,aKind,aIndex,aInvert);
+ inc(fGamepadBindingIDCounter);
+ result.fID:=fGamepadBindingIDCounter;
+ fGamepadBindings.Add(result);
+end;
+
+procedure TpvApplicationInput.RemoveGamepadBinding(const aBinding:TpvApplicationInputGamepadBinding);
+var Index:TpvSizeInt;
+begin
+ if assigned(aBinding) then begin
+  Index:=fGamepadBindings.IndexOf(aBinding);
+  if Index>=0 then begin
+   fGamepadBindings.Delete(Index); // owning list -> frees; BeforeDestruction detaches it from its actions
+  end;
+ end;
+end;
+
+procedure TpvApplicationInput.RemoveGamepadAction(const aAction:TpvApplicationInputGamepadAction);
+var Index:TpvSizeInt;
+begin
+ if assigned(aAction) then begin
+  Index:=fGamepadActions.IndexOf(aAction);
+  if Index>=0 then begin
+   fGamepadActions.Delete(Index); // owning list -> frees
+  end;
+ end;
+end;
+
+function TpvApplicationInput.GetGamepadActionByName(const aName:TpvUTF8String):TpvApplicationInputGamepadAction;
+var Index:TpvSizeInt;
+    Action:TpvApplicationInputGamepadAction;
+begin
+ result:=nil;
+ for Index:=0 to fGamepadActions.Count-1 do begin
+  Action:=fGamepadActions[Index];
+  if assigned(Action) and (Action.fName=aName) then begin
+   result:=Action;
+   exit;
+  end;
+ end;
+end;
+
+function TpvApplicationInput.IsGamepadActionPressed(const aName:TpvUTF8String):boolean;
+var Action:TpvApplicationInputGamepadAction;
+begin
+ Action:=GetGamepadActionByName(aName);
+ result:=assigned(Action) and Action.IsPressed;
+end;
+
+function TpvApplicationInput.GamepadActionValue(const aName:TpvUTF8String):TpvFloat;
+var Action:TpvApplicationInputGamepadAction;
+begin
+ Action:=GetGamepadActionByName(aName);
+ if assigned(Action) then begin
+  result:=Action.Value;
+ end else begin
+  result:=0.0;
+ end;
+end;
+
+procedure TpvApplicationInput.RebindGamepadActionToSole(const aAction:TpvApplicationInputGamepadAction;const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean);
+var Binding:TpvApplicationInputGamepadBinding;
+begin
+ if not assigned(aAction) then begin
+  exit;
+ end;
+ // Drop all of the action's current bindings (each is owned solely by this action -> free it), then bind the new element.
+ while aAction.fGamepadBindings.Count>0 do begin
+  Binding:=aAction.fGamepadBindings[0];
+  aAction.RemoveGamepadBinding(Binding);
+  RemoveGamepadBinding(Binding);
+ end;
+ Binding:=AddGamepadBinding(aKind,aIndex,aInvert);
+ aAction.AddGamepadBinding(Binding);
+end;
+
+procedure TpvApplicationInput.AddGamepadElementToAction(const aAction:TpvApplicationInputGamepadAction;const aKind:TpvApplicationInputGamepadElementKind;const aIndex:TpvInt32;const aInvert:boolean);
+var Binding:TpvApplicationInputGamepadBinding;
+begin
+ if not assigned(aAction) then begin
+  exit;
+ end;
+ if aAction.HasElement(aKind,aIndex) then begin
+  exit;
+ end;
+ Binding:=AddGamepadBinding(aKind,aIndex,aInvert);
+ aAction.AddGamepadBinding(Binding);
+end;
+
+function TpvApplicationInput.SaveGamepadBindingsToJSON:TPasJSONItem;
+var ActionIndex,BindingIndex:TpvSizeInt;
+    Action:TpvApplicationInputGamepadAction;
+    Binding:TpvApplicationInputGamepadBinding;
+    BindingsArray:TPasJSONItemArray;
+    BindingObject:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ for ActionIndex:=0 to fGamepadActions.Count-1 do begin
+  Action:=fGamepadActions[ActionIndex];
+  if assigned(Action) then begin
+   BindingsArray:=TPasJSONItemArray.Create;
+   for BindingIndex:=0 to Action.fGamepadBindings.Count-1 do begin
+    Binding:=Action.fGamepadBindings[BindingIndex];
+    if assigned(Binding) then begin
+     BindingObject:=TPasJSONItemObject.Create;
+     BindingObject.Add('kind',TPasJSONItemNumber.Create(TpvInt32(Ord(Binding.fKind))));
+     BindingObject.Add('index',TPasJSONItemNumber.Create(Binding.fIndex));
+     BindingObject.Add('invert',TPasJSONItemBoolean.Create(Binding.fInvert));
+     BindingsArray.Add(BindingObject);
+    end;
+   end;
+   TPasJSONItemObject(result).Add(Action.fName,BindingsArray);
+  end;
+ end;
+end;
+
+procedure TpvApplicationInput.LoadGamepadBindingsFromJSON(const aJSON:TPasJSONItem);
+var PropertyIndex,BindingIndex:TpvSizeInt;
+    Action:TpvApplicationInputGamepadAction;
+    Binding:TpvApplicationInputGamepadBinding;
+    BindingsItem,BindingItem:TPasJSONItem;
+    BindingsArray:TPasJSONItemArray;
+    Kind:TpvApplicationInputGamepadElementKind;
+    ElementIndex:TpvInt32;
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  for PropertyIndex:=0 to TPasJSONItemObject(aJSON).Count-1 do begin
+   Action:=GetGamepadActionByName(TpvUTF8String(TPasJSONItemObject(aJSON).Keys[PropertyIndex]));
+   if assigned(Action) then begin
+    // Replace this action's bindings with the stored set.
+    while Action.fGamepadBindings.Count>0 do begin
+     Binding:=Action.fGamepadBindings[0];
+     Action.RemoveGamepadBinding(Binding);
+     RemoveGamepadBinding(Binding);
+    end;
+    BindingsItem:=TPasJSONItemObject(aJSON).Values[PropertyIndex];
+    if assigned(BindingsItem) and (BindingsItem is TPasJSONItemArray) then begin
+     BindingsArray:=TPasJSONItemArray(BindingsItem);
+     for BindingIndex:=0 to BindingsArray.Count-1 do begin
+      BindingItem:=BindingsArray.Items[BindingIndex];
+      if assigned(BindingItem) and (BindingItem is TPasJSONItemObject) then begin
+       Kind:=TpvApplicationInputGamepadElementKind(TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(BindingItem).Properties['kind'],0.0))));
+       ElementIndex:=TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(BindingItem).Properties['index'],-1.0)));
+       if (Kind<>TpvApplicationInputGamepadElementKind.None) and (ElementIndex>=0) then begin
+        Binding:=AddGamepadBinding(Kind,ElementIndex,TPasJSON.GetBoolean(TPasJSONItemObject(BindingItem).Properties['invert'],false));
+        Action.AddGamepadBinding(Binding);
        end;
       end;
      end;
