@@ -109,13 +109,17 @@ void main(){
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
 
 #ifdef FOG_MSAA
-  // Per-sample fog factors, averaged: a silhouette pixel's resolved colour is a coverage mix of
-  // several surfaces, and the averaged factor matches that mix exactly (sky / degenerate samples
-  // contribute zero). The view direction of the environment colour is taken from any geometry
-  // sample - the per-sample directions of one pixel are visually identical.
+  // Per-sample fog factors, averaged over the GEOMETRY samples only: a silhouette pixel's
+  // resolved colour is a coverage mix of geometry and sky, and since the sky already renders as
+  // (essentially) the fog colour, fogging the sky fraction is a no-op - so applying the geometry
+  // samples' mean factor to the whole resolved pixel reproduces the true per-sample result. An
+  // average over ALL samples would dilute the factor by the sky coverage and leave the geometry
+  // fraction under-fogged, a residual dark rim along silhouettes. The view direction of the
+  // environment colour is taken from any geometry sample - the per-sample directions of one
+  // pixel are visually identical.
   float fogAmount = 0.0;
   vec3 fogViewPosition = vec3(0.0);
-  bool anyGeometry = false;
+  int countGeometrySamples = 0;
   int countSamples = int(pushConstants.countSamples);
   for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){
     float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), sampleIndex).x;
@@ -124,14 +128,14 @@ void main(){
     if(computeFogAmount(rawDepth, reversedZ, inverseProjectionMatrix, inverseViewMatrix, sampleFogAmount, sampleViewPosition)){
       fogAmount += sampleFogAmount;
       fogViewPosition = sampleViewPosition;
-      anyGeometry = true;
+      countGeometrySamples++;
     }
   }
-  if(!anyGeometry){
+  if(countGeometrySamples == 0){
     outFragColor = color;
     return;
   }
-  fogAmount /= float(countSamples);
+  fogAmount /= float(countGeometrySamples);
 #else
   // The single-sample path: one depth per pixel, sky / degenerate pixels are left untouched.
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
