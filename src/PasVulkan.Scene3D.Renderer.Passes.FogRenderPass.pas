@@ -82,8 +82,11 @@ type { TpvScene3DRendererPassesFogRenderPass }
      // the view-space distance, and blends a fog colour over the pixel by an exponential distance
      // term with an optional world-height falloff. The fog colour is either a fixed colour
      // (FogMode = FixedColor) or the environment (IBL) cube map sampled in the view direction
-     // (FogMode = EnvironmentColor). Background / sky pixels stay untouched. The pass is only
-     // created when FogMode <> None, so projects that never enable it pay nothing.
+     // (FogMode = EnvironmentColor). Background / sky pixels stay untouched. Under MSAA the raw
+     // multisampled depth is read and the fog factor is computed per sample and averaged (the
+     // FOG_MSAA shader variants), so silhouette pixels match their resolved coverage mix instead
+     // of showing a rim line. The pass is only created when FogMode <> None, so projects that
+     // never enable it pay nothing.
      TpvScene3DRendererPassesFogRenderPass=class(TpvFrameGraph.TRenderPass)
       public
        type TPushConstants=record
@@ -94,12 +97,19 @@ type { TpvScene3DRendererPassesFogRenderPass }
              HeightFalloff:TpvFloat;
              HeightBase:TpvFloat;
              EnvironmentLOD:TpvFloat;
+             CountSamples:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
        fSampleEnvironment:Boolean;
+       // Under MSAA the fog reads the raw multisampled depth (per-sample fog factors, averaged in
+       // the FOG_MSAA shader variants) instead of the reduced depth pyramid, whose single depth per
+       // pixel mismatches the resolved colour's coverage mix at silhouettes (a visible rim line).
+       fMSAA:Boolean;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceMSAADepth:TpvFrameGraph.TPass.TUsedImageResource;
+       fVulkanMSAADepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fVulkanVertexShaderModule:TpvVulkanShaderModule;
        fVulkanFragmentShaderModule:TpvVulkanShaderModule;
@@ -136,6 +146,8 @@ begin
 
  fSampleEnvironment:=fInstance.FogMode=TpvScene3DRendererInstance.TFogMode.EnvironmentColor;
 
+ fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+
  Name:='FogRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
@@ -152,6 +164,19 @@ begin
                                fInstance.LastOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+
+ // Under MSAA the raw multisampled depth is read directly (see fMSAA above); without MSAA the
+ // depth comes from the reduced depth pyramid, which needs no frame-graph input here (it is bound
+ // directly, with the explicit DepthMipMapComputePass dependency set at pass creation).
+ if fMSAA then begin
+  fResourceMSAADepth:=AddImageInput('resourcetype_msaa_depth',
+                                    'resource_msaa_depth_data',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+ end else begin
+  fResourceMSAADepth:=nil;
+ end;
 
  fResourceOutput:=AddImageOutput('resourcetype_color',
                                  'resource_fog_color',
@@ -183,10 +208,18 @@ begin
   Stream.Free;
  end;
 
- if fSampleEnvironment then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_environment_frag.spv');
+ if fMSAA then begin
+  if fSampleEnvironment then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_environment_msaa_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_msaa_frag.spv');
+  end;
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_frag.spv');
+  if fSampleEnvironment then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_environment_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_frag.spv');
+  end;
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -286,17 +319,49 @@ begin
                                                                  [],
                                                                  false
                                                                 );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                                                fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
-                                                                                                TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                 [],
-                                                                 [],
-                                                                 false
-                                                                );
+  if fMSAA then begin
+   // The raw multisampled depth needs a depth-aspect 2D-array view of its own (the frame graph's
+   // default view is a depth/stencil attachment view); the FOG_MSAA shader variant reads it as a
+   // sampler2DMSArray via texelFetch, so the sampler itself is irrelevant.
+   fVulkanMSAADepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                             fResourceMSAADepth.VulkanImages[InFlightFrameIndex],
+                                                                             TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                             TpvFrameGraph.TImageResourceType(fResourceMSAADepth.ResourceType).Format,
+                                                                             VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                             TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                             0,
+                                                                             1,
+                                                                             0,
+                                                                             fInstance.CountSurfaceViews
+                                                                            );
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                 fVulkanMSAADepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceMSAADepth.ResourceTransition.Layout)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  end else begin
+   fVulkanMSAADepthImageViews[InFlightFrameIndex]:=nil;
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                 fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                  0,
                                                                  1,
@@ -400,6 +465,7 @@ begin
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
+  FreeAndNil(fVulkanMSAADepthImageViews[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fVulkanDescriptorSetLayout);
@@ -438,6 +504,7 @@ begin
  PushConstants.HeightFalloff:=fInstance.FogHeightFalloff;
  PushConstants.HeightBase:=fInstance.FogHeightBase;
  PushConstants.EnvironmentLOD:=fInstance.FogEnvironmentLOD;
+ PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,

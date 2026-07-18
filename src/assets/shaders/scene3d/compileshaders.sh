@@ -217,6 +217,8 @@ compileshaderarguments=(
   "-V dof_prepare.frag -o ${tempPath}/dof_prepare_frag.spv"
   "-V fog.frag -o ${tempPath}/fog_frag.spv"
   "-V fog.frag -DFOG_SAMPLE_ENVIRONMENT -o ${tempPath}/fog_environment_frag.spv"
+  "-V fog.frag -DFOG_MSAA -o ${tempPath}/fog_msaa_frag.spv"
+  "-V fog.frag -DFOG_MSAA -DFOG_SAMPLE_ENVIRONMENT -o ${tempPath}/fog_environment_msaa_frag.spv"
   "-V dof_prefilter.frag -o ${tempPath}/dof_prefilter_frag.spv"
   "-V dof_blur.frag -o ${tempPath}/dof_blur_frag.spv"
   "-V dof_bruteforce.frag -o ${tempPath}/dof_bruteforce_frag.spv"
