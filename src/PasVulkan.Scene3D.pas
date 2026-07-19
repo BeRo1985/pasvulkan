@@ -21588,30 +21588,38 @@ begin
   UsedMaterial:=nil;
   try
    HashData:=Material.fData;
-   if aForceNew then begin
-    if not fSceneInstance.fMaterialHashMap.ExistKey(HashData) then begin
-     fSceneInstance.fMaterialHashMap[HashData]:=Material;
-    end;
-    result:=fMaterials.Add(Material);
-    fMaterialIndexHashMap.Add(Material,result);
-    UsedMaterial:=Material;
-    Material:=nil;
-    TPasMPInterlocked.Increment(fSceneInstance.fUniqueMaterialCount);
-   end else begin
-    HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
-    if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) and (HashedMaterial.fName=Material.fName) then begin
-     result:=fMaterials.Add(HashedMaterial);
-     fMaterialIndexHashMap.Add(HashedMaterial,result);
-     UsedMaterial:=HashedMaterial;
-     TPasMPInterlocked.Increment(fSceneInstance.fDedupMaterialCount);
-    end else begin
-     fSceneInstance.fMaterialHashMap[HashData]:=Material;
+   // The scene-wide material dedup hash map is shared across all groups, so its read-modify-write here
+   // must be serialised the same way TMaterial.Remove guards it (fMaterialListLock). Without this, two
+   // groups being built concurrently (the async glTF loaders, or a parallel bulk pre-build) race on it.
+   fSceneInstance.fMaterialListLock.Acquire;
+   try
+    if aForceNew then begin
+     if not fSceneInstance.fMaterialHashMap.ExistKey(HashData) then begin
+      fSceneInstance.fMaterialHashMap[HashData]:=Material;
+     end;
      result:=fMaterials.Add(Material);
      fMaterialIndexHashMap.Add(Material,result);
      UsedMaterial:=Material;
      Material:=nil;
      TPasMPInterlocked.Increment(fSceneInstance.fUniqueMaterialCount);
+    end else begin
+     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
+     if assigned(HashedMaterial) and fSceneInstance.fMaterialExistHashMap.ExistKey(HashedMaterial) and (HashedMaterial.fName=Material.fName) then begin
+      result:=fMaterials.Add(HashedMaterial);
+      fMaterialIndexHashMap.Add(HashedMaterial,result);
+      UsedMaterial:=HashedMaterial;
+      TPasMPInterlocked.Increment(fSceneInstance.fDedupMaterialCount);
+     end else begin
+      fSceneInstance.fMaterialHashMap[HashData]:=Material;
+      result:=fMaterials.Add(Material);
+      fMaterialIndexHashMap.Add(Material,result);
+      UsedMaterial:=Material;
+      Material:=nil;
+      TPasMPInterlocked.Increment(fSceneInstance.fUniqueMaterialCount);
+     end;
     end;
+   finally
+    fSceneInstance.fMaterialListLock.Release;
    end;
    if length(trim(aMaterial.fName))>0 then begin
     if not fMaterialNameMapArrayIndexHashMap.ExistKey(aMaterial.fName) then begin
