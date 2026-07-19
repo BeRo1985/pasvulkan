@@ -11008,6 +11008,7 @@ var PreviousInFlightFrameIndex,NextInFlightFrameIndex,Index,CountViews,Count,
     GPUBatchRange:TpvScene3D.PGPUBatchRange;
     MeshShaderOutputNeeded:TpvSizeInt;
     OutputNeeded:TpvSizeInt;
+    PreviousFrameFinished:boolean;
     ExpandRangeInfoTotalWeight:TpvSizeInt;
     ExpandRangeInfoMaxOutputCommands:TpvSizeInt;
     ExpandRangeInfoRunningBase:TpvUInt32;
@@ -11191,8 +11192,8 @@ begin
    end;
    if fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]<OutputNeeded then begin
     fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=OutputNeeded;
-    fScene3D.WaitOnceOnPreviousFrame;
-    FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+    PreviousFrameFinished:=fScene3D.WaitOnceOnPreviousFrame;
+    fScene3D.FreeAndNilOrAddToFreeQueue(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex],PreviousFrameFinished);
    end;
 
    case fScene3D.BufferStreamingMode of
@@ -11321,9 +11322,9 @@ begin
     if fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]<OutputNeeded then begin
      fGPUDrawIndexedIndirectCommandOutputBufferSizes[PerInFlightFrameBufferIndex]:=OutputNeeded;
 
-     fScene3D.WaitOnceOnPreviousFrame;
+     PreviousFrameFinished:=fScene3D.WaitOnceOnPreviousFrame;
 
-     FreeAndNil(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex]);
+     fScene3D.FreeAndNilOrAddToFreeQueue(fGPUDrawIndexedIndirectCommandOutputBuffers[PerInFlightFrameBufferIndex],PreviousFrameFinished);
 
      case fScene3D.BufferStreamingMode of
       TpvScene3D.TBufferStreamingMode.Direct:begin
@@ -11396,8 +11397,8 @@ begin
    // Grow-only scratch buffer resize (must be at least as large as output buffer)
    if Renderer.UseMeshletExpand and (fMeshCullMaxScratchEntries[PerInFlightFrameBufferIndex]<fMeshShaderOutputBufferSizes[aInFlightFrameIndex]) then begin
     fMeshCullMaxScratchEntries[PerInFlightFrameBufferIndex]:=fMeshShaderOutputBufferSizes[aInFlightFrameIndex];
-    fScene3D.WaitOnceOnPreviousFrame;
-    FreeAndNil(fMeshCullScratchBuffers[PerInFlightFrameBufferIndex]);
+    PreviousFrameFinished:=fScene3D.WaitOnceOnPreviousFrame;
+    fScene3D.FreeAndNilOrAddToFreeQueue(fMeshCullScratchBuffers[PerInFlightFrameBufferIndex],PreviousFrameFinished);
     fMeshCullScratchBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                  16+(48*TpvInt64(fMeshCullMaxScratchEntries[PerInFlightFrameBufferIndex])),
                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
