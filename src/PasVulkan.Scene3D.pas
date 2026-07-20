@@ -208,6 +208,7 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashMask=LightClusterGridHashSize-1;
              DrawInfoFlagNodeCastsShadow=TpvUInt32(1) shl 7; // bit 7 in DrawInfo.Flags
              DrawCmdFlagMaterialCastsShadow=TpvUInt32(1) shl 2; // bit 2 in DrawCmd.Flags (bits 0-1 reserved for shader internal use)
+             InstanceFlagEmissiveScale=TpvUInt32(1) shl 1; // bit 1 in TGPUInstanceData.Flags (bit 0 = color keys); enables the per-instance EmissiveScale multiplier
        type TPrimitiveTopology=
              (
               Points=0,
@@ -759,7 +760,8 @@ type EpvScene3D=class(Exception);
 
              MaterialColorKeys:array[0..3] of TpvUInt32; // 4x packed RGBA8 per-material color tinting (0=white/no effect)
 
-             Unused1:array[0..3] of TpvUInt32;
+             EmissiveScale:TpvFloat; // per-instance emissive multiplier (JS Items.draws emissiveMul); only applied when the emissive-scale flag bit is set, so default instances are unchanged
+             Unused1:array[0..2] of TpvUInt32;
 
             end;
             PGPUInstanceData=^TGPUInstanceData;
@@ -4371,7 +4373,8 @@ type EpvScene3D=class(Exception);
                ColorKeyA:(RawIntComponents:(0,0,0,0));
 
                MaterialColorKeys:($ffffffff,$ffffffff,$ffffffff,$ffffffff); // default white = no tinting
-               Unused1:(0,0,0,0);
+               EmissiveScale:0.0;
+               Unused1:(0,0,0);
 
               );
       private

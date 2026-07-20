@@ -18,7 +18,7 @@ struct InstanceData {
   uvec4 colorKeysBA; // 2x half float RGBA
 
   uvec4 materialColorKeys; // 4x packed RGBA8 per-material color tinting
-  uvec4 unused1;
+  vec4 emissiveScaleUnused; // x = per-instance emissive multiplier (EmissiveScale), yzw unused
 };
 
 #endif // INSTANCE_DATA_STRUCT_GLSL

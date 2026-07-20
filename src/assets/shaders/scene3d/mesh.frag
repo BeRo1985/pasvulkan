@@ -935,6 +935,9 @@ void main() {
       vec3 emissiveOutput = vec3(0.0); // No emissive output for RSMs
 #else
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
+      if((currentInstanceDataIndex > 0u) && ((instanceDataItems[currentInstanceDataIndex].SelectedDissolveDitheredTransparencyFlags.w & (1u << 1u)) != 0u)){
+        emissiveOutput *= instanceDataItems[currentInstanceDataIndex].emissiveScaleUnused.x;
+      }
 #endif
 #if defined(RSMALBEDO)
       // RSM albedo output: write the raw diffuse albedo (base color, demoted for metals) instead of the shaded flux. The GI
