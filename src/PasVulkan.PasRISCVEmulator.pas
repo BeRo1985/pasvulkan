@@ -178,6 +178,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fMachineConfiguration:TPasRISCV.TConfiguration;
        fMachine:TPasRISCV;
        fVirtIOGPUVirGL:Boolean;
+       fAudioMuted:Boolean; // Explicit master mute, independent of the contextual IsAudioAudible check
+       fAudioVolume:TpvFloat; // Continuous linear output gain in the [0.0 .. 1.0] range
        procedure ConfigureMachine; virtual; abstract;
        function GetBIOSFileName:TpvRawByteString; virtual; abstract;
        function GetKernelFileName:TpvRawByteString; virtual; abstract;
@@ -194,6 +196,7 @@ type { TpvPasRISCVEmulatorMachineInstance }
        procedure PreBoot; virtual;
        procedure ResetFrameBuffer;
        function IsAudioAudible:Boolean; virtual;
+       procedure SetAudioVolume(const aAudioVolume:TpvFloat);
        procedure AudioFillBufferCallback(const aBuffer:Pointer;const aCountSamples:TpvSizeInt);
        procedure Execute; override;
       public
@@ -207,6 +210,8 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property Machine:TPasRISCV read fMachine;
        property MachineConfiguration:TPasRISCV.TConfiguration read fMachineConfiguration;
        property VirtIOGPUVirGL:Boolean read fVirtIOGPUVirGL write fVirtIOGPUVirGL;
+       property AudioMuted:Boolean read fAudioMuted write fAudioMuted;
+       property AudioVolume:TpvFloat read fAudioVolume write SetAudioVolume;
        property NextFrameTime:TpvHighResolutionTime read fNextFrameTime write fNextFrameTime;
        property VSockManager:TPasRISCV.TVirtIOVSockDevice.TVSockManager read fVSockManager;
        property ActiveTestConnections:TVSockTestProtocolList read fActiveTestConnections;
@@ -1637,6 +1642,10 @@ begin
 
  fVirtIOGPUVirGL:=fMachineConfiguration.VirtIOGPUVirGL;
 
+ fAudioMuted:=false;
+
+ fAudioVolume:=1.0;
+
  fNextFrameTime:=0;
 
  BIOSFile:=GetBIOSFileName;
@@ -1913,11 +1922,39 @@ begin
  result:=true;
 end;
 
+procedure TpvPasRISCVEmulatorMachineInstance.SetAudioVolume(const aAudioVolume:TpvFloat);
+begin
+ fAudioVolume:=Clamp(aAudioVolume,0.0,1.0);
+end;
+
 procedure TpvPasRISCVEmulatorMachineInstance.AudioFillBufferCallback(const aBuffer:Pointer;const aCountSamples:TpvSizeInt);
+var Index,CountValues:TpvSizeInt;
+    Volume:TpvFloat;
+    Value:PpvFloat;
 begin
  fMachine.SoundIO.OutputAudioFillBufferCallback(aBuffer,aCountSamples);
- if (aCountSamples>0) and not IsAudioAudible then begin
-  FillChar(aBuffer^,aCountSamples*2*SizeOf(TpvFloat),#0);
+ if aCountSamples>0 then begin
+  // The contextual audibility check and the explicit master mute both silence the output entirely,
+  // otherwise the continuous output volume is applied as a linear gain onto the interleaved stereo
+  // float samples. Unity gain passes the samples through untouched, so the common full-volume case
+  // stays free of any extra per-sample work.
+  if IsAudioAudible and not fAudioMuted then begin
+   Volume:=fAudioVolume;
+  end else begin
+   Volume:=0.0;
+  end;
+  CountValues:=aCountSamples*2; // Two interleaved channels (stereo) per sample frame
+  if Volume<=0.0 then begin
+   FillChar(aBuffer^,CountValues*SizeOf(TpvFloat),#0);
+  end else if Volume<1.0 then begin
+   Value:=aBuffer;
+   for Index:=0 to CountValues-1 do begin
+    Value^:=Value^*Volume;
+    inc(Value);
+   end;
+  end else begin
+   // Unity gain, nothing to scale
+  end;
  end;
 end;
 
