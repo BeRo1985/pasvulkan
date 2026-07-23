@@ -27938,6 +27938,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.ConstructData(const aLock:boolean);
 var Index,MeshIndex,PrimitiveIndex,MeshletIndex,VertexIndex,NodeInstanceIndex,NodeInstanceCount:TpvSizeInt;
+    CountVertices,CountDrawIndices,CountDrawUniqueIndices,CountJointBlocks:TpvSizeInt;
     DescriptorOffset,MeshletVertexOffset,MeshletPrimitiveOffset:TpvSizeInt;
     VertexDelta:TpvSizeInt;
     Generation:TpvUInt32;
@@ -28014,7 +28015,16 @@ begin
 
    end;
 
-   for Index:=0 to fGroup.fVertices.Count-1 do begin
+   // Group.Upload can add dummy elements after the instance buffer ranges were
+   // allocated. Therefore the allocated ranges, rather than the potentially
+   // newer group counts, are authoritative for all per-instance copies.
+   if fBufferRanges.VulkanVertexBufferRange.Offset>=0 then begin
+    CountVertices:=Min(fGroup.fVertices.Count,fBufferRanges.VulkanVertexBufferRange.Size);
+   end else begin
+    CountVertices:=0;
+   end;
+
+   for Index:=0 to CountVertices-1 do begin
 
     SrcVertex:=@fGroup.fVertices.ItemArray[Index];
 
@@ -28025,7 +28035,10 @@ begin
     end else begin
      DstDynamicVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
     end;
-    if (SrcVertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (SrcVertex^.CountJointBlocks>0) then begin
+    if (SrcVertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and
+       (SrcVertex^.CountJointBlocks>0) and
+       (fBufferRanges.VulkanJointBlockBufferRange.Offset>=0) and
+       ((TpvSizeInt(SrcVertex^.JointBlockBaseIndex)+TpvSizeInt(SrcVertex^.CountJointBlocks))<=fBufferRanges.VulkanJointBlockBufferRange.Size) then begin
      DstDynamicVertex^.JointBlockBaseIndex:=SrcVertex^.JointBlockBaseIndex+fBufferRanges.VulkanJointBlockBufferRange.Offset;
      DstDynamicVertex^.CountJointBlocks:=SrcVertex^.CountJointBlocks;
     end else begin
@@ -28054,11 +28067,23 @@ begin
     end;
    end;}
 
-   for Index:=0 to fGroup.fDrawChoreographyBatchCondensedIndices.Count-1 do begin
+   if fBufferRanges.VulkanDrawIndexBufferRange.Offset>=0 then begin
+    CountDrawIndices:=Min(fGroup.fDrawChoreographyBatchCondensedIndices.Count,fBufferRanges.VulkanDrawIndexBufferRange.Size);
+   end else begin
+    CountDrawIndices:=0;
+   end;
+
+   for Index:=0 to CountDrawIndices-1 do begin
     fSceneInstance.fVulkanDrawIndexBufferData.Items[fBufferRanges.VulkanDrawIndexBufferRange.Offset+Index]:=fGroup.fDrawChoreographyBatchCondensedIndices.Items[Index]+fBufferRanges.VulkanVertexBufferRange.Offset;
    end;
 
-   for Index:=0 to fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Count-1 do begin
+   if fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset>=0 then begin
+    CountDrawUniqueIndices:=Min(fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Count,fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size);
+   end else begin
+    CountDrawUniqueIndices:=0;
+   end;
+
+   for Index:=0 to CountDrawUniqueIndices-1 do begin
     fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset+Index]:=fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Items[Index]+fBufferRanges.VulkanVertexBufferRange.Offset;
    end;
 
@@ -28071,7 +28096,13 @@ begin
     TPasMPInterlocked.Increment(fSceneInstance.fMorphWeightBaseOffsetsGeneration);
    end;
 
-   for Index:=0 to fGroup.fJointBlocks.Count-1 do begin
+   if fBufferRanges.VulkanJointBlockBufferRange.Offset>=0 then begin
+    CountJointBlocks:=Min(fGroup.fJointBlocks.Count,fBufferRanges.VulkanJointBlockBufferRange.Size);
+   end else begin
+    CountJointBlocks:=0;
+   end;
+
+   for Index:=0 to CountJointBlocks-1 do begin
     SrcJointBlock:=@fGroup.fJointBlocks.ItemArray[Index];
     DstJointBlock:=@fSceneInstance.fVulkanJointBlockBufferData.Items[fBufferRanges.VulkanJointBlockBufferRange.Offset+Index];
     DstJointBlock^:=SrcJointBlock^;
