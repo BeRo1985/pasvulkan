@@ -27967,11 +27967,11 @@ begin
   try
 
    if fSceneInstance.fVulkanDynamicVertexBufferData.Count<(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size) then begin
-    fSceneInstance.fVulkanDynamicVertexBufferData.Resize(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size);
+    fSceneInstance.fVulkanDynamicVertexBufferData.SetCount(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanStaticVertexBufferData.Count<(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size) then begin
-    fSceneInstance.fVulkanStaticVertexBufferData.Resize(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size);
+    fSceneInstance.fVulkanStaticVertexBufferData.SetCount(fBufferRanges.VulkanVertexBufferRange.Offset+fBufferRanges.VulkanVertexBufferRange.Size);
    end;
 
 {  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferRange.Offset>=0) and (fSceneInstance.fVulkanIndexBufferData.Count<(fVulkanIndexBufferRange.Offset+fVulkanIndexBufferRange.Size)) then begin
@@ -27979,37 +27979,37 @@ begin
    end;}
 
    if fSceneInstance.fVulkanDrawIndexBufferData.Count<(fBufferRanges.VulkanDrawIndexBufferRange.Offset+fBufferRanges.VulkanDrawIndexBufferRange.Size) then begin
-    fSceneInstance.fVulkanDrawIndexBufferData.Resize(fBufferRanges.VulkanDrawIndexBufferRange.Offset+fBufferRanges.VulkanDrawIndexBufferRange.Size);
+    fSceneInstance.fVulkanDrawIndexBufferData.SetCount(fBufferRanges.VulkanDrawIndexBufferRange.Offset+fBufferRanges.VulkanDrawIndexBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count<(fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset+fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size) then begin
-    fSceneInstance.fVulkanDrawUniqueIndexBufferData.Resize(fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset+fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size);
+    fSceneInstance.fVulkanDrawUniqueIndexBufferData.SetCount(fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset+fBufferRanges.VulkanDrawUniqueIndexBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanJointBlockBufferData.Count<(fBufferRanges.VulkanJointBlockBufferRange.Offset+fBufferRanges.VulkanJointBlockBufferRange.Size) then begin
-    fSceneInstance.fVulkanJointBlockBufferData.Resize(fBufferRanges.VulkanJointBlockBufferRange.Offset+fBufferRanges.VulkanJointBlockBufferRange.Size);
+    fSceneInstance.fVulkanJointBlockBufferData.SetCount(fBufferRanges.VulkanJointBlockBufferRange.Offset+fBufferRanges.VulkanJointBlockBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanMeshletDescriptorBufferData.Count<(fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset+fBufferRanges.VulkanMeshletDescriptorBufferRange.Size) then begin
-    fSceneInstance.fVulkanMeshletDescriptorBufferData.Resize(fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset+fBufferRanges.VulkanMeshletDescriptorBufferRange.Size);
+    fSceneInstance.fVulkanMeshletDescriptorBufferData.SetCount(fBufferRanges.VulkanMeshletDescriptorBufferRange.Offset+fBufferRanges.VulkanMeshletDescriptorBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanMeshletVertexBufferData.Count<(fBufferRanges.VulkanMeshletVertexBufferRange.Offset+fBufferRanges.VulkanMeshletVertexBufferRange.Size) then begin
-    fSceneInstance.fVulkanMeshletVertexBufferData.Resize(fBufferRanges.VulkanMeshletVertexBufferRange.Offset+fBufferRanges.VulkanMeshletVertexBufferRange.Size);
+    fSceneInstance.fVulkanMeshletVertexBufferData.SetCount(fBufferRanges.VulkanMeshletVertexBufferRange.Offset+fBufferRanges.VulkanMeshletVertexBufferRange.Size);
    end;
 
    if fSceneInstance.fVulkanMeshletPrimitiveBufferData.Count<(fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset+fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size) then begin
-    fSceneInstance.fVulkanMeshletPrimitiveBufferData.Resize(fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset+fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size);
+    fSceneInstance.fVulkanMeshletPrimitiveBufferData.SetCount(fBufferRanges.VulkanMeshletPrimitiveBufferRange.Offset+fBufferRanges.VulkanMeshletPrimitiveBufferRange.Size);
    end;
 
    for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
 
     if fSceneInstance.fVulkanNodeMatricesBufferData[Index].Count<(fBufferRanges.VulkanNodeMatricesBufferRange.Offset+fBufferRanges.VulkanNodeMatricesBufferRange.Size) then begin
-     fSceneInstance.fVulkanNodeMatricesBufferData[Index].Resize(fBufferRanges.VulkanNodeMatricesBufferRange.Offset+fBufferRanges.VulkanNodeMatricesBufferRange.Size);
+     fSceneInstance.fVulkanNodeMatricesBufferData[Index].SetCount(fBufferRanges.VulkanNodeMatricesBufferRange.Offset+fBufferRanges.VulkanNodeMatricesBufferRange.Size);
     end;
 
     if fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Count<(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset+fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size) then begin
-     fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Resize(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset+fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size);
+     fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].SetCount(fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset+fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Size);
     end;
 
    end;
