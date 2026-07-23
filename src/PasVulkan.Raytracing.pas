@@ -4130,6 +4130,11 @@ begin
 
    if fVulkanBufferCopyArray.Count>0 then begin
 
+    // The copied BLAS instance data is the build input for the TLAS. A changed
+    // transform therefore requires a TLAS rebuild even when neither geometry
+    // nor the BLAS instance list itself has changed.
+    fMustUpdateTopLevelAccelerationStructure:=true;
+
     // Copy in-flight-frame-wise fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffers to the single GPU-side fTopLevelAccelerationStructureBottomLevelAccelerationStructureInstancesBuffer
 
     // This code ensures synchronization between the CPU and GPU by copying data from the CPU-side buffer to DestinationAccelerationStructureInstance temporary GPU-side
