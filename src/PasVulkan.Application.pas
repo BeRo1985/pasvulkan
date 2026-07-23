@@ -12580,11 +12580,12 @@ begin
       (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
     Target:=fVulkanPresentLastID-fPresentFrameLatency;
     if fBlocking then begin
-{$ifdef Windows}
+     TimeOut:=1000000000; // one second for to avoid deadlock issue with nvidia
+(*{$ifdef Windows}
      TimeOut:=1000000000; // one second for to avoid deadlock issue with nvidia
 {$else}
      TimeOut:=High(TpvUInt64);
-{$endif}
+{$endif}*)
     end else begin
      TimeOut:=1; // one nanosecond
     end;
