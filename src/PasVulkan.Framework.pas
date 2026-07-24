@@ -1275,6 +1275,7 @@ type EpvVulkanException=class(Exception);
        fMemory:PVkVoid;
        fAllocationGroupID:TpvUInt64;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
+       procedure UpdateStatistics;
        procedure DefragmentInplace(const aQueue:TpvVulkanQueue;
                                    const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aFence:TpvVulkanFence;
@@ -13149,6 +13150,49 @@ begin
           assigned(fMemoryBlock.fOnDefragmentFinalize));
 end;
 
+procedure TpvVulkanDeviceMemoryChunk.UpdateStatistics;
+var Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+begin
+ fLock.Acquire;
+ try
+  fUsed:=0;
+  fAllocationCount:=0;
+  fAllocationBytes:=0;
+  fAllocationSizeMin:=TVkDeviceSize(VK_WHOLE_SIZE);
+  fAllocationSizeMax:=0;
+  fUnusedRangeCount:=0;
+  fUnusedRangeSizeMin:=TVkDeviceSize(VK_WHOLE_SIZE);
+  fUnusedRangeSizeMax:=0;
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+   MemoryChunkBlock:=Node.fValue;
+   if MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
+    inc(fUnusedRangeCount);
+    fUnusedRangeSizeMin:=Min(fUnusedRangeSizeMin,MemoryChunkBlock.fSize);
+    fUnusedRangeSizeMax:=Max(fUnusedRangeSizeMax,MemoryChunkBlock.fSize);
+   end else begin
+    inc(fUsed,MemoryChunkBlock.fSize);
+    inc(fAllocationCount);
+    inc(fAllocationBytes,MemoryChunkBlock.fSize);
+    fAllocationSizeMin:=Min(fAllocationSizeMin,MemoryChunkBlock.fSize);
+    fAllocationSizeMax:=Max(fAllocationSizeMax,MemoryChunkBlock.fSize);
+   end;
+   Node:=Node.Successor;
+  end;
+  if fAllocationCount=0 then begin
+   fAllocationSizeMin:=0;
+   fAllocationSizeMax:=0;
+  end;
+  if fUnusedRangeCount=0 then begin
+   fUnusedRangeSizeMin:=0;
+   fUnusedRangeSizeMax:=0;
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                                               const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
                                               const aAllocationGroupID:TpvUInt64);
@@ -13598,7 +13642,7 @@ function TpvVulkanDeviceMemoryChunk.AllocateMemory(aChunkBlock:PpvVulkanDeviceMe
 var Node,OtherNode,LastNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     Alignment,MemoryChunkBlockBeginOffset,MemoryChunkBlockEndOffset,PayloadBeginOffset,PayloadEndOffset,
-    BufferImageGranularity,BufferImageGranularityInvertedMask,UsedSize,UnusedSize:TVkDeviceSize;
+    BufferImageGranularity,BufferImageGranularityInvertedMask,UsedSize:TVkDeviceSize;
     TryAgain:boolean;
 begin
 
@@ -13673,7 +13717,7 @@ begin
      while assigned(Node) and (Node.fKey>=aSize) do begin
       MemoryChunkBlock:=Node.fValue;
       if ((MemoryChunkBlock.Offset and (Alignment-1))<>0) and
-         ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>=(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
+         ((MemoryChunkBlock.Offset+(Alignment-(MemoryChunkBlock.Offset and (Alignment-1)))+aSize)>(MemoryChunkBlock.Offset+MemoryChunkBlock.Size)) then begin
        // If free block is alignment-technical too small, then try to find with-alignment-technical suitable bigger blocks
        LastNode:=nil;
        Node:=Node.Successor;
@@ -13814,13 +13858,6 @@ begin
 
       end;
 
-      UnusedSize:=MemoryChunkBlock.Size-UsedSize;
-      if UnusedSize>0 then begin
-       inc(fUnusedRangeCount);
-       fUnusedRangeSizeMin:=Min(fUnusedRangeSizeMin,UnusedSize);
-       fUnusedRangeSizeMax:=Max(fUnusedRangeSizeMax,UnusedSize);
-      end;
-
      end;
 
     end;
@@ -13843,11 +13880,20 @@ begin
 end;
 
 function TpvVulkanDeviceMemoryChunk.ReallocateMemory(var aOffset:TVkDeviceSize;const aSize,aAlignment:TVkDeviceSize):boolean;
-var Node,OtherNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var Node,OtherNode,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock,OtherMemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
-    TempOffset,TempSize:TVkDeviceSize;
+    TempOffset,TempSize,OldSize,Alignment,NewEndOffset,
+    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
+    GranularityConflict:boolean;
 begin
  result:=false;
+
+ if aSize=0 then begin
+  result:=FreeMemory(aOffset);
+  exit;
+ end;
+
+ Alignment:=MaxUInt64(fMemoryMinimumAlignment,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
  fLock.Acquire;
  try
@@ -13855,53 +13901,80 @@ begin
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
    MemoryChunkBlock:=Node.fValue;
-   if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
-    if aSize=0 then begin
-     result:=FreeMemory(aOffset);
-    end else if MemoryChunkBlock.fSize=aSize then begin
+   if (MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
+      ((Alignment<=1) or ((MemoryChunkBlock.fOffset and (Alignment-1))=0)) then begin
+    OldSize:=MemoryChunkBlock.fSize;
+    if OldSize=aSize then begin
      result:=true;
-    end else begin
-     dec(fUsed,MemoryChunkBlock.Size);
-     dec(fAllocationBytes,MemoryChunkBlock.Size);
-     if MemoryChunkBlock.fSize<aSize then begin
-      OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
-      if assigned(OtherNode) and
-         (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) then begin
-       OtherMemoryChunkBlock:=OtherNode.fValue;
-       if OtherMemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
-        if (MemoryChunkBlock.fOffset+aSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),1,TpvVulkanDeviceMemoryAllocationType.Free);
-         result:=true;
-        end else if (MemoryChunkBlock.fOffset+aSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-         OtherMemoryChunkBlock.Free;
-         result:=true;
-        end;
-       end;
-      end;
-     end else if MemoryChunkBlock.fSize>aSize then begin
+    end else if OldSize<aSize then begin
+     NewEndOffset:=MemoryChunkBlock.fOffset+aSize;
+     if NewEndOffset>MemoryChunkBlock.fOffset then begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
          (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
-       TempOffset:=MemoryChunkBlock.fOffset+aSize;
-       TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-       OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
-       result:=true;
-      end else begin
-       TempOffset:=MemoryChunkBlock.fOffset+aSize;
-       TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-       TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
-       result:=true;
+       if NewEndOffset<=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+        GranularityConflict:=false;
+        BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+        if BufferImageGranularity>1 then begin
+         BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
+         NextNode:=OtherNode.Successor;
+         while assigned(NextNode) and
+               assigned(NextNode.fValue) and
+               (NextNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) do begin
+          NextNode:=NextNode.Successor;
+         end;
+         if assigned(NextNode) and
+            assigned(NextNode.fValue) and
+            (((MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(NextNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+             ((MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(NextNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+             ((MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (NextNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]))) then begin
+          GranularityConflict:=((NewEndOffset-1) and BufferImageGranularityInvertedMask)=(NextNode.fValue.fOffset and BufferImageGranularityInvertedMask);
+         end;
+        end;
+        if not GranularityConflict then begin
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,Alignment,MemoryChunkBlock.fAllocationType);
+         if NewEndOffset<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
+          OtherMemoryChunkBlock.Update(NewEndOffset,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-NewEndOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
+         end else begin
+          OtherMemoryChunkBlock.Free;
+         end;
+         result:=true;
+        end;
+       end;
       end;
      end;
-     if result then begin
-      inc(fUsed,aSize);
-      inc(fAllocationBytes,aSize);
+    end else begin
+     OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
+     if assigned(OtherNode) and
+        (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
+        (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) then begin
+      OtherMemoryChunkBlock:=OtherNode.fValue;
+      TempOffset:=MemoryChunkBlock.fOffset+aSize;
+      TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,Alignment,MemoryChunkBlock.fAllocationType);
+      OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
+      result:=true;
+     end else begin
+      TempOffset:=MemoryChunkBlock.fOffset+aSize;
+      TempSize:=OldSize-aSize;
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,Alignment,MemoryChunkBlock.fAllocationType);
+      TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
+      result:=true;
+     end;
+    end;
+    if result then begin
+     MemoryChunkBlock.fAlignment:=Alignment;
+     if assigned(MemoryChunkBlock.fMemoryBlock) then begin
+      MemoryChunkBlock.fMemoryBlock.fSize:=aSize;
+     end;
+     if aSize>OldSize then begin
+      inc(fUsed,aSize-OldSize);
+      inc(fAllocationBytes,aSize-OldSize);
+     end else if aSize<OldSize then begin
+      dec(fUsed,OldSize-aSize);
+      dec(fAllocationBytes,OldSize-aSize);
      end;
     end;
    end;
@@ -15868,6 +15941,12 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     First:Boolean;
 begin
 
+ MemoryChunk:=fMemoryChunkList.First;
+ while assigned(MemoryChunk) do begin
+  MemoryChunk.UpdateStatistics;
+  MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+ end;
+
  AddLine('{');
  begin
 
@@ -15904,11 +15983,23 @@ begin
     inc(AllocationCount,MemoryChunk.fAllocationCount);
     inc(AllocationBytes,MemoryChunk.fAllocationBytes);
     inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
-    AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
-    AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
-    UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
-    UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+    if MemoryChunk.fAllocationCount>0 then begin
+     AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+     AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+    end;
+    if MemoryChunk.fUnusedRangeCount>0 then begin
+     UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+     UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+    end;
     MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+   end;
+   if AllocationCount=0 then begin
+    AllocationSizeMin:=0;
+    AllocationSizeMax:=0;
+   end;
+   if UnusedRangeCount=0 then begin
+    UnusedRangeSizeMin:=0;
+    UnusedRangeSizeMax:=0;
    end;
    AddLine('    "BlockCount": '+IntToStr(BlockCount)+',');
    AddLine('    "BlockBytes": '+IntToStr(BlockBytes)+',');
@@ -15942,12 +16033,24 @@ begin
       inc(AllocationCount,MemoryChunk.fAllocationCount);
       inc(AllocationBytes,MemoryChunk.fAllocationBytes);
       inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
-      AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
-      AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
-      UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
-      UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+      if MemoryChunk.fAllocationCount>0 then begin
+       AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+       AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+      end;
+      if MemoryChunk.fUnusedRangeCount>0 then begin
+       UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+       UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+      end;
      end;
      MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+    end;
+    if AllocationCount=0 then begin
+     AllocationSizeMin:=0;
+     AllocationSizeMax:=0;
+    end;
+    if UnusedRangeCount=0 then begin
+     UnusedRangeSizeMin:=0;
+     UnusedRangeSizeMax:=0;
     end;
     AddLine('    "Heap '+IntToStr(HeapIndex)+'": {');
     begin
@@ -15966,7 +16069,7 @@ begin
      AddLine('      "Budget": {');
      begin
       AddLine('        "BudgetBytes": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
-      AddLine('        "UsageBytes": '+IntToStr(AllocationBytes));
+      AddLine('        "UsageBytes": '+IntToStr(BlockBytes));
      end;
      AddLine('      },');
      AddLine('      "Stats": {');
@@ -16005,12 +16108,24 @@ begin
           inc(AllocationCount,MemoryChunk.fAllocationCount);
           inc(AllocationBytes,MemoryChunk.fAllocationBytes);
           inc(UnusedRangeCount,MemoryChunk.fUnusedRangeCount);
-          AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
-          AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
-          UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
-          UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+          if MemoryChunk.fAllocationCount>0 then begin
+           AllocationSizeMin:=Min(AllocationSizeMin,MemoryChunk.fAllocationSizeMin);
+           AllocationSizeMax:=Max(AllocationSizeMax,MemoryChunk.fAllocationSizeMax);
+          end;
+          if MemoryChunk.fUnusedRangeCount>0 then begin
+           UnusedRangeSizeMin:=Min(UnusedRangeSizeMin,MemoryChunk.fUnusedRangeSizeMin);
+           UnusedRangeSizeMax:=Max(UnusedRangeSizeMax,MemoryChunk.fUnusedRangeSizeMax);
+          end;
          end;
          MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+        end;
+        if AllocationCount=0 then begin
+         AllocationSizeMin:=0;
+         AllocationSizeMax:=0;
+        end;
+        if UnusedRangeCount=0 then begin
+         UnusedRangeSizeMin:=0;
+         UnusedRangeSizeMax:=0;
         end;
         if First then begin
          First:=false;
