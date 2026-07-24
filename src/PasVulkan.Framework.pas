@@ -13495,6 +13495,15 @@ begin
     MemoryAllocateInfo.pNext:=@MemoryAllocateFlagsInfoKHR;
    end;
 
+   if fMemoryManager.fCountAllocations>=TpvSizeInt(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount) then begin
+    LastResultCode:=VK_ERROR_TOO_MANY_OBJECTS;
+    if aRaiseExceptions then begin
+     raise EpvVulkanMemoryAllocationException.Create('Maximum Vulkan device memory allocation count reached');
+    end else begin
+     exit;
+    end;
+   end;
+
    ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
 
    case ResultCode of
