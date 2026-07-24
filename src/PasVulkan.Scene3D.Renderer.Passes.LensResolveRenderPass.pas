@@ -97,6 +97,7 @@ type { TpvScene3DRendererPassesLensResolveRenderPass }
              LensFlaresDirtFactor:TpvFloat;
              LensBloomColor:TpvVector3;
              LensBloomDirtFactor:TpvFloat;
+             LensFlaresCleanColor:TpvVector3;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -453,6 +454,7 @@ begin
  fPushConstants.LensFlaresDirtFactor:=fInstance.LensFlaresDirtFactor;
  fPushConstants.LensBloomColor:=fInstance.LensBloomColor;
  fPushConstants.LensBloomDirtFactor:=fInstance.LensBloomDirtFactor;
+ fPushConstants.LensFlaresCleanColor:=fInstance.LensFlaresCleanColor;
 
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),

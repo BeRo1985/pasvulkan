@@ -934,6 +934,7 @@ type { TpvScene3DRendererInstance }
        fLensFlaresDirtFactor:TpvScalar;
        fLensBloomColor:TpvVector3;
        fLensBloomDirtFactor:TpvScalar;
+       fLensFlaresCleanColor:TpvVector3;
       private
        fFogMode:TpvScene3DRendererInstance.TFogMode;
        fFogColor:TpvVector3;
@@ -1314,6 +1315,8 @@ type { TpvScene3DRendererInstance }
        property LensBloomColor:TpvVector3 read fLensBloomColor write fLensBloomColor;
        // Lens dirt amount in the bloom, where 0.0 = clean lens, 1.0 = full lens dirt, above 1.0 = exaggerated contrast
        property LensBloomDirtFactor:TpvScalar read fLensBloomDirtFactor write fLensBloomDirtFactor;
+       // Color of a clean lens for the lens flares, which scatter nothing at all when it is black
+       property LensFlaresCleanColor:TpvVector3 read fLensFlaresCleanColor write fLensFlaresCleanColor;
       public
        // Atmosphere-independent distance fog. FogMode defaults to None (the fog pass is not created).
        // FogMode must be set before the instance acquires its resources (it gates pass creation);
@@ -2522,6 +2525,7 @@ begin
  fLensFlaresDirtFactor:=1.0;
  fLensBloomColor:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
  fLensBloomDirtFactor:=1.0;
+ fLensFlaresCleanColor:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
 
  fFogMode:=TpvScene3DRendererInstance.TFogMode.None;
  fFogColor:=TpvVector3.InlineableCreate(0.55,0.62,0.72);
