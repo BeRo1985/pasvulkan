@@ -715,6 +715,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryManager=class;
 
+     TpvVulkanDeviceMemoryDefragmentationPass=class;
+
      TpvVulkanDeviceMemoryStaging=class;
 
      TpvVulkanQueue=class;
@@ -1227,6 +1229,7 @@ type EpvVulkanException=class(Exception);
                         const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
        function CanBeDefragmentedInplace:boolean;
        function CanBeDefragmentedDelayed:boolean;
+       function CanBeDefragmentedPass:boolean;
       published
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
@@ -1274,13 +1277,15 @@ type EpvVulkanException=class(Exception);
        fMemoryMustBeAwareOfNonCoherentAtomSize:boolean;
        fMemory:PVkVoid;
        fAllocationGroupID:TpvUInt64;
+       fDefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
+       fMutationGeneration:TpvUInt64;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
        procedure UpdateStatistics;
-       procedure DefragmentInplace(const aQueue:TpvVulkanQueue;
-                                   const aCommandBuffer:TpvVulkanCommandBuffer;
-                                   const aFence:TpvVulkanFence;
-                                   var aRemainingDefragmentions:TpvSizeInt;
-                                   var aRemainingSize:TpvSizeInt);
+       procedure DefragmentInplaceLegacy(const aQueue:TpvVulkanQueue;
+                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                         const aFence:TpvVulkanFence;
+                                         var aRemainingDefragmentions:TpvSizeInt;
+                                         var aRemainingSize:TpvSizeInt);
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
@@ -1378,6 +1383,41 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryBlockOnDefragmentFinalize=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
+     // Prepare creates the destination-side resource state without changing the live resource.
+     TpvVulkanDeviceMemoryBlockOnDefragmentPassPrepare=function(const aQueue:TpvVulkanQueue;
+                                                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                const aFence:TpvVulkanFence;
+                                                                const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                                const aFromOffset:TVkDeviceSize;
+                                                                const aToOffset:TVkDeviceSize;
+                                                                const aSize:TVkDeviceSize):boolean of object;
+
+     // Record appends the resource-specific copy commands to the pass command buffer.
+     TpvVulkanDeviceMemoryBlockOnDefragmentPassRecord=function(const aQueue:TpvVulkanQueue;
+                                                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                               const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                               const aFromOffset:TVkDeviceSize;
+                                                               const aToOffset:TVkDeviceSize;
+                                                               const aSize:TVkDeviceSize):boolean of object;
+
+     // Commit switches the live resource to the completed destination-side resource state.
+     TpvVulkanDeviceMemoryBlockOnDefragmentPassCommit=procedure(const aQueue:TpvVulkanQueue;
+                                                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                               const aFence:TpvVulkanFence;
+                                                               const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                               const aFromOffset:TVkDeviceSize;
+                                                               const aToOffset:TVkDeviceSize;
+                                                               const aSize:TVkDeviceSize) of object;
+
+     // Abort discards destination-side resource state prepared for an uncommitted pass.
+     TpvVulkanDeviceMemoryBlockOnDefragmentPassAbort=procedure(const aQueue:TpvVulkanQueue;
+                                                              const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                              const aFence:TpvVulkanFence;
+                                                              const aMemoryBlock:TpvVulkanDeviceMemoryBlock;
+                                                              const aFromOffset:TVkDeviceSize;
+                                                              const aToOffset:TVkDeviceSize;
+                                                              const aSize:TVkDeviceSize) of object;
+
      { TpvVulkanDeviceMemoryBlock }
 
      TpvVulkanDeviceMemoryBlock=class(TpvVulkanObject)
@@ -1396,6 +1436,10 @@ type EpvVulkanException=class(Exception);
        fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget;
        fOnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate;
        fOnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize;
+       fOnDefragmentPassPrepare:TpvVulkanDeviceMemoryBlockOnDefragmentPassPrepare;
+       fOnDefragmentPassRecord:TpvVulkanDeviceMemoryBlockOnDefragmentPassRecord;
+       fOnDefragmentPassCommit:TpvVulkanDeviceMemoryBlockOnDefragmentPassCommit;
+       fOnDefragmentPassAbort:TpvVulkanDeviceMemoryBlockOnDefragmentPassAbort;
        fInUse:Boolean;
        fName:TpvUTF8String;
       public
@@ -1428,6 +1472,10 @@ type EpvVulkanException=class(Exception);
        property OnDefragmentInplaceSpecialCopyCanUseTemporaryTarget:TpvVulkanDeviceMemoryBlockOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget read fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget write fOnDefragmentInplaceSpecialCopyCanUseTemporaryTarget;
        property OnDefragmentReallocate:TpvVulkanDeviceMemoryBlockOnDefragmentReallocate read fOnDefragmentReallocate write fOnDefragmentReallocate;
        property OnDefragmentFinalize:TpvVulkanDeviceMemoryBlockOnDefragmentFinalize read fOnDefragmentFinalize write fOnDefragmentFinalize;
+       property OnDefragmentPassPrepare:TpvVulkanDeviceMemoryBlockOnDefragmentPassPrepare read fOnDefragmentPassPrepare write fOnDefragmentPassPrepare;
+       property OnDefragmentPassRecord:TpvVulkanDeviceMemoryBlockOnDefragmentPassRecord read fOnDefragmentPassRecord write fOnDefragmentPassRecord;
+       property OnDefragmentPassCommit:TpvVulkanDeviceMemoryBlockOnDefragmentPassCommit read fOnDefragmentPassCommit write fOnDefragmentPassCommit;
+       property OnDefragmentPassAbort:TpvVulkanDeviceMemoryBlockOnDefragmentPassAbort read fOnDefragmentPassAbort write fOnDefragmentPassAbort;
        property Name:TpvUTF8String read fName write fName;
      end;
 
@@ -1468,6 +1516,8 @@ type EpvVulkanException=class(Exception);
        fVideoRAMSize:TVkDeviceSize;
        fMaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize;
        fMaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize;
+       fDefragmentationPassesEnabled:boolean;
+       fActiveDefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
       public
 
        constructor Create(const aDevice:TpvVulkanDevice);
@@ -1501,25 +1551,20 @@ type EpvVulkanException=class(Exception);
                                     const aName:TpvUTF8String=''):TpvVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock;const aDoFree:Boolean=true):boolean;
 
-       (* Warning! This function is not correct according to Vulkan specification, therefore use it
-       ** at your own risk. The reason for this is that Vulkan does not guarantee that the memory
-       ** requirements (size, alignment, requirements, and so on) for a new buffer or image remain
-       ** consistent, i.e. it can also be different for subsequent calls with the same parameters.
-       ** It can really happen on some platforms (especially in connection with images/textures).
-       **
-       ** This function can also be very time-consuming, so you should not call it too often (such as
-       ** with any frame or after resource creation/destruction). Instead, you can only call the
-       ** function at special cases (e. g. when reloading a game level, or when you just destroy many
-       ** objects).
-       **
-       ** This function works by moving blocks to different offsets in order to optimize memory usage
-       ** inside memory chunks. Only blocks, that have a non-nil OnDefragmented event hook on the
-       ** with-it-associated chunk block, can be moved. All other blocks are considered non-movable
-       ** in this call. And in the OnDefragment event hooks, you have to recreate the respective image,
-       ** buffer, etc. yourself (in other words: you have to destroy and recreate it).
-       **
-       ** And only host visible memory chunks are defragmentable with this function!
-       **
+       function CreateDefragmentationPass(const aQueue:TpvVulkanQueue;
+                                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                                          const aFence:TpvVulkanFence;
+                                          const aMaximumMoveCount:TpvSizeInt=-1;
+                                          const aMaximumMoveBytes:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE);
+                                          const aMemoryChunkIndex:TpvSizeInt=0):TpvVulkanDeviceMemoryDefragmentationPass;
+
+       (* Defragmentation is disabled by default and must be enabled explicitly with
+       ** DefragmentationPassesEnabled. A pass waits for an idle device, freezes one memory chunk,
+       ** records only non-overlapping moves to lower offsets, waits for their completion and commits
+       ** the allocator topology afterwards. A memory block is movable only when all four
+       ** OnDefragmentPassPrepare, OnDefragmentPassRecord, OnDefragmentPassCommit and
+       ** OnDefragmentPassAbort callbacks are assigned. Dedicated, buffer-device-address and
+       ** persistently mapped memory chunks are excluded.
        **)
        procedure DefragmentInplace(const aQueue:TpvVulkanQueue;
                                    const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -1538,6 +1583,8 @@ type EpvVulkanException=class(Exception);
 
        property TryToUseNewChunksWithLessCosts:boolean read fTryToUseNewChunksWithLessCosts write fTryToUseNewChunksWithLessCosts;
 
+       property DefragmentationPassesEnabled:boolean read fDefragmentationPassesEnabled write fDefragmentationPassesEnabled;
+
        property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
 
        property ReBAR:boolean read fReBAR; //< ReBAR (Resizable BAR) support (approximated by the Vulkan memory heap flags)
@@ -1555,6 +1602,77 @@ type EpvVulkanException=class(Exception);
        property MaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize read fMaximumMemoryMappableNonDeviceLocalHeapSize;
 
      end;
+
+     { TpvVulkanDeviceMemoryDefragmentationPass }
+
+     TpvVulkanDeviceMemoryDefragmentationPassState=
+      (
+       Created,
+       Planned,
+       Prepared,
+       Submitted,
+       Completed,
+       Committed,
+       Aborted,
+       Failed
+      );
+
+     TpvVulkanDeviceMemoryDefragmentationMove=record
+      MemoryBlock:TpvVulkanDeviceMemoryBlock;
+      MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+      FromOffset:TVkDeviceSize;
+      ToOffset:TVkDeviceSize;
+      Size:TVkDeviceSize;
+      Alignment:TVkDeviceSize;
+      AllocationType:TpvVulkanDeviceMemoryAllocationType;
+      Prepared:boolean;
+     end;
+
+     TpvVulkanDeviceMemoryDefragmentationMoves=array of TpvVulkanDeviceMemoryDefragmentationMove;
+
+     TpvVulkanDeviceMemoryDefragmentationPass=class(TpvVulkanObject)
+      private
+       fMemoryManager:TpvVulkanDeviceMemoryManager;
+       fQueue:TpvVulkanQueue;
+       fCommandBuffer:TpvVulkanCommandBuffer;
+       fFence:TpvVulkanFence;
+       fMemoryChunk:TpvVulkanDeviceMemoryChunk;
+       fMemoryChunkMutationGeneration:TpvUInt64;
+       fState:TpvVulkanDeviceMemoryDefragmentationPassState;
+       fMoves:TpvVulkanDeviceMemoryDefragmentationMoves;
+       fCountMoves:TpvSizeInt;
+       fPreparedMoveCount:TpvSizeInt;
+       fMaximumMoveCount:TpvSizeInt;
+       fMaximumMoveBytes:TVkDeviceSize;
+       fPlannedMoveBytes:TVkDeviceSize;
+       fMemoryChunkIndex:TpvSizeInt;
+       fNextMemoryChunkIndex:TpvSizeInt;
+       fTopologyCommitted:boolean;
+
+       function PlanMemoryChunk(const aMemoryChunk:TpvVulkanDeviceMemoryChunk):boolean;
+       function CommitTopology:boolean;
+       procedure ReleaseMemoryChunk;
+
+      public
+       constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
+                          const aQueue:TpvVulkanQueue;
+                          const aCommandBuffer:TpvVulkanCommandBuffer;
+                          const aFence:TpvVulkanFence;
+                          const aMaximumMoveCount:TpvSizeInt;
+                          const aMaximumMoveBytes:TVkDeviceSize;
+                          const aMemoryChunkIndex:TpvSizeInt);
+       destructor Destroy; override;
+
+       function Plan:boolean;
+       function Execute:boolean;
+       procedure Abort;
+
+      published
+       property State:TpvVulkanDeviceMemoryDefragmentationPassState read fState;
+       property CountMoves:TpvSizeInt read fCountMoves;
+       property PlannedMoveBytes:TVkDeviceSize read fPlannedMoveBytes;
+       property NextMemoryChunkIndex:TpvSizeInt read fNextMemoryChunkIndex;
+      end;
 
      TpvVulkanBufferUseTemporaryStagingBufferMode=
       (
@@ -13150,6 +13268,19 @@ begin
           assigned(fMemoryBlock.fOnDefragmentFinalize));
 end;
 
+function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmentedPass:boolean;
+begin
+
+ // A move is transactional only when its owner implements the complete pass lifecycle.
+ result:=assigned(fMemoryBlock) and
+         fMemoryBlock.fInUse and
+         assigned(fMemoryBlock.fOnDefragmentPassPrepare) and
+         assigned(fMemoryBlock.fOnDefragmentPassRecord) and
+         assigned(fMemoryBlock.fOnDefragmentPassCommit) and
+         assigned(fMemoryBlock.fOnDefragmentPassAbort);
+
+end;
+
 procedure TpvVulkanDeviceMemoryChunk.UpdateStatistics;
 var Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
@@ -13218,6 +13349,10 @@ begin
 
  fAllocationGroupID:=aAllocationGroupID;
 
+ fDefragmentationPass:=nil;
+
+ fMutationGeneration:=0;
+
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -13256,6 +13391,10 @@ begin
  fMemoryHandle:=VK_NULL_HANDLE;
 
  fAllocationGroupID:=aAllocationGroupID;
+
+ fDefragmentationPass:=nil;
+
+ fMutationGeneration:=0;
 
  TryCreate(aMemoryChunkFlags,
            aSize,
@@ -13663,6 +13802,11 @@ begin
   fLock.Acquire;
   try
 
+   // A planned pass freezes topology mutations in its selected chunk.
+   if assigned(fDefragmentationPass) then begin
+    exit;
+   end;
+
    // Best-fit search
    Node:=fSizeRedBlackTree.fRoot;
    while assigned(Node) do begin
@@ -13856,6 +14000,8 @@ begin
        fAllocationSizeMin:=Min(fAllocationSizeMin,UsedSize);
        fAllocationSizeMax:=Max(fAllocationSizeMax,UsedSize);
 
+       inc(fMutationGeneration);
+
       end;
 
      end;
@@ -13897,6 +14043,11 @@ begin
 
  fLock.Acquire;
  try
+
+  // A planned pass freezes topology mutations in its selected chunk.
+  if assigned(fDefragmentationPass) then begin
+   exit;
+  end;
 
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
@@ -13976,6 +14127,7 @@ begin
       dec(fUsed,OldSize-aSize);
       dec(fAllocationBytes,OldSize-aSize);
      end;
+     inc(fMutationGeneration);
     end;
    end;
   end;
@@ -13996,6 +14148,11 @@ begin
 
  fLock.Acquire;
  try
+
+  // A planned pass freezes topology mutations in its selected chunk.
+  if assigned(fDefragmentationPass) then begin
+   exit;
+  end;
 
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
@@ -14043,6 +14200,8 @@ begin
     end;
 
     result:=true;
+
+    inc(fMutationGeneration);
 
    end;
 
@@ -14273,11 +14432,11 @@ begin
  end;
 end;
 
-procedure TpvVulkanDeviceMemoryChunk.DefragmentInplace(const aQueue:TpvVulkanQueue;
-                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                       const aFence:TpvVulkanFence;
-                                                       var aRemainingDefragmentions:TpvSizeInt;
-                                                       var aRemainingSize:TpvSizeInt);
+procedure TpvVulkanDeviceMemoryChunk.DefragmentInplaceLegacy(const aQueue:TpvVulkanQueue;
+                                                             const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                             const aFence:TpvVulkanFence;
+                                                             var aRemainingDefragmentions:TpvSizeInt;
+                                                             var aRemainingSize:TpvSizeInt);
 type TBooleanArray=array of Boolean;
 var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     ChunkBlocks,DefragmentedChunkBlocks,FreeChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
@@ -14299,6 +14458,8 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     TemporaryMemoryBlock:TpvVulkanDeviceMemoryBlock;
 begin
+
+ exit;
 
  Device:=fMemoryManager.fDevice;
 
@@ -14981,6 +15142,609 @@ begin
 
 end;
 
+constructor TpvVulkanDeviceMemoryDefragmentationPass.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
+                                                            const aQueue:TpvVulkanQueue;
+                                                            const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                            const aFence:TpvVulkanFence;
+                                                            const aMaximumMoveCount:TpvSizeInt;
+                                                            const aMaximumMoveBytes:TVkDeviceSize;
+                                                            const aMemoryChunkIndex:TpvSizeInt);
+begin
+
+ inherited Create;
+
+ // The queue objects are borrowed for the lifetime of this synchronous pass.
+ fMemoryManager:=aMemoryManager;
+ fQueue:=aQueue;
+ fCommandBuffer:=aCommandBuffer;
+ fFence:=aFence;
+
+ // No memory chunk is frozen until Plan has found at least one safe move.
+ fMemoryChunk:=nil;
+ fMemoryChunkMutationGeneration:=0;
+ fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Created;
+
+ // Move limits are applied while the immutable pass plan is constructed.
+ fMoves:=nil;
+ fCountMoves:=0;
+ fPreparedMoveCount:=0;
+ fMaximumMoveCount:=aMaximumMoveCount;
+ fMaximumMoveBytes:=aMaximumMoveBytes;
+ fPlannedMoveBytes:=0;
+
+ // The chunk cursor makes repeated explicitly enabled calls distribute their work.
+ fMemoryChunkIndex:=aMemoryChunkIndex;
+ fNextMemoryChunkIndex:=0;
+
+ fTopologyCommitted:=false;
+
+end;
+
+destructor TpvVulkanDeviceMemoryDefragmentationPass.Destroy;
+begin
+
+ // An unfinished pass must release prepared resources and unfreeze its chunk.
+ if not (fState in [TpvVulkanDeviceMemoryDefragmentationPassState.Committed,
+                    TpvVulkanDeviceMemoryDefragmentationPassState.Aborted,
+                    TpvVulkanDeviceMemoryDefragmentationPassState.Failed]) then begin
+  Abort;
+ end else begin
+  ReleaseMemoryChunk;
+ end;
+
+ fMoves:=nil;
+
+ fMemoryManager:=nil;
+ fQueue:=nil;
+ fCommandBuffer:=nil;
+ fFence:=nil;
+
+ inherited Destroy;
+
+end;
+
+function TpvVulkanDeviceMemoryDefragmentationPass.PlanMemoryChunk(const aMemoryChunk:TpvVulkanDeviceMemoryChunk):boolean;
+var Index:TpvSizeInt;
+    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+    FromOffset,ToOffset,MinimumOffset,LastEndOffset,Alignment,
+    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
+    HasLastAllocation,GranularityConflict,CanMove,DestinationOverlapsMoveSource:boolean;
+    LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
+begin
+
+ result:=false;
+
+ fMoves:=nil;
+ fCountMoves:=0;
+ fPlannedMoveBytes:=0;
+
+ // These allocation modes have binding or mapping semantics which this pass deliberately preserves.
+ if (aMemoryChunk.fMemoryChunkFlags*
+     [TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk,
+      TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation,
+      TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress,
+      TpvVulkanDeviceMemoryChunkFlag.PersistentMapped])<>[] then begin
+  exit;
+ end;
+
+ BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+ BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
+
+ MinimumOffset:=0;
+ LastEndOffset:=0;
+ LastAllocationType:=TpvVulkanDeviceMemoryAllocationType.Free;
+ HasLastAllocation:=false;
+
+ // Walk allocations in offset order and pack movable blocks towards the beginning.
+ Node:=aMemoryChunk.fOffsetRedBlackTree.LeftMost;
+ while assigned(Node) do begin
+
+  MemoryChunkBlock:=Node.fValue;
+
+  if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
+
+   FromOffset:=MemoryChunkBlock.fOffset;
+   ToOffset:=MinimumOffset;
+   Alignment:=MaxUInt64(1,MemoryChunkBlock.fAlignment);
+
+   // Preserve buffer-image granularity separation from the preceding live allocation.
+   GranularityConflict:=HasLastAllocation and
+                        (BufferImageGranularity>1) and
+                        (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+                         ((LastAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+                         ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]))) and
+                        ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask));
+   if GranularityConflict and (Alignment<BufferImageGranularity) then begin
+    Alignment:=BufferImageGranularity;
+   end;
+   if (Alignment>1) and ((ToOffset and (Alignment-1))<>0) then begin
+    inc(ToOffset,Alignment-(ToOffset and (Alignment-1)));
+   end;
+
+   // A move is accepted only when its own source and destination ranges do not overlap.
+   CanMove:=MemoryChunkBlock.CanBeDefragmentedPass and
+            (ToOffset<FromOffset) and
+            (MemoryChunkBlock.fSize<=(FromOffset-ToOffset)) and
+            ((fMaximumMoveCount<0) or (fCountMoves<fMaximumMoveCount)) and
+            ((fMaximumMoveBytes=TVkDeviceSize(VK_WHOLE_SIZE)) or
+             ((fPlannedMoveBytes<=fMaximumMoveBytes) and
+              (MemoryChunkBlock.fSize<=(fMaximumMoveBytes-fPlannedMoveBytes))));
+
+   // The destination must also be unused for the whole pass. This avoids overwriting an earlier
+   // move source before its resource-specific copy has consumed that source.
+   if CanMove then begin
+    DestinationOverlapsMoveSource:=false;
+    for Index:=0 to fCountMoves-1 do begin
+     if (ToOffset<(fMoves[Index].FromOffset+fMoves[Index].Size)) and
+        ((ToOffset+MemoryChunkBlock.fSize)>fMoves[Index].FromOffset) then begin
+      DestinationOverlapsMoveSource:=true;
+      break;
+     end;
+    end;
+    CanMove:=not DestinationOverlapsMoveSource;
+   end;
+
+   if CanMove then begin
+
+    SetLength(fMoves,fCountMoves+1);
+    fMoves[fCountMoves].MemoryBlock:=MemoryChunkBlock.fMemoryBlock;
+    fMoves[fCountMoves].MemoryChunkBlock:=MemoryChunkBlock;
+    fMoves[fCountMoves].FromOffset:=FromOffset;
+    fMoves[fCountMoves].ToOffset:=ToOffset;
+    fMoves[fCountMoves].Size:=MemoryChunkBlock.fSize;
+    fMoves[fCountMoves].Alignment:=Alignment;
+    fMoves[fCountMoves].AllocationType:=MemoryChunkBlock.fAllocationType;
+    fMoves[fCountMoves].Prepared:=false;
+    inc(fCountMoves);
+    inc(fPlannedMoveBytes,MemoryChunkBlock.fSize);
+
+   end else begin
+
+    // A non-movable allocation remains a packing barrier for all following allocations.
+    ToOffset:=FromOffset;
+
+   end;
+
+   MinimumOffset:=ToOffset+MemoryChunkBlock.fSize;
+   LastEndOffset:=MinimumOffset-1;
+   LastAllocationType:=MemoryChunkBlock.fAllocationType;
+   HasLastAllocation:=true;
+
+  end;
+
+  Node:=Node.Successor;
+
+ end;
+
+ result:=fCountMoves>0;
+
+end;
+
+function TpvVulkanDeviceMemoryDefragmentationPass.Plan:boolean;
+type TMemoryChunks=array of TpvVulkanDeviceMemoryChunk;
+var MemoryChunks:TMemoryChunks;
+    MemoryChunk:TpvVulkanDeviceMemoryChunk;
+    CountMemoryChunks,Index,ScanIndex,StartIndex:TpvSizeInt;
+begin
+
+ result:=false;
+
+ // Planning remains inert unless the application has explicitly opted in and supplied sync objects.
+ if (fState<>TpvVulkanDeviceMemoryDefragmentationPassState.Created) or
+    not assigned(fMemoryManager) or
+    not fMemoryManager.fDefragmentationPassesEnabled or
+    not (assigned(fQueue) and assigned(fCommandBuffer) and assigned(fFence)) then begin
+  exit;
+ end;
+
+ MemoryChunks:=nil;
+
+ // The manager lock stabilizes the chunk list and serializes pass selection.
+ fMemoryManager.fLock.Acquire;
+ try
+
+  if assigned(fMemoryManager.fActiveDefragmentationPass) and
+     (fMemoryManager.fActiveDefragmentationPass<>self) then begin
+   exit;
+  end;
+
+  // Snapshot the linked chunk list while it cannot be mutated.
+  CountMemoryChunks:=0;
+  MemoryChunk:=fMemoryManager.fMemoryChunkList.Last;
+  while assigned(MemoryChunk) do begin
+   inc(CountMemoryChunks);
+   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+  end;
+  if CountMemoryChunks=0 then begin
+   fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Planned;
+   exit;
+  end;
+
+  SetLength(MemoryChunks,CountMemoryChunks);
+  Index:=0;
+  MemoryChunk:=fMemoryManager.fMemoryChunkList.Last;
+  while assigned(MemoryChunk) do begin
+   MemoryChunks[Index]:=MemoryChunk;
+   inc(Index);
+   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+  end;
+
+  if fMemoryChunkIndex<0 then begin
+   StartIndex:=0;
+  end else begin
+   StartIndex:=fMemoryChunkIndex mod CountMemoryChunks;
+  end;
+
+  // Freeze only the first chunk with a non-empty safe plan.
+  for ScanIndex:=0 to CountMemoryChunks-1 do begin
+
+   Index:=(StartIndex+ScanIndex) mod CountMemoryChunks;
+   MemoryChunk:=MemoryChunks[Index];
+
+   MemoryChunk.fLock.Acquire;
+   try
+
+    if not assigned(MemoryChunk.fDefragmentationPass) and PlanMemoryChunk(MemoryChunk) then begin
+     fMemoryChunk:=MemoryChunk;
+     fMemoryChunkMutationGeneration:=MemoryChunk.fMutationGeneration;
+     fNextMemoryChunkIndex:=(Index+1) mod CountMemoryChunks;
+
+     // Both markers are installed under manager-then-chunk lock order.
+     MemoryChunk.fDefragmentationPass:=self;
+     fMemoryManager.fActiveDefragmentationPass:=self;
+
+     fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Planned;
+     result:=true;
+     break;
+    end;
+
+   finally
+    MemoryChunk.fLock.Release;
+   end;
+
+  end;
+
+  if not result then begin
+   fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Planned;
+   fMoves:=nil;
+   fCountMoves:=0;
+   fPlannedMoveBytes:=0;
+   fNextMemoryChunkIndex:=0;
+  end;
+
+ finally
+  fMemoryManager.fLock.Release;
+  MemoryChunks:=nil;
+ end;
+
+end;
+
+procedure TpvVulkanDeviceMemoryDefragmentationPass.ReleaseMemoryChunk;
+var MemoryChunk:TpvVulkanDeviceMemoryChunk;
+begin
+
+ if assigned(fMemoryManager) then begin
+
+  // Use the same manager-then-chunk lock order as planning and allocator mutations.
+  fMemoryManager.fLock.Acquire;
+  try
+
+   MemoryChunk:=fMemoryChunk;
+   if assigned(MemoryChunk) then begin
+
+    MemoryChunk.fLock.Acquire;
+    try
+     if MemoryChunk.fDefragmentationPass=self then begin
+      MemoryChunk.fDefragmentationPass:=nil;
+     end;
+    finally
+     MemoryChunk.fLock.Release;
+    end;
+
+   end;
+
+   if fMemoryManager.fActiveDefragmentationPass=self then begin
+    fMemoryManager.fActiveDefragmentationPass:=nil;
+   end;
+
+   fMemoryChunk:=nil;
+
+  finally
+   fMemoryManager.fLock.Release;
+  end;
+
+ end else begin
+  fMemoryChunk:=nil;
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryDefragmentationPass.CommitTopology:boolean;
+var Index,CountChunkBlocks:TpvSizeInt;
+    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+    ChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
+    Offset:TVkDeviceSize;
+begin
+
+ result:=false;
+ ChunkBlocks:=nil;
+
+ if not (assigned(fMemoryManager) and assigned(fMemoryChunk)) then begin
+  exit;
+ end;
+
+ // The topology changes atomically with respect to allocator users.
+ fMemoryManager.fLock.Acquire;
+ try
+
+  fMemoryChunk.fLock.Acquire;
+  try
+
+   // Reject a stale plan before touching either red-black tree.
+   if (fMemoryManager.fActiveDefragmentationPass<>self) or
+      (fMemoryChunk.fDefragmentationPass<>self) or
+      (fMemoryChunk.fMutationGeneration<>fMemoryChunkMutationGeneration) then begin
+    exit;
+   end;
+
+   // Validate every block identity and source range captured by Plan.
+   for Index:=0 to fCountMoves-1 do begin
+    if not assigned(fMoves[Index].MemoryChunkBlock) or
+       (fMoves[Index].MemoryChunkBlock.fMemoryChunk<>fMemoryChunk) or
+       (fMoves[Index].MemoryChunkBlock.fMemoryBlock<>fMoves[Index].MemoryBlock) or
+       (fMoves[Index].MemoryChunkBlock.fOffset<>fMoves[Index].FromOffset) or
+       (fMoves[Index].MemoryChunkBlock.fSize<>fMoves[Index].Size) or
+       (fMoves[Index].MemoryChunkBlock.fAllocationType<>fMoves[Index].AllocationType) then begin
+     exit;
+    end;
+   end;
+
+   // Remove the old free-range representation before allocated nodes change their keys.
+   Node:=fMemoryChunk.fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    MemoryChunkBlock:=Node.fValue;
+    if MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
+     MemoryChunkBlock.Free;
+     Node:=fMemoryChunk.fOffsetRedBlackTree.LeftMost;
+    end else begin
+     Node:=Node.Successor;
+    end;
+   end;
+
+   // Publish the completed GPU moves to the allocator and memory-block handles.
+   for Index:=0 to fCountMoves-1 do begin
+    fMoves[Index].MemoryChunkBlock.Update(fMoves[Index].ToOffset,
+                                         fMoves[Index].Size,
+                                         fMoves[Index].Alignment,
+                                         fMoves[Index].AllocationType);
+    fMoves[Index].MemoryBlock.fOffset:=fMoves[Index].ToOffset;
+   end;
+
+   // Snapshot the now sorted allocated nodes so missing free ranges can be rebuilt.
+   CountChunkBlocks:=0;
+   Node:=fMemoryChunk.fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    inc(CountChunkBlocks);
+    Node:=Node.Successor;
+   end;
+   SetLength(ChunkBlocks,CountChunkBlocks);
+   Index:=0;
+   Node:=fMemoryChunk.fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    ChunkBlocks[Index]:=Node.fValue;
+    inc(Index);
+    Node:=Node.Successor;
+   end;
+
+   // Recreate every leading, intermediate and trailing free range.
+   Offset:=0;
+   for Index:=0 to CountChunkBlocks-1 do begin
+    MemoryChunkBlock:=ChunkBlocks[Index];
+    if Offset<MemoryChunkBlock.fOffset then begin
+     TpvVulkanDeviceMemoryChunkBlock.Create(fMemoryChunk,
+                                            Offset,
+                                            MemoryChunkBlock.fOffset-Offset,
+                                            1,
+                                            TpvVulkanDeviceMemoryAllocationType.Free);
+    end;
+    Offset:=MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize;
+   end;
+   if Offset<fMemoryChunk.fSize then begin
+    TpvVulkanDeviceMemoryChunkBlock.Create(fMemoryChunk,
+                                           Offset,
+                                           fMemoryChunk.fSize-Offset,
+                                           1,
+                                           TpvVulkanDeviceMemoryAllocationType.Free);
+   end;
+
+   // The generation change makes this committed topology distinguishable from its plan.
+   inc(fMemoryChunk.fMutationGeneration);
+   fMemoryChunkMutationGeneration:=fMemoryChunk.fMutationGeneration;
+   fTopologyCommitted:=true;
+   result:=true;
+
+  finally
+   fMemoryChunk.fLock.Release;
+  end;
+
+ finally
+  fMemoryManager.fLock.Release;
+  ChunkBlocks:=nil;
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryDefragmentationPass.Execute:boolean;
+var Index:TpvSizeInt;
+    RecordSucceeded:boolean;
+begin
+
+ result:=false;
+
+ // Execute can consume a freshly created pass or a separately prepared plan.
+ if fState=TpvVulkanDeviceMemoryDefragmentationPassState.Created then begin
+  if not Plan then begin
+   exit;
+  end;
+ end;
+
+ if (fState<>TpvVulkanDeviceMemoryDefragmentationPassState.Planned) or
+    (fCountMoves<=0) or
+    not assigned(fMemoryChunk) then begin
+  exit;
+ end;
+
+ try
+
+  // Make existing resource contents and bindings quiescent before callbacks create aliases.
+  fMemoryManager.fDevice.WaitIdle;
+
+  // Prepare all destination-side resources before recording any copy.
+  fPreparedMoveCount:=0;
+  for Index:=0 to fCountMoves-1 do begin
+   if not fMoves[Index].MemoryBlock.fOnDefragmentPassPrepare(fQueue,
+                                                            fCommandBuffer,
+                                                            fFence,
+                                                            fMoves[Index].MemoryBlock,
+                                                            fMoves[Index].FromOffset,
+                                                            fMoves[Index].ToOffset,
+                                                            fMoves[Index].Size) then begin
+    Abort;
+    exit;
+   end;
+   fMoves[Index].Prepared:=true;
+   inc(fPreparedMoveCount);
+  end;
+
+  fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Prepared;
+
+  // Record one command buffer containing all resource-specific copy operations.
+  fCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  fCommandBuffer.BeginRecording;
+  RecordSucceeded:=true;
+
+  try
+   for Index:=0 to fCountMoves-1 do begin
+    if not fMoves[Index].MemoryBlock.fOnDefragmentPassRecord(fQueue,
+                                                            fCommandBuffer,
+                                                            fMoves[Index].MemoryBlock,
+                                                            fMoves[Index].FromOffset,
+                                                            fMoves[Index].ToOffset,
+                                                            fMoves[Index].Size) then begin
+     RecordSucceeded:=false;
+     break;
+    end;
+   end;
+  finally
+   fCommandBuffer.EndRecording;
+  end;
+
+  if not RecordSucceeded then begin
+   Abort;
+   exit;
+  end;
+
+  // Reset the fence only after recording succeeded, then submit and wait synchronously.
+  fFence.Reset;
+  fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Submitted;
+  fCommandBuffer.Execute(fQueue,
+                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                         nil,
+                         nil,
+                         fFence,
+                         true);
+  fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Completed;
+
+  // Allocator offsets change only after the queue work has completed successfully.
+  if not CommitTopology then begin
+   Abort;
+   exit;
+  end;
+
+  // Resource owners may now switch to their prepared destination-side objects.
+  for Index:=0 to fCountMoves-1 do begin
+   fMoves[Index].MemoryBlock.fOnDefragmentPassCommit(fQueue,
+                                                     fCommandBuffer,
+                                                     fFence,
+                                                     fMoves[Index].MemoryBlock,
+                                                     fMoves[Index].FromOffset,
+                                                     fMoves[Index].ToOffset,
+                                                     fMoves[Index].Size);
+   fMoves[Index].Prepared:=false;
+  end;
+
+  fPreparedMoveCount:=0;
+  fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Committed;
+
+  ReleaseMemoryChunk;
+
+  result:=true;
+
+ except
+
+  // Topology changes cannot be rolled back after resource copies have been published.
+  if fTopologyCommitted then begin
+   fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Failed;
+   ReleaseMemoryChunk;
+  end else begin
+   Abort;
+  end;
+  raise;
+ end;
+
+end;
+
+procedure TpvVulkanDeviceMemoryDefragmentationPass.Abort;
+var Index:TpvSizeInt;
+begin
+
+ // If submission failed while work may be in flight, quiesce it before destroying prepared state.
+ if (fState=TpvVulkanDeviceMemoryDefragmentationPassState.Submitted) and
+    assigned(fMemoryManager) then begin
+  try
+   fMemoryManager.fDevice.WaitIdle;
+  except
+  end;
+ end;
+
+ // Abort callbacks run in reverse preparation order and only before topology commit.
+ if not fTopologyCommitted then begin
+
+  if fPreparedMoveCount>0 then begin
+   for Index:=fPreparedMoveCount-1 downto 0 do begin
+    if fMoves[Index].Prepared and
+       assigned(fMoves[Index].MemoryBlock) and
+       assigned(fMoves[Index].MemoryBlock.fOnDefragmentPassAbort) then begin
+     try
+      fMoves[Index].MemoryBlock.fOnDefragmentPassAbort(fQueue,
+                                                       fCommandBuffer,
+                                                       fFence,
+                                                       fMoves[Index].MemoryBlock,
+                                                       fMoves[Index].FromOffset,
+                                                       fMoves[Index].ToOffset,
+                                                       fMoves[Index].Size);
+     except
+     end;
+     fMoves[Index].Prepared:=false;
+    end;
+   end;
+  end;
+
+  fPreparedMoveCount:=0;
+
+ end;
+
+ if fState<>TpvVulkanDeviceMemoryDefragmentationPassState.Committed then begin
+  fState:=TpvVulkanDeviceMemoryDefragmentationPassState.Aborted;
+ end;
+
+ // Always unfreeze allocator mutations, including a never-prepared planned pass.
+ ReleaseMemoryChunk;
+
+end;
+
 constructor TpvVulkanDeviceMemoryBlock.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                                               const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                                               const aMemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
@@ -15002,6 +15766,14 @@ begin
  fOnDefragmentReallocate:=nil;
 
  fOnDefragmentFinalize:=nil;
+
+ fOnDefragmentPassPrepare:=nil;
+
+ fOnDefragmentPassRecord:=nil;
+
+ fOnDefragmentPassCommit:=nil;
+
+ fOnDefragmentPassAbort:=nil;
 
  fAssociatedObject:=nil;
 
@@ -15171,11 +15943,24 @@ begin
 
  fCountAllocations:=0;
 
+ // Keep the new pass mechanism inactive until an application explicitly opts in.
+ fDefragmentationPassesEnabled:=false;
+
+ fActiveDefragmentationPass:=nil;
+
 end;
 
 destructor TpvVulkanDeviceMemoryManager.Destroy;
 var Index:TpvInt32;
 begin
+
+ // Release any externally owned pass before destroying its allocator state.
+ if assigned(fActiveDefragmentationPass) then begin
+  fActiveDefragmentationPass.Abort;
+  fActiveDefragmentationPass.fMemoryManager:=nil;
+  fActiveDefragmentationPass:=nil;
+ end;
+
  while assigned(fFirstMemoryBlock) do begin
   try
    fFirstMemoryBlock.fInUse:=false;
@@ -15765,100 +16550,80 @@ begin
  end;
 end;
 
+function TpvVulkanDeviceMemoryManager.CreateDefragmentationPass(const aQueue:TpvVulkanQueue;
+                                                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                const aFence:TpvVulkanFence;
+                                                                const aMaximumMoveCount:TpvSizeInt;
+                                                                const aMaximumMoveBytes:TVkDeviceSize;
+                                                                const aMemoryChunkIndex:TpvSizeInt):TpvVulkanDeviceMemoryDefragmentationPass;
+begin
+
+ result:=nil;
+
+ // The legacy call path stays a no-op until the application explicitly opts in.
+ if fDefragmentationPassesEnabled and
+    assigned(aQueue) and
+    assigned(aCommandBuffer) and
+    assigned(aFence) then begin
+  result:=TpvVulkanDeviceMemoryDefragmentationPass.Create(self,
+                                                          aQueue,
+                                                          aCommandBuffer,
+                                                          aFence,
+                                                          aMaximumMoveCount,
+                                                          aMaximumMoveBytes,
+                                                          aMemoryChunkIndex);
+ end;
+
+end;
+
 procedure TpvVulkanDeviceMemoryManager.DefragmentInplace(const aQueue:TpvVulkanQueue;
                                                          const aCommandBuffer:TpvVulkanCommandBuffer;
                                                          const aFence:TpvVulkanFence;
                                                          const aRemainingDefragmentions:TpvSizeInt;
                                                          const aRemainingSize:TpvSizeInt;
                                                          const aMemoryChunkIndex:PpvSizeInt);
-var MemoryChunk:TpvVulkanDeviceMemoryChunk;
-    MemoryChunkIndex,CurrentMemoryChunkIndex,RemainingDefragmentions,RemainingSize:TpvSizeInt;
+var DefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
+    MemoryChunkIndex:TpvSizeInt;
+    MaximumMoveBytes:TVkDeviceSize;
 begin
 
- // Initialize remaining defragmentions and size
- RemainingDefragmentions:=aRemainingDefragmentions;
- RemainingSize:=RemainingSize;
+ // Preserve existing behavior by default: no pass is created and no resource is touched.
+ if not fDefragmentationPassesEnabled then begin
+  exit;
+ end;
 
- // Initialize memory chunk index as start index, for temporal incremental defragmentation of memory chunks over multiple calls
+ // Convert the legacy cursor and limits into an immutable pass description.
  if assigned(aMemoryChunkIndex) then begin
   MemoryChunkIndex:=aMemoryChunkIndex^;
  end else begin
-  MemoryChunkIndex:=-1;
+  MemoryChunkIndex:=0;
  end;
 
- // Get last memory chunk as initial chunk, since the order of the memory chunks is from oldest (last) to newest (first)
- MemoryChunk:=fMemoryChunkList.Last;
-
- // Walk to the memory chunk with the given index when it is wanted to start from a specific memory chunk  
- if MemoryChunkIndex>=0 then begin
-  
-  // Initialize current memory chunk index as start index 
-  CurrentMemoryChunkIndex:=0;
-
-  // Walk over all memory chunks
-  while assigned(MemoryChunk) do begin
-
-   // Check if the memory chunk index is the same as the current memory chunk index
-   if CurrentMemoryChunkIndex=MemoryChunkIndex then begin
-
-    // When the memory chunk with the given index is found, then break
-    break;
-
-   end else begin
-
-    // Otherwise walk to the next memory chunk
-    MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
-
-    // Check if the memory chunk is valid
-    if assigned(MemoryChunk) then begin
-     // When the memory chunk with the given index does exist, then increment the current memory chunk index
-     inc(CurrentMemoryChunkIndex);
-    end else begin
-     // When the memory chunk with the given index doesn't exist, then start from the first memory chunk
-     MemoryChunk:=fMemoryChunkList.Last;
-     MemoryChunkIndex:=0;
-     break;
-    end;
-  
-   end;
-  
-  end;
-
+ if aRemainingSize<0 then begin
+  MaximumMoveBytes:=TVkDeviceSize(VK_WHOLE_SIZE);
+ end else begin
+  MaximumMoveBytes:=TVkDeviceSize(aRemainingSize);
  end;
 
- // Walk over all memory chunks and defragment them, until there are no more remaining defragmentions or size
- while assigned(MemoryChunk) and ((RemainingDefragmentions<>0) and (RemainingSize<>0)) do begin
+ DefragmentationPass:=CreateDefragmentationPass(aQueue,
+                                                aCommandBuffer,
+                                                aFence,
+                                                aRemainingDefragmentions,
+                                                MaximumMoveBytes,
+                                                MemoryChunkIndex);
 
+ if assigned(DefragmentationPass) then begin
   try
 
-   // Defragment the memory chunk
-   MemoryChunk.DefragmentInplace(aQueue,
-                                 aCommandBuffer,
-                                 aFence,
-                                 RemainingDefragmentions,
-                                 RemainingSize);
+   DefragmentationPass.Execute;
 
-  finally
-   
-   // Go to the next memory chunk
-   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
-
-   // When temporal memory chunk index is used, then increment it (with warp around) for the next memory chunk in the next loop iteration
-   if MemoryChunkIndex>=0 then begin
-    if assigned(MemoryChunk) then begin
-     inc(MemoryChunkIndex);
-    end else begin
-     MemoryChunkIndex:=0;
-    end;
+   if assigned(aMemoryChunkIndex) then begin
+    aMemoryChunkIndex^:=DefragmentationPass.fNextMemoryChunkIndex;
    end;
 
+  finally
+   DefragmentationPass.Free;
   end;
-
- end;
- 
- // When temporal memory chunk index is used, then write back the current memory chunk index
- if assigned(aMemoryChunkIndex) then begin
-  aMemoryChunkIndex^:=MemoryChunkIndex;
  end;
 
 end;
