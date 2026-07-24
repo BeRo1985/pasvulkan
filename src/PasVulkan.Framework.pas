@@ -13490,8 +13490,9 @@ begin
    if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in aMemoryChunkFlags then begin
     FillChar(MemoryAllocateFlagsInfoKHR,SizeOf(TVkMemoryAllocateFlagsInfoKHR),#0);
     MemoryAllocateFlagsInfoKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
-  	MemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
-		MemoryAllocateInfo.pNext:=@MemoryAllocateFlagsInfoKHR;
+    MemoryAllocateFlagsInfoKHR.pNext:=aMemoryDedicatedAllocateInfo;
+    MemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
+    MemoryAllocateInfo.pNext:=@MemoryAllocateFlagsInfoKHR;
    end;
 
    ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
@@ -13972,7 +13973,7 @@ begin
 end;
 
 function TpvVulkanDeviceMemoryChunk.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
-var NonCoherentAtomSize:TVkDeviceSize;
+var NonCoherentAtomSize,EndOffset:TVkDeviceSize;
 begin
  result:=nil;
  if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
@@ -13992,15 +13993,26 @@ begin
     if assigned(fMemory) then begin
      raise EpvVulkanException.Create('Memory is already mapped');
     end else begin
-     NonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
-     fMappedOffset:=VulkanDeviceSizeAlignDown(aOffset,NonCoherentAtomSize);
-     fMappedSize:=VulkanDeviceSizeAlignUp(aOffset+aSize,NonCoherentAtomSize)-fMappedOffset;
-     if (fMappedOffset+fMappedSize)>fSize then begin
-      fMappedSize:=fSize-fMappedOffset;
+     if aOffset<fSize then begin
+      NonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+      fMappedOffset:=VulkanDeviceSizeAlignDown(aOffset,NonCoherentAtomSize);
+      if (aSize=TVkDeviceSize(VK_WHOLE_SIZE)) or (aSize>(fSize-aOffset)) then begin
+       EndOffset:=fSize;
+      end else begin
+       EndOffset:=aOffset+aSize;
+       if EndOffset<fSize then begin
+        EndOffset:=VulkanDeviceSizeAlignUp(EndOffset,NonCoherentAtomSize);
+       end else begin
+        EndOffset:=fSize;
+       end;
+      end;
+      fMappedSize:=EndOffset-fMappedOffset;
+      VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory));
+      result:=fMemory;
+      inc(TpvPtrInt(result),TpvPtrInt(aOffset)-TpvPtrInt(fMappedOffset));
+     end else begin
+      raise EpvVulkanException.Create('Mapped memory offset is out of range');
      end;
-     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@result));
-     inc(TpvPtrInt(result),TpvPtrInt(aOffset)-TpvPtrInt(fMappedOffset));
-     fMemory:=result;
     end;
    end else begin
     raise EpvVulkanException.Create('Memory can''t mapped');
@@ -14039,30 +14051,41 @@ end;
 procedure TpvVulkanDeviceMemoryChunk.AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
 var NonCoherentAtomSize,
     Offset,Size,
-    NewOffset,NewSize,
-    MaximumSize:TVkDeviceSize;
+    EndOffset,NewOffset,NewEndOffset,
+    MappedEndOffset:TVkDeviceSize;
 begin
  if fMemoryMustBeAwareOfNonCoherentAtomSize then begin
   NonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
   Offset:=aMappedMemoryRange.offset;
   Size:=aMappedMemoryRange.size;
+  MappedEndOffset:=fMappedOffset+fMappedSize;
+  Assert((Offset>=fMappedOffset) and (Offset<=MappedEndOffset));
   NewOffset:=VulkanDeviceSizeAlignDown(Offset,NonCoherentAtomSize);
-  if (Size=TVkDeviceSize(VK_WHOLE_SIZE)) or ((NewOffset+Size)=fSize) then begin
-   NewSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-NewOffset)));
+  if Size=TVkDeviceSize(VK_WHOLE_SIZE) then begin
+   EndOffset:=MappedEndOffset;
   end else begin
-   Assert((Offset+Size)<=fSize);
-   NewSize:=VulkanDeviceSizeAlignUp(Size+(NewOffset-aMappedMemoryRange.offset),NonCoherentAtomSize);
-   MaximumSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-NewOffset)));
-   if NewSize>MaximumSize then begin
-    NewSize:=MaximumSize;
+   if Size>(MappedEndOffset-Offset) then begin
+    EndOffset:=MappedEndOffset;
+   end else begin
+    EndOffset:=Offset+Size;
    end;
   end;
-  if (NewOffset<fMappedOffset) or ((NewOffset+NewSize)>(fMappedOffset+fMappedSize)) then begin
+  if EndOffset>=fSize then begin
+   NewEndOffset:=fSize;
+  end else begin
+   NewEndOffset:=VulkanDeviceSizeAlignUp(EndOffset,NonCoherentAtomSize);
+   if NewEndOffset>MappedEndOffset then begin
+    NewEndOffset:=MappedEndOffset;
+   end;
+  end;
+  if NewOffset<fMappedOffset then begin
    NewOffset:=fMappedOffset;
-   NewSize:=VK_WHOLE_SIZE;
+  end;
+  if NewEndOffset<NewOffset then begin
+   NewEndOffset:=NewOffset;
   end;
   aMappedMemoryRange.offset:=NewOffset;
-  aMappedMemoryRange.size:=NewSize;
+  aMappedMemoryRange.size:=NewEndOffset-NewOffset;
  end;
 end;
 
