@@ -25,7 +25,10 @@ layout(push_constant) uniform PushConstants {
   int debugBypass;
 
   vec3 lensDirtCleanColor;
-  float lensDirtFactor;
+  float lensFlaresDirtFactor;
+
+  vec3 lensBloomColor;
+  float lensBloomDirtFactor;
 
 } pushConstants;
 
@@ -103,13 +106,13 @@ void main(){
     lensStar = getLensStar(lensStarTexCoord);
   }
   vec4 rawLensDirt = getLensDirt(inTexCoord);
-  // Transmission mask for the bloom, where a clean lens transmits fully
-  vec4 lensDirt = max(mix(vec4(pushConstants.lensDirtCleanColor, 1.0), rawLensDirt, pushConstants.lensDirtFactor), vec4(0.0));
+  // Transmission mask for the bloom, where a clean lens transmits fully and the bloom color biases the whole mask
+  vec4 lensDirtBloom = max(mix(vec4(pushConstants.lensDirtCleanColor, 1.0), rawLensDirt, pushConstants.lensBloomDirtFactor) + vec4(pushConstants.lensBloomColor, 0.0), vec4(0.0));
   // Additive scattering contribution for the lens flares, where a clean lens scatters nothing
-  vec4 lensDirtScattering = max(mix(vec4(0.0, 0.0, 0.0, 1.0), rawLensDirt, pushConstants.lensDirtFactor), vec4(0.0));
+  vec4 lensDirtScattering = max(mix(vec4(0.0, 0.0, 0.0, 1.0), rawLensDirt, pushConstants.lensFlaresDirtFactor), vec4(0.0));
   outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(-65504.0), vec4(65504.0)),
                      (
-                      ((bloom * lensDirt) * pushConstants.bloomFactor) +
+                      ((bloom * lensDirtBloom) * pushConstants.bloomFactor) +
                       ((lensflares * (lensDirtScattering + lensStar)) * pushConstants.lensflaresFactor)
                      ),
                      pushConstants.factor);

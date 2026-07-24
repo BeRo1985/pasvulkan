@@ -931,7 +931,9 @@ type { TpvScene3DRendererInstance }
        fLensflareFactor:TpvScalar;
        fLensNormalization:boolean;
        fLensDirtCleanColor:TpvVector3;
-       fLensDirtFactor:TpvScalar;
+       fLensFlaresDirtFactor:TpvScalar;
+       fLensBloomColor:TpvVector3;
+       fLensBloomDirtFactor:TpvScalar;
       private
        fFogMode:TpvScene3DRendererInstance.TFogMode;
        fFogColor:TpvVector3;
@@ -1304,10 +1306,14 @@ type { TpvScene3DRendererInstance }
        property BloomFactor:TpvScalar read fBloomFactor write fBloomFactor;
        property LensflareFactor:TpvScalar read fLensflareFactor write fLensflareFactor;
        property LensNormalization:boolean read fLensNormalization write fLensNormalization;
-       // Color of a clean lens, which the lens dirt is blended against when LensDirtFactor is below 1.0
+       // Color of a clean lens, which the lens dirt is blended against when LensBloomDirtFactor is below 1.0
        property LensDirtCleanColor:TpvVector3 read fLensDirtCleanColor write fLensDirtCleanColor;
-       // 0.0 = clean lens, 1.0 = full lens dirt, above 1.0 = exaggerated lens dirt contrast
-       property LensDirtFactor:TpvScalar read fLensDirtFactor write fLensDirtFactor;
+       // Lens dirt amount in the lens flares, where 0.0 = clean lens, 1.0 = full lens dirt, above 1.0 = exaggerated contrast
+       property LensFlaresDirtFactor:TpvScalar read fLensFlaresDirtFactor write fLensFlaresDirtFactor;
+       // Color which is added on top of the lens dirt of the bloom, for a uniformly tinted bloom transmission share
+       property LensBloomColor:TpvVector3 read fLensBloomColor write fLensBloomColor;
+       // Lens dirt amount in the bloom, where 0.0 = clean lens, 1.0 = full lens dirt, above 1.0 = exaggerated contrast
+       property LensBloomDirtFactor:TpvScalar read fLensBloomDirtFactor write fLensBloomDirtFactor;
       public
        // Atmosphere-independent distance fog. FogMode defaults to None (the fog pass is not created).
        // FogMode must be set before the instance acquires its resources (it gates pass creation);
@@ -2513,7 +2519,9 @@ begin
  fLensflareFactor:=0.1;
  fLensNormalization:=true;
  fLensDirtCleanColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
- fLensDirtFactor:=1.0;
+ fLensFlaresDirtFactor:=1.0;
+ fLensBloomColor:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+ fLensBloomDirtFactor:=1.0;
 
  fFogMode:=TpvScene3DRendererInstance.TFogMode.None;
  fFogColor:=TpvVector3.InlineableCreate(0.55,0.62,0.72);
