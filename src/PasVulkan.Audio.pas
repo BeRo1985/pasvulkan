@@ -5520,6 +5520,7 @@ var DataStream:TMemoryStream;
      ADPCMStep:TpvUInt32;
      Bits,Kaenale:TpvUInt32;
      FloatingPoint:boolean;
+     SupportedFormat:boolean;
      SampleLength{,LengthEx},SampleRate:TpvUInt32;
 //   Panning:boolean;
      DataPointer:TpvPointer;
@@ -5687,7 +5688,7 @@ var DataStream:TMemoryStream;
      result:=false;
      exit;
     end;
-    RealSize:=WaveChunkHeader.Size;
+    RealSize:=SwapDWordLittleEndian(WaveChunkHeader.Size);
     if (Bits=8) and (RealSize>0) then begin
      PB:=DataPointer;
      for I:=1 to RealSize do begin
@@ -5696,15 +5697,17 @@ var DataStream:TMemoryStream;
      end;
     end;
     if (Bits=16) and (RealSize>0) then begin
+     // RealSize counts bytes, so the loop must run over 16 bit units here, otherwise it would walk past the end of the buffer
      PW:=DataPointer;
-     for I:=1 to RealSize do begin
+     for I:=1 to (RealSize shr 1) do begin
       SwapLittleEndianData16(PW^);
       inc(PW);
      end;
     end;
     if (Bits=32) and (RealSize>0) then begin
+     // RealSize counts bytes, so the loop must run over 32 bit units here, otherwise it would walk past the end of the buffer
      PDW:=DataPointer;
-     for I:=1 to RealSize do begin
+     for I:=1 to (RealSize shr 2) do begin
       SwapLittleEndianData32(PDW^);
       inc(PDW);
      end;
@@ -5857,6 +5860,7 @@ var DataStream:TMemoryStream;
    SampleDataSize:=SampleLength*2*sizeof(TpvInt32);
    GetMem(SampleData,SampleDataSize);
    S32Out:=SampleData;
+   SupportedFormat:=true;
    case Kaenale of
     1:begin
      EndValue:=SampleLength;
@@ -5882,12 +5886,14 @@ var DataStream:TMemoryStream;
        end;
       end;
       24:begin
+       // The sample bytes are combined explicitly in little endian order into the upper 24 bits of the 32 bit word, so this is
+       // endian-neutral and needs no byte swapping beforehand, and the shift down into the 16 bit target range matches the 32 bit integer case
        S24:=DataPointer;
        for Counter:=1 to EndValue do begin
         LW32:=(S24^.A shl 8) or (S24^.B shl 16) or (S24^.C shl 24);
-        S32Out^:=SARLongint(L32,8);
+        S32Out^:=SARLongint(L32,16);
         inc(S32Out);
-        S32Out^:=SARLongint(L32,8);
+        S32Out^:=SARLongint(L32,16);
         inc(S32Out);
         inc(S24);
        end;
@@ -5912,6 +5918,9 @@ var DataStream:TMemoryStream;
          inc(S32);
         end;
        end;
+      end;
+      else begin
+       SupportedFormat:=false;
       end;
      end;
     end;
@@ -5935,10 +5944,11 @@ var DataStream:TMemoryStream;
        end;
       end;
       24:begin
+       // Same little endian byte combination and 16 bit target range shift as in the mono case above
        S24:=DataPointer;
        for Counter:=1 to EndValue do begin
         LW32:=(S24^.A shl 8) or (S24^.B shl 16) or (S24^.C shl 24);
-        S32Out^:=SARLongint(L32,8);
+        S32Out^:=SARLongint(L32,16);
         inc(S24);
         inc(S32Out);
        end;
@@ -5960,8 +5970,21 @@ var DataStream:TMemoryStream;
         end;
        end;
       end;
+      else begin
+       SupportedFormat:=false;
+      end;
      end;
     end;
+    else begin
+     SupportedFormat:=false;
+    end;
+   end;
+   // Bail out instead of passing the freshly allocated but then still uninitialized sample data on to the mixer
+   if not SupportedFormat then begin
+    FreeMem(SampleData);
+    FreeMem(DataPointer);
+    result:=false;
+    exit;
    end;
    try
     DestSample.SampleLength:=SampleLength;
