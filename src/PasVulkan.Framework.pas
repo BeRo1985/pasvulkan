@@ -1243,6 +1243,29 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryChunkBlockArray=array of TpvVulkanDeviceMemoryChunkBlock;
 
+{$ifdef PasVulkanMemoryAllocatorTests}
+     TpvVulkanDeviceMemoryChunkTestRange=record
+      Block:TpvVulkanDeviceMemoryChunkBlock;
+      Offset:TVkDeviceSize;
+      Size:TVkDeviceSize;
+      Alignment:TVkDeviceSize;
+      AllocationType:TpvVulkanDeviceMemoryAllocationType;
+     end;
+
+     TpvVulkanDeviceMemoryChunkTestRanges=array of TpvVulkanDeviceMemoryChunkTestRange;
+
+     TpvVulkanDeviceMemoryChunkTestStatistics=record
+      Used:TVkDeviceSize;
+      AllocationCount:TVkDeviceSize;
+      AllocationBytes:TVkDeviceSize;
+      AllocationSizeMin:TVkDeviceSize;
+      AllocationSizeMax:TVkDeviceSize;
+      UnusedRangeCount:TVkDeviceSize;
+      UnusedRangeSizeMin:TVkDeviceSize;
+      UnusedRangeSizeMax:TVkDeviceSize;
+     end;
+{$endif}
+
      PpvVulkanDeviceMemoryManagerChunkList=^TpvVulkanDeviceMemoryManagerChunkList;
      PpvVulkanDeviceMemoryManagerChunkLists=^TpvVulkanDeviceMemoryManagerChunkLists;
 
@@ -1274,11 +1297,18 @@ type EpvVulkanException=class(Exception);
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemoryMinimumAlignment:TVkDeviceSize;
+       fBufferImageGranularity:TVkDeviceSize;
        fMemoryMustBeAwareOfNonCoherentAtomSize:boolean;
        fMemory:PVkVoid;
        fAllocationGroupID:TpvUInt64;
        fDefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
        fMutationGeneration:TpvUInt64;
+       class procedure InitializeMemoryAllocateInfo(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
+                                                    var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
+                                                    const aSize:TVkDeviceSize;
+                                                    const aMemoryTypeIndex:TpvUInt32;
+                                                    const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
+                                                    const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR); static;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
        procedure UpdateStatistics;
        procedure DefragmentInplaceLegacy(const aQueue:TpvVulkanQueue;
@@ -1307,6 +1337,21 @@ type EpvVulkanException=class(Exception);
                           const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR;
                           const aAllocationGroupID:TpvUInt64=0); overload;
        destructor Destroy; override;
+{$ifdef PasVulkanMemoryAllocatorTests}
+       constructor CreateForTests(const aSize:TVkDeviceSize;
+                                  const aMemoryMinimumAlignment:TVkDeviceSize;
+                                  const aBufferImageGranularity:TVkDeviceSize);
+       class procedure InitializeMemoryAllocateInfoForTests(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
+                                                           var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
+                                                           const aSize:TVkDeviceSize;
+                                                           const aMemoryTypeIndex:TpvUInt32;
+                                                           const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
+                                                           const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR); static;
+       procedure GetRangesForTests(out aRanges:TpvVulkanDeviceMemoryChunkTestRanges);
+       function ValidateForTests(out aError:TpvUTF8String):boolean;
+       procedure UpdateStatisticsForTests;
+       function GetStatisticsForTests:TpvVulkanDeviceMemoryChunkTestStatistics;
+{$endif}
        function TryCreate(const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
                           const aSizeIsMinimumSize:boolean;
@@ -13347,6 +13392,8 @@ begin
 
  fMemoryHandle:=VK_NULL_HANDLE;
 
+ fBufferImageGranularity:=1;
+
  fAllocationGroupID:=aAllocationGroupID;
 
  fDefragmentationPass:=nil;
@@ -13389,6 +13436,8 @@ begin
  fMemoryChunkList:=aMemoryChunkList;
 
  fMemoryHandle:=VK_NULL_HANDLE;
+
+ fBufferImageGranularity:=1;
 
  fAllocationGroupID:=aAllocationGroupID;
 
@@ -13465,6 +13514,345 @@ begin
 
  inherited Destroy;
 end;
+
+class procedure TpvVulkanDeviceMemoryChunk.InitializeMemoryAllocateInfo(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
+                                                                        var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
+                                                                        const aSize:TVkDeviceSize;
+                                                                        const aMemoryTypeIndex:TpvUInt32;
+                                                                        const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
+                                                                        const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR);
+begin
+
+ // The dedicated allocation info remains the tail for both allocation variants.
+ FillChar(aMemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
+ aMemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+ aMemoryAllocateInfo.pNext:=aMemoryDedicatedAllocateInfo;
+ aMemoryAllocateInfo.allocationSize:=aSize;
+ aMemoryAllocateInfo.memoryTypeIndex:=aMemoryTypeIndex;
+
+ FillChar(aMemoryAllocateFlagsInfoKHR,SizeOf(TVkMemoryAllocateFlagsInfoKHR),#0);
+
+ // BDA adds a new head instead of replacing the existing dedicated-allocation tail.
+ if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in aMemoryChunkFlags then begin
+  aMemoryAllocateFlagsInfoKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+  aMemoryAllocateFlagsInfoKHR.pNext:=aMemoryDedicatedAllocateInfo;
+  aMemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
+  aMemoryAllocateInfo.pNext:=@aMemoryAllocateFlagsInfoKHR;
+ end;
+
+end;
+
+{$ifdef PasVulkanMemoryAllocatorTests}
+constructor TpvVulkanDeviceMemoryChunk.CreateForTests(const aSize:TVkDeviceSize;
+                                                       const aMemoryMinimumAlignment:TVkDeviceSize;
+                                                       const aBufferImageGranularity:TVkDeviceSize);
+begin
+
+ // CPU allocator tests use the production split/coalesce trees without creating Vulkan objects.
+ inherited Create;
+
+ fMemoryManager:=nil;
+
+ fPreviousMemoryChunk:=nil;
+
+ fNextMemoryChunk:=nil;
+
+ fLock:=TPasMPCriticalSection.Create;
+
+ fMemoryChunkFlags:=[];
+
+ fMemoryChunkList:=nil;
+
+ fSize:=aSize;
+
+ fUsed:=0;
+
+ fAllocationCount:=0;
+
+ fAllocationBytes:=0;
+
+ fAllocationSizeMin:=TVkDeviceSize(VK_WHOLE_SIZE);
+
+ fAllocationSizeMax:=0;
+
+ fUnusedRangeCount:=0;
+
+ fUnusedRangeSizeMin:=TVkDeviceSize(VK_WHOLE_SIZE);
+
+ fUnusedRangeSizeMax:=0;
+
+ fMappedOffset:=0;
+
+ fMappedSize:=fSize;
+
+ fOffsetRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
+
+ fSizeRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
+
+ fMemoryTypeIndex:=0;
+
+ fMemoryTypeBits:=0;
+
+ fMemoryHeapIndex:=0;
+
+ fMemoryPropertyFlags:=0;
+
+ fMemoryHeapFlags:=0;
+
+ fMemoryHandle:=VK_NULL_HANDLE;
+
+ fMemoryMinimumAlignment:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aMemoryMinimumAlignment));
+
+ fBufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aBufferImageGranularity));
+
+ fMemoryMustBeAwareOfNonCoherentAtomSize:=false;
+
+ fMemory:=nil;
+
+ fAllocationGroupID:=0;
+
+ fDefragmentationPass:=nil;
+
+ fMutationGeneration:=0;
+
+ // A production chunk also starts as one free range covering its complete size.
+ if fSize>0 then begin
+  TpvVulkanDeviceMemoryChunkBlock.Create(self,0,fSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
+ end;
+
+end;
+
+class procedure TpvVulkanDeviceMemoryChunk.InitializeMemoryAllocateInfoForTests(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
+                                                                                var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
+                                                                                const aSize:TVkDeviceSize;
+                                                                                const aMemoryTypeIndex:TpvUInt32;
+                                                                                const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
+                                                                                const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR);
+begin
+ InitializeMemoryAllocateInfo(aMemoryAllocateInfo,
+                              aMemoryAllocateFlagsInfoKHR,
+                              aSize,
+                              aMemoryTypeIndex,
+                              aMemoryChunkFlags,
+                              aMemoryDedicatedAllocateInfo);
+end;
+
+procedure TpvVulkanDeviceMemoryChunk.GetRangesForTests(out aRanges:TpvVulkanDeviceMemoryChunkTestRanges);
+var Index:TpvSizeInt;
+    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+begin
+
+ aRanges:=nil;
+
+ fLock.Acquire;
+ try
+
+  // Count first so the returned array contains one stable snapshot without repeated growth.
+  Index:=0;
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+   inc(Index);
+   Node:=Node.Successor;
+  end;
+
+  SetLength(aRanges,Index);
+
+  Index:=0;
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+   MemoryChunkBlock:=Node.fValue;
+   aRanges[Index].Block:=MemoryChunkBlock;
+   aRanges[Index].Offset:=MemoryChunkBlock.fOffset;
+   aRanges[Index].Size:=MemoryChunkBlock.fSize;
+   aRanges[Index].Alignment:=MemoryChunkBlock.fAlignment;
+   aRanges[Index].AllocationType:=MemoryChunkBlock.fAllocationType;
+   inc(Index);
+   Node:=Node.Successor;
+  end;
+
+ finally
+  fLock.Release;
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryChunk.ValidateForTests(out aError:TpvUTF8String):boolean;
+var Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+    ExpectedOffset,CalculatedUsed,CalculatedAllocationCount,
+    CalculatedAllocationBytes,PreviousAllocationEndOffset,
+    BufferImageGranularityInvertedMask:TVkDeviceSize;
+    PreviousRangeWasFree,HavePreviousAllocation:boolean;
+    PreviousAllocationType:TpvVulkanDeviceMemoryAllocationType;
+begin
+
+ result:=false;
+ aError:='';
+
+ fLock.Acquire;
+ try
+
+  ExpectedOffset:=0;
+  CalculatedUsed:=0;
+  CalculatedAllocationCount:=0;
+  CalculatedAllocationBytes:=0;
+  PreviousRangeWasFree:=false;
+  HavePreviousAllocation:=false;
+  PreviousAllocationEndOffset:=0;
+  PreviousAllocationType:=TpvVulkanDeviceMemoryAllocationType.Free;
+  BufferImageGranularityInvertedMask:=not (fBufferImageGranularity-1);
+
+  // The offset tree is the canonical linear view of the complete chunk.
+  Node:=fOffsetRedBlackTree.LeftMost;
+  while assigned(Node) do begin
+
+   MemoryChunkBlock:=Node.fValue;
+
+   if not assigned(MemoryChunkBlock) then begin
+    aError:='Offset tree node without a memory chunk block';
+    exit;
+   end;
+
+   if MemoryChunkBlock.fMemoryChunk<>self then begin
+    aError:='Memory chunk block has a wrong owner';
+    exit;
+   end;
+
+   if not assigned(MemoryChunkBlock.fOffsetRedBlackTreeNode) or
+      (MemoryChunkBlock.fOffsetRedBlackTreeNode<>Node) or
+      (Node.fKey<>MemoryChunkBlock.fOffset) or
+      (Node.fValue<>MemoryChunkBlock) then begin
+    aError:='Offset tree node does not match its memory chunk block';
+    exit;
+   end;
+
+   if MemoryChunkBlock.fSize=0 then begin
+    aError:='Zero-sized memory chunk range';
+    exit;
+   end;
+
+   if MemoryChunkBlock.fOffset<>ExpectedOffset then begin
+    aError:='Memory chunk ranges are not contiguous';
+    exit;
+   end;
+
+   if (MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)<=MemoryChunkBlock.fOffset then begin
+    aError:='Memory chunk range overflow';
+    exit;
+   end;
+
+   if (MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)>fSize then begin
+    aError:='Memory chunk range exceeds the chunk size';
+    exit;
+   end;
+
+   if MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
+
+    // Coalescing must leave neither adjacent free ranges nor stale size-tree nodes.
+    if PreviousRangeWasFree then begin
+     aError:='Adjacent free memory chunk ranges were not coalesced';
+     exit;
+    end;
+
+    if not assigned(MemoryChunkBlock.fSizeRedBlackTreeNode) or
+       (MemoryChunkBlock.fSizeRedBlackTreeNode.fKey<>MemoryChunkBlock.fSize) or
+       (MemoryChunkBlock.fSizeRedBlackTreeNode.fValue<>MemoryChunkBlock) then begin
+     aError:='Size tree node does not match its free memory chunk block';
+     exit;
+    end;
+
+    PreviousRangeWasFree:=true;
+
+   end else begin
+
+    // Every live allocation must satisfy its rounded power-of-two alignment.
+    if (MemoryChunkBlock.fAlignment=0) or
+       ((MemoryChunkBlock.fAlignment and (MemoryChunkBlock.fAlignment-1))<>0) then begin
+     aError:='Allocated memory chunk range has a non-power-of-two alignment';
+     exit;
+    end;
+
+    if (MemoryChunkBlock.fOffset and (MemoryChunkBlock.fAlignment-1))<>0 then begin
+     aError:='Allocated memory chunk range is misaligned';
+     exit;
+    end;
+
+    // Neighboring incompatible resource classes must not occupy one granularity page.
+    if (fBufferImageGranularity>1) and
+       HavePreviousAllocation and
+       (((PreviousAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])<>(MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,TpvVulkanDeviceMemoryAllocationType.ImageLinear])) or
+        ((PreviousAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)<>(MemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.ImageOptimal)) or
+        ((PreviousAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]) or (MemoryChunkBlock.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Image]))) and
+       (((PreviousAllocationEndOffset-1) and BufferImageGranularityInvertedMask)=(MemoryChunkBlock.fOffset and BufferImageGranularityInvertedMask)) then begin
+     aError:='Buffer-image granularity conflict between memory chunk ranges';
+     exit;
+    end;
+
+    inc(CalculatedUsed,MemoryChunkBlock.fSize);
+    inc(CalculatedAllocationCount);
+    inc(CalculatedAllocationBytes,MemoryChunkBlock.fSize);
+
+    PreviousRangeWasFree:=false;
+    HavePreviousAllocation:=true;
+    PreviousAllocationEndOffset:=MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize;
+    PreviousAllocationType:=MemoryChunkBlock.fAllocationType;
+
+   end;
+
+   ExpectedOffset:=MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize;
+
+   Node:=Node.Successor;
+
+  end;
+
+  if ExpectedOffset<>fSize then begin
+   aError:='Memory chunk ranges do not cover the complete chunk';
+   exit;
+  end;
+
+  // Incremental counters are checked before UpdateStatisticsForTests can recompute them.
+  if (CalculatedUsed<>fUsed) or
+     (CalculatedAllocationCount<>fAllocationCount) or
+     (CalculatedAllocationBytes<>fAllocationBytes) then begin
+   aError:='Incremental memory chunk statistics do not match the ranges';
+   exit;
+  end;
+
+  result:=true;
+
+ finally
+  fLock.Release;
+ end;
+
+end;
+
+procedure TpvVulkanDeviceMemoryChunk.UpdateStatisticsForTests;
+begin
+ UpdateStatistics;
+end;
+
+function TpvVulkanDeviceMemoryChunk.GetStatisticsForTests:TpvVulkanDeviceMemoryChunkTestStatistics;
+begin
+
+ FillChar(result,SizeOf(TpvVulkanDeviceMemoryChunkTestStatistics),#0);
+
+ fLock.Acquire;
+ try
+  result.Used:=fUsed;
+  result.AllocationCount:=fAllocationCount;
+  result.AllocationBytes:=fAllocationBytes;
+  result.AllocationSizeMin:=fAllocationSizeMin;
+  result.AllocationSizeMax:=fAllocationSizeMax;
+  result.UnusedRangeCount:=fUnusedRangeCount;
+  result.UnusedRangeSizeMin:=fUnusedRangeSizeMin;
+  result.UnusedRangeSizeMax:=fUnusedRangeSizeMax;
+ finally
+  fLock.Release;
+ end;
+
+end;
+{$endif}
 
 function TpvVulkanDeviceMemoryChunk.TryCreate(const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
                                               const aSize:TVkDeviceSize;
@@ -13652,6 +14040,8 @@ begin
 
    fMemoryHeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[fMemoryHeapIndex].flags;
 
+   fBufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(PhysicalDevice.fProperties.limits.bufferImageGranularity));
+
    fMemoryMustBeAwareOfNonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize>1;
 
    if ((fMemoryPropertyFlags and
@@ -13664,19 +14054,12 @@ begin
     end;
    end;
 
-   FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
-   MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-   MemoryAllocateInfo.pNext:=aMemoryDedicatedAllocateInfo;
-   MemoryAllocateInfo.allocationSize:=BestWantedChunkSize;
-   MemoryAllocateInfo.memoryTypeIndex:=fMemoryTypeIndex;
-
-   if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in aMemoryChunkFlags then begin
-    FillChar(MemoryAllocateFlagsInfoKHR,SizeOf(TVkMemoryAllocateFlagsInfoKHR),#0);
-    MemoryAllocateFlagsInfoKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
-    MemoryAllocateFlagsInfoKHR.pNext:=aMemoryDedicatedAllocateInfo;
-    MemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
-    MemoryAllocateInfo.pNext:=@MemoryAllocateFlagsInfoKHR;
-   end;
+   InitializeMemoryAllocateInfo(MemoryAllocateInfo,
+                                MemoryAllocateFlagsInfoKHR,
+                                BestWantedChunkSize,
+                                fMemoryTypeIndex,
+                                aMemoryChunkFlags,
+                                aMemoryDedicatedAllocateInfo);
 
    if fMemoryManager.fCountAllocations>=TpvSizeInt(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount) then begin
     LastResultCode:=VK_ERROR_TOO_MANY_OBJECTS;
@@ -13795,7 +14178,7 @@ begin
 
   Alignment:=MaxUInt64(fMemoryMinimumAlignment,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
-  BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+  BufferImageGranularity:=fBufferImageGranularity;
 
   BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
@@ -14067,7 +14450,7 @@ begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        if NewEndOffset<=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
         GranularityConflict:=false;
-        BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+        BufferImageGranularity:=fBufferImageGranularity;
         if BufferImageGranularity>1 then begin
          BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
          NextNode:=OtherNode.Successor;

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+        <UseDefaultCompilerOptions Value="True"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="vulkanmemorytests"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+    </General>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <Units>
+      <Unit>
+        <Filename Value="vulkanmemorytests.dpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="bin\vulkanmemorytests"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="..\..;..\..\..\externals\pasmp\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasjson\src;..\..\..\externals\pasgltf\src;..\..\..\externals\kraft\src;$(ProjOutDir)"/>
+      <OtherUnitFiles Value="..\..;..\..\..\externals\pasmp\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasjson\src;..\..\..\externals\pasgltf\src;..\..\..\externals\kraft\src"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Conditionals Value="if ((TargetOS=&apos;linux&apos;) or (TargetOS=&apos;freebsd&apos;) or (TargetOS=&apos;unix&apos;)) and not (TargetOS=&apos;android&apos;) then begin
+ CustomOptions += &apos; -dWayland -dXCB -dXLIB&apos;;
+end;
+
+CustomOptions += &apos; -dPasVulkanPasMP&apos;;"/>
+    <Parsing>
+      <SyntaxOptions>
+        <IncludeAssertionCode Value="True"/>
+      </SyntaxOptions>
+    </Parsing>
+    <CodeGeneration>
+      <Checks>
+        <IOChecks Value="True"/>
+        <RangeChecks Value="True"/>
+        <OverflowChecks Value="True"/>
+        <StackChecks Value="True"/>
+      </Checks>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <GenerateDebugInfo Value="True"/>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
+    </Linking>
+    <Other>
+      <CustomOptions Value="-dDEBUG -dPasVulkanMemoryAllocatorTests"/>
+    </Other>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions>
+      <Item>
+        <Name Value="EAbort"/>
+      </Item>
+      <Item>
+        <Name Value="EpvVulkanResultException"/>
+      </Item>
+      <Item>
+        <Name Value="EpvVulkanMemoryTestException"/>
+      </Item>
+    </Exceptions>
+  </Debugging>
+</CONFIG>
