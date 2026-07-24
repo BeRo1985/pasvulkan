@@ -13,18 +13,20 @@ layout(push_constant) uniform PushConstants {
   float bloomFactor;
   float lensflaresFactor;
   float bloomLensflaresFactor;
-  
+
   int countGhosts;
   float lensStarRotationAngle;
   float aspectRatio;
   float inverseAspectRatio;
-  
+
   float dispersal;
   float haloWidth;
   float distortion;
-
   int debugBypass;
-  
+
+  vec3 lensDirtCleanColor;
+  float lensDirtFactor;
+
 } pushConstants;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassScene;
@@ -65,8 +67,8 @@ vec4 textureDistorted(const in vec2 texCoord, const in vec2 direction, const in 
 }
 
 vec4 getLensFlare(){
-  vec2 aspectTexCoord = vec2(1.0) - (((inTexCoord - vec2(0.5)) * vec2(1.0, pushConstants.inverseAspectRatio)) + vec2(0.5)); 
-  vec2 texCoord = vec2(1.0) - inTexCoord; 
+  vec2 aspectTexCoord = vec2(1.0) - (((inTexCoord - vec2(0.5)) * vec2(1.0, pushConstants.inverseAspectRatio)) + vec2(0.5));
+  vec2 texCoord = vec2(1.0) - inTexCoord;
   vec2 ghostVec = (vec2(0.5) - texCoord) * pushConstants.dispersal;
   vec2 ghostVecAspectNormalized = normalize(ghostVec * vec2(1.0, pushConstants.inverseAspectRatio)) * vec2(1.0, pushConstants.aspectRatio);
   vec2 haloVec = normalize(ghostVec) * pushConstants.haloWidth;
@@ -77,11 +79,11 @@ vec4 getLensFlare(){
   for (int i = 0, j = pushConstants.countGhosts; i < j; i++) {
     vec2 offset = texCoord + (ghostVec * float(i));
     c += textureDistorted(offset, ghostVecAspectNormalized, distortion) * clamp(pow(max(0.0, 1.0 - (length(vec2(0.5) - offset) / length(vec2(0.5)))), 10.0), 0.0, 16.0);
-  }                       
-  vec2 haloOffset = texCoord + haloVecAspectNormalized; 
-  return (c * getLensColor((length(vec2(0.5) - aspectTexCoord) / length(vec2(0.5))))) + 
+  }
+  vec2 haloOffset = texCoord + haloVecAspectNormalized;
+  return (c * getLensColor((length(vec2(0.5) - aspectTexCoord) / length(vec2(0.5))))) +
          (textureDistorted(haloOffset, ghostVecAspectNormalized, distortion) * clamp(pow(max(0.0, 1.0 - (length(vec2(0.5) - haloOffset) / length(vec2(0.5)))), 10.0), 0.0, 16.0));
-} 
+}
 
 
 void main(){
@@ -89,7 +91,7 @@ void main(){
     outFragColor = clamp(subpassLoad(uSubpassScene), vec4(-65504.0), vec4(65504.0));
     return;
   }
-  vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(65504.0));  
+  vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(65504.0));
   vec4 lensflares = vec4(0.0);
   vec4 lensStar = vec4(0.0);
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
@@ -100,11 +102,15 @@ void main(){
     lensflares = getLensFlare();
     lensStar = getLensStar(lensStarTexCoord);
   }
-  vec4 lensDirt = getLensDirt(inTexCoord);
-  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(-65504.0), vec4(65504.0)), 
+  vec4 rawLensDirt = getLensDirt(inTexCoord);
+  // Transmission mask for the bloom, where a clean lens transmits fully
+  vec4 lensDirt = max(mix(vec4(pushConstants.lensDirtCleanColor, 1.0), rawLensDirt, pushConstants.lensDirtFactor), vec4(0.0));
+  // Additive scattering contribution for the lens flares, where a clean lens scatters nothing
+  vec4 lensDirtScattering = max(mix(vec4(0.0, 0.0, 0.0, 1.0), rawLensDirt, pushConstants.lensDirtFactor), vec4(0.0));
+  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(-65504.0), vec4(65504.0)),
                      (
-                      ((bloom * lensDirt) * pushConstants.bloomFactor) + 
-                      ((lensflares * (lensDirt + lensStar)) * pushConstants.lensflaresFactor)
+                      ((bloom * lensDirt) * pushConstants.bloomFactor) +
+                      ((lensflares * (lensDirtScattering + lensStar)) * pushConstants.lensflaresFactor)
                      ),
                      pushConstants.factor);
 }
