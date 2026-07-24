@@ -5544,8 +5544,27 @@ var DataStream:TMemoryStream;
 //   ItemNr:TpvInt32;
      LoopType:TpvUInt8;
      SustainLoopType:TpvUInt8;
+  // Frees the temporary buffers which are still owned here, so that the error paths can just bail out
+  procedure FreeBuffers;
+  begin
+   if assigned(SampleData) then begin
+    FreeMem(SampleData);
+    SampleData:=nil;
+   end;
+   if assigned(ADPCMPointer) then begin
+    FreeMem(ADPCMPointer);
+    ADPCMPointer:=nil;
+   end;
+   if assigned(DataPointer) then begin
+    FreeMem(DataPointer);
+    DataPointer:=nil;
+   end;
+  end;
  begin
   result:=false;
+  DataPointer:=nil;
+  ADPCMPointer:=nil;
+  SampleData:=nil;
   if DataStream.Seek(0,soFromBeginning)<>0 then begin
    exit;
   end;
@@ -5685,6 +5704,7 @@ var DataStream:TMemoryStream;
    1,3,$fffe:begin
     GetMem(DataPointer,SwapDWordLittleEndian(WaveChunkHeader.Size));
     if DataStream.Read(DataPointer^,SwapDWordLittleEndian(WaveChunkHeader.Size))<>TpvInt32(SwapDWordLittleEndian(WaveChunkHeader.Size)) then begin
+     FreeBuffers;
      result:=false;
      exit;
     end;
@@ -5720,6 +5740,7 @@ var DataStream:TMemoryStream;
     GetMem(DataPointer,RealSize);
     GetMem(ADPCMPointer,ADPCMLength);
     if DataStream.Read(ADPCMPointer^,ADPCMLength)<>ADPCMLength then begin
+     FreeBuffers;
      result:=false;
      exit;
     end;
@@ -5753,6 +5774,7 @@ var DataStream:TMemoryStream;
      end;
     end;
     FreeMem(ADPCMPointer);
+    ADPCMPointer:=nil;
    end;
    else begin
  // DataPointer:=NIL;
@@ -5762,19 +5784,23 @@ var DataStream:TMemoryStream;
   end;
   if Smpl<>0 then begin
    if DataStream.Seek(Smpl,soFromBeginning)<>TpvInt32(Smpl) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveChunkHeader,sizeof(TWaveChunkHeader))<>sizeof(TWaveChunkHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveSampleHeader,sizeof(TWaveSampleHeader))<>sizeof(TWaveSampleHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if SwapDWordLittleEndian(WaveSampleHeader.SampleLoops)>1 then begin
     if DataStream.Read(WaveSampleLoopHeader,sizeof(TWaveSampleLoopHeader))<>sizeof(TWaveSampleLoopHeader) then begin
+     FreeBuffers;
      result:=false;
      exit;
     end;
@@ -5791,6 +5817,7 @@ var DataStream:TMemoryStream;
    end;
    if SwapDWordLittleEndian(WaveSampleHeader.SampleLoops)>0 then begin
     if DataStream.Read(WaveSampleLoopHeader,sizeof(TWaveSampleLoopHeader))<>sizeof(TWaveSampleLoopHeader) then begin
+     FreeBuffers;
      result:=false;
      exit;
     end;
@@ -5808,14 +5835,17 @@ var DataStream:TMemoryStream;
   end;
   if List<>0 then begin
    if DataStream.Seek(List,soFromBeginning)<>TpvInt32(List) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveChunkHeader,sizeof(TWaveChunkHeader))<>sizeof(TWaveChunkHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveInfoHeader,sizeof(TWaveInfoHeader))<>sizeof(TWaveInfoHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
@@ -5823,11 +5853,13 @@ var DataStream:TMemoryStream;
     Size:=DataStream.Position+TpvInt32(SwapDWordLittleEndian(WaveChunkHeader.Size));
     while (DataStream.Position+8)<Size do begin
      if DataStream.Read(WaveChunkHeader,sizeof(TWaveChunkHeader))<>sizeof(TWaveChunkHeader) then begin
+      FreeBuffers;
       result:=false;
       exit;
      end;
      Next:=DataStream.Position+TpvInt32(SwapDWordLittleEndian(WaveChunkHeader.Size));
      if DataStream.Seek(Next,soFromBeginning)<>Next then begin
+      FreeBuffers;
       result:=false;
       exit;
      end;
@@ -5836,14 +5868,17 @@ var DataStream:TMemoryStream;
   end;
   if Xtra<>0 then begin
    if DataStream.Seek(Xtra,soFromBeginning)<>TpvInt32(Xtra) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveChunkHeader,sizeof(TWaveChunkHeader))<>sizeof(TWaveChunkHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
    if DataStream.Read(WaveXtraHeader,sizeof(TWaveXtraHeader))<>sizeof(TWaveXtraHeader) then begin
+    FreeBuffers;
     result:=false;
     exit;
    end;
@@ -5981,8 +6016,7 @@ var DataStream:TMemoryStream;
    end;
    // Bail out instead of passing the freshly allocated but then still uninitialized sample data on to the mixer
    if not SupportedFormat then begin
-    FreeMem(SampleData);
-    FreeMem(DataPointer);
+    FreeBuffers;
     result:=false;
     exit;
    end;
@@ -6000,8 +6034,7 @@ var DataStream:TMemoryStream;
     inc(PpvAudioInt32(DestSample.Data),2*SampleFixUp);
     System.Move(SampleData^,DestSample.Data^,SampleLength*2*sizeof(TpvInt32));
    finally
-    FreeMem(SampleData);
-    FreeMem(DataPointer);
+    FreeBuffers;
    end;
   end;
   result:=true;
