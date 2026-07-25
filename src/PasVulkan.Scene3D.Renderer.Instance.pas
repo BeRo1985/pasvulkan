@@ -4644,6 +4644,23 @@ begin
 
   fHUDSize:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,Renderer.VirtualRealityHUDWidth,Renderer.VirtualRealityHUDHeight);
 
+ end else if fHasExternalOutputImage then begin
+
+  // The output goes into caller-provided offscreen images instead of the swapchain, so the output colour
+  // resource is a plain colour image in the caller's format. A surface-typed resource would be mapped onto
+  // swapchain surface images, which do not exist on this path.
+  fFrameGraph.AddImageResourceType('resourcetype_output_color',
+                                   true,
+                                   fExternalImageFormat,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                   1
+                                  );
+
+  fHUDSize:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0);
+
  end else begin
 
   fFrameGraph.AddImageResourceType('resourcetype_output_color',
@@ -7593,7 +7610,9 @@ begin
 
  end else if fHasExternalOutputImage then begin
 
-  // Nothing
+  // The caller sizes the offscreen target and owns the width / height here; only the HUD follows them.
+  fHUDWidth:=fWidth;
+  fHUDHeight:=fHeight;
 
  end else begin
 
@@ -7633,6 +7652,12 @@ begin
   (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=fVirtualReality.ImageFormat;
 
  end else if fHasExternalOutputImage then begin
+
+  // SetSwapChain above put the swapchain extent onto the frame graph surface size; the offscreen target has
+  // the caller's own size, so pull it back to that (the surface-dependent pass images size themselves from
+  // it, and would otherwise be allocated at full swapchain size against a smaller output image).
+  fFrameGraph.SurfaceWidth:=fWidth;
+  fFrameGraph.SurfaceHeight:=fHeight;
 
   (fFrameGraph.ResourceTypeByName['resourcetype_output_color'] as TpvFrameGraph.TImageResourceType).Format:=fExternalImageFormat;
 
