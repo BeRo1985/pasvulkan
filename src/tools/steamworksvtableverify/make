@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Verifies the four Steamworks interfaces that the caller implements rather than calls:
+# ISteamMatchmakingServerListResponse, ISteamMatchmakingPingResponse, ISteamMatchmakingPlayersResponse
+# and ISteamMatchmakingRulesResponse. Steam receives a pointer to what it believes is a C++ object and
+# invokes its virtual methods, and PasVulkan.Steamworks.Framework builds such an object by hand.
+#
+# The test puts a real C++ compiler on the calling side: a shared library built from the actual
+# Steamworks headers calls all eleven methods through the C++ interface, while the objects behind them
+# are the Pascal ones. That exercises the very ABI path Steam uses, rather than just checking that the
+# Pascal side compiles.
+#
+# Both targets matter, since the vtable layout follows the Itanium ABI on Linux and macOS and the MSVC
+# one on Windows. The Windows half is cross compiled and run under wine.
+#
+# Usage: ./make [path to the Steamworks SDK public directory]
+
+set -u
+
+SCRIPTDIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCEDIRECTORY="$(cd "$SCRIPTDIRECTORY/../.." && pwd)"
+REPOSITORYDIRECTORY="$(cd "$SOURCEDIRECTORY/.." && pwd)"
+SDKDIRECTORY="${1:-$REPOSITORYDIRECTORY/ref/steamworks/sdk/public}"
+BUILDDIRECTORY="$SCRIPTDIRECTORY/build"
+EXTERNALSDIRECTORY="$REPOSITORYDIRECTORY/externals"
+
+CALLERSOURCE="$SCRIPTDIRECTORY/steamworksvtablecaller.cpp"
+VERIFIERSOURCE="$SCRIPTDIRECTORY/steamworksvtableverify.dpr"
+
+FAILURES=0
+
+if [ ! -d "$SDKDIRECTORY/steam" ]; then
+  echo "error: \"$SDKDIRECTORY/steam\" not found, pass the SDK public directory as the first argument"
+  exit 1
+fi
+
+mkdir -p "$BUILDDIRECTORY"
+
+verify() {
+  local NAME="$1"
+  local CPLUSPLUSCOMPILER="$2"
+  local FPCTARGET="$3"
+  local RUNNER="$4"
+  local LIBRARYNAME="$5"
+  local SUFFIX="$6"
+  local TARGETDIRECTORY="$BUILDDIRECTORY/$NAME"
+
+  echo "=== $NAME ==="
+
+  if ! command -v "$CPLUSPLUSCOMPILER" > /dev/null; then
+    echo "  skipped, \"$CPLUSPLUSCOMPILER\" not available"
+    return 0
+  fi
+  if [ -n "$RUNNER" ] && ! command -v "$RUNNER" > /dev/null; then
+    echo "  skipped, \"$RUNNER\" not available"
+    return 0
+  fi
+
+  rm -rf "$TARGETDIRECTORY"
+  mkdir -p "$TARGETDIRECTORY"
+
+  local EXTRAFLAGS="-fPIC"
+  if [ -n "$SUFFIX" ]; then
+    EXTRAFLAGS="-static-libgcc -static-libstdc++"
+  fi
+
+  if ! "$CPLUSPLUSCOMPILER" -std=c++17 -w -shared $EXTRAFLAGS \
+       -I"$SDKDIRECTORY" -I"$SDKDIRECTORY/steam" \
+       -o "$TARGETDIRECTORY/$LIBRARYNAME" "$CALLERSOURCE"; then
+    echo "  the C++ calling side did not build"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  if ! fpc $FPCTARGET -Mdelphi -FU"$TARGETDIRECTORY" -FE"$TARGETDIRECTORY" \
+       -Fu"$SOURCEDIRECTORY" -Fi"$SOURCEDIRECTORY" \
+       -Fu"$EXTERNALSDIRECTORY/pasmp/src" \
+       -Fu"$EXTERNALSDIRECTORY/pucu/src" \
+       -Fu"$EXTERNALSDIRECTORY/pasdblstrutils/src" \
+       -Fu"$EXTERNALSDIRECTORY/pasjson/src" \
+       "$VERIFIERSOURCE" > "$TARGETDIRECTORY/fpc.log" 2>&1; then
+    echo "  the Pascal side did not build, see $TARGETDIRECTORY/fpc.log"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  # The verifier loads the library by name out of its own directory.
+  if ! (cd "$TARGETDIRECTORY" && WINEDEBUG=-all $RUNNER "./steamworksvtableverify$SUFFIX" "$LIBRARYNAME" 2>/dev/null); then
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  return 0
+}
+
+verify "host" "g++" "" "" "libsteamworksvtablecaller.so" ""
+verify "win64" "x86_64-w64-mingw32-g++" "-Twin64" "wine" "steamworksvtablecaller.dll" ".exe"
+
+echo "==="
+if [ "$FAILURES" -eq 0 ]; then
+  echo "the hand built vtables are reached correctly from C++"
+  exit 0
+else
+  echo "$FAILURES target(s) failed"
+  exit 1
+fi

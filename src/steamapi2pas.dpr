@@ -404,6 +404,19 @@ const UnitName='PasVulkan.Steamworks';
         'SteamNetworkingConfigValue_t'
        );
 
+      // The interfaces that the caller implements instead of calls. Steam takes a pointer to a C++
+      // object of these and invokes its virtual methods, so each one gets a vtable record plus an
+      // object record to build such a thing by hand. All four are pure interfaces without a base class
+      // and without a virtual destructor, which is what makes the vtable a plain array of method
+      // pointers in declaration order, identical under the Itanium and the MSVC ABI.
+      ImplementableInterfaceNames:array[0..3] of TText=
+       (
+        'ISteamMatchmakingServerListResponse',
+        'ISteamMatchmakingPingResponse',
+        'ISteamMatchmakingPlayersResponse',
+        'ISteamMatchmakingRulesResponse'
+       );
+
       // Type definitions that the base type block already covers, so they must not be emitted a
       // second time under their C name. intp and uintp are listed here because steam_api.json was
       // generated on a 64 bit machine and hardcodes them as long long, which would be wrong for a
@@ -2204,6 +2217,59 @@ begin
 
 end;
 
+// Emits the vtable and object records for the interfaces that the caller implements rather than calls.
+//
+// Steam receives a pointer to what it believes is a C++ object and calls its virtual methods as
+// vtable[index](this,arguments). Reproducing that needs only two things: a record of method pointers in
+// declaration order, and an object whose FIRST field points at that record. On every 64 bit target the
+// implicit this is simply the first argument, so cdecl matches.
+procedure EmitImplementableInterfaces;
+var InterfaceIndex,MethodIndex,Index:TPasJSONSizeInt;
+    InterfaceName,VTableTypeName,ObjectTypeName:TText;
+begin
+
+ for Index:=Low(ImplementableInterfaceNames) to High(ImplementableInterfaceNames) do begin
+
+  InterfaceName:=ImplementableInterfaceNames[Index];
+  VTableTypeName:='T'+InterfaceName+'VTable';
+  ObjectTypeName:='T'+InterfaceName+'Object';
+
+  InterfaceIndex:=-1;
+  for MethodIndex:=0 to length(InterfaceItems)-1 do begin
+   if InterfaceItems[MethodIndex].Name=InterfaceName then begin
+    InterfaceIndex:=MethodIndex;
+    break;
+   end;
+  end;
+  if InterfaceIndex<0 then begin
+   continue;
+  end;
+
+  Emit('type { '+VTableTypeName+' }');
+  Emit('     PP'+InterfaceName+'VTable=^P'+InterfaceName+'VTable;');
+  Emit('     P'+InterfaceName+'VTable=^'+VTableTypeName+';');
+  Emit('     P'+InterfaceName+'Object=^'+ObjectTypeName+';');
+  Emit('     '+VTableTypeName+'=record');
+  for MethodIndex:=0 to length(InterfaceItems[InterfaceIndex].Methods)-1 do begin
+   Emit('      '+InterfaceItems[InterfaceIndex].Methods[MethodIndex].Name+':'+
+        BuildFunctionPointerDeclaration(InterfaceItems[InterfaceIndex].Methods[MethodIndex],
+                                        'P'+InterfaceName+'Object'));
+  end;
+  Emit('     end;');
+  EmitEmptyLine;
+
+  Emit('     { '+ObjectTypeName+' }');
+  Emit('     PP'+InterfaceName+'Object=^P'+InterfaceName+'Object;');
+  Emit('     '+ObjectTypeName+'=record');
+  Emit('      VTable:P'+InterfaceName+'VTable; // Must stay the first field, this is what Steam reads as the vtable pointer');
+  Emit('      UserData:TSteamPointer; // Free for the caller, for finding its own object again inside a method');
+  Emit('     end;');
+  EmitEmptyLine;
+
+ end;
+
+end;
+
 procedure EmitLoaderDeclarations;
 begin
 
@@ -2827,6 +2893,7 @@ begin
    EmitPackingSentinelType;
    EmitCallbackMessageType;
    EmitFunctionPointerTypeDefinitions;
+   EmitImplementableInterfaces;
    EmitConstants;
    EmitInterfaceVersionConstants;
    EmitFunctionPointers;

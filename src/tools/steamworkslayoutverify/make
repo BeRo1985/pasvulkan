@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# Verifies that the record layouts of the generated PasVulkan.Steamworks unit match what a C++ compiler
+# derives from the real Steamworks headers. Builds two programs that print the size of every record and
+# the offset of every field, one from the headers and one from the generated unit, then compares their
+# output line by line.
+#
+# Both targets matter and hide different mistakes: Linux, macOS and FreeBSD pack the callback records
+# with 4 bytes (VALVE_CALLBACK_PACK_SMALL) while Windows packs them with 8 (VALVE_CALLBACK_PACK_LARGE).
+# The Windows half is cross compiled and run under wine when the tools are available, so no Windows
+# machine is needed.
+#
+# Usage: ./make [path to the Steamworks SDK public directory]
+
+set -u
+
+SCRIPTDIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCEDIRECTORY="$(cd "$SCRIPTDIRECTORY/../.." && pwd)"
+REPOSITORYDIRECTORY="$(cd "$SOURCEDIRECTORY/.." && pwd)"
+SDKDIRECTORY="${1:-$REPOSITORYDIRECTORY/ref/steamworks/sdk/public}"
+BUILDDIRECTORY="$SCRIPTDIRECTORY/build"
+
+JSONFILE="$SDKDIRECTORY/steam/steam_api.json"
+UNITFILE="$SOURCEDIRECTORY/PasVulkan.Steamworks.pas"
+DUMPERCPLUSPLUS="$SCRIPTDIRECTORY/steamworkslayoutdump.cpp"
+DUMPERPASCAL="$SCRIPTDIRECTORY/steamworkslayoutdumppas.dpr"
+
+FAILURES=0
+
+if [ ! -f "$JSONFILE" ]; then
+  echo "error: \"$JSONFILE\" not found, pass the SDK public directory as the first argument"
+  exit 1
+fi
+
+mkdir -p "$BUILDDIRECTORY"
+
+# The dumpers are generated, so regenerate them together with the unit to be sure all three agree. The
+# unit search paths are passed explicitly, because the in '...' clauses of the generator resolve against
+# the working directory rather than against the source file.
+echo "=== Generating the bindings and both dumper halves ==="
+if ! fpc -FU"$BUILDDIRECTORY" -FE"$BUILDDIRECTORY" \
+     -Fu"$REPOSITORYDIRECTORY/externals/pasdblstrutils/src" \
+     -Fu"$REPOSITORYDIRECTORY/externals/pasjson/src" \
+     "$SOURCEDIRECTORY/steamapi2pas.dpr" > "$BUILDDIRECTORY/steamapi2pas.log" 2>&1; then
+  echo "the generator did not build:"
+  grep -E "Error|Fatal" "$BUILDDIRECTORY/steamapi2pas.log" | head -10
+  exit 1
+fi
+"$BUILDDIRECTORY/steamapi2pas" "$JSONFILE" "$UNITFILE" "$DUMPERCPLUSPLUS" "$DUMPERPASCAL" || exit 1
+
+# One target: build both halves, run them, compare.
+verify() {
+  local NAME="$1"
+  local CPLUSPLUSCOMPILER="$2"
+  local FPCTARGET="$3"
+  local RUNNER="$4"
+  local SUFFIX="$5"
+  local TARGETDIRECTORY="$BUILDDIRECTORY/$NAME"
+
+  echo "=== $NAME ==="
+
+  if ! command -v "$CPLUSPLUSCOMPILER" > /dev/null; then
+    echo "  skipped, \"$CPLUSPLUSCOMPILER\" not available"
+    return 0
+  fi
+  if [ -n "$RUNNER" ] && ! command -v "$RUNNER" > /dev/null; then
+    echo "  skipped, \"$RUNNER\" not available"
+    return 0
+  fi
+
+  rm -rf "$TARGETDIRECTORY"
+  mkdir -p "$TARGETDIRECTORY"
+
+  local STATICFLAG=""
+  if [ -n "$SUFFIX" ]; then
+    STATICFLAG="-static"
+  fi
+
+  if ! "$CPLUSPLUSCOMPILER" -std=c++17 -w $STATICFLAG \
+       -I"$SDKDIRECTORY" -I"$SDKDIRECTORY/steam" \
+       -o "$TARGETDIRECTORY/dumpcplusplus$SUFFIX" "$DUMPERCPLUSPLUS"; then
+    echo "  the C++ half did not build"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  if ! fpc $FPCTARGET -Mdelphi -FU"$TARGETDIRECTORY" -Fu"$SOURCEDIRECTORY" -FE"$TARGETDIRECTORY" \
+       "$DUMPERPASCAL" > "$TARGETDIRECTORY/fpc.log" 2>&1; then
+    echo "  the Pascal half did not build, see $TARGETDIRECTORY/fpc.log"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  # wine chatters about graphics drivers on stderr, which has nothing to do with the comparison.
+  WINEDEBUG=-all $RUNNER "$TARGETDIRECTORY/dumpcplusplus$SUFFIX" 2>/dev/null | sort > "$TARGETDIRECTORY/cplusplus.txt"
+  WINEDEBUG=-all $RUNNER "$TARGETDIRECTORY/steamworkslayoutdumppas$SUFFIX" 2>/dev/null | sort > "$TARGETDIRECTORY/pascal.txt"
+
+  local COUNTCPLUSPLUS COUNTPASCAL COUNTDIFFERENT
+  COUNTCPLUSPLUS="$(wc -l < "$TARGETDIRECTORY/cplusplus.txt")"
+  COUNTPASCAL="$(wc -l < "$TARGETDIRECTORY/pascal.txt")"
+
+  if [ "$COUNTCPLUSPLUS" -eq 0 ] || [ "$COUNTPASCAL" -eq 0 ]; then
+    echo "  one of the halves printed nothing at all"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  # Valve's own canary, so that a wrong packing regime shows up as such instead of as 200 odd diffs.
+  echo "  ValvePackingSentinel_t: $(grep '^ValvePackingSentinel_t ' "$TARGETDIRECTORY/cplusplus.txt" | cut -d' ' -f2) bytes (4 byte packing gives 24, 8 byte packing gives 32)"
+
+  COUNTDIFFERENT="$(join "$TARGETDIRECTORY/cplusplus.txt" "$TARGETDIRECTORY/pascal.txt" -o 0,1.2,2.2 | awk '$2!=$3' | tee "$TARGETDIRECTORY/differences.txt" | wc -l)"
+
+  echo "  compared $COUNTPASCAL entries, $COUNTDIFFERENT different"
+
+  if [ "$COUNTDIFFERENT" -ne 0 ]; then
+    awk '{printf "    %-52s C++=%-8s Pascal=%s\n",$1,$2,$3}' "$TARGETDIRECTORY/differences.txt"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  return 0
+}
+
+verify "host" "g++" "" "" ""
+verify "win64" "x86_64-w64-mingw32-g++" "-Twin64" "wine" ".exe"
+
+echo "==="
+if [ "$FAILURES" -eq 0 ]; then
+  echo "the layouts match"
+  exit 0
+else
+  echo "$FAILURES target(s) with layout differences"
+  exit 1
+fi

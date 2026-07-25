@@ -6032,6 +6032,73 @@ type PPFSteamNetworkingSocketsDebugOutput=^PFSteamNetworkingSocketsDebugOutput;
      PFSteamNetworkingSocketsDebugOutput=^TFSteamNetworkingSocketsDebugOutput;
      TFSteamNetworkingSocketsDebugOutput=procedure(const aParameter1:TESteamNetworkingSocketsDebugOutputType;const aParameter2:PSteamChar); cdecl;
 
+type { TISteamMatchmakingServerListResponseVTable }
+     PPISteamMatchmakingServerListResponseVTable=^PISteamMatchmakingServerListResponseVTable;
+     PISteamMatchmakingServerListResponseVTable=^TISteamMatchmakingServerListResponseVTable;
+     PISteamMatchmakingServerListResponseObject=^TISteamMatchmakingServerListResponseObject;
+     TISteamMatchmakingServerListResponseVTable=record
+      ServerResponded:procedure(const aSelf:PISteamMatchmakingServerListResponseObject;const hRequest:THServerListRequest;const iServer:TSteamInt32); cdecl;
+      ServerFailedToRespond:procedure(const aSelf:PISteamMatchmakingServerListResponseObject;const hRequest:THServerListRequest;const iServer:TSteamInt32); cdecl;
+      RefreshComplete:procedure(const aSelf:PISteamMatchmakingServerListResponseObject;const hRequest:THServerListRequest;const response:TEMatchMakingServerResponse); cdecl;
+     end;
+
+     { TISteamMatchmakingServerListResponseObject }
+     PPISteamMatchmakingServerListResponseObject=^PISteamMatchmakingServerListResponseObject;
+     TISteamMatchmakingServerListResponseObject=record
+      VTable:PISteamMatchmakingServerListResponseVTable; // Must stay the first field, this is what Steam reads as the vtable pointer
+      UserData:TSteamPointer; // Free for the caller, for finding its own object again inside a method
+     end;
+
+type { TISteamMatchmakingPingResponseVTable }
+     PPISteamMatchmakingPingResponseVTable=^PISteamMatchmakingPingResponseVTable;
+     PISteamMatchmakingPingResponseVTable=^TISteamMatchmakingPingResponseVTable;
+     PISteamMatchmakingPingResponseObject=^TISteamMatchmakingPingResponseObject;
+     TISteamMatchmakingPingResponseVTable=record
+      ServerResponded:procedure(const aSelf:PISteamMatchmakingPingResponseObject;const server:Pgameserveritem_t); cdecl;
+      ServerFailedToRespond:procedure(const aSelf:PISteamMatchmakingPingResponseObject); cdecl;
+     end;
+
+     { TISteamMatchmakingPingResponseObject }
+     PPISteamMatchmakingPingResponseObject=^PISteamMatchmakingPingResponseObject;
+     TISteamMatchmakingPingResponseObject=record
+      VTable:PISteamMatchmakingPingResponseVTable; // Must stay the first field, this is what Steam reads as the vtable pointer
+      UserData:TSteamPointer; // Free for the caller, for finding its own object again inside a method
+     end;
+
+type { TISteamMatchmakingPlayersResponseVTable }
+     PPISteamMatchmakingPlayersResponseVTable=^PISteamMatchmakingPlayersResponseVTable;
+     PISteamMatchmakingPlayersResponseVTable=^TISteamMatchmakingPlayersResponseVTable;
+     PISteamMatchmakingPlayersResponseObject=^TISteamMatchmakingPlayersResponseObject;
+     TISteamMatchmakingPlayersResponseVTable=record
+      AddPlayerToList:procedure(const aSelf:PISteamMatchmakingPlayersResponseObject;const pchName:PSteamChar;const nScore:TSteamInt32;const flTimePlayed:TSteamFloat); cdecl;
+      PlayersFailedToRespond:procedure(const aSelf:PISteamMatchmakingPlayersResponseObject); cdecl;
+      PlayersRefreshComplete:procedure(const aSelf:PISteamMatchmakingPlayersResponseObject); cdecl;
+     end;
+
+     { TISteamMatchmakingPlayersResponseObject }
+     PPISteamMatchmakingPlayersResponseObject=^PISteamMatchmakingPlayersResponseObject;
+     TISteamMatchmakingPlayersResponseObject=record
+      VTable:PISteamMatchmakingPlayersResponseVTable; // Must stay the first field, this is what Steam reads as the vtable pointer
+      UserData:TSteamPointer; // Free for the caller, for finding its own object again inside a method
+     end;
+
+type { TISteamMatchmakingRulesResponseVTable }
+     PPISteamMatchmakingRulesResponseVTable=^PISteamMatchmakingRulesResponseVTable;
+     PISteamMatchmakingRulesResponseVTable=^TISteamMatchmakingRulesResponseVTable;
+     PISteamMatchmakingRulesResponseObject=^TISteamMatchmakingRulesResponseObject;
+     TISteamMatchmakingRulesResponseVTable=record
+      RulesResponded:procedure(const aSelf:PISteamMatchmakingRulesResponseObject;const pchRule:PSteamChar;const pchValue:PSteamChar); cdecl;
+      RulesFailedToRespond:procedure(const aSelf:PISteamMatchmakingRulesResponseObject); cdecl;
+      RulesRefreshComplete:procedure(const aSelf:PISteamMatchmakingRulesResponseObject); cdecl;
+     end;
+
+     { TISteamMatchmakingRulesResponseObject }
+     PPISteamMatchmakingRulesResponseObject=^PISteamMatchmakingRulesResponseObject;
+     TISteamMatchmakingRulesResponseObject=record
+      VTable:PISteamMatchmakingRulesResponseVTable; // Must stay the first field, this is what Steam reads as the vtable pointer
+      UserData:TSteamPointer; // Free for the caller, for finding its own object again inside a method
+     end;
+
 const k_uAppIdInvalid=$0;
       k_uDepotIdInvalid=$0;
       k_uAPICallInvalid=$0;
