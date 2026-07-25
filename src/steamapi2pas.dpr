@@ -189,7 +189,144 @@ type TText=TPasJSONUTF8String;
 
      TInterfaceItems=array of TInterfaceItem;
 
+     // Which shared library an entry point lives in. Everything except the encrypted app ticket
+     // helpers comes out of the Steam client library.
+     TEntryPointLibrary=
+      (
+       EntryPointLibrarySteamAPI,
+       EntryPointLibraryEncryptedAppTicket
+      );
+
+     TFreeFunctionItem=record
+      Name:TText;
+      Declaration:TText;
+      EntryPointLibrary:TEntryPointLibrary;
+     end;
+
 const UnitName='PasVulkan.Steamworks';
+
+      // The functions that steam_api.json does not describe, because they are not interface methods.
+      // Declaration and loader are both driven off this table, so they cannot drift apart. Only
+      // entry points that the public headers actually declare are listed; the library also exports
+      // undocumented ones such as SteamAPI_InitAnonymousUser, SteamGameServer_InitSafe and
+      // SteamRealPath, which are deliberately left out.
+      FreeFunctionItems:array[0..48] of TFreeFunctionItem=
+       (
+        // Initialisation and shutdown. SteamAPI_Init and SteamAPI_InitEx are inline in the C header
+        // and are reimplemented as Pascal wrappers further down.
+        (Name:'SteamInternal_SteamAPI_Init';Declaration:'function(const pszInternalCheckInterfaceVersions:PSteamChar;const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_InitFlat';Declaration:'function(const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_InitSafe';Declaration:'function:TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_Shutdown';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_RestartAppIfNecessary';Declaration:'function(const unOwnAppID:TSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_IsSteamRunning';Declaration:'function:TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_GetSteamInstallPath';Declaration:'function:PSteamChar; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_ReleaseCurrentThreadMemory';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_GetHSteamPipe';Declaration:'function:THSteamPipe; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_GetHSteamUser';Declaration:'function:THSteamUser; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // Automatic callback dispatch. Mutually exclusive with the manual dispatch below.
+        (Name:'SteamAPI_RunCallbacks';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_SetTryCatchCallbacks';Declaration:'procedure(const bTryCatchCallbacks:TSteamBool); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // Manual callback dispatch, which is the mechanism intended for language bindings.
+        (Name:'SteamAPI_ManualDispatch_Init';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_ManualDispatch_RunFrame';Declaration:'procedure(const hSteamPipe:THSteamPipe); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_ManualDispatch_GetNextCallback';Declaration:'function(const hSteamPipe:THSteamPipe;const pCallbackMsg:PCallbackMsg_t):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_ManualDispatch_FreeLastCallback';Declaration:'procedure(const hSteamPipe:THSteamPipe); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_ManualDispatch_GetAPICallResult';Declaration:'function(const hSteamPipe:THSteamPipe;const hSteamAPICall:TSteamAPICall_t;const pCallback:TSteamPointer;const cubCallback:TSteamInt32;const iCallbackExpected:TSteamInt32;const pbFailed:PSteamBool):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // The C++ callback registration. These take a CCallbackBase instance, so they are only usable
+        // once a vtable compatible object is built by hand; manual dispatch above needs none of that.
+        (Name:'SteamAPI_RegisterCallback';Declaration:'procedure(const pCallback:TSteamPointer;const iCallback:TSteamInt32); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_UnregisterCallback';Declaration:'procedure(const pCallback:TSteamPointer); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_RegisterCallResult';Declaration:'procedure(const pCallback:TSteamPointer;const hAPICall:TSteamAPICall_t); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_UnregisterCallResult';Declaration:'procedure(const pCallback:TSteamPointer;const hAPICall:TSteamAPICall_t); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // Interface access below the versioned accessors.
+        (Name:'SteamClient';Declaration:'function:PISteamClient; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamInternal_ContextInit';Declaration:'function(const pContextInitData:TSteamPointer):TSteamPointer; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamInternal_CreateInterface';Declaration:'function(const ver:PSteamChar):TSteamPointer; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamInternal_FindOrCreateUserInterface';Declaration:'function(const hSteamUser:THSteamUser;const pszVersion:PSteamChar):TSteamPointer; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamInternal_FindOrCreateGameServerInterface';Declaration:'function(const hSteamUser:THSteamUser;const pszVersion:PSteamChar):TSteamPointer; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // Game server side. SteamGameServer_InitEx and SteamGameServer_Init are inline in the C header
+        // and are reimplemented as Pascal wrappers further down.
+        (Name:'SteamInternal_GameServer_Init_V2';Declaration:'function(const unIP:TSteamUInt32;const usGamePort:TSteamUInt16;const usQueryPort:TSteamUInt16;const eServerMode:TEServerMode;const pchVersionString:PSteamChar;const pszInternalCheckInterfaceVersions:PSteamChar;const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_Shutdown';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_RunCallbacks';Declaration:'procedure; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_BSecure';Declaration:'function:TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_GetSteamID';Declaration:'function:TSteamUInt64SteamID; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_GetHSteamPipe';Declaration:'function:THSteamPipe; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamGameServer_GetHSteamUser';Declaration:'function:THSteamUser; cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // Crash reporting.
+        (Name:'SteamAPI_SetBreakpadAppID';Declaration:'procedure(const unAppID:TSteamUInt32); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_SetMiniDumpComment';Declaration:'procedure(const pchMsg:PSteamChar); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_UseBreakpadCrashHandler';Declaration:'procedure(const pchVersion:PSteamChar;const pchDate:PSteamChar;const pchTime:PSteamChar;const bFullMemoryDumps:TSteamBool;const pvContext:TSteamPointer;const m_pfnPreMinidumpCallback:TPFNPreMinidumpCallback); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+        (Name:'SteamAPI_WriteMiniDump';Declaration:'procedure(const uStructuredExceptionCode:TSteamUInt32;const pvExceptionInfo:TSteamPointer;const uBuildID:TSteamUInt32); cdecl;';EntryPointLibrary:EntryPointLibrarySteamAPI),
+
+        // The encrypted app ticket helpers, which ship as their own small library.
+        (Name:'SteamEncryptedAppTicket_BDecryptTicket';Declaration:'function(const rgubTicketEncrypted:PSteamUInt8;const cubTicketEncrypted:TSteamUInt32;const rgubTicketDecrypted:PSteamUInt8;const pcubTicketDecrypted:PSteamUInt32;const rgubKey:PSteamUInt8;const cubKey:TSteamInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BIsTicketForApp';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const nAppID:TAppId_t):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_GetTicketIssueTime';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TRTime32; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_GetTicketSteamID';Declaration:'procedure(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const psteamID:PCSteamID); cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_GetTicketAppID';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TAppId_t; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BUserOwnsAppInTicket';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const nAppID:TAppId_t):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BUserIsVacBanned';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BGetAppDefinedValue';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pValue:PSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_GetUserVariableData';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pcubUserData:PSteamUInt32):PSteamUInt8; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BIsTicketSigned';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pubRSAKey:PSteamUInt8;const cubRSAKey:TSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BIsLicenseBorrowed';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket),
+        (Name:'SteamEncryptedAppTicket_BIsLicenseTemporary';Declaration:'function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;';EntryPointLibrary:EntryPointLibraryEncryptedAppTicket)
+       );
+
+      // The interface versions that SteamInternal_SteamAPI_Init checks the loaded library against,
+      // in the order the inline SteamAPI_InitEx of steam_api.h lists them. ISteamTimeline is not part
+      // of that list in the SDK header, so it is not part of it here either.
+      SteamAPIInitInterfaceNames:array[0..23] of TText=
+       (
+        'ISteamUtils',
+        'ISteamNetworkingUtils',
+        'ISteamApps',
+        'ISteamController',
+        'ISteamFriends',
+        'ISteamHTMLSurface',
+        'ISteamHTTP',
+        'ISteamInput',
+        'ISteamInventory',
+        'ISteamMatchmakingServers',
+        'ISteamMatchmaking',
+        'ISteamMusic',
+        'ISteamNetworkingMessages',
+        'ISteamNetworkingSockets',
+        'ISteamNetworking',
+        'ISteamParentalSettings',
+        'ISteamParties',
+        'ISteamRemotePlay',
+        'ISteamRemoteStorage',
+        'ISteamScreenshots',
+        'ISteamUGC',
+        'ISteamUserStats',
+        'ISteamUser',
+        'ISteamVideo'
+       );
+
+      // The same for SteamInternal_GameServer_Init_V2, in the order of the inline
+      // SteamGameServer_InitEx of steam_gameserver.h.
+      SteamGameServerInitInterfaceNames:array[0..9] of TText=
+       (
+        'ISteamUtils',
+        'ISteamNetworkingUtils',
+        'ISteamGameServer',
+        'ISteamGameServerStats',
+        'ISteamHTTP',
+        'ISteamInventory',
+        'ISteamNetworking',
+        'ISteamNetworkingMessages',
+        'ISteamNetworkingSockets',
+        'ISteamUGC'
+       );
 
       // Records whose C definition uses #pragma pack(1). Determined by walking the pack pragmas of
       // the public headers with the VALVE_CALLBACK_PACK_SMALL branch taken.
@@ -1367,6 +1504,9 @@ begin
  Emit('const STEAMWORKS_DEFAULT_LIB_NAME={$ifdef Windows}{$ifdef cpu64}''steam_api64.dll''{$else}''steam_api.dll''{$endif}{$else}{$ifdef Darwin}''libsteam_api.dylib''{$else}''libsteam_api.so''{$endif}{$endif};');
  EmitEmptyLine;
 
+ Emit('      STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME={$ifdef Windows}{$ifdef cpu64}''sdkencryptedappticket64.dll''{$else}''sdkencryptedappticket.dll''{$endif}{$else}{$ifdef Darwin}''libsdkencryptedappticket.dylib''{$else}''libsdkencryptedappticket.so''{$endif}{$endif};');
+ EmitEmptyLine;
+
  // Everything below the platform packing directive belongs to the VALVE_CALLBACK_PACK regime unless
  // a record explicitly switches away from it.
  Emit('// The Steamworks headers pack their callback records with 4 bytes on Linux, macOS and FreeBSD');
@@ -1460,6 +1600,13 @@ begin
  Emit('     PPSteamPointer=^PSteamPointer;');
  Emit('     PSteamPointer=^TSteamPointer;');
  Emit('     TSteamPointer=Pointer;');
+ EmitEmptyLine;
+
+ // A byte oriented string type, since the interface version blobs that the initialisation entry points
+ // want are byte strings with embedded zero bytes, and Delphi's default string is UTF-16.
+ Emit('     PPSteamAnsiString=^PSteamAnsiString;');
+ Emit('     PSteamAnsiString=^TSteamAnsiString;');
+ Emit('     TSteamAnsiString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};');
  EmitEmptyLine;
 
  // A C++ bool is one byte wide and only ever holds 0 or 1, but ByteBool treats every non zero value
@@ -1832,6 +1979,26 @@ begin
 
 end;
 
+// The structure that manual callback dispatch fills in. It sits in the VALVE_CALLBACK_PACK region of
+// steam_api_internal.h but is not part of steam_api.json, because it is not a callback itself.
+procedure EmitCallbackMessageType;
+begin
+
+ SetPackingMode(PackingModePlatform);
+
+ Emit('type { TCallbackMsg_t }');
+ Emit('     PPCallbackMsg_t=^PCallbackMsg_t;');
+ Emit('     PCallbackMsg_t=^TCallbackMsg_t;');
+ Emit('     TCallbackMsg_t=record');
+ Emit('      m_hSteamUser:THSteamUser; // Specific user to whom this callback applies');
+ Emit('      m_iCallback:TSteamInt32; // Callback identifier, matches the k_iCallback constant of the callback record');
+ Emit('      m_pubParam:PSteamUInt8; // Points to the callback record');
+ Emit('      m_cubParam:TSteamInt32; // Size of the data pointed to by m_pubParam');
+ Emit('     end;');
+ EmitEmptyLine;
+
+end;
+
 procedure EmitConstants;
 var Index:TPasJSONSizeInt;
     IsFirst:boolean;
@@ -1909,7 +2076,7 @@ begin
 end;
 
 procedure EmitFunctionPointers;
-var InterfaceIndex,MethodIndex,StructIndex,AccessorIndex:TPasJSONSizeInt;
+var InterfaceIndex,MethodIndex,StructIndex,AccessorIndex,Index:TPasJSONSizeInt;
     IsFirst:boolean;
     Prefix,Declaration:TText;
 
@@ -1962,10 +2129,28 @@ begin
   end;
  end;
 
+ // The free standing entry points, which are not described by steam_api.json.
+ Emit('// Free standing entry points');
+ for Index:=Low(FreeFunctionItems) to High(FreeFunctionItems) do begin
+  if FreeFunctionItems[Index].EntryPointLibrary=EntryPointLibrarySteamAPI then begin
+   EmitOne(FreeFunctionItems[Index].Name,FreeFunctionItems[Index].Declaration);
+  end;
+ end;
+ EmitEmptyLine;
+
+ Emit('// Free standing entry points of the encrypted app ticket library');
+ for Index:=Low(FreeFunctionItems) to High(FreeFunctionItems) do begin
+  if FreeFunctionItems[Index].EntryPointLibrary=EntryPointLibraryEncryptedAppTicket then begin
+   EmitOne(FreeFunctionItems[Index].Name,FreeFunctionItems[Index].Declaration);
+  end;
+ end;
+ EmitEmptyLine;
+
 end;
 
 procedure EmitLoaderDeclarations;
 begin
+
  // The byte array storage of TCSteamID and TCGameID keeps their alignment at one byte, so these
  // convert between that storage and the 64 bit value that the flat API passes around.
  Emit('function SteamIDToUInt64(const aSteamID:TCSteamID):TSteamUInt64;');
@@ -1973,7 +2158,20 @@ begin
  Emit('function GameIDToUInt64(const aGameID:TCGameID):TSteamUInt64;');
  Emit('function UInt64ToGameID(const aValue:TSteamUInt64):TCGameID;');
  EmitEmptyLine;
+
+ // The entry points that are inline functions in the C headers rather than exported symbols, so they
+ // have to be reimplemented here. SteamAPI_InitEx and SteamGameServer_InitEx assemble the interface
+ // version list that the library validates itself against.
+ Emit('function SteamAPI_InitEx(const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;');
+ Emit('function SteamAPI_Init:boolean;');
+ Emit('function SteamGameServer_InitEx(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar;const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;');
+ Emit('function SteamGameServer_Init(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar):boolean;');
+ Emit('procedure SteamGameServer_ReleaseCurrentThreadMemory;');
+ Emit('function SteamGameServerClient:PISteamClient;');
+ EmitEmptyLine;
+
  Emit('var SteamworksLibraryHandle:TSteamPointer=nil;');
+ Emit('    SteamworksEncryptedAppTicketLibraryHandle:TSteamPointer=nil;');
  EmitEmptyLine;
  Emit('function SteamworksLoadLibrary(const aLibraryName:string):TSteamPointer;');
  Emit('function SteamworksFreeLibrary(const aLibraryHandle:TSteamPointer):boolean;');
@@ -1982,12 +2180,88 @@ begin
  Emit('function LoadSteamworksLibrary(const aLibraryName:string=STEAMWORKS_DEFAULT_LIB_NAME):boolean;');
  Emit('procedure UnloadSteamworksLibrary;');
  EmitEmptyLine;
+
+ // The encrypted app ticket helpers ship as their own library, and most games never need them, so
+ // loading it is a separate opt in step.
+ Emit('function LoadSteamworksEncryptedAppTicketLibrary(const aLibraryName:string=STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME):boolean;');
+ Emit('procedure UnloadSteamworksEncryptedAppTicketLibrary;');
+ EmitEmptyLine;
+
  Emit('implementation');
  EmitEmptyLine;
+
+end;
+
+// Emits the body of one of the two interface version blobs. The C header spells it as a run of string
+// literals separated by embedded zero bytes and terminated by a second one.
+procedure EmitInterfaceVersionBlob(const aInterfaceNames:array of TText;const aVariableName:TText);
+var Index:TPasJSONSizeInt;
+begin
+ for Index:=Low(aInterfaceNames) to High(aInterfaceNames) do begin
+  if Index=Low(aInterfaceNames) then begin
+   Emit(' '+aVariableName+':='+aInterfaceNames[Index]+'_INTERFACE_VERSION+#0+');
+  end else begin
+   Emit('                    '+aInterfaceNames[Index]+'_INTERFACE_VERSION+#0+');
+  end;
+ end;
+ Emit('                    #0;');
+end;
+
+procedure EmitInitWrapperImplementations;
+begin
+
+ Emit('function SteamAPI_InitEx(const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;');
+ Emit('var InterfaceVersions:TSteamAnsiString;');
+ Emit('begin');
+ EmitEmptyLine;
+ EmitInterfaceVersionBlob(SteamAPIInitInterfaceNames,'InterfaceVersions');
+ EmitEmptyLine;
+ Emit(' result:=SteamInternal_SteamAPI_Init(PSteamChar(InterfaceVersions),aOutErrorMessage);');
+ EmitEmptyLine;
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('function SteamAPI_Init:boolean;');
+ Emit('begin');
+ Emit(' result:=SteamAPI_InitEx(nil)=k_ESteamAPIInitResult_OK;');
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('function SteamGameServer_InitEx(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar;const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;');
+ Emit('var InterfaceVersions:TSteamAnsiString;');
+ Emit('begin');
+ EmitEmptyLine;
+ EmitInterfaceVersionBlob(SteamGameServerInitInterfaceNames,'InterfaceVersions');
+ EmitEmptyLine;
+ Emit(' result:=SteamInternal_GameServer_Init_V2(aIP,aGamePort,aQueryPort,aServerMode,aVersionString,PSteamChar(InterfaceVersions),aOutErrorMessage);');
+ EmitEmptyLine;
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('function SteamGameServer_Init(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar):boolean;');
+ Emit('begin');
+ Emit(' result:=SteamGameServer_InitEx(aIP,aGamePort,aQueryPort,aServerMode,aVersionString,nil)=k_ESteamAPIInitResult_OK;');
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('procedure SteamGameServer_ReleaseCurrentThreadMemory;');
+ Emit('begin');
+ Emit(' SteamAPI_ReleaseCurrentThreadMemory;');
+ Emit('end;');
+ EmitEmptyLine;
+
+ // The C header returns the very same object for both, the game server flavour is only a different
+ // spelling of the same accessor.
+ Emit('function SteamGameServerClient:PISteamClient;');
+ Emit('begin');
+ Emit(' result:=SteamClient;');
+ Emit('end;');
+ EmitEmptyLine;
+
 end;
 
 procedure EmitLoaderImplementation;
-var InterfaceIndex,MethodIndex,StructIndex,AccessorIndex:TPasJSONSizeInt;
+var InterfaceIndex,MethodIndex,StructIndex,AccessorIndex,Index:TPasJSONSizeInt;
 
  procedure EmitLoadEntry(const aName:TText);
  begin
@@ -2115,6 +2389,14 @@ begin
   end;
  end;
 
+ Emit(' // Free standing entry points');
+ for Index:=Low(FreeFunctionItems) to High(FreeFunctionItems) do begin
+  if FreeFunctionItems[Index].EntryPointLibrary=EntryPointLibrarySteamAPI then begin
+   EmitLoadEntry(FreeFunctionItems[Index].Name);
+  end;
+ end;
+ EmitEmptyLine;
+
  Emit(' // A missing entry point means the loaded library is older than these bindings.');
  Emit(' result:=CountMissingEntryPoints=0;');
  Emit(' if not result then begin');
@@ -2129,6 +2411,55 @@ begin
  Emit(' if assigned(SteamworksLibraryHandle) then begin');
  Emit('  SteamworksFreeLibrary(SteamworksLibraryHandle);');
  Emit('  SteamworksLibraryHandle:=nil;');
+ Emit(' end;');
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('function LoadSteamworksEncryptedAppTicketLibrary(const aLibraryName:string=STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME):boolean;');
+ Emit('var CountMissingEntryPoints:TSteamInt32;');
+ Emit(' procedure LoadEntryPoint(out aTarget;const aName:string);');
+ Emit(' begin');
+ Emit('  TSteamPointer(aTarget):=SteamworksGetProcAddress(SteamworksEncryptedAppTicketLibraryHandle,aName);');
+ Emit('  if not assigned(TSteamPointer(aTarget)) then begin');
+ Emit('   inc(CountMissingEntryPoints);');
+ Emit('  end;');
+ Emit(' end;');
+ Emit('begin');
+ EmitEmptyLine;
+ Emit(' if assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin');
+ Emit('  result:=true;');
+ Emit('  exit;');
+ Emit(' end;');
+ EmitEmptyLine;
+ Emit(' SteamworksEncryptedAppTicketLibraryHandle:=SteamworksLoadLibrary(aLibraryName);');
+ Emit(' if not assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin');
+ Emit('  result:=false;');
+ Emit('  exit;');
+ Emit(' end;');
+ EmitEmptyLine;
+ Emit(' CountMissingEntryPoints:=0;');
+ EmitEmptyLine;
+
+ for Index:=Low(FreeFunctionItems) to High(FreeFunctionItems) do begin
+  if FreeFunctionItems[Index].EntryPointLibrary=EntryPointLibraryEncryptedAppTicket then begin
+   EmitLoadEntry(FreeFunctionItems[Index].Name);
+  end;
+ end;
+ EmitEmptyLine;
+
+ Emit(' result:=CountMissingEntryPoints=0;');
+ Emit(' if not result then begin');
+ Emit('  UnloadSteamworksEncryptedAppTicketLibrary;');
+ Emit(' end;');
+ EmitEmptyLine;
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('procedure UnloadSteamworksEncryptedAppTicketLibrary;');
+ Emit('begin');
+ Emit(' if assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin');
+ Emit('  SteamworksFreeLibrary(SteamworksEncryptedAppTicketLibraryHandle);');
+ Emit('  SteamworksEncryptedAppTicketLibraryHandle:=nil;');
  Emit(' end;');
  Emit('end;');
  EmitEmptyLine;
@@ -2224,11 +2555,13 @@ begin
    EmitEnumerations;
    EmitInterfaceHandleTypes;
    EmitStructs;
+   EmitCallbackMessageType;
    EmitFunctionPointerTypeDefinitions;
    EmitConstants;
    EmitInterfaceVersionConstants;
    EmitFunctionPointers;
    EmitLoaderDeclarations;
+   EmitInitWrapperImplementations;
    EmitLoaderImplementation;
    EmitUnitEpilogue;
 

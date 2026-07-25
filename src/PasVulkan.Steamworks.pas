@@ -66,6 +66,8 @@ uses {$if defined(Windows)}
 
 const STEAMWORKS_DEFAULT_LIB_NAME={$ifdef Windows}{$ifdef cpu64}'steam_api64.dll'{$else}'steam_api.dll'{$endif}{$else}{$ifdef Darwin}'libsteam_api.dylib'{$else}'libsteam_api.so'{$endif}{$endif};
 
+      STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME={$ifdef Windows}{$ifdef cpu64}'sdkencryptedappticket64.dll'{$else}'sdkencryptedappticket.dll'{$endif}{$else}{$ifdef Darwin}'libsdkencryptedappticket.dylib'{$else}'libsdkencryptedappticket.so'{$endif}{$endif};
+
 // The Steamworks headers pack their callback records with 4 bytes on Linux, macOS and FreeBSD
 // (VALVE_CALLBACK_PACK_SMALL) and with 8 bytes on Windows (VALVE_CALLBACK_PACK_LARGE).
 {$ifdef Windows}{$ifdef fpc}{$packrecords 8}{$else}{$A8}{$endif}{$else}{$ifdef fpc}{$packrecords 4}{$else}{$A4}{$endif}{$endif}
@@ -125,6 +127,10 @@ type PPSteamInt8=^PSteamInt8;
      PPSteamPointer=^PSteamPointer;
      PSteamPointer=^TSteamPointer;
      TSteamPointer=Pointer;
+
+     PPSteamAnsiString=^PSteamAnsiString;
+     PSteamAnsiString=^TSteamAnsiString;
+     TSteamAnsiString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
 
      PPSteamBool=^PSteamBool;
      PSteamBool=^TSteamBool;
@@ -5970,6 +5976,16 @@ type { TSteamNetworkingFakeIPResult_t }
 
 const SteamNetworkingFakeIPResult_t_k_iCallback=1223;
 
+type { TCallbackMsg_t }
+     PPCallbackMsg_t=^PCallbackMsg_t;
+     PCallbackMsg_t=^TCallbackMsg_t;
+     TCallbackMsg_t=record
+      m_hSteamUser:THSteamUser; // Specific user to whom this callback applies
+      m_iCallback:TSteamInt32; // Callback identifier, matches the k_iCallback constant of the callback record
+      m_pubParam:PSteamUInt8; // Points to the callback record
+      m_cubParam:TSteamInt32; // Size of the data pointed to by m_pubParam
+     end;
+
 type PPPFNPreMinidumpCallback=^PPFNPreMinidumpCallback;
      PPFNPreMinidumpCallback=^TPFNPreMinidumpCallback;
      TPFNPreMinidumpCallback=procedure(const aParameter1:TSteamPointer); cdecl;
@@ -7228,12 +7244,73 @@ var SteamAPI_ISteamClient_CreateSteamPipe:function(const aSelf:PISteamClient):TH
     SteamAPI_SteamDatagramHostedAddress_GetPopID:function(const aSelf:PSteamDatagramHostedAddress):TSteamNetworkingPOPID; cdecl;
     SteamAPI_SteamDatagramHostedAddress_SetDevAddress:procedure(const aSelf:PSteamDatagramHostedAddress;const nIP:TSteamUInt32;const nPort:TSteamUInt16;const popid:TSteamNetworkingPOPID); cdecl;
 
+// Free standing entry points
+    SteamInternal_SteamAPI_Init:function(const pszInternalCheckInterfaceVersions:PSteamChar;const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;
+    SteamAPI_InitFlat:function(const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;
+    SteamAPI_InitSafe:function:TSteamBool; cdecl;
+    SteamAPI_Shutdown:procedure; cdecl;
+    SteamAPI_RestartAppIfNecessary:function(const unOwnAppID:TSteamUInt32):TSteamBool; cdecl;
+    SteamAPI_IsSteamRunning:function:TSteamBool; cdecl;
+    SteamAPI_GetSteamInstallPath:function:PSteamChar; cdecl;
+    SteamAPI_ReleaseCurrentThreadMemory:procedure; cdecl;
+    SteamAPI_GetHSteamPipe:function:THSteamPipe; cdecl;
+    SteamAPI_GetHSteamUser:function:THSteamUser; cdecl;
+    SteamAPI_RunCallbacks:procedure; cdecl;
+    SteamAPI_SetTryCatchCallbacks:procedure(const bTryCatchCallbacks:TSteamBool); cdecl;
+    SteamAPI_ManualDispatch_Init:procedure; cdecl;
+    SteamAPI_ManualDispatch_RunFrame:procedure(const hSteamPipe:THSteamPipe); cdecl;
+    SteamAPI_ManualDispatch_GetNextCallback:function(const hSteamPipe:THSteamPipe;const pCallbackMsg:PCallbackMsg_t):TSteamBool; cdecl;
+    SteamAPI_ManualDispatch_FreeLastCallback:procedure(const hSteamPipe:THSteamPipe); cdecl;
+    SteamAPI_ManualDispatch_GetAPICallResult:function(const hSteamPipe:THSteamPipe;const hSteamAPICall:TSteamAPICall_t;const pCallback:TSteamPointer;const cubCallback:TSteamInt32;const iCallbackExpected:TSteamInt32;const pbFailed:PSteamBool):TSteamBool; cdecl;
+    SteamAPI_RegisterCallback:procedure(const pCallback:TSteamPointer;const iCallback:TSteamInt32); cdecl;
+    SteamAPI_UnregisterCallback:procedure(const pCallback:TSteamPointer); cdecl;
+    SteamAPI_RegisterCallResult:procedure(const pCallback:TSteamPointer;const hAPICall:TSteamAPICall_t); cdecl;
+    SteamAPI_UnregisterCallResult:procedure(const pCallback:TSteamPointer;const hAPICall:TSteamAPICall_t); cdecl;
+    SteamClient:function:PISteamClient; cdecl;
+    SteamInternal_ContextInit:function(const pContextInitData:TSteamPointer):TSteamPointer; cdecl;
+    SteamInternal_CreateInterface:function(const ver:PSteamChar):TSteamPointer; cdecl;
+    SteamInternal_FindOrCreateUserInterface:function(const hSteamUser:THSteamUser;const pszVersion:PSteamChar):TSteamPointer; cdecl;
+    SteamInternal_FindOrCreateGameServerInterface:function(const hSteamUser:THSteamUser;const pszVersion:PSteamChar):TSteamPointer; cdecl;
+    SteamInternal_GameServer_Init_V2:function(const unIP:TSteamUInt32;const usGamePort:TSteamUInt16;const usQueryPort:TSteamUInt16;const eServerMode:TEServerMode;const pchVersionString:PSteamChar;const pszInternalCheckInterfaceVersions:PSteamChar;const pOutErrMsg:PSteamErrMsg):TESteamAPIInitResult; cdecl;
+    SteamGameServer_Shutdown:procedure; cdecl;
+    SteamGameServer_RunCallbacks:procedure; cdecl;
+    SteamGameServer_BSecure:function:TSteamBool; cdecl;
+    SteamGameServer_GetSteamID:function:TSteamUInt64SteamID; cdecl;
+    SteamGameServer_GetHSteamPipe:function:THSteamPipe; cdecl;
+    SteamGameServer_GetHSteamUser:function:THSteamUser; cdecl;
+    SteamAPI_SetBreakpadAppID:procedure(const unAppID:TSteamUInt32); cdecl;
+    SteamAPI_SetMiniDumpComment:procedure(const pchMsg:PSteamChar); cdecl;
+    SteamAPI_UseBreakpadCrashHandler:procedure(const pchVersion:PSteamChar;const pchDate:PSteamChar;const pchTime:PSteamChar;const bFullMemoryDumps:TSteamBool;const pvContext:TSteamPointer;const m_pfnPreMinidumpCallback:TPFNPreMinidumpCallback); cdecl;
+    SteamAPI_WriteMiniDump:procedure(const uStructuredExceptionCode:TSteamUInt32;const pvExceptionInfo:TSteamPointer;const uBuildID:TSteamUInt32); cdecl;
+
+// Free standing entry points of the encrypted app ticket library
+    SteamEncryptedAppTicket_BDecryptTicket:function(const rgubTicketEncrypted:PSteamUInt8;const cubTicketEncrypted:TSteamUInt32;const rgubTicketDecrypted:PSteamUInt8;const pcubTicketDecrypted:PSteamUInt32;const rgubKey:PSteamUInt8;const cubKey:TSteamInt32):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_BIsTicketForApp:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const nAppID:TAppId_t):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_GetTicketIssueTime:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TRTime32; cdecl;
+    SteamEncryptedAppTicket_GetTicketSteamID:procedure(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const psteamID:PCSteamID); cdecl;
+    SteamEncryptedAppTicket_GetTicketAppID:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TAppId_t; cdecl;
+    SteamEncryptedAppTicket_BUserOwnsAppInTicket:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const nAppID:TAppId_t):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_BUserIsVacBanned:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_BGetAppDefinedValue:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pValue:PSteamUInt32):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_GetUserVariableData:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pcubUserData:PSteamUInt32):PSteamUInt8; cdecl;
+    SteamEncryptedAppTicket_BIsTicketSigned:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32;const pubRSAKey:PSteamUInt8;const cubRSAKey:TSteamUInt32):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_BIsLicenseBorrowed:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;
+    SteamEncryptedAppTicket_BIsLicenseTemporary:function(const rgubTicketDecrypted:PSteamUInt8;const cubTicketDecrypted:TSteamUInt32):TSteamBool; cdecl;
+
 function SteamIDToUInt64(const aSteamID:TCSteamID):TSteamUInt64;
 function UInt64ToSteamID(const aValue:TSteamUInt64):TCSteamID;
 function GameIDToUInt64(const aGameID:TCGameID):TSteamUInt64;
 function UInt64ToGameID(const aValue:TSteamUInt64):TCGameID;
 
+function SteamAPI_InitEx(const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;
+function SteamAPI_Init:boolean;
+function SteamGameServer_InitEx(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar;const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;
+function SteamGameServer_Init(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar):boolean;
+procedure SteamGameServer_ReleaseCurrentThreadMemory;
+function SteamGameServerClient:PISteamClient;
+
 var SteamworksLibraryHandle:TSteamPointer=nil;
+    SteamworksEncryptedAppTicketLibraryHandle:TSteamPointer=nil;
 
 function SteamworksLoadLibrary(const aLibraryName:string):TSteamPointer;
 function SteamworksFreeLibrary(const aLibraryHandle:TSteamPointer):boolean;
@@ -7242,7 +7319,84 @@ function SteamworksGetProcAddress(const aLibraryHandle:TSteamPointer;const aProc
 function LoadSteamworksLibrary(const aLibraryName:string=STEAMWORKS_DEFAULT_LIB_NAME):boolean;
 procedure UnloadSteamworksLibrary;
 
+function LoadSteamworksEncryptedAppTicketLibrary(const aLibraryName:string=STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME):boolean;
+procedure UnloadSteamworksEncryptedAppTicketLibrary;
+
 implementation
+
+function SteamAPI_InitEx(const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;
+var InterfaceVersions:TSteamAnsiString;
+begin
+
+ InterfaceVersions:=ISteamUtils_INTERFACE_VERSION+#0+
+                    ISteamNetworkingUtils_INTERFACE_VERSION+#0+
+                    ISteamApps_INTERFACE_VERSION+#0+
+                    ISteamController_INTERFACE_VERSION+#0+
+                    ISteamFriends_INTERFACE_VERSION+#0+
+                    ISteamHTMLSurface_INTERFACE_VERSION+#0+
+                    ISteamHTTP_INTERFACE_VERSION+#0+
+                    ISteamInput_INTERFACE_VERSION+#0+
+                    ISteamInventory_INTERFACE_VERSION+#0+
+                    ISteamMatchmakingServers_INTERFACE_VERSION+#0+
+                    ISteamMatchmaking_INTERFACE_VERSION+#0+
+                    ISteamMusic_INTERFACE_VERSION+#0+
+                    ISteamNetworkingMessages_INTERFACE_VERSION+#0+
+                    ISteamNetworkingSockets_INTERFACE_VERSION+#0+
+                    ISteamNetworking_INTERFACE_VERSION+#0+
+                    ISteamParentalSettings_INTERFACE_VERSION+#0+
+                    ISteamParties_INTERFACE_VERSION+#0+
+                    ISteamRemotePlay_INTERFACE_VERSION+#0+
+                    ISteamRemoteStorage_INTERFACE_VERSION+#0+
+                    ISteamScreenshots_INTERFACE_VERSION+#0+
+                    ISteamUGC_INTERFACE_VERSION+#0+
+                    ISteamUserStats_INTERFACE_VERSION+#0+
+                    ISteamUser_INTERFACE_VERSION+#0+
+                    ISteamVideo_INTERFACE_VERSION+#0+
+                    #0;
+
+ result:=SteamInternal_SteamAPI_Init(PSteamChar(InterfaceVersions),aOutErrorMessage);
+
+end;
+
+function SteamAPI_Init:boolean;
+begin
+ result:=SteamAPI_InitEx(nil)=k_ESteamAPIInitResult_OK;
+end;
+
+function SteamGameServer_InitEx(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar;const aOutErrorMessage:PSteamErrMsg):TESteamAPIInitResult;
+var InterfaceVersions:TSteamAnsiString;
+begin
+
+ InterfaceVersions:=ISteamUtils_INTERFACE_VERSION+#0+
+                    ISteamNetworkingUtils_INTERFACE_VERSION+#0+
+                    ISteamGameServer_INTERFACE_VERSION+#0+
+                    ISteamGameServerStats_INTERFACE_VERSION+#0+
+                    ISteamHTTP_INTERFACE_VERSION+#0+
+                    ISteamInventory_INTERFACE_VERSION+#0+
+                    ISteamNetworking_INTERFACE_VERSION+#0+
+                    ISteamNetworkingMessages_INTERFACE_VERSION+#0+
+                    ISteamNetworkingSockets_INTERFACE_VERSION+#0+
+                    ISteamUGC_INTERFACE_VERSION+#0+
+                    #0;
+
+ result:=SteamInternal_GameServer_Init_V2(aIP,aGamePort,aQueryPort,aServerMode,aVersionString,PSteamChar(InterfaceVersions),aOutErrorMessage);
+
+end;
+
+function SteamGameServer_Init(const aIP:TSteamUInt32;const aGamePort:TSteamUInt16;const aQueryPort:TSteamUInt16;const aServerMode:TEServerMode;const aVersionString:PSteamChar):boolean;
+begin
+ result:=SteamGameServer_InitEx(aIP,aGamePort,aQueryPort,aServerMode,aVersionString,nil)=k_ESteamAPIInitResult_OK;
+end;
+
+procedure SteamGameServer_ReleaseCurrentThreadMemory;
+begin
+ SteamAPI_ReleaseCurrentThreadMemory;
+end;
+
+function SteamGameServerClient:PISteamClient;
+begin
+ result:=SteamClient;
+end;
 
 function SteamIDToUInt64(const aSteamID:TCSteamID):TSteamUInt64;
 begin
@@ -8426,6 +8580,45 @@ begin
  LoadEntryPoint(SteamAPI_SteamDatagramHostedAddress_GetPopID,'SteamAPI_SteamDatagramHostedAddress_GetPopID');
  LoadEntryPoint(SteamAPI_SteamDatagramHostedAddress_SetDevAddress,'SteamAPI_SteamDatagramHostedAddress_SetDevAddress');
 
+ // Free standing entry points
+ LoadEntryPoint(SteamInternal_SteamAPI_Init,'SteamInternal_SteamAPI_Init');
+ LoadEntryPoint(SteamAPI_InitFlat,'SteamAPI_InitFlat');
+ LoadEntryPoint(SteamAPI_InitSafe,'SteamAPI_InitSafe');
+ LoadEntryPoint(SteamAPI_Shutdown,'SteamAPI_Shutdown');
+ LoadEntryPoint(SteamAPI_RestartAppIfNecessary,'SteamAPI_RestartAppIfNecessary');
+ LoadEntryPoint(SteamAPI_IsSteamRunning,'SteamAPI_IsSteamRunning');
+ LoadEntryPoint(SteamAPI_GetSteamInstallPath,'SteamAPI_GetSteamInstallPath');
+ LoadEntryPoint(SteamAPI_ReleaseCurrentThreadMemory,'SteamAPI_ReleaseCurrentThreadMemory');
+ LoadEntryPoint(SteamAPI_GetHSteamPipe,'SteamAPI_GetHSteamPipe');
+ LoadEntryPoint(SteamAPI_GetHSteamUser,'SteamAPI_GetHSteamUser');
+ LoadEntryPoint(SteamAPI_RunCallbacks,'SteamAPI_RunCallbacks');
+ LoadEntryPoint(SteamAPI_SetTryCatchCallbacks,'SteamAPI_SetTryCatchCallbacks');
+ LoadEntryPoint(SteamAPI_ManualDispatch_Init,'SteamAPI_ManualDispatch_Init');
+ LoadEntryPoint(SteamAPI_ManualDispatch_RunFrame,'SteamAPI_ManualDispatch_RunFrame');
+ LoadEntryPoint(SteamAPI_ManualDispatch_GetNextCallback,'SteamAPI_ManualDispatch_GetNextCallback');
+ LoadEntryPoint(SteamAPI_ManualDispatch_FreeLastCallback,'SteamAPI_ManualDispatch_FreeLastCallback');
+ LoadEntryPoint(SteamAPI_ManualDispatch_GetAPICallResult,'SteamAPI_ManualDispatch_GetAPICallResult');
+ LoadEntryPoint(SteamAPI_RegisterCallback,'SteamAPI_RegisterCallback');
+ LoadEntryPoint(SteamAPI_UnregisterCallback,'SteamAPI_UnregisterCallback');
+ LoadEntryPoint(SteamAPI_RegisterCallResult,'SteamAPI_RegisterCallResult');
+ LoadEntryPoint(SteamAPI_UnregisterCallResult,'SteamAPI_UnregisterCallResult');
+ LoadEntryPoint(SteamClient,'SteamClient');
+ LoadEntryPoint(SteamInternal_ContextInit,'SteamInternal_ContextInit');
+ LoadEntryPoint(SteamInternal_CreateInterface,'SteamInternal_CreateInterface');
+ LoadEntryPoint(SteamInternal_FindOrCreateUserInterface,'SteamInternal_FindOrCreateUserInterface');
+ LoadEntryPoint(SteamInternal_FindOrCreateGameServerInterface,'SteamInternal_FindOrCreateGameServerInterface');
+ LoadEntryPoint(SteamInternal_GameServer_Init_V2,'SteamInternal_GameServer_Init_V2');
+ LoadEntryPoint(SteamGameServer_Shutdown,'SteamGameServer_Shutdown');
+ LoadEntryPoint(SteamGameServer_RunCallbacks,'SteamGameServer_RunCallbacks');
+ LoadEntryPoint(SteamGameServer_BSecure,'SteamGameServer_BSecure');
+ LoadEntryPoint(SteamGameServer_GetSteamID,'SteamGameServer_GetSteamID');
+ LoadEntryPoint(SteamGameServer_GetHSteamPipe,'SteamGameServer_GetHSteamPipe');
+ LoadEntryPoint(SteamGameServer_GetHSteamUser,'SteamGameServer_GetHSteamUser');
+ LoadEntryPoint(SteamAPI_SetBreakpadAppID,'SteamAPI_SetBreakpadAppID');
+ LoadEntryPoint(SteamAPI_SetMiniDumpComment,'SteamAPI_SetMiniDumpComment');
+ LoadEntryPoint(SteamAPI_UseBreakpadCrashHandler,'SteamAPI_UseBreakpadCrashHandler');
+ LoadEntryPoint(SteamAPI_WriteMiniDump,'SteamAPI_WriteMiniDump');
+
  // A missing entry point means the loaded library is older than these bindings.
  result:=CountMissingEntryPoints=0;
  if not result then begin
@@ -8439,6 +8632,58 @@ begin
  if assigned(SteamworksLibraryHandle) then begin
   SteamworksFreeLibrary(SteamworksLibraryHandle);
   SteamworksLibraryHandle:=nil;
+ end;
+end;
+
+function LoadSteamworksEncryptedAppTicketLibrary(const aLibraryName:string=STEAMWORKS_ENCRYPTED_APP_TICKET_DEFAULT_LIB_NAME):boolean;
+var CountMissingEntryPoints:TSteamInt32;
+ procedure LoadEntryPoint(out aTarget;const aName:string);
+ begin
+  TSteamPointer(aTarget):=SteamworksGetProcAddress(SteamworksEncryptedAppTicketLibraryHandle,aName);
+  if not assigned(TSteamPointer(aTarget)) then begin
+   inc(CountMissingEntryPoints);
+  end;
+ end;
+begin
+
+ if assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin
+  result:=true;
+  exit;
+ end;
+
+ SteamworksEncryptedAppTicketLibraryHandle:=SteamworksLoadLibrary(aLibraryName);
+ if not assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin
+  result:=false;
+  exit;
+ end;
+
+ CountMissingEntryPoints:=0;
+
+ LoadEntryPoint(SteamEncryptedAppTicket_BDecryptTicket,'SteamEncryptedAppTicket_BDecryptTicket');
+ LoadEntryPoint(SteamEncryptedAppTicket_BIsTicketForApp,'SteamEncryptedAppTicket_BIsTicketForApp');
+ LoadEntryPoint(SteamEncryptedAppTicket_GetTicketIssueTime,'SteamEncryptedAppTicket_GetTicketIssueTime');
+ LoadEntryPoint(SteamEncryptedAppTicket_GetTicketSteamID,'SteamEncryptedAppTicket_GetTicketSteamID');
+ LoadEntryPoint(SteamEncryptedAppTicket_GetTicketAppID,'SteamEncryptedAppTicket_GetTicketAppID');
+ LoadEntryPoint(SteamEncryptedAppTicket_BUserOwnsAppInTicket,'SteamEncryptedAppTicket_BUserOwnsAppInTicket');
+ LoadEntryPoint(SteamEncryptedAppTicket_BUserIsVacBanned,'SteamEncryptedAppTicket_BUserIsVacBanned');
+ LoadEntryPoint(SteamEncryptedAppTicket_BGetAppDefinedValue,'SteamEncryptedAppTicket_BGetAppDefinedValue');
+ LoadEntryPoint(SteamEncryptedAppTicket_GetUserVariableData,'SteamEncryptedAppTicket_GetUserVariableData');
+ LoadEntryPoint(SteamEncryptedAppTicket_BIsTicketSigned,'SteamEncryptedAppTicket_BIsTicketSigned');
+ LoadEntryPoint(SteamEncryptedAppTicket_BIsLicenseBorrowed,'SteamEncryptedAppTicket_BIsLicenseBorrowed');
+ LoadEntryPoint(SteamEncryptedAppTicket_BIsLicenseTemporary,'SteamEncryptedAppTicket_BIsLicenseTemporary');
+
+ result:=CountMissingEntryPoints=0;
+ if not result then begin
+  UnloadSteamworksEncryptedAppTicketLibrary;
+ end;
+
+end;
+
+procedure UnloadSteamworksEncryptedAppTicketLibrary;
+begin
+ if assigned(SteamworksEncryptedAppTicketLibraryHandle) then begin
+  SteamworksFreeLibrary(SteamworksEncryptedAppTicketLibraryHandle);
+  SteamworksEncryptedAppTicketLibraryHandle:=nil;
  end;
 end;
 
