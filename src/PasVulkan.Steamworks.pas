@@ -5976,6 +5976,16 @@ type { TSteamNetworkingFakeIPResult_t }
 
 const SteamNetworkingFakeIPResult_t_k_iCallback=1223;
 
+type { TValvePackingSentinel_t }
+     PPValvePackingSentinel_t=^PValvePackingSentinel_t;
+     PValvePackingSentinel_t=^TValvePackingSentinel_t;
+     TValvePackingSentinel_t=record
+      m_u32:TSteamUInt32;
+      m_u64:TSteamUInt64;
+      m_u16:TSteamUInt16;
+      m_d:TSteamDouble;
+     end;
+
 type { TCallbackMsg_t }
      PPCallbackMsg_t=^PCallbackMsg_t;
      PCallbackMsg_t=^TCallbackMsg_t;
