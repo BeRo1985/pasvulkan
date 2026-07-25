@@ -89,6 +89,38 @@ else
 fi
 
 #############################################
+#          Command line option code         #
+#############################################
+
+# The configuration defaults above can be overridden per invocation, so a one-off run needs no edit of this
+# script, for example to keep the compiled SPIR-V files around for external tooling like shader hash lookups.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -k|--keep-temp)
+      DELETEAFTERCOMPILE=0
+      ;;
+    -d|--debug)
+      DEBUG=1
+      ;;
+    -h|--help)
+      echo "Usage: $(basename "$0") [options]"
+      echo ""
+      echo "  -k, --keep-temp  Keep the temporary directory with the compiled SPIR-V files instead of"
+      echo "                   deleting it after compilation (the path is printed at the end)"
+      echo "  -d, --debug      Generate debug information into the SPIR-V files"
+      echo "  -h, --help       Show this help and exit"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Try '$(basename "$0") --help' for the available options."
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+#############################################
 #            Initialization code            #
 #############################################
 

@@ -7838,7 +7838,7 @@ begin
 
       fFrustumClusterGridDataVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                        fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*4*fFrustumClusterGridCountTotalViews,
-                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                        [],
                                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
@@ -7856,6 +7856,27 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fFrustumClusterGridDataVulkanBuffers['+IntToStr(InFlightFrameIndex)+']');
 
      end;
+
+     // The frustum cluster grid data is indexed per view, but the build and assign passes only dispatch over the camera
+     // and reflection probe views, so every other view's region (the reflective shadow map's, for one) is never written.
+     // Freshly allocated device memory holds whatever was there before, and an arbitrary cluster count read from such a
+     // region spins the shading loops until the GPU watchdog resets the device. Zero the buffers once here, so an unbuilt
+     // region reads as "no lights, no decals" instead.
+     UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     UniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+     for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+      UniversalCommandBuffer.CmdFillBuffer(fFrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].Handle,
+                                           0,
+                                           VK_WHOLE_SIZE,
+                                           0);
+     end;
+     UniversalCommandBuffer.EndRecording;
+     UniversalCommandBuffer.Execute(Renderer.VulkanDevice.UniversalQueue,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    nil,
+                                    nil,
+                                    UniversalFence,
+                                    true);
 
      begin
 

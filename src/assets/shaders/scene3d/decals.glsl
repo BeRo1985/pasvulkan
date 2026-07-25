@@ -56,7 +56,10 @@ void applyDecals(
   uint clusterIndex = clamp((((clusterXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + clusterXYZ.y) * uFrustumClusterGridGlobals.clusterSize.x) + clusterXYZ.x, 0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
                       (uint(gl_ViewIndex + uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
   uvec2 clusterDecalData = frustumClusterGridData[clusterIndex].zw; // z = offset, w = count (and ignore light data for now)
-  for(uint clusterDecalIndex = clusterDecalData.x, clusterCountDecals = clusterDecalData.y; clusterCountDecals > 0u; clusterDecalIndex++, clusterCountDecals--){
+  // The assign pass never writes more than 128 entries per cluster (frustumclustergridassign.comp), so the count is
+  // clamped to that here: a grid region that was never built for this view holds arbitrary memory, and an unclamped
+  // count would spin this loop until the GPU watchdog resets the device.
+  for(uint clusterDecalIndex = clusterDecalData.x, clusterCountDecals = min(clusterDecalData.y, 128u); clusterCountDecals > 0u; clusterDecalIndex++, clusterCountDecals--){
     {
       {
         Decal decal = decals[frustumClusterGridIndexList[clusterDecalIndex]];
@@ -240,7 +243,10 @@ void applyDecalsUnlit(
   uint clusterIndex = clamp((((clusterXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + clusterXYZ.y) * uFrustumClusterGridGlobals.clusterSize.x) + clusterXYZ.x, 0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
                       (uint(gl_ViewIndex + uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
   uvec2 clusterDecalData = frustumClusterGridData[clusterIndex].zw;
-  for(uint clusterDecalIndex = clusterDecalData.x, clusterCountDecals = clusterDecalData.y; clusterCountDecals > 0u; clusterDecalIndex++, clusterCountDecals--){
+  // The assign pass never writes more than 128 entries per cluster (frustumclustergridassign.comp), so the count is
+  // clamped to that here: a grid region that was never built for this view holds arbitrary memory, and an unclamped
+  // count would spin this loop until the GPU watchdog resets the device.
+  for(uint clusterDecalIndex = clusterDecalData.x, clusterCountDecals = min(clusterDecalData.y, 128u); clusterCountDecals > 0u; clusterDecalIndex++, clusterCountDecals--){
     {
       {
         Decal decal = decals[frustumClusterGridIndexList[clusterDecalIndex]];

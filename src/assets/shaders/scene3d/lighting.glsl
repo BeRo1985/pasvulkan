@@ -107,7 +107,10 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
       uint clusterIndex = clamp((((clusterXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + clusterXYZ.y) * uFrustumClusterGridGlobals.clusterSize.x) + clusterXYZ.x, 0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
                           (uint(gl_ViewIndex + uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
       uvec2 clusterData = frustumClusterGridData[clusterIndex].xy; // x = index, y = count and ignore decal data for now
-      for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
+      // The assign pass never writes more than 128 entries per cluster (frustumclustergridassign.comp), so the count is
+      // clamped to that here: a grid region that was never built for this view holds arbitrary memory, and an unclamped
+      // count would spin this loop until the GPU watchdog resets the device.
+      for(uint clusterLightIndex = clusterData.x, clusterCountLights = min(clusterData.y, 128u); clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
         {
           Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
           if(distance(light.positionRadius.xyz, inWorldSpacePosition.xyz) <= light.positionRadius.w){
