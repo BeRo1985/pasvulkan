@@ -7309,6 +7309,12 @@ function SteamGameServer_Init(const aIP:TSteamUInt32;const aGamePort:TSteamUInt1
 procedure SteamGameServer_ReleaseCurrentThreadMemory;
 function SteamGameServerClient:PISteamClient;
 
+type PPSteamworksCallbackHandler=^PSteamworksCallbackHandler;
+     PSteamworksCallbackHandler=^TSteamworksCallbackHandler;
+     TSteamworksCallbackHandler=procedure(const aCallbackMessage:PCallbackMsg_t);
+
+procedure SteamworksManualDispatchRunFrame(const aSteamPipe:THSteamPipe;const aCallbackHandler:TSteamworksCallbackHandler);
+
 var SteamworksLibraryHandle:TSteamPointer=nil;
     SteamworksEncryptedAppTicketLibraryHandle:TSteamPointer=nil;
 
@@ -7396,6 +7402,24 @@ end;
 function SteamGameServerClient:PISteamClient;
 begin
  result:=SteamClient;
+end;
+
+procedure SteamworksManualDispatchRunFrame(const aSteamPipe:THSteamPipe;const aCallbackHandler:TSteamworksCallbackHandler);
+var CallbackMessage:TCallbackMsg_t;
+begin
+
+ SteamAPI_ManualDispatch_RunFrame(aSteamPipe);
+
+ while SteamAPI_ManualDispatch_GetNextCallback(aSteamPipe,@CallbackMessage) do begin
+  try
+   if assigned(aCallbackHandler) then begin
+    aCallbackHandler(@CallbackMessage);
+   end;
+  finally
+   SteamAPI_ManualDispatch_FreeLastCallback(aSteamPipe);
+  end;
+ end;
+
 end;
 
 function SteamIDToUInt64(const aSteamID:TCSteamID):TSteamUInt64;

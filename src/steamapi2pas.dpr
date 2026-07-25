@@ -2170,6 +2170,17 @@ begin
  Emit('function SteamGameServerClient:PISteamClient;');
  EmitEmptyLine;
 
+ // The manual dispatch protocol is easy to get wrong, so the loop itself ships here. It carries no
+ // policy: every callback including SteamAPICallCompleted_t goes to the handler, which decides what to
+ // do with it. A handler that receives SteamAPICallCompleted_t is the one that calls
+ // SteamAPI_ManualDispatch_GetAPICallResult for the completed call.
+ Emit('type PPSteamworksCallbackHandler=^PSteamworksCallbackHandler;');
+ Emit('     PSteamworksCallbackHandler=^TSteamworksCallbackHandler;');
+ Emit('     TSteamworksCallbackHandler=procedure(const aCallbackMessage:PCallbackMsg_t);');
+ EmitEmptyLine;
+ Emit('procedure SteamworksManualDispatchRunFrame(const aSteamPipe:THSteamPipe;const aCallbackHandler:TSteamworksCallbackHandler);');
+ EmitEmptyLine;
+
  Emit('var SteamworksLibraryHandle:TSteamPointer=nil;');
  Emit('    SteamworksEncryptedAppTicketLibraryHandle:TSteamPointer=nil;');
  EmitEmptyLine;
@@ -2255,6 +2266,27 @@ begin
  Emit('function SteamGameServerClient:PISteamClient;');
  Emit('begin');
  Emit(' result:=SteamClient;');
+ Emit('end;');
+ EmitEmptyLine;
+
+ Emit('procedure SteamworksManualDispatchRunFrame(const aSteamPipe:THSteamPipe;const aCallbackHandler:TSteamworksCallbackHandler);');
+ Emit('var CallbackMessage:TCallbackMsg_t;');
+ Emit('begin');
+ EmitEmptyLine;
+ Emit(' SteamAPI_ManualDispatch_RunFrame(aSteamPipe);');
+ EmitEmptyLine;
+ // The free has to happen for every fetched callback, even when the handler raises, otherwise the
+ // next GetNextCallback call is a protocol violation.
+ Emit(' while SteamAPI_ManualDispatch_GetNextCallback(aSteamPipe,@CallbackMessage) do begin');
+ Emit('  try');
+ Emit('   if assigned(aCallbackHandler) then begin');
+ Emit('    aCallbackHandler(@CallbackMessage);');
+ Emit('   end;');
+ Emit('  finally');
+ Emit('   SteamAPI_ManualDispatch_FreeLastCallback(aSteamPipe);');
+ Emit('  end;');
+ Emit(' end;');
+ EmitEmptyLine;
  Emit('end;');
  EmitEmptyLine;
 
