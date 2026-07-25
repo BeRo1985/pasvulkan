@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Verifies the callback and call result dispatch of PasVulkan.Steamworks.Framework by simulating Steam:
+# the entry point pointers are redirected at local functions after the library has been loaded, so a
+# whole frame of callbacks can be handed to the framework without a running Steam client.
+#
+# The real client library is still needed, because loading it is what fills in the entry points that the
+# test then partly replaces. It comes out of the SDK in ref/steamworks by default.
+#
+# Both targets are checked, since the framework has to behave the same on either one. The Windows half is
+# cross compiled and run under wine.
+#
+# Usage: ./make [path to the Steamworks SDK directory]
+
+set -u
+
+SCRIPTDIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCEDIRECTORY="$(cd "$SCRIPTDIRECTORY/../.." && pwd)"
+REPOSITORYDIRECTORY="$(cd "$SOURCEDIRECTORY/.." && pwd)"
+SDKDIRECTORY="${1:-$REPOSITORYDIRECTORY/ref/steamworks/sdk}"
+BUILDDIRECTORY="$SCRIPTDIRECTORY/build"
+EXTERNALSDIRECTORY="$REPOSITORYDIRECTORY/externals"
+
+VERIFIERSOURCE="$SCRIPTDIRECTORY/steamworksdispatchverify.dpr"
+
+FAILURES=0
+
+mkdir -p "$BUILDDIRECTORY"
+
+verify() {
+  local NAME="$1"
+  local FPCTARGET="$2"
+  local RUNNER="$3"
+  local CLIENTLIBRARY="$4"
+  local SUFFIX="$5"
+  local TARGETDIRECTORY="$BUILDDIRECTORY/$NAME"
+
+  echo "=== $NAME ==="
+
+  if [ ! -f "$CLIENTLIBRARY" ]; then
+    echo "  skipped, \"$CLIENTLIBRARY\" not found"
+    return 0
+  fi
+  if [ -n "$RUNNER" ] && ! command -v "$RUNNER" > /dev/null; then
+    echo "  skipped, \"$RUNNER\" not available"
+    return 0
+  fi
+
+  rm -rf "$TARGETDIRECTORY"
+  mkdir -p "$TARGETDIRECTORY"
+
+  if ! fpc $FPCTARGET -Mdelphi -FU"$TARGETDIRECTORY" -FE"$TARGETDIRECTORY" \
+       -Fu"$SOURCEDIRECTORY" -Fi"$SOURCEDIRECTORY" \
+       -Fu"$EXTERNALSDIRECTORY/pasmp/src" \
+       -Fu"$EXTERNALSDIRECTORY/pucu/src" \
+       -Fu"$EXTERNALSDIRECTORY/pasdblstrutils/src" \
+       -Fu"$EXTERNALSDIRECTORY/pasjson/src" \
+       "$VERIFIERSOURCE" > "$TARGETDIRECTORY/fpc.log" 2>&1; then
+    echo "  did not build, see $TARGETDIRECTORY/fpc.log"
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  # Under wine the library is looked up next to the executable, so it goes there by name.
+  local LIBRARYARGUMENT="$CLIENTLIBRARY"
+  if [ -n "$SUFFIX" ]; then
+    cp "$CLIENTLIBRARY" "$TARGETDIRECTORY/"
+    LIBRARYARGUMENT="$(basename "$CLIENTLIBRARY")"
+  fi
+
+  if ! (cd "$TARGETDIRECTORY" && WINEDEBUG=-all $RUNNER "./steamworksdispatchverify$SUFFIX" "$LIBRARYARGUMENT" 2>/dev/null); then
+    FAILURES=$((FAILURES+1))
+    return 1
+  fi
+
+  return 0
+}
+
+verify "host" "" "" "$SDKDIRECTORY/redistributable_bin/linux64/libsteam_api.so" ""
+verify "win64" "-Twin64" "wine" "$SDKDIRECTORY/redistributable_bin/win64/steam_api64.dll" ".exe"
+
+echo "==="
+if [ "$FAILURES" -eq 0 ]; then
+  echo "the dispatch behaves as specified"
+  exit 0
+else
+  echo "$FAILURES target(s) failed"
+  exit 1
+fi
