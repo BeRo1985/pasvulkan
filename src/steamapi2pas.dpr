@@ -806,12 +806,25 @@ begin
 
 end;
 
-// Same trailing field situation as TSteamIPAddress_t, here m_port rides along inside the IPv6
-// variant. The record keeps the C size of 18 bytes.
+// This type is embedded by value into SteamNetConnectionInfo_t, which is not itself pack(1). In C the
+// embedded type has an alignment of one byte, but FPC hands an embedded record the alignment of its
+// widest field regardless of the packed keyword, which shifted every field behind it under the 8 byte
+// Windows packing. Byte array storage is the only construction that keeps the alignment at one, so the
+// declared type is that storage and the readable field layout comes as a separate view record, reached
+// through PSteamNetworkingIPAddrView(@Address)^. The 13 flat accessors of the C API work directly on
+// the storage type.
 procedure EmitHandWrittenSteamNetworkingIPAddr;
 begin
 
- Emit('type { TSteamNetworkingIPAddrIPv4MappedAddress }');
+ Emit('type { TSteamNetworkingIPAddr }');
+ Emit('     PPSteamNetworkingIPAddr=^PSteamNetworkingIPAddr;');
+ Emit('     PSteamNetworkingIPAddr=^TSteamNetworkingIPAddr;');
+ Emit('     TSteamNetworkingIPAddr=packed record');
+ Emit('      m_rgubData:array[0..18-1] of TSteamUInt8; // See TSteamNetworkingIPAddrView for the field layout');
+ Emit('     end;');
+ EmitEmptyLine;
+
+ Emit('     { TSteamNetworkingIPAddrIPv4MappedAddress }');
  Emit('     PPSteamNetworkingIPAddrIPv4MappedAddress=^PSteamNetworkingIPAddrIPv4MappedAddress;');
  Emit('     PSteamNetworkingIPAddrIPv4MappedAddress=^TSteamNetworkingIPAddrIPv4MappedAddress;');
  Emit('     TSteamNetworkingIPAddrIPv4MappedAddress=packed record');
@@ -822,10 +835,13 @@ begin
  Emit('     end;');
  EmitEmptyLine;
 
- Emit('     { TSteamNetworkingIPAddr }');
- Emit('     PPSteamNetworkingIPAddr=^PSteamNetworkingIPAddr;');
- Emit('     PSteamNetworkingIPAddr=^TSteamNetworkingIPAddr;');
- Emit('     TSteamNetworkingIPAddr=packed record');
+ // In C the union is followed by m_port. A Pascal variant part always has to be the last thing in a
+ // record, so the trailing field is carried inside one of the variants. Every variant field stays
+ // directly reachable.
+ Emit('     { TSteamNetworkingIPAddrView }');
+ Emit('     PPSteamNetworkingIPAddrView=^PSteamNetworkingIPAddrView;');
+ Emit('     PSteamNetworkingIPAddrView=^TSteamNetworkingIPAddrView;');
+ Emit('     TSteamNetworkingIPAddrView=packed record');
  Emit('      case TSteamInt32 of');
  Emit('       0:(');
  Emit('        m_ipv6:array[0..16-1] of TSteamUInt8;');
@@ -842,6 +858,10 @@ begin
 
 end;
 
+// Embedded by value into five other records, so it needs the same byte array storage plus view record
+// treatment as TSteamNetworkingIPAddr above. The readable layout is reached through
+// PSteamNetworkingIdentityView(@Identity)^, and the 25 flat accessors of the C API work directly on the
+// storage type.
 procedure EmitHandWrittenSteamNetworkingIdentity;
 begin
 
@@ -849,6 +869,14 @@ begin
  Emit('     PPSteamNetworkingIdentity=^PSteamNetworkingIdentity;');
  Emit('     PSteamNetworkingIdentity=^TSteamNetworkingIdentity;');
  Emit('     TSteamNetworkingIdentity=packed record');
+ Emit('      m_rgubData:array[0..136-1] of TSteamUInt8; // See TSteamNetworkingIdentityView for the field layout');
+ Emit('     end;');
+ EmitEmptyLine;
+
+ Emit('     { TSteamNetworkingIdentityView }');
+ Emit('     PPSteamNetworkingIdentityView=^PSteamNetworkingIdentityView;');
+ Emit('     PSteamNetworkingIdentityView=^TSteamNetworkingIdentityView;');
+ Emit('     TSteamNetworkingIdentityView=packed record');
  Emit('      m_eType:TESteamNetworkingIdentityType;');
  Emit('      m_cbSize:TSteamInt32;');
  Emit('      case TSteamInt32 of');
@@ -871,7 +899,7 @@ begin
  Emit('        m_szUnknownRawString:array[0..128-1] of TSteamChar;');
  Emit('       );');
  Emit('       6:(');
- Emit('        m_ip:TSteamNetworkingIPAddr;');
+ Emit('        m_ip:TSteamNetworkingIPAddrView;');
  Emit('       );');
  Emit('       7:(');
  Emit('        m_reserved:array[0..32-1] of TSteamUInt32; // Pads the record out to leave room for future expansion');

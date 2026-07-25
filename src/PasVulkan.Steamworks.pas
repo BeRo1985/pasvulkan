@@ -3625,7 +3625,14 @@ type { TRemotePlayInput_t }
        );
      end;
 
-type { TSteamNetworkingIPAddrIPv4MappedAddress }
+type { TSteamNetworkingIPAddr }
+     PPSteamNetworkingIPAddr=^PSteamNetworkingIPAddr;
+     PSteamNetworkingIPAddr=^TSteamNetworkingIPAddr;
+     TSteamNetworkingIPAddr=packed record
+      m_rgubData:array[0..18-1] of TSteamUInt8; // See TSteamNetworkingIPAddrView for the field layout
+     end;
+
+     { TSteamNetworkingIPAddrIPv4MappedAddress }
      PPSteamNetworkingIPAddrIPv4MappedAddress=^PSteamNetworkingIPAddrIPv4MappedAddress;
      PSteamNetworkingIPAddrIPv4MappedAddress=^TSteamNetworkingIPAddrIPv4MappedAddress;
      TSteamNetworkingIPAddrIPv4MappedAddress=packed record
@@ -3635,10 +3642,10 @@ type { TSteamNetworkingIPAddrIPv4MappedAddress }
       m_ip:array[0..4-1] of TSteamUInt8; // Network byte order
      end;
 
-     { TSteamNetworkingIPAddr }
-     PPSteamNetworkingIPAddr=^PSteamNetworkingIPAddr;
-     PSteamNetworkingIPAddr=^TSteamNetworkingIPAddr;
-     TSteamNetworkingIPAddr=packed record
+     { TSteamNetworkingIPAddrView }
+     PPSteamNetworkingIPAddrView=^PSteamNetworkingIPAddrView;
+     PSteamNetworkingIPAddrView=^TSteamNetworkingIPAddrView;
+     TSteamNetworkingIPAddrView=packed record
       case TSteamInt32 of
        0:(
         m_ipv6:array[0..16-1] of TSteamUInt8;
@@ -3655,6 +3662,13 @@ type { TSteamNetworkingIdentity }
      PPSteamNetworkingIdentity=^PSteamNetworkingIdentity;
      PSteamNetworkingIdentity=^TSteamNetworkingIdentity;
      TSteamNetworkingIdentity=packed record
+      m_rgubData:array[0..136-1] of TSteamUInt8; // See TSteamNetworkingIdentityView for the field layout
+     end;
+
+     { TSteamNetworkingIdentityView }
+     PPSteamNetworkingIdentityView=^PSteamNetworkingIdentityView;
+     PSteamNetworkingIdentityView=^TSteamNetworkingIdentityView;
+     TSteamNetworkingIdentityView=packed record
       m_eType:TESteamNetworkingIdentityType;
       m_cbSize:TSteamInt32;
       case TSteamInt32 of
@@ -3677,7 +3691,7 @@ type { TSteamNetworkingIdentity }
         m_szUnknownRawString:array[0..128-1] of TSteamChar;
        );
        6:(
-        m_ip:TSteamNetworkingIPAddr;
+        m_ip:TSteamNetworkingIPAddrView;
        );
        7:(
         m_reserved:array[0..32-1] of TSteamUInt32; // Pads the record out to leave room for future expansion
