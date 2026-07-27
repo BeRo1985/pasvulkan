@@ -435,14 +435,14 @@ begin
    fPushConstants.LensflaresFactor:=fPushConstants.LensflaresFactor*Factor;
   end;
  end;
- fPushConstants.BloomLensflaresFactor:=1.0;
- fPushConstants.CountGhosts:=8;
+ fPushConstants.BloomLensflaresFactor:=fInstance.LensBloomLensflaresFactor;
+ fPushConstants.CountGhosts:=fInstance.LensCountGhosts;
  fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
  fPushConstants.AspectRatio:=fResourceOutput.Width/fResourceOutput.Height;
  fPushConstants.InverseAspectRatio:=fResourceOutput.Height/fResourceOutput.Width;
- fPushConstants.Dispersal:=0.3;
- fPushConstants.HaloWidth:=0.5;
- fPushConstants.Distortion:=1.5;
+ fPushConstants.Dispersal:=fInstance.LensDispersal;
+ fPushConstants.HaloWidth:=fInstance.LensHaloWidth;
+ fPushConstants.Distortion:=fInstance.LensDistortion;
  if (fInstance.DrawMeshletDebugColors and fInstance.Renderer.Scene3D.MeshShaders) or
     fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization or
     fInstance.GlobalIlluminationDebugRawOutput then begin

@@ -935,6 +935,11 @@ type { TpvScene3DRendererInstance }
        fLensBloomColor:TpvVector3;
        fLensBloomDirtFactor:TpvScalar;
        fLensFlaresCleanColor:TpvVector3;
+       fLensBloomLensflaresFactor:TpvScalar;
+       fLensCountGhosts:TpvInt32;
+       fLensDispersal:TpvScalar;
+       fLensHaloWidth:TpvScalar;
+       fLensDistortion:TpvScalar;
       private
        fFogMode:TpvScene3DRendererInstance.TFogMode;
        fFogColor:TpvVector3;
@@ -1317,6 +1322,16 @@ type { TpvScene3DRendererInstance }
        property LensBloomDirtFactor:TpvScalar read fLensBloomDirtFactor write fLensBloomDirtFactor;
        // Color of a clean lens for the lens flares, which scatter nothing at all when it is black
        property LensFlaresCleanColor:TpvVector3 read fLensFlaresCleanColor write fLensFlaresCleanColor;
+       // Overall scale factor of the combined bloom and lens flares contribution
+       property LensBloomLensflaresFactor:TpvScalar read fLensBloomLensflaresFactor write fLensBloomLensflaresFactor;
+       // Count of the lens flare ghost samples, where 0 disables the ghosts entirely
+       property LensCountGhosts:TpvInt32 read fLensCountGhosts write fLensCountGhosts;
+       // Spacing of the lens flare ghosts along the vector towards the screen center
+       property LensDispersal:TpvScalar read fLensDispersal write fLensDispersal;
+       // Radial offset of the lens flare halo ring
+       property LensHaloWidth:TpvScalar read fLensHaloWidth write fLensHaloWidth;
+       // Chromatic dispersion of the lens flare ghosts and of the halo, in texels
+       property LensDistortion:TpvScalar read fLensDistortion write fLensDistortion;
       public
        // Atmosphere-independent distance fog. FogMode defaults to None (the fog pass is not created).
        // FogMode must be set before the instance acquires its resources (it gates pass creation);
@@ -2526,6 +2541,11 @@ begin
  fLensBloomColor:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
  fLensBloomDirtFactor:=1.0;
  fLensFlaresCleanColor:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+ fLensBloomLensflaresFactor:=1.0;
+ fLensCountGhosts:=8;
+ fLensDispersal:=0.3;
+ fLensHaloWidth:=0.5;
+ fLensDistortion:=1.5;
 
  fFogMode:=TpvScene3DRendererInstance.TFogMode.None;
  fFogColor:=TpvVector3.InlineableCreate(0.55,0.62,0.72);
