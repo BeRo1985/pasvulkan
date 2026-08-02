@@ -6059,6 +6059,14 @@ begin
 
      TpvCanvasQueueItemKind.Hook:begin
       fDevice.DebugUtils.CmdBufLabelBegin(aVulkanCommandBuffer,'Hook',[0.7,0.7,0.0,1.0]);
+      // Resume render pass if not active, since a hook records draw commands just like a normal
+      // queue item does, and it can well be the very first item of a buffer
+      if not RenderPassActive then begin
+       if assigned(fOnResumeRenderPass) then begin
+        fOnResumeRenderPass(self);
+       end;
+       RenderPassActive:=true;
+      end;
       if assigned(QueueItem^.Hook) then begin
        QueueItem^.Hook(QueueItem^.HookData,aVulkanCommandBuffer,aBufferIndex);
       end;
