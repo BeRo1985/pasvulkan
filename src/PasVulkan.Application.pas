@@ -2280,6 +2280,8 @@ type EpvApplication=class(Exception)
 
        class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String); static;
 
+       class procedure Preinitialization; virtual;
+
        procedure DelayFreeObjectInstance(const aObjectInstance:TObject;const aIterationsDelay:TpvInt32);
 
        procedure AddQueues; virtual;
@@ -10322,6 +10324,10 @@ begin
   end;
 {$ifend}
  end;
+end;
+
+class procedure TpvApplication.Preinitialization;
+begin
 end;
 
 procedure TpvApplication.ParseCommandLine;
