@@ -36477,6 +36477,10 @@ begin
   fObjectListLock.Release;
  end;
 
+ // The list itself, after what it held. Emptying it is not the same as letting it go, and every object
+ // that removed itself from it on the way out has grown its backing storage.
+ FreeAndNil(fObjectList);
+
  FreeAndNil(fObjectListLock);
 
  FreeAndNil(fLock);
