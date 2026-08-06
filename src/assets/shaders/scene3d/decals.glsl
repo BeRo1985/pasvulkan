@@ -23,6 +23,15 @@ const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_MESH | DECAL_FLAG_PASS_PLANET | DEC
 
 #include "blendnormals.glsl"
 
+// Test switch: look decals up through their BVH even where the cluster grid is in use, which lights keep
+// using either way. Uncomment to tell a problem in the grid assignment apart from one in the decal data
+// itself, which both paths read the same way.
+//#define DECALS_FORCE_BVH
+
+#if defined(LIGHTCLUSTERS) && !defined(DECALS_FORCE_BVH)
+  #define DECALS_USE_CLUSTERS
+#endif
+
 // Overlay blend mode
 vec3 decalOverlayBlend(vec3 base, vec3 blend) {
   return mix(2.0 * base * blend, 1.0 - (2.0 * ((1.0 - base) * (1.0 - blend))), step(0.5, base));
@@ -47,7 +56,7 @@ void applyDecals(
   in vec3 baseIORF0Dielectric    // Base IOR-derived F0 for neutral specular calculation
 ) {
   
-#if defined(LIGHTCLUSTERS)
+#if defined(DECALS_USE_CLUSTERS)
   // ===========================================================================
   // CLUSTER-BASED DECAL LOOKUP (EXACT SAME pattern as lighting.glsl)
   // ===========================================================================
@@ -224,12 +233,15 @@ void applyDecals(
             baseColor.y = 0.0; // DEBUG: visualize decal coverage
           }
 
-#if defined(LIGHTCLUSTERS)
+#if defined(DECALS_USE_CLUSTERS)
         }
       }
     }
   }
 #else
+        // The leaf test's closing brace was missing here, so this branch could never have been compiled -
+        // the cluster path was always the one in use.
+        }
       }
       decalTreeNodeIndex++;
     } else {
@@ -249,7 +261,7 @@ void applyDecalsUnlit(
   in vec3 viewSpacePosition
 ) {
   
-#if defined(LIGHTCLUSTERS)
+#if defined(DECALS_USE_CLUSTERS)
   // Decal cluster grid
   uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
                            uint(clamp(fma(log2(-viewSpacePosition.z), uFrustumClusterGridGlobals.scaleBiasMax.x, uFrustumClusterGridGlobals.scaleBiasMax.y), 0.0, uFrustumClusterGridGlobals.scaleBiasMax.z)));
@@ -359,11 +371,11 @@ void applyDecalsUnlit(
         
         }
 
-#if defined(LIGHTCLUSTERS)        
+#if defined(DECALS_USE_CLUSTERS)
       }
     }
   }
-#else      
+#else
       }
       decalTreeNodeIndex++;
     } else {

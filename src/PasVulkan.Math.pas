@@ -15633,9 +15633,14 @@ end;
 constructor TpvAABB.CreateFromOBB(const OBB:TpvOBB);
 var t:TpvVector3;
 begin
- t.x:=abs((OBB.Matrix[0,0]*OBB.HalfExtents.x)+(OBB.Matrix[1,0]*OBB.HalfExtents.y)+(OBB.Matrix[2,0]*OBB.HalfExtents.z));
- t.y:=abs((OBB.Matrix[0,1]*OBB.HalfExtents.x)+(OBB.Matrix[1,1]*OBB.HalfExtents.y)+(OBB.Matrix[2,1]*OBB.HalfExtents.z));
- t.z:=abs((OBB.Matrix[0,2]*OBB.HalfExtents.x)+(OBB.Matrix[1,2]*OBB.HalfExtents.y)+(OBB.Matrix[2,2]*OBB.HalfExtents.z));
+ // Each term taken in absolute value on its own, not the sum of them: the extent of a rotated box along a
+ // world axis is the sum of what each of its own half axes contributes, and those contributions cannot
+ // cancel each other out. Taking the absolute value of the sum lets them do exactly that, which for a box
+ // turned against the world axes gives a box far smaller than the one it is supposed to enclose - at
+ // forty-five degrees with unequal half extents easily a quarter of the right size.
+ t.x:=(abs(OBB.Matrix[0,0])*OBB.HalfExtents.x)+(abs(OBB.Matrix[1,0])*OBB.HalfExtents.y)+(abs(OBB.Matrix[2,0])*OBB.HalfExtents.z);
+ t.y:=(abs(OBB.Matrix[0,1])*OBB.HalfExtents.x)+(abs(OBB.Matrix[1,1])*OBB.HalfExtents.y)+(abs(OBB.Matrix[2,1])*OBB.HalfExtents.z);
+ t.z:=(abs(OBB.Matrix[0,2])*OBB.HalfExtents.x)+(abs(OBB.Matrix[1,2])*OBB.HalfExtents.y)+(abs(OBB.Matrix[2,2])*OBB.HalfExtents.z);
  Min.x:=OBB.Center.x-t.x;
  Min.y:=OBB.Center.y-t.y;
  Min.z:=OBB.Center.z-t.z;
