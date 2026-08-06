@@ -159,7 +159,10 @@ type TpvScene3DPlanets=class;
              Flags:TpvUInt32;
              Resolutions:TpvUInt32;
              WaterMapResolution:TpvUInt32;
-             Reserved2:TpvUInt32;
+             // Which groups of projected decals reach this planet's surface and grass: a decal lands only
+             // where this and the decal's own mask share a bit. All ones by default, so every decal
+             // reaches it and nothing behaves differently until a mask is actually narrowed.
+             DecalGroupMask:TpvUInt32;
 
              Vertices:TVkDeviceAddress;
              Indices:TVkDeviceAddress;
@@ -2561,9 +2564,6 @@ type TpvScene3DPlanets=class;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
                     //ModelMatrix:TpvMatrix4x4;
-                    ModelMatrixPositionScale:TpvVector4;
-                    ModelMatrixOrientation:TpvQuaternion;
-
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
@@ -2590,6 +2590,11 @@ type TpvScene3DPlanets=class;
                     InvocationVariants:TpvUInt32;
 
                     Jitter:TpvVector4;
+
+                    // The planet data block, from which this pass takes the model matrix it used to get
+                    // as a separate position and quaternion. Last in the block, so everything above stays
+                    // on its sixteen-byte boundary.
+                    PlanetData:TVkDeviceAddress;
 
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -2734,9 +2739,6 @@ type TpvScene3DPlanets=class;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
                     //ModelMatrix:TpvMatrix4x4;
-                    ModelMatrixPositionScale:TpvVector4;
-                    ModelMatrixOrientation:TpvQuaternion;
-
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
@@ -2763,6 +2765,11 @@ type TpvScene3DPlanets=class;
                     InvocationVariants:TpvUInt32;
 
                     Jitter:TpvVector4;
+
+                    // The planet data block, from which this pass takes the model matrix it used to get
+                    // as a separate position and quaternion. Last in the block, so everything above stays
+                    // on its sixteen-byte boundary.
+                    PlanetData:TVkDeviceAddress;
 
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -3309,6 +3316,9 @@ type TpvScene3DPlanets=class;
        fAtmosphereMiniMapResolution:TpvInt32;
        fAtmosphereMiniMapResolutionShift:TpvInt32;
        fWaterMapResolution:TpvInt32;
+       // Which groups of projected decals reach this planet, tested against each decal's own mask. All
+       // ones by default, so every decal reaches it.
+       fDecalGroupMask:TpvUInt32;
        fWaterMapBorder:TpvInt32;
        fWaterRippleMapResolution:TpvInt32;         // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
        fSerializeWaterRipples:Boolean;             // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
@@ -3745,6 +3755,7 @@ type TpvScene3DPlanets=class;
        property AtmosphereMapResolution:TpvInt32 read fAtmosphereMapResolution;
        property AtmosphereMiniMapResolution:TpvInt32 read fAtmosphereMiniMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
+       property DecalGroupMask:TpvUInt32 read fDecalGroupMask write fDecalGroupMask;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property WaterRippleMapResolution:TpvInt32 read fWaterRippleMapResolution;
        property SerializeWaterRipples:Boolean read fSerializeWaterRipples write fSerializeWaterRipples;
@@ -27389,9 +27400,7 @@ begin
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPass),
                                                       RendererViewInstance) then begin
 
-         ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
-         fGrassPushConstants.ModelMatrixPositionScale:=TpvVector4.InlineableCreate(ModelMatrix.Translation.xyz,1.0);
-         fGrassPushConstants.ModelMatrixOrientation:=ModelMatrix.ToQuaternionD.ToQuaternion;
+         fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
          fGrassPushConstants.ViewBaseIndex:=BaseViewIndex;
          fGrassPushConstants.CountViews:=CountViews;
          fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -29950,9 +29959,7 @@ begin
       InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
       ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-      ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false);
-      fGrassPushConstants.ModelMatrixPositionScale:=TpvVector4.InlineableCreate(ModelMatrix.Translation.xyz,1.0);
-      fGrassPushConstants.ModelMatrixOrientation:=ModelMatrix.ToQuaternionD.ToQuaternion;
+      fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       fGrassPushConstants.ViewBaseIndex:=aViewBaseIndex;
       fGrassPushConstants.CountViews:=aCountViews;
       fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
@@ -33590,6 +33597,8 @@ begin
  fAtmosphereMiniMapResolution:=Max(1,fAtmosphereMapResolution shr fAtmosphereMiniMapResolutionShift);
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
+
+ fDecalGroupMask:=$ffffffff;
 
  fWaterMapBorder:=1;
 
@@ -37430,6 +37439,7 @@ begin
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
+   fPlanetData.DecalGroupMask:=fDecalGroupMask;
    fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
    fPlanetData.Indices:=fData.fVisualMeshIndexBuffer.DeviceAddress;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;

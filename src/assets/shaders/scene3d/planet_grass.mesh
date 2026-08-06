@@ -275,11 +275,7 @@ void main() {
     // Stuff that is only needed once per task group for all invocations, to avoid redundant calculations
 
     // Calculate the model matrix from the position/scale and orientation/quaternion push constant values
-    modelMatrix = mat4(quaternionToMatrix(pushConstants.modelMatrixOrientation));
-    modelMatrix[3].xyz = pushConstants.modelMatrixPositionScale.xyz;
-    modelMatrix[0].xyz *= pushConstants.modelMatrixPositionScale.w;
-    modelMatrix[1].xyz *= pushConstants.modelMatrixPositionScale.w;
-    modelMatrix[2].xyz *= pushConstants.modelMatrixPositionScale.w; 
+    modelMatrix = planetData.modelMatrix;
     
     viewProjectionMatrix = projectionMatrix * viewMatrix;
     

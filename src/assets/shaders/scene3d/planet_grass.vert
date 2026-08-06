@@ -110,11 +110,7 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 void main(){          
 
   // Calculate the model matrix from the position/scale and orientation/quaternion push constant values
-  mat4 modelMatrix = mat4(quaternionToMatrix(pushConstants.modelMatrixOrientation));
-  modelMatrix[3].xyz = pushConstants.modelMatrixPositionScale.xyz;
-  modelMatrix[0].xyz *= pushConstants.modelMatrixPositionScale.w;
-  modelMatrix[1].xyz *= pushConstants.modelMatrixPositionScale.w;
-  modelMatrix[2].xyz *= pushConstants.modelMatrixPositionScale.w; 
+  mat4 modelMatrix = planetData.modelMatrix;
 
   mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 

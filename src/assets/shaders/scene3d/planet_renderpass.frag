@@ -500,7 +500,7 @@ void main(){
   applyDecals(
     albedo,
     decalEmissive,
-    0xffffffffu, // Planet terrain has no material record of its own here, so every decal group reaches it
+    planetData.flagsResolutions.w, // The planet's own decal group mask
     occlusionRoughnessMetallic.z,
     occlusionRoughnessMetallic.y,
     occlusionRoughnessMetallic.x,

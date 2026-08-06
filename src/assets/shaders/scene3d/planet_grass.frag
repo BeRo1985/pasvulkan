@@ -257,7 +257,7 @@ void main(){
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   // Sample GrassFlagsMap using the octahedral UV derived from world-space position
-  vec2 grassFlagsUV = octPlanetUnsignedEncode(normalize(inBlock.worldSpacePosition - pushConstants.modelMatrixPositionScale.xyz));
+  vec2 grassFlagsUV = octPlanetUnsignedEncode(normalize(inBlock.worldSpacePosition - planetData.modelMatrix[3].xyz));
   uint grassFragFlags = textureLod(uGrassFlagsMap, grassFlagsUV, 0).x;
 
   vec3 grassAlbedo = baseColorLinearRGB;
@@ -300,7 +300,7 @@ void main(){
   applyDecals(
     albedo,
     decalEmissive,
-    0xffffffffu, // Grass has no material record of its own here, so every decal group reaches it
+    planetData.flagsResolutions.w, // The planet's own decal group mask, the same one its terrain uses
     occlusionRoughnessMetallic.z,
     occlusionRoughnessMetallic.y,
     occlusionRoughnessMetallic.x,
