@@ -14,7 +14,7 @@ layout(push_constant, std140) uniform PushConstants {
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;
   uvec4 clusterSize;
   vec4 scaleBiasMax;
-  uvec4 countDecalsReserved; // x = countDecals, yzw = reserved
+  uvec4 countDecalsReserved; // x = countDecals, y = index list capacity in entries, zw = reserved
 } pushConstants;
 
 struct AABB {
@@ -194,11 +194,20 @@ void main() {
         }
       }
     }
+    // Second barrier, for the same reason as in the decal loop below: the next batch must not overwrite a
+    // shared slot that another thread is still reading from this one.
+    barrier();
   }
 
   barrier();
 
+  // The index list is shared by every cluster and handed out by an atomic counter, so a slice can land
+  // past the end of it. Rather than writing there, the part that does not fit is dropped: losing the tail
+  // of one cluster's list is a missing light or decal, writing past the buffer is anything at all.
+  const uint indexListCapacity = pushConstants.countDecalsReserved.y;
+
   uint lightIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleLights);
+  countVisibleLights = (lightIndexOffset < indexListCapacity) ? min(countVisibleLights, indexListCapacity - lightIndexOffset) : 0u;
   for (uint lightIndex = 0u; lightIndex < countVisibleLights; lightIndex++) {
     frustumClusterGridIndexList[lightIndexOffset + lightIndex] = visibleLightDecalIndices[lightIndex];
   }
@@ -235,11 +244,15 @@ void main() {
         }
       }
     }
+    // Second barrier: without it a thread that is already done reading starts the next batch and
+    // overwrites its shared slot while slower threads are still reading this one.
+    barrier();
   }
 
   barrier();
 
   uint decalIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleDecals);
+  countVisibleDecals = (decalIndexOffset < indexListCapacity) ? min(countVisibleDecals, indexListCapacity - decalIndexOffset) : 0u;
   for (uint decalIndex = 0u; decalIndex < countVisibleDecals; decalIndex++) {
     frustumClusterGridIndexList[decalIndexOffset + decalIndex] = visibleLightDecalIndices[decalIndex];
   }

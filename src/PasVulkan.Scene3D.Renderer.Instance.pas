@@ -287,7 +287,10 @@ type { TpvScene3DRendererInstance }
               Reversed1:TpvUInt32;
               //
               CountDecals:TpvUInt32;
-              DecalReserved0:TpvUInt32;
+              // How many entries the shared cluster index list holds in total. The assign pass hands out
+              // its slices of it with an atomic counter and has no other way of knowing where the buffer
+              // ends, so it is told here.
+              IndexListCapacity:TpvUInt32;
               DecalReserved1:TpvUInt32;
               DecalReserved2:TpvUInt32;
             end;
@@ -12259,6 +12262,7 @@ begin
  fFrustumClusterGridPushConstants.ZBias:=-((fFrustumClusterGridSizeZ*Log2(fFrustumClusterGridPushConstants.ZNear))/Log2(fFrustumClusterGridPushConstants.ZFar/fFrustumClusterGridPushConstants.ZNear));
  fFrustumClusterGridPushConstants.ZMax:=fFrustumClusterGridSizeZ-1;
  fFrustumClusterGridPushConstants.CountDecals:=fScene3D.DecalBuffers[aInFlightFrameIndex].DecalItems.Count;
+ fFrustumClusterGridPushConstants.IndexListCapacity:=(fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ)*256*fFrustumClusterGridCountTotalViews;
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,

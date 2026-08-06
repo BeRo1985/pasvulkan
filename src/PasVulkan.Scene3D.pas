@@ -12629,7 +12629,12 @@ begin
 
   // Compute OBB
   OBB.Center:=Matrix.MulHomogen(TpvVector3.Origin);
-  OBB.HalfExtents:=fSize*0.5;
+  // In the order the axes are actually scaled below: Right takes Size.x, Up takes Size.z (the projection
+  // depth) and Forwards takes Size.y (the length along the surface). Taking fSize as it stands would put
+  // the length on Up and the depth on Forwards, and the bounding box handed to the cluster culling would
+  // be far too short along the surface - which shows up as decals missing in whole screen tiles, moving
+  // with the camera as the clusters do.
+  OBB.HalfExtents:=TpvVector3.InlineableCreate(fSize.x,fSize.z,fSize.y)*0.5;
   OBB.Matrix:=Matrix.ToMatrix4x4.ToMatrix3x3;
 
   // Scale matrix
