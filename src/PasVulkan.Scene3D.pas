@@ -1376,6 +1376,12 @@ type EpvScene3D=class(Exception);
                        Textures0:TPasGLTFUInt32;
                        Textures1:TPasGLTFUInt32;
                        // uvec4 uAlphaCutOffFlags end
+                       // uvec4 DecalGroupMask begin
+                       DecalGroupMask:TpvUInt32;
+                       ReservedA:TpvUInt32;
+                       ReservedB:TpvUInt32;
+                       ReservedC:TpvUInt32;
+                       // uvec4 DecalGroupMask end
                        Textures:array[0..19] of TpvInt32;
                        TextureTransforms:array[0..19] of TAlignedMatrix3x2;
                      );
@@ -1393,6 +1399,16 @@ type EpvScene3D=class(Exception);
                      DoubleSided:boolean;
                      CastingShadows:boolean;
                      ReceiveShadows:boolean;
+                     // Whether projected decals are applied to surfaces with this material. On by default,
+                     // so nothing that existed before this flag changes; turn it off for a material that
+                     // should stay clean of them, a vehicle driving over painted road markings being the
+                     // case it was added for.
+                     ReceiveDecals:boolean;
+                     // Which groups of decals reach this material: a decal lands only where this and the
+                     // decal's own mask share a bit. All ones by default, so every decal reaches every
+                     // material and the flag above stays the coarse on/off; this is for telling classes of
+                     // decal apart afterwards, without a flag per case.
+                     DecalGroupMask:TpvUInt32;
                      ForceRayOpaque:boolean;
                      NoWetness:boolean;
                      ExtendedWetness:boolean;
@@ -1433,6 +1449,8 @@ type EpvScene3D=class(Exception);
                      DoubleSided:false;
                      CastingShadows:true;
                      ReceiveShadows:true;
+                     ReceiveDecals:true;
+                     DecalGroupMask:$ffffffff;
                      ForceRayOpaque:false;
                      NoWetness:false;
                      ExtendedWetness:false;
@@ -1888,6 +1906,9 @@ type EpvScene3D=class(Exception);
               fEmissiveTexture:TpvInt32;
               fDecalUp:TpvVector3;
               fFlags:TpvUInt32;
+              // Which group of decals this one belongs to; it lands only on materials whose own mask
+              // shares a bit with it. All ones by default, so it reaches everything.
+              fGroupMask:TpvUInt32;
               fBoundingBox:TpvAABB;
               fAABBTreeProxy:TpvSizeInt;
               fDecalItemIndex:TpvSizeInt;
@@ -1924,6 +1945,7 @@ type EpvScene3D=class(Exception);
               property SpecularTexture:TpvInt32 read fSpecularTexture write fSpecularTexture;
               property EmissiveTexture:TpvInt32 read fEmissiveTexture write fEmissiveTexture;
               property Flags:TpvUInt32 read fFlags write fFlags;
+              property GroupMask:TpvUInt32 read fGroupMask write fGroupMask;
               property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
               property Lifetime:TpvDouble read fLifetime write fLifetime;
               property FadeOutTime:TpvDouble read fFadeOutTime write fFadeOutTime;
@@ -4350,7 +4372,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000010);
+             PVMFVersion=TpVUInt32($00000011);
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -10267,6 +10289,8 @@ begin
   fData.NoWetness:=(Flags and 8)<>0;
   fData.ExtendedWetness:=(Flags and 16)<>0;
   fData.ColorKeys:=(Flags and 32)<>0;
+  fData.ReceiveDecals:=(Flags and 128)<>0;
+  fData.DecalGroupMask:=StreamIO.ReadUInt32;
 
   fData.MaterialColorKeyIndex:=0;
   if (Flags and 64)<>0 then begin
@@ -10665,7 +10689,12 @@ begin
   if fData.MaterialColorKeyIndex>0 then begin
    Flags:=Flags or 64;
   end;
+  if fData.ReceiveDecals then begin
+   Flags:=Flags or 128;
+  end;
   StreamIO.WriteUInt32(Flags);
+
+  StreamIO.WriteUInt32(fData.DecalGroupMask);
 
   if fData.MaterialColorKeyIndex>0 then begin
    StreamIO.WriteInt32(fData.MaterialColorKeyIndex);
@@ -10952,6 +10981,7 @@ begin
 
   fData.CastingShadows:=pos('_noshadowcasting',LowerCaseName)=0;
   fData.ReceiveShadows:=pos('_noshadowreceive',LowerCaseName)=0;
+  fData.ReceiveDecals:=pos('_nodecalreceive',LowerCaseName)=0;
   fData.ForceRayOpaque:=pos('_forcerayopaque',LowerCaseName)<>0;
   fData.NoWetness:=pos('_nowetness',LowerCaseName)<>0;
   fData.ExtendedWetness:=pos('_extendedwetness',LowerCaseName)<>0;
@@ -11619,6 +11649,18 @@ begin
  if fData.ReceiveShadows then begin
   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 30);
  end;
+
+ // Bit 24, one of the free ones between the colour-key index (17..19, plus 20) and the block from 25 up.
+ // Set means "decals apply here", which is the default, so a material that never heard of this flag keeps
+ // behaving exactly as it did.
+ if fData.ReceiveDecals then begin
+  fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 24);
+ end;
+
+ fShaderData.DecalGroupMask:=fData.DecalGroupMask;
+ fShaderData.ReservedA:=0;
+ fShaderData.ReservedB:=0;
+ fShaderData.ReservedC:=0;
 
  case fData.AlphaMode of
   TpvScene3D.TMaterial.TAlphaMode.Opaque:begin
@@ -12473,6 +12515,7 @@ begin
  fInterpolatedOpacity:=1.0;
  fHolder:=nil;
  fFlags:=0;
+ fGroupMask:=$ffffffff;
 end;
 
 destructor TpvScene3D.TDecal.Destroy;
@@ -40718,7 +40761,9 @@ begin
     DecalItem^.TextureIndices.w:=Decal.fSpecularTexture;
 
     DecalItem^.TextureIndices2.x:=Decal.fEmissiveTexture;
-    DecalItem^.TextureIndices2.y:=-1;
+    // The group mask rides in one of this slot's spare lanes, so the decal item stays 128 bytes; the
+    // shader reads it back as a uint, where the sign of this signed lane does not matter.
+    DecalItem^.TextureIndices2.y:=TpvInt32(Decal.fGroupMask);
     DecalItem^.TextureIndices2.z:=-1;
     DecalItem^.TextureIndices2.w:=-1;
 
@@ -44626,6 +44671,7 @@ begin
  result.fSpecularTexture:=aSpecularTexture;
  result.fEmissiveTexture:=aEmissiveTexture;
  result.fFlags:=0;
+ result.fGroupMask:=$ffffffff;
  result.fOpacity:=aOpacity;
  result.fAngleFade:=aAngleFade;
  result.fEdgeFade:=aEdgeFade;

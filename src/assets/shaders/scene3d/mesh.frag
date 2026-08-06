@@ -614,21 +614,29 @@ void main() {
       // Decals modify material properties (albedo, metallic, roughness, etc.)
       vec3 decalNormal = vec3(0.0, 0.0, 1.0); // Will be blended with material normal later
       float decalNormalBlend = 0.0;
-      applyDecals(
-        baseColor,
-        metallic,
-        perceptualRoughness,
-        occlusion,
-        F0Dielectric,
-        F90Dielectric,
-        specularWeight,
-        decalNormal,
-        decalNormalBlend,
-        inWorldSpacePosition,
-        workNormal,
-        inViewSpacePosition,
-        baseIORF0Dielectric
-      );
+      vec3 decalEmissive = vec3(0.0); // Added to the material's own emissive further down
+      // Bit 24 is the material's "decals apply here", set by default so a material that predates the flag
+      // keeps receiving them. Cleared for surfaces that should stay clean, such as a vehicle driving over
+      // painted road markings.
+      if((flags & (1u << 24u)) != 0u){
+        applyDecals(
+          baseColor,
+          decalEmissive,
+          material.decalGroupMaskReserved.x,
+          metallic,
+          perceptualRoughness,
+          occlusion,
+          F0Dielectric,
+          F90Dielectric,
+          specularWeight,
+          decalNormal,
+          decalNormalBlend,
+          inWorldSpacePosition,
+          workNormal,
+          inViewSpacePosition,
+          baseIORF0Dielectric
+        );
+      }
 
 #ifdef WETNESS
       vec4 wetnessNormal = vec4(0.0);
@@ -938,6 +946,9 @@ void main() {
       if((currentInstanceDataIndex > 0u) && ((instanceDataItems[currentInstanceDataIndex].SelectedDissolveDitheredTransparencyFlags.w & (1u << 1u)) != 0u)){
         emissiveOutput *= instanceDataItems[currentInstanceDataIndex].emissiveScaleUnused.x;
       }
+      // A decal's emissive rides on top, outside the instance emissive scale: it belongs to what was
+      // painted onto the surface, not to the instance that happens to carry it.
+      emissiveOutput += decalEmissive;
 #endif
 #if defined(RSMALBEDO)
       // RSM albedo output: write the raw diffuse albedo (base color, demoted for metals) instead of the shaded flux. The GI

@@ -31,6 +31,8 @@ vec3 decalOverlayBlend(vec3 base, vec3 blend) {
 // Apply decals to material properties - Full PBR workflow
 void applyDecals(
   inout vec4 baseColor,           // RGBA - albedo + alpha
+  inout vec3 emissive,            // Emissive the decals add to, in the caller's own units
+  in uint receiverGroupMask,      // Which decal groups reach this surface (all ones = all of them)
   inout float metallic,           // Metallic value
   inout float perceptualRoughness,// Roughness value
   inout float occlusion,          // Ambient occlusion
@@ -83,8 +85,9 @@ void applyDecals(
         // Get decal flags for this rendering pass
         const uint decalFlags = decal.decalUpFlags.w;
 
-        // Check if decal applies to this rendering pass
-        if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
+        // Check if decal applies to this rendering pass, and whether this surface takes decals of its
+        // group at all - the two masks have to share a bit, which they always do while both are all ones.
+        if (((decalFlags & DECAL_FLAG_PASS) != 0u) && ((uint(decal.textureIndices2.y) & receiverGroupMask) != 0u)) {
 
           // Construct world to decal matrix from three vec4 and transpose for correct multiplication with world position.
           // Also allows us to keep decal data as vec4 arrays which are more compatible with buffer references.
@@ -142,6 +145,7 @@ void applyDecals(
             switch(blendMode) {
               case 0u: {  // Alpha blend (standard)
                 baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
+                emissive = mix(emissive, decalEmissive, blend);
                 metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
                 perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
@@ -152,6 +156,9 @@ void applyDecals(
               }
               case 1u: {  // Multiply (dirt/grime/darkening)
                 baseColor.xyz *= mix(vec3(1.0), decalAlbedo.xyz, blend);
+                // Grime over a glowing surface dims it, so the emissive is darkened the same way rather
+                // than replaced.
+                emissive *= mix(vec3(1.0), decalEmissive, blend);
                 metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
                 perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
@@ -160,6 +167,9 @@ void applyDecals(
               }
               case 2u: {  // Overlay (painted markings)
                 baseColor.xyz = mix(baseColor.xyz, decalOverlayBlend(baseColor.xyz, decalAlbedo.xyz), blend);
+                // The overlay curve is about contrast against what is underneath, which emissive has no
+                // equivalent of, so it is faded in the plain way.
+                emissive = mix(emissive, decalEmissive, blend);
                 metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
                 perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
@@ -170,6 +180,7 @@ void applyDecals(
               }
               case 3u: {  // Additive (glowing effects)
                 baseColor.xyz += decalAlbedo.xyz * blend;
+                emissive += decalEmissive * blend;
                 // Don't modify material properties for additive
                 break;
               }
@@ -188,6 +199,7 @@ void applyDecals(
               default: {
                 // Alpha blend as fallback
                 baseColor.xyz = mix(baseColor.xyz, decalAlbedo.xyz, blend);
+                emissive = mix(emissive, decalEmissive, blend);
                 metallic = mix(metallic, decalMetallic, blend * pbrBlendFactor);
                 perceptualRoughness = mix(perceptualRoughness, decalRoughness, blend * pbrBlendFactor);
                 occlusion = mix(occlusion, decalOcclusion, blend);
@@ -231,6 +243,7 @@ void applyDecals(
 // Only applies albedo, no material properties or normals
 void applyDecalsUnlit(
   inout vec3 color,               // RGB color
+  in uint receiverGroupMask,      // Which decal groups reach this surface (all ones = all of them)
   in vec3 worldPosition,
   in vec3 worldNormal,
   in vec3 viewSpacePosition
@@ -266,8 +279,9 @@ void applyDecalsUnlit(
         // Get decal flags for this rendering pass
         const uint decalFlags = decal.decalUpFlags.w;
 
-        // Check if decal applies to this rendering pass
-        if ((decalFlags & DECAL_FLAG_PASS) != 0u) {          
+        // Check if decal applies to this rendering pass, and whether this surface takes decals of its
+        // group at all - the two masks have to share a bit, which they always do while both are all ones.
+        if (((decalFlags & DECAL_FLAG_PASS) != 0u) && ((uint(decal.textureIndices2.y) & receiverGroupMask) != 0u)) {
 
           // Construct world to decal matrix from three vec4 and transpose for correct multiplication with world position.
           // Also allows us to keep decal data as vec4 arrays which are more compatible with buffer references.

@@ -50,7 +50,7 @@ struct Decal {
   vec4 uvScaleOffset;          // xy=scale, zw=offset - 16 bytes
   uvec4 blendParams;           // x=opacity(float bits), y=angleFade(float bits), z=edgeFade(float bits), w=pbrBlendFactor(float bits) - 16 bytes
   ivec4 textureIndices;        // albedo, normal, ORM, specular texture indices (-1 = none) - 16 bytes
-  ivec4 textureIndices2;       // emissive, unused, unused, unused - 16 bytes
+  ivec4 textureIndices2;       // emissive, group mask (as uint), unused, unused - 16 bytes
   uvec4 decalUpFlags;          // xyz=up direction for angle fade(float bits), w=flags(uint bits) - 16 bytes
 };                             // Total: 128 bytes
 
@@ -87,6 +87,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   uvec4 hologramBlock1;
   uvec4 hologramBlock2;
   uvec4 alphaCutOffFlagsTex0Tex1;
+  uvec4 decalGroupMaskReserved;  // x=decal group mask (tested against the decal's own), yzw=reserved
   int textures[20];
   mat3x2 textureTransforms[20];
 };

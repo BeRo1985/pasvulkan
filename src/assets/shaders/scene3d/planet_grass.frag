@@ -294,9 +294,13 @@ void main(){
 
   // Apply decals
   vec3 decalNormal = vec3(0.0, 0.0, 1.0);
-  float decalNormalBlend = 0.0;  
+  float decalNormalBlend = 0.0;
+  // Grass has no emissive channel of its own, so a decal's emissive is collected and dropped here.
+  vec3 decalEmissive = vec3(0.0);
   applyDecals(
     albedo,
+    decalEmissive,
+    0xffffffffu, // Grass has no material record of its own here, so every decal group reaches it
     occlusionRoughnessMetallic.z,
     occlusionRoughnessMetallic.y,
     occlusionRoughnessMetallic.x,
