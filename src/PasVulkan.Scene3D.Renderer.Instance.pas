@@ -7838,7 +7838,7 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFrustumClusterGridIndexListCounterVulkanBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fFrustumClusterGridIndexListCounterVulkanBuffers['+IntToStr(InFlightFrameIndex)+']');
 
       fFrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                            fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*128*fFrustumClusterGridCountTotalViews,
+                                                                                            fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*256*fFrustumClusterGridCountTotalViews,
                                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                             [],
