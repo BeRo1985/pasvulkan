@@ -69,10 +69,20 @@ void main() {
   const float infinity = uintBitsToFloat(0x7f800000u);
 
   // Calculate the global invocation index
-  uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz; 
-  uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
+  uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz;
+  // The grid size is the one the cluster count was actually derived from, NOT the dispatch size: the
+  // dispatch is rounded up to whole 8x8x8 work groups, and a grid whose width is, say, 17 tiles is
+  // dispatched as 24. Indexing with the rounded-up size puts a cluster somewhere else than where the
+  // fragment shader looks for it, which it computes from this same grid size - the two have to agree.
+  // It is also what the z slice boundaries below have to be cut from, for the same reason.
+  uvec3 globalSize = pushConstants.clusterSize.xyz;
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
- 
+
+  // The work groups the dispatch rounded up to have no cluster to build.
+  if(any(greaterThanEqual(globalInvocationID, globalSize))){
+    return;
+  }
+
   // Calculate the cluster index
   uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 

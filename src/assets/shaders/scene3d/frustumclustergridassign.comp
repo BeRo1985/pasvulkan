@@ -77,10 +77,17 @@ void main() {
   uint localInvocationIndex = uint(gl_LocalInvocationIndex);
 
   uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz);  //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz;
-  uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz);
+  // The grid size the cluster count comes from, not the dispatch size, which is rounded up to whole
+  // 8x8x8 work groups - see the same spot in the build pass. Indexing with the rounded-up size would
+  // file a light or decal under a different cluster than the one the fragment shader reads.
+  uvec3 globalSize = pushConstants.clusterSize.xyz;
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
 
-  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
+  // This shader has barriers in it, so the threads the dispatch rounded up cannot simply return: they
+  // stay in step and are only kept from contributing anything at the end.
+  bool validCluster = all(lessThan(globalInvocationID, globalSize));
+
+  uint clusterIndex = validCluster ? (globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z)) : 0u;
 
   uint countThreads = uint(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
   uint countLights = pushConstants.countLightsViewIndexSizeOffsetedViewIndex.x;
@@ -206,6 +213,11 @@ void main() {
   // of one cluster's list is a missing light or decal, writing past the buffer is anything at all.
   const uint indexListCapacity = pushConstants.countDecalsReserved.y;
 
+  // A thread outside the grid has no cluster to write, and must not take a slice of the index list either.
+  if(!validCluster){
+    countVisibleLights = 0u;
+  }
+
   uint lightIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleLights);
   countVisibleLights = (lightIndexOffset < indexListCapacity) ? min(countVisibleLights, indexListCapacity - lightIndexOffset) : 0u;
   for (uint lightIndex = 0u; lightIndex < countVisibleLights; lightIndex++) {
@@ -251,6 +263,10 @@ void main() {
 
   barrier();
 
+  if(!validCluster){
+    countVisibleDecals = 0u;
+  }
+
   uint decalIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleDecals);
   countVisibleDecals = (decalIndexOffset < indexListCapacity) ? min(countVisibleDecals, indexListCapacity - decalIndexOffset) : 0u;
   for (uint decalIndex = 0u; decalIndex < countVisibleDecals; decalIndex++) {
@@ -260,6 +276,8 @@ void main() {
   // ----------------------------------------------------------------------------------------------------------------------------
   // Write data
   // ----------------------------------------------------------------------------------------------------------------------------
-  frustumClusterGridData[clusterIndex] = uvec4(lightIndexOffset, countVisibleLights, decalIndexOffset, countVisibleDecals);
+  if(validCluster){
+    frustumClusterGridData[clusterIndex] = uvec4(lightIndexOffset, countVisibleLights, decalIndexOffset, countVisibleDecals);
+  }
 
 }
