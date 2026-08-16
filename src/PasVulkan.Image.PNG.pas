@@ -669,11 +669,14 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
      pe.a:=(c and $ff00) or ((c and $ff00) shr 8);
     end;
     TPixelColorType.GrayAlpha16:begin
+     // Gray is in the lower half and alpha in the upper one, just as in the eight bit case above.
+     // These two were swapped, so gray images with an alpha channel and sixteen bits came out with
+     // their brightness in the alpha channel and the other way round
      c:=CalcColor;
-     pe.r:=(c shr 16) and $ffff;
-     pe.g:=(c shr 16) and $ffff;
-     pe.b:=(c shr 16) and $ffff;
-     pe.a:=c and $ffff;
+     pe.r:=c and $ffff;
+     pe.g:=c and $ffff;
+     pe.b:=c and $ffff;
+     pe.a:=(c shr 16) and $ffff;
     end;
     TPixelColorType.Color8:begin
      pe.r:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
@@ -973,7 +976,10 @@ begin
            Palette[i].g:=d or (d shl 8);
            d:=GetU8(DataPtr);
            Palette[i].b:=d or (d shl 8);
-           Palette[i].a:=$ff;
+           // Sixteen bits wide, like the three channels above it. HandleScanLine shifts the entry
+           // down by eight to get the byte, so an $ff here came out as a zero and every palette
+           // image without a tRNS chunk ended up fully transparent
+           Palette[i].a:=$ffff;
           end;
          end;
          4:begin
@@ -1011,7 +1017,10 @@ begin
           break;
          end;
          PalImgBytes:=4;
-         for i:=0 to PaletteSize-1 do begin
+         // The chunk holds as many entries as it is long and may be shorter than the palette, so
+         // everything it does not reach stays fully opaque. Running to the end of the palette
+         // instead read bytes belonging to the following chunk and turned them into transparency
+         for i:=0 to TpvInt32(ChunkLength)-1 do begin
           d:=GetU8(DataPtr);
           Palette[i].a:=d or (d shl 8);
          end;
