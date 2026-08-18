@@ -1310,7 +1310,11 @@ type TpvGUIObject=class;
        procedure SetFixedWidth(const aFixedWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFixedHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       // Deliberately not inline: this one recurses through the AbsolutePosition property of its parent,
+       // and since that call goes through another instance, the compiler does not recognize it as a self
+       // call and expands the body into itself. The resulting node tree contains itself, which sends the
+       // tree walk in the inlining pass into an endless recursion until the compiler's stack is gone.
+       function GetAbsolutePosition:TpvVector2;
        function GetRecursiveVisible:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
        function GetLastParentWindow:TpvGUIWindow;
