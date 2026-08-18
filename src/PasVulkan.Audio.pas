@@ -6552,8 +6552,16 @@ begin
  FreeOnTerminate:=false;
  Event:=TEvent.Create(nil,false,false,'');
  ReadEvent:=TEvent.Create(nil,false,false,'');
-//Priority:=tpHighest;
  inherited Create(false);
+ // The mixer thread has to survive CPU storms that starve everything else, above all the graphics driver translating
+ // the shaders on the first start, which saturates every core for minutes: at normal priority the playback then
+ // breaks up into single chopped notes and a healthy load sounds like a crash. The priority is set after the thread
+ // exists, since there is no thread handle to apply it to before that, and a refusal (unprivileged Unix) just leaves
+ // the default priority in place.
+ try
+  Priority:=tpHighest;
+ except
+ end;
 end;
 
 destructor TpvAudioThread.Destroy;
