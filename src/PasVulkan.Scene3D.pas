@@ -42291,7 +42291,7 @@ begin
                                                                            0,
                                                                            length(fInFlightFrameImageInfos[aInFlightFrameIndex]),
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                           fInFlightFrameImageInfos[aInFlightFrameIndex][0],
+                                                                           fInFlightFrameImageInfos[aInFlightFrameIndex],
                                                                            [],
                                                                            [],
                                                                            true);
