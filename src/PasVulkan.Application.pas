@@ -1829,6 +1829,7 @@ type EpvApplication=class(Exception)
        fVulkanDevice:TpvVulkanDevice;
 
        fVulkanPipelineCache:TpvVulkanPipelineCache;
+       fVulkanPipelineCacheReused:boolean; // true only when a matching cache dump could be loaded from disk
 
        fVulkanPipelineCacheFileName:TpvUTF8String;
 
@@ -2374,6 +2375,8 @@ type EpvApplication=class(Exception)
 
        procedure DumpVulkanMemoryManager; virtual;
 
+       procedure SaveVulkanPipelineCache;
+
        function GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
 
        class procedure Main; virtual;
@@ -2569,6 +2572,10 @@ type EpvApplication=class(Exception)
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
 
        property VulkanPipelineCacheFileName:TpvUTF8String read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName;
+
+       // false means the driver starts from scratch and has to translate every pipeline on this run - which is what
+       // makes the first start take minutes, and what a loading screen wants to tell the user about
+       property VulkanPipelineCacheReused:boolean read fVulkanPipelineCacheReused;
 {
        property VulkanUniversalCommandPools:TpvApplicationCommandPools read fVulkanUniversalCommandPools;
        property VulkanUniversalCommandBuffers:TpvApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
@@ -10000,6 +10007,7 @@ begin
  fVulkanDevice:=nil;
 
  fVulkanPipelineCache:=nil;
+ fVulkanPipelineCacheReused:=false;
 
  fUpdateJob:=nil;
 
@@ -11085,6 +11093,9 @@ begin
 {$ifend}
    try
     fVulkanPipelineCache:=TpvVulkanPipelineCache.CreateFromFile(fVulkanDevice,String(fVulkanPipelineCacheFileName));
+    // only here, since CreateFromFile checks the stored pipelineCacheUUID against the physical device and rejects a
+    // dump from another GPU or another driver version - in which case the driver has to translate everything again
+    fVulkanPipelineCacheReused:=true;
    except
     on e:EpvVulkanPipelineCacheException do begin
      fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
@@ -11421,16 +11432,25 @@ begin
 end;
 {$ifend}
 
-procedure TpvApplication.DestroyVulkanInstance;
-var Index,SubIndex,SubSubIndex:TpvInt32;
+// Writes the current pipeline cache out. Called on shutdown, but explicitly callable as well: the shutdown write
+// alone is lost whenever the process does not get there, and it is precisely the first, minutes-long start that
+// tempts the user into killing it - after which the driver has to translate everything all over again. Callers
+// should pick a moment where the frame loop is stalling anyway, since collecting and writing the data costs time.
+procedure TpvApplication.SaveVulkanPipelineCache;
 begin
-
- if length(fVulkanPipelineCacheFileName)>0 then begin
+ if (length(fVulkanPipelineCacheFileName)>0) and assigned(fVulkanPipelineCache) then begin
   try
    fVulkanPipelineCache.SaveToFile(String(fVulkanPipelineCacheFileName));
   except
   end;
  end;
+end;
+
+procedure TpvApplication.DestroyVulkanInstance;
+var Index,SubIndex,SubSubIndex:TpvInt32;
+begin
+
+ SaveVulkanPipelineCache;
 
 {fVulkanUniversalCommandPools:=nil;
  fVulkanUniversalCommandBuffers:=nil;
