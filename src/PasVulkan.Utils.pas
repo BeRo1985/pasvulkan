@@ -630,7 +630,10 @@ class procedure TpvTypedSort<T>.IntroSort(const pItems:TpvPointer;const pLeft,pR
 type PItem=^TItem;
      TItem=T;
      PItemArray=^TItemArray;
-     TItemArray=array of TItem;
+     // Must be a static array, since pItems points at the first item itself and not at a dynamic array
+     // reference, so that PItemArray(pItems)^[Index] would otherwise read the first eight item bytes as
+     // a pointer and dereference those
+     TItemArray=array[0..65535] of TItem;
 var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
@@ -913,7 +916,8 @@ class procedure TpvNativeComparableTypedSort<T>.IntroSort(const pItems:TpvPointe
 type PItem=^TItem;
      TItem=T;
      PItemArray=^TItemArray;
-     TItemArray=array of TItem;
+     // Must be a static array, see the comment at TpvTypedSort<T>.IntroSort above
+     TItemArray=array[0..65535] of TItem;
 var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
     StackItem:PStackItem;
     Stack:array[0..31] of TStackItem;
