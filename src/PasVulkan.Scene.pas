@@ -1219,11 +1219,18 @@ begin
  if (fState=TpvSceneNodeState.Loaded) and not fScene.fUseDirectedAcyclicGraph then begin
   ParentReadLock;
   try
-   for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   // This one runs on the audio thread, so the child list can shrink underneath it while AddChild or
+   // RemoveChild is running on the main thread. ParentReadLock guards this node against being removed
+   // from its own parent, but not this node's child list, which is guarded by this node's own lock. A
+   // counting for loop would evaluate its upper bound only once and then index past the end, so the
+   // count is re-read on every iteration here.
+   ChildNodeIndex:=0;
+   while ChildNodeIndex<fChildren.Count do begin
     ChildNode:=fChildren[ChildNodeIndex];
     if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
      ChildNode.UpdateAudio;
     end;
+    inc(ChildNodeIndex);
    end;
   finally
    ParentReadUnlock;
