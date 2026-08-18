@@ -1225,6 +1225,8 @@ end;
 
 procedure TpvApplicationVirtualRealityAwareScreen.AfterCreateSwapChain;
 var Index,SwapChainImageIndex:TpvSizeInt;
+    ColorAttachmentIndex:TpvUInt32;
+    DepthAttachmentIndex:TpvUInt32;
 begin
  inherited AfterCreateSwapChain;
 

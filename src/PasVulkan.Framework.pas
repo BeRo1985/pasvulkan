@@ -24577,7 +24577,9 @@ constructor TpvVulkanSwapChainSimpleDirectRenderTarget.Create(const aDevice:TpvV
                                                               const aDepthImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                                                               const aDepthImageFormatWithStencil:boolean=false;
                                                               const aClear:boolean=true);
-var Index:TpvInt32;
+var ColorAttachmentIndex:TpvUInt32;
+    DepthAttachmentIndex:TpvUInt32;
+    Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
     ColorAttachmentImage:TpvVulkanImage;
     ColorAttachmentImageView:TpvVulkanImageView;
@@ -24616,64 +24618,79 @@ begin
 
    if aClear then begin
 
+    // AddAttachmentDescription appends to the render pass and returns the running attachment index, so the
+    // order of these two calls decides which index the color and the depth attachment get. Called inline as
+    // arguments of AddSubpassDescription that order would be the argument evaluation order of the compiler,
+    // which Pascal leaves undefined and which does differ between compilers - and a swap here hands the
+    // framebuffer's color image to the depth slot and vice versa. So they are pinned down here, in the same
+    // order in which the framebuffers below pass their attachments.
+    ColorAttachmentIndex:=fRenderPass.AddAttachmentDescription(0,
+                                                               fSwapChain.ImageFormat,
+                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                              );
+
+    DepthAttachmentIndex:=fRenderPass.AddAttachmentDescription(0,
+                                                               fDepthImageFormat,
+                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                              );
+
     fRenderPass.AddSubpassDescription(0,
                                       VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       [],
-                                      [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                               fSwapChain.ImageFormat,
-                                                                                                               VK_SAMPLE_COUNT_1_BIT,
-                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                              ),
+                                      [fRenderPass.AddAttachmentReference(ColorAttachmentIndex,
                                                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                          )],
                                       [],
-                                      fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                              fDepthImageFormat,
-                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                             ),
+                                      fRenderPass.AddAttachmentReference(DepthAttachmentIndex,
                                                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                         ),
                                       []);
 
    end else begin
 
+    // Pinned down in a defined order, see the comment in the clearing branch above
+    ColorAttachmentIndex:=fRenderPass.AddAttachmentDescription(0,
+                                                               fSwapChain.ImageFormat,
+                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                               VK_ATTACHMENT_LOAD_OP_LOAD,
+                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                              );
+
+    DepthAttachmentIndex:=fRenderPass.AddAttachmentDescription(0,
+                                                               fDepthImageFormat,
+                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                               VK_ATTACHMENT_LOAD_OP_LOAD,
+                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                              );
+
     fRenderPass.AddSubpassDescription(0,
                                       VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       [],
-                                      [fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                               fSwapChain.ImageFormat,
-                                                                                                               VK_SAMPLE_COUNT_1_BIT,
-                                                                                                               VK_ATTACHMENT_LOAD_OP_LOAD,
-                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                              ),
+                                      [fRenderPass.AddAttachmentReference(ColorAttachmentIndex,
                                                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                                                          )],
                                       [],
-                                      fRenderPass.AddAttachmentReference(fRenderPass.AddAttachmentDescription(0,
-                                                                                                              fDepthImageFormat,
-                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_LOAD,
-                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                             ),
+                                      fRenderPass.AddAttachmentReference(DepthAttachmentIndex,
                                                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                         ),
                                       []);

@@ -11859,6 +11859,8 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanRenderPass;
+var ColorAttachmentIndex:TpvUInt32;
+    DepthAttachmentIndex:TpvUInt32;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanRenderPass');
@@ -11870,32 +11872,42 @@ begin
 
   fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
 
+  // AddAttachmentDescription appends to the render pass and returns the running attachment index, so the
+  // order of these two calls decides which index the color and the depth attachment get. Called inline as
+  // arguments of AddSubpassDescription that order would be the argument evaluation order of the compiler,
+  // which Pascal leaves undefined and which does differ between compilers - and a swap here hands the
+  // framebuffer's color image to the depth slot and vice versa. So they are pinned down here, in the same
+  // order in which the framebuffer passes its attachments.
+  ColorAttachmentIndex:=fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                   fVulkanSwapChain.ImageFormat,
+                                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                                   VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                   VK_ATTACHMENT_STORE_OP_STORE,
+                                                                   VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                   VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+                                                                  );
+
+  DepthAttachmentIndex:=fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                   fVulkanDepthImageFormat,
+                                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                                   VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                   VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                   VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                   VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                  );
+
   fVulkanRenderPass.AddSubpassDescription(0,
                                           VK_PIPELINE_BIND_POINT_GRAPHICS,
                                           [],
-                                          [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                               fVulkanSwapChain.ImageFormat,
-                                                                                                                               VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                                               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                                              ),
-                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                             )],
+                                          [fVulkanRenderPass.AddAttachmentReference(ColorAttachmentIndex,
+                                                                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                   )],
                                           [],
-                                          fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                              fVulkanDepthImageFormat,
-                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                                             ),
+                                          fVulkanRenderPass.AddAttachmentReference(DepthAttachmentIndex,
                                                                                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                   ),
                                           []);
