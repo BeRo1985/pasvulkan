@@ -124,6 +124,10 @@ type TpvScene3DPlanets=class;
              CountBrushes=256;
              BrushSize=256;
              BrushSmoothLevels=16;
+             // Descriptor count of binding 0 of the planet descriptor set layout: 11 planet textures +
+             // BrushSmoothLevels smoothed brush textures + 5 water and grass textures. Must match the
+             // array size in the shaders and the number of the actually written descriptor image infos.
+             CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+5;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -34341,7 +34345,11 @@ begin
                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralRepeatingSampler.Handle,
                                                         TpvScene3D(fScene3D).RainStreaksNormalTexture.ImageView.Handle,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                         ]+GetBrushesTexturesDescriptorImageInfos+
+                         ];
+
+   DescriptorImageInfos:=DescriptorImageInfos+GetBrushesTexturesDescriptorImageInfos;
+
+   DescriptorImageInfos:=DescriptorImageInfos+
                           [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
                                                          fData.fWaterRippleImages[0].VulkanImageView.Handle,
                                                          VK_IMAGE_LAYOUT_GENERAL),
@@ -34358,12 +34366,17 @@ begin
                                                          fData.fWaterActivityMapImage.VulkanImageView.Handle,
                                                          VK_IMAGE_LAYOUT_GENERAL)];
 
+   // Better a clear exception here than an out-of-bounds read inside the Vulkan driver later on
+   if length(DescriptorImageInfos)<>CountPlanetTextureDescriptors then begin
+    raise EpvScene3DPlanet.Create('Planet descriptor image info count mismatch ('+IntToStr(length(DescriptorImageInfos))+' instead of '+IntToStr(CountPlanetTextureDescriptors)+')');
+   end;
+
    try
 
     fPlanetDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetDescriptorPool,TpvScene3D(fScene3D).PlanetDescriptorSetLayout);
     fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                    0,
-                                                                   32,
+                                                                   CountPlanetTextureDescriptors,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                    DescriptorImageInfos,
                                                                    [],
@@ -35415,7 +35428,7 @@ begin
  // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture + 16 smoothed brushes + 2 water ripple ping-pong images + water minimap + grass age map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   32, // 31 planet textures + water activity map (slot 31)
+                   CountPlanetTextureDescriptors, // 31 planet textures + water activity map (slot 31)
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -35447,7 +35460,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(32+1)*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(CountPlanetTextureDescriptors+1)*aCountInFlightFrames); // binding 0 + the separate grass flags map of binding 2
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');

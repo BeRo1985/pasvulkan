@@ -26454,9 +26454,46 @@ procedure TpvVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:
   fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,1,@WriteDescriptorSet,0,nil);
  end;
 var Index:TpvInt32;
+    CountAvailableInfoItems:TpvSizeInt;
     WriteDescriptorSet:PVkWriteDescriptorSet;
     WriteDescriptorSetMetaData:PpvVulkanDescriptorSetWriteDescriptorSetMetaData;
 begin
+
+ // Vulkan reads exactly aDescriptorCount items from the info array which belongs to the descriptor type,
+ // so a too short array lets the driver read past its end and dereference whatever the heap happens to
+ // hold there as object handles. Catch that here, where it is still attributable to its caller.
+ case aDescriptorType of
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_SAMPLER,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:begin
+   CountAvailableInfoItems:=length(aImageInfo);
+  end;
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:begin
+   CountAvailableInfoItems:=length(aTexelBufferView);
+  end;
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:begin
+   CountAvailableInfoItems:=length(aBufferInfo);
+  end;
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+  TVkDescriptorType.VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:begin
+   CountAvailableInfoItems:=length(aAccelerationStructureInfo);
+  end;
+  else begin
+   // Everything else, inline uniform blocks for example, carries its payload in the pNext chain, where
+   // aDescriptorCount does not count items of one of the arrays here
+   CountAvailableInfoItems:=aDescriptorCount;
+  end;
+ end;
+ if CountAvailableInfoItems<aDescriptorCount then begin
+  raise EpvVulkanException.Create('Descriptor set write at binding '+IntToStr(aDestinationBinding)+' wants '+IntToStr(aDescriptorCount)+' descriptors, but only '+IntToStr(CountAvailableInfoItems)+' descriptor infos were given');
+ end;
+
  if aDoInstant then begin
   InstantWriteToDescriptorSet;
  end else begin
