@@ -372,6 +372,11 @@ type TpvScene=class;
              PStageSet=^TStageSet;
       private
        fRootNode:TpvSceneNode;
+       // Guards the shape of the node tree against the audio thread. UpdateAudio walks the whole tree
+       // from another thread, while Add, Remove and the node destructor change child lists on the main
+       // thread. Held for reading once per audio update and for writing once per structural change, so
+       // it costs one atomic per traversal rather than one per node.
+       fStructureLock:TpvInt32;
        fAllNodesLock:TPasMPSlimReaderWriterLock;
        fAllNodes:TpvSceneNodes;
        fCountToStartLoadNodes:TPasMPInt32;
@@ -551,6 +556,11 @@ var ChildNodeIndex:TpvSizeInt;
 begin
  if assigned(fParent) and not fDestroying then begin
   ParentNode:=fParent;
+  // Structure lock first, so that the audio thread never walks a tree that is being reshaped, see
+  // TpvScene.fStructureLock
+  if assigned(fScene) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fScene.fStructureLock);
+  end;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(ParentNode.fLock);
   try
    fParent:=nil;
@@ -565,6 +575,9 @@ begin
    end;
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(ParentNode.fLock);
+   if assigned(fScene) then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fScene.fStructureLock);
+   end;
   end;
  end;
 
@@ -807,6 +820,11 @@ begin
 
  if assigned(aNode) and (aNode<>self) then begin
 
+  // Structure lock first, so that the audio thread never walks a tree that is being reshaped, see
+  // TpvScene.fStructureLock
+  if assigned(fScene) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fScene.fStructureLock);
+  end;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
 
@@ -828,6 +846,9 @@ begin
 
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+   if assigned(fScene) then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fScene.fStructureLock);
+   end;
   end;
 
  end;
@@ -842,6 +863,11 @@ begin
 
  if assigned(aNode) and (aNode<>self) and (aNode.fParent=self) and not aNode.fDestroying then begin
 
+  // Structure lock first, so that the audio thread never walks a tree that is being reshaped, see
+  // TpvScene.fStructureLock
+  if assigned(fScene) then begin
+   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fScene.fStructureLock);
+  end;
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fLock);
   try
 
@@ -867,6 +893,9 @@ begin
 
   finally
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fLock);
+   if assigned(fScene) then begin
+    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fScene.fStructureLock);
+   end;
   end;
 
  end;
@@ -1660,6 +1689,8 @@ begin
  inherited Create;
 
  fPasMPInstance:=pvApplication.PasMPInstance;
+
+ fStructureLock:=0;
 
  fAllNodesLock:=TPasMPSlimReaderWriterLock.Create;
 
@@ -2520,43 +2551,56 @@ procedure TpvScene.UpdateAudio;
 var ExecutionLevelIndex,ExecutionLevelNodeIndex:TpvSizeInt;
     ExecutionLevelNodes:TpvSceneNodes;
 begin
- if fUseDirectedAcyclicGraph then begin
-  RebuildDirectedAcyclicGraph;
-  for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
-   ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
-   if ExecutionLevelNodes.Count>0 then begin
-    if ExecutionLevelNodes.Count>1 then begin
-     if assigned(fPasMPInstance) and (TpvScene.TStage.UpdateAudio in fParallelStages) then begin
-      fPasMPInstance.Invoke(
-       fPasMPInstance.ParallelFor(
-        ExecutionLevelNodes,
-        0,
-        ExecutionLevelNodes.Count-1,
-        UpdateAudioParallelForJob,
-        -4,
-        PasMPDefaultDepth,
-        nil,
-        0,
-        PasMPAreaMaskUpdate,
-        PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,        
-        false,
-        PasMPAffinityMaskUpdateAllowMask,
-        PasMPAffinityMaskUpdateAvoidMask
-       )
-      );
-     end else begin
-      for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
-       ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].UpdateAudio;
+
+ // This one runs on the audio thread, so the tree must not change shape underneath it. One read lock for
+ // the whole traversal, rather than snapshotting child lists per node, which would copy the entire tree
+ // on every audio buffer fill. Consequence: nothing reached from here may add or remove scene nodes,
+ // since that would deadlock against this very lock.
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fStructureLock);
+ try
+
+  if fUseDirectedAcyclicGraph then begin
+   RebuildDirectedAcyclicGraph;
+   for ExecutionLevelIndex:=0 to fDirectedAcyclicGraph.fExecutionLevels.Count-1 do begin
+    ExecutionLevelNodes:=fDirectedAcyclicGraph.fExecutionLevels.RawItems[ExecutionLevelIndex];
+    if ExecutionLevelNodes.Count>0 then begin
+     if ExecutionLevelNodes.Count>1 then begin
+      if assigned(fPasMPInstance) and (TpvScene.TStage.UpdateAudio in fParallelStages) then begin
+       fPasMPInstance.Invoke(
+        fPasMPInstance.ParallelFor(
+         ExecutionLevelNodes,
+         0,
+         ExecutionLevelNodes.Count-1,
+         UpdateAudioParallelForJob,
+         -4,
+         PasMPDefaultDepth,
+         nil,
+         0,
+         PasMPAreaMaskUpdate,
+         PasMPAreaMaskRender or PasMPAreaMaskBackgroundLoading,
+         false,
+         PasMPAffinityMaskUpdateAllowMask,
+         PasMPAffinityMaskUpdateAvoidMask
+        )
+       );
+      end else begin
+       for ExecutionLevelNodeIndex:=0 to ExecutionLevelNodes.Count-1 do begin
+        ExecutionLevelNodes.RawItems[ExecutionLevelNodeIndex].UpdateAudio;
+       end;
       end;
+     end else begin
+      ExecutionLevelNodes[0].UpdateAudio;
      end;
-    end else begin
-     ExecutionLevelNodes[0].UpdateAudio;
     end;
    end;
+  end else begin
+   fRootNode.UpdateAudio;
   end;
- end else begin
-  fRootNode.UpdateAudio;
+
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fStructureLock);
  end;
+
 end;
 
 procedure TpvScene.DumpTimes;
