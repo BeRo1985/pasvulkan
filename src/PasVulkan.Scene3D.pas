@@ -189,6 +189,11 @@ type EpvScene3D=class(Exception);
              MaxParticles=65536; // <= Must be power of two
              ParticleIndexMask=MaxParticles-1;
              MaxParticleVertices=MaxParticles*3;
+             MaxParticleSpaces=256;
+             // The space index standing for plain world space, i.e. for no moving frame of reference
+             // at all. It is the default everywhere, so a caller which knows nothing about particle
+             // spaces keeps exactly the behaviour it always had.
+             WorldParticleSpaceIndex=-1;
              LightClusterSizeX=16;
              LightClusterSizeY=8;
              LightClusterSizeZ=32;
@@ -807,12 +812,41 @@ type EpvScene3D=class(Exception);
              LastTime:TpvFloat;
              Time:TpvFloat;
              TextureID:TpvUInt32;
+             // Which particle space Position, LastPosition and Velocity above are given in:
+             // WorldParticleSpaceIndex for plain world space, else the index of a space acquired
+             // with AcquireParticleSpace. Gravity stays a world-space vector in either case.
+             SpaceIndex:TpvInt32;
+             // The fraction of the lifetime at which an attached particle lets go of its space and
+             // carries on in world space. At 1.0 or above it never lets go, at 0.0 it is already
+             // gone by its first step. Meaningless for a particle which has no space to begin with.
+             DetachTime:TpvFloat;
             end;
             PParticle=^TParticle;
             TParticles=array[0..MaxParticles-1] of TParticle;
             PParticles=^TParticles;
             TParticleAliveBitmap=array[0..((MaxParticles+31) shr 5)-1] of TpvUInt32;
             PParticleAliveBitmap=^TParticleAliveBitmap;
+            { TParticleSpace }
+            // A moving frame of reference for particles. Its owner feeds the world matrix once per
+            // simulation step, the same way and at the same place it feeds a rigid body's pose, and
+            // every particle bound to it lives in its local coordinates until it lets go.
+            //
+            // That is what keeps an engine plume sitting in its nozzle at any speed instead of being
+            // dropped into the air behind the craft: without a space the emitter can only guess a
+            // world velocity for the exhaust, and any guess is wrong the moment the craft is faster
+            // than the guess. A particle in the craft's own space simply has no such problem - it is
+            // where it is on the craft, and the craft's motion is not its business.
+            TParticleSpace=record
+             LastMatrix:TpvMatrix4x4;    // The matrix as it stood at the top of the current step
+             Matrix:TpvMatrix4x4;        // The matrix as it stands now
+             InverseMatrix:TpvMatrix4x4; // Matrix.Inverse, for taking world-space gravity into the space
+             Used:LongBool;
+            end;
+            PParticleSpace=^TParticleSpace;
+            TParticleSpaces=array[0..MaxParticleSpaces-1] of TParticleSpace;
+            PParticleSpaces=^TParticleSpaces;
+            TParticleSpaceMatrices=array[0..MaxParticleSpaces-1] of TpvMatrix4x4;
+            PParticleSpaceMatrices=^TParticleSpaceMatrices;
             TParticleVertex=packed record
              Position:TpvVector3;           //   12
              Rotation:TpvFloat;             //    4
@@ -4698,6 +4732,11 @@ type EpvScene3D=class(Exception);
        fPointerToParticles:PParticles;
        fParticleAliveBitmap:TParticleAliveBitmap;
        fParticleIndexCounter:TpvUInt32;
+       fParticleSpaces:TParticleSpaces;
+       fPointerToParticleSpaces:PParticleSpaces;
+       // One past the highest space index ever handed out, so the per-step and per-frame passes over
+       // the spaces stop at the ones which exist instead of walking all MaxParticleSpaces of them.
+       fParticleSpaceHighWaterMark:TpvSizeInt;
        fInFlightFrameParticleVertices:TInFlightFrameParticleVertices;
        fCountInFlightFrameParticleVertices:TCountInFlightFrameParticleVertices;
        fVulkanParticleVertexBuffers:TVulkanParticleVertexBuffers;
@@ -4801,6 +4840,9 @@ type EpvScene3D=class(Exception);
        procedure DefragMoveMorphTargetWeights(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
        function NeedDefragmentation(const aForceCheck:boolean):boolean;
        function Defragment(const aForce:boolean):boolean;
+       // Move one particle out of its space and into world space. aInverseDeltaTime is one over the
+       // step which just ran, or zero where there is no step to speak of (a released space).
+       procedure DetachParticleFromParticleSpace(const aParticle:PParticle;const aInverseDeltaTime:TpvDouble);
       public
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
       private
@@ -5130,6 +5172,18 @@ type EpvScene3D=class(Exception);
        procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
        procedure InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
        procedure DeleteAllParticles;
+       // Take a particle space out of the pool. The caller feeds its matrix per simulation step with
+       // SetParticleSpaceMatrix and hands the returned index to AddParticle for every particle which
+       // is to live in it. Returns WorldParticleSpaceIndex when the pool is full, which AddParticle
+       // then simply reads as world space - a missing space costs the look, never the particles.
+       function AcquireParticleSpace:TpvSizeInt;
+       // Give a particle space back. Every particle still living in it is converted to world space
+       // first, so a space can be released while its particles are still in the air.
+       procedure ReleaseParticleSpace(const aParticleSpaceIndex:TpvSizeInt);
+       // Feed a particle space its world matrix for this simulation step, next to wherever the owner
+       // already updates its pose. aSnap tells the space that the jump it just made is a teleport and
+       // not motion, so the render interpolation does not smear its particles across the gap.
+       procedure SetParticleSpaceMatrix(const aParticleSpaceIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;const aSnap:Boolean=false);
        function AddParticle(const aPosition:TpvVector3;
                             const aVelocity:TpvVector3;
                             const aGravity:TpvVector3;
@@ -5143,7 +5197,9 @@ type EpvScene3D=class(Exception);
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean;
                             const aDrag:TpvFloat=0.0;
-                            const aFadeIn:TpvFloat=0.0):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
+                            const aFadeIn:TpvFloat=0.0;
+                            const aSpaceIndex:TpvSizeInt=WorldParticleSpaceIndex;
+                            const aDetachTime:TpvFloat=1.0):TpvSizeInt; {$if defined(cpuamd64) and defined(fpc)}ms_abi_default;{$ifend} // Workaround for wrong allocated register issue at FPC with -O3 under Linux (=> access violation on procedure entry begin)
        function ValidDecal(const aDecal:TpvScene3D.TDecal):Boolean;
        function SpawnDecal(const aPosition:TpvVector3D;
                            const aOrientation:TpvQuaternion;
@@ -5200,6 +5256,7 @@ type EpvScene3D=class(Exception);
        property DecalBuffers:TpvScene3D.TDecalBuffers read fDecalBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
+       property ParticleSpaces:PParticleSpaces read fPointerToParticleSpaces;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
        property SkyBoxCaching:Boolean read fSkyBoxCaching write fSkyBoxCaching;
        property EnableAtmosphere:Boolean read fEnableAtmosphere write fEnableAtmosphere;
@@ -35075,6 +35132,12 @@ begin
 
   fParticleIndexCounter:=0;
 
+  fPointerToParticleSpaces:=@fParticleSpaces;
+
+  FillChar(fParticleSpaces,SizeOf(TParticleSpaces),#0);
+
+  fParticleSpaceHighWaterMark:=0;
+
   FillChar(fCountInFlightFrameParticleVertices,SizeOf(fCountInFlightFrameParticleVertices),#0);
 
   fSkyBoxBrightnessFactor:=1.0;
@@ -44406,8 +44469,21 @@ end;
 procedure TpvScene3D.StoreParticleStates;
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
+    ParticleSpaceIndex:TpvSizeInt;
     Particle:PParticle;
+    ParticleSpace:PParticleSpace;
 begin
+
+ // The spaces are stored the same way and for the same reason as the particles themselves: their
+ // owners are about to move them, and the render frame between two simulation steps needs the pose
+ // they had before that to interpolate from.
+ for ParticleSpaceIndex:=0 to fParticleSpaceHighWaterMark-1 do begin
+  ParticleSpace:=@fParticleSpaces[ParticleSpaceIndex];
+  if ParticleSpace^.Used then begin
+   ParticleSpace^.LastMatrix:=ParticleSpace^.Matrix;
+  end;
+ end;
+
  for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
   ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
   if ParticleAliveBitmapValue<>0 then begin
@@ -44423,13 +44499,23 @@ begin
    until ParticleAliveBitmapValue=0;
   end;
  end;
+
 end;
 
 procedure TpvScene3D.UpdateParticleStates(const aDeltaTime:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
     Particle:PParticle;
+    InverseDeltaTime:TpvDouble;
+    Gravity:TpvVector3;
 begin
+
+ if aDeltaTime>0.0 then begin
+  InverseDeltaTime:=1.0/aDeltaTime;
+ end else begin
+  InverseDeltaTime:=0.0;
+ end;
+
  for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
   ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
   if ParticleAliveBitmapValue<>0 then begin
@@ -44441,36 +44527,69 @@ begin
     if (Particle^.Age>=Particle^.LifeTime) or IsZero(Particle^.LifeTime) then begin
      fParticleAliveBitmap[ParticleAliveBitmapIndex]:=fParticleAliveBitmap[ParticleAliveBitmapIndex] and not (TpvUInt32(1) shl ParticleBitIndex);
     end else begin
+
+     // Gravity is a world-space vector whatever space the particle itself is in, because gravity
+     // which rolls with the craft is nobody's idea of gravity. For an attached particle it is taken
+     // into that space first, so it keeps pointing the same way in the world while the space turns.
+     if Particle^.SpaceIndex>=0 then begin
+      Gravity:=fParticleSpaces[Particle^.SpaceIndex].InverseMatrix.MulBasis(Particle^.Gravity);
+     end else begin
+      Gravity:=Particle^.Gravity;
+     end;
+
      if Particle^.Drag>0.0 then begin
       Particle^.Velocity:=Particle^.Velocity*(1.0-Min(1.0,Particle^.Drag*aDeltaTime));
      end;
      Particle^.Position:=Particle^.Position+(Particle^.Velocity*aDeltaTime);
-     Particle^.Velocity:=Particle^.Velocity+(Particle^.Gravity*aDeltaTime);
+     Particle^.Velocity:=Particle^.Velocity+(Gravity*aDeltaTime);
      Particle^.Time:=Particle^.Age/Particle^.LifeTime;
      Particle^.Age:=Particle^.Age+aDeltaTime;
+
+     // And the release, once it has been attached for as long as it was meant to be. This runs after
+     // the integration, so the two local positions it converts are the ones this step just settled.
+     if (Particle^.SpaceIndex>=0) and (Particle^.Time>=Particle^.DetachTime) then begin
+      DetachParticleFromParticleSpace(Particle,InverseDeltaTime);
+     end;
+
     end;
     ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
    until ParticleAliveBitmapValue=0;
   end;
  end;
+
 end;
 
 procedure TpvScene3D.InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
     CountVertices,TextureID:TpvUInt32;
+    ParticleSpaceIndex:TpvSizeInt;
     Particle:PParticle;
+    ParticleSpace:PParticleSpace;
     Time,Rotation,FadeFactor:TpvFloat;
     Position:TpvVector3;
     Size:TpvVector2;
     HalfFloatColor:TpvHalfFloatVector4;
     ParticleVertices:TpvScene3D.PParticleVertices;
     ParticleVertex:PParticleVertex;
+    ParticleSpaceMatrix:TpvMatrix4x4;
+    ParticleSpaceMatrices:TParticleSpaceMatrices;
 begin
 
  CountVertices:=0;
 
  ParticleVertices:=@fInFlightFrameParticleVertices[aInFlightFrameIndex];
+
+ // Every space is interpolated once here rather than once per particle: the particles in a space
+ // share its pose, and there are a handful of spaces against thousands of particles. The blend is
+ // the same aAlpha the caller blends its own models by, so a plume sits on its craft in the drawn
+ // frame and not on where the craft was at the last simulation step.
+ for ParticleSpaceIndex:=0 to fParticleSpaceHighWaterMark-1 do begin
+  ParticleSpace:=@fParticleSpaces[ParticleSpaceIndex];
+  if ParticleSpace^.Used then begin
+   ParticleSpaceMatrices[ParticleSpaceIndex]:=ParticleSpace^.LastMatrix.Slerp(ParticleSpace^.Matrix,aAlpha);
+  end;
+ end;
 
  for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
 
@@ -44496,6 +44615,18 @@ begin
      // Different generation, so it is a fresh new particle => consider it as a particle without previous state
      Position:=Particle^.Position;
      Time:=0.0;
+    end;
+
+    // An attached particle has been interpolated in its space's coordinates above, which is exactly
+    // where it should be: whatever the craft did between the two simulation steps, the particle did
+    // with it, and only its own motion within the space is what got blended. The one transform here
+    // is what turns that into a world position.
+    if Particle^.SpaceIndex>=0 then begin
+     ParticleSpaceMatrix:=ParticleSpaceMatrices[Particle^.SpaceIndex];
+     Position:=ParticleSpaceMatrix.MulBasis(Position)+
+               TpvVector3.InlineableCreate(ParticleSpaceMatrix.RawComponents[3,0],
+                                           ParticleSpaceMatrix.RawComponents[3,1],
+                                           ParticleSpaceMatrix.RawComponents[3,2]);
     end;
 
     Rotation:=FloatLerp(Particle^.RotationStart,Particle^.RotationEnd,Time);
@@ -44583,6 +44714,125 @@ begin
  FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0); // really so simple as that
 end;
 
+procedure TpvScene3D.DetachParticleFromParticleSpace(const aParticle:PParticle;const aInverseDeltaTime:TpvDouble);
+var ParticleSpace:PParticleSpace;
+    WorldPosition,LastWorldPosition:TpvVector3;
+begin
+
+ ParticleSpace:=@fParticleSpaces[aParticle^.SpaceIndex];
+
+ WorldPosition:=ParticleSpace^.Matrix.MulHomogen(aParticle^.Position);
+ LastWorldPosition:=ParticleSpace^.LastMatrix.MulHomogen(aParticle^.LastPosition);
+
+ if aInverseDeltaTime>0.0 then begin
+
+  // The difference between those two world positions IS the particle's full world velocity: the
+  // space's own travel, its turn about the space's origin and the particle's motion within the
+  // space, all three at once and without the space's angular velocity having to appear anywhere.
+  // Position and velocity therefore both stay continuous across the release, so a particle letting
+  // go of its craft neither jumps nor kinks - it just stops being carried along.
+  aParticle^.Velocity:=(WorldPosition-LastWorldPosition)*aInverseDeltaTime;
+
+ end else begin
+
+  // No step to take a difference over (a space being released outright), so the local velocity is
+  // merely turned into the world's axes. What the space itself was doing is lost, which is what
+  // giving a space back means.
+  aParticle^.Velocity:=ParticleSpace^.Matrix.MulBasis(aParticle^.Velocity);
+
+ end;
+
+ aParticle^.Position:=WorldPosition;
+ aParticle^.LastPosition:=LastWorldPosition;
+ aParticle^.SpaceIndex:=WorldParticleSpaceIndex;
+
+end;
+
+function TpvScene3D.AcquireParticleSpace:TpvSizeInt;
+var ParticleSpaceIndex:TpvSizeInt;
+    ParticleSpace:PParticleSpace;
+begin
+
+ result:=WorldParticleSpaceIndex;
+
+ // A linear scan, because spaces are acquired when a craft joins a race and not per frame, and
+ // because the free-slot search has to run over the same array the per-step passes walk anyway.
+ for ParticleSpaceIndex:=0 to MaxParticleSpaces-1 do begin
+  ParticleSpace:=@fParticleSpaces[ParticleSpaceIndex];
+  if not ParticleSpace^.Used then begin
+   ParticleSpace^.Matrix:=TpvMatrix4x4.Identity;
+   ParticleSpace^.LastMatrix:=TpvMatrix4x4.Identity;
+   ParticleSpace^.InverseMatrix:=TpvMatrix4x4.Identity;
+   ParticleSpace^.Used:=true;
+   if fParticleSpaceHighWaterMark<(ParticleSpaceIndex+1) then begin
+    fParticleSpaceHighWaterMark:=ParticleSpaceIndex+1;
+   end;
+   result:=ParticleSpaceIndex;
+   break;
+  end;
+ end;
+
+end;
+
+procedure TpvScene3D.ReleaseParticleSpace(const aParticleSpaceIndex:TpvSizeInt);
+var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
+    ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
+    Particle:PParticle;
+begin
+
+ if ((aParticleSpaceIndex<0) or (aParticleSpaceIndex>=MaxParticleSpaces)) or not fParticleSpaces[aParticleSpaceIndex].Used then begin
+  exit;
+ end;
+
+ // The particles which are still in this space outlive it, so they are handed over to world space
+ // before the slot can be given away again. One pass over the alive bitmap for a thing which happens
+ // when a craft leaves the field is cheap enough, and it is the only way a particle can never be
+ // left holding an index whose matrix somebody else is now writing.
+ for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
+  ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
+  if ParticleAliveBitmapValue<>0 then begin
+   ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
+   repeat
+    ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
+    ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
+    Particle:=@fParticles[ParticleIndex];
+    if Particle^.SpaceIndex=aParticleSpaceIndex then begin
+     DetachParticleFromParticleSpace(Particle,0.0);
+    end;
+    ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
+   until ParticleAliveBitmapValue=0;
+  end;
+ end;
+
+ fParticleSpaces[aParticleSpaceIndex].Used:=false;
+
+end;
+
+procedure TpvScene3D.SetParticleSpaceMatrix(const aParticleSpaceIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;const aSnap:Boolean);
+var ParticleSpace:PParticleSpace;
+begin
+
+ if ((aParticleSpaceIndex<0) or (aParticleSpaceIndex>=MaxParticleSpaces)) or not fParticleSpaces[aParticleSpaceIndex].Used then begin
+  exit;
+ end;
+
+ ParticleSpace:=@fParticleSpaces[aParticleSpaceIndex];
+
+ ParticleSpace^.Matrix:=aMatrix;
+
+ // The inverse is taken here, once per space and step, because the alternative is taking it per
+ // particle in the update pass just to put world gravity into the space.
+ ParticleSpace^.InverseMatrix:=aMatrix.Inverse;
+
+ // A snap says the space did not travel to where it now is, it was put there - a respawn, a
+ // teleport, a craft being seated at the grid. Interpolating across that would drag every particle
+ // in the space along a line the craft never took, so the previous pose is simply forgotten.
+ if aSnap then begin
+  ParticleSpace^.LastMatrix:=aMatrix;
+ end;
+
+end;
+
 function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aVelocity:TpvVector3;
                                 const aGravity:TpvVector3;
@@ -44596,7 +44846,9 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aTextureID:TpvUInt32;
                                 const aAdditiveBlending:boolean;
                                 const aDrag:TpvFloat;
-                                const aFadeIn:TpvFloat):TpvSizeInt;
+                                const aFadeIn:TpvFloat;
+                                const aSpaceIndex:TpvSizeInt;
+                                const aDetachTime:TpvFloat):TpvSizeInt;
 var Particle:PParticle;
 begin
  // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
@@ -44606,10 +44858,22 @@ begin
  Particle:=@fParticles[result];
  Particle^.Generation:=Particle^.Generation+1;
  Particle^.Position:=aPosition;
+ // The previous position is seeded rather than left at whatever the slot's previous occupant died
+ // with. The generation check keeps it out of the interpolation for the first frame anyway, but a
+ // particle which detaches from its space right away is read before any store has run over it.
+ Particle^.LastPosition:=aPosition;
  Particle^.Velocity:=aVelocity;
  Particle^.Gravity:=aGravity;
  Particle^.Drag:=aDrag;
  Particle^.FadeIn:=aFadeIn;
+ // An index which names no space in use is taken as world space, so a caller does not have to check
+ // what AcquireParticleSpace gave it and a released space cannot leave particles pointing into it.
+ if ((aSpaceIndex>=0) and (aSpaceIndex<MaxParticleSpaces)) and fParticleSpaces[aSpaceIndex].Used then begin
+  Particle^.SpaceIndex:=aSpaceIndex;
+ end else begin
+  Particle^.SpaceIndex:=WorldParticleSpaceIndex;
+ end;
+ Particle^.DetachTime:=aDetachTime;
  Particle^.RotationStart:=aRotationStart;
  Particle^.RotationEnd:=aRotationEnd;
  Particle^.SizeStart:=aSizeStart;
