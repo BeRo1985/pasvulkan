@@ -422,9 +422,9 @@ begin
   SwapChainImageHandle:=fSwapChain.CurrentImage.Handle;
  end;
 
- fDevice.GraphicsQueue.WaitIdle; 
+ fDevice.GraphicsQueue.WaitIdle;
 
- fDevice.WaitIdle;
+ fDevice.ThreadSafeWaitIdle;
 
  Size:=fWidth*fHeight*SizeOf(TpvUInt8)*4;
 
@@ -604,7 +604,7 @@ begin
 
  fQueue.WaitIdle;
 
- fDevice.WaitIdle;
+ fDevice.ThreadSafeWaitIdle;
 
  FillChar(fImageSubresource,SizeOf(TVkImageSubresource),#0);
  fImageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);

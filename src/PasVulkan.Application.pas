@@ -10786,7 +10786,7 @@ begin
      end;
     end;
    end;
-   fVulkanDevice.WaitIdle;
+   fVulkanDevice.ThreadSafeWaitIdle;
    for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
     if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
      fVulkanPresentCompleteFences[Index].WaitFor;
@@ -10806,7 +10806,7 @@ begin
      end;
     end;
    end;
-   fVulkanDevice.WaitIdle;
+   fVulkanDevice.ThreadSafeWaitIdle;
   end;
  finally
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -12917,7 +12917,7 @@ begin
           fVulkanWaitFencesReady[ImageIndex]:=false;
          end;
         end;
-        fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+        fVulkanDevice.ThreadSafeWaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
         for FrameIndex:=0 to MaxInFlightFrames-1 do begin
          fVulkanInFlightFenceIndices[FrameIndex]:=-1;
         end;
@@ -13167,7 +13167,7 @@ begin
         end;
        end;
 
-       fVulkanDevice.WaitIdle;
+       fVulkanDevice.ThreadSafeWaitIdle;
 
        if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
         VulkanDebugLn('Recreating vulkan surface... ');

@@ -880,6 +880,7 @@ type EpvVulkanException=class(Exception);
        function AddVideoDecodeQueue:boolean; // opt-in: add a VK_QUEUE_VIDEO_DECODE_BIT_KHR queue family (call before Initialize); False if none
        procedure Initialize;
        procedure WaitIdle;
+       procedure ThreadSafeWaitIdle; // WaitIdle while holding every queue lock
       public
        property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
@@ -2171,6 +2172,7 @@ type EpvVulkanException=class(Exception);
        fQueueHandle:TVkQueue;
        fQueueFamilyIndex:TpvUInt32;
        fHasSupportForSparseBindings:boolean;
+       fLock:TPasMPCriticalSection; // VkQueue must be externally synchronized
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aQueue:TVkQueue;
@@ -12810,6 +12812,33 @@ begin
  VulkanCheckResult(fDeviceVulkan.DeviceWaitIdle(fDeviceHandle));
 end;
 
+procedure TpvVulkanDevice.ThreadSafeWaitIdle;
+var FamilyIndex,SubIndex:TpvSizeInt;
+    Queue:TpvVulkanQueue;
+begin
+ // fixed [family,index] order; each queue instance occurs exactly once
+ try
+  for FamilyIndex:=0 to length(fQueueFamilyQueues)-1 do begin
+   for SubIndex:=0 to length(fQueueFamilyQueues[FamilyIndex])-1 do begin
+    Queue:=fQueueFamilyQueues[FamilyIndex,SubIndex];
+    if assigned(Queue) then begin
+     Queue.fLock.Acquire;
+    end;
+   end;
+  end;
+  WaitIdle;
+ finally
+  for FamilyIndex:=length(fQueueFamilyQueues)-1 downto 0 do begin
+   for SubIndex:=length(fQueueFamilyQueues[FamilyIndex])-1 downto 0 do begin
+    Queue:=fQueueFamilyQueues[FamilyIndex,SubIndex];
+    if assigned(Queue) then begin
+     Queue.fLock.Release;
+    end;
+   end;
+  end;
+ end;
+end;
+
 constructor TpvVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TpvUInt32;const aQueuePriorities:array of TpvFloat);
 begin
  inherited Create;
@@ -20251,7 +20280,12 @@ begin
 {$ifdef PasVulkanQueueDiag}
    WriteLn('[QueueDiag] TLEm-S us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',aQueueData.fQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueueData.fQueue.fQueueHandle));
 {$endif}
-   result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,FenceHandle);
+   aQueueData.fQueue.fLock.Acquire;
+   try
+    result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,FenceHandle);
+   finally
+    aQueueData.fQueue.fLock.Release;
+   end;
   finally
    fLock.Acquire;
   end;
@@ -20269,7 +20303,12 @@ begin
 {$ifdef PasVulkanQueueDiag}
     WriteLn('[QueueDiag] TLEm-EF us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',aQueueData.fQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueueData.fQueue.fQueueHandle));
 {$endif}
-    result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,Deferred.fFence);
+    aQueueData.fQueue.fLock.Acquire;
+    try
+     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueueData.fQueue.fQueueHandle,1,@SubmitInfo,Deferred.fFence);
+    finally
+     aQueueData.fQueue.fLock.Release;
+    end;
    finally
     fLock.Acquire;
    end;
@@ -20447,10 +20486,15 @@ begin
 {$ifdef PasVulkanQueueDiag}
     WriteLn('[QueueDiag] TLEm-PT us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',aQueue.fQueueFamilyIndex,' h=',TpvPtrUInt(aQueue.fQueueHandle));
 {$endif}
-    if Index=(aSubmitCount-1) then begin
-     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,aFence);
-    end else begin
-     result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,VK_NULL_HANDLE);
+    aQueue.fLock.Acquire;
+    try
+     if Index=(aSubmitCount-1) then begin
+      result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,aFence);
+     end else begin
+      result:=fDevice.fDeviceVulkan.QueueSubmit(aQueue.fQueueHandle,1,Submit,VK_NULL_HANDLE);
+     end;
+    finally
+     aQueue.fLock.Release;
     end;
     if result<>VK_SUCCESS then begin
      exit;
@@ -20676,10 +20720,14 @@ begin
 
  fHasSupportForSparseBindings:=fDevice.fPhysicalDevice.HasQueueSupportForSparseBindings(aQueueFamilyIndex);
 
+ // per instance, so aliasing named queues share the lock
+ fLock:=TPasMPCriticalSection.Create;
+
 end;
 
 destructor TpvVulkanQueue.Destroy;
 begin
+ FreeAndNil(fLock);
  inherited Destroy;
 end;
 
@@ -20698,9 +20746,16 @@ begin
  end;
 
  if assigned(fDevice.fTimelineEmulationManager) then begin
+  // takes the queue lock itself, at its own submit sites
   VulkanCheckResult(fDevice.fTimelineEmulationManager.ProcessQueueSubmit(self,aSubmitCount,aSubmits,FenceHandle));
  end else begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,FenceHandle));
+  // only the submit call, never a fence wait
+  fLock.Acquire;
+  try
+   VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,FenceHandle));
+  finally
+   fLock.Release;
+  end;
  end;
 
 end;
@@ -20710,10 +20765,15 @@ begin
 {$ifdef PasVulkanQueueDiag}
  WriteLn('[QueueDiag] BindSp us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',fQueueFamilyIndex,' h=',TpvPtrUInt(fQueueHandle));
 {$endif}
- if assigned(aFence) then begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
- end else begin
-  VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,VK_NULL_HANDLE));
+ fLock.Acquire;
+ try
+  if assigned(aFence) then begin
+   VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
+  end else begin
+   VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,VK_NULL_HANDLE));
+  end;
+ finally
+  fLock.Release;
  end;
 end;
 
@@ -20722,7 +20782,12 @@ begin
 {$ifdef PasVulkanQueueDiag}
  WriteLn('[QueueDiag] WaitIdl us=',QueueDiagTimestampUS,' tid=',GetCurrentThreadID,' qfi=',fQueueFamilyIndex,' h=',TpvPtrUInt(fQueueHandle));
 {$endif}
- VulkanCheckResult(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
+ fLock.Acquire;
+ try
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
+ finally
+  fLock.Release;
+ end;
 end;
 
 constructor TpvVulkanCommandPool.Create(const aDevice:TpvVulkanDevice;
@@ -23944,7 +24009,12 @@ begin
   PresentInfo.waitSemaphoreCount:=1;
   PresentInfo.pWaitSemaphores:=@aSemaphore.fSemaphoreHandle;
  end;
- result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
+ aQueue.fLock.Acquire;
+ try
+  result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
+ finally
+  aQueue.fLock.Release;
+ end;
  if result<VK_SUCCESS then begin
   VulkanCheckResult(result);
  end;
@@ -24030,7 +24100,7 @@ begin
 
  fDevice.GraphicsQueue.WaitIdle;
 
- fDevice.WaitIdle;
+ fDevice.ThreadSafeWaitIdle;
 
  if ImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB] then begin
   DestColorFormat:=VK_FORMAT_R8G8B8A8_SRGB;
@@ -24385,7 +24455,7 @@ begin
 
         Queue.WaitIdle;
 
-        fDevice.WaitIdle;
+        fDevice.ThreadSafeWaitIdle;
 
        finally
         Fence.Free;
