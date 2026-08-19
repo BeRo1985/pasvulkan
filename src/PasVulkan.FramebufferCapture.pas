@@ -424,7 +424,11 @@ begin
 
  fDevice.GraphicsQueue.WaitIdle;
 
+{$ifdef PasVulkanNoThreadSafeQueue}
+ fDevice.WaitIdle;
+{$else}
  fDevice.ThreadSafeWaitIdle;
+{$endif}
 
  Size:=fWidth*fHeight*SizeOf(TpvUInt8)*4;
 
@@ -604,7 +608,11 @@ begin
 
  fQueue.WaitIdle;
 
+{$ifdef PasVulkanNoThreadSafeQueue}
+ fDevice.WaitIdle;
+{$else}
  fDevice.ThreadSafeWaitIdle;
+{$endif}
 
  FillChar(fImageSubresource,SizeOf(TVkImageSubresource),#0);
  fImageSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);

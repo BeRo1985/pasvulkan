@@ -10786,7 +10786,11 @@ begin
      end;
     end;
    end;
+{$ifdef PasVulkanNoThreadSafeQueue}
+   fVulkanDevice.WaitIdle;
+{$else}
    fVulkanDevice.ThreadSafeWaitIdle;
+{$endif}
    for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
     if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
      fVulkanPresentCompleteFences[Index].WaitFor;
@@ -10806,7 +10810,11 @@ begin
      end;
     end;
    end;
+{$ifdef PasVulkanNoThreadSafeQueue}
+   fVulkanDevice.WaitIdle;
+{$else}
    fVulkanDevice.ThreadSafeWaitIdle;
+{$endif}
   end;
  finally
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -12602,6 +12610,7 @@ var Target,TimeOut:TpvUInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
     PresentWait2Info:TVkPresentWait2InfoKHR;
+    FrameFenceTimedOut:boolean;
 begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
@@ -12728,10 +12737,22 @@ begin
       if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
        fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
        if assigned(PrepreviousFrameFrence) then begin
+        FrameFenceTimedOut:=false;
         if fBlocking then begin
-         PrepreviousFrameFrence.WaitFor;
+         // Bounded on purpose. An unbounded wait here takes the whole application down when the
+         // fence never signals, which does happen: the frame it belongs to may never have been
+         // presented at all. One second is far beyond any legitimate frame, so reaching it means
+         // something upstream went wrong, and freezing is the worst possible answer to that.
+         FrameFenceTimedOut:=PrepreviousFrameFrence.WaitFor(1000000000)=VK_TIMEOUT;
         end;
-        PrepreviousFrameFrence.Reset;
+        if FrameFenceTimedOut then begin
+         // Left pending and untouched, because resetting a fence which may still be in use would
+         // be a far worse answer than one unsynchronised frame. The next frame waits for it again.
+         fVulkanFrameFencesReady:=fVulkanFrameFencesReady or PrepreviousFrameFrenceMask;
+         Log(LOG_VERBOSE,'TpvApplication.WaitForSwapChainLatency','Frame fence did not signal within one second, continuing unsynchronised');
+        end else begin
+         PrepreviousFrameFrence.Reset;
+        end;
        end;
       end;
      except
@@ -12917,7 +12938,11 @@ begin
           fVulkanWaitFencesReady[ImageIndex]:=false;
          end;
         end;
+{$ifdef PasVulkanNoThreadSafeQueue}
+        fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+{$else}
         fVulkanDevice.ThreadSafeWaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+{$endif}
         for FrameIndex:=0 to MaxInFlightFrames-1 do begin
          fVulkanInFlightFenceIndices[FrameIndex]:=-1;
         end;
@@ -13167,7 +13192,11 @@ begin
         end;
        end;
 
+{$ifdef PasVulkanNoThreadSafeQueue}
+       fVulkanDevice.WaitIdle;
+{$else}
        fVulkanDevice.ThreadSafeWaitIdle;
+{$endif}
 
        if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
         VulkanDebugLn('Recreating vulkan surface... ');

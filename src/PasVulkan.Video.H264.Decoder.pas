@@ -1939,12 +1939,16 @@ begin
  SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
  SubmitInfo.commandBufferCount:=1;
  SubmitInfo.pCommandBuffers:=@fComputeCommand;
+{$ifdef PasVulkanNoThreadSafeQueue}
+ fDevice.Commands.QueueSubmit(fDevice.UniversalQueue.Handle,1,@SubmitInfo,fComputeFence);
+{$else}
  fDevice.UniversalQueue.Lock.Acquire;
  try
   fDevice.Commands.QueueSubmit(fDevice.UniversalQueue.Handle,1,@SubmitInfo,fComputeFence);
  finally
   fDevice.UniversalQueue.Lock.Release;
  end;
+{$endif}
  fDevice.Commands.WaitForFences(fDevice.Handle,1,@fComputeFence,VK_TRUE,TpvUInt64(high(TpvUInt64)));
 
  // H.264 reference picture marking (spec 8.2.5): keep this picture's slot if it is a reference, then update the
@@ -2134,12 +2138,16 @@ begin
  SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
  SubmitInfo.commandBufferCount:=1;
  SubmitInfo.pCommandBuffers:=@fComputeCommand;
+{$ifdef PasVulkanNoThreadSafeQueue}
+ fDevice.Commands.QueueSubmit(fDevice.UniversalQueue.Handle,1,@SubmitInfo,fComputeFence);
+{$else}
  fDevice.UniversalQueue.Lock.Acquire;
  try
   fDevice.Commands.QueueSubmit(fDevice.UniversalQueue.Handle,1,@SubmitInfo,fComputeFence);
  finally
   fDevice.UniversalQueue.Lock.Release;
  end;
+{$endif}
  fDevice.Commands.WaitForFences(fDevice.Handle,1,@fComputeFence,VK_TRUE,TpvUInt64(high(TpvUInt64)));
 
 end;

@@ -259,5 +259,11 @@
 {$endif}
 {$scopedenums on}
 {-$define PasVulkanRangeChecks}
+// PasVulkanNoThreadSafeQueue: drop the per-queue locking around vkQueueSubmit, vkQueueBindSparse, vkQueueWaitIdle and
+// vkQueuePresentKHR again and let the device wide wait idle run without holding any queue lock, so that the framework
+// behaves exactly as it did before the queue was made threadsafe.
+// TEMPORARY DIAGNOSIS SWITCH, off by default, since the engine is shared by several projects: enable it only per
+// project, over the project options with -dPasVulkanNoThreadSafeQueue, for narrowing down a hang during loading.
+{-$define PasVulkanNoThreadSafeQueue}
 {$define VkVideo}
 {$define VkStdVideo}
