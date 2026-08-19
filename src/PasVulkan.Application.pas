@@ -111,6 +111,7 @@ uses {$if defined(Unix)}
      PasVulkan.Profiler,
      PasVulkan.Math,
      PasVulkan.Framework,
+     PasVulkan.FrameTrace,
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
      PasVulkan.SDL2,
 {$ifend}
@@ -12750,6 +12751,9 @@ begin
          // be a far worse answer than one unsynchronised frame. The next frame waits for it again.
          fVulkanFrameFencesReady:=fVulkanFrameFencesReady or PrepreviousFrameFrenceMask;
          Log(LOG_VERBOSE,'TpvApplication.WaitForSwapChainLatency','Frame fence did not signal within one second, continuing unsynchronised');
+{$ifdef PasVulkanFrameTrace}
+         pvFrameTraceAdd(pvFrameTraceKindFenceStuck,PrepreviousFrameFrenceIndex,TpvUInt64(PrepreviousFrameFrence.Handle),TpvUInt64(fVulkanWaitSemaphore.Handle));
+{$endif}
         end else begin
          PrepreviousFrameFrence.Reset;
         end;
@@ -12995,6 +12999,11 @@ begin
         if NextInFlightFrameIndex>=fCountInFlightFrames then begin
          dec(NextInFlightFrameIndex,fCountInFlightFrames);
         end;
+{$ifdef PasVulkanFrameTrace}
+        // Which semaphore this acquire is supposed to signal, so that a frame waiting forever can
+        // be matched against the acquire which should have made its wait come true
+        pvFrameTraceAdd(pvFrameTraceKindAcquire,fSwapChainImageCounterIndex,TpvUInt64(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex].Handle));
+{$endif}
         case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
                                                fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
                                                TimeOut) of
@@ -13103,6 +13112,11 @@ begin
       TAcquireVulkanBackBufferState.Apply:begin
 
        fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex];
+{$ifdef PasVulkanFrameTrace}
+       // Which semaphore this frame will make its whole submit chain depend on, and which acquire
+       // was supposed to signal it. A frame which later waits forever waits on exactly this one.
+       pvFrameTraceAdd(pvFrameTraceKindWaitSemaphore,fSwapChainImageIndex,TpvUInt64(fVulkanWaitSemaphore.Handle),fSwapChainImageCounterIndex);
+{$endif}
 
        if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex]) then begin
 
@@ -13314,6 +13328,11 @@ begin
   fVulkanWaitSemaphore:=fVulkanFrameFenceSemaphores[fSwapChainImageIndex,fVulkanFrameFenceCounter];
 
   fVulkanFrameFencesReady:=fVulkanFrameFencesReady or (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3));
+{$ifdef PasVulkanFrameTrace}
+  // The submit which signals the frame fence waits on the semaphore above. Should that semaphore
+  // never be signalled, this fence never signals either, and the frame latency wait sits on it.
+  pvFrameTraceAdd(pvFrameTraceKindFrameFence,fVulkanFrameFenceCounter,TpvUInt64(fVulkanWaitSemaphore.Handle),TpvUInt64(fVulkanFrameFences[fVulkanFrameFenceCounter].Handle));
+{$endif}
 
   fVulkanFrameFenceCounter:=(fVulkanFrameFenceCounter+1) and 3;
 
