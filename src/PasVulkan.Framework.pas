@@ -2186,6 +2186,8 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkQueue read fQueueHandle;
        property QueueFamilyIndex:TpvUInt32 read fQueueFamilyIndex;
        property HasSupportForSparseBindings:boolean read fHasSupportForSparseBindings;
+       // for code that has to call the raw queue commands itself
+       property Lock:TPasMPCriticalSection read fLock;
      end;
 
      TpvVulkanCommandPool=class(TpvVulkanObject)
@@ -19712,7 +19714,12 @@ begin
 
    // If signaled but not waited, need an empty submit to consume the semaphore
    if aSemaphore.fDeviceSignaled and (not aSemaphore.fDeviceWaited) and assigned(aSemaphore.fQueue) then begin
-    fDevice.fDeviceVulkan.QueueWaitIdle(aSemaphore.fQueue.fQueueHandle);
+    aSemaphore.fQueue.fLock.Acquire;
+    try
+     fDevice.fDeviceVulkan.QueueWaitIdle(aSemaphore.fQueue.fQueueHandle);
+    finally
+     aSemaphore.fQueue.fLock.Release;
+    end;
    end;
 
    aSemaphore.fQueue:=nil;
@@ -30895,6 +30902,8 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
   KTXVulkanDeviceInfo.deviceMemoryProperties:=fDevice.PhysicalDevice.MemoryProperties;
   KTXVulkanDeviceInfo.vkFuncs:=KTXVulkanFunctions;}
   CommandPool:=aGraphicsCommandBuffer.fCommandPool;
+  // libktx gets the raw queue handle and submits on it itself, so the whole upload runs under the queue lock
+  aGraphicsQueue.fLock.Acquire;
   try
    KTXVulkanDeviceInfo:=ktxVulkanDeviceInfo_CreateEx(fDevice.Instance.Handle,
                                                      fDevice.PhysicalDevice.Handle,
@@ -30990,6 +30999,7 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
     raise EpvVulkanTextureException.Create('KTX library error');
    end;
   finally
+   aGraphicsQueue.fLock.Release;
   end;
 
  end;
