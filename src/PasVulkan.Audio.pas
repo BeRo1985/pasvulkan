@@ -122,6 +122,8 @@ const SampleFixUp=1024;
       ResamplerBufferSize=1 shl ResamplerBufferBits;
       ResamplerBufferMask=ResamplerBufferSize-1;
 
+      pvAudioVoiceOcclusionAvailable=true;
+
       WorldUnitsToMeters=1.0;
 
       MetersToWorldUnits=1.0;
@@ -403,6 +405,7 @@ type PpvAudioInt32=^TpvInt32;
        fSpatializationLowPassLeftHistory:TpvAudioSoundSampleVoiceLowPassHistory;
        fSpatializationLowPassRightHistory:TpvAudioSoundSampleVoiceLowPassHistory;
        fSpatializationLowPassRampingRemain:TpvInt32;
+       fSpatializationOcclusion:TpvFloat;
        fLastDirection:TpvVector3;
        fLastLeft:TpvInt32;
        fLastRight:TpvInt32;
@@ -612,6 +615,7 @@ type PpvAudioInt32=^TpvInt32;
        procedure Stop(aVoiceNumber:TpvInt32);
        procedure KeyOff(aVoiceNumber:TpvInt32);
        function SetVolume(aVoiceNumber:TpvInt32;aVolume:TpvFloat):TpvInt32;
+       function SetOcclusion(aVoiceNumber:TpvInt32;aOcclusion:TpvFloat):TpvInt32;
        function SetPanning(aVoiceNumber:TpvInt32;aPanning:TpvFloat):TpvInt32;
        function SetRate(aVoiceNumber:TpvInt32;aRate:TpvFloat):TpvInt32;
        function SetPosition(aVoiceNumber:TpvInt32;aSpatialization:LongBool;const aOrigin,aVelocity:TpvVector3;const aLocal:LongBool=false):TpvInt32;
@@ -1001,6 +1005,7 @@ type PpvAudioInt32=^TpvInt32;
                      SampleVoiceStop,
                      SampleVoiceKeyOff,
                      SampleVoiceSetVolume,
+                     SampleVoiceSetOcclusion,
                      SampleVoiceSetPanning,
                      SampleVoiceSetRate,
                      SampleVoiceSetPosition,
@@ -1021,6 +1026,7 @@ type PpvAudioInt32=^TpvInt32;
               fGlobalVoiceID:TpvID;
               fVoiceNumber:TpvInt32;
               fVolume:TpvFloat;
+              fOcclusion:TpvFloat;
               fPanning:TpvFloat;
               fRate:TpvFloat;
               fPosition:TpvVector3;
@@ -1058,6 +1064,8 @@ type PpvAudioInt32=^TpvInt32;
        procedure SampleVoiceKeyOff(const aGlobalVoiceID:TpvID); overload;
        procedure SampleVoiceSetVolume(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aVolume:TpvFloat); overload;
        procedure SampleVoiceSetVolume(const aGlobalVoiceID:TpvID;const aVolume:TpvFloat); overload;
+       procedure SampleVoiceSetOcclusion(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aOcclusion:TpvFloat); overload;
+       procedure SampleVoiceSetOcclusion(const aGlobalVoiceID:TpvID;const aOcclusion:TpvFloat); overload;
        procedure SampleVoiceSetPanning(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aPanning:TpvFloat); overload;
        procedure SampleVoiceSetPanning(const aGlobalVoiceID:TpvID;const aPanning:TpvFloat); overload;
        procedure SampleVoiceSetRate(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aRate:TpvFloat); overload;
@@ -1729,6 +1737,7 @@ begin
  fSpatializationLowPassLeftIncrementCoef:=0;
  fSpatializationLowPassRightIncrementCoef:=0;
  fSpatializationLowPassRampingRemain:=0;
+ fSpatializationOcclusion:=1.0;
  fRampingSamples:=fAudioEngine.RampingSamples;
  fVoiceIndexPointer:=nil;
  fSpatialization:=false;
@@ -1893,6 +1902,7 @@ begin
   fSpatializationLowPassRightHistory[1]:=0;
   fSpatializationLowPassRampingRemain:=0;
  end;
+ fSpatializationOcclusion:=1.0;
  fRampingSamples:=fAudioEngine.RampingSamples;
  fDynamicRateFactor:=65536;
  fDynamicVolume:=32768;
@@ -2178,6 +2188,8 @@ begin
    LeftHFGain:=LeftHFGain*Factor;
    RightHFGain:=RightHFGain*Factor;
   end;
+  LeftHFGain:=LeftHFGain*fSpatializationOcclusion;
+  RightHFGain:=RightHFGain*fSpatializationOcclusion;
   fSpatializationLowPassLeftCoef:=Min(Max(round(Clamp(LowPassCoef(LeftHFGain,fAudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
   fSpatializationLowPassRightCoef:=Min(Max(round(Clamp(LowPassCoef(RightHFGain,fAudioEngine.SpatializationLowPassCW),0.0,1.0)*(LowPassLength shl LowPassShift)),0),LowPassLength shl LowPassShift);
  end;
@@ -2754,6 +2766,9 @@ var MixVolume,Pan:TpvInt32;
 begin
  MixVolume:=SARLongint(aMixVolume*fDynamicVolume,15);
  MixVolume:=SARLongint(aMixVolume*SARLongint(fVolume,1),15);
+ if fSpatializationOcclusion<1.0 then begin
+  MixVolume:=round(MixVolume*fSpatializationOcclusion);
+ end;
  if fSpatialization then begin
   fVolumeLeft:=SARLongint(MixVolume*fMulLeft,15);
   fVolumeRight:=SARLongint(MixVolume*fMulRight,15);
@@ -3903,6 +3918,16 @@ begin
  if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
   Voice:=Voices[aVoiceNumber];
   Voice.fVolume:=round(Clamp(aVolume,-1.0,1.0)*65536.0);
+ end;
+end;
+
+function TpvAudioSoundSample.SetOcclusion(aVoiceNumber:TpvInt32;aOcclusion:TpvFloat):TpvInt32;
+var Voice:TpvAudioSoundSampleVoice;
+begin
+ result:=aVoiceNumber;
+ if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
+  Voice:=Voices[aVoiceNumber];
+  Voice.fSpatializationOcclusion:=Clamp(aOcclusion,0.0,1.0);
  end;
 end;
 
@@ -6937,6 +6962,46 @@ begin
  end;
 end;
 
+procedure TpvAudioCommandQueue.SampleVoiceSetOcclusion(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aOcclusion:TpvFloat);
+var QueueItem:TQueueItem;
+begin
+ if assigned(aSample) then begin
+  fLock.Acquire;
+  try
+   QueueItem:=AcquireQueueItem;
+   try
+    QueueItem.fCommandType:=TQueueItem.TCommandType.SampleVoiceSetOcclusion;
+    QueueItem.fSample:=aSample;
+    QueueItem.fVoiceNumber:=aVoiceNumber;
+    QueueItem.fGlobalVoiceID:=fAudioEngine.GlobalVoiceManager.GetGlobalVoiceID(aSample,aVoiceNumber);
+    QueueItem.fOcclusion:=aOcclusion;
+   finally
+    fQueue.Enqueue(QueueItem);
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvAudioCommandQueue.SampleVoiceSetOcclusion(const aGlobalVoiceID:TpvID;const aOcclusion:TpvFloat);
+var QueueItem:TQueueItem;
+begin
+ fLock.Acquire;
+ try
+  QueueItem:=AcquireQueueItem;
+  try
+   QueueItem.fCommandType:=TQueueItem.TCommandType.SampleVoiceSetOcclusion;
+   QueueItem.fGlobalVoiceID:=aGlobalVoiceID;
+   QueueItem.fOcclusion:=aOcclusion;
+  finally
+   fQueue.Enqueue(QueueItem);
+  end;
+ finally
+  fLock.Release;
+ end;
+end;
+
 procedure TpvAudioCommandQueue.SampleVoiceSetPanning(const aSample:TpvAudioSoundSample;const aVoiceNumber:TpvInt32;const aPanning:TpvFloat);
 var QueueItem:TQueueItem;
 begin
@@ -7334,6 +7399,17 @@ begin
         end;
        end else if assigned(QueueItem.fSample) then begin
         QueueItem.fSample.SetVolume(QueueItem.fVoiceNumber,QueueItem.fVolume);
+       end;
+      end;
+      TQueueItem.TCommandType.SampleVoiceSetOcclusion:begin
+       GlobalVoiceID:=QueueItem.fGlobalVoiceID;
+       if GlobalVoiceID<>0 then begin
+        GlobalVoice:=fAudioEngine.GlobalVoiceManager.GetGlobalVoice(GlobalVoiceID);
+        if assigned(GlobalVoice.SoundSample) then begin
+         GlobalVoice.SoundSample.SetOcclusion(GlobalVoice.VoiceNumber,QueueItem.fOcclusion);
+        end;
+       end else if assigned(QueueItem.fSample) then begin
+        QueueItem.fSample.SetOcclusion(QueueItem.fVoiceNumber,QueueItem.fOcclusion);
        end;
       end;
       TQueueItem.TCommandType.SampleVoiceSetPanning:begin
