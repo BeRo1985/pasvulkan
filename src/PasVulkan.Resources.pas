@@ -2440,13 +2440,22 @@ begin
   finally
    fDelayedToFreeResourcesLock.Release;
   end;
-  FreeAndNil(fDelayedToFreeResources);
 
   Index:=0;
   while Index<fResourceClassTypeList.Count do begin
    ResourceClassType:=fResourceClassTypeList[Index];
    ResourceClassType.Shutdown;
    inc(Index);
+  end;
+
+  // The list is freed only now, after the resources are gone. Their destructors reach back into it
+  // (DestroyDelayedFreeingObjectsWithParent), so it has to outlive them - freed before them, the first
+  // destructor that looks finds a nil list, which is where the shutdown used to fall over.
+  fDelayedToFreeResourcesLock.Acquire;
+  try
+   FreeAndNil(fDelayedToFreeResources);
+  finally
+   fDelayedToFreeResourcesLock.Release;
   end;
 
   fResourceClassTypeList.Clear;
@@ -2560,6 +2569,12 @@ begin
 
  fDelayedToFreeResourcesLock.Acquire;
  try
+
+  // Belt as well as braces: the shutdown now frees the list after the resources, but a destructor can
+  // run at any moment, and one that runs after the list is gone must find nothing rather than crash.
+  if not assigned(fDelayedToFreeResources) then begin
+   exit;
+  end;
 
   SortDelayedToFreeResourcesByCreationIndices(false);
 
@@ -2718,9 +2733,15 @@ end;
 procedure TpvResourceManager.FreeDelayedToFreeResources;
 var Index:TpvSizeInt;
 begin
- if fDelayedToFreeResources.Count>0 then begin
+ // The same belt as in DestroyDelayedFreeingObjectsWithParent: this one runs per frame and so only while
+ // the manager is up - but the count is read here without the lock, and a shutdown running beside it takes
+ // the list away between that read and the loop.
+ if assigned(fDelayedToFreeResources) and (fDelayedToFreeResources.Count>0) then begin
   fDelayedToFreeResourcesLock.Acquire;
   try
+   if not assigned(fDelayedToFreeResources) then begin
+    exit;
+   end;
    SortDelayedToFreeResourcesByCreationIndices(false);
    for Index:=fDelayedToFreeResources.Count-1 downto 0 do begin
     if TPasMPInterlocked.Decrement(fDelayedToFreeResources[Index].fReleaseFrameDelay)=0 then begin
