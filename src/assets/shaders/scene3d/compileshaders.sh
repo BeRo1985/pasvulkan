@@ -509,6 +509,19 @@ compileshaderarguments=(
 
   "-V radialblur.frag -o ${tempPath}/radialblur_frag.spv"
 
+  "-V final_depth_resolve.comp -o ${tempPath}/final_depth_resolve_comp.spv"
+  "-V final_depth_resolve.comp -DREVERSEDZ -o ${tempPath}/final_depth_resolve_reversedz_comp.spv"
+  "-V final_depth_resolve.comp -DMSAA -o ${tempPath}/final_depth_resolve_msaa_comp.spv"
+  "-V final_depth_resolve.comp -DMSAA -DREVERSEDZ -o ${tempPath}/final_depth_resolve_msaa_reversedz_comp.spv"
+  "-V final_depth_resolve.comp -DMULTIVIEW -o ${tempPath}/final_depth_resolve_multiview_comp.spv"
+  "-V final_depth_resolve.comp -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/final_depth_resolve_multiview_reversedz_comp.spv"
+  "-V final_depth_resolve.comp -DMULTIVIEW -DMSAA -o ${tempPath}/final_depth_resolve_multiview_msaa_comp.spv"
+  "-V final_depth_resolve.comp -DMULTIVIEW -DMSAA -DREVERSEDZ -o ${tempPath}/final_depth_resolve_multiview_msaa_reversedz_comp.spv"
+
+  "-V motionblur_tilemax.comp -o ${tempPath}/motionblur_tilemax_comp.spv"
+  "-V motionblur_neighbourmax.comp -o ${tempPath}/motionblur_neighbourmax_comp.spv"
+  "-V motionblur.comp -o ${tempPath}/motionblur_comp.spv"
+
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"
 

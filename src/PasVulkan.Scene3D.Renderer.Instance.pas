@@ -106,7 +106,12 @@ uses Classes,
 type { TpvScene3DRendererInstance }
      TpvScene3DRendererInstance=class(TpvScene3DRendererBaseObject)
       public
-       const CountCascadedShadowMapCascades=4;
+       const // How many pixels wide a tile of the motion blur's velocity summary is, which is also the
+             // longest streak the filter can draw: it never walks further than the fastest velocity in a
+             // tile's neighbourhood, and that summary is one texel per tile. Sixteen because it divides
+             // every sensible resolution and keeps the two tile buffers small.
+             MotionBlurTileSize=16;
+             CountCascadedShadowMapCascades=4;
              CountOrderIndependentTransparencyLayers=8;
              CountGlobalIlluminationRadiantHintCascades=4;
              CountGlobalIlluminationRadiantHintSHImages=7;
@@ -909,6 +914,7 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapCullDepthArray2DImage:TpvScene3DRendererArray2DImage;
        fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages;
        fCullDepthArray2DImage:TpvScene3DRendererArray2DImage;
+       fFinalDepthArray2DImage:TpvScene3DRendererArray2DImage;
        fCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages;
 //     fAmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fCombinedDepthArray2DImages:TArray2DImages;
@@ -1083,6 +1089,8 @@ type { TpvScene3DRendererInstance }
        fRadialBlurCentre:TpvVector2;
        fRadialBlurInnerRadius:TpvFloat;
        fRadialBlurSquaredFallOffFactor:TpvFloat;
+       fMotionBlurFactor:TpvFloat;
+       fMotionBlurSoftZExtent:TpvFloat;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1302,6 +1310,11 @@ type { TpvScene3DRendererInstance }
        property CascadedShadowMapCullDepthArray2DImage:TpvScene3DRendererArray2DImage read fCascadedShadowMapCullDepthArray2DImage;
        property CascadedShadowMapCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages read fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages;
        property CullDepthArray2DImage:TpvScene3DRendererArray2DImage read fCullDepthArray2DImage;
+       // The final view's depth, resolved to one sample per pixel by FinalDepthResolveComputePass, for
+       // the post-processing that needs a depth and cannot read a multisampled one. Unlike the culling
+       // one next to it this exists whether or not multisampling is on: without it the resolve is a plain
+       // copy, and everything downstream then has one place to look rather than two.
+       property FinalDepthArray2DImage:TpvScene3DRendererArray2DImage read fFinalDepthArray2DImage;
        property CullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages read fCullDepthPyramidMipmappedArray2DImages;
 //     property AmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fAmbientOcclusionDepthMipmappedArray2DImage;
        property CombinedDepthArray2DImages:TArray2DImages read fCombinedDepthArray2DImages;
@@ -1445,6 +1458,15 @@ type { TpvScene3DRendererInstance }
        // gentler on whatever the eye is on; straight lets the mid-field smear and is what makes the effect
        // read at all. Which is right depends on the shot, so it is a dial rather than a decision.
        property RadialBlurSquaredFallOffFactor:TpvFloat read fRadialBlurSquaredFallOffFactor write fRadialBlurSquaredFallOffFactor;
+       // The reconstruction-filter motion blur (motionblur.frag). One means the streak is exactly as long
+       // as the thing moved between the two frames, which is what a real shutter open for the whole frame
+       // would give; below that it is shorter, above it longer than life. Zero turns the pass into a plain
+       // copy. Whether the pass is there at all is TpvScene3DRenderer.MotionBlurActive, which also decides
+       // that the velocity buffer it reads gets written in the first place.
+       property MotionBlurFactor:TpvFloat read fMotionBlurFactor write fMotionBlurFactor;
+       // Over how many units of linear depth the "which one is in front" test fades from one answer to the
+       // other. A hard comparison shows every depth edge as a seam.
+       property MotionBlurSoftZExtent:TpvFloat read fMotionBlurSoftZExtent write fMotionBlurSoftZExtent;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1645,6 +1667,10 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LensRainRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.FinalDepthResolveComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.MotionBlurTileMaxComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.MotionBlurNeighbourMaxComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.MotionBlurComputePass,
      PasVulkan.Scene3D.Renderer.Passes.RadialBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
@@ -1792,6 +1818,10 @@ type TpvScene3DRendererInstancePasses=class
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fLensRainRenderPass:TpvScene3DRendererPassesLensRainRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
+       fFinalDepthResolveComputePass:TpvScene3DRendererPassesFinalDepthResolveComputePass;
+       fMotionBlurTileMaxComputePass:TpvScene3DRendererPassesMotionBlurTileMaxComputePass;
+       fMotionBlurNeighbourMaxComputePass:TpvScene3DRendererPassesMotionBlurNeighbourMaxComputePass;
+       fMotionBlurComputePass:TpvScene3DRendererPassesMotionBlurComputePass;
        fRadialBlurRenderPass:TpvScene3DRendererPassesRadialBlurRenderPass;
        fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
@@ -2457,6 +2487,9 @@ begin
  fRadialBlurCentre:=TpvVector2.InlineableCreate(0.5,0.5);
  fRadialBlurInnerRadius:=0.15;
  fRadialBlurSquaredFallOffFactor:=0.0;
+
+ fMotionBlurFactor:=0.0;
+ fMotionBlurSoftZExtent:=10.0;
 
  if assigned(fVirtualReality) then begin
 
@@ -5234,6 +5267,34 @@ begin
   end;
  end;
 
+ // The two tile buffers of the motion blur, and what its filter writes into. The tile buffers hold a
+ // velocity in pixels, so two channels and a float format; they are one texel per MotionBlurTileSize
+ // pixels, and the two passes that fill them are sized to match.
+ if Renderer.MotionBlurActive then begin
+  fFrameGraph.AddImageResourceType('resourcetype_motionblur_tile',
+                                   false,
+                                   VK_FORMAT_R16G16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                                                   fSizeFactor/TpvScene3DRendererInstance.MotionBlurTileSize,
+                                                                   fSizeFactor/TpvScene3DRendererInstance.MotionBlurTileSize,
+                                                                   1.0,
+                                                                   fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+  fFrameGraph.AddImageResourceType('resourcetype_color_motionblur',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+ end;
+
  // What the radial blur pass writes into. Same shape and format as the antialiasing target above, because
  // it sits in the same chain and simply hands the picture on; it needs its own type only because a pass
  // may not read and write one and the same resource.
@@ -6695,6 +6756,30 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
  end;
 
+ // The reconstruction-filter motion blur, in the three steps it is made of: the fastest velocity per tile,
+ // the fastest over each tile's neighbourhood, and then the filter itself over the tone-mapped picture.
+ // The first two stand outside the visible chain and only feed the third, which is why they are wired by
+ // resource name rather than through LastOutputResource.
+ if Renderer.FinalResolvedDepthNeeded then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=TpvScene3DRendererPassesFinalDepthResolveComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=nil;
+ end;
+
+ if Renderer.MotionBlurActive then begin
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurTileMaxComputePass:=TpvScene3DRendererPassesMotionBlurTileMaxComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurNeighbourMaxComputePass:=TpvScene3DRendererPassesMotionBlurNeighbourMaxComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurNeighbourMaxComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMotionBlurTileMaxComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurComputePass:=TpvScene3DRendererPassesMotionBlurComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMotionBlurNeighbourMaxComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurTileMaxComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurNeighbourMaxComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fMotionBlurComputePass:=nil;
+ end;
+
  // Radial blur, over the tone-mapped picture and before anything that has to stay sharp: the selection
  // outline below and the canvas / HUD after it both read LastOutputResource, so they land on top of the
  // smear rather than in it. Only built when the game says it uses the effect at all - RadialBlurFactor
@@ -7971,6 +8056,14 @@ begin
        fCullDepthArray2DImage:=nil;
       end;
 
+      if Renderer.FinalResolvedDepthNeeded then begin
+       fFinalDepthArray2DImage:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,true,pvAllocationGroupIDScene3DSurface,VK_FORMAT_UNDEFINED,VK_SHARING_MODE_EXCLUSIVE,nil,'TpvScene3DRendererInstance.fFinalDepthArray2DImage');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFinalDepthArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fFinalDepthArray2DImage.Image');
+       Renderer.VulkanDevice.DebugUtils.SetObjectName(fFinalDepthArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fFinalDepthArray2DImage.ImageView');
+      end else begin
+       fFinalDepthArray2DImage:=nil;
+      end;
+
       for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
        fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,Max(1,RoundDownToPowerOfTwo(fScaledWidth)),Max(1,RoundDownToPowerOfTwo(fScaledHeight)),fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fCullDepthPyramidMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+']');
        Renderer.VulkanDevice.DebugUtils.SetObjectName(fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCullDepthPyramidMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
@@ -8644,6 +8737,7 @@ begin
 
  begin
   FreeAndNil(fCullDepthArray2DImage);
+  FreeAndNil(fFinalDepthArray2DImage);
   for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
    FreeAndNil(fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex]);
   end;

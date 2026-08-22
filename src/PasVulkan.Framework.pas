@@ -101,6 +101,13 @@ var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 
 
     VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 28; // 256 MB memory chunk size at large-sized heaps
 
+    // Below this, a driver's "prefers a dedicated allocation" hint is not followed. The hint is meant for
+    // resources big enough to be worth their own device memory object; followed for everything, a few
+    // hundred bytes of per-frame scratch get one too, and a device offers only so many of them
+    // (maxMemoryAllocationCount, commonly 4096). A hard REQUIREMENT and an explicit request by the caller
+    // are of course still followed at any size.
+    VulkanMinimumPreferredDedicatedAllocationSize:TVkDeviceSize=TVkDeviceSize(1) shl 20; // 1 MB
+
 const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
 
@@ -1578,6 +1585,14 @@ type EpvVulkanException=class(Exception);
        function GetImageMemoryRequirements(const aImageHandle:TVkImage;
                                            out aRequiresDedicatedAllocation:boolean;
                                            out aPrefersDedicatedAllocation:boolean):TVkMemoryRequirements;
+
+       // Whether an allocation of this shape would get a device memory object of its own. Asked by
+       // AllocateMemoryBlock to decide it, and asked beforehand by whoever needs to KNOW it - a buffer
+       // that gets one has to describe exactly the range that is allocated for it, see TpvVulkanBuffer.
+       function WouldUseDedicatedAllocation(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+                                            const aMemoryBlockSize:TVkDeviceSize;
+                                            const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                                            const aHasDedicatedAllocationData:boolean):boolean;
 
        function AllocateMemoryBlock(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
                                     const aMemoryBlockSize:TVkDeviceSize;
@@ -14676,6 +14691,12 @@ begin
        EndOffset:=aOffset+aSize;
        if EndOffset<fSize then begin
         EndOffset:=VulkanDeviceSizeAlignUp(EndOffset,NonCoherentAtomSize);
+        // Rounding up to the atom size can reach past the end of the chunk, because the chunk's own size
+        // follows the allocation's alignment and not the atom size - which is the everyday case for a
+        // small buffer. Mapping past the end is invalid, so it is clamped back.
+        if EndOffset>fSize then begin
+         EndOffset:=fSize;
+        end;
        end else begin
         EndOffset:=fSize;
        end;
@@ -16601,6 +16622,37 @@ begin
 
 end;
 
+function TpvVulkanDeviceMemoryManager.WouldUseDedicatedAllocation(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+                                                                  const aMemoryBlockSize:TVkDeviceSize;
+                                                                  const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                                                                  const aHasDedicatedAllocationData:boolean):boolean;
+begin
+ result:=aHasDedicatedAllocationData and
+         ((TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) or
+          (
+           (
+            // A preference - the driver's hint, or the caller's - counts only from a size on where a device
+            // memory object of its own is worth having. Followed unconditionally, a two hundred byte scratch
+            // buffer gets one, and the allocation count runs dry (see the constant).
+            ((TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation in aMemoryBlockFlags) and
+             (aMemoryBlockSize>=VulkanMinimumPreferredDedicatedAllocationSize)) or
+            // Heuristics: Allocate dedicated memory if requested size if greater than half of preferred block size.
+            (aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1))
+           ) and
+
+           // Protection against creating each allocation as dedicated when we reach or exceed heap size/budget,
+           // which can quickly deplete maxMemoryAllocationCount: Don't prefer dedicated allocations when above
+           // 3/4 of the maximum allocation count.
+           (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2))
+          )
+         ) and
+         (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
+         (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
+                                    TpvVulkanDeviceMemoryAllocationType.ImageLinear,
+                                    TpvVulkanDeviceMemoryAllocationType.ImageOptimal{,
+                                    TpvVulkanDeviceMemoryAllocationType.Image}]);
+end;
+
 function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
                                                           const aMemoryBlockSize:TVkDeviceSize;
                                                           const aMemoryBlockAlignment:TVkDeviceSize;
@@ -16650,26 +16702,10 @@ begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress);
  end;
 
- if assigned(aMemoryDedicatedAllocationDataHandle) and
-    ((TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) or
-     (
-      (
-       (TpvVulkanDeviceMemoryBlockFlag.PreferDedicatedAllocation in aMemoryBlockFlags) or
-       // Heuristics: Allocate dedicated memory if requested size if greater than half of preferred block size.
-       (aMemoryBlockSize>=(VulkanDefaultLargeHeapChunkSize shr 1))
-      ) and
-
-      // Protection against creating each allocation as dedicated when we reach or exceed heap size/budget,
-      // which can quickly deplete maxMemoryAllocationCount: Don't prefer dedicated allocations when above
-      // 3/4 of the maximum allocation count.
-      (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2))
-     )
-    ) and
-    (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
-    (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
-                               TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                               TpvVulkanDeviceMemoryAllocationType.ImageOptimal{,
-                               TpvVulkanDeviceMemoryAllocationType.Image}]) then begin
+ if WouldUseDedicatedAllocation(aMemoryBlockFlags,
+                                aMemoryBlockSize,
+                                aMemoryAllocationType,
+                                assigned(aMemoryDedicatedAllocationDataHandle)) then begin
   MemoryChunkFlags:=MemoryChunkFlags+[TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk,
                                       TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation];
  end else begin
@@ -17661,6 +17697,27 @@ begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.BufferDeviceAddress);
   end;
 
+  // A buffer that gets a device memory object of its own has to describe exactly the range that is
+  // allocated for it. The driver rounds the memory requirement up to the buffer's alignment, so a buffer
+  // whose size is not a multiple of it ends up smaller than its own allocation - and then "this memory
+  // belongs to this buffer" says two different sizes. Drivers let that pass; tooling that takes the
+  // dedicated buffer as the measure of the allocation does not, and truncates its bookkeeping to the
+  // smaller of the two. So the buffer is made as large as its allocation, once, when it is created.
+  if fDevice.fMemoryManager.WouldUseDedicatedAllocation(MemoryBlockFlags,
+                                                        fMemoryRequirements.size,
+                                                        TpvVulkanDeviceMemoryAllocationType.Buffer,
+                                                        true) and
+     (fMemoryRequirements.size<>fSize) then begin
+   fDevice.Commands.DestroyBuffer(fDevice.fDeviceHandle,fBufferHandle,fDevice.fAllocationCallbacks);
+   fBufferHandle:=VK_NULL_HANDLE;
+   fSize:=fMemoryRequirements.size;
+   BufferCreateInfo.size:=fSize;
+   VulkanCheckResult(fDevice.Commands.CreateBuffer(fDevice.fDeviceHandle,@BufferCreateInfo,fDevice.fAllocationCallbacks,@fBufferHandle));
+   fMemoryRequirements:=fDevice.fMemoryManager.GetBufferMemoryRequirements(fBufferHandle,
+                                                                           RequiresDedicatedAllocation,
+                                                                           PrefersDedicatedAllocation);
+  end;
+
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                            fMemoryRequirements.Size,
                                                            Max(fMemoryRequirements.Alignment,aAlignment),
@@ -17872,17 +17929,17 @@ begin
        if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
         if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
          inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
-         if (aDataOffset+aDataSize)>=Memory.Size then begin
-          DataSize:=Memory.Size-aDataOffset;
-         end;
         end;
        end else begin
-        if (DataSize mod NonCoherentAtomSize)=0 then begin
+        if (DataSize mod NonCoherentAtomSize)<>0 then begin
          inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
-         if (aDataOffset+aDataSize)>=Memory.Size then begin
-          DataSize:=Memory.Size-aDataOffset;
-         end;
         end;
+       end;
+       // Clamped against the ROUNDED size, not against the one that was asked for: rounding up to the
+       // atom size is the very thing that can reach past the end of the allocation, so testing the
+       // unrounded sum tests the wrong number.
+       if (aDataOffset<Memory.Size) and ((aDataOffset+DataSize)>Memory.Size) then begin
+        DataSize:=Memory.Size-aDataOffset;
        end;
       end;
       Memory.FlushMappedMemoryRange(p,DataSize);
@@ -18021,17 +18078,17 @@ begin
    if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
     if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
-     if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-aDataOffset;
-     end;
     end;
    end else begin
-    if (DataSize mod NonCoherentAtomSize)=0 then begin
+    if (DataSize mod NonCoherentAtomSize)<>0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
-     if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-aDataOffset;
-     end;
     end;
+   end;
+   // Clamped against the ROUNDED size, not against the one that was asked for: rounding up to the atom
+   // size is the very thing that can reach past the end of the allocation, so testing the unrounded sum
+   // tests the wrong number.
+   if (aDataOffset<Memory.Size) and ((aDataOffset+DataSize)>Memory.Size) then begin
+    DataSize:=Memory.Size-aDataOffset;
    end;
   end;
   Memory.FlushMappedMemoryRange(aMappedMemory,DataSize);
@@ -18048,17 +18105,17 @@ begin
    if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
     if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
-     if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-aDataOffset;
-     end;
     end;
    end else begin
-    if (DataSize mod NonCoherentAtomSize)=0 then begin
+    if (DataSize mod NonCoherentAtomSize)<>0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
-     if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-aDataOffset;
-     end;
     end;
+   end;
+   // Clamped against the ROUNDED size, not against the one that was asked for: rounding up to the atom
+   // size is the very thing that can reach past the end of the allocation, so testing the unrounded sum
+   // tests the wrong number.
+   if (aDataOffset<Memory.Size) and ((aDataOffset+DataSize)>Memory.Size) then begin
+    DataSize:=Memory.Size-aDataOffset;
    end;
   end;
   Memory.InvalidateMappedMemoryRange(aMappedMemory,DataSize);

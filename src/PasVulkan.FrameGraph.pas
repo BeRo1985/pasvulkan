@@ -51,6 +51,12 @@
  ******************************************************************************)
 unit PasVulkan.FrameGraph;
 {$i PasVulkan.inc}
+
+// Give every resource its own memory instead of sharing it between resources whose lifetimes do not
+// overlap. A diagnostic, for telling a wrongly computed lifetime from a real rendering fault: if a
+// picture is right with this on and wrong with it off, two resources are sharing memory while both
+// are still in use. Costs the memory that the sharing saves.
+{.$define PasVulkanFrameGraphNoResourceAliasing}
 {$ifdef fpc}
  {$packset fixed}
 {$else}
@@ -5166,6 +5172,17 @@ type TEventBeforeAfter=(Event,Before,After);
      (aResourceTransition.fPass is TRenderPass) then begin
    result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
   end;
+  // And the stages that go with the attachment accesses added in GetAccessMask below, for the same reason:
+  // a depth attachment is loaded and stored in the fragment-test stages whatever layout it carries, so a
+  // barrier that leaves those stages out cannot make the load wait for the transition.
+  if (aResourceTransition.fKind in [TResourceTransition.TKind.ImageDepthInput,
+                                    TResourceTransition.TKind.ImageDepthOutput]) and
+     (TResourceTransition.TFlag.Attachment in aResourceTransition.fFlags) and
+     assigned(aResourceTransition.fPass) and
+     (aResourceTransition.fPass is TRenderPass) then begin
+   result:=result or (TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT));
+  end;
   if assigned(aResourceTransition.fPass) then begin
    if aResourceTransition.fPass is TRenderPass then begin
     result:=result and (TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or
@@ -5312,6 +5329,31 @@ type TEventBeforeAfter=(Event,Before,After);
      assigned(aResourceTransition.fPass) and
      (aResourceTransition.fPass is TRenderPass) then begin
    result:=result or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+  end;
+  // An attachment is read AND written by the render pass whatever its layout is called, and the layout is
+  // what the masks above are derived from - so for an attachment they are derived from the wrong thing.
+  // The loadOp writes it when the pass begins (CLEAR) or reads it (LOAD), the storeOp writes it when the
+  // pass ends, and a depth attachment declared read-only is stored just the same. Left out, a barrier that
+  // only means to change the layout is not held back until the store before it has finished, and the
+  // loadOp after it is not held back until the transition has finished. Both are hazards the
+  // synchronization validation reports on every frame, and both are decided by whether the resource is an
+  // attachment - not by which layout it happens to carry there.
+  if (aResourceTransition.fKind in [TResourceTransition.TKind.ImageInput,
+                                    TResourceTransition.TKind.ImageDepthInput,
+                                    TResourceTransition.TKind.ImageOutput,
+                                    TResourceTransition.TKind.ImageResolveOutput,
+                                    TResourceTransition.TKind.ImageDepthOutput]) and
+     (TResourceTransition.TFlag.Attachment in aResourceTransition.fFlags) and
+     assigned(aResourceTransition.fPass) and
+     (aResourceTransition.fPass is TRenderPass) then begin
+   if aResourceTransition.fKind in [TResourceTransition.TKind.ImageDepthInput,
+                                    TResourceTransition.TKind.ImageDepthOutput] then begin
+    result:=result or (TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT));
+   end else begin
+    result:=result or (TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
+   end;
   end;
  end;
  procedure IndexingPasses;
@@ -5923,6 +5965,12 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreateResourceAliasGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
+{$ifdef PasVulkanFrameGraphNoResourceAliasing}
+   // Diagnostic: every resource gets its own memory, so nothing can be stomped by a neighbour whose
+   // lifetime was computed wrong. Costs a lot of memory - for telling an aliasing fault from a real one.
+   result:=false;
+   exit;
+{$endif}
    result:=(not aResource.fResourceType.fPersistent) and
            (not assigned(aResource.fExternalData)) and
            (not ((aResource.fResourceType is TImageResourceType) and
@@ -6815,13 +6863,17 @@ type TEventBeforeAfter=(Event,Before,After);
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
         SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                          TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
@@ -6852,14 +6904,18 @@ type TEventBeforeAfter=(Event,Before,After);
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                            TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
           SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-          SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+          SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                            TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
           SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
@@ -6878,14 +6934,18 @@ type TEventBeforeAfter=(Event,Before,After);
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                            TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
           SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-          SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+          SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                           TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
                                            TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
           SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
@@ -6958,6 +7018,7 @@ type TEventBeforeAfter=(Event,Before,After);
      Resource:TResource;
      Attachment:TPhysicalRenderPass.PAttachment;
      Found,
+     FoundResolveAttachment,
      HasResolveOutputs,
      UsedNow,
      UsedBefore,
@@ -7185,9 +7246,11 @@ type TEventBeforeAfter=(Event,Before,After);
              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
               if TResourceTransition.TFlag.ExplicitOutputAttachment in ResourceTransition.fFlags then begin
                Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+               FoundResolveAttachment:=false;
                for OtherResourceTransition in RenderPass.fResourceTransitions do begin
                 if (ResourceTransition<>OtherResourceTransition) and
                    (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
+                 FoundResolveAttachment:=true;
                  Found:=false;
                  for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
                   if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
@@ -7202,6 +7265,15 @@ type TEventBeforeAfter=(Event,Before,After);
                  break;
                 end;
                end;
+               // The resolve list is index-parallel to the colour list or it is empty - so a colour
+               // attachment without a resolve of its own still has to put a placeholder in, as soon as any
+               // OTHER attachment of this subpass has one. Left out, the lists slip against each other and
+               // the next attachment's resolve is applied to this one. That is what happens with MSAA and
+               // a velocity buffer together: the velocity is resolved, the colour beside it is not, and
+               // the velocity's resolve lands on the colour.
+               if HasResolveOutputs and not FoundResolveAttachment then begin
+                Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
+               end;
                break;
               end else begin
                Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
@@ -7212,9 +7284,11 @@ type TEventBeforeAfter=(Event,Before,After);
                Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
               end else begin
                Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+               FoundResolveAttachment:=false;
                for OtherResourceTransition in RenderPass.fResourceTransitions do begin
                 if (ResourceTransition<>OtherResourceTransition) and
                    (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
+                 FoundResolveAttachment:=true;
                  Found:=false;
                  for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
                   if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
@@ -7228,6 +7302,15 @@ type TEventBeforeAfter=(Event,Before,After);
                  end;
                  break;
                 end;
+               end;
+               // The resolve list is index-parallel to the colour list or it is empty - so a colour
+               // attachment without a resolve of its own still has to put a placeholder in, as soon as any
+               // OTHER attachment of this subpass has one. Left out, the lists slip against each other and
+               // the next attachment's resolve is applied to this one. That is what happens with MSAA and
+               // a velocity buffer together: the velocity is resolved, the colour beside it is not, and
+               // the velocity's resolve lands on the colour.
+               if HasResolveOutputs and not FoundResolveAttachment then begin
+                Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
                end;
                break;
               end;
@@ -7241,9 +7324,11 @@ type TEventBeforeAfter=(Event,Before,After);
           for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
            if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
             Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+            FoundResolveAttachment:=false;
             for OtherResourceTransition in RenderPass.fResourceTransitions do begin
              if (ResourceTransition<>OtherResourceTransition) and
                 (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
+              FoundResolveAttachment:=true;
               Found:=false;
               for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
                if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
@@ -7257,6 +7342,10 @@ type TEventBeforeAfter=(Event,Before,After);
               end;
               break;
              end;
+            end;
+            // Same placeholder as above: index-parallel to the colour list, or the lists slip.
+            if HasResolveOutputs and not FoundResolveAttachment then begin
+             Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
             end;
             break;
            end;

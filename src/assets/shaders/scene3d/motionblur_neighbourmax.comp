@@ -1,0 +1,50 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// Step two: the largest velocity of a tile and of the eight tiles around it.
+//
+// Without this the blur stops dead at a tile boundary - a fast object smears right up to the edge of its
+// own tile and then stops, and the tile grid becomes visible as a row of blocks. Taking the neighbourhood
+// lets a tile know that something fast is about to arrive in it, so the smear runs across the boundary
+// the way the object does.
+//
+// One invocation per tile. The whole image is one texel per tile of the picture, so this is small enough
+// that the nine reads cost nothing worth arranging around.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureTileMax;
+
+layout(set = 0, binding = 1, rg16f) writeonly uniform image2DArray uDestinationTexture;
+
+void main(){
+
+  ivec3 destinationSize = imageSize(uDestinationTexture);
+  ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
+
+  if(any(greaterThanEqual(at, destinationSize))){
+    return;
+  }
+
+  ivec2 tileSize = textureSize(uTextureTileMax, 0).xy;
+
+  vec2 longest = vec2(0.0);
+  float longestLength = 0.0;
+
+  for(int y = -1; y <= 1; y++){
+    for(int x = -1; x <= 1; x++){
+      ivec2 other = clamp(at.xy + ivec2(x, y), ivec2(0), tileSize - ivec2(1));
+      vec2 velocity = texelFetch(uTextureTileMax, ivec3(other, at.z), 0).xy;
+      float velocityLength = length(velocity);
+      if(velocityLength > longestLength){
+        longestLength = velocityLength;
+        longest = velocity;
+      }
+    }
+  }
+
+  imageStore(uDestinationTexture, at, vec4(longest, 0.0, 0.0));
+
+}

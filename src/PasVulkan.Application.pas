@@ -12391,8 +12391,12 @@ begin
                                             'InitialPresentSrcLayout');
     fVulkanInitialPresentSrcLayoutCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
     fVulkanInitialPresentSrcLayoutCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-    fVulkanInitialPresentSrcLayoutCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+    // Both stages are the one the acquire semaphore is waited at (see the Apply state). A layout transition
+    // counts as a write, and the presentation engine is still reading the image until that wait is through:
+    // with TOP_OF_PIPE on the source side the barrier is ordered against nothing that the wait covers, and
+    // the transition may land while the image is still being read.
+    fVulkanInitialPresentSrcLayoutCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                                            0,
                                                                            0,nil,
                                                                            0,nil,

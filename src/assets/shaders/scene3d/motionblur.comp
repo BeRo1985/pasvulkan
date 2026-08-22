@@ -1,0 +1,157 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// Step three: the reconstruction filter itself (McGuire et al., "A Reconstruction Filter for Plausible
+// Motion Blur"), ported from the 2014 GLSL of hyperrace - same filter, same constants, Vulkan plumbing.
+//
+// What it does, in one sentence: for each pixel it walks along the fastest velocity in its neighbourhood,
+// and gathers the colour of every pixel it passes that could plausibly have been smeared over it.
+//
+// "Plausibly" is the whole of it, and it is two tests:
+//
+//   VELOCITY - a pixel further away than its own velocity could have carried it did not reach here, so it
+//              contributes nothing. This is what keeps a slow background from being dragged along by a
+//              fast object passing over it.
+//   DEPTH    - of two pixels, only the nearer one can smear over the further one. Without this test the
+//              background bleeds through moving objects and moving objects paint over things in front of
+//              them. It is soft rather than a hard comparison, over a range of a few units, because a
+//              hard one shows every polygon edge as a seam.
+//
+// The 2014 version packed velocity and depth into one buffer beforehand - a fourth pass, needed there
+// because of what GLES 3.0 could sample. Here both are read straight from the buffers the renderer
+// already has, the depth from the one FinalDepthResolveComputePass leaves behind, so that pass is gone.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureSource;
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureVelocity;
+layout(set = 0, binding = 2) uniform sampler2DArray uTextureDepth;
+layout(set = 0, binding = 3) uniform sampler2DArray uTextureNeighbourMax;
+
+layout(set = 0, binding = 4, rgba16f) writeonly uniform image2DArray uDestinationTexture;
+
+layout(push_constant) uniform PushConstants {
+  vec4 strengthTileSizeSoftZDepthUnproject; // x = strength, y = tile size, z = soft depth extent, w = how depth is turned into a distance
+  vec4 frameSpare;                          // x = frame counter, for the per-pixel jitter; yzw unused
+} pushConstants;
+
+// How many samples are taken along the streak. Six is what the paper uses and what the 2014 version used,
+// and six is too few here: a white craft over a near-black background leaves six separate dots per pixel
+// rather than one streak, and the dithered offset below only scatters them. Fifteen costs two and a half
+// times as much in a pass that is cheap to begin with, and the dots become a smear.
+const int CountSamples = 15;
+const int MiddleSample = (CountSamples - 1) / 2;
+
+// Below half a pixel of movement there is nothing to smear, and the early-out here is most of why this
+// filter is affordable at all: on a still frame every pixel takes it. The pixel of speed above it over
+// which the filter fades in is there because the decision is taken once per tile: as a step it puts a
+// seam along the tile grid wherever the picture happens to move at about that speed.
+const float MinimumVelocity = 0.505;
+const float MinimumVelocityFade = 1.0;
+
+// A hash of whatever is put in, in 0..1, for the half-sample offset that pulls the taps of neighbouring
+// pixels apart.
+float hash(const in vec4 aSeed){
+  return fract(sin(dot(aSeed, vec4(12.9898, 78.233, 45.164, 94.673))) * 43758.5453);
+}
+
+// A pixel's depth as a distance that grows away from the camera, so that "nearer" is simply "smaller".
+float linearDepth(const in float aDepth){
+  return pushConstants.strengthTileSizeSoftZDepthUnproject.w / max(aDepth, 1e-7);
+}
+
+void main(){
+
+  ivec3 destinationSize = imageSize(uDestinationTexture);
+  ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
+
+  if(any(greaterThanEqual(at, destinationSize))){
+    return;
+  }
+
+  vec2 size = vec2(destinationSize.xy);
+  int layer = at.z;
+
+  vec4 here = texelFetch(uTextureSource, at, 0);
+
+  float strength = pushConstants.strengthTileSizeSoftZDepthUnproject.x;
+  if(strength <= 0.0){
+    imageStore(uDestinationTexture, at, here);
+    return;
+  }
+
+  int tileSize = int(pushConstants.strengthTileSizeSoftZDepthUnproject.y);
+
+  // The tile buffer is read smoothly rather than tile by tile - this is the one input taken with a linear
+  // sampler. One velocity per 16x16 tile, read exactly, puts the tile grid into the picture: whether a
+  // pixel is smeared at all then depends on which tile it happened to fall in, and whole blocks differ
+  // from the blocks beside them. Read between the tiles, the reach grows and shrinks across the picture
+  // instead of stepping. The half pixel places the sample on the tile centre, where the value belongs.
+  vec2 countTiles = vec2(textureSize(uTextureNeighbourMax, 0).xy);
+  vec2 tileCoord = ((vec2(at.xy) + vec2(0.5)) / float(tileSize)) / countTiles;
+  vec2 neighbourVelocity = texture(uTextureNeighbourMax, vec3(tileCoord, float(layer))).xy * strength;
+
+  // How much of the filtered result is taken in the end, nothing below the minimum and all of it a pixel
+  // of speed above. Nothing means nothing is computed, so the early-out is still an early-out.
+  float fade = clamp((length(neighbourVelocity) - MinimumVelocity) / MinimumVelocityFade, 0.0, 1.0);
+  if(fade <= 0.0){
+    imageStore(uDestinationTexture, at, here);
+    return;
+  }
+
+  float softZ = pushConstants.strengthTileSizeSoftZDepthUnproject.z;
+
+  vec2 velocityHere = (texelFetch(uTextureVelocity, at, 0).xy * size) * strength;
+  float depthHere = linearDepth(texelFetch(uTextureDepth, at, 0).x);
+
+  // The centre sample is weighted by the inverse of its own speed, so a pixel that is itself moving fast
+  // contributes little to itself - it is, after all, smeared elsewhere too.
+  float weight = 1.0 / max(length(velocityHere), 1e-8);
+  vec4 sum = here * weight;
+
+  // Half a sample's worth of offset, different for every pixel and every frame. Without it the six taps
+  // land on the same six places for every pixel along a streak and the streak comes out as six ghosts
+  // instead of a smear.
+  float jitter = clamp(hash(vec4(vec2(at.xy), vec2(pushConstants.frameSpare.x, weight))) - 0.5, -0.5, 0.5);
+
+  for(int index = 0; index <= CountSamples; index++){
+
+    if(index == MiddleSample){
+      continue; // The centre is already in, with its own weight.
+    }
+
+    float along = mix(-1.0, 1.0, ((float(index) + jitter) + 1.0) / float(CountSamples + 1));
+    ivec2 otherXY = ivec2((vec2(at.xy) + (neighbourVelocity * along)) + vec2(0.5));
+    otherXY = clamp(otherXY, ivec2(0), destinationSize.xy - ivec2(1));
+    ivec3 other = ivec3(otherXY, layer);
+
+    float distanceToOther = length(vec2(at.xy - otherXY));
+    vec2 velocityOther = (texelFetch(uTextureVelocity, other, 0).xy * size) * strength;
+    float depthOther = linearDepth(texelFetch(uTextureDepth, other, 0).x);
+
+    // Could the other pixel have reached here, and could this one have reached there? Both are asked,
+    // because the first covers the other pixel smearing onto this one and the second covers this one
+    // being part of a streak that passes through there.
+    float reachOther = clamp(1.0 - (distanceToOther / max(length(velocityOther), 1e-8)), 0.0, 1.0);
+    float reachHere = clamp(1.0 - (distanceToOther / max(length(velocityHere), 1e-8)), 0.0, 1.0);
+
+    // And which of the two is in front. Soft, over softZ units, so that a depth edge is a gradient rather
+    // than a cut. The two terms are the two cases: the other one in front of this one, and the reverse.
+    float otherInFront = clamp(1.0 + ((depthHere - depthOther) * softZ), 0.0, 1.0);
+    float hereInFront = clamp(1.0 + ((depthOther - depthHere) * softZ), 0.0, 1.0);
+
+    float otherWeight = ((otherInFront * reachOther) + (hereInFront * reachHere)) +
+                        // Plus the case where neither is clearly in front and both are moving about as
+                        // fast: two blurred things over each other, which simply blend.
+                        ((clamp(reachOther + 0.95, 0.0, 1.0) * clamp(reachHere + 0.95, 0.0, 1.0)) * 2.0);
+
+    weight += otherWeight;
+    sum += texelFetch(uTextureSource, other, 0) * otherWeight;
+
+  }
+
+  imageStore(uDestinationTexture, at, mix(here, sum / max(weight, 1e-8), fade));
+
+}

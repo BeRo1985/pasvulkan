@@ -1,0 +1,70 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// Step one of the reconstruction-filter motion blur (McGuire et al., "A Reconstruction Filter for
+// Plausible Motion Blur"): the largest velocity in each tile of the velocity buffer.
+//
+// Why a tile at all: the filter has to know how far it may have to reach for a pixel, and the answer is
+// not that pixel's own velocity - a pixel standing still can still be smeared over by something fast
+// passing in front of it. One small buffer holds "the fastest thing anywhere near here", and the filter
+// walks that far and no further.
+//
+// One workgroup per tile, one invocation per texel of it, then a reduction in shared memory. The obvious
+// arrangement - one invocation per OUTPUT texel, looping over the whole tile - does the same work with a
+// two hundred and fifty-sixth of the parallelism.
+//
+// The velocity buffer is in normalized screen units (what the temporal antialiasing wants). It is turned
+// into pixels here and stays in pixels from here on, because everything downstream measures in pixels.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureVelocity;
+
+layout(set = 0, binding = 1, rg16f) writeonly uniform image2DArray uDestinationTexture;
+
+layout(push_constant) uniform PushConstants {
+  int tileSize;
+} pushConstants;
+
+shared vec2 sharedVelocities[16 * 16];
+shared float sharedLengths[16 * 16];
+
+void main(){
+
+  ivec3 destinationSize = imageSize(uDestinationTexture);
+  ivec2 tile = ivec2(gl_WorkGroupID.xy);
+  int layer = int(gl_WorkGroupID.z);
+
+  ivec3 velocitySize = ivec3(textureSize(uTextureVelocity, 0));
+  ivec2 at = (tile * pushConstants.tileSize) + ivec2(gl_LocalInvocationID.xy);
+
+  vec2 velocity = vec2(0.0);
+  if(all(lessThan(at, velocitySize.xy)) && all(lessThan(ivec2(gl_LocalInvocationID.xy), ivec2(pushConstants.tileSize)))){
+    velocity = texelFetch(uTextureVelocity, ivec3(at, layer), 0).xy * vec2(velocitySize.xy);
+  }
+
+  uint index = gl_LocalInvocationIndex;
+  sharedVelocities[index] = velocity;
+  sharedLengths[index] = length(velocity);
+
+  barrier();
+
+  // Plain tree reduction, longest wins. The length is carried alongside rather than recomputed, because
+  // it is compared far more often than it is produced.
+  for(uint stride = (16u * 16u) >> 1u; stride > 0u; stride >>= 1u){
+    if(index < stride){
+      if(sharedLengths[index + stride] > sharedLengths[index]){
+        sharedLengths[index] = sharedLengths[index + stride];
+        sharedVelocities[index] = sharedVelocities[index + stride];
+      }
+    }
+    barrier();
+  }
+
+  if((index == 0u) && all(lessThan(ivec3(tile, layer), destinationSize))){
+    imageStore(uDestinationTexture, ivec3(tile, layer), vec4(sharedVelocities[0], 0.0, 0.0));
+  }
+
+}

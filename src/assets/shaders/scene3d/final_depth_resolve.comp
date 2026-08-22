@@ -1,0 +1,94 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+// The final view's depth buffer resolved to one sample per pixel, for the post-processing passes that
+// need a depth and cannot read a multisampled one - the motion blur's "which of these two is in front"
+// test to begin with.
+//
+// A clone of cull_depth_resolve.comp, which does the same reduction for the occlusion-culling depth
+// pyramid but writes into an image the culling owns. This one writes into a frame graph resource, so that
+// anything later in the frame can read it by name.
+//
+// The reduction is the NEAREST sample, not the first one and not an average, and that is the whole point
+// of resolving it here rather than letting the hardware pick. At a silhouette the samples inside a single
+// pixel disagree completely - hull edge in front, track thirty metres behind - and any rule that averages
+// or picks arbitrarily is wrong for most of that pixel's coverage, at exactly the pixels where a depth
+// test is the reason the effect looks right. "Is any part of this pixel in front?" is the question the
+// filter is really asking, and the nearest sample answers it.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+#ifdef MSAA
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform sampler2DMSArray uSourceTexture;
+#else
+layout(set = 0, binding = 0) uniform sampler2DMS uSourceTexture;
+#endif
+
+#else
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 0) uniform sampler2DArray uSourceTexture;
+#else
+layout(set = 0, binding = 0) uniform sampler2D uSourceTexture;
+#endif
+
+#endif
+
+#ifdef MULTIVIEW
+layout(set = 0, binding = 1, r32f) writeonly uniform image2DArray uDestinationTexture;
+#else
+layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture;
+#endif
+
+layout(push_constant) uniform PushConstants {
+  uint countSamples;
+} pushConstants;
+
+/* clang-format on */
+
+// Nearest, whichever way the projection runs: with a reversed-Z projection the nearest sample is the
+// largest depth value, and with an ordinary one the smallest.
+#ifdef REVERSEDZ
+  #define reduceOp max
+#else
+  #define reduceOp min
+#endif
+
+void main() {
+
+#ifdef MULTIVIEW
+  ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
+  ivec3 destinationTextureSize = imageSize(uDestinationTexture);
+  if(all(greaterThanEqual(invocationPosition, ivec3(0))) && all(lessThan(invocationPosition, destinationTextureSize))){
+    ivec2 xy = invocationPosition.xy;
+    int viewIndex = invocationPosition.z;
+    float depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
+#ifdef MSAA
+    for(int index = 1, count = int(pushConstants.countSamples); index < count; index++){
+      depth = reduceOp(depth, texelFetch(uSourceTexture, ivec3(xy, viewIndex), index).x);
+    }
+#endif
+    imageStore(uDestinationTexture, invocationPosition, vec4(depth));
+  }
+#else
+  ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 destinationTextureSize = imageSize(uDestinationTexture);
+  if(all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, destinationTextureSize))){
+    float depth = texelFetch(uSourceTexture, invocationPosition, 0).x;
+#ifdef MSAA
+    for(int index = 1, count = int(pushConstants.countSamples); index < count; index++){
+      depth = reduceOp(depth, texelFetch(uSourceTexture, invocationPosition, index).x);
+    }
+#endif
+    imageStore(uDestinationTexture, invocationPosition, vec4(depth));
+  }
+#endif
+
+}

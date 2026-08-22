@@ -2383,13 +2383,23 @@ end;
 
 procedure TpvResourceManager.FreeHandle(const aHandle:TpvResourceHandle);
 begin
+ // Checked rather than assumed, because this also runs during teardown: after a lost device, resources
+ // hand their handles back while the map has already been emptied. An unguarded write there turns the
+ // real fault - the lost device - into an access violation that reads like the cause.
+ if aHandle<0 then begin
+  exit;
+ end;
  fResourceHandleLock.AcquireWrite;
  try
-  fResourceHandleMap[aHandle]:=nil;
+  if aHandle<length(fResourceHandleMap) then begin
+   fResourceHandleMap[aHandle]:=nil;
+  end;
  finally
   fResourceHandleLock.ReleaseWrite;
  end;
- fResourceHandleManager.FreeID(aHandle);
+ if assigned(fResourceHandleManager) then begin
+  fResourceHandleManager.FreeID(aHandle);
+ end;
 end;
 
 function TpvResourceManager.GetResourceByHandle(const aHandle:TpvResourceHandle):IpvResource;
@@ -2531,7 +2541,8 @@ begin
   fDelayedToFreeResourcesLock.Acquire;
  end;
  try
-  if fDelayedToFreeResources.Count>1 then begin
+  // Same reason as in FreeHandle: this is reached while the list is being taken apart.
+  if assigned(fDelayedToFreeResources) and (fDelayedToFreeResources.Count>1) then begin
    IndirectIntroSort(@fDelayedToFreeResources.RawItems[0],0,fDelayedToFreeResources.Count-1,TpvResourceManagerSortDelayedToFreeResourcesByCreationIndicesCompare);
   end;
  finally

@@ -137,6 +137,8 @@ type TpvScene3DRenderer=class;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
+       fFinalResolvedDepthNeeded:Boolean;
+       fMotionBlurActive:Boolean;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
@@ -241,6 +243,13 @@ type TpvScene3DRenderer=class;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
+       property FinalResolvedDepthNeeded:Boolean read fFinalResolvedDepthNeeded;
+       // Whether the reconstruction-filter motion blur is built into the frame graph. Set it before
+       // Prepare; it cannot change afterwards, because it decides both that the three motion blur passes
+       // exist and that the forward pass writes a velocity buffer at all - which until now only the
+       // temporal antialiasing modes asked for. A renderer that turns this on therefore pays for one more
+       // render target in the forward pass, and one more resolve of it when multisampling.
+       property MotionBlurActive:Boolean read fMotionBlurActive write fMotionBlurActive;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
@@ -445,6 +454,8 @@ begin
  end;
 
  fWetnessMapActive:=false;
+
+ fMotionBlurActive:=false;
 
  fScreenSpaceAmbientOcclusion:=true;
 
@@ -708,6 +719,8 @@ begin
 
  fVelocityBufferNeeded:=false;
 
+ fFinalResolvedDepthNeeded:=false;
+
  fUseMeshletExpand:=fUseMeshletExpand and fScene3D.MeshShaders;
 
  fUseMeshletCulling:=fUseMeshletCulling and fScene3D.MeshShaders;
@@ -893,6 +906,11 @@ begin
   TpvScene3DRendererAntialiasingMode.TAA:begin
    fVelocityBufferNeeded:=true;
   end;
+ end;
+
+ if fMotionBlurActive then begin
+  fVelocityBufferNeeded:=true;
+  fFinalResolvedDepthNeeded:=true;
  end;
 
  SampleCounts:=fVulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and
