@@ -112,7 +112,7 @@ unit PasVulkan.Scene3D;
 // destroying instances - and it is invisible from the outside, because Check() asks for it every frame and it
 // answers "not now" almost every time. Without a line to look at, "it must have defragmented" is a guess. One
 // line per actual compaction, nothing while it declines.
-{$define Scene3DDefragmentationDebug}
+{.$define Scene3DDefragmentationDebug}
 
 interface
 
@@ -4839,6 +4839,12 @@ type EpvScene3D=class(Exception);
        fDefragJointBlockReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragNodeMatricesReverseMap:TDefragOffsetToGroupInstanceHashMap;
        fDefragMorphTargetWeightsReverseMap:TDefragOffsetToGroupInstanceHashMap;
+{$ifdef Scene3DDefragmentationDebug}
+       // How many ranges the compaction moved that nobody in the reverse maps claimed. A range like that is
+       // moved anyway - the allocator does not know or care who owns it - and its owner is never told, so it
+       // goes on reading from where the range used to be. Anything but zero here is a hole in the maps.
+       fDefragUnclaimedMoves:TpvSizeInt;
+{$endif}
        fDefragAffectedInstances:TDefragAffectedInstancesHashMap;
        procedure DefragMoveVertex(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
        procedure DefragMoveDrawIndex(const aSender:TpvBufferRangeAllocator;const aOldOffset,aNewOffset,aSize:TpvInt64);
@@ -13297,10 +13303,19 @@ begin
    end else begin
     NewDrawChoreographyBatchItem.fMeshObjectID:=0;
    end;
+   // The start index is TAKEN from the group's own item and offset, not added to whatever this item already
+   // holds. Adding is what GroupInstanceClone does, and it is right there, because a clone starts life as a
+   // copy of the group's item and has the offset put on it once. This one is a fix-up: the item it is
+   // fixing already carries an offset - the one from before the buffer range moved - so incrementing it
+   // leaves the item at (group start + old offset + new offset), and every further defragmentation adds
+   // another offset on top. That walks the draw off into an index range belonging to nobody, which is why
+   // instances without render instances - the ones drawn through this choreography rather than through
+   // per-render-instance draw info - went missing after a while of allocating and releasing, while the
+   // render-instance ones carried on.
    if aIsUnique then begin
-    inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset);
+    NewDrawChoreographyBatchItem.fStartIndex:=DrawChoreographyBatchItem.fStartIndex+TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset;
    end else begin
-    inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawIndexBufferRange.Offset);
+    NewDrawChoreographyBatchItem.fStartIndex:=DrawChoreographyBatchItem.fStartIndex+TpvScene3D.TGroup.TInstance(aGroupInstance).fBufferRanges.VulkanDrawIndexBufferRange.Offset;
    end;
   end;
  end;
@@ -36999,6 +37014,15 @@ begin
   System.Move(fVulkanStaticVertexBufferData.Items[aOldOffset],fVulkanStaticVertexBufferData.Items[aNewOffset],aSize*TpvInt64(SizeOf(TGPUStaticVertex)));
   GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37009,6 +37033,15 @@ begin
   System.Move(fVulkanDrawIndexBufferData.Items[aOldOffset],fVulkanDrawIndexBufferData.Items[aNewOffset],aSize*TpvInt64(SizeOf(TVkUInt32)));
   GroupInstance.fBufferRanges.VulkanDrawIndexBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37019,6 +37052,15 @@ begin
   System.Move(fVulkanDrawUniqueIndexBufferData.Items[aOldOffset],fVulkanDrawUniqueIndexBufferData.Items[aNewOffset],aSize*TpvInt64(SizeOf(TVkUInt32)));
   GroupInstance.fBufferRanges.VulkanDrawUniqueIndexBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37045,6 +37087,15 @@ begin
   finally
    Group.fInstanceListLock.Release;
   end;
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37055,6 +37106,15 @@ begin
   System.Move(fVulkanJointBlockBufferData.Items[aOldOffset],fVulkanJointBlockBufferData.Items[aNewOffset],aSize*TpvInt64(SizeOf(TJointBlock)));
   GroupInstance.fBufferRanges.VulkanJointBlockBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37068,6 +37128,15 @@ begin
   end;
   GroupInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37081,6 +37150,15 @@ begin
   end;
   GroupInstance.fBufferRanges.VulkanMorphTargetVertexWeightsBufferRange.Offset:=aNewOffset;
   fDefragAffectedInstances.Add(GroupInstance,true);
+ end else begin
+{$ifdef Scene3DDefragmentationDebug}
+  inc(fDefragUnclaimedMoves);
+  // The offsets say which allocator this was without needing a tag: node matrices count in the hundreds,
+  // vertices in the millions.
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D','  UNCLAIMED move '+IntToStr(aOldOffset)+' -> '+IntToStr(aNewOffset)+', size '+IntToStr(aSize));
+  end;
+{$endif}
  end;
 end;
 
@@ -37183,6 +37261,9 @@ begin
          fDefragNodeMatricesReverseMap.Clear;
          fDefragMorphTargetWeightsReverseMap.Clear;
          fDefragAffectedInstances.Clear;
+{$ifdef Scene3DDefragmentationDebug}
+         fDefragUnclaimedMoves:=0;
+{$endif}
 
          for GroupInstance in fGroupInstances do begin
           if GroupInstance.fGroup.Usable and (not (GroupInstance.fHeadless or GroupInstance.fVirtual)) then begin
@@ -37245,6 +37326,9 @@ begin
            inc(CountFixedUpInstances);
            if GroupInstance.fUseRenderInstances then begin
             inc(CountFixedUpRenderInstances,GroupInstance.fRenderInstances.Count);
+           end;
+           if assigned(pvApplication) then begin
+            pvApplication.Log(LOG_INFO,'TpvScene3D','  fixed up "'+String(GroupInstance.fGroup.Name)+'" nodes '+IntToStr(GroupInstance.fGroup.fNodes.Count)+', node matrices '+IntToStr(GroupInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset)+'..'+IntToStr(GroupInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Offset+GroupInstance.fBufferRanges.VulkanNodeMatricesBufferRange.Size-1)+', vertices '+IntToStr(GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset)+'..'+IntToStr(GroupInstance.fBufferRanges.VulkanVertexBufferRange.Offset+GroupInstance.fBufferRanges.VulkanVertexBufferRange.Size-1));
            end;
 {$endif}
 
@@ -37347,7 +37431,7 @@ begin
 
 {$ifdef Scene3DDefragmentationDebug}
          if assigned(pvApplication) then begin
-          pvApplication.Log(LOG_INFO,'TpvScene3D','defragmented: '+IntToStr(CountFixedUpInstances)+' group instances fixed up, '+IntToStr(CountFixedUpRenderInstances)+' render instances told to re-emit their draw info');
+          pvApplication.Log(LOG_INFO,'TpvScene3D','defragmented: '+IntToStr(CountFixedUpInstances)+' group instances fixed up, '+IntToStr(CountFixedUpRenderInstances)+' render instances told to re-emit their draw info, '+IntToStr(fDefragUnclaimedMoves)+' moved ranges nobody claimed');
          end;
 {$endif}
 
