@@ -58,7 +58,17 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Gen
 //   offset 88: meshletBoundingSphereBDA   (uvec2, 8 bytes, BDA to per-instance meshlet bounding sphere buffer)
 //   offset 96: nodeMatricesBDA            (uvec2, 8 bytes, BDA to per-IFF node matrices buffer)
 //   offset 104: cloudsShadowMapBDA        (uvec2, 8 bytes, BDA to CloudsShadowMapData buffer)
-// Total: 112 bytes
+//   offset 112: previousCachedVerticesCount (uint, 4 bytes, velocity)
+//   offset 116: previousGenerationCount     (uint, 4 bytes, velocity)
+//   offset 120: cachedVerticesCount         (uint, 4 bytes)
+//   offset 124: staticVerticesCount         (uint, 4 bytes)
+//   offset 128: generationCount             (uint, 4 bytes)
+//   offset 132: matrixPairCount             (uint, 4 bytes)
+// Total: 136 bytes
+//
+// The two counts belong to the two "previous" pointers above them. Those buffers were sized for the scene
+// of the frame they belong to, while the vertex index used against them comes from THIS frame - so whoever
+// reads them has to bound the read, or a scene that has grown since reads past the end of an allocation.
 
 struct GlobalBDAPointers {
   uvec2 cachedVerticesBDA;
@@ -75,6 +85,12 @@ struct GlobalBDAPointers {
   uvec2 meshletBoundingSphereBDA;
   uvec2 nodeMatricesBDA;
   uvec2 cloudsShadowMapBDA;
+  uint previousCachedVerticesCount;
+  uint previousGenerationCount;
+  uint cachedVerticesCount;
+  uint staticVerticesCount;
+  uint generationCount;
+  uint matrixPairCount;
 };
 
 // MatrixPair struct - 128 bytes, two full mat4 matrices

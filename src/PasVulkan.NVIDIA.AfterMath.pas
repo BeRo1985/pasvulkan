@@ -714,6 +714,14 @@ var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil
 
 procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
 
+// A capture layer takes the two NVIDIA diagnostics extensions out of what the driver reports, so Aftermath's
+// device side never comes up while one is in the process - which is exactly the run where a GPU fault is
+// worth looking at. RenderDoc can be asked to leave vendor extensions alone; this asks it and answers
+// whether the asking worked. It has to run before the Vulkan instance exists, because the filtering happens
+// when the extensions are enumerated. RenderDoc itself calls the option "at the user's own risk": with it
+// on, the capture may come out unusable - so this is for a run where Aftermath matters more than a capture.
+function TryAllowRenderDocVendorExtensions:boolean;
+
 procedure LoadNVIDIAAfterMath;
 procedure FreeNVIDIAAfterMath;
 
@@ -1068,6 +1076,65 @@ type TPFN_VoidFunction=procedure(); cdecl;
 function _VoidFunctionToPointer(const VoidFunction:TPFN_VoidFunction):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
  result:=addr(VoidFunction);
+end;
+
+function TryAllowRenderDocVendorExtensions:boolean;
+const RenderDocAPIVersion140=10400;
+      RenderDocOptionAllowUnsupportedVendorExtensions=12;
+      RenderDocOK=1;
+type TRenderDocSetCaptureOptionU32=function(const aOption:TpvInt32;const aValue:TpvUInt32):TpvInt32; cdecl;
+     TRenderDocGetAPI=function(const aVersion:TpvInt32;out aOutAPIPointers:pointer):TpvInt32; cdecl;
+     // Only the head of RenderDoc's function table is named here, because only its second entry is used and
+     // the table only ever grows at its end - so this stays right across their versions.
+     TRenderDocAPIHead=record
+      GetAPIVersion:pointer;
+      SetCaptureOptionU32:TRenderDocSetCaptureOptionU32;
+     end;
+     PRenderDocAPIHead=^TRenderDocAPIHead;
+{$if not defined(Windows)}
+const RTLD_NOLOAD_=4; // glibc's value; asks dlopen for a handle ONLY if the library is already in the process
+{$ifend}
+var LibraryHandle,APIPointers:pointer;
+    GetAPI:TRenderDocGetAPI;
+begin
+ result:=false;
+ GetAPI:=nil;
+{$if defined(Windows)}
+ LibraryHandle:={%H-}pointer(GetModuleHandle('renderdoc.dll'));
+ if assigned(LibraryHandle) then begin
+  @GetAPI:=_GetProcAddress(LibraryHandle,'RENDERDOC_GetAPI');
+ end;
+{$else}
+ // First in the global scope, which is where it sits when RenderDoc's UI started the process and preloaded
+ // its library. Nil is RTLD_DEFAULT, so this looks only at what is already there.
+ @GetAPI:=_GetProcAddress(nil,'RENDERDOC_GetAPI');
+ if not assigned(GetAPI) then begin
+  // And then by name, because as an implicit LAYER it is loaded privately by the Vulkan loader and its
+  // symbols never reach the global scope. RTLD_NOLOAD is what keeps this honest: it hands back a handle if
+  // the library is already in the process and nil if it is not, so a run without RenderDoc stays without.
+  LibraryHandle:=dlopen('librenderdoc.so',RTLD_NOW or RTLD_NOLOAD_);
+  if not assigned(LibraryHandle) then begin
+   // Not there yet - and as an implicit layer it will not be until the instance is made, which is already
+   // too late for the option to still matter. So it is fetched early, but ONLY when the environment says
+   // RenderDoc is wanted in this run. Without that, nothing is loaded and nothing is asked.
+   if Trim(GetEnvironmentVariable('ENABLE_VULKAN_RENDERDOC_CAPTURE'))<>'' then begin
+    LibraryHandle:=dlopen('librenderdoc.so',RTLD_NOW);
+   end;
+  end;
+  if assigned(LibraryHandle) then begin
+   @GetAPI:=_GetProcAddress(LibraryHandle,'RENDERDOC_GetAPI');
+  end;
+ end;
+{$ifend}
+ if not assigned(GetAPI) then begin
+  exit;
+ end;
+ APIPointers:=nil;
+ if (GetAPI(RenderDocAPIVersion140,APIPointers)=RenderDocOK) and assigned(APIPointers) then begin
+  if assigned(PRenderDocAPIHead(APIPointers)^.SetCaptureOptionU32) then begin
+   result:=PRenderDocAPIHead(APIPointers)^.SetCaptureOptionU32(RenderDocOptionAllowUnsupportedVendorExtensions,1)=RenderDocOK;
+  end;
+ end;
 end;
 
 procedure LoadNVIDIAAfterMath;

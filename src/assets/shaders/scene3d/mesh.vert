@@ -99,8 +99,14 @@ void main() {
   CachedVertexBuffer cachedVerts = CachedVertexBuffer(globalBDAPointers.cachedVerticesBDA);
   StaticVertexBuffer staticVerts = StaticVertexBuffer(globalBDAPointers.staticVerticesBDA);
 
-  PackedCachedVertex cv = cachedVerts.vertices[vertexIndex];
-  PackedStaticVertex sv = staticVerts.vertices[vertexIndex];
+  // Bounded, because the two buffers do not always grow in the same step: the cached one is per in-flight
+  // frame and the static one is the long-lived one, and while a model is appearing there is a moment where
+  // an index is already valid for one and not yet for the other. Reading past the end of an allocation
+  // costs the device, so out of range this vertex is dropped instead (see the degenerate position below).
+  bool vertexInRange = (vertexIndex < globalBDAPointers.cachedVerticesCount) &&
+                       (vertexIndex < globalBDAPointers.staticVerticesCount);
+  PackedCachedVertex cv = cachedVerts.vertices[vertexInRange ? vertexIndex : 0u];
+  PackedStaticVertex sv = staticVerts.vertices[vertexInRange ? vertexIndex : 0u];
 
   // Unpack vertex attributes
   vec3 position = unpackPosition(cv);
@@ -117,9 +123,23 @@ void main() {
   CachedVertexBuffer prevCachedVerts = CachedVertexBuffer(globalBDAPointers.previousCachedVerticesBDA);
   GenerationBuffer genBuf = GenerationBuffer(globalBDAPointers.generationBDA);
   GenerationBuffer prevGenBuf = GenerationBuffer(globalBDAPointers.previousGenerationBDA);
-  vec3 previousPosition = unpackPosition(prevCachedVerts.vertices[vertexIndex]);
-  uint generation = genBuf.generations[vertexIndex];
-  uint previousGeneration = prevGenBuf.generations[vertexIndex];
+  // The previous frame's buffers hold the scene as it was THEN, so a vertex that has appeared since has no
+  // counterpart in them and reading one reads past the end of an allocation. The generation compare further
+  // down is meant to catch exactly this vertex - but it happens long after the read, so the read itself has
+  // to be bounded here. Out of range, the previous generation is made to differ, which sends that compare
+  // down its "this vertex is new" branch and leaves the unread previous position unused.
+  vec3 previousPosition = vec3(0.0);
+  uint generation = 0u;
+  if(vertexIndex < globalBDAPointers.generationCount){
+    generation = genBuf.generations[vertexIndex];
+  }
+  uint previousGeneration = generation + 1u;
+  if(vertexIndex < globalBDAPointers.previousCachedVerticesCount){
+    previousPosition = unpackPosition(prevCachedVerts.vertices[vertexIndex]);
+  }
+  if(vertexIndex < globalBDAPointers.previousGenerationCount){
+    previousGeneration = prevGenBuf.generations[vertexIndex];
+  }
 #endif
 
   // Build tangent space
@@ -155,7 +175,11 @@ void main() {
   // For pre-transformed meshes (mesh.comp output): matrixID=0 => Identity => no-op.
   // For instanced meshes: matrixID points to the world transform in MatrixPairBuffer.
   MatrixPairBuffer matrixPairBuffer = MatrixPairBuffer(globalBDAPointers.matrixPairBDA);
-  MatrixPair matrixPair = matrixPairBuffer.pairs[drawInfo.matrixID];
+  // Bounded like the vertex buffers above: the draw can name a matrix that this frame's buffer does not
+  // hold yet while an instance is appearing. Entry zero is the identity sentinel, so falling back to it
+  // leaves the mesh where its own vertices put it rather than reading past the end of an allocation.
+  MatrixPair matrixPair =
+      matrixPairBuffer.pairs[(drawInfo.matrixID < globalBDAPointers.matrixPairCount) ? drawInfo.matrixID : 0u];
   mat4 modelMatrix = matrixPair.modelMatrix;
 
   modelScale *= vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
@@ -209,7 +233,9 @@ void main() {
 
 #endif
 
-  gl_Position = clipSpacePosition;
+  // A vertex whose data was out of range above carries whatever vertex zero holds, which is not this
+  // vertex - so it is put behind the near plane rather than drawn somewhere wrong.
+  gl_Position = vertexInRange ? clipSpacePosition : vec4(0.0, 0.0, -1.0, 0.0);
 
 #endif
 

@@ -496,9 +496,22 @@ type EpvScene3D=class(Exception);
                MeshletBoundingSphereDeviceAddress:TVkDeviceAddress;    // + 8 =  96 (BDA to per-instance meshlet bounding sphere buffer)
                NodeMatricesDeviceAddress:TVkDeviceAddress;             // + 8 = 104 (BDA to per-IFF node matrices buffer)
                CloudsShadowMapDeviceAddress:TVkDeviceAddress;          // + 8 = 112 (BDA to CloudsShadowMapDataBDABuffer)
+               // How many elements the two PREVIOUS buffers above hold. They were sized for the scene of the
+               // frame they belong to, while the vertex index used against them comes from the current one -
+               // so a reader has to bound itself, or a scene that has grown since reads past the end of an
+               // allocation. See the VELOCITY part of mesh.vert.
+               PreviousCachedVerticesCount:TpvUInt32;                  // + 4 = 116
+               PreviousGenerationCount:TpvUInt32;                      // + 4 = 120
+               // And the same for the two buffers of THIS frame, because they do not grow in the same step:
+               // the cached one is per in-flight frame, the static one is the long-lived one, and while a
+               // model is appearing an index can be valid for one and not yet for the other.
+               CachedVerticesCount:TpvUInt32;                          // + 4 = 124
+               StaticVerticesCount:TpvUInt32;                          // + 4 = 128
+               GenerationCount:TpvUInt32;                              // + 4 = 132
+               MatrixPairCount:TpvUInt32;                              // + 4 = 136
               );
               true:(
-               RawData:array[0..111] of TpvUInt8;
+               RawData:array[0..135] of TpvUInt8;
               );
             end;
             PGPUGlobalBDAPointers=^TGPUGlobalBDAPointers;
@@ -2277,10 +2290,16 @@ type EpvScene3D=class(Exception);
               fVulkanMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
               fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
               fVulkanComputeDescriptorSet:TpvVulkanDescriptorSet;
+              // Whether this slot's buffers were rebuilt in its last update. When they were, the scene grew
+              // and the global vertex indices can have moved, so the same index means a different vertex
+              // than it did in the frame before - the previous frame's positions are then not comparable
+              // and this frame has to go without them.
+              fBuffersRebuilt:boolean;
              public
               constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
               destructor Destroy; override;
               procedure Update;
+              property BuffersRebuilt:boolean read fBuffersRebuilt;
             end;
             TVulkanShortTermDynamicBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanShortTermDynamicBufferData;
             { TVulkanShortTermDynamicBuffers }
@@ -14141,9 +14160,24 @@ var GroupInstanceNodeIndex:TpvSizeInt;
     Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     GroupInstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    PreviousFrameFinished:boolean;
 begin
 
+ PreviousFrameFinished:=false;
+
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
+
+  // These buffers are not private to their own frame: the velocity path reads the PREVIOUS in-flight
+  // frame's cached vertex and generation buffers through their device addresses. With three frames in
+  // flight, the frame two back read the very buffer this slot is about to replace - so replacing it is
+  // only safe once that frame is done. Waiting for the frame ONE back settles it, because the timeline is
+  // monotonic and an older frame cannot outlive a newer one. That is what this asks, from the frame's
+  // single real wait, and it is what the frees below hand on: they still free on the spot in the normal
+  // case and only queue the old buffer when the wait could not confirm it, which is exactly the case
+  // where the GPU may still be reading it.
+  PreviousFrameFinished:=fSceneInstance.WaitOnceOnPreviousFrame;
+
+  fBuffersRebuilt:=false;
 
   if ((not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex)))) or
      ((not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexGenerationBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration)))) or
@@ -14153,6 +14187,11 @@ begin
 
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
    // or the buffers are not yet allocated
+
+   // And noted, because it changes what the NEXT reader may assume: with the buffers rebuilt, a global
+   // vertex index no longer points at the same vertex it did in the frame before, so the previous frame's
+   // positions are not comparable and this frame has to do without them.
+   fBuffersRebuilt:=true;
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
@@ -14171,7 +14210,7 @@ begin
    end;
 
    if (not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex))) then begin
-    FreeAndNil(fVulkanCachedVertexBuffer);
+    fSceneInstance.FreeAndNilOrAddToFreeQueue(fVulkanCachedVertexBuffer,PreviousFrameFinished);
     fVulkanCachedVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                       Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -14194,7 +14233,7 @@ begin
    end;
 
    if (not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexGenerationBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration))) then begin
-    FreeAndNil(fVulkanCachedVertexGenerationBuffer);
+    fSceneInstance.FreeAndNilOrAddToFreeQueue(fVulkanCachedVertexGenerationBuffer,PreviousFrameFinished);
     fVulkanCachedVertexGenerationBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                 Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration),
                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -14217,7 +14256,7 @@ begin
    end;
 
    if fSceneInstance.fRaytracingActive and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex)))) then begin
-    FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
+    fSceneInstance.FreeAndNilOrAddToFreeQueue(fVulkanCachedRaytracingVertexBuffer,PreviousFrameFinished);
     fVulkanCachedRaytracingVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                 Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex),
                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -14240,7 +14279,7 @@ begin
    end;
 
    if (not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4))) then begin
-    FreeAndNil(fVulkanNodeMatricesBuffer);
+    fSceneInstance.FreeAndNilOrAddToFreeQueue(fVulkanNodeMatricesBuffer,PreviousFrameFinished);
     case fSceneInstance.fBufferStreamingMode of
      TBufferStreamingMode.Direct:begin
       fVulkanNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -14300,7 +14339,7 @@ begin
    end;
 
    if (not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat))) then begin
-    FreeAndNil(fVulkanMorphTargetVertexWeightsBuffer);
+    fSceneInstance.FreeAndNilOrAddToFreeQueue(fVulkanMorphTargetVertexWeightsBuffer,PreviousFrameFinished);
     case fSceneInstance.fBufferStreamingMode of
      TBufferStreamingMode.Direct:begin
       fVulkanMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -42431,6 +42470,7 @@ var Index,ItemID,PlanetIndex:TpvSizeInt;
     DrawInfoIndex,PreviousInFlightFrameIndex:TpvSizeInt;
     CurrentDrawInfo:PGPUDrawInfo;
     DrawInfoBDACachedVertices,DrawInfoBDAStaticVertices,DrawInfoBDAPreviousCachedVertices,DrawInfoBDAGeneration,DrawInfoBDAPreviousGeneration:TVkDeviceAddress;
+    DrawInfoCountPreviousCachedVertices,DrawInfoCountPreviousGeneration,DrawInfoCountCachedVertices,DrawInfoCountStaticVertices,DrawInfoCountGeneration:TpvUInt32;
     DirtyUploadOffset,DirtyUploadSize:TVkDeviceSize;
     DirtyMin,DirtyMax:TpvSizeInt;
     RendererInstanceIndex:TpvSizeInt;
@@ -42848,28 +42888,43 @@ begin
     DrawInfoBDAPreviousCachedVertices:=0;
     DrawInfoBDAGeneration:=0;
     DrawInfoBDAPreviousGeneration:=0;
+    // Zero means "nothing there", and a reader bounded by it then reads nothing at all - which is the safe
+    // answer when there is no previous buffer to read from.
+    DrawInfoCountPreviousCachedVertices:=0;
+    DrawInfoCountPreviousGeneration:=0;
+    DrawInfoCountCachedVertices:=0;
+    DrawInfoCountStaticVertices:=0;
+    DrawInfoCountGeneration:=0;
     PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
     if PreviousInFlightFrameIndex<0 then begin
      PreviousInFlightFrameIndex:=fCountInFlightFrames-1;
     end;
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
      DrawInfoBDACachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.DeviceAddress;
+     DrawInfoCountCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size div SizeOf(TGPUCachedVertex);
     end;
     if assigned(fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer) then begin
      DrawInfoBDAStaticVertices:=fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer.DeviceAddress;
+     DrawInfoCountStaticVertices:=fVulkanLongTermStaticBuffer.fVulkanStaticVertexBuffer.Size div SizeOf(TGPUStaticVertex);
     end;
+    // The count is taken from the very buffer whose address is taken, so the two can never drift apart.
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
      DrawInfoBDAPreviousCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.DeviceAddress;
+     DrawInfoCountPreviousCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Size div SizeOf(TGPUCachedVertex);
     end else if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
      DrawInfoBDAPreviousCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.DeviceAddress;
+     DrawInfoCountPreviousCachedVertices:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size div SizeOf(TGPUCachedVertex);
     end;
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer) then begin
      DrawInfoBDAGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.DeviceAddress;
+     DrawInfoCountGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Size div SizeOf(TGPUCachedVertexGeneration);
     end;
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer) then begin
      DrawInfoBDAPreviousGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.DeviceAddress;
+     DrawInfoCountPreviousGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[PreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Size div SizeOf(TGPUCachedVertexGeneration);
     end else if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer) then begin
      DrawInfoBDAPreviousGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.DeviceAddress;
+     DrawInfoCountPreviousGeneration:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Size div SizeOf(TGPUCachedVertexGeneration);
     end;
     // Fill the global BDA pointers struct (uploaded to binding 7 SSBO)
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].CachedVerticesDeviceAddress:=DrawInfoBDACachedVertices;
@@ -42877,6 +42932,20 @@ begin
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].PreviousCachedVerticesDeviceAddress:=DrawInfoBDAPreviousCachedVertices;
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].GenerationDeviceAddress:=DrawInfoBDAGeneration;
     fGlobalVulkanBDAPointersData[aInFlightFrameIndex].PreviousGenerationDeviceAddress:=DrawInfoBDAPreviousGeneration;
+    // Were this frame's buffers rebuilt, the previous frame's are not comparable to them - the same global
+    // vertex index can point at a different vertex now. So this frame goes without a previous frame at all:
+    // a count of zero means the reader reads nothing, and the velocity comes out as zero for one frame,
+    // which the temporal antialiasing takes as a disocclusion and rebuilds from. Better one frame without
+    // motion vectors than a frame full of vectors computed against the wrong vertices.
+    if fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].BuffersRebuilt then begin
+     DrawInfoCountPreviousCachedVertices:=0;
+     DrawInfoCountPreviousGeneration:=0;
+    end;
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].PreviousCachedVerticesCount:=DrawInfoCountPreviousCachedVertices;
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].PreviousGenerationCount:=DrawInfoCountPreviousGeneration;
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].CachedVerticesCount:=DrawInfoCountCachedVertices;
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].StaticVerticesCount:=DrawInfoCountStaticVertices;
+    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].GenerationCount:=DrawInfoCountGeneration;
     // MatrixPairDeviceAddress will be filled after MatrixPair buffer upload below
 
    end;
@@ -43091,8 +43160,11 @@ begin
 
   // Fill MatrixPairDeviceAddress after buffer is created/uploaded
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairDeviceAddress:=0;
+  fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairCount:=0;
   if assigned(fGlobalVulkanMatrixPairBuffers[aInFlightFrameIndex]) then begin
    fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairDeviceAddress:=fGlobalVulkanMatrixPairBuffers[aInFlightFrameIndex].DeviceAddress;
+   // Same as the vertex counts: taken from the very buffer whose address is taken, so the two agree.
+   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairCount:=fGlobalVulkanMatrixPairBuffers[aInFlightFrameIndex].Size div SizeOf(TGPUMatrixPair);
   end;
 
   // LODInfo buffer creation + upload (static, not per-IFF)

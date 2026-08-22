@@ -1815,6 +1815,10 @@ type EpvApplication=class(Exception)
 
        fVulkanNVIDIAAfterMath:boolean;
 
+       // Whether RenderDoc agreed to leave the vendor extensions alone, so that Aftermath can come up while
+       // a capture layer is in the process (see TryAllowRenderDocVendorExtensions).
+       fVulkanRenderDocVendorExtensionsAllowed:boolean;
+
        fVulkanNoUniqueObjectsValidation:boolean;
 
        fVulkanDebuggingEnabled:boolean;
@@ -9997,6 +10001,8 @@ begin
 
  fVulkanNVIDIAAfterMath:=false;
 
+ fVulkanRenderDocVendorExtensionsAllowed:=false;
+
  fVulkanNoUniqueObjectsValidation:=false;
 
  fVulkanMultiviewSupportEnabled:=false;
@@ -11002,6 +11008,16 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_TOOLING_INFO_EXTENSION_NAME);
   end;
 
+  if fVulkanRenderDocVendorExtensionsAllowed then begin
+   // Said out loud, because it decides whether an Aftermath dump can happen at all in this run, and because
+   // the capture taken beside it is not to be trusted afterwards.
+   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0 then begin
+    Log(LOG_INFO,'TpvApplication.CreateVulkanDevice','RenderDoc was asked to allow vendor extensions and the NVIDIA diagnostics extensions came through - Aftermath can come up, but do not rely on a capture from this run');
+   end else begin
+    Log(LOG_INFO,'TpvApplication.CreateVulkanDevice','RenderDoc was asked to allow vendor extensions but the NVIDIA diagnostics extensions are still filtered out - Aftermath stays off');
+   end;
+  end;
+
   fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanNVIDIAAfterMath and
                                                (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticConfigExtensionFound then begin
@@ -11233,6 +11249,12 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
 {$ifend}
+ // Before anything Vulkan exists, because a capture layer filters the vendor extensions away at enumeration
+ // time and Aftermath's device side then never comes up. Only asked for when Aftermath is actually wanted -
+ // the option costs the capture its reliability, so it is not something to switch on by default.
+ if fVulkanNVIDIAAfterMath and TryAllowRenderDocVendorExtensions then begin
+  fVulkanRenderDocVendorExtensionsAllowed:=true;
+ end;
  if not assigned(fVulkanInstance) then begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   SDL_VERSION(SDL_SysWMinfo.version);
@@ -11414,6 +11436,13 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');
 {$ifend}
+   // Asked again, and this is the time that usually counts: as an implicit layer, RenderDoc is pulled in by
+   // the loader while the instance is being made, so before that its symbol is not in the process yet. Asked
+   // here it is still early enough, because what gets filtered is the PHYSICAL DEVICE extension list, and
+   // that is not read until the physical devices are enumerated below. Asking twice costs nothing.
+   if fVulkanNVIDIAAfterMath and TryAllowRenderDocVendorExtensions then begin
+    fVulkanRenderDocVendorExtensionsAllowed:=true;
+   end;
    if fVulkanDebuggingEnabled then begin
     case fVulkanDebugExtensionMode of
      TpvApplicationVulkanDebugExtensionMode.DebugUtils:begin
