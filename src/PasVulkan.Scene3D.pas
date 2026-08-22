@@ -5365,6 +5365,11 @@ type EpvScene3D=class(Exception);
        property SkyGradientHorizonColor:TpvVector3 read fSkyGradientHorizonColor write fSkyGradientHorizonColor;
        property SkyGradientBottomColor:TpvVector3 read fSkyGradientBottomColor write fSkyGradientBottomColor;
        property SkyGradientStarIntensity:TpvFloat read fSkyGradientStarIntensity write fSkyGradientStarIntensity;
+       // The sun's ANGULAR RADIUS IN RADIANS. It used to be a threshold on 1-cos(angle), where the values
+       // that were being passed meant a disc fifteen degrees across - which is what made the sun a pale
+       // round blob rather than a point of light. Read as radians the same numbers are about two degrees,
+       // and smaller is better still: the real sun is 0.0047, and sky_gradient_sun.glsl gives whatever is
+       // set here an overbright core, a tight aureole and a broad glow of its own.
        property SkyGradientSunSize:TpvFloat read fSkyGradientSunSize write fSkyGradientSunSize;
        property SkyGradientSunBrightness:TpvFloat read fSkyGradientSunBrightness write fSkyGradientSunBrightness;
        property GradientEnvironmentIntensityFactor:TpvFloat read fGradientEnvironmentIntensityFactor write fGradientEnvironmentIntensityFactor;
@@ -35316,7 +35321,7 @@ begin
   fSkyGradientHorizonColor:=TpvVector3.InlineableCreate(0.35,0.45,0.65);
   fSkyGradientBottomColor:=TpvVector3.InlineableCreate(0.08,0.10,0.14);
   fSkyGradientStarIntensity:=0.0;
-  fSkyGradientSunSize:=0.04;
+  fSkyGradientSunSize:=0.009; // radians, so about half a degree - twice the real sun, which reads right
   fSkyGradientSunBrightness:=6.0;
   fGradientEnvironmentIntensityFactor:=1.0;
 

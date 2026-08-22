@@ -13,9 +13,10 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 // Raw radiance cube map for the stylized gradient sky, used as the IBL source (its
 // mip chain is prefiltered into GGX/Charlie/Lambertian afterwards). It evaluates the
-// same vertical top/horizon/bottom ramp plus horizon-tinted sun disk as the visible
-// skybox (skybox.frag case 3u), so reflections match the sky. Stars are intentionally
-// omitted here: the high-frequency hash would only add noise to the prefiltered map.
+// same vertical top/horizon/bottom ramp as the visible skybox (skybox.frag case 3u)
+// and takes the sun from the same shared piece of code (sky_gradient_sun.glsl), so
+// reflections match the sky. Stars are intentionally omitted here: the high-frequency
+// hash would only add noise to the prefiltered map.
 
 layout(push_constant, std140) uniform PushConstants {
   vec4 gradientTopColor;      // rgb = top colour,     w = star intensity (ignored for IBL)
@@ -41,6 +42,7 @@ layout(set = 0, binding = 0) writeonly uniform imageCube uDestinationTexture;
 ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 
 #include "cubemap.glsl"
+#include "sky_gradient_sun.glsl"
 
 #ifdef USE_RGB9E5
 #include "rgb9e5.glsl"
@@ -59,11 +61,11 @@ void main() {
                       ? mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientTopColor.xyz, ramp)
                       : mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientBottomColor.xyz, ramp);
 
-    float sunSize = pushConstants.gradientHorizonColor.w;
-    float sunBrightness = pushConstants.gradientBottomColor.w;
-    float sunAmount = max(0.0, dot(direction, -normalize(pushConstants.lightDirection.xyz)));
-    float sunDisk = smoothstep(1.0 - sunSize, 1.0 - (sunSize * 0.25), sunAmount);
-    skyColor += (pushConstants.gradientHorizonColor.xyz * sunBrightness) * sunDisk;
+    skyColor += skyGradientSun(direction,
+                               -normalize(pushConstants.lightDirection.xyz),
+                               pushConstants.gradientHorizonColor.xyz,
+                               pushConstants.gradientHorizonColor.w,
+                               pushConstants.gradientBottomColor.w);
 
     skyColor *= pushConstants.lightDirection.w;
 
