@@ -109,7 +109,7 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
 
 void main(){
   const vec3 direction = normalize(inPosition);
-  switch(pushConstants.mode){
+  switch(pushConstants.mode & 0xffffu){
     case 1u:{
       // Realtime starlight
 #ifdef SKYBOX_CACHED_REPROJECTION
@@ -150,7 +150,8 @@ void main(){
                                  -normalize(pushConstants.lightDirection.xyz),
                                  pushConstants.gradientHorizonColor.xyz,
                                  pushConstants.gradientHorizonColor.w,
-                                 pushConstants.gradientBottomColor.w);
+                                 pushConstants.gradientBottomColor.w,
+                                 float(pushConstants.mode >> 16u) / 65535.0);
       float starIntensity = pushConstants.gradientTopColor.w;
       if((starIntensity > 0.0) && (upness > 0.0)){
         vec3 cell = floor(direction * 220.0);

@@ -1078,6 +1078,11 @@ type { TpvScene3DRendererInstance }
        fLensRainPostEffectFactor:TpvFloat;
        fLensRainPostEffectTime:TpvDouble;
       private
+       fRadialBlurActive:Boolean;
+       fRadialBlurFactor:TpvFloat;
+       fRadialBlurCentre:TpvVector2;
+       fRadialBlurInnerRadius:TpvFloat;
+      private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
        fPrefixSums:TpvUInt32DynamicArray;
@@ -1421,6 +1426,20 @@ type { TpvScene3DRendererInstance }
        property LensRainPostEffectFactor:TpvFloat read fLensRainPostEffectFactor write fLensRainPostEffectFactor;
        property LensRainPostEffectTime:TpvDouble read fLensRainPostEffectTime write fLensRainPostEffectTime;
       public
+       // Whether the radial blur pass is built into the frame graph at all. It has to be decided before the
+       // graph is assembled and cannot change afterwards, so this is a "does this game ever use it" switch,
+       // not the effect's own on and off - that is the factor below, which may change every frame. Off, so
+       // nothing that does not ask for it pays for the full-screen pass.
+       property RadialBlurActive:Boolean read fRadialBlurActive write fRadialBlurActive;
+       // Radial (zoom) blur over the finished picture - see radialblur.frag. The factor is how far a pixel
+       // at the very edge is dragged towards the centre, as a fraction of its distance from it, so 0.05 is
+       // already a lot and zero switches the pass to a plain copy. The centre is in [0..1] screen
+       // coordinates and belongs wherever the camera is heading rather than in the middle of the frame,
+       // and the inner radius is how much of the picture around it stays untouched.
+       property RadialBlurFactor:TpvFloat read fRadialBlurFactor write fRadialBlurFactor;
+       property RadialBlurCentre:TpvVector2 read fRadialBlurCentre write fRadialBlurCentre;
+       property RadialBlurInnerRadius:TpvFloat read fRadialBlurInnerRadius write fRadialBlurInnerRadius;
+      public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
        property MeshShaderOutputBufferSizes:TpvVulkanInFlightFrameSizeInts read fMeshShaderOutputBufferSizes;
@@ -1620,6 +1639,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LensRainRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.RadialBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
@@ -1766,6 +1786,7 @@ type TpvScene3DRendererInstancePasses=class
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fLensRainRenderPass:TpvScene3DRendererPassesLensRainRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
+       fRadialBlurRenderPass:TpvScene3DRendererPassesRadialBlurRenderPass;
        fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
        fHUDCustomPass:TpvScene3DRendererInstance.THUDCustomPass;
@@ -2424,6 +2445,11 @@ begin
  fLensRainPostEffectActive:=false;
  fLensRainPostEffectFactor:=0.0;
  fLensRainPostEffectTime:=0.0;
+
+ fRadialBlurActive:=false;
+ fRadialBlurFactor:=0.0;
+ fRadialBlurCentre:=TpvVector2.InlineableCreate(0.5,0.5);
+ fRadialBlurInnerRadius:=0.15;
 
  if assigned(fVirtualReality) then begin
 
@@ -5201,6 +5227,21 @@ begin
   end;
  end;
 
+ // What the radial blur pass writes into. Same shape and format as the antialiasing target above, because
+ // it sits in the same chain and simply hands the picture on; it needs its own type only because a pass
+ // may not read and write one and the same resource.
+ if fRadialBlurActive then begin
+  fFrameGraph.AddImageResourceType('resourcetype_color_radialblur',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                   1
+                                  );
+ end;
+
  fFrameGraph.AddImageResourceType('resourcetype_depth',
                                   false,
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
@@ -6645,6 +6686,18 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  if assigned(AntialiasingLastPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
+ end;
+
+ // Radial blur, over the tone-mapped picture and before anything that has to stay sharp: the selection
+ // outline below and the canvas / HUD after it both read LastOutputResource, so they land on top of the
+ // smear rather than in it. Only built when the game says it uses the effect at all - RadialBlurFactor
+ // turns it on and off per frame, but whether the pass exists is decided once, here, and a pass that is
+ // never asked for should not cost a full-screen copy every frame for the whole run.
+ if fRadialBlurActive then begin
+  TpvScene3DRendererInstancePasses(fPasses).fRadialBlurRenderPass:=TpvScene3DRendererPassesRadialBlurRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fRadialBlurRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fRadialBlurRenderPass:=nil;
  end;
 
  // Object-selection outline, step 1 — BUILD: reads only the selection mask, writes the isolated premultiplied outline buffer

@@ -507,6 +507,8 @@ compileshaderarguments=(
   "-V antialiasing_taa.frag -o ${tempPath}/antialiasing_taa_frag.spv"
   "-V antialiasing_none.frag -o ${tempPath}/antialiasing_none_frag.spv"
 
+  "-V radialblur.frag -o ${tempPath}/radialblur_frag.spv"
+
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"
 

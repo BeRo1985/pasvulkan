@@ -669,6 +669,7 @@ end;
 
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
+    SunHalo:TpvFloat;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
@@ -706,6 +707,18 @@ begin
    end;
   end;
  end;
+
+ // And the gradient sky's sun halo into the upper half of the same word the mode sits in. This block is
+ // exactly on the 128 byte push-constant limit, so there is no room for a field of its own, and the mode
+ // uses two bits of its thirty-two - the same trade WidthHeight above already makes. The shader masks the
+ // mode off before it switches on it.
+ SunHalo:=fScene3D.SkyGradientSunHalo;
+ if SunHalo<0.0 then begin
+  SunHalo:=0.0;
+ end else if SunHalo>1.0 then begin
+  SunHalo:=1.0;
+ end;
+ PushConstants.Mode:=(PushConstants.Mode and $ffff) or (TpvUInt32(Round(SunHalo*65535.0)) shl 16);
 
  PushConstants.CountAllViews:=aCountAllViews;
  PushConstants.FrameIndex:=fFrameIndex;

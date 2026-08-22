@@ -57,11 +57,15 @@ float skyGradientSunFalloff(const in float aAngle, const in float aHalfWidth){
   return exp2(-(t * t));
 }
 
+// aHalo scales the aureole and the glow together. At one they are as written above; at zero nothing is
+// left but the disc - a circle a few pixels across and nothing around it, which is what the sun really
+// looks like from here, with the halo and the streaks left to the bloom to make.
 vec3 skyGradientSun(const in vec3 aDirection,
                     const in vec3 aSunDirection,
                     const in vec3 aHorizonColor,
                     const in float aSunRadius,
-                    const in float aSunBrightness){
+                    const in float aSunBrightness,
+                    const in float aHalo){
 
   float cosAngle = clamp(dot(aDirection, aSunDirection), -1.0, 1.0);
   float angle = acos(cosAngle);
@@ -82,8 +86,9 @@ vec3 skyGradientSun(const in vec3 aDirection,
   float edge = radius * 0.08;
   float disc = 1.0 - smoothstep(radius - edge, radius + edge, angle);
 
-  float aureole = skyGradientSunFalloff(angle, radius * SkyGradientSunAureoleWidth);
-  float glow = skyGradientSunFalloff(angle, SkyGradientSunGlowWidth);
+  float halo = clamp(aHalo, 0.0, 1.0);
+  float aureole = skyGradientSunFalloff(angle, radius * SkyGradientSunAureoleWidth) * halo;
+  float glow = skyGradientSunFalloff(angle, SkyGradientSunGlowWidth) * halo;
 
   return ((tint * (aSunBrightness * SkyGradientSunDiscOverbright)) * disc) +
          ((tint * (aSunBrightness * SkyGradientSunAureoleStrength)) * aureole) +

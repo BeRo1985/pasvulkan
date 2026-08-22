@@ -92,6 +92,7 @@ type { TpvScene3DRendererGradientEnvironment }
              GradientHorizonColor:TpvVector4;  // rgb = horizon colour, w = sun size
              GradientBottomColor:TpvVector4;   // rgb = bottom colour,  w = sun brightness
              LightDirection:TpvVector4;        // xyz = primary light direction, w = radiance intensity factor
+             SunParameters:TpvVector4;         // x = sun halo, yzw unused
             end;
             PPushConstants=^TPushConstants;
       private
@@ -389,6 +390,7 @@ begin
  fPushConstants.GradientHorizonColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientHorizonColor,fScene3D.SkyGradientSunSize);
  fPushConstants.GradientBottomColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientBottomColor,fScene3D.SkyGradientSunBrightness);
  fPushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,fScene3D.GradientEnvironmentIntensityFactor);
+ fPushConstants.SunParameters:=TpvVector4.InlineableCreate(fScene3D.SkyGradientSunHalo,0.0,0.0,0.0);
 
  // Gradient fill pass: write the raw radiance cube map (mip 0, all six faces).
 

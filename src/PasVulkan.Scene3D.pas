@@ -4881,6 +4881,7 @@ type EpvScene3D=class(Exception);
        fSkyGradientStarIntensity:TpvFloat;
        fSkyGradientSunSize:TpvFloat;
        fSkyGradientSunBrightness:TpvFloat;
+       fSkyGradientSunHalo:TpvFloat;
        fGradientEnvironmentIntensityFactor:TpvFloat;
       private
        fRendererInstanceLock:TPasMPCriticalSection;
@@ -5372,6 +5373,13 @@ type EpvScene3D=class(Exception);
        // set here an overbright core, a tight aureole and a broad glow of its own.
        property SkyGradientSunSize:TpvFloat read fSkyGradientSunSize write fSkyGradientSunSize;
        property SkyGradientSunBrightness:TpvFloat read fSkyGradientSunBrightness write fSkyGradientSunBrightness;
+       // How much of the sun there is besides the disc itself: the tight aureole around it and the broad
+       // glow across the sky towards it. One leaves both as they are, zero leaves NOTHING but the disc - a
+       // circle a few pixels across, the way the sun actually is at ninety-three million miles, with the
+       // halo and the streaks left to the bloom to make out of it. Anything between fades the two down
+       // together. It is one number rather than two because it is one question: how much of the sun is
+       // drawn, and how much of it is the post-processing's business.
+       property SkyGradientSunHalo:TpvFloat read fSkyGradientSunHalo write fSkyGradientSunHalo;
        property GradientEnvironmentIntensityFactor:TpvFloat read fGradientEnvironmentIntensityFactor write fGradientEnvironmentIntensityFactor;
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
@@ -35323,6 +35331,7 @@ begin
   fSkyGradientStarIntensity:=0.0;
   fSkyGradientSunSize:=0.009; // radians, so about half a degree - twice the real sun, which reads right
   fSkyGradientSunBrightness:=6.0;
+  fSkyGradientSunHalo:=1.0;   // aureole and glow as they are; zero leaves the bare disc
   fGradientEnvironmentIntensityFactor:=1.0;
 
   fEnvironmentIntensityFactor:=1e-4;

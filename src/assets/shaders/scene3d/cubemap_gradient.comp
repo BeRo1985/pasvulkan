@@ -23,6 +23,7 @@ layout(push_constant, std140) uniform PushConstants {
   vec4 gradientHorizonColor;  // rgb = horizon colour, w = sun size
   vec4 gradientBottomColor;   // rgb = bottom colour,  w = sun brightness
   vec4 lightDirection;        // xyz = primary light direction, w = gradient environment intensity factor
+  vec4 sunParameters;         // x = sun halo (see sky_gradient_sun.glsl), yzw unused
 } pushConstants;
 
 #ifdef USE_RGB9E5
@@ -65,7 +66,8 @@ void main() {
                                -normalize(pushConstants.lightDirection.xyz),
                                pushConstants.gradientHorizonColor.xyz,
                                pushConstants.gradientHorizonColor.w,
-                               pushConstants.gradientBottomColor.w);
+                               pushConstants.gradientBottomColor.w,
+                               pushConstants.sunParameters.x);
 
     skyColor *= pushConstants.lightDirection.w;
 
