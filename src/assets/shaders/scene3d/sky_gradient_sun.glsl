@@ -28,19 +28,27 @@
 // the tracks ask for meant a disc fifteen degrees across; read as radians the same number is two degrees,
 // and the sensible values are smaller still - the real sun is 0.0047.
 
-// How far above the sky the disc sits. It is meant to clip, and by a lot; anything that merely reaches
-// the top of the range comes out as a flat white circle instead of a point of light with a halo.
-const float SkyGradientSunDiscOverbright = 150.0;
+// How far above the sky the disc sits. It is meant to clip, and by a long way: the exposure is worked out
+// from the whole frame, so looking towards the sun raises the average and pulls the exposure down, and a
+// disc that only just reached the top of the range at a normal exposure lands well under it there - which
+// is where a sun stops being a sun. Measured rather than picked: at a hundred and fifty the disc came out
+// around two hundred of two hundred and fifty-five with the sky in frame, a pale dot.
+const float SkyGradientSunDiscOverbright = 1200.0;
 
 // The aureole, as a multiple of the disc radius and a fraction of the sun's brightness.
-const float SkyGradientSunAureoleWidth = 8.0;
-const float SkyGradientSunAureoleStrength = 0.9;
+const float SkyGradientSunAureoleWidth = 6.0;
+const float SkyGradientSunAureoleStrength = 0.55;
 
 // And the broad glow, whose half-width is an angle in radians rather than a multiple of anything - it is
-// a property of the air, not of how big the sun happens to be drawn. Fifteen degrees, which is about what
-// the old blob covered, so the light the cube map bakes from this stays roughly what it was.
-const float SkyGradientSunGlowWidth = 0.26;
-const float SkyGradientSunGlowStrength = 0.55;
+// a property of the air, not of how big the sun happens to be drawn.
+//
+// Six degrees, not the fifteen it first had. Fifteen was chosen to carry about as much energy as the blob
+// this replaced, so that the light baked from the cube map would not change - but on screen it filled the
+// frame with a wash whenever the camera faced the sun, which is worse than what it replaced and takes the
+// exposure down with it. The directional light carries the scene; what the sky adds to it is a bonus, and
+// GradientEnvironmentIntensityFactor is the knob for that.
+const float SkyGradientSunGlowWidth = 0.10;
+const float SkyGradientSunGlowStrength = 0.18;
 
 // Half at aHalfWidth, and never quite zero. Written on the angle rather than as a power of the cosine
 // because the powers a disc this small needs run into the hundreds, where the precision goes.
