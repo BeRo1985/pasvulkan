@@ -1082,6 +1082,7 @@ type { TpvScene3DRendererInstance }
        fRadialBlurFactor:TpvFloat;
        fRadialBlurCentre:TpvVector2;
        fRadialBlurInnerRadius:TpvFloat;
+       fRadialBlurSquaredFallOffFactor:TpvFloat;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1439,6 +1440,11 @@ type { TpvScene3DRendererInstance }
        property RadialBlurFactor:TpvFloat read fRadialBlurFactor write fRadialBlurFactor;
        property RadialBlurCentre:TpvVector2 read fRadialBlurCentre write fRadialBlurCentre;
        property RadialBlurInnerRadius:TpvFloat read fRadialBlurInnerRadius write fRadialBlurInnerRadius;
+       // How the drag grows between the inner radius and the rim: zero straight, one squared, anything in
+       // between a blend of the two. Squared keeps the middle of the picture clear for much longer and is
+       // gentler on whatever the eye is on; straight lets the mid-field smear and is what makes the effect
+       // read at all. Which is right depends on the shot, so it is a dial rather than a decision.
+       property RadialBlurSquaredFallOffFactor:TpvFloat read fRadialBlurSquaredFallOffFactor write fRadialBlurSquaredFallOffFactor;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2450,6 +2456,7 @@ begin
  fRadialBlurFactor:=0.0;
  fRadialBlurCentre:=TpvVector2.InlineableCreate(0.5,0.5);
  fRadialBlurInnerRadius:=0.15;
+ fRadialBlurSquaredFallOffFactor:=0.0;
 
  if assigned(fVirtualReality) then begin
 

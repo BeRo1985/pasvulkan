@@ -27,7 +27,8 @@ layout(location = 0) out vec4 outFragColor;
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
 layout(push_constant) uniform PushConstants {
-  vec4 centreStrengthInner; // xy = centre in [0..1] texture coordinates, z = strength, w = inner radius
+  vec4 centreStrengthInner;    // xy = centre in [0..1] texture coordinates, z = strength, w = inner radius
+  float squaredFallOffFactor;  // 0 = the drag grows straight from the inner radius outwards, 1 = squared
 } pushConstants;
 
 // Enough that the streak reads as a streak rather than as a row of copies, few enough that it costs one
@@ -65,11 +66,18 @@ void main(){
   vec2 centre = pushConstants.centreStrengthInner.xy;
   vec2 toCentre = inTexCoord - centre;
 
-  // Nothing at all in the middle, growing outwards, squared so it stays out of the way for longer. Blur
-  // that reaches the centre takes the thing being looked at with it, which is the one place it must not.
+  // Nothing at all in the middle, growing outwards from the inner radius. Blur that reaches the centre
+  // takes the thing being looked at with it, which is the one place it must not.
+  //
+  // How fast it grows is a dial rather than a decision. Squared was the first try and it made the effect
+  // invisible everywhere but in the last few pixels of the corners - at a third of the way out the square
+  // has already cut the drag to a ninth, so the whole middle band of the picture, which is most of the
+  // picture, got nothing. Straight is the other end: the mid-field smears, and the effect reads, at the
+  // cost of coming closer to what the eye is actually on. Everything in between is available, which is
+  // the point, because which of the two is right is a matter of taste and of the track.
   float inner = pushConstants.centreStrengthInner.w;
   float falloff = clamp((length(toCentre) - inner) / max(1.0 - inner, 1e-4), 0.0, 1.0);
-  float reach = (strength * falloff) * falloff;
+  float reach = strength * (falloff * mix(1.0, falloff, pushConstants.squaredFallOffFactor));
 
   vec4 sum = vec4(0.0);
   float step = reach / float(CountTaps);
