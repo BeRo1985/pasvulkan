@@ -105,6 +105,15 @@ unit PasVulkan.Scene3D;
 // load); gaps only cause harmless extra re-copies in ProcessMatrixPairDirtyQueue, never wrong data. Toggle for A/B.
 {$define BatchMatrixPairDirtyMark}
 
+// Say so whenever a defragmentation actually moves something, and how much.
+//
+// OFF. Defragmentation is the one thing in here that reshuffles data under a running scene, so it is also the
+// first suspect whenever geometry turns up drawn with somebody else's transform after a while of creating and
+// destroying instances - and it is invisible from the outside, because Check() asks for it every frame and it
+// answers "not now" almost every time. Without a line to look at, "it must have defragmented" is a guess. One
+// line per actual compaction, nothing while it declines.
+{$define Scene3DDefragmentationDebug}
+
 interface
 
 uses {$ifdef Windows}
@@ -37117,6 +37126,9 @@ var GroupInstance:TpvScene3D.TGroup.TInstance;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     AnyMoved:boolean;
     CurrentDrawInfo:PGPUDrawInfo;
+{$ifdef Scene3DDefragmentationDebug}
+    CountFixedUpInstances,CountFixedUpRenderInstances:TpvSizeInt;
+{$endif}
 
  function AllocatorNeedsDefrag(const aAllocator:TpvBufferRangeAllocator):boolean;
  begin
@@ -37222,8 +37234,19 @@ begin
          end;
 
          // Rebuild cross-referenced data and do fixups for all affected instances
+{$ifdef Scene3DDefragmentationDebug}
+         CountFixedUpInstances:=0;
+         CountFixedUpRenderInstances:=0;
+{$endif}
          for GroupInstance in fGroupInstances do begin
           if fDefragAffectedInstances.ExistKey(GroupInstance) then begin
+
+{$ifdef Scene3DDefragmentationDebug}
+           inc(CountFixedUpInstances);
+           if GroupInstance.fUseRenderInstances then begin
+            inc(CountFixedUpRenderInstances,GroupInstance.fRenderInstances.Count);
+           end;
+{$endif}
 
            // ConstructData rebuilds vertex/index/morph data with correct cross-reference offsets
            GroupInstance.ConstructData(false);
@@ -37321,6 +37344,12 @@ begin
 
           end;
          end;
+
+{$ifdef Scene3DDefragmentationDebug}
+         if assigned(pvApplication) then begin
+          pvApplication.Log(LOG_INFO,'TpvScene3D','defragmented: '+IntToStr(CountFixedUpInstances)+' group instances fixed up, '+IntToStr(CountFixedUpRenderInstances)+' render instances told to re-emit their draw info');
+         end;
+{$endif}
 
          // Clear temporary maps
          fDefragVertexReverseMap.Clear;
