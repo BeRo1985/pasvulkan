@@ -37252,6 +37252,22 @@ begin
             end;
            end;
 
+{$ifdef DecoupleDrawInfoFromMatrix}
+           // RI instances: the same thing ReallocateData does for the same reason, and for want of it here a
+           // smart-move defrag left every render-instance-based group instance drawing with the offsets it
+           // had BEFORE the move. UpdateRenderInstances only rewrites a render instance's DrawInfo when one
+           // of its inputs changed, and a moved buffer range is not one of the inputs it watches - it is
+           // meant to surface as fFirst, which ReallocateData sets and which this path did not. The instance
+           // then reads its node matrices from where its range used to be, which is where some other
+           // instance's now is, and the mesh comes apart into pieces standing in other places. Same for the
+           // meshlet bounding spheres, where the wrong sphere simply culls the thing away.
+           if GroupInstance.fUseRenderInstances then begin
+            for Index:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+             GroupInstance.fRenderInstances[Index].fFirst:=true;
+            end;
+           end;
+{$endif}
+
            // Raytracing: remove old BLAS nodes, re-add after
            if fRaytracingActive then begin
             for Index:=0 to GroupInstance.fNodes.Count-1 do begin

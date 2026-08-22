@@ -609,7 +609,13 @@ begin
      if assigned(aMove) then begin
       aMove(self,Node.Value.fOffset,Offset,Node.Value.fSize);
      end;
-     Node.Value.Update(Offset,Node.Value.fSize,1,Node.Value.fAllocationType);
+     // The range keeps the alignment it was allocated with, rather than being written back as a one. It is
+     // read in exactly one place - four lines up, where THIS routine rounds the new offset up to it - so
+     // flattening it does not show on the pass that does the flattening. It shows on the NEXT one: by then
+     // every range claims to need no alignment at all, and compaction packs them end to end wherever they
+     // fall. Which is why it only ever turned up after a long while of allocating and releasing, and never
+     // on the first defragmentation.
+     Node.Value.Update(Offset,Node.Value.fSize,Alignment,Node.Value.fAllocationType);
     end;
     inc(Offset,Node.Value.fSize);
     PreviousEndOffset:=Offset;
