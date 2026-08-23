@@ -76,6 +76,9 @@ void main(){
 
   vec4 here = texelFetch(uTextureSource, at, 0);
 
+#if 0
+  imageStore(uDestinationTexture, at, here);
+#else
   float strength = pushConstants.strengthTileSizeSoftZDepthUnproject.x;
   if(strength <= 0.0){
     imageStore(uDestinationTexture, at, here);
@@ -153,5 +156,5 @@ void main(){
   }
 
   imageStore(uDestinationTexture, at, mix(here, sum / max(weight, 1e-8), fade));
-
+#endif
 }

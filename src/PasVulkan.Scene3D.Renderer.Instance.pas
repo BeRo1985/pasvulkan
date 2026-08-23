@@ -5711,8 +5711,22 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
   end;
 
+  // The resolved depth the motion blur filter reads, taken here rather than at the end of the frame. What
+  // the filter needs is the opaque depth, and that is what stands in the buffer once the prepass is done -
+  // taking it later only keeps the depth resource alive across the whole post-processing chain, where the
+  // frame graph is otherwise free to hand its memory on to something else.
+  if Renderer.FinalResolvedDepthNeeded then begin
+   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=TpvScene3DRendererPassesFinalDepthResolveComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
+   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=nil;
+  end;
+
   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass:=TpvScene3DRendererPassesDepthMipMapComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  end;
 
  end;
 
@@ -6760,12 +6774,6 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  // the fastest over each tile's neighbourhood, and then the filter itself over the tone-mapped picture.
  // The first two stand outside the visible chain and only feed the third, which is why they are wired by
  // resource name rather than through LastOutputResource.
- if Renderer.FinalResolvedDepthNeeded then begin
-  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=TpvScene3DRendererPassesFinalDepthResolveComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
- end else begin
-  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=nil;
- end;
-
  if Renderer.MotionBlurActive then begin
   TpvScene3DRendererInstancePasses(fPasses).fMotionBlurTileMaxComputePass:=TpvScene3DRendererPassesMotionBlurTileMaxComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fMotionBlurNeighbourMaxComputePass:=TpvScene3DRendererPassesMotionBlurNeighbourMaxComputePass.Create(fFrameGraph,self);

@@ -5905,7 +5905,7 @@ type TEventBeforeAfter=(Event,Before,After);
      end else begin
       if Resource.fUsed then begin
        Resource.fMinimumTopologicalSortPassIndex:=Min(Resource.fMinimumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
-       Resource.fMaximumTopologicalSortPassIndex:=Max(Resource.fMinimumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
+       Resource.fMaximumTopologicalSortPassIndex:=Max(Resource.fMaximumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
        Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
        Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
       end else begin
