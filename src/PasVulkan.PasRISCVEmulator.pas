@@ -93,6 +93,7 @@ uses SysUtils,
      Vulkan,
      PUCU,
      PasMP,
+     RNL,
      {$ifdef unix}
      pthreads,
      {$endif}
@@ -218,6 +219,61 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property ActiveTestConnectionsLock:TPasMPCriticalSection read fActiveTestConnectionsLock;
      end;
 
+     { TpvPasRISCVEmulatorConsoleServer }
+     // Puts the guest's serial console on a TCP port, so it can be driven from
+     // outside the emulator window with a plain "nc 127.0.0.1 <port>". That is
+     // what makes a guest scriptable, and it keeps working when the guest's own
+     // network does not - which is precisely the situation while a network or
+     // TLS problem is being hunted down.
+     //
+     // Threading: both ring buffers are single producer / single consumer by
+     // construction. fToGuest is written by the server thread and drained by the
+     // update thread, fToClient goes the other way. The UART's own SPSC input
+     // queue therefore still sees exactly one producer, the update thread, just
+     // as it did when key events were the only source of input.
+     TpvPasRISCVEmulatorConsoleServer=class
+      public
+       const BufferSize=1 shl 16;
+             ChunkSize=4096;
+       type { TServerThread }
+            TServerThread=class(TPasMPThread)
+             private
+              fConsoleServer:TpvPasRISCVEmulatorConsoleServer;
+              fListenSocket:TRNLSocket;
+              procedure ServeClient(const aClientSocket:TRNLSocket);
+             protected
+              procedure Execute; override;
+             public
+              constructor Create(const aConsoleServer:TpvPasRISCVEmulatorConsoleServer); reintroduce;
+              destructor Destroy; override;
+              procedure Shutdown;
+            end;
+      private
+       fPort:TpvUInt16;
+       fLocalOnly:Boolean;
+       fRNLInstance:TRNLInstance;
+       fRNLNetwork:TRNLRealNetwork;
+       fRNLNetworkEvent:TRNLNetworkEvent;
+       fServerAddress:TRNLAddress;
+       fServerThread:TServerThread;
+       fToGuest:TPasMPSingleProducerSingleConsumerRingBuffer;
+       fToClient:TPasMPSingleProducerSingleConsumerRingBuffer;
+       fConnected:TPasMPInt32;
+       function GetConnected:Boolean;
+      public
+       constructor Create(const aPort:TpvUInt16;const aLocalOnly:Boolean=true);
+       destructor Destroy; override;
+       procedure Start;
+       procedure Stop;
+       // Called on the update thread with the bytes the UART just produced.
+       procedure PushOutput(const aData:Pointer;const aSize:TpvSizeInt);
+       // Called on the update thread to fetch what the client typed.
+       function PopInput(const aData:Pointer;const aMaxSize:TpvSizeInt):TpvSizeInt;
+       property Port:TpvUInt16 read fPort;
+       property LocalOnly:Boolean read fLocalOnly;
+       property Connected:Boolean read GetConnected;
+     end;
+
      { TpvPasRISCVEmulatorRenderer }
      TpvPasRISCVEmulatorRenderer=class
       public
@@ -263,6 +319,10 @@ type { TpvPasRISCVEmulatorMachineInstance }
        fTerminalFrameBufferSnapshot:TPasTerm.TFrameBufferSnapshot;
        fMachineInstance:TpvPasRISCVEmulatorMachineInstance;
        fUARTOutputBuffer:array[0..65535] of AnsiChar;
+       fConsoleInputBuffer:array[0..4095] of AnsiChar;
+       fConsoleServer:TpvPasRISCVEmulatorConsoleServer;
+       fConsoleServerPort:TpvInt32;
+       fConsoleServerLocalOnly:Boolean;
        fContentGeneration:TpvUInt64;
        fRenderGeneration:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fTextureGeneration:TpvUInt64;
@@ -301,6 +361,10 @@ type { TpvPasRISCVEmulatorMachineInstance }
        property FrameBufferGeneration:TpvUInt64 read fFrameBufferGeneration;
        property ContentGeneration:TpvUInt64 read fContentGeneration;
        property Term:TPasTerm read fTerm;
+       // Set before SetMachineInstance. Zero or less leaves the console server off.
+       property ConsoleServerPort:TpvInt32 read fConsoleServerPort write fConsoleServerPort;
+       property ConsoleServerLocalOnly:Boolean read fConsoleServerLocalOnly write fConsoleServerLocalOnly;
+       property ConsoleServer:TpvPasRISCVEmulatorConsoleServer read fConsoleServer;
        property TerminalFrameBufferSnapshot:TPasTerm.TFrameBufferSnapshot read fTerminalFrameBufferSnapshot;
        property Time:TpvDouble read fTime write fTime;
        function GetFrameBufferTexture(const aIndex:TpvSizeInt):TpvVulkanTexture;
@@ -2208,6 +2272,258 @@ begin
  end;
 end;
 
+{ TpvPasRISCVEmulatorConsoleServer.TServerThread }
+
+constructor TpvPasRISCVEmulatorConsoleServer.TServerThread.Create(const aConsoleServer:TpvPasRISCVEmulatorConsoleServer);
+begin
+ fConsoleServer:=aConsoleServer;
+ fListenSocket:=RNL_SOCKET_NULL;
+ inherited Create(false);
+end;
+
+destructor TpvPasRISCVEmulatorConsoleServer.TServerThread.Destroy;
+begin
+ Shutdown;
+ inherited Destroy;
+end;
+
+procedure TpvPasRISCVEmulatorConsoleServer.TServerThread.Shutdown;
+begin
+ if not Finished then begin
+  Terminate;
+  if assigned(fConsoleServer.fRNLNetworkEvent) then begin
+   fConsoleServer.fRNLNetworkEvent.SetEvent;
+  end;
+  WaitFor;
+ end;
+end;
+
+// One connected client. Reads whatever it typed into fToGuest and writes
+// whatever the UART produced back out. Both directions are non-blocking, so a
+// client that stops reading can never stall the emulator; its backlog simply
+// gets dropped by WriteAsMuchAsPossible.
+procedure TpvPasRISCVEmulatorConsoleServer.TServerThread.ServeClient(const aClientSocket:TRNLSocket);
+var Conditions:TRNLSocketWaitConditions;
+    Buffer:array[0..TpvPasRISCVEmulatorConsoleServer.ChunkSize-1] of TpvUInt8;
+    Count,Sent,Offset:TRNLSizeInt;
+    Network:TRNLRealNetwork;
+    Banner:TpvRawByteString;
+begin
+
+ Network:=fConsoleServer.fRNLNetwork;
+
+ Network.SocketSetOption(aClientSocket,RNL_SOCKET_OPTION_NONBLOCK,1);
+ Network.SocketSetOption(aClientSocket,RNL_SOCKET_OPTION_NODELAY,1);
+
+ Banner:='[PasRISCV serial console attached]'#13#10;
+ Network.SendStream(aClientSocket,Banner[1],length(Banner));
+
+ TPasMPInterlocked.Write(fConsoleServer.fConnected,TPasMPInt32(1));
+ try
+
+  while not Terminated do begin
+
+   Conditions:=[TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_IO_RECEIVE,
+                TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_SERVICE_INTERRUPT];
+   Network.SocketWait([aClientSocket],Conditions,20,nil);
+
+   if Terminated then begin
+    break;
+   end;
+
+   if TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_IO_RECEIVE in Conditions then begin
+    repeat
+     Count:=Network.ReceiveStream(aClientSocket,Buffer[0],SizeOf(Buffer));
+     if Count>0 then begin
+      // dropped rather than blocked: a guest that is not reading its UART must
+      // not be able to freeze the emulator's update thread
+      fConsoleServer.fToGuest.WriteAsMuchAsPossible(@Buffer[0],Count);
+     end else begin
+      break;
+     end;
+    until Terminated or (Count<SizeOf(Buffer));
+    if Count<0 then begin
+     break; // the far side closed the connection
+    end;
+   end;
+
+   // hand the UART output over
+   while not Terminated do begin
+    Count:=fConsoleServer.fToClient.ReadAsMuchAsPossible(@Buffer[0],SizeOf(Buffer));
+    if Count<=0 then begin
+     break;
+    end;
+    Offset:=0;
+    while (Offset<Count) and not Terminated do begin
+     Sent:=Network.SendStream(aClientSocket,Buffer[Offset],Count-Offset);
+     if Sent>0 then begin
+      inc(Offset,Sent);
+     end else if Sent=0 then begin
+      // would block, give the client a moment to drain its own receive window
+      Conditions:=[TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_IO_SEND,
+                   TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_SERVICE_INTERRUPT];
+      Network.SocketWait([aClientSocket],Conditions,20,nil);
+     end else begin
+      Offset:=Count;
+      Count:=-1;
+      break;
+     end;
+    end;
+    if Count<0 then begin
+     break;
+    end;
+   end;
+   if Count<0 then begin
+    break;
+   end;
+
+  end;
+
+ finally
+  TPasMPInterlocked.Write(fConsoleServer.fConnected,TPasMPInt32(0));
+ end;
+
+end;
+
+procedure TpvPasRISCVEmulatorConsoleServer.TServerThread.Execute;
+var ClientSocket:TRNLSocket;
+    ClientAddress:TRNLAddress;
+    Conditions:TRNLSocketWaitConditions;
+    Network:TRNLRealNetwork;
+begin
+
+ NameThreadForDebugging('TpvPasRISCVEmulatorConsoleServer.TServerThread');
+
+ Network:=fConsoleServer.fRNLNetwork;
+
+ fListenSocket:=Network.SocketCreate(TRNLSocketType.RNL_SOCKET_TYPE_STREAM,RNL_IPV4);
+ if fListenSocket=RNL_SOCKET_NULL then begin
+  exit;
+ end;
+
+ try
+
+  Network.SocketSetOption(fListenSocket,RNL_SOCKET_OPTION_NONBLOCK,1);
+  Network.SocketSetOption(fListenSocket,RNL_SOCKET_OPTION_REUSEADDR,1);
+
+  if Network.SocketBind(fListenSocket,@fConsoleServer.fServerAddress,RNL_IPV4) then begin
+   try
+
+    if Network.SocketListen(fListenSocket,4) then begin
+
+     while not Terminated do begin
+
+      Conditions:=[TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_IO_RECEIVE,
+                   TRNLSocketWaitCondition.RNL_SOCKET_WAIT_CONDITION_SERVICE_INTERRUPT];
+      // Same Windows caveat as in TPasRISCV.TDebugger.TServerThread: WSACloseEvent
+      // there appears to close the accepting socket, so no event is passed on
+      // Windows and the timeout is lowered instead.
+      Network.SocketWait([fListenSocket],Conditions,{$ifdef Windows}10,nil{$else}100,fConsoleServer.fRNLNetworkEvent{$endif});
+
+      if Terminated then begin
+       break;
+      end;
+
+      ClientSocket:=Network.SocketAccept(fListenSocket,@ClientAddress,RNL_IPV4);
+      if ClientSocket=RNL_SOCKET_NULL then begin
+       continue;
+      end;
+
+      try
+       ServeClient(ClientSocket);
+      finally
+       Network.SocketShutdown(ClientSocket);
+       Network.SocketDestroy(ClientSocket);
+      end;
+
+     end;
+
+    end;
+
+   finally
+    Network.SocketShutdown(fListenSocket);
+   end;
+  end;
+
+ finally
+  Network.SocketDestroy(fListenSocket);
+  fListenSocket:=RNL_SOCKET_NULL;
+ end;
+
+end;
+
+{ TpvPasRISCVEmulatorConsoleServer }
+
+constructor TpvPasRISCVEmulatorConsoleServer.Create(const aPort:TpvUInt16;const aLocalOnly:Boolean);
+begin
+ inherited Create;
+ fPort:=aPort;
+ fLocalOnly:=aLocalOnly;
+ fConnected:=0;
+ fServerThread:=nil;
+ fToGuest:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(BufferSize);
+ fToClient:=TPasMPSingleProducerSingleConsumerRingBuffer.Create(BufferSize);
+ fRNLInstance:=TRNLInstance.Create;
+ fRNLNetwork:=TRNLRealNetwork.Create(fRNLInstance);
+ fRNLNetworkEvent:=TRNLNetworkEvent.Create;
+ // 127.0.0.1 by default: this is an unauthenticated root shell on a socket, so
+ // it stays on the loopback interface unless it is asked for explicitly
+ if fLocalOnly then begin
+  fServerAddress:=TRNLAddress.CreateFromString('127.0.0.1:'+IntToStr(aPort));
+ end else begin
+  fServerAddress:=TRNLAddress.CreateFromString('0.0.0.0:'+IntToStr(aPort));
+ end;
+end;
+
+destructor TpvPasRISCVEmulatorConsoleServer.Destroy;
+begin
+ Stop;
+ FreeAndNil(fRNLNetworkEvent);
+ FreeAndNil(fRNLNetwork);
+ FreeAndNil(fRNLInstance);
+ FreeAndNil(fToGuest);
+ FreeAndNil(fToClient);
+ inherited Destroy;
+end;
+
+procedure TpvPasRISCVEmulatorConsoleServer.Start;
+begin
+ if not assigned(fServerThread) then begin
+  fServerThread:=TServerThread.Create(self);
+ end;
+end;
+
+procedure TpvPasRISCVEmulatorConsoleServer.Stop;
+begin
+ if assigned(fServerThread) then begin
+  fServerThread.Shutdown;
+  FreeAndNil(fServerThread);
+ end;
+end;
+
+function TpvPasRISCVEmulatorConsoleServer.GetConnected:Boolean;
+begin
+ result:=TPasMPInterlocked.Read(fConnected)<>0;
+end;
+
+procedure TpvPasRISCVEmulatorConsoleServer.PushOutput(const aData:Pointer;const aSize:TpvSizeInt);
+begin
+ // Nothing is buffered while nobody is attached, so a client that connects later
+ // starts at the current output instead of getting a replay of the whole boot.
+ if (aSize>0) and GetConnected then begin
+  fToClient.WriteAsMuchAsPossible(aData,aSize);
+ end;
+end;
+
+function TpvPasRISCVEmulatorConsoleServer.PopInput(const aData:Pointer;const aMaxSize:TpvSizeInt):TpvSizeInt;
+begin
+ if aMaxSize>0 then begin
+  result:=fToGuest.ReadAsMuchAsPossible(aData,aMaxSize);
+ end else begin
+  result:=0;
+ end;
+end;
+
 { TpvPasRISCVEmulatorRenderer }
 
 constructor TpvPasRISCVEmulatorRenderer.Create;
@@ -2216,6 +2532,9 @@ begin
  inherited Create;
  fVulkanDevice:=nil;
  fMachineInstance:=nil;
+ fConsoleServer:=nil;
+ fConsoleServerPort:=0;
+ fConsoleServerLocalOnly:=true;
  fSelectedIndex:=-1;
  fReady:=false;
  fSerialConsoleMode:=false;
@@ -2244,6 +2563,7 @@ end;
 
 destructor TpvPasRISCVEmulatorRenderer.Destroy;
 begin
+ FreeAndNil(fConsoleServer);
  FreeAndNil(fTerminalFrameBufferSnapshot);
  FreeAndNil(fTerm);
  inherited Destroy;
@@ -2368,6 +2688,10 @@ end;
 procedure TpvPasRISCVEmulatorRenderer.SetMachineInstance(const aMachineInstance:TpvPasRISCVEmulatorMachineInstance);
 begin
  fMachineInstance:=aMachineInstance;
+ if assigned(aMachineInstance) and (fConsoleServerPort>0) and not assigned(fConsoleServer) then begin
+  fConsoleServer:=TpvPasRISCVEmulatorConsoleServer.Create(fConsoleServerPort,fConsoleServerLocalOnly);
+  fConsoleServer.Start;
+ end;
 {$ifdef PasRISCVVirtIOGPUVulkanVenus}
  if assigned(fVulkanDevice) and
     assigned(aMachineInstance) and
@@ -2380,6 +2704,7 @@ end;
 
 procedure TpvPasRISCVEmulatorRenderer.ShutdownMachineInstance;
 begin
+ FreeAndNil(fConsoleServer);
  if assigned(fMachineInstance) then begin
   fMachineInstance.Shutdown;
   FreeAndNil(fMachineInstance);
@@ -3017,6 +3342,7 @@ end;
 procedure TpvPasRISCVEmulatorRenderer.UpdateEmulatorState;
 var Index:TpvSizeInt;
     IncomingChars:TpvInt32;
+    ConsoleInputCount,ConsoleInputIndex:TpvInt32;
     Updated,FrameBufferActive,FrameBufferGenerationDirty:boolean;
     VSockTestProtocol:TpvPasRISCVEmulatorMachineInstance.TVSockTestProtocol;
 begin
@@ -3059,12 +3385,35 @@ begin
      if TFlag.WriteToConsoleOutput in fFlags then begin
       System.Write(copy(fUARTOutputBuffer,0,IncomingChars));
      end;
+     if assigned(fConsoleServer) then begin
+      // tee, not steal: the on-screen terminal still gets every byte
+      fConsoleServer.PushOutput(@fUARTOutputBuffer,IncomingChars);
+     end;
      fTerm.Write(@fUARTOutputBuffer,IncomingChars);
      Updated:=true;
     end;
    end else begin
     break;
    end;
+  until false;
+ end;
+ if assigned(fConsoleServer) and
+    assigned(fMachineInstance) and
+    assigned(fMachineInstance.Machine) and
+    assigned(fMachineInstance.Machine.UARTDevice) then begin
+  repeat
+   ConsoleInputCount:=fConsoleServer.PopInput(@fConsoleInputBuffer,
+                                              Min(SizeOf(fConsoleInputBuffer),
+                                                  fMachineInstance.Machine.UARTDevice.InputQueue.AvailableForEnqueue));
+   if ConsoleInputCount<=0 then begin
+    break;
+   end;
+   for ConsoleInputIndex:=0 to ConsoleInputCount-1 do begin
+    fMachineInstance.Machine.UARTDevice.InputQueue.Enqueue(fConsoleInputBuffer[ConsoleInputIndex]);
+   end;
+   fMachineInstance.Machine.UARTDevice.Notify;
+   fMachineInstance.Machine.Interrupt;
+   fMachineInstance.Machine.WakeUp;
   until false;
  end;
  if Updated then begin
