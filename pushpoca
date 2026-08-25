@@ -24,6 +24,7 @@ OLD_DIR="$(pwd)"
 
 # Copy modified files from the poca submodule to the real directory of the poca GIT repository
 cp -f externals/poca/src/POCA.pas ../poca/src/POCA.pas
+cp -f externals/poca/src/POCASetupFunctionCall.inc ../poca/src/POCASetupFunctionCall.inc
 
 # Clean the poca submodule from the local changes 
 cd externals/poca
