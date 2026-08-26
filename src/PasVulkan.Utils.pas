@@ -63,7 +63,8 @@ interface
 
 uses SysUtils,
      Classes,
-     PasVulkan.Types;
+     PasVulkan.Types,
+     PasVulkan.CrashReport;
 
 type TpvSwap<T>=class
       public
@@ -312,26 +313,12 @@ end;
 {$endif}
 
 function DumpExceptionCallStack(e:Exception):string;
-const LineEnding={$if defined(Windows) or defined(Win32) or defined(Win64)}#13#10{$else}#10{$ifend};
-{$if defined(fpc)}
-var Index:TpvInt32;
-    Frames:PPointer;
-{$else}
-{$ifend}
 begin
- result:='Program exception! '+LineEnding+'Stack trace:'+LineEnding+LineEnding;
- if assigned(e) then begin
-  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
- end;
-{$if defined(fpc)}
- result:=result+BackTraceStrFunc(ExceptAddr);
- Frames:=ExceptFrames;
- for Index:=0 to ExceptFrameCount-1 do begin
-  result:=result+LineEnding+BackTraceStrFunc(Frames);
-  inc(Frames);
- end;
-{$else}
-{$ifend}
+ // There used to be a second, slightly different copy of this in
+ // PasVulkan.Application, and which of the two a unit ended up calling depended
+ // on its uses order. Both now delegate to the single implementation in
+ // PasVulkan.CrashReport.
+ result:=pvCrashReportDumpException(e);
 end;
 
 class procedure TpvSwap<T>.Swap(var aValue,aOtherValue:T);

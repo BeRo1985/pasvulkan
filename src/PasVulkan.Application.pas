@@ -2756,11 +2756,15 @@ function DumpExceptionCallStack(e:Exception;aAddr:Pointer=nil;aFrameCount:Longin
 function DumpExceptionCallStack(e:Exception):string;
 {$ifend}
 
+// Resolves the file LogCrash writes to. See the implementation for the order in
+// which the candidates are tried.
+function GetCrashLogFileName:String;
+
 procedure LogCrash(const aExceptionString:String);
 
 implementation
 
-uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP;
+uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -3200,73 +3204,137 @@ begin
 end;
 {$ifend}
 
+// Both of these delegate to the single implementation in PasVulkan.CrashReport,
+// which also captures the stack at the raise point rather than only here.
 {$if defined(fpc)}
 function DumpExceptionCallStack(e:Exception;aAddr:Pointer;aFrameCount:Longint;aFrames:PPointer):string;
-var i:int32;
-    Frames:PPointer;
 begin
- result:='Program exception! '+LineEnding+'Stack trace:'+LineEnding+LineEnding;
- if assigned(e) then begin
-  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
- end;
- if assigned(aAddr) then begin
-  result:=result+BackTraceStrFunc(aAddr);
- end else begin
-  result:=result+BackTraceStrFunc(ExceptAddr);
- end;
- if assigned(aFrames) and (aFrameCount>0) then begin
-  Frames:=aFrames;
-  for i:=0 to aFrameCount-1 do begin
-   result:=result+LineEnding+BackTraceStrFunc(Frames);
-   inc(Frames);
-  end;
- end else begin
-  Frames:=ExceptFrames;
-  for i:=0 to ExceptFrameCount-1 do begin
-   result:=result+LineEnding+BackTraceStrFunc(Frames);
-   inc(Frames);
-  end;
- end;
+ result:=pvCrashReportDumpException(e,aAddr,aFrameCount,aFrames);
 end;
 {$else}
 function DumpExceptionCallStack(e:Exception):string;
-const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
-var s:string;
 begin
- result:='Program exception! '+LineEnding;
- if assigned(e) then begin
-  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
-  s:=e.StackTrace;
-  if length(s)>0 then begin
-   result:=result+s;
-  end;
- end;
+ result:=pvCrashReportDumpException(e);
 end;
 {$ifend}
 
+function GetCrashLogFileName:String;
+var Index,Count:TpvInt32;
+    Parameter,BaseName,Path:String;
+begin
+
+ // An explicit override on the command line always wins.
+ Index:=1;
+ Count:=ParamCount;
+ while Index<=Count do begin
+  Parameter:=LowerCase(ParamStr(Index));
+  inc(Index);
+  if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+   Delete(Parameter,1,1);
+   if (length(Parameter)>0) and ((Parameter[1]='-') or (Parameter[1]='/')) then begin
+    Delete(Parameter,1,1);
+   end;
+   if (Parameter='crashlog') and (Index<=Count) then begin
+    result:=ParamStr(Index);
+    exit;
+   end;
+  end;
+ end;
+
+ // Under a debugger the crash log stays next to the executable, since that is
+ // where it is most convenient during development. Otherwise the per user
+ // storage path is preferred, because it is writable on every target, is the
+ // only sensible place at all on Android, where there is no such thing as a
+ // directory next to the executable, and can be named to a player in a bug
+ // report. It is empty until TpvApplication.Run has resolved it, so the
+ // fallback below also covers every crash which happens before that.
+ if not pvDebuggerPresent then begin
+  // Wrapped, because this is also called from TpvApplication.Run just to report
+  // the location, so a failing directory probe must not become an exception
+  // during startup, and it is called from inside the crash handler, where it
+  // must not become a second exception either.
+  try
+   Path:=String(pvLocalStoragePath);
+   if length(Path)>0 then begin
+    Path:=IncludeTrailingPathDelimiter(Path);
+    if DirectoryExists(Path) or ForceDirectories(ExcludeTrailingPathDelimiter(Path)) then begin
+     BaseName:=ExtractFileName(ChangeFileExt(ParamStr(0),'.crashlog'));
+     if length(BaseName)>0 then begin
+      result:=Path+BaseName;
+      exit;
+     end;
+    end;
+   end;
+  except
+   // Fall through to the executable directory below.
+  end;
+ end;
+
+ result:=ChangeFileExt(ParamStr(0),'.crashlog');
+
+end;
+
 procedure LogCrash(const aExceptionString:String);
 {$ifdef PasVulkanUseCrashLog}
+const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
 var FileName:String;
-    LogFile:TextFile;
+    Text:String;
+    RawText:TpvRawByteString;
+    FileHandle:THandle;
 {$endif}
 begin
 {$ifdef PasVulkanUseCrashLog}
- FileName:=ChangeFileExt(ParamStr(0),'.crashlog');
- if FileExists(FileName) then begin
-  AssignFile(LogFile,FileName);
-  Append(LogFile);
- end else begin
-  AssignFile(LogFile,FileName);
-  Rewrite(LogFile);
+ // Everything in here is wrapped, because a crash log which cannot be written
+ // must never turn into a second exception on top of the one currently being
+ // reported. The previous version used a TextFile with I/O checking left on, so
+ // a read only or missing directory raised an EInOutError right inside the
+ // crash handler, where the reentrancy guard then swallowed it along with the
+ // crash log itself. For the same reason no TextFile is used anymore at all,
+ // since its buffer allocation is exactly what fails in a heap corruption crash.
+ try
+
+  FileName:=GetCrashLogFileName;
+  if length(FileName)=0 then begin
+   exit;
+  end;
+
+  Text:=LineEnding+
+        '-----------------------------------------'+LineEnding+
+        LineEnding+
+        DateTimeToStr(Now)+':'+LineEnding+
+        LineEnding+
+        aExceptionString+LineEnding+
+        LineEnding+
+        pvCrashReportHistory+
+        LineEnding;
+
+{$ifdef fpc}
+  RawText:=TpvRawByteString(Text);
+{$else}
+  RawText:=TpvRawByteString(UTF8Encode(Text));
+{$endif}
+
+  if FileExists(FileName) then begin
+   FileHandle:=FileOpen(FileName,fmOpenWrite or fmShareDenyNone);
+   if FileHandle<>THandle(-1) then begin
+    FileSeek(FileHandle,TpvInt64(0),2);
+   end;
+  end else begin
+   FileHandle:=FileCreate(FileName);
+  end;
+  if FileHandle<>THandle(-1) then begin
+   try
+    if length(RawText)>0 then begin
+     FileWrite(FileHandle,RawText[1],length(RawText));
+    end;
+   finally
+    FileClose(FileHandle);
+   end;
+  end;
+
+ except
+  // Deliberately silent, see above.
  end;
- WriteLn(LogFile);
- WriteLn(LogFile,'-----------------------------------------');
- WriteLn(LogFile);
- WriteLn(LogFile,DateTimeToStr(Now)+':');
- WriteLn(LogFile);
- WriteLn(LogFile,aExceptionString);
- WriteLn(LogFile);
- CloseFile(LogFile);
 {$endif}
 end;
 
@@ -17865,6 +17933,13 @@ begin
   AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
+ // These were only assigned in the non-Android branch below, so the global
+ // storage paths stayed empty on exactly the platform where there is no usable
+ // directory next to the executable to fall back to.
+ pvCacheStoragePath:=fCacheStoragePath;
+ pvLocalStoragePath:=fLocalStoragePath;
+ pvRoamingStoragePath:=fRoamingStoragePath;
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Cache storage data path: '+fCacheStoragePath));
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Local storage data path: '+fLocalStoragePath));
@@ -17898,6 +17973,10 @@ begin
 {$ifend}
 
 {$ifend}
+
+ // Now that the storage paths are known, the crash log lands at its final
+ // location, so say where that is instead of leaving it to be guessed.
+ Log(LOG_INFO,'PasVulkanApplication','Crash log file: '+TpvUTF8String(GetCrashLogFileName));
 
  fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 
@@ -20122,7 +20201,11 @@ end;
 type TExceptionOccurred=procedure(aSender:TObject;aAddr:Pointer{$ifdef fpc};aFrameCount:Longint;aFrames:PPointer{$endif});
 
 var OldExceptProc:Pointer=nil;
-    HandlingException:Boolean=false;
+
+// Per thread, since the update thread and every PasMP worker can hit this at the
+// same time. As a plain global, one thread crashing suppressed the report of
+// another one, and an aborted handler left the flag set for the whole process.
+threadvar HandlingException:Boolean;
 
 procedure ExceptionOccurred(aSender:TObject;aAddr:Pointer{$ifdef fpc};aFrameCount:Longint;aFrames:PPointer{$endif});
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
@@ -20250,8 +20333,18 @@ initialization
  end;
 {$ifend}
 
- // Set exception handler and save old exception handler
- OldExceptProc:=Addr(System.ExceptProc);
+ // Set exception handler and save old exception handler.
+ //
+ // This used to read Addr(System.ExceptProc), which yields the address of the
+ // variable rather than the procedure pointer stored in it. The saved value was
+ // therefore never nil and calling it executed the data section, which faulted
+ // right inside the unhandled exception handler, while the reentrancy guard was
+ // still set, so that follow up fault was swallowed as well.
+ //
+ // A plain assignment does not work either, because in Delphi mode reading a
+ // procedural variable in an expression calls it. Dereferencing the variable
+ // address is unambiguous on both compilers.
+ OldExceptProc:=PPointer(@System.ExceptProc)^;
  System.ExceptProc:=@ExceptionOccurred;
 
 {$ifdef Windows}
