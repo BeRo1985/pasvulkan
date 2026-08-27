@@ -252,9 +252,14 @@ function pvCrashReportDumpException(const aException:Exception;const aAddress:Tp
 // the identifier and the printed stack are always about the same frames.
 function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddress:TpvPointer=nil):String;
 
-// Formats the processor state of the last fault which was recorded. Empty when
-// none has happened, and empty on a platform which does not hand one over.
-function pvCrashReportRegisters:String;
+// Formats the processor state of the last fault of a thread. Empty when that
+// thread had none, and empty on a platform which does not hand one over.
+//
+// Defaults to the calling thread, which is right where the thread which
+// crashed writes its own report. An application which hands its crash logs to a
+// logger thread of its own has to say whose state it wants, otherwise the
+// logger asks about itself and gets nothing.
+function pvCrashReportRegisters(const aThreadID:TpvUInt64=0):String;
 
 // Lists the modules of the process with the address each was loaded at, so that
 // an address which nothing could name can still be placed.
@@ -1671,6 +1676,7 @@ const EXCEPTION_CONTINUE_SEARCH=TpvInt32(0);
 var ExceptionRecord:PpvCrashReportNativeExceptionRecord;
     Entry:PpvCrashReportEntry;
     Sequence:TpvUInt32;
+    Flags:TpvUInt32;
     ExceptionObject:TObject;
     ClassNameString:PShortString;
 begin
@@ -1708,22 +1714,32 @@ begin
  Entry:=@CrashReportRingBuffer[(Sequence-1) and (pvCrashReportRingBufferSize-1)];
  // Either runtime, not only the one this was built with. A FreePascal library
  // inside a Delphi host, or the other way round, raises with the code of its
- // own runtime, and that is still a raise and not a fault. What is not done for
- // the foreign one is looking into the exception object: the class name could
- // be read the same way, but the message is an eight bit string on one side and
- // a sixteen bit one on the other, with nothing in the record to say which.
+ // own runtime, and that is still a raise and not a fault.
+ //
+ // What is not done for the foreign one is looking into the exception object.
+ // Not only because the message is an eight bit string on one side and a
+ // sixteen bit one on the other: the class name cannot be read either, since
+ // the two runtimes lay out their virtual method tables differently, so the
+ // offset used below lands somewhere arbitrary in an object of the other one
+ // and is then dereferenced as a string. The rule is: an object is only ever
+ // read by the runtime which made it.
  if (ExceptionRecord^.ExceptionCode=cFPCException) or
     (ExceptionRecord^.ExceptionCode=cDelphiException) then begin
-{$ifdef fpc}
-  // fpc_RaiseException passes address, object, frame count and frames, see
-  // rtl/win64/seh64.inc and rtl/win32/seh32.inc.
-  // fpc_RaiseException passes the address of the raise statement itself, not
-  // the address behind it, so no adjustment is wanted here.
-  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),0);
-{$else}
-  // Delphi hands over the return address of the raise site instead.
-  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),pvCrashReportFlagReturnAddress);
-{$endif}
+
+  // Which of the two raised it decides this, not which of the two this was
+  // built with. FreePascal passes the address of the raise statement itself,
+  // see fpc_RaiseException in rtl/win64/seh64.inc and rtl/win32/seh32.inc,
+  // while Delphi passes the return address of the raise site. Deciding it at
+  // compile time would put the adjustment on the foreign one exactly where it
+  // does not belong, and one byte in the wrong direction is a different line,
+  // or a different routine where the call was the last statement of one.
+  if ExceptionRecord^.ExceptionCode=cDelphiException then begin
+   Flags:=pvCrashReportFlagReturnAddress;
+  end else begin
+   Flags:=0;
+  end;
+  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),Flags);
+
   if ExceptionRecord^.NumberParameters>=2 then begin
    // Both runtimes pass the address of the raise as the first parameter. The
    // one in the record itself is the address inside RaiseException, which is
@@ -2002,7 +2018,7 @@ begin
 
 end;
 
-function pvCrashReportRegisters:String;
+function pvCrashReportRegisters(const aThreadID:TpvUInt64):String;
 // Only Windows, because the vectored handler is the only place a processor
 // context is handed over. On a unix that would take a signal handler, which is
 // the same decision the thread stacks are waiting on.
@@ -2043,7 +2059,11 @@ begin
  // this report is about. Without that condition a language level exception
  // being fatal here would show the registers of an unrelated fault elsewhere,
  // and nothing in the output would say so.
- OwnThreadID:=CrashReportCurrentThreadID;
+ if aThreadID=0 then begin
+  OwnThreadID:=CrashReportCurrentThreadID;
+ end else begin
+  OwnThreadID:=aThreadID;
+ end;
  Found:=false;
  for Index:=0 to Count-1 do begin
   Wanted:=Newest-TpvUInt32(Index);
@@ -2449,9 +2469,19 @@ begin
 end;
 
 procedure CrashReportUninstallThreadSignalHandler;
+var Current:SigActionRec;
 begin
  if CrashReportThreadSignalInstalled then begin
-  FpSigAction(cCrashReportThreadSignal,@CrashReportOldThreadSignalAction,nil);
+  // Only put back when the handler in place is still the one which was put
+  // there. Somebody else may have claimed the signal in the meantime, and
+  // restoring over them would leave them without the handler they installed.
+  // Same reasoning as for the stack info hooks and for RaiseProc.
+  FillChar(Current,SizeOf(SigActionRec),#0);
+  if (FpSigAction(cCrashReportThreadSignal,nil,@Current)=0) and
+     (TpvPointer(@Current.sa_handler)<>nil) and
+     (PPointer(@Current.sa_handler)^=TpvPointer(@CrashReportThreadSignalHandler)) then begin
+   FpSigAction(cCrashReportThreadSignal,@CrashReportOldThreadSignalAction,nil);
+  end;
   CrashReportThreadSignalInstalled:=false;
  end;
 end;

@@ -384,11 +384,13 @@ begin
  // thing and is built like another, and the tools do not read it: addr2line
  // answers with a question mark for every address in it.
  //
- // So it is turned down. Writing a file which nobody can read, while the self
- // check reports success because it only ever looks at the appended table, is
- // the worst of the three options.
+ // Writing a file which nobody can read, while the self check reports success
+ // because it only ever looks at the appended table, is the worst of the three
+ // options. The caller already turns this case away with an exit code, so this
+ // is the second lock on the same door, for anybody who calls this directly.
  if (aImage.Machine=IMAGE_FILE_MACHINE_I386) or (aImage.Machine=IMAGE_FILE_MACHINE_ARMNT) then begin
   WriteLn('No debug file was written: it would have to be a 32 bit ELF, and only 64 bit is written here.');
+  ExitCode:=1;
   exit;
  end;
 
@@ -793,6 +795,24 @@ begin
   DWARFWriter:=nil;
   PDBWriter:=nil;
   try
+
+   // The DWARF written here is sixty four bit throughout: the address size in
+   // .debug_info, and the ELF the standalone file goes into. For a thirty two
+   // bit image that is not a description of it and no consumer reads it, so
+   // neither way of emitting it is offered there. That covers the sections put
+   // into the executable as well, not only the separate file, since it is the
+   // same DWARF either way.
+   //
+   // Refused with an exit code rather than only a message, because a build
+   // script which asked for an output has to be able to see that it did not get
+   // one. The pdb is unaffected: its machine follows the image.
+   if (InjectIntoExecutable or (length(DebugOutputFileName)>0)) and
+      ((Image.Machine=IMAGE_FILE_MACHINE_I386) or (Image.Machine=IMAGE_FILE_MACHINE_ARMNT)) then begin
+    WriteLn('No DWARF was written: this image is 32 bit and only 64 bit DWARF is written here.');
+    ExitCode:=1;
+    InjectIntoExecutable:=false;
+    DebugOutputFileName:='';
+   end;
 
    if InjectIntoExecutable or (length(DebugOutputFileName)>0) then begin
     DWARFWriter:=TDWARFWriter.Create(Builder);
