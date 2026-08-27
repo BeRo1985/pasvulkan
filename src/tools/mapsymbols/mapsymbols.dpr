@@ -272,7 +272,15 @@ const // A gap no larger than this is padding rather than a hole. Routines are
       // unit was sixteen bytes or less, so without this every function boundary
       // would become a range of its own: three and a half thousand of them
       // instead of eight, for no gain.
+      //
+      // Turning the tolerance off with PasVulkanMapSymbolsNoPaddingTolerance
+      // gives exactly that, one range per run, which is how the split case is
+      // reproduced on a build whose linker did not actually split anything.
+{$ifdef PasVulkanMapSymbolsNoPaddingTolerance}
+      cMaximalPadding=0;
+{$else}
       cMaximalPadding=16;
+{$endif}
 var Index,Kept:TpvSizeInt;
 begin
 
@@ -370,18 +378,26 @@ var ELFWriter:TELFWriter;
     Have:Boolean;
 begin
 
+ // The written container is sixty four bit throughout: the class byte, the
+ // section headers, the symbol entries and the address size of the DWARF inside
+ // it. For a thirty two bit image that would be a file which says it is one
+ // thing and is built like another, and the tools do not read it: addr2line
+ // answers with a question mark for every address in it.
+ //
+ // So it is turned down. Writing a file which nobody can read, while the self
+ // check reports success because it only ever looks at the appended table, is
+ // the worst of the three options.
+ if (aImage.Machine=IMAGE_FILE_MACHINE_I386) or (aImage.Machine=IMAGE_FILE_MACHINE_ARMNT) then begin
+  WriteLn('No debug file was written: it would have to be a 32 bit ELF, and only 64 bit is written here.');
+  exit;
+ end;
+
  ELFWriter:=TELFWriter.Create;
  try
 
   // The COFF machine of the image translated back, since that is the one shape
   // both containers are described in here.
   case aImage.Machine of
-   IMAGE_FILE_MACHINE_I386:begin
-    ELFWriter.Machine:=EM_386;
-   end;
-   IMAGE_FILE_MACHINE_ARMNT:begin
-    ELFWriter.Machine:=EM_ARM;
-   end;
    IMAGE_FILE_MACHINE_ARM64:begin
     ELFWriter.Machine:=EM_AARCH64;
    end;
@@ -765,7 +781,10 @@ begin
    DebugImage.Close;
   end;
 
-  WriteLn(Builder.UnitCount,' units, ',Builder.SymbolCount,' symbols, ',Builder.LineCount,' line records.');
+  // Ranges rather than units: a unit whose code the linker put down in several
+  // pieces contributes one entry per piece, so this number is larger than the
+  // number of source files and is meant to be.
+  WriteLn(Builder.UnitCount,' unit ranges, ',Builder.SymbolCount,' symbols, ',Builder.LineCount,' line records.');
 
   if Builder.LineCount=0 then begin
    WriteLn('Warning: no line numbers were found, so only routine names will resolve.');

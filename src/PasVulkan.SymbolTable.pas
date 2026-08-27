@@ -458,7 +458,13 @@ begin
              (TpvUInt64(Header.SymbolCount)*TpvUInt64(SizeOf(TpvSymbolTableSymbolEntry)))+
              (TpvUInt64(Header.LineCount)*TpvUInt64(SizeOf(TpvSymbolTableLineEntry)))+
              TpvUInt64(Header.StringSize);
-   if Header.StringSize=0 then begin
+   // The counts are four unchecked thirty two bit numbers, so what they
+   // multiply out to can be larger than this build can address at all. Checked
+   // before anything is cast down to a size, since on a thirty two bit runtime
+   // that cast would silently wrap and the allocation which follows would then
+   // be far too small for what is read into it.
+   if (Header.StringSize=0) or
+      (Expected>TpvUInt64(High(TpvSizeInt))) then begin
     exit;
    end;
 
@@ -469,7 +475,8 @@ begin
    if (Header.Flags and pvSymbolTableFlagCompressed)<>0 then begin
 
 {$ifdef PasVulkanSymbolTableCompression}
-    if Stored<=TpvUInt64(SizeOf(TpvUInt64)) then begin
+    if (Stored<=TpvUInt64(SizeOf(TpvUInt64))) or
+       (Stored>TpvUInt64(High(TpvSizeInt))) then begin
      exit;
     end;
 
