@@ -18,7 +18,7 @@ uses SysUtils,
      PasVulkan.SymbolTable;
 
 type TSymbolBuilder=class
-      private
+      public
        type TUnitRecord=record
              Name:String;
              FileName:String;
@@ -75,6 +75,11 @@ type TSymbolBuilder=class
        // Link time base of the image, written into the header so that the
        // reader can turn a load bias back into a base at runtime.
        property ImageBase:TpvUInt64 read fImageBase write fImageBase;
+       // Read access for the writers, which need the collected data again in a
+       // different shape. Only valid after Finish, since that is what sorts it.
+       function GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
+       function GetSymbol(const aIndex:TpvSizeInt):TSymbolRecord;
+       function GetLine(const aIndex:TpvSizeInt):TLineRecord;
        property UnitCount:TpvSizeInt read fUnitCount;
        property SymbolCount:TpvSizeInt read fSymbolCount;
        property LineCount:TpvSizeInt read fLineCount;
@@ -150,6 +155,21 @@ begin
    fUnits[Index].FileName:=aFileName;
   end;
  end;
+end;
+
+function TSymbolBuilder.GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
+begin
+ result:=fUnits[aIndex];
+end;
+
+function TSymbolBuilder.GetSymbol(const aIndex:TpvSizeInt):TSymbolRecord;
+begin
+ result:=fSymbols[aIndex];
+end;
+
+function TSymbolBuilder.GetLine(const aIndex:TpvSizeInt):TLineRecord;
+begin
+ result:=fLines[aIndex];
 end;
 
 procedure TSymbolBuilder.SortUnits(const aLeft,aRight:TpvSizeInt);

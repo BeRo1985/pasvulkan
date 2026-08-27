@@ -37,7 +37,19 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="UnitDwarfLine.pas"/>
+        <Filename Value="UnitDWARFLine.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="UnitDWARFWriter.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="UnitELFWriter.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="UnitPEInjector.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

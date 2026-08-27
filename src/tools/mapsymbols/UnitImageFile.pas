@@ -331,7 +331,7 @@ begin
 end;
 
 function TImageFile.ReadELF:Boolean;
-var ElfClass,DataEncoding:TpvUInt8;
+var ELFClass,DataEncoding:TpvUInt8;
     ProgramHeaderOffset,SectionHeaderOffset:TpvUInt64;
     ProgramHeaderEntrySize,ProgramHeaderCount:TpvUInt16;
     SectionHeaderEntrySize,SectionHeaderCount,SectionNameIndex:TpvUInt16;
@@ -347,12 +347,12 @@ begin
  result:=false;
 
  fStream.Seek(4,soBeginning);
- fStream.ReadBuffer(ElfClass,SizeOf(TpvUInt8));
+ fStream.ReadBuffer(ELFClass,SizeOf(TpvUInt8));
  fStream.ReadBuffer(DataEncoding,SizeOf(TpvUInt8));
 
  // Only 64 bit little endian is handled, which is what every target PasVulkan
  // builds for on Linux uses.
- if (ElfClass<>2) or (DataEncoding<>1) then begin
+ if (ELFClass<>2) or (DataEncoding<>1) then begin
   exit;
  end;
  fELF64:=true;

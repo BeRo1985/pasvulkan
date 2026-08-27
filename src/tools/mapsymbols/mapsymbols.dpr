@@ -16,11 +16,12 @@ program mapsymbols;
 //             inside the external debug file a .gnu_debuglink points at.
 //
 // The FreePascal case is worth spelling out. Lazarus links the debug information
-// into a separate .dbg by default, and for a large project that file is about 510 MB,
-// of which .debug_info alone takes 488 MB while .debug_line takes 5.8 MB. Since
-// only the line information is needed to make a crash log readable, the table
-// built here lands in a size which can actually be shipped, and the lnfodwrf
-// unit no longer needs that 510 MB file sitting next to the executable.
+// into a separate .dbg by default, and on a large project that file can reach
+// several hundred megabytes, of which .debug_info takes almost all and
+// .debug_line barely one percent. Since only the line information is needed to
+// make a crash log readable, the table built here lands in a size which can
+// actually be shipped, and the lnfodwrf unit no longer needs that file sitting
+// next to the executable.
 
 uses SysUtils,
      Classes,
@@ -28,7 +29,10 @@ uses SysUtils,
      PasVulkan.SymbolTable,
      UnitSymbolBuilder,
      UnitImageFile,
-     UnitDwarfLine,
+     UnitDWARFLine,
+     UnitDWARFWriter,
+     UnitELFWriter,
+     UnitPEInjector,
      UnitMapFile;
 
 type TCollector=class
@@ -173,18 +177,106 @@ begin
  inc(SymbolsAdded);
 end;
 
+// Emits everything which was collected a second time, as DWARF inside a
+// standalone ELF file. Nothing about the original executable changes.
+procedure WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aFileName:String);
+var ELFWriter:TELFWriter;
+    Index:TpvSizeInt;
+    SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
+    UnitRecord:TSymbolBuilder.TUnitRecord;
+    ImageBase,Low,High,SymbolSize:TpvUInt64;
+    Have:Boolean;
+begin
+
+ ELFWriter:=TELFWriter.Create;
+ try
+
+  ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
+  ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
+  ELFWriter.AddDebugSection('.debug_line',aDWARFWriter.DebugLine);
+
+  ImageBase:=aBuilder.ImageBase;
+
+  // The overall code range, taken from the units, so that the file states which
+  // addresses it is about.
+  Have:=false;
+  Low:=0;
+  High:=0;
+  for Index:=0 to aBuilder.UnitCount-1 do begin
+   UnitRecord:=aBuilder.GetUnit(Index);
+   if not Have then begin
+    Low:=ImageBase+UnitRecord.StartRVA;
+    High:=Low+UnitRecord.Size;
+    Have:=true;
+   end else begin
+    if (ImageBase+UnitRecord.StartRVA)<Low then begin
+     Low:=ImageBase+UnitRecord.StartRVA;
+    end;
+    if (ImageBase+UnitRecord.StartRVA+UnitRecord.Size)>High then begin
+     High:=ImageBase+UnitRecord.StartRVA+UnitRecord.Size;
+    end;
+   end;
+  end;
+  if Have then begin
+   ELFWriter.SetTextRange(Low,High-Low);
+  end;
+
+  for Index:=0 to aBuilder.SymbolCount-1 do begin
+   SymbolRecord:=aBuilder.GetSymbol(Index);
+   SymbolSize:=0;
+   if (Index+1)<aBuilder.SymbolCount then begin
+    NextSymbol:=aBuilder.GetSymbol(Index+1);
+    if NextSymbol.RVA>SymbolRecord.RVA then begin
+     SymbolSize:=NextSymbol.RVA-SymbolRecord.RVA;
+    end;
+   end;
+   ELFWriter.AddSymbol(SymbolRecord.Name,ImageBase+SymbolRecord.RVA,SymbolSize);
+  end;
+
+  ELFWriter.SaveToFile(aFileName);
+
+  WriteLn('Wrote ',aFileName,' with ',aDWARFWriter.DebugLine.Size,' bytes of line programs and ',
+          aDWARFWriter.DebugInfo.Size,' bytes of compile units.');
+
+ finally
+  FreeAndNil(ELFWriter);
+ end;
+
+end;
+
+// Puts the same DWARF sections into the executable itself, so that no separate
+// file is needed at all. Has to happen before the symbol table is appended,
+// since that has to stay at the very end of the file.
+function InjectDebugSections(const aDWARFWriter:TDWARFWriter;const aFileName:String):Boolean;
+var Injector:TPEInjector;
+begin
+ Injector:=TPEInjector.Create;
+ try
+  Injector.AddSection('.debug_info',aDWARFWriter.DebugInfo);
+  Injector.AddSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
+  Injector.AddSection('.debug_line',aDWARFWriter.DebugLine);
+  result:=Injector.InjectInto(aFileName);
+  WriteLn(Injector.Message);
+ finally
+  FreeAndNil(Injector);
+ end;
+end;
+
 var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     ParameterIndex:TpvSizeInt;
-    WantSymbols,WantLines,ForceMap,ForceDwarf:Boolean;
+    WantSymbols,WantLines,ForceMap,ForceDWARF:Boolean;
+    DebugOutputFileName:String;
+    InjectIntoExecutable:Boolean;
+    DWARFWriter:TDWARFWriter;
     Image,DebugImage,SymbolImage:TImageFile;
     Section:TImageSection;
     LineData:TMemoryStream;
-    DwarfReader:TDwarfLineReader;
+    DWARFReader:TDWARFLineReader;
     MapReader:TMapFileReader;
     Builder:TSymbolBuilder;
     Collector:TCollector;
     Resolved,Probes:TpvSizeInt;
-    UsedDwarf:Boolean;
+    UsedDWARF:Boolean;
 
 begin
 
@@ -193,7 +285,9 @@ begin
  WantSymbols:=true;
  WantLines:=true;
  ForceMap:=false;
- ForceDwarf:=false;
+ ForceDWARF:=false;
+ DebugOutputFileName:='';
+ InjectIntoExecutable:=false;
 
  ParameterIndex:=1;
  while ParameterIndex<=ParamCount do begin
@@ -206,7 +300,12 @@ begin
   end else if Parameter='--map' then begin
    ForceMap:=true;
   end else if Parameter='--dwarf' then begin
-   ForceDwarf:=true;
+   ForceDWARF:=true;
+  end else if Parameter='--pe-debug' then begin
+   InjectIntoExecutable:=true;
+  end else if (Parameter='--gdb') and (ParameterIndex<=ParamCount) then begin
+   DebugOutputFileName:=ParamStr(ParameterIndex);
+   inc(ParameterIndex);
   end else if length(ExecutableFileName)=0 then begin
    ExecutableFileName:=Parameter;
   end else if length(MapFileName)=0 then begin
@@ -228,6 +327,12 @@ begin
   WriteLn('  --dwarf        force the DWARF frontend');
   WriteLn('  --no-symbols   omit routine names, which is by far the larger part');
   WriteLn('  --no-lines     omit line numbers');
+  WriteLn('  --gdb <file>   additionally write the same information as a standalone');
+  WriteLn('                 ELF debug file, which addr2line, gdb and everything else');
+  WriteLn('                 built on DWARF can read, also for a Delphi build');
+  WriteLn('  --pe-debug     put those DWARF sections into the executable itself, so');
+  WriteLn('                 that no separate file is needed. Needs room in the section');
+  WriteLn('                 header table and says so when there is none');
   WriteLn;
   WriteLn('Running it again on the same executable replaces the previous table.');
   ExitCode:=1;
@@ -245,7 +350,7 @@ begin
  Builder:=nil;
  Collector:=nil;
  LineData:=nil;
- DwarfReader:=nil;
+ DWARFReader:=nil;
  MapReader:=nil;
  try
 
@@ -272,7 +377,7 @@ begin
 
   // Decide which frontend applies. A Delphi build never carries DWARF, so
   // preferring DWARF when it is present is unambiguous.
-  UsedDwarf:=false;
+  UsedDWARF:=false;
   if not ForceMap then begin
    SymbolImage:=Image;
    if not Image.FindSection('.debug_line',Section) then begin
@@ -296,11 +401,11 @@ begin
 
    if assigned(LineData) and (LineData.Size>0) then begin
     if WantLines then begin
-     DwarfReader:=TDwarfLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
-     DwarfReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
-     WriteLn('DWARF: ',DwarfReader.UnitCount,' compilation units, ',DwarfReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
-     if DwarfReader.SkippedUnitCount>0 then begin
-      WriteLn('Warning: ',DwarfReader.SkippedUnitCount,' compilation units were skipped, most likely DWARF 5.');
+     DWARFReader:=TDWARFLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
+     DWARFReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
+     WriteLn('DWARF: ',DWARFReader.UnitCount,' compilation units, ',DWARFReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
+     if DWARFReader.SkippedUnitCount>0 then begin
+      WriteLn('Warning: ',DWARFReader.SkippedUnitCount,' compilation units were skipped, most likely DWARF 5.');
      end;
     end;
     // The symbol table normally lives in whichever image carries the debug
@@ -309,13 +414,13 @@ begin
     if (Collector.SymbolsAdded=0) and WantSymbols and (SymbolImage<>Image) then begin
      Image.EnumerateSymbols(Collector.OnSymbol);
     end;
-    UsedDwarf:=true;
+    UsedDWARF:=true;
    end;
   end;
 
-  if not UsedDwarf then begin
+  if not UsedDWARF then begin
 
-   if ForceDwarf then begin
+   if ForceDWARF then begin
     WriteLn('No DWARF line information found in ',ExecutableFileName,'.');
     ExitCode:=1;
     exit;
@@ -360,7 +465,30 @@ begin
    WriteLn('Warning: no line numbers were found, so only routine names will resolve.');
   end;
 
-  Builder.AppendToFile(ExecutableFileName);
+  DWARFWriter:=nil;
+  try
+
+   if InjectIntoExecutable or (length(DebugOutputFileName)>0) then begin
+    DWARFWriter:=TDWARFWriter.Create(Builder);
+    DWARFWriter.Build;
+   end;
+
+   // Injection changes the size of the file, so it has to come first. The
+   // appended table is found through a footer at the very end and would be
+   // orphaned by anything written behind it.
+   if InjectIntoExecutable then begin
+    InjectDebugSections(DWARFWriter,ExecutableFileName);
+   end;
+
+   Builder.AppendToFile(ExecutableFileName);
+
+   if length(DebugOutputFileName)>0 then begin
+    WriteDebugFile(Builder,DWARFWriter,DebugOutputFileName);
+   end;
+
+  finally
+   FreeAndNil(DWARFWriter);
+  end;
 
   if Builder.SelfCheck(ExecutableFileName,Resolved,Probes) then begin
    WriteLn('Self check: ',Resolved,' of ',Probes,' probes resolved to the expected line.');
@@ -371,7 +499,7 @@ begin
 
  finally
   FreeAndNil(MapReader);
-  FreeAndNil(DwarfReader);
+  FreeAndNil(DWARFReader);
   FreeAndNil(LineData);
   FreeAndNil(Collector);
   FreeAndNil(Builder);

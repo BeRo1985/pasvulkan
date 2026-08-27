@@ -2,8 +2,8 @@
 //
 // This is the part of DWARF which maps code addresses to source lines, and it is
 // the only part a crash log needs. That distinction matters in practice: in a
-// large debug file of about 510 MB, .debug_line is roughly 5.8 MB while
-// .debug_info, which carries the types and variables, takes the remaining 488 MB.
+// measured debug file of about 510 MB, .debug_line was roughly 5.8 MB while
+// .debug_info, which carries the types and variables, took the remaining 488 MB.
 // So reading only this section is what makes an appended symbol table small
 // enough to ship.
 //
@@ -12,7 +12,7 @@
 // FreePascal and Delphi emit version 2 here, so those are handled. Version 5
 // replaced the directory and file tables with a form encoded variant, which is
 // detected and skipped rather than guessed at.
-unit UnitDwarfLine;
+unit UnitDWARFLine;
 {$ifdef fpc}
  {$mode delphi}
 {$endif}
@@ -26,7 +26,7 @@ uses SysUtils,
 type // A line number of zero marks the end of a sequence. Such a row has no
      // meaningful line, but its address still bounds the code of the unit, so
      // it is reported rather than dropped.
-     TDwarfLineRowEvent=procedure(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32) of object;
+     TDWARFLineRowEvent=procedure(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32) of object;
 
      // Signals that the rows of one compilation unit are complete. The address
      // range is deliberately not computed here, because deciding which rows are
@@ -35,9 +35,9 @@ type // A line number of zero marks the end of a sequence. Such a row has no
      // sequences keep addresses near zero. Letting the consumer bound the unit
      // over the rows it accepted keeps one stray row from poisoning the range
      // of an entire unit.
-     TDwarfLineUnitEvent=procedure(const aFileName:String) of object;
+     TDWARFLineUnitEvent=procedure(const aFileName:String) of object;
 
-     TDwarfLineReader=class
+     TDWARFLineReader=class
       private
        fData:PpvUInt8;
        fSize:TpvSizeInt;
@@ -55,7 +55,7 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        function ReadString:String;
       public
        constructor Create(const aData:TpvPointer;const aSize:TpvSizeInt);
-       function Parse(const aOnRow:TDwarfLineRowEvent;const aOnUnit:TDwarfLineUnitEvent):Boolean;
+       function Parse(const aOnRow:TDWARFLineRowEvent;const aOnUnit:TDWARFLineUnitEvent):Boolean;
        property UnitCount:TpvSizeInt read fUnitCount;
        property RowCount:TpvSizeInt read fRowCount;
        property SkippedUnitCount:TpvSizeInt read fSkippedUnitCount;
@@ -80,7 +80,7 @@ const DW_LNS_copy=1;
       DW_LNE_set_address=2;
       DW_LNE_define_file=3;
 
-constructor TDwarfLineReader.Create(const aData:TpvPointer;const aSize:TpvSizeInt);
+constructor TDWARFLineReader.Create(const aData:TpvPointer;const aSize:TpvSizeInt);
 begin
  inherited Create;
  fData:=PpvUInt8(aData);
@@ -91,12 +91,12 @@ begin
  fSkippedUnitCount:=0;
 end;
 
-function TDwarfLineReader.AtEnd:Boolean;
+function TDWARFLineReader.AtEnd:Boolean;
 begin
  result:=fPosition>=fSize;
 end;
 
-function TDwarfLineReader.ReadUInt8:TpvUInt8;
+function TDWARFLineReader.ReadUInt8:TpvUInt8;
 begin
  if fPosition<fSize then begin
   result:=PpvUInt8(TpvPointer(TpvPtrUInt(TpvPtrUInt(fData)+TpvPtrUInt(fPosition))))^;
@@ -107,22 +107,22 @@ begin
  end;
 end;
 
-function TDwarfLineReader.ReadUInt16:TpvUInt16;
+function TDWARFLineReader.ReadUInt16:TpvUInt16;
 begin
  result:=TpvUInt16(ReadUInt8) or (TpvUInt16(ReadUInt8) shl 8);
 end;
 
-function TDwarfLineReader.ReadUInt32:TpvUInt32;
+function TDWARFLineReader.ReadUInt32:TpvUInt32;
 begin
  result:=TpvUInt32(ReadUInt16) or (TpvUInt32(ReadUInt16) shl 16);
 end;
 
-function TDwarfLineReader.ReadUInt64:TpvUInt64;
+function TDWARFLineReader.ReadUInt64:TpvUInt64;
 begin
  result:=TpvUInt64(ReadUInt32) or (TpvUInt64(ReadUInt32) shl 32);
 end;
 
-function TDwarfLineReader.ReadULEB128:TpvUInt64;
+function TDWARFLineReader.ReadULEB128:TpvUInt64;
 var Shift:TpvInt32;
     Value:TpvUInt8;
 begin
@@ -137,7 +137,7 @@ begin
  until ((Value and $80)=0) or AtEnd;
 end;
 
-function TDwarfLineReader.ReadSLEB128:TpvInt64;
+function TDWARFLineReader.ReadSLEB128:TpvInt64;
 var Shift:TpvInt32;
     Value:TpvUInt8;
 begin
@@ -156,7 +156,7 @@ begin
  end;
 end;
 
-function TDwarfLineReader.ReadString:String;
+function TDWARFLineReader.ReadString:String;
 var Start,Count:TpvSizeInt;
 begin
  Start:=fPosition;
@@ -175,7 +175,7 @@ begin
  end;
 end;
 
-function TDwarfLineReader.Parse(const aOnRow:TDwarfLineRowEvent;const aOnUnit:TDwarfLineUnitEvent):Boolean;
+function TDWARFLineReader.Parse(const aOnRow:TDWARFLineRowEvent;const aOnUnit:TDWARFLineUnitEvent):Boolean;
 var UnitLength:TpvUInt64;
     UnitEnd,ProgramStart:TpvSizeInt;
     Version:TpvUInt16;
