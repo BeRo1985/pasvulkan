@@ -102,9 +102,10 @@ const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B
       // generous rather than tight.
       pvSymbolTableFooterScanSize=TpvInt64(1) shl 20;
 
-      // How much of that window is read at a time. Only reached when the footer
-      // is not where it normally is, and kept small so that even then nothing
-      // large has to be allocated.
+      // How much of that window is read at a time by the block wise scan. Only
+      // reached when the footer is not where it normally is, and kept small so
+      // that even then nothing large has to be allocated. Not used when
+      // PasVulkanSymbolTableFooterWholeWindowScan reads the window in one go.
       pvSymbolTableFooterBlockSize=TpvInt64(64) shl 10;
 
 type PpvSymbolTableHeader=^TpvSymbolTableHeader;
@@ -309,15 +310,41 @@ begin
 
  // It is not, so something was appended behind it. Code signing does exactly
  // that with its certificate table, and an installer may add a trailer of its
- // own. The search walks backwards from the end, in blocks rather than in one
- // piece, so that even here nothing large has to be had at once.
+ // own, so the window behind the footer is searched backwards.
  Limit:=aStream.Size-pvSymbolTableFooterScanSize;
  if Limit<0 then begin
   Limit:=0;
  end;
 
- BlockStart:=aStream.Size;
  Buffer:='';
+
+{$ifdef PasVulkanSymbolTableFooterWholeWindowScan}
+
+ // The whole window in one piece, which is how this was first written. Kept
+ // because it is the plainer of the two, but it asks for a megabyte in one go,
+ // and this runs while a crash is being written up, where a damaged heap makes
+ // exactly that request the one which fails.
+ BlockSize:=aStream.Size-Limit;
+ SetLength(Buffer,BlockSize);
+ aStream.Seek(Limit,soBeginning);
+ aStream.ReadBuffer(Buffer[1],BlockSize);
+
+ for Position:=TpvSizeInt(BlockSize)-TpvSizeInt(SizeOf(TpvSymbolTableFooter)) downto 0 do begin
+  if Buffer[Position+1]=pvSymbolTableMagic[0] then begin
+   CandidatePosition:=Limit+Position;
+   if Accept(CandidatePosition) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+
+{$else}
+
+ // The same window over the same bytes, read backwards in blocks, so that
+ // nothing large has to be had at once. Same answer, smaller footprint, which
+ // is why it is the one which is on by default.
+ BlockStart:=aStream.Size;
 
  while BlockStart>Limit do begin
 
@@ -350,6 +377,8 @@ begin
   end;
 
  end;
+
+{$endif}
 
 end;
 
