@@ -39,10 +39,14 @@ type TDWARFWriter=class
        fDebugLine:TMemoryStream;
        fDebugInfo:TMemoryStream;
        fDebugAbbrev:TMemoryStream;
+       fAddressSize:TpvUInt8;
        procedure WriteByte(const aStream:TMemoryStream;const aValue:TpvUInt8);
        procedure WriteUInt16(const aStream:TMemoryStream;const aValue:TpvUInt16);
        procedure WriteUInt32(const aStream:TMemoryStream;const aValue:TpvUInt32);
        procedure WriteUInt64(const aStream:TMemoryStream;const aValue:TpvUInt64);
+       // An address in the width the described image uses, which is what
+       // DW_FORM_addr means and what the address size in the header announces.
+       procedure WriteAddress(const aStream:TMemoryStream;const aValue:TpvUInt64);
        procedure WriteULEB128(const aStream:TMemoryStream;const aValue:TpvUInt64);
        procedure WriteSLEB128(const aStream:TMemoryStream;const aValue:TpvInt64);
        procedure WriteZeroTerminated(const aStream:TMemoryStream;const aValue:String);
@@ -53,6 +57,10 @@ type TDWARFWriter=class
        constructor Create(const aBuilder:TSymbolBuilder);
        destructor Destroy; override;
        procedure Build;
+       // How wide an address of the described image is, four or eight bytes.
+       // Has to be set before Build, since it goes into the header of every
+       // compilation unit and decides how every address in them is written.
+       property AddressSize:TpvUInt8 read fAddressSize write fAddressSize;
        property DebugLine:TMemoryStream read fDebugLine;
        property DebugInfo:TMemoryStream read fDebugInfo;
        property DebugAbbrev:TMemoryStream read fDebugAbbrev;
@@ -95,6 +103,8 @@ begin
  fDebugLine:=TMemoryStream.Create;
  fDebugInfo:=TMemoryStream.Create;
  fDebugAbbrev:=TMemoryStream.Create;
+ // Eight unless the caller says otherwise, which is what a desktop build is.
+ fAddressSize:=8;
 end;
 
 destructor TDWARFWriter.Destroy;
@@ -123,6 +133,15 @@ end;
 procedure TDWARFWriter.WriteUInt64(const aStream:TMemoryStream;const aValue:TpvUInt64);
 begin
  aStream.WriteBuffer(aValue,SizeOf(TpvUInt64));
+end;
+
+procedure TDWARFWriter.WriteAddress(const aStream:TMemoryStream;const aValue:TpvUInt64);
+begin
+ if fAddressSize=4 then begin
+  WriteUInt32(aStream,TpvUInt32(aValue));
+ end else begin
+  WriteUInt64(aStream,aValue);
+ end;
 end;
 
 procedure TDWARFWriter.WriteULEB128(const aStream:TMemoryStream;const aValue:TpvUInt64);
@@ -311,9 +330,11 @@ begin
   if not InSequence then begin
    // A sequence has to start by stating where it is.
    WriteByte(fDebugLine,0);
-   WriteULEB128(fDebugLine,9);
+   // The length of the extended opcode counts the opcode byte and the address
+   // behind it, so it follows the address width as well.
+   WriteULEB128(fDebugLine,TpvUInt64(fAddressSize)+1);
    WriteByte(fDebugLine,DW_LNE_set_address);
-   WriteUInt64(fDebugLine,RowAddress);
+   WriteAddress(fDebugLine,RowAddress);
    CurrentAddress:=RowAddress;
    WriteByte(fDebugLine,DW_LNS_set_file);
    WriteULEB128(fDebugLine,1);
@@ -374,7 +395,7 @@ begin
 
  WriteUInt16(fDebugInfo,2);  // version
  WriteUInt32(fDebugInfo,0);  // offset into .debug_abbrev
- WriteByte(fDebugInfo,8);    // address size
+ WriteByte(fDebugInfo,fAddressSize);
 
  Directory:=ExtractFileDir(UnitRecord.FileName);
  if length(Directory)=0 then begin
@@ -386,8 +407,8 @@ begin
  WriteZeroTerminated(fDebugInfo,Directory);
  WriteZeroTerminated(fDebugInfo,DWARFProducer);
  WriteByte(fDebugInfo,DW_LANG_Pascal83);
- WriteUInt64(fDebugInfo,UnitLow);
- WriteUInt64(fDebugInfo,UnitHigh);
+ WriteAddress(fDebugInfo,UnitLow);
+ WriteAddress(fDebugInfo,UnitHigh);
  WriteUInt32(fDebugInfo,aStatementListOffset);
 
  // Subprograms, taken from the symbols which fall inside this unit. They are
@@ -407,8 +428,8 @@ begin
   end;
   WriteULEB128(fDebugInfo,2);
   WriteZeroTerminated(fDebugInfo,SymbolRecord.Name);
-  WriteUInt64(fDebugInfo,ImageBase+SymbolRecord.RVA);
-  WriteUInt64(fDebugInfo,SymbolHigh);
+  WriteAddress(fDebugInfo,ImageBase+SymbolRecord.RVA);
+  WriteAddress(fDebugInfo,SymbolHigh);
  end;
 
  // End of the children of the compile unit.

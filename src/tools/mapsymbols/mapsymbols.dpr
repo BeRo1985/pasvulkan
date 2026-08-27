@@ -84,6 +84,14 @@ type
        procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
      end;
 
+// Whether an image of this machine has thirty two bit addresses. Decides the
+// width of everything which describes it: the ELF container, the address size
+// in the DWARF, and the addresses inside both.
+function Is32BitMachine(const aMachine:TpvUInt16):Boolean;
+begin
+ result:=(aMachine=IMAGE_FILE_MACHINE_I386) or (aMachine=IMAGE_FILE_MACHINE_ARMNT);
+end;
+
 // Turns a FreePascal mangled symbol into something a reader recognizes.
 //
 //   SYSINIT_$$_SETUPENTRYINFORMATION              -> SYSINIT.SETUPENTRYINFORMATION
@@ -378,34 +386,32 @@ var ELFWriter:TELFWriter;
     Have:Boolean;
 begin
 
- // The written container is sixty four bit throughout: the class byte, the
- // section headers, the symbol entries and the address size of the DWARF inside
- // it. For a thirty two bit image that would be a file which says it is one
- // thing and is built like another, and the tools do not read it: addr2line
- // answers with a question mark for every address in it.
- //
- // Writing a file which nobody can read, while the self check reports success
- // because it only ever looks at the appended table, is the worst of the three
- // options. The caller already turns this case away with an exit code, so this
- // is the second lock on the same door, for anybody who calls this directly.
- if (aImage.Machine=IMAGE_FILE_MACHINE_I386) or (aImage.Machine=IMAGE_FILE_MACHINE_ARMNT) then begin
-  WriteLn('No debug file was written: it would have to be a 32 bit ELF, and only 64 bit is written here.');
-  ExitCode:=1;
-  exit;
- end;
-
  ELFWriter:=TELFWriter.Create;
  try
 
   // The COFF machine of the image translated back, since that is the one shape
-  // both containers are described in here.
+  // both containers are described in here, and with it the width of the
+  // container itself. The two go together: a thirty two bit machine number in a
+  // sixty four bit container is a file which says one thing and is built like
+  // another, and no consumer reads it.
   case aImage.Machine of
+   IMAGE_FILE_MACHINE_I386:begin
+    ELFWriter.Machine:=EM_386;
+   end;
+   IMAGE_FILE_MACHINE_ARMNT:begin
+    ELFWriter.Machine:=EM_ARM;
+   end;
    IMAGE_FILE_MACHINE_ARM64:begin
     ELFWriter.Machine:=EM_AARCH64;
    end;
    else begin
     ELFWriter.Machine:=EM_X86_64;
    end;
+  end;
+  if Is32BitMachine(aImage.Machine) then begin
+   ELFWriter.Bits:=32;
+  end else begin
+   ELFWriter.Bits:=64;
   end;
 
   ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
@@ -796,26 +802,17 @@ begin
   PDBWriter:=nil;
   try
 
-   // The DWARF written here is sixty four bit throughout: the address size in
-   // .debug_info, and the ELF the standalone file goes into. For a thirty two
-   // bit image that is not a description of it and no consumer reads it, so
-   // neither way of emitting it is offered there. That covers the sections put
-   // into the executable as well, not only the separate file, since it is the
-   // same DWARF either way.
-   //
-   // Refused with an exit code rather than only a message, because a build
-   // script which asked for an output has to be able to see that it did not get
-   // one. The pdb is unaffected: its machine follows the image.
-   if (InjectIntoExecutable or (length(DebugOutputFileName)>0)) and
-      ((Image.Machine=IMAGE_FILE_MACHINE_I386) or (Image.Machine=IMAGE_FILE_MACHINE_ARMNT)) then begin
-    WriteLn('No DWARF was written: this image is 32 bit and only 64 bit DWARF is written here.');
-    ExitCode:=1;
-    InjectIntoExecutable:=false;
-    DebugOutputFileName:='';
-   end;
-
    if InjectIntoExecutable or (length(DebugOutputFileName)>0) then begin
     DWARFWriter:=TDWARFWriter.Create(Builder);
+    // An address in the DWARF is as wide as an address of the image, which the
+    // header of every compilation unit announces and every consumer reads it
+    // by. Writing eight for a thirty two bit image would describe something
+    // which is not there.
+    if Is32BitMachine(Image.Machine) then begin
+     DWARFWriter.AddressSize:=4;
+    end else begin
+     DWARFWriter.AddressSize:=8;
+    end;
     DWARFWriter.Build;
    end;
 

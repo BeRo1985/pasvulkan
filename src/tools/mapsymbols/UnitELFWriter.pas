@@ -58,6 +58,7 @@ type TELFWriterSymbol=record
        fTextAddress:TpvUInt64;
        fTextSize:TpvUInt64;
        fMachine:TpvUInt16;
+       fBits:TpvUInt8;
        function AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
       public
        constructor Create;
@@ -72,10 +73,14 @@ type TELFWriterSymbol=record
        // Defaults to x86-64, which is what a Delphi or FreePascal build for a
        // desktop is, and is set from the image where that is not the case.
        //
-       // Only this field follows the image. The container itself is written as
-       // sixty four bit little endian throughout, so an image which is neither
-       // would need more than a different number here.
        property Machine:TpvUInt16 read fMachine write fMachine;
+       // Whether the container is written in its thirty two or its sixty four
+       // bit shape. That decides the size of the header, of a section header
+       // and of a symbol entry, and for a symbol also the order of its fields,
+       // which is not the same in the two.
+       //
+       // Little endian either way, which is what every target of this is.
+       property Bits:TpvUInt8 read fBits write fBits;
        procedure SaveToFile(const aFileName:String);
      end;
 
@@ -92,9 +97,16 @@ const SHT_PROGBITS=TpvUInt32(1);
       STT_FUNC=$02;
       STB_GLOBAL=$01;
 
-      ELFHeaderSize=64;
-      SectionHeaderSize=64;
-      SymbolSize=24;
+      // The two shapes of the container. A thirty two bit ELF is not a smaller
+      // version of the same structures, its fields are narrower and a symbol
+      // entry even orders them differently.
+      ELFHeaderSize64=64;
+      SectionHeaderSize64=64;
+      SymbolSize64=24;
+
+      ELFHeaderSize32=52;
+      SectionHeaderSize32=40;
+      SymbolSize32=16;
 
 constructor TELFWriter.Create;
 begin
@@ -105,6 +117,7 @@ begin
  fTextAddress:=0;
  fTextSize:=0;
  fMachine:=EM_X86_64;
+ fBits:=64;
 end;
 
 destructor TELFWriter.Destroy;
@@ -166,6 +179,7 @@ var Stream:TFileStream;
     StringTable,SymbolTable,SectionNames:TMemoryStream;
     Index,TextIndex,SymbolTableIndex,StringTableIndex,SectionNameIndex:TpvSizeInt;
     Offset,SectionHeaderOffset:TpvUInt64;
+    HeaderSize,SectionHeaderSize:TpvUInt16;
     Value8:TpvUInt8;
     Value16:TpvUInt16;
     Value32:TpvUInt32;
@@ -208,28 +222,38 @@ begin
 
   // The symbol table, with its names in a string table of its own. Index zero
   // has to be the reserved null symbol.
+  //
+  // The two shapes do not only differ in width. A sixty four bit entry reads
+  // name, info, other, section, value, size, while a thirty two bit one reads
+  // name, value, size, info, other, section. Writing one layout with the other
+  // one's widths gives a table which is the right length and says nothing.
   Zero:=#0;
   StringTable.WriteBuffer(Zero,1);
-  FillChar(Value64,SizeOf(TpvUInt64),#0);
-  Value32:=0;
-  SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
-  Value8:=0;
-  SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
-  SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
-  Value16:=0;
-  SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
   Value64:=0;
-  SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
-  SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
+  Value32:=0;
+  Value16:=0;
+  Value8:=0;
+  if fBits=32 then begin
+   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // name
+   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // value
+   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // size
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // info
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // other
+   SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16)); // section
+  end else begin
+   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // name
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // info
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // other
+   SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16)); // section
+   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64)); // value
+   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64)); // size
+  end;
 
   for Index:=0 to fSymbolCount-1 do begin
+
    NameOffset:=AppendString(StringTable,fSymbols[Index].Name);
-   SymbolTable.WriteBuffer(NameOffset,SizeOf(TpvUInt32));
    // Binding in the high nibble, type in the low one.
    Value8:=TpvUInt8((STB_GLOBAL shl 4) or STT_FUNC);
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
-   Value8:=0;
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
    // Section indices in the file are shifted by one against this list, because
    // ELF reserves index zero for the mandatory null section.
    if TextIndex>=0 then begin
@@ -237,11 +261,29 @@ begin
    end else begin
     Value16:=0;
    end;
-   SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
-   Value64:=fSymbols[Index].Address;
-   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
-   Value64:=fSymbols[Index].Size;
-   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
+
+   if fBits=32 then begin
+    SymbolTable.WriteBuffer(NameOffset,SizeOf(TpvUInt32));
+    Value32:=TpvUInt32(fSymbols[Index].Address);
+    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    Value32:=TpvUInt32(fSymbols[Index].Size);
+    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
+    Value32:=0;
+    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt8)); // other
+    SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
+   end else begin
+    SymbolTable.WriteBuffer(NameOffset,SizeOf(TpvUInt32));
+    SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
+    Value32:=0;
+    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt8)); // other
+    SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
+    Value64:=fSymbols[Index].Address;
+    SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
+    Value64:=fSymbols[Index].Size;
+    SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
+   end;
+
   end;
 
   StringTableIndex:=AddSection('.strtab',SHT_STRTAB,0,StringTable,false);
@@ -252,7 +294,11 @@ begin
   fSections[SymbolTableIndex].Link:=TpvUInt32(StringTableIndex+1);
   // Every symbol here is global, so the first one already is the first global.
   fSections[SymbolTableIndex].Info:=1;
-  fSections[SymbolTableIndex].EntrySize:=SymbolSize;
+  if fBits=32 then begin
+   fSections[SymbolTableIndex].EntrySize:=SymbolSize32;
+  end else begin
+   fSections[SymbolTableIndex].EntrySize:=SymbolSize64;
+  end;
 
   SectionNameIndex:=AddSection('.shstrtab',SHT_STRTAB,0,SectionNames,false);
 
@@ -264,7 +310,14 @@ begin
   end;
 
   // Lay the file out: header, then the contents, then the section headers.
-  Offset:=ELFHeaderSize;
+  if fBits=32 then begin
+   HeaderSize:=ELFHeaderSize32;
+   SectionHeaderSize:=SectionHeaderSize32;
+  end else begin
+   HeaderSize:=ELFHeaderSize64;
+   SectionHeaderSize:=SectionHeaderSize64;
+  end;
+  Offset:=HeaderSize;
   for Index:=0 to length(fSections)-1 do begin
    fSections[Index].FileOffset:=Offset;
    if (fSections[Index].SectionType<>SHT_NOBITS) and assigned(fSections[Index].Data) then begin
@@ -279,7 +332,12 @@ begin
    // ELF header
    Raw:=#$7f'ELF';
    Stream.WriteBuffer(Raw[1],4);
-   Value8:=2; Stream.WriteBuffer(Value8,1); // 64 bit
+   if fBits=32 then begin
+    Value8:=1;
+   end else begin
+    Value8:=2;
+   end;
+   Stream.WriteBuffer(Value8,1); // class
    Value8:=1; Stream.WriteBuffer(Value8,1); // little endian
    Value8:=1; Stream.WriteBuffer(Value8,1); // header version
    Value8:=0; Stream.WriteBuffer(Value8,1); // System V ABI
@@ -287,11 +345,17 @@ begin
    Value16:=2; Stream.WriteBuffer(Value16,2); // ET_EXEC
    Value16:=fMachine; Stream.WriteBuffer(Value16,2);
    Value32:=1; Stream.WriteBuffer(Value32,4); // version
-   Value64:=0; Stream.WriteBuffer(Value64,8); // entry
-   Value64:=0; Stream.WriteBuffer(Value64,8); // program header offset
-   Stream.WriteBuffer(SectionHeaderOffset,8);
+   if fBits=32 then begin
+    Value32:=0; Stream.WriteBuffer(Value32,4); // entry
+    Value32:=0; Stream.WriteBuffer(Value32,4); // program header offset
+    Value32:=TpvUInt32(SectionHeaderOffset); Stream.WriteBuffer(Value32,4);
+   end else begin
+    Value64:=0; Stream.WriteBuffer(Value64,8); // entry
+    Value64:=0; Stream.WriteBuffer(Value64,8); // program header offset
+    Stream.WriteBuffer(SectionHeaderOffset,8);
+   end;
    Value32:=0; Stream.WriteBuffer(Value32,4); // flags
-   Value16:=ELFHeaderSize; Stream.WriteBuffer(Value16,2);
+   Value16:=HeaderSize; Stream.WriteBuffer(Value16,2);
    Value16:=0; Stream.WriteBuffer(Value16,2); // program header entry size
    Value16:=0; Stream.WriteBuffer(Value16,2); // program header count
    Value16:=SectionHeaderSize; Stream.WriteBuffer(Value16,2);
@@ -307,18 +371,13 @@ begin
    end;
 
    // Section headers, starting with the mandatory null entry.
-   FillChar(Value64,SizeOf(TpvUInt64),#0);
-   for Index:=0 to 7 do begin
-    Value64:=0;
-    Stream.WriteBuffer(Value64,8);
+   Value8:=0;
+   for Index:=0 to TpvSizeInt(SectionHeaderSize)-1 do begin
+    Stream.WriteBuffer(Value8,1);
    end;
 
    for Index:=0 to length(fSections)-1 do begin
-    Stream.WriteBuffer(fSections[Index].NameOffset,4);
-    Stream.WriteBuffer(fSections[Index].SectionType,4);
-    Stream.WriteBuffer(fSections[Index].Flags,8);
-    Stream.WriteBuffer(fSections[Index].Address,8);
-    Stream.WriteBuffer(fSections[Index].FileOffset,8);
+
     if fSections[Index].SectionType=SHT_NOBITS then begin
      Value64:=fTextSize;
     end else if assigned(fSections[Index].Data) then begin
@@ -326,12 +385,34 @@ begin
     end else begin
      Value64:=0;
     end;
-    Stream.WriteBuffer(Value64,8);
-    Stream.WriteBuffer(fSections[Index].Link,4);
-    Stream.WriteBuffer(fSections[Index].Info,4);
-    Value64:=1;
-    Stream.WriteBuffer(Value64,8); // alignment
-    Stream.WriteBuffer(fSections[Index].EntrySize,8);
+
+    if fBits=32 then begin
+     // Every field of a thirty two bit section header is four bytes, in the
+     // same order as the wider one.
+     Stream.WriteBuffer(fSections[Index].NameOffset,4);
+     Stream.WriteBuffer(fSections[Index].SectionType,4);
+     Value32:=TpvUInt32(fSections[Index].Flags); Stream.WriteBuffer(Value32,4);
+     Value32:=TpvUInt32(fSections[Index].Address); Stream.WriteBuffer(Value32,4);
+     Value32:=TpvUInt32(fSections[Index].FileOffset); Stream.WriteBuffer(Value32,4);
+     Value32:=TpvUInt32(Value64); Stream.WriteBuffer(Value32,4);
+     Stream.WriteBuffer(fSections[Index].Link,4);
+     Stream.WriteBuffer(fSections[Index].Info,4);
+     Value32:=1; Stream.WriteBuffer(Value32,4); // alignment
+     Value32:=TpvUInt32(fSections[Index].EntrySize); Stream.WriteBuffer(Value32,4);
+    end else begin
+     Stream.WriteBuffer(fSections[Index].NameOffset,4);
+     Stream.WriteBuffer(fSections[Index].SectionType,4);
+     Stream.WriteBuffer(fSections[Index].Flags,8);
+     Stream.WriteBuffer(fSections[Index].Address,8);
+     Stream.WriteBuffer(fSections[Index].FileOffset,8);
+     Stream.WriteBuffer(Value64,8);
+     Stream.WriteBuffer(fSections[Index].Link,4);
+     Stream.WriteBuffer(fSections[Index].Info,4);
+     Value64:=1;
+     Stream.WriteBuffer(Value64,8); // alignment
+     Stream.WriteBuffer(fSections[Index].EntrySize,8);
+    end;
+
    end;
 
   finally

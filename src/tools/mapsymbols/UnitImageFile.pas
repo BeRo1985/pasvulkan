@@ -115,6 +115,11 @@ const EM_386=TpvUInt16(3);
       EM_X86_64=TpvUInt16(62);
       EM_AARCH64=TpvUInt16(183);
 
+      // A symbol entry, in the two widths. The narrow one is not only smaller,
+      // it orders its fields differently, see EnumerateELFSymbols.
+      ELFSymbolSize64=24;
+      ELFSymbolSize32=16;
+
       PT_LOAD=TpvUInt32(1);
 
       SHF_EXECINSTR=TpvUInt64($4);
@@ -370,6 +375,7 @@ end;
 function TImageFile.ReadELF:Boolean;
 var ELFClass,DataEncoding:TpvUInt8;
     ELFMachine:TpvUInt16;
+    Value32:TpvUInt32;
     ProgramHeaderOffset,SectionHeaderOffset:TpvUInt64;
     ProgramHeaderEntrySize,ProgramHeaderCount:TpvUInt16;
     SectionHeaderEntrySize,SectionHeaderCount,SectionNameIndex:TpvUInt16;
@@ -388,12 +394,14 @@ begin
  fStream.ReadBuffer(ELFClass,SizeOf(TpvUInt8));
  fStream.ReadBuffer(DataEncoding,SizeOf(TpvUInt8));
 
- // Only 64 bit little endian is handled, which is what every target PasVulkan
- // builds for on Linux uses.
- if (ELFClass<>2) or (DataEncoding<>1) then begin
+ // Both widths, little endian only. The two are not the same structures with
+ // narrower fields: the header, the program headers, the section headers and
+ // the symbol entries each have a layout of their own, and a symbol entry even
+ // orders its fields differently, so every one of them is read twice below.
+ if ((ELFClass<>1) and (ELFClass<>2)) or (DataEncoding<>1) then begin
   exit;
  end;
- fELF64:=true;
+ fELF64:=ELFClass=2;
 
  fStream.Seek($12,soBeginning);
  fStream.ReadBuffer(ELFMachine,SizeOf(TpvUInt16));
@@ -415,10 +423,21 @@ begin
   end;
  end;
 
- fStream.Seek($20,soBeginning);
- fStream.ReadBuffer(ProgramHeaderOffset,SizeOf(TpvUInt64));
- fStream.ReadBuffer(SectionHeaderOffset,SizeOf(TpvUInt64));
- fStream.Seek($36,soBeginning);
+ if fELF64 then begin
+  fStream.Seek($20,soBeginning);
+  fStream.ReadBuffer(ProgramHeaderOffset,SizeOf(TpvUInt64));
+  fStream.ReadBuffer(SectionHeaderOffset,SizeOf(TpvUInt64));
+  fStream.Seek($36,soBeginning);
+ end else begin
+  // The entry point, and with it everything behind it, is four bytes rather
+  // than eight, so the whole tail of the header sits twelve bytes lower.
+  fStream.Seek($1c,soBeginning);
+  fStream.ReadBuffer(Value32,SizeOf(TpvUInt32));
+  ProgramHeaderOffset:=Value32;
+  fStream.ReadBuffer(Value32,SizeOf(TpvUInt32));
+  SectionHeaderOffset:=Value32;
+  fStream.Seek($2a,soBeginning);
+ end;
  fStream.ReadBuffer(ProgramHeaderEntrySize,SizeOf(TpvUInt16));
  fStream.ReadBuffer(ProgramHeaderCount,SizeOf(TpvUInt16));
  fStream.ReadBuffer(SectionHeaderEntrySize,SizeOf(TpvUInt16));
@@ -433,8 +452,16 @@ begin
  for Index:=0 to ProgramHeaderCount-1 do begin
   fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize)),soBeginning);
   fStream.ReadBuffer(SegmentType,SizeOf(TpvUInt32));
-  fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize))+16,soBeginning);
-  fStream.ReadBuffer(SegmentAddress,SizeOf(TpvUInt64));
+  if fELF64 then begin
+   // Behind the type comes the flags field, which the narrow layout puts at
+   // the very end instead, so the address sits at a different place in each.
+   fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize))+16,soBeginning);
+   fStream.ReadBuffer(SegmentAddress,SizeOf(TpvUInt64));
+  end else begin
+   fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize))+8,soBeginning);
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32));
+   SegmentAddress:=Value32;
+  end;
   if SegmentType=PT_LOAD then begin
    if (not HaveBase) or (SegmentAddress<fImageBase) then begin
     fImageBase:=SegmentAddress;
@@ -449,18 +476,32 @@ begin
 
  // The section name table is itself a section, so its offset has to be read
  // before the names of the others can be resolved.
- fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(SectionNameIndex)*TpvInt64(SectionHeaderEntrySize))+24,soBeginning);
- fStream.ReadBuffer(NameTableOffset,SizeOf(TpvUInt64));
+ if fELF64 then begin
+  fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(SectionNameIndex)*TpvInt64(SectionHeaderEntrySize))+24,soBeginning);
+  fStream.ReadBuffer(NameTableOffset,SizeOf(TpvUInt64));
+ end else begin
+  fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(SectionNameIndex)*TpvInt64(SectionHeaderEntrySize))+16,soBeginning);
+  fStream.ReadBuffer(Value32,SizeOf(TpvUInt32));
+  NameTableOffset:=Value32;
+ end;
 
  SetLength(fSections,SectionHeaderCount);
  for Index:=0 to SectionHeaderCount-1 do begin
   fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(Index)*TpvInt64(SectionHeaderEntrySize)),soBeginning);
   fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
   fStream.ReadBuffer(SectionType,SizeOf(TpvUInt32));
-  fStream.ReadBuffer(Flags,SizeOf(TpvUInt64));
-  fStream.ReadBuffer(Address,SizeOf(TpvUInt64));
-  fStream.ReadBuffer(Offset,SizeOf(TpvUInt64));
-  fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+  if fELF64 then begin
+   fStream.ReadBuffer(Flags,SizeOf(TpvUInt64));
+   fStream.ReadBuffer(Address,SizeOf(TpvUInt64));
+   fStream.ReadBuffer(Offset,SizeOf(TpvUInt64));
+   fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+  end else begin
+   // Same fields in the same order, four bytes each instead of eight.
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Flags:=Value32;
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Address:=Value32;
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Offset:=Value32;
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Size:=Value32;
+  end;
   fSections[Index].Name:=ReadStringAt(TpvInt64(NameTableOffset)+TpvInt64(NameOffset));
   fSections[Index].VirtualAddress:=Address;
   fSections[Index].VirtualSize:=Size;
@@ -485,10 +526,12 @@ begin
   // SHT_SYMTAB is 2, and its sh_link names the string table section holding
   // the symbol names.
   if SectionType=2 then begin
-   fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(Index)*TpvInt64(SectionHeaderEntrySize))+40,soBeginning);
-   fStream.ReadBuffer(fSymbolTableOffset,SizeOf(TpvUInt64));
    fSymbolTableOffset:=Offset;
-   fSymbolCount:=TpvUInt32(Size div 24);
+   if fELF64 then begin
+    fSymbolCount:=TpvUInt32(Size div ELFSymbolSize64);
+   end else begin
+    fSymbolCount:=TpvUInt32(Size div ELFSymbolSize32);
+   end;
   end;
  end;
 
@@ -647,14 +690,15 @@ begin
 end;
 
 procedure TImageFile.EnumerateELFSymbols(const aEvent:TImageSymbolEvent);
-const SymbolRecordSize=24;
-      STT_FUNC=2;
+const STT_FUNC=2;
 var Index:TpvUInt32;
     StringSectionOffset:TpvUInt64;
     NameOffset:TpvUInt32;
     Info,Other:TpvUInt8;
     SectionIndex:TpvUInt16;
     Value,Size:TpvUInt64;
+    Value32:TpvUInt32;
+    SymbolRecordSize:TpvInt32;
     Name:String;
     Section:TImageSection;
 begin
@@ -669,15 +713,34 @@ begin
  end;
  StringSectionOffset:=Section.FileOffset;
 
+ if fELF64 then begin
+  SymbolRecordSize:=ELFSymbolSize64;
+ end else begin
+  SymbolRecordSize:=ELFSymbolSize32;
+ end;
+
  for Index:=0 to fSymbolCount-1 do begin
 
   fStream.Seek(TpvInt64(fSymbolTableOffset)+(TpvInt64(Index)*SymbolRecordSize),soBeginning);
-  fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
-  fStream.ReadBuffer(Info,SizeOf(TpvUInt8));
-  fStream.ReadBuffer(Other,SizeOf(TpvUInt8));
-  fStream.ReadBuffer(SectionIndex,SizeOf(TpvUInt16));
-  fStream.ReadBuffer(Value,SizeOf(TpvUInt64));
-  fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+  if fELF64 then begin
+   fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
+   fStream.ReadBuffer(Info,SizeOf(TpvUInt8));
+   fStream.ReadBuffer(Other,SizeOf(TpvUInt8));
+   fStream.ReadBuffer(SectionIndex,SizeOf(TpvUInt16));
+   fStream.ReadBuffer(Value,SizeOf(TpvUInt64));
+   fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+  end else begin
+   // The narrow entry is not only narrower, it puts the value and the size in
+   // front of the info, the visibility and the section rather than behind
+   // them. Reading it in the wide order would give a name offset and then
+   // nonsense.
+   fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Value:=Value32;
+   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32)); Size:=Value32;
+   fStream.ReadBuffer(Info,SizeOf(TpvUInt8));
+   fStream.ReadBuffer(Other,SizeOf(TpvUInt8));
+   fStream.ReadBuffer(SectionIndex,SizeOf(TpvUInt16));
+  end;
 
   // SHN_UNDEF is zero and SHN_ABS and above are not addresses in this image.
   if (NameOffset=0) or (SectionIndex=0) or (SectionIndex>=$ff00) then begin
