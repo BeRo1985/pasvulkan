@@ -3305,18 +3305,10 @@ begin
         LineEnding+
         aExceptionString+LineEnding+
         LineEnding+
-        pvCrashReportHistory+
-        LineEnding+
-        pvCrashReportRegisters+
-        LineEnding+
-        // The thread which crashed is often only the one which noticed. With a
-        // job system the one which caused it is somewhere else entirely, and its
-        // stack is not in the report unless it is asked for.
-        pvCrashReportThreadStacks+
-        LineEnding+
-        // Placed last because it is the longest and the least often read,
-        // but an address which nothing could name is only placeable with it.
-        pvCrashReportModules+
+        // Everything else the crash report backend knows, in one call, so that
+        // nothing is left out here by having been forgotten. The exception
+        // itself was already formatted into aExceptionString by the caller.
+        pvCrashReportContext+
         LineEnding;
 
 {$ifdef fpc}

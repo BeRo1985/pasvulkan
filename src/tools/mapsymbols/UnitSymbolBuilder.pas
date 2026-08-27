@@ -56,6 +56,8 @@ type TSymbolBuilder=class
        fImageBase:TpvUInt64;
        fStripPaths:Boolean;
        fCompress:Boolean;
+       fPackedFrom:TpvUInt64;
+       fPackedTo:TpvUInt64;
        function PreparePath(const aFileName:String):String;
        procedure WritePayload(const aStream:TStream);
        procedure SortUnits(const aLeft,aRight:TpvSizeInt);
@@ -98,6 +100,12 @@ type TSymbolBuilder=class
        // the reader having to ask for memory while it is unpacking, which is
        // why the reading side of it is behind a define of its own.
        property Compress:Boolean read fCompress write fCompress;
+       // What packing achieved, for the caller to report. Both zero when
+       // nothing was packed, either because it was not asked for or because it
+       // would not have come out smaller. Kept here rather than written out
+       // from inside, so that every message of the tool comes from one place.
+       property PackedFrom:TpvUInt64 read fPackedFrom;
+       property PackedTo:TpvUInt64 read fPackedTo;
        // Read access for the writers, which need the collected data again in a
        // different shape. Only valid after Finish, since that is what sorts it.
        function GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
@@ -124,6 +132,8 @@ begin
  fImageBase:=0;
  fStripPaths:=false;
  fCompress:=false;
+ fPackedFrom:=0;
+ fPackedTo:=0;
 end;
 
 // The contents behind the header, which is what is either written straight out
@@ -630,7 +640,8 @@ begin
 
    if (Header.Flags and pvSymbolTableFlagCompressed)<>0 then begin
     Stream.WriteBuffer(PackedData^,TpvSizeInt(PackedSize));
-    WriteLn('Packed ',Payload.Size,' bytes of contents down to ',PackedSize,'.');
+    fPackedFrom:=TpvUInt64(Payload.Size);
+    fPackedTo:=PackedSize;
    end else if assigned(Payload) then begin
     Payload.Seek(0,soBeginning);
     Stream.CopyFrom(Payload,Payload.Size);

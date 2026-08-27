@@ -407,7 +407,7 @@ var Stream:TFileStream;
     Index:TpvSizeInt;
 {$ifdef PasVulkanSymbolTableCompression}
     Packed_,Unpacked:TpvPointer;
-    UnpackedSize:TpvUInt64;
+    UnpackedSize,EmbeddedSize:TpvUInt64;
 {$endif}
 begin
 
@@ -469,9 +469,23 @@ begin
    if (Header.Flags and pvSymbolTableFlagCompressed)<>0 then begin
 
 {$ifdef PasVulkanSymbolTableCompression}
-    if Stored=0 then begin
+    if Stored<=TpvUInt64(SizeOf(TpvUInt64)) then begin
      exit;
     end;
+
+    // The counts in the header are four unchecked thirty two bit numbers, and
+    // Expected is what they multiply out to, which can be hundreds of gigabytes
+    // for a damaged or hostile one. The unpacked size is also written into the
+    // first eight bytes of the packed data, so the two are held against each
+    // other here, before anything is asked for. The unpacker checks the same
+    // thing, but only once the room has already been taken, which in the middle
+    // of a crash is exactly too late.
+    Stream.Seek(TpvInt64(Footer.Offset)+TpvInt64(SizeOf(TpvSymbolTableHeader)),soBeginning);
+    Stream.ReadBuffer(EmbeddedSize,SizeOf(TpvUInt64));
+    if EmbeddedSize<>(Expected-TpvUInt64(SizeOf(TpvSymbolTableHeader))) then begin
+     exit;
+    end;
+
     fSize:=TpvSizeInt(Expected);
     GetMem(fData,fSize);
     Move(Header,fData^,SizeOf(TpvSymbolTableHeader));

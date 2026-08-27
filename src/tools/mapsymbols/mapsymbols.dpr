@@ -201,7 +201,7 @@ end;
 
 // Emits everything which was collected a second time, as DWARF inside a
 // standalone ELF file. Nothing about the original executable changes.
-procedure WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aFileName:String);
+procedure WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
 var ELFWriter:TELFWriter;
     Index:TpvSizeInt;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
@@ -212,6 +212,23 @@ begin
 
  ELFWriter:=TELFWriter.Create;
  try
+
+  // The COFF machine of the image translated back, since that is the one shape
+  // both containers are described in here.
+  case aImage.Machine of
+   IMAGE_FILE_MACHINE_I386:begin
+    ELFWriter.Machine:=EM_386;
+   end;
+   IMAGE_FILE_MACHINE_ARMNT:begin
+    ELFWriter.Machine:=EM_ARM;
+   end;
+   IMAGE_FILE_MACHINE_ARM64:begin
+    ELFWriter.Machine:=EM_AARCH64;
+   end;
+   else begin
+    ELFWriter.Machine:=EM_X86_64;
+   end;
+  end;
 
   ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
   ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
@@ -622,8 +639,14 @@ begin
 
    Builder.AppendToFile(ExecutableFileName);
 
+   if Builder.PackedTo>0 then begin
+    WriteLn('Packed ',Builder.PackedFrom,' bytes of contents down to ',Builder.PackedTo,'.');
+   end else if Compress then begin
+    WriteLn('Not packed, since it would not have come out smaller.');
+   end;
+
    if length(DebugOutputFileName)>0 then begin
-    WriteDebugFile(Builder,DWARFWriter,DebugOutputFileName);
+    WriteDebugFile(Builder,DWARFWriter,Image,DebugOutputFileName);
    end;
 
   finally

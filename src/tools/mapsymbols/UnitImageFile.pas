@@ -27,6 +27,15 @@ uses SysUtils,
      Classes,
      PasVulkan.Types;
 
+// The processor numbers a COFF header uses, which is the shape the Machine
+// property reports whichever container it came out of. Here rather than in the
+// implementation, because a caller has to be able to tell them apart.
+const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
+      IMAGE_FILE_MACHINE_I386=TpvUInt16($014c);
+      IMAGE_FILE_MACHINE_ARMNT=TpvUInt16($01c4);
+      IMAGE_FILE_MACHINE_AMD64=TpvUInt16($8664);
+      IMAGE_FILE_MACHINE_ARM64=TpvUInt16($aa64);
+
 type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
      TImageSection=record
@@ -101,13 +110,7 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
 implementation
 
-const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
-      IMAGE_FILE_MACHINE_I386=TpvUInt16($014c);
-      IMAGE_FILE_MACHINE_ARMNT=TpvUInt16($01c4);
-      IMAGE_FILE_MACHINE_AMD64=TpvUInt16($8664);
-      IMAGE_FILE_MACHINE_ARM64=TpvUInt16($aa64);
-
-      EM_386=TpvUInt16(3);
+const EM_386=TpvUInt16(3);
       EM_ARM=TpvUInt16(40);
       EM_X86_64=TpvUInt16(62);
       EM_AARCH64=TpvUInt16(183);

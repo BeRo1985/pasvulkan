@@ -20,6 +20,13 @@ uses SysUtils,
      Classes,
      PasVulkan.Types;
 
+// The processor numbers an ELF header uses. Here rather than in the
+// implementation, because the caller picks one.
+const EM_386=TpvUInt16(3);
+      EM_ARM=TpvUInt16(40);
+      EM_X86_64=TpvUInt16(62);
+      EM_AARCH64=TpvUInt16(183);
+
 type TELFWriterSymbol=record
       Name:String;
       Address:TpvUInt64;
@@ -50,6 +57,7 @@ type TELFWriterSymbol=record
        fSymbolCount:TpvSizeInt;
        fTextAddress:TpvUInt64;
        fTextSize:TpvUInt64;
+       fMachine:TpvUInt16;
        function AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
       public
        constructor Create;
@@ -60,6 +68,14 @@ type TELFWriterSymbol=record
        // file carries a matching, contentless text section. Without it a
        // consumer has no idea which addresses this file is about.
        procedure SetTextRange(const aAddress,aSize:TpvUInt64);
+       // Which processor the described image is for, as an ELF machine number.
+       // Defaults to x86-64, which is what a Delphi or FreePascal build for a
+       // desktop is, and is set from the image where that is not the case.
+       //
+       // Only this field follows the image. The container itself is written as
+       // sixty four bit little endian throughout, so an image which is neither
+       // would need more than a different number here.
+       property Machine:TpvUInt16 read fMachine write fMachine;
        procedure SaveToFile(const aFileName:String);
      end;
 
@@ -88,6 +104,7 @@ begin
  fSymbolCount:=0;
  fTextAddress:=0;
  fTextSize:=0;
+ fMachine:=EM_X86_64;
 end;
 
 destructor TELFWriter.Destroy;
@@ -268,7 +285,7 @@ begin
    Value8:=0; Stream.WriteBuffer(Value8,1); // System V ABI
    Value64:=0; Stream.WriteBuffer(Value64,8); // ABI version and padding
    Value16:=2; Stream.WriteBuffer(Value16,2); // ET_EXEC
-   Value16:=62; Stream.WriteBuffer(Value16,2); // EM_X86_64
+   Value16:=fMachine; Stream.WriteBuffer(Value16,2);
    Value32:=1; Stream.WriteBuffer(Value32,4); // version
    Value64:=0; Stream.WriteBuffer(Value64,8); // entry
    Value64:=0; Stream.WriteBuffer(Value64,8); // program header offset
