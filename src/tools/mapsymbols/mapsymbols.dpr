@@ -37,7 +37,21 @@ uses SysUtils,
      UnitDbgHelpCheck,
      UnitMapFile;
 
-type TCollector=class
+type
+{$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
+     // One run of code of a compilation unit with no hole in it. A unit is not
+     // necessarily one such run: the linker is free to put the code of two
+     // units through one another, and a single range from the lowest to the
+     // highest address of a unit would then cover the other one as well.
+     TCollectorRange=record
+      Low:TpvUInt64;
+      // Exclusive, like everything else about ranges here.
+      High:TpvUInt64;
+     end;
+     TCollectorRanges=array of TCollectorRange;
+{$endif}
+
+     TCollector=class
       public
        Builder:TSymbolBuilder;
        ImageBase:TpvUInt64;
@@ -48,12 +62,23 @@ type TCollector=class
        CodeHigh:TpvUInt64;
        SymbolsAdded:TpvSizeInt;
        DiscardedRows:TpvSizeInt;
-       // Range of the compilation unit currently being read, accumulated over
-       // the rows which survived the plausibility check below. The end is
-       // exclusive, see OnLineRow.
+       // Range of the sequence currently being read, accumulated over the rows
+       // which survived the plausibility check below. The end is exclusive, see
+       // OnLineRow.
        CurrentLow:TpvUInt64;
        CurrentEnd:TpvUInt64;
        HaveCurrent:Boolean;
+{$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
+       // The ranges of the compilation unit being read, one per run of code
+       // which has no hole in it. Collected here rather than handed over as
+       // they close, because the name of the file they belong to only arrives
+       // at the end of the unit.
+       Ranges:TCollectorRanges;
+       RangeCount:TpvSizeInt;
+       procedure CloseRange;
+       procedure SortRanges(const aLeft,aRight:TpvSizeInt);
+       procedure MergeRanges;
+{$endif}
        procedure OnLineRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
        procedure OnLineUnit(const aFileName:String);
        procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
@@ -166,20 +191,155 @@ begin
  // then name that line with full confidence.
  Builder.AddLine(aAddress-ImageBase,aLineNumber);
 
+{$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
+ // The marker also ends the run of code being measured, so that what the unit
+ // covers is the runs themselves and not the span from the first to the last,
+ // which would take in whatever else lies between them.
+ if aLineNumber=0 then begin
+  CloseRange;
+ end;
+{$endif}
+
 end;
+
+{$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
+// Ends the run of code being measured and keeps it.
+procedure TCollector.CloseRange;
+begin
+ if HaveCurrent and (CurrentEnd>CurrentLow) then begin
+  if RangeCount>=length(Ranges) then begin
+   SetLength(Ranges,(RangeCount+1)*2);
+  end;
+  Ranges[RangeCount].Low:=CurrentLow;
+  Ranges[RangeCount].High:=CurrentEnd;
+  inc(RangeCount);
+ end;
+ HaveCurrent:=false;
+ CurrentLow:=0;
+ CurrentEnd:=0;
+end;
+
+procedure TCollector.SortRanges(const aLeft,aRight:TpvSizeInt);
+var Left,Right:TpvSizeInt;
+    Pivot:TpvUInt64;
+    Temporary:TCollectorRange;
+begin
+ if aLeft>=aRight then begin
+  exit;
+ end;
+ Left:=aLeft;
+ Right:=aRight;
+ Pivot:=Ranges[(aLeft+aRight) shr 1].Low;
+ while Left<=Right do begin
+  while Ranges[Left].Low<Pivot do begin
+   inc(Left);
+  end;
+  while Ranges[Right].Low>Pivot do begin
+   dec(Right);
+  end;
+  if Left<=Right then begin
+   Temporary:=Ranges[Left];
+   Ranges[Left]:=Ranges[Right];
+   Ranges[Right]:=Temporary;
+   inc(Left);
+   dec(Right);
+  end;
+ end;
+ SortRanges(aLeft,Right);
+ SortRanges(Left,aRight);
+end;
+
+// Puts the runs in address order and joins the ones which are not separated by
+// anything.
+//
+// Two things make this necessary. The sequences of a compilation unit do not
+// arrive in address order, since the line program describes them in source
+// order while the linker placed them as it saw fit, so a later run can begin
+// below an earlier one and even inside it. And a run which begins exactly where
+// the one before it ended is not a run of its own, there being no hole between
+// them.
+//
+// What is left afterwards is one entry per actual hole, which is both the
+// smallest correct answer and one the reader can binary search, since it
+// assumes the ranges neither overlap nor come out of order.
+procedure TCollector.MergeRanges;
+const // A gap no larger than this is padding rather than a hole. Routines are
+      // aligned, so the few bytes between the end of one and the start of the
+      // next belong to neither, and nothing else can be placed there either,
+      // since whatever came next would have to be aligned as well.
+      //
+      // Measured on a build of this project, every gap between two runs of one
+      // unit was sixteen bytes or less, so without this every function boundary
+      // would become a range of its own: three and a half thousand of them
+      // instead of eight, for no gain.
+      cMaximalPadding=16;
+var Index,Kept:TpvSizeInt;
+begin
+
+ if RangeCount<2 then begin
+  exit;
+ end;
+
+ SortRanges(0,RangeCount-1);
+
+ Kept:=0;
+ for Index:=1 to RangeCount-1 do begin
+  if Ranges[Index].Low<=(Ranges[Kept].High+cMaximalPadding) then begin
+   // Touching, overlapping, or separated by nothing but padding, so the two
+   // describe one run between them.
+   if Ranges[Index].High>Ranges[Kept].High then begin
+    Ranges[Kept].High:=Ranges[Index].High;
+   end;
+  end else begin
+   inc(Kept);
+   if Kept<>Index then begin
+    Ranges[Kept]:=Ranges[Index];
+   end;
+  end;
+ end;
+
+ RangeCount:=Kept+1;
+
+end;
+{$endif}
 
 procedure TCollector.OnLineUnit(const aFileName:String);
 var Name:String;
+{$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
+    Index:TpvSizeInt;
+{$endif}
 begin
+
+ // DWARF names the source file, not the Pascal unit, so the unit name is taken
+ // from the file name, which is what a reader expects to see anyway.
+ Name:=ChangeFileExt(ExtractFileName(aFileName),'');
+
+{$ifdef PasVulkanMapSymbolsSingleRangePerUnit}
+
+ // One range per compilation unit, from its lowest address to its highest,
+ // which is how this was first written. Simpler, and right for a build whose
+ // units the linker kept in one piece each, but where it did not, such a range
+ // reaches over the code of another unit and answers for it.
  if HaveCurrent and (CurrentEnd>CurrentLow) then begin
-  // DWARF names the source file, not the Pascal unit, so the unit name is taken
-  // from the file name, which is what a reader expects to see anyway.
-  Name:=ChangeFileExt(ExtractFileName(aFileName),'');
   Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,CurrentEnd-CurrentLow);
  end;
  HaveCurrent:=false;
  CurrentLow:=0;
  CurrentEnd:=0;
+
+{$else}
+
+ // One entry per run of code instead. They share the name and the file, which
+ // costs nothing, since the string table keeps one copy of each.
+ CloseRange;
+ MergeRanges;
+ for Index:=0 to RangeCount-1 do begin
+  Builder.AddUnit(Name,aFileName,Ranges[Index].Low-ImageBase,Ranges[Index].High-Ranges[Index].Low);
+ end;
+ RangeCount:=0;
+
+{$endif}
+
 end;
 
 procedure TCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
