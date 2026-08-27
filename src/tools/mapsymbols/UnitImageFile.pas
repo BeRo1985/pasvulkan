@@ -1,8 +1,8 @@
-// Minimal reader for executable containers, currently PE.
+// Minimal reader for executable containers, PE and ELF.
 //
 // It provides only what building a symbol table needs: the image base, the
-// section table, the contents of a named section, the COFF symbol table and the
-// .gnu_debuglink entry.
+// section table, the range covered by executable sections, the contents of a
+// named section, the symbol table and the .gnu_debuglink entry.
 //
 // The debug link matters in practice: a FreePascal build which was linked with
 // an external debug file, which is what Lazarus does by default, carries no
@@ -10,6 +10,12 @@
 // the executable only holds a .gnu_debuglink section naming it. The same
 // indirection is what the FreePascal runtime itself follows in
 // rtl/inc/exeinfo.pp.
+//
+// The image base is taken from the PE optional header, and for ELF from the
+// lowest PT_LOAD segment address rather than from the section table. That
+// distinction is deliberate: the first allocatable section of an ELF can start
+// past the beginning of the mapping, so using it would shift every address by
+// the difference.
 unit UnitImageFile;
 {$ifdef fpc}
  {$mode delphi}
@@ -21,7 +27,7 @@ uses SysUtils,
      Classes,
      PasVulkan.Types;
 
-type TImageFileFormat=(iffUnknown,iffPE);
+type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
      TImageSection=record
       Name:String;
@@ -29,6 +35,7 @@ type TImageFileFormat=(iffUnknown,iffPE);
       VirtualSize:TpvUInt64;
       FileOffset:TpvUInt64;
       RawSize:TpvUInt64;
+      Executable:Boolean;
      end;
 
      TImageSections=array of TImageSection;
@@ -41,13 +48,21 @@ type TImageFileFormat=(iffUnknown,iffPE);
        fFileName:String;
        fFormat:TImageFileFormat;
        fImageBase:TpvUInt64;
+       fCodeLow:TpvUInt64;
+       fCodeHigh:TpvUInt64;
        fSections:TImageSections;
        fSymbolTableOffset:TpvUInt64;
        fSymbolCount:TpvUInt32;
+       fELF64:Boolean;
        function StringTableOffset:TpvInt64;
        function ReadStringTableEntry(const aOffset:TpvInt64):String;
+       function ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
        function ReadLongSectionName(const aOffset:TpvInt64):String;
+       procedure ComputeCodeRange;
        function ReadPE:Boolean;
+       function ReadELF:Boolean;
+       procedure EnumeratePESymbols(const aEvent:TImageSymbolEvent);
+       procedure EnumerateELFSymbols(const aEvent:TImageSymbolEvent);
       public
        constructor Create;
        destructor Destroy; override;
@@ -62,15 +77,27 @@ type TImageFileFormat=(iffUnknown,iffPE);
        // against the directory of this image, or an empty string when there is
        // none or the named file does not exist.
        function DebugLinkFileName:String;
-       // Walks the COFF symbol table and reports every symbol which lives in a
-       // section, translated into an image relative address.
+       // Walks the symbol table and reports every symbol which lives in a
+       // section, translated into a link time virtual address.
        procedure EnumerateSymbols(const aEvent:TImageSymbolEvent);
        property Format:TImageFileFormat read fFormat;
        property ImageBase:TpvUInt64 read fImageBase;
+       // Lowest and highest link time address covered by executable sections.
+       // Used to tell real line information apart from the leftovers which
+       // FreePascal emits for code the linker has discarded.
+       property CodeLow:TpvUInt64 read fCodeLow;
+       property CodeHigh:TpvUInt64 read fCodeHigh;
        property Sections:TImageSections read fSections;
      end;
 
 implementation
+
+const PT_LOAD=TpvUInt32(1);
+
+      SHF_EXECINSTR=TpvUInt64($4);
+      SHF_ALLOC=TpvUInt64($2);
+
+      IMAGE_SCN_MEM_EXECUTE=TpvUInt32($20000000);
 
 constructor TImageFile.Create;
 begin
@@ -78,9 +105,12 @@ begin
  fStream:=nil;
  fFormat:=iffUnknown;
  fImageBase:=0;
+ fCodeLow:=0;
+ fCodeHigh:=0;
  fSections:=nil;
  fSymbolTableOffset:=0;
  fSymbolCount:=0;
+ fELF64:=true;
 end;
 
 destructor TImageFile.Destroy;
@@ -90,8 +120,13 @@ begin
  inherited Destroy;
 end;
 
+procedure TImageFile.Close;
+begin
+ FreeAndNil(fStream);
+end;
+
 function TImageFile.Open(const aFileName:String):Boolean;
-var Signature:TpvUInt16;
+var Signature:array[0..3] of AnsiChar;
 begin
  result:=false;
  FreeAndNil(fStream);
@@ -105,45 +140,95 @@ begin
   exit;
  end;
  fStream.Seek(0,soBeginning);
- fStream.ReadBuffer(Signature,SizeOf(TpvUInt16));
- if Signature=$5a4d then begin
-  // 'MZ'
+ fStream.ReadBuffer(Signature,4);
+ if (Signature[0]='M') and (Signature[1]='Z') then begin
   fFormat:=iffPE;
   result:=ReadPE;
+ end else if (Signature[0]=#$7f) and (Signature[1]='E') and (Signature[2]='L') and (Signature[3]='F') then begin
+  fFormat:=iffELF;
+  result:=ReadELF;
+ end;
+ if result then begin
+  ComputeCodeRange;
+ end;
+end;
+
+procedure TImageFile.ComputeCodeRange;
+var Index:TpvInt32;
+    LowAddress,HighAddress,SectionEnd:TpvUInt64;
+    Found:Boolean;
+begin
+ Found:=false;
+ LowAddress:=0;
+ HighAddress:=0;
+ for Index:=0 to length(fSections)-1 do begin
+  if fSections[Index].Executable and (fSections[Index].VirtualAddress>0) then begin
+   SectionEnd:=fSections[Index].VirtualAddress+fSections[Index].VirtualSize;
+   if not Found then begin
+    LowAddress:=fSections[Index].VirtualAddress;
+    HighAddress:=SectionEnd;
+    Found:=true;
+   end else begin
+    if fSections[Index].VirtualAddress<LowAddress then begin
+     LowAddress:=fSections[Index].VirtualAddress;
+    end;
+    if SectionEnd>HighAddress then begin
+     HighAddress:=SectionEnd;
+    end;
+   end;
+  end;
+ end;
+ if Found then begin
+  fCodeLow:=LowAddress;
+  fCodeHigh:=HighAddress;
+ end else begin
+  // Nothing recognizable, so no filtering rather than filtering everything out.
+  fCodeLow:=0;
+  fCodeHigh:=High(TpvUInt64);
  end;
 end;
 
 function TImageFile.StringTableOffset:TpvInt64;
 begin
- // The COFF string table follows directly behind the symbol table. A symbol
- // count of zero does not mean there is no string table: an executable whose
- // debug information was linked out into a separate file keeps the pointer and
- // the string table, and needs it, because the long section names, including
- // .gnu_debuglink itself, are stored there.
- if fSymbolTableOffset=0 then begin
+ // For PE the COFF string table follows directly behind the symbol table. A
+ // symbol count of zero does not mean there is no string table: an executable
+ // whose debug information was linked out into a separate file keeps the
+ // pointer and the string table, and needs it, because the long section names,
+ // including .gnu_debuglink itself, are stored there.
+ if (fFormat<>iffPE) or (fSymbolTableOffset=0) then begin
   result:=0;
  end else begin
   result:=TpvInt64(fSymbolTableOffset)+(TpvInt64(fSymbolCount)*18);
  end;
 end;
 
-function TImageFile.ReadStringTableEntry(const aOffset:TpvInt64):String;
-var Base,Available:TpvInt64;
+function TImageFile.ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
+var Available:TpvInt64;
     Buffer:array[0..1023] of AnsiChar;
 begin
  result:='';
- Base:=StringTableOffset;
- if (Base<=0) or (aOffset<0) or ((Base+aOffset)>=fStream.Size) then begin
+ if (aAbsoluteOffset<=0) or (aAbsoluteOffset>=fStream.Size) then begin
   exit;
  end;
- Available:=fStream.Size-(Base+aOffset);
+ Available:=fStream.Size-aAbsoluteOffset;
  if Available>TpvInt64(SizeOf(Buffer)-1) then begin
   Available:=SizeOf(Buffer)-1;
  end;
  FillChar(Buffer,SizeOf(Buffer),#0);
- fStream.Seek(Base+aOffset,soBeginning);
+ fStream.Seek(aAbsoluteOffset,soBeginning);
  fStream.ReadBuffer(Buffer,Available);
  result:=String(PAnsiChar(@Buffer[0]));
+end;
+
+function TImageFile.ReadStringTableEntry(const aOffset:TpvInt64):String;
+var Base:TpvInt64;
+begin
+ Base:=StringTableOffset;
+ if (Base<=0) or (aOffset<0) then begin
+  result:='';
+ end else begin
+  result:=ReadStringAt(Base+aOffset);
+ end;
 end;
 
 function TImageFile.ReadLongSectionName(const aOffset:TpvInt64):String;
@@ -161,11 +246,6 @@ begin
  end;
 end;
 
-procedure TImageFile.Close;
-begin
- FreeAndNil(fStream);
-end;
-
 function TImageFile.ReadPE:Boolean;
 var NewHeaderOffset:TpvUInt32;
     PESignature:array[0..3] of AnsiChar;
@@ -175,7 +255,7 @@ var NewHeaderOffset:TpvUInt32;
     Value32:TpvUInt32;
     SectionIndex:TpvInt32;
     RawName:array[0..7] of AnsiChar;
-    VirtualSize,VirtualAddress,RawSize,RawOffset:TpvUInt32;
+    VirtualSize,VirtualAddress,RawSize,RawOffset,Characteristics:TpvUInt32;
     NameLength:TpvInt32;
 begin
 
@@ -224,6 +304,8 @@ begin
   fStream.ReadBuffer(VirtualAddress,SizeOf(TpvUInt32));
   fStream.ReadBuffer(RawSize,SizeOf(TpvUInt32));
   fStream.ReadBuffer(RawOffset,SizeOf(TpvUInt32));
+  fStream.Seek(TpvInt64(NewHeaderOffset)+24+TpvInt64(SizeOfOptionalHeader)+(TpvInt64(SectionIndex)*40)+36,soBeginning);
+  fStream.ReadBuffer(Characteristics,SizeOf(TpvUInt32));
   NameLength:=0;
   while (NameLength<8) and (RawName[NameLength]<>#0) do begin
    inc(NameLength);
@@ -236,10 +318,105 @@ begin
   if (NameLength>1) and (fSections[SectionIndex].Name[1]='/') then begin
    fSections[SectionIndex].Name:=ReadLongSectionName(StrToIntDef(Copy(fSections[SectionIndex].Name,2,NameLength-1),-1));
   end;
-  fSections[SectionIndex].VirtualAddress:=VirtualAddress;
+  // PE section addresses are relative to the image base.
+  fSections[SectionIndex].VirtualAddress:=fImageBase+VirtualAddress;
   fSections[SectionIndex].VirtualSize:=VirtualSize;
   fSections[SectionIndex].FileOffset:=RawOffset;
   fSections[SectionIndex].RawSize:=RawSize;
+  fSections[SectionIndex].Executable:=(Characteristics and IMAGE_SCN_MEM_EXECUTE)<>0;
+ end;
+
+ result:=true;
+
+end;
+
+function TImageFile.ReadELF:Boolean;
+var ElfClass,DataEncoding:TpvUInt8;
+    ProgramHeaderOffset,SectionHeaderOffset:TpvUInt64;
+    ProgramHeaderEntrySize,ProgramHeaderCount:TpvUInt16;
+    SectionHeaderEntrySize,SectionHeaderCount,SectionNameIndex:TpvUInt16;
+    Index:TpvInt32;
+    SegmentType:TpvUInt32;
+    SegmentAddress:TpvUInt64;
+    HaveBase:Boolean;
+    NameOffset,SectionType:TpvUInt32;
+    Flags,Address,Offset,Size:TpvUInt64;
+    NameTableOffset:TpvUInt64;
+begin
+
+ result:=false;
+
+ fStream.Seek(4,soBeginning);
+ fStream.ReadBuffer(ElfClass,SizeOf(TpvUInt8));
+ fStream.ReadBuffer(DataEncoding,SizeOf(TpvUInt8));
+
+ // Only 64 bit little endian is handled, which is what every target PasVulkan
+ // builds for on Linux uses.
+ if (ElfClass<>2) or (DataEncoding<>1) then begin
+  exit;
+ end;
+ fELF64:=true;
+
+ fStream.Seek($20,soBeginning);
+ fStream.ReadBuffer(ProgramHeaderOffset,SizeOf(TpvUInt64));
+ fStream.ReadBuffer(SectionHeaderOffset,SizeOf(TpvUInt64));
+ fStream.Seek($36,soBeginning);
+ fStream.ReadBuffer(ProgramHeaderEntrySize,SizeOf(TpvUInt16));
+ fStream.ReadBuffer(ProgramHeaderCount,SizeOf(TpvUInt16));
+ fStream.ReadBuffer(SectionHeaderEntrySize,SizeOf(TpvUInt16));
+ fStream.ReadBuffer(SectionHeaderCount,SizeOf(TpvUInt16));
+ fStream.ReadBuffer(SectionNameIndex,SizeOf(TpvUInt16));
+
+ // The image base is the lowest loadable segment address. For a position
+ // independent executable that is zero, and the runtime side then has to add
+ // the load bias it finds for itself.
+ HaveBase:=false;
+ fImageBase:=0;
+ for Index:=0 to ProgramHeaderCount-1 do begin
+  fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize)),soBeginning);
+  fStream.ReadBuffer(SegmentType,SizeOf(TpvUInt32));
+  fStream.Seek(TpvInt64(ProgramHeaderOffset)+(TpvInt64(Index)*TpvInt64(ProgramHeaderEntrySize))+16,soBeginning);
+  fStream.ReadBuffer(SegmentAddress,SizeOf(TpvUInt64));
+  if SegmentType=PT_LOAD then begin
+   if (not HaveBase) or (SegmentAddress<fImageBase) then begin
+    fImageBase:=SegmentAddress;
+    HaveBase:=true;
+   end;
+  end;
+ end;
+
+ if (SectionHeaderCount=0) or (SectionNameIndex>=SectionHeaderCount) then begin
+  exit;
+ end;
+
+ // The section name table is itself a section, so its offset has to be read
+ // before the names of the others can be resolved.
+ fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(SectionNameIndex)*TpvInt64(SectionHeaderEntrySize))+24,soBeginning);
+ fStream.ReadBuffer(NameTableOffset,SizeOf(TpvUInt64));
+
+ SetLength(fSections,SectionHeaderCount);
+ for Index:=0 to SectionHeaderCount-1 do begin
+  fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(Index)*TpvInt64(SectionHeaderEntrySize)),soBeginning);
+  fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
+  fStream.ReadBuffer(SectionType,SizeOf(TpvUInt32));
+  fStream.ReadBuffer(Flags,SizeOf(TpvUInt64));
+  fStream.ReadBuffer(Address,SizeOf(TpvUInt64));
+  fStream.ReadBuffer(Offset,SizeOf(TpvUInt64));
+  fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+  fSections[Index].Name:=ReadStringAt(TpvInt64(NameTableOffset)+TpvInt64(NameOffset));
+  fSections[Index].VirtualAddress:=Address;
+  fSections[Index].VirtualSize:=Size;
+  fSections[Index].FileOffset:=Offset;
+  fSections[Index].RawSize:=Size;
+  fSections[Index].Executable:=((Flags and SHF_EXECINSTR)<>0) and ((Flags and SHF_ALLOC)<>0);
+  // SHT_SYMTAB is 2, and its sh_link names the string table section holding
+  // the symbol names.
+  if SectionType=2 then begin
+   fStream.Seek(TpvInt64(SectionHeaderOffset)+(TpvInt64(Index)*TpvInt64(SectionHeaderEntrySize))+40,soBeginning);
+   fStream.ReadBuffer(fSymbolTableOffset,SizeOf(TpvUInt64));
+   fSymbolTableOffset:=Offset;
+   fSymbolCount:=TpvUInt32(Size div 24);
+  end;
  end;
 
  result:=true;
@@ -267,9 +444,9 @@ begin
  if not FindSection(aName,Section) then begin
   exit;
  end;
- // The raw size is rounded up to the file alignment, while the virtual size is
- // the real one. Debug sections are usually not loaded, so the virtual size can
- // read as zero, in which case the raw size is all there is to go by.
+ // For PE the raw size is rounded up to the file alignment while the virtual
+ // size is the real one. Debug sections are usually not loaded, so the virtual
+ // size can read as zero, in which case the raw size is all there is to go by.
  if (Section.VirtualSize>0) and (Section.VirtualSize<Section.RawSize) then begin
   Size:=TpvInt64(Section.VirtualSize);
  end else begin
@@ -291,9 +468,7 @@ end;
 
 function TImageFile.DebugLinkFileName:String;
 var Data:TMemoryStream;
-    Name:String;
-    Directory:String;
-    Candidate:String;
+    Name,Directory,Candidate:String;
 begin
  result:='';
  Data:=ReadSection('.gnu_debuglink');
@@ -321,21 +496,36 @@ begin
 end;
 
 procedure TImageFile.EnumerateSymbols(const aEvent:TImageSymbolEvent);
+begin
+ if assigned(aEvent) then begin
+  case fFormat of
+   iffPE:begin
+    EnumeratePESymbols(aEvent);
+   end;
+   iffELF:begin
+    EnumerateELFSymbols(aEvent);
+   end;
+   else begin
+   end;
+  end;
+ end;
+end;
+
+procedure TImageFile.EnumeratePESymbols(const aEvent:TImageSymbolEvent);
 const SymbolRecordSize=18;
 var Index:TpvUInt32;
     Base:TpvInt64;
     ShortName:array[0..7] of AnsiChar;
     Value:TpvUInt32;
     SectionNumber:TpvInt16;
-    StorageClass:TpvUInt8;
-    AuxiliaryCount:TpvUInt8;
+    StorageClass,AuxiliaryCount:TpvUInt8;
     TypeValue:TpvUInt16;
     Zeroes,NameOffset:TpvUInt32;
     Name:String;
     NameLength:TpvInt32;
 begin
 
- if (fSymbolTableOffset=0) or (fSymbolCount=0) or not assigned(aEvent) then begin
+ if (fSymbolTableOffset=0) or (fSymbolCount=0) then begin
   exit;
  end;
 
@@ -378,6 +568,60 @@ begin
   end;
 
   inc(Index,1+TpvUInt32(AuxiliaryCount));
+
+ end;
+
+end;
+
+procedure TImageFile.EnumerateELFSymbols(const aEvent:TImageSymbolEvent);
+const SymbolRecordSize=24;
+      STT_FUNC=2;
+var Index:TpvUInt32;
+    StringSectionOffset:TpvUInt64;
+    NameOffset:TpvUInt32;
+    Info,Other:TpvUInt8;
+    SectionIndex:TpvUInt16;
+    Value,Size:TpvUInt64;
+    Name:String;
+    Section:TImageSection;
+begin
+
+ if (fSymbolTableOffset=0) or (fSymbolCount=0) then begin
+  exit;
+ end;
+
+ // Symbol names live in .strtab, which is a plain string section.
+ if not FindSection('.strtab',Section) then begin
+  exit;
+ end;
+ StringSectionOffset:=Section.FileOffset;
+
+ for Index:=0 to fSymbolCount-1 do begin
+
+  fStream.Seek(TpvInt64(fSymbolTableOffset)+(TpvInt64(Index)*SymbolRecordSize),soBeginning);
+  fStream.ReadBuffer(NameOffset,SizeOf(TpvUInt32));
+  fStream.ReadBuffer(Info,SizeOf(TpvUInt8));
+  fStream.ReadBuffer(Other,SizeOf(TpvUInt8));
+  fStream.ReadBuffer(SectionIndex,SizeOf(TpvUInt16));
+  fStream.ReadBuffer(Value,SizeOf(TpvUInt64));
+  fStream.ReadBuffer(Size,SizeOf(TpvUInt64));
+
+  // SHN_UNDEF is zero and SHN_ABS and above are not addresses in this image.
+  if (NameOffset=0) or (SectionIndex=0) or (SectionIndex>=$ff00) then begin
+   continue;
+  end;
+
+  // The low nibble of the info byte is the symbol type. Only routines are of
+  // interest, which also keeps data labels out of stack traces.
+  if (Info and $0f)<>STT_FUNC then begin
+   continue;
+  end;
+
+  Name:=ReadStringAt(TpvInt64(StringSectionOffset)+TpvInt64(NameOffset));
+  if length(Name)>0 then begin
+   // ELF symbol values are already link time virtual addresses.
+   aEvent(Value,Name);
+  end;
 
  end;
 

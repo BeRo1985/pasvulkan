@@ -89,7 +89,7 @@ uses SysUtils,
 
 const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B');
 
-      pvSymbolTableVersion=TpvUInt32(1);
+      pvSymbolTableVersion=TpvUInt32(2);
 
       // How far an address may sit behind a symbol before that symbol is no
       // longer believed to name it. Only used when no unit range covers the
@@ -101,6 +101,10 @@ type PpvSymbolTableHeader=^TpvSymbolTableHeader;
       Magic:array[0..7] of AnsiChar;
       Version:TpvUInt32;
       Flags:TpvUInt32;
+      // Link time base of the image the table was built from. On Windows the
+      // loader reports the actual base directly, so this is informational
+      // there, but on Linux it is what turns the load bias into a base.
+      ImageBase:TpvUInt64;
       UnitCount:TpvUInt32;
       SymbolCount:TpvUInt32;
       LineCount:TpvUInt32;
@@ -167,6 +171,7 @@ type PpvSymbolTableHeader=^TpvSymbolTableHeader;
        // it, for example an address inside a system library.
        function Resolve(const aRVA:TpvUInt64;out aLocation:TpvSymbolTableLocation):Boolean;
        function Loaded:Boolean;
+       function ImageBase:TpvUInt64;
      end;
 
 implementation
@@ -195,6 +200,15 @@ end;
 function TpvSymbolTable.Loaded:Boolean;
 begin
  result:=assigned(fHeader);
+end;
+
+function TpvSymbolTable.ImageBase:TpvUInt64;
+begin
+ if assigned(fHeader) then begin
+  result:=fHeader^.ImageBase;
+ end else begin
+  result:=0;
+ end;
 end;
 
 function TpvSymbolTable.LoadFromFile(const aFileName:String):Boolean;

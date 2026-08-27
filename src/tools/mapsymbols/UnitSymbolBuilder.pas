@@ -49,6 +49,7 @@ type TSymbolBuilder=class
        fLineCount:TpvSizeInt;
        fStringStream:TMemoryStream;
        fUniqueStrings:TStringList;
+       fImageBase:TpvUInt64;
        procedure SortUnits(const aLeft,aRight:TpvSizeInt);
        procedure SortSymbols(const aLeft,aRight:TpvSizeInt);
        procedure SortLines(const aLeft,aRight:TpvSizeInt);
@@ -71,6 +72,9 @@ type TSymbolBuilder=class
        // Reads the written table back through the public reader and checks that
        // a spread of line records resolves to the line it was built from.
        function SelfCheck(const aFileName:String;out aResolved,aProbes:TpvSizeInt):Boolean;
+       // Link time base of the image, written into the header so that the
+       // reader can turn a load bias back into a base at runtime.
+       property ImageBase:TpvUInt64 read fImageBase write fImageBase;
        property UnitCount:TpvSizeInt read fUnitCount;
        property SymbolCount:TpvSizeInt read fSymbolCount;
        property LineCount:TpvSizeInt read fLineCount;
@@ -89,6 +93,7 @@ begin
  fLineCount:=0;
  fStringStream:=nil;
  fUniqueStrings:=nil;
+ fImageBase:=0;
 end;
 
 destructor TSymbolBuilder.Destroy;
@@ -364,6 +369,7 @@ begin
   Move(pvSymbolTableMagic[0],Header.Magic[0],8);
   Header.Version:=pvSymbolTableVersion;
   Header.Flags:=0;
+  Header.ImageBase:=fImageBase;
   Header.UnitCount:=TpvUInt32(fUnitCount);
   Header.SymbolCount:=TpvUInt32(fSymbolCount);
   Header.LineCount:=TpvUInt32(fLineCount);

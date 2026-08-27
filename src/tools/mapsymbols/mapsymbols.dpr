@@ -36,6 +36,10 @@ type TCollector=class
        Builder:TSymbolBuilder;
        ImageBase:TpvUInt64;
        WantSymbols:Boolean;
+       // Link time window covered by executable sections. Anything outside is
+       // not code of this image.
+       CodeLow:TpvUInt64;
+       CodeHigh:TpvUInt64;
        SymbolsAdded:TpvSizeInt;
        DiscardedRows:TpvSizeInt;
        // Range of the compilation unit currently being read, accumulated over
@@ -45,7 +49,7 @@ type TCollector=class
        HaveCurrent:Boolean;
        procedure OnLineRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
        procedure OnLineUnit(const aFileName:String);
-       procedure OnSymbol(const aRVA:TpvUInt64;const aName:String);
+       procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
      end;
 
 // Turns a FreePascal mangled symbol into something a reader recognizes.
@@ -108,8 +112,11 @@ begin
  // FreePascal emits line information for code which the linker then discards.
  // The leftover sequences keep addresses near zero rather than a real virtual
  // address, and objdump shows exactly the same rows, so this is not a parsing
- // artefact but genuinely dead information which has to be dropped.
- if aAddress<ImageBase then begin
+ // artefact but genuinely dead information which has to be dropped. Testing
+ // against the executable sections rather than against the image base is what
+ // makes this work for a position independent image too, where the base is
+ // zero and a plain lower bound would let everything through.
+ if (aAddress<CodeLow) or (aAddress>=CodeHigh) then begin
   inc(DiscardedRows);
   exit;
  end;
@@ -149,9 +156,12 @@ begin
  CurrentHigh:=0;
 end;
 
-procedure TCollector.OnSymbol(const aRVA:TpvUInt64;const aName:String);
+procedure TCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
 begin
  if not WantSymbols then begin
+  exit;
+ end;
+ if (aAddress<CodeLow) or (aAddress>=CodeHigh) then begin
   exit;
  end;
  // The unit range markers are not routines and would only be noise in a stack
@@ -159,7 +169,7 @@ begin
  if (Pos('DEBUGSTART_$',aName)=1) or (Pos('DEBUGEND_$',aName)=1) then begin
   exit;
  end;
- Builder.AddSymbol(aRVA,DemangleName(aName));
+ Builder.AddSymbol(aAddress-ImageBase,DemangleName(aName));
  inc(SymbolsAdded);
 end;
 
@@ -252,6 +262,9 @@ begin
   Collector:=TCollector.Create;
   Collector.Builder:=Builder;
   Collector.ImageBase:=Image.ImageBase;
+  Collector.CodeLow:=Image.CodeLow;
+  Collector.CodeHigh:=Image.CodeHigh;
+  Builder.ImageBase:=Image.ImageBase;
   Collector.WantSymbols:=WantSymbols;
   Collector.SymbolsAdded:=0;
   Collector.DiscardedRows:=0;

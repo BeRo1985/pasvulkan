@@ -221,7 +221,7 @@ var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashRep
     CrashReportInstalled:Boolean=false;
     CrashReportSymbolTable:TpvSymbolTable=nil;
     CrashReportSymbolTableState:TpvInt32=0;
-{$if defined(Windows)}
+{$if defined(Windows) or defined(Linux)}
     CrashReportModuleBase:TpvPtrUInt=0;
 {$ifend}
 {$ifndef fpc}
@@ -371,7 +371,106 @@ begin
  Entry^.Sequence:=Sequence;
 end;
 
-{$if defined(Windows)}
+{$if defined(Windows) or defined(Linux)}
+
+{$if defined(Linux)}
+// Reads the whole of a proc file. It cannot be read through a stream, because
+// proc reports a size of zero for its files, so anything which trusts that size
+// ends up with nothing.
+function CrashReportReadProcFile(const aFileName:String):TpvRawByteString;
+var Handle:THandle;
+    Buffer:array[0..4095] of AnsiChar;
+    Chunk:TpvRawByteString;
+    Count:TpvSizeInt;
+begin
+ result:='';
+ Handle:=FileOpen(aFileName,fmOpenRead or fmShareDenyNone);
+ if Handle<>THandle(-1) then begin
+  try
+   repeat
+    Count:=FileRead(Handle,Buffer[0],SizeOf(Buffer));
+    if Count>0 then begin
+     SetLength(Chunk,Count);
+     Move(Buffer[0],Chunk[1],Count);
+     result:=result+Chunk;
+    end;
+   until Count<=0;
+  finally
+   FileClose(Handle);
+  end;
+ end;
+end;
+
+// Finds the address the executable itself is mapped at, which for a position
+// independent build is the load bias and for an ordinary one is simply the link
+// time base again. Returns zero when it cannot be determined, and the caller
+// then falls back to the base recorded in the table.
+function CrashReportLinuxModuleBase:TpvPtrUInt;
+var Maps,Line:TpvRawByteString;
+    ExecutableName:TpvRawByteString;
+    Start,Stop,SlashPosition,DashPosition,Index:TpvSizeInt;
+    Value:TpvUInt64;
+    Digit:TpvUInt32;
+begin
+
+ result:=0;
+ ExecutableName:=TpvRawByteString(ParamStr(0));
+ if length(ExecutableName)=0 then begin
+  exit;
+ end;
+
+ Maps:=CrashReportReadProcFile('/proc/self/maps');
+
+ Start:=1;
+ while Start<=length(Maps) do begin
+
+  Stop:=Start;
+  while (Stop<=length(Maps)) and (Maps[Stop]<>#10) do begin
+   inc(Stop);
+  end;
+  Line:=Copy(Maps,Start,Stop-Start);
+  Start:=Stop+1;
+
+  // A line reads: start-end perms offset dev inode path
+  SlashPosition:=Pos(TpvRawByteString('/'),Line);
+  if (SlashPosition=0) or (Copy(Line,SlashPosition,length(Line))<>ExecutableName) then begin
+   continue;
+  end;
+
+  DashPosition:=Pos(TpvRawByteString('-'),Line);
+  if DashPosition<2 then begin
+   continue;
+  end;
+
+  Value:=0;
+  for Index:=1 to DashPosition-1 do begin
+   case Line[Index] of
+    '0'..'9':begin
+     Digit:=TpvUInt32(ord(Line[Index])-ord('0'));
+    end;
+    'a'..'f':begin
+     Digit:=TpvUInt32(ord(Line[Index])-ord('a'))+10;
+    end;
+    'A'..'F':begin
+     Digit:=TpvUInt32(ord(Line[Index])-ord('A'))+10;
+    end;
+    else begin
+     Value:=0;
+     break;
+    end;
+   end;
+   Value:=(Value shl 4) or Digit;
+  end;
+
+  // The first mapping of the executable is the start of its image.
+  result:=TpvPtrUInt(Value);
+  exit;
+
+ end;
+
+end;
+{$ifend}
+
 // The symbol table is only read when an address actually has to be formatted,
 // which normally means a crash is already being reported. Loading it eagerly at
 // startup would mean paying for a table which is many megabytes on a large
@@ -386,9 +485,21 @@ begin
 {$endif}
  if Previous=0 then begin
   try
-   CrashReportModuleBase:=TpvPtrUInt(GetModuleHandle(nil));
    CrashReportSymbolTable:=TpvSymbolTable.Create;
-   if not CrashReportSymbolTable.LoadFromFile(ParamStr(0)) then begin
+   if CrashReportSymbolTable.LoadFromFile(ParamStr(0)) then begin
+{$if defined(Windows)}
+    // The loader already reports where the image ended up, so this covers
+    // address space layout randomization on its own.
+    CrashReportModuleBase:=TpvPtrUInt(GetModuleHandle(nil));
+{$else}
+    CrashReportModuleBase:=CrashReportLinuxModuleBase;
+    if CrashReportModuleBase=0 then begin
+     // Nothing readable in proc, so assume the image sits where it was linked,
+     // which is true for every non position independent executable.
+     CrashReportModuleBase:=TpvPtrUInt(CrashReportSymbolTable.ImageBase);
+    end;
+{$ifend}
+   end else begin
     // No table appended, which is the normal case for a build the mapsymbols
     // tool has not been run on.
     FreeAndNil(CrashReportSymbolTable);
@@ -472,7 +583,7 @@ end;
 
 function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
 begin
-{$if defined(Windows)}
+{$if defined(Windows) or defined(Linux)}
  // An appended symbol table wins, since it is the only source which can name a
  // source file and line in a Delphi build. Under FreePascal it is normally
  // absent and lnfodwrf does the job in the fallback below.
