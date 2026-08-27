@@ -33,6 +33,7 @@ uses SysUtils,
      UnitDWARFWriter,
      UnitELFWriter,
      UnitPEInjector,
+     UnitPDBWriter,
      UnitMapFile;
 
 type TCollector=class
@@ -262,11 +263,36 @@ begin
  end;
 end;
 
+// Emits the same information a third time, as a PDB.
+procedure WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String);
+var PDBWriter:TPDBWriter;
+    Index:TpvSizeInt;
+begin
+ PDBWriter:=TPDBWriter.Create(aBuilder);
+ try
+  for Index:=0 to length(aImage.Sections)-1 do begin
+   PDBWriter.AddSection(aImage.Sections[Index].Name,
+                        TpvUInt32(aImage.Sections[Index].VirtualAddress-aImage.ImageBase),
+                        TpvUInt32(aImage.Sections[Index].VirtualSize),
+                        TpvUInt32(aImage.Sections[Index].RawSize),
+                        0);
+  end;
+  // The signature is derived from what was collected rather than from the
+  // clock, so that building the same input twice gives the same identity.
+  PDBWriter.SetIdentity(TpvUInt32(aBuilder.LineCount*2654435761),1);
+  PDBWriter.SaveToFile(aFileName);
+  WriteLn('Wrote ',aFileName,'.');
+ finally
+  FreeAndNil(PDBWriter);
+ end;
+end;
+
 var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF:Boolean;
     DebugOutputFileName:String;
     InjectIntoExecutable:Boolean;
+    PDBOutputFileName:String;
     DWARFWriter:TDWARFWriter;
     Image,DebugImage,SymbolImage:TImageFile;
     Section:TImageSection;
@@ -288,6 +314,7 @@ begin
  ForceDWARF:=false;
  DebugOutputFileName:='';
  InjectIntoExecutable:=false;
+ PDBOutputFileName:='';
 
  ParameterIndex:=1;
  while ParameterIndex<=ParamCount do begin
@@ -301,6 +328,9 @@ begin
    ForceMap:=true;
   end else if Parameter='--dwarf' then begin
    ForceDWARF:=true;
+  end else if (Parameter='--pdb') and (ParameterIndex<=ParamCount) then begin
+   PDBOutputFileName:=ParamStr(ParameterIndex);
+   inc(ParameterIndex);
   end else if Parameter='--pe-debug' then begin
    InjectIntoExecutable:=true;
   end else if (Parameter='--gdb') and (ParameterIndex<=ParamCount) then begin
@@ -330,6 +360,7 @@ begin
   WriteLn('  --gdb <file>   additionally write the same information as a standalone');
   WriteLn('                 ELF debug file, which addr2line, gdb and everything else');
   WriteLn('                 built on DWARF can read, also for a Delphi build');
+  WriteLn('  --pdb <file>   additionally write a PDB, for the Microsoft debuggers');
   WriteLn('  --pe-debug     put those DWARF sections into the executable itself, so');
   WriteLn('                 that no separate file is needed. Needs room in the section');
   WriteLn('                 header table and says so when there is none');
@@ -484,6 +515,10 @@ begin
 
    if length(DebugOutputFileName)>0 then begin
     WriteDebugFile(Builder,DWARFWriter,DebugOutputFileName);
+   end;
+
+   if length(PDBOutputFileName)>0 then begin
+    WritePDBFile(Builder,Image,PDBOutputFileName);
    end;
 
   finally
