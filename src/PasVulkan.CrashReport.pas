@@ -78,7 +78,8 @@ uses {$if defined(Windows)}
      {$ifend}
      SysUtils,
      Classes,
-     PasVulkan.Types;
+     PasVulkan.Types,
+     PasVulkan.SymbolTable;
 
 // This unit provides the low level crash capture backend of PasVulkan. It sits
 // deliberately at the same dependency depth as PasVulkan.Utils, so that its
@@ -133,7 +134,14 @@ type PpvCrashReportEntry=^TpvCrashReportEntry;
 procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String);
 
 // Formats a single code address as readable as the current build allows.
-function pvCrashReportFormatAddress(const aAddress:TpvPointer):String;
+//
+// aReturnAddress tells whether the address came back from a stack walk or is
+// otherwise the address behind a call, which is the usual case. Such an address
+// already belongs to the following statement, so the lookup has to be done one
+// byte earlier to land on the line which actually made the call. Pass false for
+// an address which is the faulting instruction itself, as reported for a
+// hardware fault.
+function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean=true):String;
 
 // Captures the stack of the calling thread, skipping the given number of frames.
 function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32=1):String;
@@ -161,7 +169,20 @@ const LineEnding={$if defined(Windows)}#13#10{$else}#10{$ifend};
 
       cAccessViolation=TpvUInt32($c0000005);
 
-type PpvCrashReportNativeExceptionRecord=^TpvCrashReportNativeExceptionRecord;
+      cMaximalStackFrames=48;
+
+type PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
+     // What the Delphi raise point hook hands back to the RTL. It deliberately
+     // holds raw addresses only, so that the cost at the raise point stays a
+     // stack walk and nothing more. Turning those into names happens in
+     // GetStackInfoStringProc, so only for an exception whose stack somebody
+     // actually reads, rather than for every single raise in the program.
+     TpvCrashReportStackInfo=record
+      Count:TpvInt32;
+      Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
+     end;
+
+     PpvCrashReportNativeExceptionRecord=^TpvCrashReportNativeExceptionRecord;
      TpvCrashReportNativeExceptionRecord=record
       ExceptionCode:TpvUInt32;
       ExceptionFlags:TpvUInt32;
@@ -190,6 +211,11 @@ function RemoveVectoredExceptionHandler(aHandle:TpvPointer):TpvUInt32; stdcall; 
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
     CrashReportSequence:TpvInt64=0;
     CrashReportInstalled:Boolean=false;
+    CrashReportSymbolTable:TpvSymbolTable=nil;
+    CrashReportSymbolTableState:TpvInt32=0;
+{$if defined(Windows)}
+    CrashReportModuleBase:TpvPtrUInt=0;
+{$ifend}
 {$ifndef fpc}
     CrashReportOwnsStackInfoProcs:Boolean=false;
 {$endif}
@@ -330,7 +356,80 @@ begin
  Entry^.Sequence:=Sequence;
 end;
 
-function pvCrashReportFormatAddress(const aAddress:TpvPointer):String;
+{$if defined(Windows)}
+// The symbol table is only read when an address actually has to be formatted,
+// which normally means a crash is already being reported. Loading it eagerly at
+// startup would mean paying for a table which is many megabytes on a large
+// project, in every run, for nothing.
+function CrashReportGetSymbolTable:TpvSymbolTable;
+var Previous:TpvInt32;
+begin
+{$ifdef fpc}
+ Previous:=InterLockedExchange(CrashReportSymbolTableState,1);
+{$else}
+ Previous:=AtomicExchange(CrashReportSymbolTableState,1);
+{$endif}
+ if Previous=0 then begin
+  try
+   CrashReportModuleBase:=TpvPtrUInt(GetModuleHandle(nil));
+   CrashReportSymbolTable:=TpvSymbolTable.Create;
+   if not CrashReportSymbolTable.LoadFromFile(ParamStr(0)) then begin
+    // No table appended, which is the normal case for a build the mapsymbols
+    // tool has not been run on.
+    FreeAndNil(CrashReportSymbolTable);
+   end;
+  except
+   FreeAndNil(CrashReportSymbolTable);
+  end;
+ end;
+ result:=CrashReportSymbolTable;
+end;
+
+// Returns false when there is no table, or when the address does not belong to
+// the executable itself, for example because it points into a system library.
+function CrashReportResolveAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aText:String):Boolean;
+var SymbolTable:TpvSymbolTable;
+    Location:TpvSymbolTableLocation;
+    LookupAddress:TpvPtrUInt;
+begin
+ result:=false;
+ aText:='';
+ SymbolTable:=CrashReportGetSymbolTable;
+ if not assigned(SymbolTable) then begin
+  exit;
+ end;
+ if (CrashReportModuleBase=0) or (TpvPtrUInt(aAddress)<=CrashReportModuleBase) then begin
+  exit;
+ end;
+ LookupAddress:=TpvPtrUInt(aAddress);
+ if aReturnAddress then begin
+  // One byte back, so that the lookup lands inside the calling instruction
+  // rather than on the statement which follows it.
+  dec(LookupAddress);
+ end;
+ // The table stores image relative addresses, so subtracting the actual load
+ // address here is what makes this correct under address space layout
+ // randomization.
+ if not SymbolTable.Resolve(TpvUInt64(LookupAddress-CrashReportModuleBase),Location) then begin
+  exit;
+ end;
+ aText:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
+ if length(Location.SymbolName)>0 then begin
+  aText:=aText+'  '+String(Location.SymbolName);
+ end else if length(Location.UnitName)>0 then begin
+  aText:=aText+'  '+String(Location.UnitName);
+ end;
+ if Location.LineNumber>0 then begin
+  aText:=aText+', line '+IntToStr(Location.LineNumber);
+  if length(Location.FileName)>0 then begin
+   aText:=aText+' of '+String(Location.FileName);
+  end;
+ end;
+ result:=true;
+end;
+{$ifend}
+
+function CrashReportFormatAddressFallback(const aAddress:TpvPointer):String;
 {$ifdef fpc}
 begin
  // With the lnfodwrf unit linked in, this resolves to unit, file and line,
@@ -356,15 +455,27 @@ begin
 end;
 {$endif}
 
+function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
+begin
+{$if defined(Windows)}
+ // An appended symbol table wins, since it is the only source which can name a
+ // source file and line in a Delphi build. Under FreePascal it is normally
+ // absent and lnfodwrf does the job in the fallback below.
+ if CrashReportResolveAddress(aAddress,aReturnAddress,result) then begin
+  exit;
+ end;
+{$ifend}
+ result:=CrashReportFormatAddressFallback(aAddress);
+end;
+
 function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32):String;
 {$if defined(Windows)}
-const MaximalFrames=48;
-var Frames:array[0..MaximalFrames-1] of TpvPointer;
+var Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
     Count,Index:TpvInt32;
 begin
  result:='';
  FillChar(Frames,SizeOf(Frames),#0);
- Count:=RtlCaptureStackBackTrace(TpvUInt32(aFramesToSkip+1),MaximalFrames,@Frames[0],nil);
+ Count:=RtlCaptureStackBackTrace(TpvUInt32(aFramesToSkip+1),cMaximalStackFrames,@Frames[0],nil);
  for Index:=0 to Count-1 do begin
   result:=result+'  '+pvCrashReportFormatAddress(Frames[Index])+LineEnding;
  end;
@@ -443,7 +554,9 @@ begin
    result:=result+' code $'+IntToHex(Entry^.Code,8);
   end;
   if assigned(Entry^.Address) then begin
-   result:=result+' at '+pvCrashReportFormatAddress(Entry^.Address);
+   // A hardware fault reports the faulting instruction itself, while the raise
+   // address of a language level exception is the address behind the call.
+   result:=result+' at '+pvCrashReportFormatAddress(Entry^.Address,Entry^.Kind<>pvCrashReportKindFault);
   end;
   if Entry^.TextLength>0 then begin
    result:=result+' : '+String(PAnsiChar(@Entry^.Text[0]));
@@ -540,8 +653,7 @@ begin
 end;
 
 function CrashReportGetExceptionStackInfoProc(P:PExceptionRecord):Pointer;
-var StackTrace:String;
-    Buffer:PChar;
+var StackInfo:PpvCrashReportStackInfo;
 begin
  result:=nil;
  if CrashReportInsideHandler then begin
@@ -550,12 +662,14 @@ begin
  CrashReportInsideHandler:=true;
  try
   try
-   StackTrace:=pvCrashReportCaptureStackTrace(2);
    CrashReportNoteNativeExceptionRecord(PpvCrashReportNativeExceptionRecord(P));
-   if length(StackTrace)>0 then begin
-    Buffer:=StrAlloc(length(StackTrace)+1);
-    StrPCopy(Buffer,StackTrace);
-    result:=Buffer;
+   GetMem(StackInfo,SizeOf(TpvCrashReportStackInfo));
+   FillChar(StackInfo^,SizeOf(TpvCrashReportStackInfo),#0);
+   StackInfo^.Count:=RtlCaptureStackBackTrace(2,cMaximalStackFrames,@StackInfo^.Addresses[0],nil);
+   if StackInfo^.Count>0 then begin
+    result:=StackInfo;
+   end else begin
+    FreeMem(StackInfo);
    end;
   except
    // A failing capture must never turn into a second exception on top of the
@@ -568,18 +682,24 @@ begin
 end;
 
 function CrashReportGetStackInfoStringProc(aInfo:Pointer):String;
+var StackInfo:PpvCrashReportStackInfo;
+    Index:TpvInt32;
 begin
- if assigned(aInfo) then begin
-  result:=String(PChar(aInfo));
- end else begin
-  result:='';
+ result:='';
+ StackInfo:=PpvCrashReportStackInfo(aInfo);
+ if assigned(StackInfo) then begin
+  for Index:=0 to StackInfo^.Count-1 do begin
+   if assigned(StackInfo^.Addresses[Index]) then begin
+    result:=result+'  '+pvCrashReportFormatAddress(StackInfo^.Addresses[Index])+LineEnding;
+   end;
+  end;
  end;
 end;
 
 procedure CrashReportCleanUpStackInfoProc(aInfo:Pointer);
 begin
  if assigned(aInfo) then begin
-  StrDispose(PChar(aInfo));
+  FreeMem(aInfo);
  end;
 end;
 {$endif}
@@ -726,6 +846,9 @@ begin
  System.RaiseProc:=CrashReportOldRaiseProc;
  CrashReportOldRaiseProc:=nil;
 {$ifend}
+ if assigned(CrashReportSymbolTable) then begin
+  FreeAndNil(CrashReportSymbolTable);
+ end;
 end;
 
 initialization
