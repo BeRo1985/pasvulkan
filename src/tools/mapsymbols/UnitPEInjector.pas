@@ -37,6 +37,10 @@ uses SysUtils,
 type TPEInjectorSection=record
       Name:String;
       Data:TMemoryStream;
+      // A debug directory section is placed like any other, but afterwards the
+      // addresses inside it and the data directory of the image have to be made
+      // to point at it.
+      IsDebugDirectory:Boolean;
      end;
 
      TPEInjectorSections=array of TPEInjectorSection;
@@ -50,6 +54,10 @@ type TPEInjectorSection=record
        constructor Create;
        destructor Destroy; override;
        procedure AddSection(const aName:String;const aData:TMemoryStream);
+       // Adds the debug directory which names an accompanying PDB. Without it a
+       // debugger has no way to tell that the PDB belongs to this image, and
+       // will not load it. Delphi emits none of its own.
+       procedure AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:String;const aTimeStamp:TpvUInt32);
        // Returns false and leaves the file untouched when the image is one this
        // must not touch. The reason is then in Message.
        function InjectInto(const aFileName:String):Boolean;
@@ -82,7 +90,15 @@ begin
 end;
 
 destructor TPEInjector.Destroy;
+var Index:TpvSizeInt;
 begin
+ // Only the debug directory stream was created here, the rest belongs to the
+ // caller.
+ for Index:=0 to fSectionCount-1 do begin
+  if fSections[Index].IsDebugDirectory then begin
+   FreeAndNil(fSections[Index].Data);
+  end;
+ end;
  fSections:=nil;
  inherited Destroy;
 end;
@@ -95,8 +111,62 @@ begin
   end;
   fSections[fSectionCount].Name:=aName;
   fSections[fSectionCount].Data:=aData;
+  fSections[fSectionCount].IsDebugDirectory:=false;
   inc(fSectionCount);
  end;
+end;
+
+procedure TPEInjector.AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:String;const aTimeStamp:TpvUInt32);
+const IMAGE_DEBUG_TYPE_CODEVIEW=TpvUInt32(2);
+var Data:TMemoryStream;
+    Value32:TpvUInt32;
+    Value16:TpvUInt16;
+    NameText:TpvRawByteString;
+    Terminator:AnsiChar;
+    RecordSize:TpvUInt32;
+begin
+
+ NameText:=TpvRawByteString(aPDBFileName);
+ // Four bytes of signature, the guid, the age, and the name with its terminator.
+ RecordSize:=4+16+4+TpvUInt32(length(NameText))+1;
+
+ Data:=TMemoryStream.Create;
+
+ // The directory entry itself. The two addresses are filled in during injection,
+ // once it is known where this lands.
+ Value32:=0;
+ Data.WriteBuffer(Value32,SizeOf(TpvUInt32)); // characteristics
+ Data.WriteBuffer(aTimeStamp,SizeOf(TpvUInt32));
+ Value16:=0;
+ Data.WriteBuffer(Value16,SizeOf(TpvUInt16)); // major version
+ Data.WriteBuffer(Value16,SizeOf(TpvUInt16)); // minor version
+ Value32:=IMAGE_DEBUG_TYPE_CODEVIEW;
+ Data.WriteBuffer(Value32,SizeOf(TpvUInt32));
+ Data.WriteBuffer(RecordSize,SizeOf(TpvUInt32));
+ Value32:=0;
+ Data.WriteBuffer(Value32,SizeOf(TpvUInt32)); // address of the record, patched later
+ Data.WriteBuffer(Value32,SizeOf(TpvUInt32)); // file offset of the record, patched later
+
+ // The CodeView record which names the pdb.
+ NameText:=TpvRawByteString('RSDS');
+ Data.WriteBuffer(NameText[1],4);
+ Data.WriteBuffer(aGUID^,16);
+ Data.WriteBuffer(aAge,SizeOf(TpvUInt32));
+ NameText:=TpvRawByteString(aPDBFileName);
+ if length(NameText)>0 then begin
+  Data.WriteBuffer(NameText[1],length(NameText));
+ end;
+ Terminator:=#0;
+ Data.WriteBuffer(Terminator,1);
+
+ if fSectionCount>=length(fSections) then begin
+  SetLength(fSections,(fSectionCount+1)*2);
+ end;
+ fSections[fSectionCount].Name:='.debug';
+ fSections[fSectionCount].Data:=Data;
+ fSections[fSectionCount].IsDebugDirectory:=true;
+ inc(fSectionCount);
+
 end;
 
 function TPEInjector.InjectInto(const aFileName:String):Boolean;
@@ -329,6 +399,24 @@ begin
      Target.WriteBuffer(Value16,SizeOf(TpvUInt16));
      Value32:=IMAGE_SCN_CNT_INITIALIZED_DATA or IMAGE_SCN_MEM_DISCARDABLE or IMAGE_SCN_MEM_READ;
      Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+
+     // A debug directory has to say where its own payload sits, and the image
+     // has to point at the directory, so both are filled in now that the
+     // placement is known.
+     if fSections[Index].IsDebugDirectory then begin
+      // The two address fields sit at twenty and twenty four, behind the size
+      // of the data at sixteen, which must not be overwritten.
+      Target.Seek(TpvInt64(DataOffset)+20,soBeginning);
+      Value32:=TpvUInt32(NextRVA)+28;
+      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // address of the record
+      Value32:=TpvUInt32(DataOffset)+28;
+      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // file offset of the record
+      Target.Seek(DataDirectoryOffset+(6*8),soBeginning);
+      Value32:=TpvUInt32(NextRVA);
+      Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+      Value32:=28;
+      Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+     end;
 
      NextRVA:=AlignUp(NextRVA+TpvUInt64(fSections[Index].Data.Size),SectionAlignment);
 

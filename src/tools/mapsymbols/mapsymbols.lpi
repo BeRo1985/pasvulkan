@@ -53,6 +53,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="UnitDbgHelpCheck.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="UnitPDBWriter.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

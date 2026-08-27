@@ -34,6 +34,7 @@ uses SysUtils,
      UnitELFWriter,
      UnitPEInjector,
      UnitPDBWriter,
+     UnitDbgHelpCheck,
      UnitMapFile;
 
 type TCollector=class
@@ -248,14 +249,19 @@ end;
 // Puts the same DWARF sections into the executable itself, so that no separate
 // file is needed at all. Has to happen before the symbol table is appended,
 // since that has to stay at the very end of the file.
-function InjectDebugSections(const aDWARFWriter:TDWARFWriter;const aFileName:String):Boolean;
+function InjectDebugSections(const aDWARFWriter:TDWARFWriter;const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String):Boolean;
 var Injector:TPEInjector;
 begin
  Injector:=TPEInjector.Create;
  try
-  Injector.AddSection('.debug_info',aDWARFWriter.DebugInfo);
-  Injector.AddSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
-  Injector.AddSection('.debug_line',aDWARFWriter.DebugLine);
+  if assigned(aDWARFWriter) then begin
+   Injector.AddSection('.debug_info',aDWARFWriter.DebugInfo);
+   Injector.AddSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
+   Injector.AddSection('.debug_line',aDWARFWriter.DebugLine);
+  end;
+  if assigned(aPDBWriter) then begin
+   Injector.AddCodeViewDirectory(aPDBWriter.GUIDPointer,aPDBWriter.Age,aPDBFileName,aPDBWriter.Signature);
+  end;
   result:=Injector.InjectInto(aFileName);
   WriteLn(Injector.Message);
  finally
@@ -264,11 +270,12 @@ begin
 end;
 
 // Emits the same information a third time, as a PDB.
-procedure WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String);
+function WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String):TPDBWriter;
 var PDBWriter:TPDBWriter;
     Index:TpvSizeInt;
 begin
  PDBWriter:=TPDBWriter.Create(aBuilder);
+ result:=PDBWriter;
  try
   for Index:=0 to length(aImage.Sections)-1 do begin
    PDBWriter.AddSection(aImage.Sections[Index].Name,
@@ -282,8 +289,9 @@ begin
   PDBWriter.SetIdentity(TpvUInt32(aBuilder.LineCount*2654435761),1);
   PDBWriter.SaveToFile(aFileName);
   WriteLn('Wrote ',aFileName,'.');
- finally
-  FreeAndNil(PDBWriter);
+ except
+  FreeAndNil(result);
+  raise;
  end;
 end;
 
@@ -294,6 +302,7 @@ var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     InjectIntoExecutable:Boolean;
     PDBOutputFileName:String;
     DWARFWriter:TDWARFWriter;
+    PDBWriter:TPDBWriter;
     Image,DebugImage,SymbolImage:TImageFile;
     Section:TImageSection;
     LineData:TMemoryStream;
@@ -302,6 +311,8 @@ var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     Builder:TSymbolBuilder;
     Collector:TCollector;
     Resolved,Probes:TpvSizeInt;
+    DbgHelpResolved,DbgHelpProbes:TpvSizeInt;
+    DbgHelpAvailable:Boolean;
     UsedDWARF:Boolean;
 
 begin
@@ -497,6 +508,7 @@ begin
   end;
 
   DWARFWriter:=nil;
+  PDBWriter:=nil;
   try
 
    if InjectIntoExecutable or (length(DebugOutputFileName)>0) then begin
@@ -504,11 +516,21 @@ begin
     DWARFWriter.Build;
    end;
 
+   // The pdb has to exist before the executable can name it, since the identity
+   // in the debug directory has to be the one the pdb was written with.
+   if length(PDBOutputFileName)>0 then begin
+    PDBWriter:=WritePDBFile(Builder,Image,PDBOutputFileName);
+   end;
+
    // Injection changes the size of the file, so it has to come first. The
    // appended table is found through a footer at the very end and would be
    // orphaned by anything written behind it.
+   // The DWARF sections only go in when that was actually asked for, even if a
+   // writer exists because a separate debug file was requested as well.
    if InjectIntoExecutable then begin
-    InjectDebugSections(DWARFWriter,ExecutableFileName);
+    InjectDebugSections(DWARFWriter,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
+   end else if assigned(PDBWriter) then begin
+    InjectDebugSections(nil,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
    end;
 
    Builder.AppendToFile(ExecutableFileName);
@@ -517,12 +539,23 @@ begin
     WriteDebugFile(Builder,DWARFWriter,DebugOutputFileName);
    end;
 
-   if length(PDBOutputFileName)>0 then begin
-    WritePDBFile(Builder,Image,PDBOutputFileName);
-   end;
-
   finally
+   FreeAndNil(PDBWriter);
    FreeAndNil(DWARFWriter);
+  end;
+
+  // The pdb is checked through dbghelp, which is a different reader than the
+  // one which wrote it, and which also has to accept the debug directory in the
+  // executable before it will look at the pdb at all.
+  if length(PDBOutputFileName)>0 then begin
+   if CheckPDBWithDbgHelp(Builder,ExecutableFileName,DbgHelpResolved,DbgHelpProbes,DbgHelpAvailable) then begin
+    WriteLn('Debugger check: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
+   end else if DbgHelpAvailable then begin
+    WriteLn('Debugger check FAILED: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
+    ExitCode:=1;
+   end else begin
+    WriteLn('Debugger check skipped, dbghelp did not accept the executable.');
+   end;
   end;
 
   if Builder.SelfCheck(ExecutableFileName,Resolved,Probes) then begin

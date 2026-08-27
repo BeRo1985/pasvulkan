@@ -85,6 +85,8 @@ type TPDBSection=record
        procedure SaveToFile(const aFileName:String);
        property Age:TpvUInt32 read fAge;
        property Signature:TpvUInt32 read fSignature;
+       // The identity the executable has to repeat in its debug directory.
+       function GUIDPointer:TpvPointer;
      end;
 
 implementation
@@ -195,6 +197,11 @@ begin
  for Index:=0 to 15 do begin
   fGUID[Index]:=TpvUInt8((aSignature shr ((Index and 3) shl 3)) xor TpvUInt32(Index*37));
  end;
+end;
+
+function TPDBWriter.GUIDPointer:TpvPointer;
+begin
+ result:=@fGUID[0];
 end;
 
 procedure TPDBWriter.WriteByte(const aStream:TMemoryStream;const aValue:TpvUInt8);
@@ -316,8 +323,10 @@ begin
    Symbols.Position:=Symbols.Size;
 
    // A procedure opens a scope, so it needs a matching end record, and has to
-   // say where that sits.
-   EndOffset:=Symbols.Size;
+   // say where that sits. The offset counts from the start of the stream, which
+   // includes the four byte signature ahead of the symbols, so it is not the
+   // position within this buffer.
+   EndOffset:=Symbols.Size+4;
    WriteUInt16(Symbols,2);
    WriteUInt16(Symbols,S_END);
 
