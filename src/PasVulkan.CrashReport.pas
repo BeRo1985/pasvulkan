@@ -279,7 +279,12 @@ function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32=32):String;
 //
 // For a caller which has already formatted the exception, which is what the
 // crash log of PasVulkan.Application does.
-function pvCrashReportContext:String;
+//
+// aThreadID says whose processor state to show, see pvCrashReportRegisters. It
+// has to be reachable from here and from the full report as well, otherwise the
+// one function which is meant to be the only one to call is the one which
+// cannot answer it.
+function pvCrashReportContext(const aThreadID:TpvUInt64=0):String;
 
 // The exception and all of the above, in one piece.
 //
@@ -287,7 +292,7 @@ function pvCrashReportContext:String;
 // but a shipping path which has to remember four of them is a shipping path
 // which will be missing one of them, and it is the report from a player which
 // then turns out to be missing it.
-function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil):String;
+function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0):String;
 
 procedure pvCrashReportInstall;
 
@@ -2478,7 +2483,6 @@ begin
   // Same reasoning as for the stack info hooks and for RaiseProc.
   FillChar(Current,SizeOf(SigActionRec),#0);
   if (FpSigAction(cCrashReportThreadSignal,nil,@Current)=0) and
-     (TpvPointer(@Current.sa_handler)<>nil) and
      (PPointer(@Current.sa_handler)^=TpvPointer(@CrashReportThreadSignalHandler)) then begin
    FpSigAction(cCrashReportThreadSignal,@CrashReportOldThreadSignalAction,nil);
   end;
@@ -2766,7 +2770,7 @@ begin
 end;
 {$ifend}
 
-function pvCrashReportContext:String;
+function pvCrashReportContext(const aThreadID:TpvUInt64):String;
 var Part:String;
 begin
 
@@ -2775,7 +2779,7 @@ begin
  // Each of these answers with an explanation of its own where it cannot answer,
  // so an empty one really does mean there was nothing, and is left out rather
  // than printed as a heading with nothing under it.
- Part:=pvCrashReportRegisters;
+ Part:=pvCrashReportRegisters(aThreadID);
  if length(Part)>0 then begin
   result:=result+Part+LineEnding;
  end;
@@ -2797,10 +2801,10 @@ begin
 
 end;
 
-function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer):String;
+function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aThreadID:TpvUInt64):String;
 begin
  result:=pvCrashReportDumpException(aException,aAddress,aFrameCount,aFrames)+LineEnding+
-         pvCrashReportContext;
+         pvCrashReportContext(aThreadID);
 end;
 
 procedure pvCrashReportInstall;

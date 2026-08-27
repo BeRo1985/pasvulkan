@@ -51,6 +51,17 @@ type
      TCollectorRanges=array of TCollectorRange;
 {$endif}
 
+     // Counts the symbols which come back out of a written debug file and
+     // whether each one is where it was put.
+     TCheckCollector=class
+      public
+       Builder:TSymbolBuilder;
+       ImageBase:TpvUInt64;
+       Seen:TpvSizeInt;
+       Mismatched:TpvSizeInt;
+       procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
+     end;
+
      TCollector=class
       public
        Builder:TSymbolBuilder;
@@ -83,6 +94,29 @@ type
        procedure OnLineUnit(const aFileName:String);
        procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
      end;
+
+procedure TCheckCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
+var Index:TpvSizeInt;
+    SymbolRecord:TSymbolBuilder.TSymbolRecord;
+    Found:Boolean;
+begin
+ inc(Seen);
+ // Looked up by name rather than by position, since nothing promises that a
+ // reader hands them back in the order they were written in.
+ Found:=false;
+ for Index:=0 to Builder.SymbolCount-1 do begin
+  SymbolRecord:=Builder.GetSymbol(Index);
+  if SymbolRecord.Name=aName then begin
+   Found:=(ImageBase+SymbolRecord.RVA)=aAddress;
+   if Found then begin
+    break;
+   end;
+  end;
+ end;
+ if not Found then begin
+  inc(Mismatched);
+ end;
+end;
 
 // Whether an image of this machine has thirty two bit addresses. Decides the
 // width of everything which describes it: the ELF container, the address size
@@ -375,6 +409,56 @@ begin
  inc(SymbolsAdded);
 end;
 
+// Reads the debug file which was just written back through the reader of this
+// tool and holds what comes out against what went in.
+//
+// The symbols are what is checked. They carry an address and a name each and go
+// through the whole of the container: the header says where the section table
+// is, the section table says where the symbols and their names are, and a
+// symbol entry has its fields in an order which differs between the two widths.
+// Any of that written wrongly and the names or the addresses do not come back.
+procedure CheckDebugFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String);
+var Check:TImageFile;
+    Collector:TCheckCollector;
+    Expected:TpvSizeInt;
+begin
+
+ Collector:=TCheckCollector.Create;
+ Check:=TImageFile.Create;
+ try
+
+  if not Check.Open(aFileName) then begin
+   WriteLn('Debug file check failed: the file which was just written cannot be read back.');
+   ExitCode:=1;
+   exit;
+  end;
+
+  if (Check.Machine<>aImage.Machine) or (Check.BigEndian<>aImage.BigEndian) then begin
+   WriteLn('Debug file check failed: it describes a different machine than the image does.');
+   ExitCode:=1;
+   exit;
+  end;
+
+  Collector.Builder:=aBuilder;
+  Collector.ImageBase:=aBuilder.ImageBase;
+  Check.EnumerateSymbols(Collector.OnSymbol);
+
+  // Every symbol which went in has to come back, at the address it went in at.
+  Expected:=aBuilder.SymbolCount;
+  if (Collector.Seen<>Expected) or (Collector.Mismatched>0) then begin
+   WriteLn('Debug file check FAILED: ',Collector.Seen,' of ',Expected,' symbols came back, ',Collector.Mismatched,' at the wrong address.');
+   ExitCode:=1;
+  end else begin
+   WriteLn('Debug file check: ',Collector.Seen,' symbols came back at the addresses they went in at.');
+  end;
+
+ finally
+  FreeAndNil(Check);
+  FreeAndNil(Collector);
+ end;
+
+end;
+
 // Emits everything which was collected a second time, as DWARF inside a
 // standalone ELF file. Nothing about the original executable changes.
 procedure WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
@@ -382,30 +466,37 @@ var ELFWriter:TELFWriter;
     Index:TpvSizeInt;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     UnitRecord:TSymbolBuilder.TUnitRecord;
-    ImageBase,Low,High,SymbolSize:TpvUInt64;
+    ImageBase,Low,High,SymbolSize,SymbolEnd:TpvUInt64;
+    RangeIndex:TpvSizeInt;
     Have:Boolean;
 begin
 
  ELFWriter:=TELFWriter.Create;
  try
 
-  // The COFF machine of the image translated back, since that is the one shape
-  // both containers are described in here, and with it the width of the
-  // container itself. The two go together: a thirty two bit machine number in a
-  // sixty four bit container is a file which says one thing and is built like
-  // another, and no consumer reads it.
-  case aImage.Machine of
-   IMAGE_FILE_MACHINE_I386:begin
-    ELFWriter.Machine:=EM_386;
-   end;
-   IMAGE_FILE_MACHINE_ARMNT:begin
-    ELFWriter.Machine:=EM_ARM;
-   end;
-   IMAGE_FILE_MACHINE_ARM64:begin
-    ELFWriter.Machine:=EM_AARCH64;
-   end;
-   else begin
-    ELFWriter.Machine:=EM_X86_64;
+  // An ELF says which processor it is for in its own numbering, so that number
+  // is carried straight over. Going through the COFF one and back would work
+  // for the handful which have a number on both sides and turn everything else
+  // into whatever the fallback is, which for a PowerPC image would be a file
+  // claiming to be for x86-64.
+  //
+  // A PE has no such number, so there the COFF one is translated.
+  if aImage.ELFMachine<>0 then begin
+   ELFWriter.Machine:=aImage.ELFMachine;
+  end else begin
+   case aImage.Machine of
+    IMAGE_FILE_MACHINE_I386:begin
+     ELFWriter.Machine:=EM_386;
+    end;
+    IMAGE_FILE_MACHINE_ARMNT:begin
+     ELFWriter.Machine:=EM_ARM;
+    end;
+    IMAGE_FILE_MACHINE_ARM64:begin
+     ELFWriter.Machine:=EM_AARCH64;
+    end;
+    else begin
+     ELFWriter.Machine:=EM_X86_64;
+    end;
    end;
   end;
   if Is32BitMachine(aImage.Machine) then begin
@@ -413,6 +504,7 @@ begin
   end else begin
    ELFWriter.Bits:=64;
   end;
+  ELFWriter.BigEndian:=aImage.BigEndian;
 
   ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
   ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
@@ -445,18 +537,53 @@ begin
   end;
 
   for Index:=0 to aBuilder.SymbolCount-1 do begin
+
    SymbolRecord:=aBuilder.GetSymbol(Index);
+
+   // How far a routine reaches is not stated anywhere, so the distance to the
+   // next one is the best available answer. It is only an answer while the two
+   // are in the same run of code: across a gap the next symbol can be a long
+   // way off, and a size which reaches over that gap would claim ground which
+   // belongs to something else. Where they are not, nothing is claimed, which
+   // is what a size of zero means.
    SymbolSize:=0;
    if (Index+1)<aBuilder.SymbolCount then begin
     NextSymbol:=aBuilder.GetSymbol(Index+1);
     if NextSymbol.RVA>SymbolRecord.RVA then begin
-     SymbolSize:=NextSymbol.RVA-SymbolRecord.RVA;
+     SymbolEnd:=NextSymbol.RVA;
+     for RangeIndex:=0 to aBuilder.UnitCount-1 do begin
+      UnitRecord:=aBuilder.GetUnit(RangeIndex);
+      if (SymbolRecord.RVA>=UnitRecord.StartRVA) and
+         (SymbolRecord.RVA<(UnitRecord.StartRVA+UnitRecord.Size)) then begin
+       if SymbolEnd>(UnitRecord.StartRVA+UnitRecord.Size) then begin
+        SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
+       end;
+       break;
+      end;
+     end;
+     if SymbolEnd>SymbolRecord.RVA then begin
+      SymbolSize:=SymbolEnd-SymbolRecord.RVA;
+     end;
     end;
    end;
+
    ELFWriter.AddSymbol(SymbolRecord.Name,ImageBase+SymbolRecord.RVA,SymbolSize);
+
   end;
 
   ELFWriter.SaveToFile(aFileName);
+
+  // And read it straight back with the reader of this same tool.
+  //
+  // Of the three things written here, this was the only one nobody ever looked
+  // at again: the appended table has its self check and the pdb is held against
+  // dbghelp, while the debug file was written and never opened. That was
+  // defensible while there was one layout. There are now four, thirty two and
+  // sixty four bits times the two byte orders, and the ones which are rarely
+  // built are exactly the ones which are quietly broken half a year later. A
+  // swapped pair of fields in a symbol entry gives a file of the right length
+  // full of nonsense, and this is what notices.
+  CheckDebugFile(aBuilder,aImage,aFileName);
 
   WriteLn('Wrote ',aFileName,' with ',aDWARFWriter.DebugLine.Size,' bytes of line programs and ',
           aDWARFWriter.DebugInfo.Size,' bytes of compile units.');
@@ -695,6 +822,9 @@ begin
    if assigned(LineData) and (LineData.Size>0) then begin
     if WantLines then begin
      DWARFReader:=TDWARFLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
+     // The section was written in the order of the image it came out of, which
+     // for a big endian target is not the order this tool runs in.
+     DWARFReader.BigEndian:=SymbolImage.BigEndian;
      // Version 5 keeps its path strings in sections of their own, so those are
      // handed over as well where they exist.
      if assigned(LineStringData) or assigned(StringData) then begin
@@ -779,7 +909,18 @@ begin
    end;
   end;
   if OverlapCount>0 then begin
-   WriteLn('Warning: ',OverlapCount,' unit ranges overlap, so some addresses will be attributed to the wrong unit.');
+   // A warning was too soft. The reader looks a unit up by binary search over
+   // these ranges and takes it for granted that they do not overlap, so a table
+   // written in this state answers some addresses with the wrong unit and says
+   // so with full confidence. A symbolizer which does not know is better than
+   // one which is certain and wrong, and a build which asked for a table has to
+   // be able to see that what it got is not one.
+   //
+   // If this ever fires, try PasVulkanMapSymbolsNoPaddingTolerance: the merging
+   // of runs separated by padding is the only thing here which can create an
+   // overlap out of ranges which had none.
+   WriteLn('Error: ',OverlapCount,' unit ranges overlap, so some addresses would be attributed to the wrong unit.');
+   ExitCode:=1;
   end;
 
   // Everything needed has been read, and the executable is about to be written
@@ -813,6 +954,9 @@ begin
     end else begin
      DWARFWriter.AddressSize:=8;
     end;
+    // And in the order the image is written in, since the sections describe
+    // that image and are read alongside it.
+    DWARFWriter.BigEndian:=Image.BigEndian;
     DWARFWriter.Build;
    end;
 

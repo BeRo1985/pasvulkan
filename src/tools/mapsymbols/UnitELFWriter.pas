@@ -59,6 +59,12 @@ type TELFWriterSymbol=record
        fTextSize:TpvUInt64;
        fMachine:TpvUInt16;
        fBits:TpvUInt8;
+       fBigEndian:Boolean;
+       // Write one number in the byte order of the described image rather than
+       // in the one of the machine this runs on.
+       procedure WriteU16(const aStream:TStream;const aValue:TpvUInt16);
+       procedure WriteU32(const aStream:TStream;const aValue:TpvUInt32);
+       procedure WriteU64(const aStream:TStream;const aValue:TpvUInt64);
        function AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
       public
        constructor Create;
@@ -81,6 +87,9 @@ type TELFWriterSymbol=record
        //
        // Little endian either way, which is what every target of this is.
        property Bits:TpvUInt8 read fBits write fBits;
+       // The byte order of the described image. Goes into the identification
+       // byte of the header and into every number of the file.
+       property BigEndian:Boolean read fBigEndian write fBigEndian;
        procedure SaveToFile(const aFileName:String);
      end;
 
@@ -118,6 +127,42 @@ begin
  fTextSize:=0;
  fMachine:=EM_X86_64;
  fBits:=64;
+ fBigEndian:=false;
+end;
+
+procedure TELFWriter.WriteU16(const aStream:TStream;const aValue:TpvUInt16);
+var Bytes:array[0..1] of TpvUInt8;
+begin
+ if fBigEndian then begin
+  Bytes[0]:=TpvUInt8(aValue shr 8);
+  Bytes[1]:=TpvUInt8(aValue and $ff);
+ end else begin
+  Bytes[0]:=TpvUInt8(aValue and $ff);
+  Bytes[1]:=TpvUInt8(aValue shr 8);
+ end;
+ aStream.WriteBuffer(Bytes[0],2);
+end;
+
+procedure TELFWriter.WriteU32(const aStream:TStream;const aValue:TpvUInt32);
+begin
+ if fBigEndian then begin
+  WriteU16(aStream,TpvUInt16(aValue shr 16));
+  WriteU16(aStream,TpvUInt16(aValue and $ffff));
+ end else begin
+  WriteU16(aStream,TpvUInt16(aValue and $ffff));
+  WriteU16(aStream,TpvUInt16(aValue shr 16));
+ end;
+end;
+
+procedure TELFWriter.WriteU64(const aStream:TStream;const aValue:TpvUInt64);
+begin
+ if fBigEndian then begin
+  WriteU32(aStream,TpvUInt32(aValue shr 32));
+  WriteU32(aStream,TpvUInt32(aValue and TpvUInt64($ffffffff)));
+ end else begin
+  WriteU32(aStream,TpvUInt32(aValue and TpvUInt64($ffffffff)));
+  WriteU32(aStream,TpvUInt32(aValue shr 32));
+ end;
 end;
 
 destructor TELFWriter.Destroy;
@@ -180,7 +225,7 @@ var Stream:TFileStream;
     Index,TextIndex,SymbolTableIndex,StringTableIndex,SectionNameIndex:TpvSizeInt;
     Offset,SectionHeaderOffset:TpvUInt64;
     HeaderSize,SectionHeaderSize:TpvUInt16;
-    Value8:TpvUInt8;
+    Value8,Value8Zero:TpvUInt8;
     Value16:TpvUInt16;
     Value32:TpvUInt32;
     Value64:TpvUInt64;
@@ -207,6 +252,13 @@ var Stream:TFileStream;
 
 begin
 
+ // Everything below asks whether this is thirty two and treats anything else as
+ // sixty four, so a value which is neither would quietly come out as the wider
+ // one while the header says whatever was set.
+ if (fBits<>32) and (fBits<>64) then begin
+  raise Exception.Create('ELF class must be thirty two or sixty four bits');
+ end;
+
  StringTable:=TMemoryStream.Create;
  SymbolTable:=TMemoryStream.Create;
  SectionNames:=TMemoryStream.Create;
@@ -229,24 +281,21 @@ begin
   // one's widths gives a table which is the right length and says nothing.
   Zero:=#0;
   StringTable.WriteBuffer(Zero,1);
-  Value64:=0;
-  Value32:=0;
-  Value16:=0;
   Value8:=0;
   if fBits=32 then begin
-   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // name
-   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // value
-   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // size
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // info
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // other
-   SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16)); // section
+   WriteU32(SymbolTable,0); // name
+   WriteU32(SymbolTable,0); // value
+   WriteU32(SymbolTable,0); // size
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8)); // info
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8)); // other
+   WriteU16(SymbolTable,0); // section
   end else begin
-   SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32)); // name
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // info
-   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));   // other
-   SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16)); // section
-   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64)); // value
-   SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64)); // size
+   WriteU32(SymbolTable,0); // name
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8)); // info
+   SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8)); // other
+   WriteU16(SymbolTable,0); // section
+   WriteU64(SymbolTable,0); // value
+   WriteU64(SymbolTable,0); // size
   end;
 
   for Index:=0 to fSymbolCount-1 do begin
@@ -263,25 +312,21 @@ begin
    end;
 
    if fBits=32 then begin
-    SymbolTable.WriteBuffer(NameOffset,SizeOf(TpvUInt32));
-    Value32:=TpvUInt32(fSymbols[Index].Address);
-    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
-    Value32:=TpvUInt32(fSymbols[Index].Size);
-    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    WriteU32(SymbolTable,NameOffset);
+    WriteU32(SymbolTable,TpvUInt32(fSymbols[Index].Address));
+    WriteU32(SymbolTable,TpvUInt32(fSymbols[Index].Size));
     SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
-    Value32:=0;
-    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt8)); // other
-    SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
+    Value8Zero:=0;
+    SymbolTable.WriteBuffer(Value8Zero,SizeOf(TpvUInt8)); // other
+    WriteU16(SymbolTable,Value16);
    end else begin
-    SymbolTable.WriteBuffer(NameOffset,SizeOf(TpvUInt32));
+    WriteU32(SymbolTable,NameOffset);
     SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
-    Value32:=0;
-    SymbolTable.WriteBuffer(Value32,SizeOf(TpvUInt8)); // other
-    SymbolTable.WriteBuffer(Value16,SizeOf(TpvUInt16));
-    Value64:=fSymbols[Index].Address;
-    SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
-    Value64:=fSymbols[Index].Size;
-    SymbolTable.WriteBuffer(Value64,SizeOf(TpvUInt64));
+    Value8Zero:=0;
+    SymbolTable.WriteBuffer(Value8Zero,SizeOf(TpvUInt8)); // other
+    WriteU16(SymbolTable,Value16);
+    WriteU64(SymbolTable,fSymbols[Index].Address);
+    WriteU64(SymbolTable,fSymbols[Index].Size);
    end;
 
   end;
@@ -338,29 +383,34 @@ begin
     Value8:=2;
    end;
    Stream.WriteBuffer(Value8,1); // class
-   Value8:=1; Stream.WriteBuffer(Value8,1); // little endian
+   if fBigEndian then begin
+    Value8:=2;
+   end else begin
+    Value8:=1;
+   end;
+   Stream.WriteBuffer(Value8,1); // data encoding
    Value8:=1; Stream.WriteBuffer(Value8,1); // header version
    Value8:=0; Stream.WriteBuffer(Value8,1); // System V ABI
    Value64:=0; Stream.WriteBuffer(Value64,8); // ABI version and padding
-   Value16:=2; Stream.WriteBuffer(Value16,2); // ET_EXEC
-   Value16:=fMachine; Stream.WriteBuffer(Value16,2);
-   Value32:=1; Stream.WriteBuffer(Value32,4); // version
+   WriteU16(Stream,2); // ET_EXEC
+   WriteU16(Stream,fMachine);
+   WriteU32(Stream,1); // version
    if fBits=32 then begin
-    Value32:=0; Stream.WriteBuffer(Value32,4); // entry
-    Value32:=0; Stream.WriteBuffer(Value32,4); // program header offset
-    Value32:=TpvUInt32(SectionHeaderOffset); Stream.WriteBuffer(Value32,4);
+    WriteU32(Stream,0); // entry
+    WriteU32(Stream,0); // program header offset
+    WriteU32(Stream,TpvUInt32(SectionHeaderOffset));
    end else begin
-    Value64:=0; Stream.WriteBuffer(Value64,8); // entry
-    Value64:=0; Stream.WriteBuffer(Value64,8); // program header offset
-    Stream.WriteBuffer(SectionHeaderOffset,8);
+    WriteU64(Stream,0); // entry
+    WriteU64(Stream,0); // program header offset
+    WriteU64(Stream,SectionHeaderOffset);
    end;
-   Value32:=0; Stream.WriteBuffer(Value32,4); // flags
-   Value16:=HeaderSize; Stream.WriteBuffer(Value16,2);
-   Value16:=0; Stream.WriteBuffer(Value16,2); // program header entry size
-   Value16:=0; Stream.WriteBuffer(Value16,2); // program header count
-   Value16:=SectionHeaderSize; Stream.WriteBuffer(Value16,2);
-   Value16:=TpvUInt16(length(fSections)+1); Stream.WriteBuffer(Value16,2);
-   Value16:=TpvUInt16(SectionNameIndex+1); Stream.WriteBuffer(Value16,2);
+   WriteU32(Stream,0); // flags
+   WriteU16(Stream,HeaderSize);
+   WriteU16(Stream,0); // program header entry size
+   WriteU16(Stream,0); // program header count
+   WriteU16(Stream,SectionHeaderSize);
+   WriteU16(Stream,TpvUInt16(length(fSections)+1));
+   WriteU16(Stream,TpvUInt16(SectionNameIndex+1));
 
    // Section contents
    for Index:=0 to length(fSections)-1 do begin
@@ -389,28 +439,27 @@ begin
     if fBits=32 then begin
      // Every field of a thirty two bit section header is four bytes, in the
      // same order as the wider one.
-     Stream.WriteBuffer(fSections[Index].NameOffset,4);
-     Stream.WriteBuffer(fSections[Index].SectionType,4);
-     Value32:=TpvUInt32(fSections[Index].Flags); Stream.WriteBuffer(Value32,4);
-     Value32:=TpvUInt32(fSections[Index].Address); Stream.WriteBuffer(Value32,4);
-     Value32:=TpvUInt32(fSections[Index].FileOffset); Stream.WriteBuffer(Value32,4);
-     Value32:=TpvUInt32(Value64); Stream.WriteBuffer(Value32,4);
-     Stream.WriteBuffer(fSections[Index].Link,4);
-     Stream.WriteBuffer(fSections[Index].Info,4);
-     Value32:=1; Stream.WriteBuffer(Value32,4); // alignment
-     Value32:=TpvUInt32(fSections[Index].EntrySize); Stream.WriteBuffer(Value32,4);
+     WriteU32(Stream,fSections[Index].NameOffset);
+     WriteU32(Stream,fSections[Index].SectionType);
+     WriteU32(Stream,TpvUInt32(fSections[Index].Flags));
+     WriteU32(Stream,TpvUInt32(fSections[Index].Address));
+     WriteU32(Stream,TpvUInt32(fSections[Index].FileOffset));
+     WriteU32(Stream,TpvUInt32(Value64));
+     WriteU32(Stream,fSections[Index].Link);
+     WriteU32(Stream,fSections[Index].Info);
+     WriteU32(Stream,1); // alignment
+     WriteU32(Stream,TpvUInt32(fSections[Index].EntrySize));
     end else begin
-     Stream.WriteBuffer(fSections[Index].NameOffset,4);
-     Stream.WriteBuffer(fSections[Index].SectionType,4);
-     Stream.WriteBuffer(fSections[Index].Flags,8);
-     Stream.WriteBuffer(fSections[Index].Address,8);
-     Stream.WriteBuffer(fSections[Index].FileOffset,8);
-     Stream.WriteBuffer(Value64,8);
-     Stream.WriteBuffer(fSections[Index].Link,4);
-     Stream.WriteBuffer(fSections[Index].Info,4);
-     Value64:=1;
-     Stream.WriteBuffer(Value64,8); // alignment
-     Stream.WriteBuffer(fSections[Index].EntrySize,8);
+     WriteU32(Stream,fSections[Index].NameOffset);
+     WriteU32(Stream,fSections[Index].SectionType);
+     WriteU64(Stream,fSections[Index].Flags);
+     WriteU64(Stream,fSections[Index].Address);
+     WriteU64(Stream,fSections[Index].FileOffset);
+     WriteU64(Stream,Value64);
+     WriteU32(Stream,fSections[Index].Link);
+     WriteU32(Stream,fSections[Index].Info);
+     WriteU64(Stream,1); // alignment
+     WriteU64(Stream,fSections[Index].EntrySize);
     end;
 
    end;

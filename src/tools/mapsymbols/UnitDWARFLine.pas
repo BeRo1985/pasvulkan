@@ -49,6 +49,7 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        fUnitCount:TpvSizeInt;
        fRowCount:TpvSizeInt;
        fSkippedUnitCount:TpvSizeInt;
+       fBigEndian:Boolean;
        fLineStrData:PpvUInt8;
        fLineStrSize:TpvSizeInt;
        fStrData:PpvUInt8;
@@ -78,6 +79,10 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        // empty.
        procedure SetStringSections(const aLineStrData:TpvPointer;const aLineStrSize:TpvSizeInt;const aStrData:TpvPointer;const aStrSize:TpvSizeInt);
        function Parse(const aOnRow:TDWARFLineRowEvent;const aOnUnit:TDWARFLineUnitEvent):Boolean;
+       // The byte order the section was written in, which is the one of the
+       // image it came out of and has nothing to do with the machine reading
+       // it here.
+       property BigEndian:Boolean read fBigEndian write fBigEndian;
        property UnitCount:TpvSizeInt read fUnitCount;
        property RowCount:TpvSizeInt read fRowCount;
        property SkippedUnitCount:TpvSizeInt read fSkippedUnitCount;
@@ -137,6 +142,7 @@ begin
  fUnitCount:=0;
  fRowCount:=0;
  fSkippedUnitCount:=0;
+ fBigEndian:=false;
  fLineStrData:=nil;
  fLineStrSize:=0;
  fStrData:=nil;
@@ -311,19 +317,43 @@ begin
  end;
 end;
 
+// Composed out of bytes rather than read as a whole, so the result depends only
+// on the order the section was written in and not on the machine reading it.
+// Which end comes first is what fBigEndian says.
 function TDWARFLineReader.ReadUInt16:TpvUInt16;
+var First,Second:TpvUInt8;
 begin
- result:=TpvUInt16(ReadUInt8) or (TpvUInt16(ReadUInt8) shl 8);
+ First:=ReadUInt8;
+ Second:=ReadUInt8;
+ if fBigEndian then begin
+  result:=(TpvUInt16(First) shl 8) or TpvUInt16(Second);
+ end else begin
+  result:=TpvUInt16(First) or (TpvUInt16(Second) shl 8);
+ end;
 end;
 
 function TDWARFLineReader.ReadUInt32:TpvUInt32;
+var First,Second:TpvUInt16;
 begin
- result:=TpvUInt32(ReadUInt16) or (TpvUInt32(ReadUInt16) shl 16);
+ First:=ReadUInt16;
+ Second:=ReadUInt16;
+ if fBigEndian then begin
+  result:=(TpvUInt32(First) shl 16) or TpvUInt32(Second);
+ end else begin
+  result:=TpvUInt32(First) or (TpvUInt32(Second) shl 16);
+ end;
 end;
 
 function TDWARFLineReader.ReadUInt64:TpvUInt64;
+var First,Second:TpvUInt32;
 begin
- result:=TpvUInt64(ReadUInt32) or (TpvUInt64(ReadUInt32) shl 32);
+ First:=ReadUInt32;
+ Second:=ReadUInt32;
+ if fBigEndian then begin
+  result:=(TpvUInt64(First) shl 32) or TpvUInt64(Second);
+ end else begin
+  result:=TpvUInt64(First) or (TpvUInt64(Second) shl 32);
+ end;
 end;
 
 function TDWARFLineReader.ReadULEB128:TpvUInt64;

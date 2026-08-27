@@ -40,6 +40,7 @@ type TDWARFWriter=class
        fDebugInfo:TMemoryStream;
        fDebugAbbrev:TMemoryStream;
        fAddressSize:TpvUInt8;
+       fBigEndian:Boolean;
        procedure WriteByte(const aStream:TMemoryStream;const aValue:TpvUInt8);
        procedure WriteUInt16(const aStream:TMemoryStream;const aValue:TpvUInt16);
        procedure WriteUInt32(const aStream:TMemoryStream;const aValue:TpvUInt32);
@@ -61,6 +62,9 @@ type TDWARFWriter=class
        // Has to be set before Build, since it goes into the header of every
        // compilation unit and decides how every address in them is written.
        property AddressSize:TpvUInt8 read fAddressSize write fAddressSize;
+       // The byte order of the described image, which every number written
+       // here follows. Has to be set before Build, like the address size.
+       property BigEndian:Boolean read fBigEndian write fBigEndian;
        property DebugLine:TMemoryStream read fDebugLine;
        property DebugInfo:TMemoryStream read fDebugInfo;
        property DebugAbbrev:TMemoryStream read fDebugAbbrev;
@@ -103,8 +107,10 @@ begin
  fDebugLine:=TMemoryStream.Create;
  fDebugInfo:=TMemoryStream.Create;
  fDebugAbbrev:=TMemoryStream.Create;
- // Eight unless the caller says otherwise, which is what a desktop build is.
+ // Eight and little endian unless the caller says otherwise, which is what a
+ // desktop build is.
  fAddressSize:=8;
+ fBigEndian:=false;
 end;
 
 destructor TDWARFWriter.Destroy;
@@ -120,19 +126,42 @@ begin
  aStream.WriteBuffer(aValue,SizeOf(TpvUInt8));
 end;
 
+// Written out byte by byte, most significant first where the described image
+// wants it that way. Writing the variable itself would give the order of the
+// machine this tool runs on, which is not the question being asked.
 procedure TDWARFWriter.WriteUInt16(const aStream:TMemoryStream;const aValue:TpvUInt16);
+var Bytes:array[0..1] of TpvUInt8;
 begin
- aStream.WriteBuffer(aValue,SizeOf(TpvUInt16));
+ if fBigEndian then begin
+  Bytes[0]:=TpvUInt8(aValue shr 8);
+  Bytes[1]:=TpvUInt8(aValue and $ff);
+ end else begin
+  Bytes[0]:=TpvUInt8(aValue and $ff);
+  Bytes[1]:=TpvUInt8(aValue shr 8);
+ end;
+ aStream.WriteBuffer(Bytes[0],2);
 end;
 
 procedure TDWARFWriter.WriteUInt32(const aStream:TMemoryStream;const aValue:TpvUInt32);
 begin
- aStream.WriteBuffer(aValue,SizeOf(TpvUInt32));
+ if fBigEndian then begin
+  WriteUInt16(aStream,TpvUInt16(aValue shr 16));
+  WriteUInt16(aStream,TpvUInt16(aValue and $ffff));
+ end else begin
+  WriteUInt16(aStream,TpvUInt16(aValue and $ffff));
+  WriteUInt16(aStream,TpvUInt16(aValue shr 16));
+ end;
 end;
 
 procedure TDWARFWriter.WriteUInt64(const aStream:TMemoryStream;const aValue:TpvUInt64);
 begin
- aStream.WriteBuffer(aValue,SizeOf(TpvUInt64));
+ if fBigEndian then begin
+  WriteUInt32(aStream,TpvUInt32(aValue shr 32));
+  WriteUInt32(aStream,TpvUInt32(aValue and TpvUInt64($ffffffff)));
+ end else begin
+  WriteUInt32(aStream,TpvUInt32(aValue and TpvUInt64($ffffffff)));
+  WriteUInt32(aStream,TpvUInt32(aValue shr 32));
+ end;
 end;
 
 procedure TDWARFWriter.WriteAddress(const aStream:TMemoryStream;const aValue:TpvUInt64);
@@ -447,6 +476,14 @@ var UnitIndex,LineIndex,FirstLine,LastLine:TpvSizeInt;
     StatementListOffset:TpvUInt32;
     LineRecord:TSymbolBuilder.TLineRecord;
 begin
+
+ // Anything but these two would put a width into the header of every
+ // compilation unit which the addresses behind it are then not written in, and
+ // that is a file whose every address is off by however much the two differ.
+ // Caught here rather than left to be noticed in a debugger.
+ if (fAddressSize<>4) and (fAddressSize<>8) then begin
+  raise Exception.Create('Address size must be four or eight bytes');
+ end;
 
  fDebugLine.Clear;
  fDebugInfo.Clear;
