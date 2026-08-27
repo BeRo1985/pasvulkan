@@ -1,4 +1,4 @@
-// Adds sections to an existing PE executable in place.
+// Adds sections to an existing PE executable.
 //
 // This is the alternative to writing a separate debug file: the DWARF sections
 // go straight into the .exe, so that addr2line, gdb and the rest work on the
@@ -50,8 +50,8 @@ type TPEInjectorSection=record
        constructor Create;
        destructor Destroy; override;
        procedure AddSection(const aName:String;const aData:TMemoryStream);
-       // Returns false and leaves the file untouched when there is no room in
-       // the section header table.
+       // Returns false and leaves the file untouched when the image is one this
+       // must not touch. The reason is then in Message.
        function InjectInto(const aFileName:String):Boolean;
        property Message:String read fMessage;
      end;
@@ -247,7 +247,6 @@ begin
    Value32:=0;
    StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
    SetLength(NameOffsets,fSectionCount);
-   Zero:=#0;
    for Index:=0 to fSectionCount-1 do begin
     NameOffsets[Index]:=TpvUInt32(StringTable.Position);
     NameText:=TpvRawByteString(fSections[Index].Name);
