@@ -102,6 +102,11 @@ const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B
       // generous rather than tight.
       pvSymbolTableFooterScanSize=TpvInt64(1) shl 20;
 
+      // How much of that window is read at a time. Only reached when the footer
+      // is not where it normally is, and kept small so that even then nothing
+      // large has to be allocated.
+      pvSymbolTableFooterBlockSize=TpvInt64(64) shl 10;
+
 type PpvSymbolTableHeader=^TpvSymbolTableHeader;
      TpvSymbolTableHeader=packed record
       Magic:array[0..7] of AnsiChar;
@@ -231,76 +236,117 @@ end;
 // chance, so a candidate only counts once its offset leads to a readable header.
 function TpvSymbolTable.FindFooter(const aStream:TStream;out aFooter:TpvSymbolTableFooter;out aFooterPosition:TpvInt64):Boolean;
 var Buffer:TpvRawByteString;
-    ScanSize,BasePosition,CandidatePosition:TpvInt64;
-    Position,Index:TpvSizeInt;
-    Candidate:TpvSymbolTableFooter;
-    Header:TpvSymbolTableHeader;
-    Matches:Boolean;
+    BlockSize,BlockStart,Limit,CandidatePosition:TpvInt64;
+    Position:TpvSizeInt;
+
+ // Checks whether a footer sits at the given position. The magic alone is not
+ // taken as proof, since the same eight bytes can occur inside appended data by
+ // chance, so it only counts once its offset leads to a readable header.
+ function Accept(const aPosition:TpvInt64):Boolean;
+ var Candidate:TpvSymbolTableFooter;
+     Header:TpvSymbolTableHeader;
+     Index:TpvSizeInt;
+ begin
+
+  result:=false;
+
+  if (aPosition<0) or ((aPosition+TpvInt64(SizeOf(TpvSymbolTableFooter)))>aStream.Size) then begin
+   exit;
+  end;
+
+  aStream.Seek(aPosition,soBeginning);
+  aStream.ReadBuffer(Candidate,SizeOf(TpvSymbolTableFooter));
+
+  for Index:=0 to 7 do begin
+   if Candidate.Magic[Index]<>pvSymbolTableMagic[Index] then begin
+    exit;
+   end;
+  end;
+
+  if (Candidate.Offset=0) or
+     (Candidate.Offset>TpvUInt64(aPosition)) or
+     ((TpvUInt64(aPosition)-Candidate.Offset)<TpvUInt64(SizeOf(TpvSymbolTableHeader))) then begin
+   exit;
+  end;
+
+  aStream.Seek(TpvInt64(Candidate.Offset),soBeginning);
+  aStream.ReadBuffer(Header,SizeOf(TpvSymbolTableHeader));
+
+  for Index:=0 to 7 do begin
+   if Header.Magic[Index]<>pvSymbolTableMagic[Index] then begin
+    exit;
+   end;
+  end;
+
+  if Header.Version<>pvSymbolTableVersion then begin
+   exit;
+  end;
+
+  aFooter:=Candidate;
+  aFooterPosition:=aPosition;
+  result:=true;
+
+ end;
+
 begin
 
  result:=false;
  FillChar(aFooter,SizeOf(TpvSymbolTableFooter),#0);
  aFooterPosition:=0;
 
- ScanSize:=aStream.Size;
- if ScanSize>pvSymbolTableFooterScanSize then begin
-  ScanSize:=pvSymbolTableFooterScanSize;
- end;
- if ScanSize<TpvInt64(SizeOf(TpvSymbolTableFooter)) then begin
+ if aStream.Size<TpvInt64(SizeOf(TpvSymbolTableFooter)) then begin
   exit;
  end;
 
- BasePosition:=aStream.Size-ScanSize;
+ // The ordinary case is that the footer is the last thing in the file, which
+ // costs one seek and sixteen bytes to establish. This is read while a report
+ // is being written, which can be after a heap corruption, so an allocation
+ // which is not needed is one which cannot fail.
+ if Accept(aStream.Size-TpvInt64(SizeOf(TpvSymbolTableFooter))) then begin
+  result:=true;
+  exit;
+ end;
 
+ // It is not, so something was appended behind it. Code signing does exactly
+ // that with its certificate table, and an installer may add a trailer of its
+ // own. The search walks backwards from the end, in blocks rather than in one
+ // piece, so that even here nothing large has to be had at once.
+ Limit:=aStream.Size-pvSymbolTableFooterScanSize;
+ if Limit<0 then begin
+  Limit:=0;
+ end;
+
+ BlockStart:=aStream.Size;
  Buffer:='';
- SetLength(Buffer,ScanSize);
- aStream.Seek(BasePosition,soBeginning);
- aStream.ReadBuffer(Buffer[1],ScanSize);
 
- for Position:=TpvSizeInt(ScanSize)-TpvSizeInt(SizeOf(TpvSymbolTableFooter)) downto 0 do begin
+ while BlockStart>Limit do begin
 
-  if Buffer[Position+1]<>pvSymbolTableMagic[0] then begin
-   continue;
+  BlockSize:=pvSymbolTableFooterBlockSize;
+  if (BlockStart-BlockSize)<Limit then begin
+   BlockSize:=BlockStart-Limit;
+  end;
+  dec(BlockStart,BlockSize);
+
+  // Overlapping the block behind it, so that a footer straddling the boundary
+  // is not missed.
+  if (BlockStart+BlockSize+TpvInt64(SizeOf(TpvSymbolTableFooter)))<=aStream.Size then begin
+   inc(BlockSize,TpvInt64(SizeOf(TpvSymbolTableFooter))-1);
   end;
 
-  // Copied out rather than read in place, because a candidate can sit at any
-  // byte position and the offset field would then be an unaligned load.
-  Move(Buffer[Position+1],Candidate,SizeOf(TpvSymbolTableFooter));
+  if TpvInt64(length(Buffer))<>BlockSize then begin
+   SetLength(Buffer,BlockSize);
+  end;
+  aStream.Seek(BlockStart,soBeginning);
+  aStream.ReadBuffer(Buffer[1],BlockSize);
 
-  Matches:=true;
-  for Index:=0 to 7 do begin
-   if Candidate.Magic[Index]<>pvSymbolTableMagic[Index] then begin
-    Matches:=false;
-    break;
+  for Position:=TpvSizeInt(BlockSize)-TpvSizeInt(SizeOf(TpvSymbolTableFooter)) downto 0 do begin
+   if Buffer[Position+1]=pvSymbolTableMagic[0] then begin
+    CandidatePosition:=BlockStart+Position;
+    if Accept(CandidatePosition) then begin
+     result:=true;
+     exit;
+    end;
    end;
-  end;
-  if not Matches then begin
-   continue;
-  end;
-
-  CandidatePosition:=BasePosition+Position;
-  if (Candidate.Offset=0) or
-     (Candidate.Offset>TpvUInt64(CandidatePosition)) or
-     ((TpvUInt64(CandidatePosition)-Candidate.Offset)<TpvUInt64(SizeOf(TpvSymbolTableHeader))) then begin
-   continue;
-  end;
-
-  aStream.Seek(TpvInt64(Candidate.Offset),soBeginning);
-  aStream.ReadBuffer(Header,SizeOf(TpvSymbolTableHeader));
-
-  Matches:=true;
-  for Index:=0 to 7 do begin
-   if Header.Magic[Index]<>pvSymbolTableMagic[Index] then begin
-    Matches:=false;
-    break;
-   end;
-  end;
-
-  if Matches and (Header.Version=pvSymbolTableVersion) then begin
-   aFooter:=Candidate;
-   aFooterPosition:=CandidatePosition;
-   result:=true;
-   exit;
   end;
 
  end;

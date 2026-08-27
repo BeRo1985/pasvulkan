@@ -49,9 +49,10 @@ type TCollector=class
        SymbolsAdded:TpvSizeInt;
        DiscardedRows:TpvSizeInt;
        // Range of the compilation unit currently being read, accumulated over
-       // the rows which survived the plausibility check below.
+       // the rows which survived the plausibility check below. The end is
+       // exclusive, see OnLineRow.
        CurrentLow:TpvUInt64;
-       CurrentHigh:TpvUInt64;
+       CurrentEnd:TpvUInt64;
        HaveCurrent:Boolean;
        procedure OnLineRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
        procedure OnLineUnit(const aFileName:String);
@@ -113,6 +114,7 @@ begin
 end;
 
 procedure TCollector.OnLineRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
+var RowEnd:TpvUInt64;
 begin
 
  // FreePascal emits line information for code which the linker then discards.
@@ -122,21 +124,37 @@ begin
  // against the executable sections rather than against the image base is what
  // makes this work for a position independent image too, where the base is
  // zero and a plain lower bound would let everything through.
- if (aAddress<CodeLow) or (aAddress>=CodeHigh) then begin
+ // An end of sequence marker is allowed to sit exactly one past the last byte
+ // of code, which is where the last unit of the image ends, so it is not held
+ // to the same upper bound as a row which stands for an instruction.
+ if (aAddress<CodeLow) or
+    ((aLineNumber>0) and (aAddress>=CodeHigh)) or
+    ((aLineNumber=0) and (aAddress>CodeHigh)) then begin
   inc(DiscardedRows);
   exit;
  end;
 
+ // Kept as an exclusive end rather than as the last address. A row which stands
+ // for an instruction says that at least one byte at its address belongs to the
+ // unit, while an end of sequence marker sits one past the last byte and says
+ // the opposite. Treating both the same made a unit reach one byte into the one
+ // behind it, which is enough to make the lookup answer with the wrong one.
+ if aLineNumber>0 then begin
+  RowEnd:=aAddress+1;
+ end else begin
+  RowEnd:=aAddress;
+ end;
+
  if not HaveCurrent then begin
   CurrentLow:=aAddress;
-  CurrentHigh:=aAddress;
+  CurrentEnd:=RowEnd;
   HaveCurrent:=true;
  end else begin
   if aAddress<CurrentLow then begin
    CurrentLow:=aAddress;
   end;
-  if aAddress>CurrentHigh then begin
-   CurrentHigh:=aAddress;
+  if RowEnd>CurrentEnd then begin
+   CurrentEnd:=RowEnd;
   end;
  end;
 
@@ -153,15 +171,15 @@ end;
 procedure TCollector.OnLineUnit(const aFileName:String);
 var Name:String;
 begin
- if HaveCurrent and (CurrentHigh>=CurrentLow) then begin
+ if HaveCurrent and (CurrentEnd>CurrentLow) then begin
   // DWARF names the source file, not the Pascal unit, so the unit name is taken
   // from the file name, which is what a reader expects to see anyway.
   Name:=ChangeFileExt(ExtractFileName(aFileName),'');
-  Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,(CurrentHigh-CurrentLow)+1);
+  Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,CurrentEnd-CurrentLow);
  end;
  HaveCurrent:=false;
  CurrentLow:=0;
- CurrentHigh:=0;
+ CurrentEnd:=0;
 end;
 
 procedure TCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
@@ -285,7 +303,7 @@ begin
                         TpvUInt32(aImage.Sections[Index].VirtualAddress-aImage.ImageBase),
                         TpvUInt32(aImage.Sections[Index].VirtualSize),
                         TpvUInt32(aImage.Sections[Index].RawSize),
-                        0);
+                        aImage.Sections[Index].Characteristics);
   end;
   // The identity is a digest of what was collected rather than the clock, so
   // that building the same input twice gives the same identity while two
@@ -312,6 +330,8 @@ var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     Image,DebugImage,SymbolImage:TImageFile;
     Section:TImageSection;
     LineData,LineStringData,StringData:TMemoryStream;
+    OverlapCount,UnitIndex:TpvSizeInt;
+    PreviousUnit,CurrentUnit:TSymbolBuilder.TUnitRecord;
     LineStringMemory,StringMemory:TpvPointer;
     LineStringSize,StringSize:TpvSizeInt;
     DWARFReader:TDWARFLineReader;
@@ -487,7 +507,10 @@ begin
      DWARFReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
      WriteLn('DWARF: ',DWARFReader.UnitCount,' compilation units, ',DWARFReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
      if DWARFReader.SkippedUnitCount>0 then begin
-      WriteLn('Warning: ',DWARFReader.SkippedUnitCount,' compilation units were skipped, most likely DWARF 5.');
+      // Version 5 used to be the usual reason and no longer is, since it is
+      // read now. What is left are versions outside two to five, a line range
+      // of zero, and an entry format this does not know how to step over.
+      WriteLn('Warning: ',DWARFReader.SkippedUnitCount,' compilation units were skipped, because their line program header could not be read.');
      end;
     end;
     // The symbol table normally lives in whichever image carries the debug
@@ -533,6 +556,21 @@ begin
   end;
 
   Builder.Finish;
+
+  // The runtime resolver looks a unit up by binary search, which assumes the
+  // ranges do not overlap. A compilation unit whose code the linker scattered
+  // could break that assumption, so it is checked rather than hoped for.
+  OverlapCount:=0;
+  for UnitIndex:=1 to Builder.UnitCount-1 do begin
+   PreviousUnit:=Builder.GetUnit(UnitIndex-1);
+   CurrentUnit:=Builder.GetUnit(UnitIndex);
+   if (PreviousUnit.StartRVA+PreviousUnit.Size)>CurrentUnit.StartRVA then begin
+    inc(OverlapCount);
+   end;
+  end;
+  if OverlapCount>0 then begin
+   WriteLn('Warning: ',OverlapCount,' unit ranges overlap, so some addresses will be attributed to the wrong unit.');
+  end;
 
   // Everything needed has been read, and the executable is about to be written
   // to, so the read handles have to go first.

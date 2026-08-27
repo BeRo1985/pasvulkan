@@ -36,6 +36,10 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
       FileOffset:TpvUInt64;
       RawSize:TpvUInt64;
       Executable:Boolean;
+      // The COFF section flags. Taken straight from a PE, and put together out
+      // of the corresponding ELF section flags otherwise, so that a consumer
+      // which speaks COFF gets an answer either way.
+      Characteristics:TpvUInt32;
      end;
 
      TImageSections=array of TImageSection;
@@ -113,7 +117,16 @@ const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
       SHF_EXECINSTR=TpvUInt64($4);
       SHF_ALLOC=TpvUInt64($2);
 
+      SHF_WRITE=TpvUInt64($1);
+
+      SHT_NOBITS=TpvUInt32(8);
+
+      IMAGE_SCN_CNT_CODE=TpvUInt32($00000020);
+      IMAGE_SCN_CNT_INITIALIZED_DATA=TpvUInt32($00000040);
+      IMAGE_SCN_CNT_UNINITIALIZED_DATA=TpvUInt32($00000080);
       IMAGE_SCN_MEM_EXECUTE=TpvUInt32($20000000);
+      IMAGE_SCN_MEM_READ=TpvUInt32($40000000);
+      IMAGE_SCN_MEM_WRITE=TpvUInt32($80000000);
 
 constructor TImageFile.Create;
 begin
@@ -344,6 +357,7 @@ begin
   fSections[SectionIndex].FileOffset:=RawOffset;
   fSections[SectionIndex].RawSize:=RawSize;
   fSections[SectionIndex].Executable:=(Characteristics and IMAGE_SCN_MEM_EXECUTE)<>0;
+  fSections[SectionIndex].Characteristics:=Characteristics;
  end;
 
  result:=true;
@@ -450,6 +464,21 @@ begin
   fSections[Index].FileOffset:=Offset;
   fSections[Index].RawSize:=Size;
   fSections[Index].Executable:=((Flags and SHF_EXECINSTR)<>0) and ((Flags and SHF_ALLOC)<>0);
+  fSections[Index].Characteristics:=0;
+  if (Flags and SHF_ALLOC)<>0 then begin
+   fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_MEM_READ;
+   if SectionType=SHT_NOBITS then begin
+    fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_CNT_UNINITIALIZED_DATA;
+   end else begin
+    fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_CNT_INITIALIZED_DATA;
+   end;
+  end;
+  if (Flags and SHF_WRITE)<>0 then begin
+   fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_MEM_WRITE;
+  end;
+  if fSections[Index].Executable then begin
+   fSections[Index].Characteristics:=(fSections[Index].Characteristics or IMAGE_SCN_MEM_EXECUTE or IMAGE_SCN_CNT_CODE) and not IMAGE_SCN_CNT_INITIALIZED_DATA;
+  end;
   // SHT_SYMTAB is 2, and its sh_link names the string table section holding
   // the symbol names.
   if SectionType=2 then begin

@@ -83,9 +83,11 @@ type TSymbolBuilder=class
        // Link time base of the image, written into the header so that the
        // reader can turn a load bias back into a base at runtime.
        property ImageBase:TpvUInt64 read fImageBase write fImageBase;
-       // When set, only the base name of a source file is kept. A shipped
-       // binary otherwise carries the full build tree of whoever built it,
-       // which says more about that machine than a crash log needs to.
+       // When set, only the base name of a source file goes into the appended
+       // table. A shipped binary otherwise carries the full build tree of
+       // whoever built it, which says more about that machine than a crash log
+       // needs to. Does not affect the pdb or the standalone debug file, see
+       // PreparePath.
        property StripPaths:Boolean read fStripPaths write fStripPaths;
        // Read access for the writers, which need the collected data again in a
        // different shape. Only valid after Finish, since that is what sorts it.
@@ -114,6 +116,11 @@ begin
  fStripPaths:=false;
 end;
 
+// Applied where the string table of the appended block is built, and nowhere
+// else. That block is what goes out to whoever runs the program, so that is the
+// one which must not carry the build tree. The pdb and the standalone debug
+// file stay behind and live off the full paths, since a debugger uses them to
+// find the source, so shortening those would only break them.
 function TSymbolBuilder.PreparePath(const aFileName:String):String;
 begin
  if fStripPaths then begin
@@ -139,7 +146,7 @@ begin
   SetLength(fUnits,(fUnitCount+1)*2);
  end;
  fUnits[fUnitCount].Name:=aName;
- fUnits[fUnitCount].FileName:=PreparePath(aFileName);
+ fUnits[fUnitCount].FileName:=aFileName;
  fUnits[fUnitCount].StartRVA:=aStartRVA;
  fUnits[fUnitCount].Size:=aSize;
  fUnits[fUnitCount].NameOffset:=0;
@@ -174,7 +181,7 @@ var Index:TpvSizeInt;
 begin
  for Index:=0 to fUnitCount-1 do begin
   if SameText(fUnits[Index].Name,aUnitName) and (length(fUnits[Index].FileName)=0) then begin
-   fUnits[Index].FileName:=PreparePath(aFileName);
+   fUnits[Index].FileName:=aFileName;
   end;
  end;
 end;
@@ -201,12 +208,24 @@ var Index:TpvSizeInt;
   High:=High xor (High shr 32);
  end;
 
+ // Eight characters at a time. A table of a million symbols would otherwise
+ // mean tens of millions of rounds through the mixer for the names alone.
  procedure FeedString(const aValue:String);
- var Position:TpvSizeInt;
+ var Position,Count,ByteIndex:TpvSizeInt;
+     Block:TpvUInt64;
  begin
-  Feed(TpvUInt64(length(aValue)));
-  for Position:=1 to length(aValue) do begin
-   Feed(TpvUInt64(Ord(aValue[Position])));
+  Count:=length(aValue);
+  Feed(TpvUInt64(Count));
+  Position:=1;
+  while Position<=Count do begin
+   Block:=0;
+   ByteIndex:=0;
+   while (Position<=Count) and (ByteIndex<8) do begin
+    Block:=(Block shl 8) or (TpvUInt64(Ord(aValue[Position])) and $ff);
+    inc(Position);
+    inc(ByteIndex);
+   end;
+   Feed(Block);
   end;
  end;
 
@@ -442,7 +461,7 @@ begin
 
  for Index:=0 to fUnitCount-1 do begin
   fUnits[Index].NameOffset:=AddString(fUnits[Index].Name,true);
-  fUnits[Index].FileNameOffset:=AddString(fUnits[Index].FileName,true);
+  fUnits[Index].FileNameOffset:=AddString(PreparePath(fUnits[Index].FileName),true);
  end;
 
  for Index:=0 to fSymbolCount-1 do begin
