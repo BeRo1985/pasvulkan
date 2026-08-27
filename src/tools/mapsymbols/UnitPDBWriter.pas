@@ -74,7 +74,9 @@ type TPDBSection=record
        // ill formed one are not the same thing to it.
        procedure BuildSymbolHashTable(const aStream:TMemoryStream);
        procedure BuildGlobalsStream(const aStream:TMemoryStream);
-       procedure BuildPublicsStream(const aStream:TMemoryStream);
+       // Fills the record stream with a public symbol per routine and the
+       // publics stream with the hash table and address map which index it.
+       procedure BuildPublicSymbols(const aSymbolRecordStream,aPublicsStream:TMemoryStream);
        procedure BuildStringTableStream(const aStream:TMemoryStream);
        procedure BuildInfoStream(const aStream:TMemoryStream;const aStringTableStreamIndex:TpvUInt16);
        procedure BuildTypeStream(const aStream:TMemoryStream);
@@ -112,6 +114,10 @@ const PDBVersionVC70=TpvUInt32(20000404);
       // Tells a reader that this producer follows the conventions of the 14.x
       // toolchain, which is what every current consumer expects.
       FeatureCodeVC140=TpvUInt32(20140508);
+
+// Used by both the string tables and the symbol hash, and defined further down
+// next to the string table it was written for.
+function PDBHashString(const aValue:TpvRawByteString):TpvUInt32; forward;
 
 constructor TPDBWriter.Create(const aBuilder:TSymbolBuilder);
 var Index:TpvSizeInt;
@@ -424,19 +430,251 @@ begin
  BuildSymbolHashTable(aStream);
 end;
 
-procedure TPDBWriter.BuildPublicsStream(const aStream:TMemoryStream);
+procedure TPDBWriter.BuildPublicSymbols(const aSymbolRecordStream,aPublicsStream:TMemoryStream);
+const S_PUB32=$110e;
+      // A public which is a routine rather than a data label.
+      PublicSymbolIsFunction=TpvUInt32(2);
+      // The number of buckets is fixed by the format, and the bitmap covers one
+      // more than that.
+      PublicHashBuckets=4096;
+      BitmapWordCount=(PublicHashBuckets div 32)+1;
+type TPublicRecord=record
+      Bucket:TpvUInt32;
+      SortName:TpvRawByteString;
+      SymbolOffset:TpvUInt32;
+      Section:TpvUInt16;
+      SectionOffset:TpvUInt32;
+     end;
+     TPublicRecords=array of TPublicRecord;
+var Records:TPublicRecords;
+    Count,Index:TpvSizeInt;
+    SymbolRecord:TSymbolBuilder.TSymbolRecord;
+    Section:TpvUInt16;
+    Offset:TpvUInt32;
+    NameText:TpvRawByteString;
+    RecordStart:TpvInt64;
+    Length16:TpvUInt16;
+    Zero:AnsiChar;
+    Bitmap:array of TpvUInt32;
+    Buckets:array of TpvUInt32;
+    BucketCursor:TpvUInt32;
+    RunStart,RunEnd,RunLength:TpvSizeInt;
+    HashRecordBytes,BucketBytes:TpvUInt32;
+
+ // Within a bucket the order is by name length first and only then by the bytes
+ // themselves. That is not the obvious ordering, but it is the one a reader
+ // bisects with, so getting it wrong makes lookups by name miss while
+ // everything else still works.
+ function NameLess(const aLeftName,aRightName:TpvRawByteString):Boolean;
+ begin
+  if length(aLeftName)<>length(aRightName) then begin
+   result:=length(aLeftName)<length(aRightName);
+  end else begin
+   result:=aLeftName<aRightName;
+  end;
+ end;
+
+ procedure SortByBucketAndName(const aLeft,aRight:TpvSizeInt);
+ var Low,High:TpvSizeInt;
+     PivotBucket:TpvUInt32;
+     PivotName:TpvRawByteString;
+     Temporary:TPublicRecord;
+     Middle:TpvSizeInt;
+ begin
+  Low:=aLeft;
+  High:=aRight;
+  Middle:=(aLeft+aRight) shr 1;
+  PivotBucket:=Records[Middle].Bucket;
+  PivotName:=Records[Middle].SortName;
+  repeat
+   while (Records[Low].Bucket<PivotBucket) or
+         ((Records[Low].Bucket=PivotBucket) and NameLess(Records[Low].SortName,PivotName)) do begin
+    inc(Low);
+   end;
+   while (Records[High].Bucket>PivotBucket) or
+         ((Records[High].Bucket=PivotBucket) and NameLess(PivotName,Records[High].SortName)) do begin
+    dec(High);
+   end;
+   if Low<=High then begin
+    Temporary:=Records[Low];
+    Records[Low]:=Records[High];
+    Records[High]:=Temporary;
+    inc(Low);
+    dec(High);
+   end;
+  until Low>High;
+  if aLeft<High then begin
+   SortByBucketAndName(aLeft,High);
+  end;
+  if Low<aRight then begin
+   SortByBucketAndName(Low,aRight);
+  end;
+ end;
+
+ procedure SortByAddress(const aLeft,aRight:TpvSizeInt);
+ var Low,High,Middle:TpvSizeInt;
+     PivotSection:TpvUInt16;
+     PivotOffset:TpvUInt32;
+     Temporary:TPublicRecord;
+ begin
+  Low:=aLeft;
+  High:=aRight;
+  Middle:=(aLeft+aRight) shr 1;
+  PivotSection:=Records[Middle].Section;
+  PivotOffset:=Records[Middle].SectionOffset;
+  repeat
+   while (Records[Low].Section<PivotSection) or
+         ((Records[Low].Section=PivotSection) and (Records[Low].SectionOffset<PivotOffset)) do begin
+    inc(Low);
+   end;
+   while (Records[High].Section>PivotSection) or
+         ((Records[High].Section=PivotSection) and (Records[High].SectionOffset>PivotOffset)) do begin
+    dec(High);
+   end;
+   if Low<=High then begin
+    Temporary:=Records[Low];
+    Records[Low]:=Records[High];
+    Records[High]:=Temporary;
+    inc(Low);
+    dec(High);
+   end;
+  until Low>High;
+  if aLeft<High then begin
+   SortByAddress(aLeft,High);
+  end;
+  if Low<aRight then begin
+   SortByAddress(Low,aRight);
+  end;
+ end;
+
 begin
- // Sizes of the two blocks which follow the header, then the thunk description
- // which is only meaningful for incrementally linked images.
- WriteUInt32(aStream,SymbolHashTableSize); // bytes of hash table
- WriteUInt32(aStream,0);  // bytes of the address map
- WriteUInt32(aStream,0);  // number of thunks
- WriteUInt32(aStream,0);  // size of a thunk
- WriteUInt16(aStream,0);  // section of the thunk table
- WriteUInt16(aStream,0);  // padding
- WriteUInt32(aStream,0);  // offset of the thunk table
- WriteUInt32(aStream,0);  // number of sections in the map
- BuildSymbolHashTable(aStream);
+
+ Zero:=#0;
+ Count:=0;
+ SetLength(Records,fBuilder.SymbolCount);
+
+ // One public per symbol which lands in a section of this image.
+ for Index:=0 to fBuilder.SymbolCount-1 do begin
+
+  SymbolRecord:=fBuilder.GetSymbol(Index);
+  if not FindSection(SymbolRecord.RVA,Section,Offset) then begin
+   continue;
+  end;
+
+  NameText:=TpvRawByteString(String(SymbolRecord.Name));
+
+  Records[Count].SymbolOffset:=TpvUInt32(aSymbolRecordStream.Size);
+  Records[Count].Section:=Section;
+  Records[Count].SectionOffset:=Offset;
+  // The raw name, since the ordering above compares the bytes as they are.
+  Records[Count].SortName:=NameText;
+  Records[Count].Bucket:=PDBHashString(NameText) mod PublicHashBuckets;
+  inc(Count);
+
+  RecordStart:=aSymbolRecordStream.Size;
+  WriteUInt16(aSymbolRecordStream,0); // length, patched below
+  WriteUInt16(aSymbolRecordStream,S_PUB32);
+  WriteUInt32(aSymbolRecordStream,PublicSymbolIsFunction);
+  WriteUInt32(aSymbolRecordStream,Offset);
+  WriteUInt16(aSymbolRecordStream,Section);
+  if length(NameText)>0 then begin
+   aSymbolRecordStream.WriteBuffer(NameText[1],length(NameText));
+  end;
+  aSymbolRecordStream.WriteBuffer(Zero,1);
+  while (aSymbolRecordStream.Size and 3)<>0 do begin
+   aSymbolRecordStream.WriteBuffer(Zero,1);
+  end;
+  Length16:=TpvUInt16(aSymbolRecordStream.Size-RecordStart-2);
+  aSymbolRecordStream.Position:=RecordStart;
+  WriteUInt16(aSymbolRecordStream,Length16);
+  aSymbolRecordStream.Position:=aSymbolRecordStream.Size;
+
+ end;
+
+ SetLength(Records,Count);
+
+ if Count=0 then begin
+  // Nothing to index, so the stream keeps the empty shape.
+  WriteUInt32(aPublicsStream,SymbolHashTableSize);
+  WriteUInt32(aPublicsStream,0);
+  WriteUInt32(aPublicsStream,0);
+  WriteUInt32(aPublicsStream,0);
+  WriteUInt16(aPublicsStream,0);
+  WriteUInt16(aPublicsStream,0);
+  WriteUInt32(aPublicsStream,0);
+  WriteUInt32(aPublicsStream,0);
+  BuildSymbolHashTable(aPublicsStream);
+  exit;
+ end;
+
+ // Records are grouped by bucket and ordered by name within one, which is what
+ // a lookup expects to be able to search a bucket.
+ SortByBucketAndName(0,Count-1);
+
+ SetLength(Bitmap,BitmapWordCount);
+ for Index:=0 to BitmapWordCount-1 do begin
+  Bitmap[Index]:=0;
+ end;
+ SetLength(Buckets,0);
+
+ BucketCursor:=0;
+ Index:=0;
+ while Index<Count do begin
+  RunStart:=Index;
+  RunEnd:=Index;
+  while ((RunEnd+1)<Count) and (Records[RunEnd+1].Bucket=Records[RunStart].Bucket) do begin
+   inc(RunEnd);
+  end;
+  Bitmap[Records[RunStart].Bucket shr 5]:=Bitmap[Records[RunStart].Bucket shr 5] or (TpvUInt32(1) shl (Records[RunStart].Bucket and 31));
+  SetLength(Buckets,length(Buckets)+1);
+  Buckets[length(Buckets)-1]:=BucketCursor;
+  // The cursor counts in units of twelve rather than the eight a hash record
+  // actually takes, because the offsets were originally computed against a
+  // larger in memory structure and readers still expect that scale.
+  RunLength:=(RunEnd-RunStart)+1;
+  inc(BucketCursor,TpvUInt32(RunLength)*12);
+  Index:=RunEnd+1;
+ end;
+
+ HashRecordBytes:=TpvUInt32(Count)*8;
+ BucketBytes:=TpvUInt32(length(Buckets))*4;
+
+ WriteUInt32(aPublicsStream,16+HashRecordBytes+(BitmapWordCount*4)+BucketBytes);
+ WriteUInt32(aPublicsStream,TpvUInt32(Count)*4); // bytes of the address map
+ WriteUInt32(aPublicsStream,0);  // number of thunks
+ WriteUInt32(aPublicsStream,0);  // size of a thunk
+ WriteUInt16(aPublicsStream,0);  // section of the thunk table
+ WriteUInt16(aPublicsStream,0);  // padding
+ WriteUInt32(aPublicsStream,0);  // offset of the thunk table
+ WriteUInt32(aPublicsStream,0);  // number of sections in the map
+
+ WriteUInt32(aPublicsStream,$ffffffff);
+ WriteUInt32(aPublicsStream,$f12f091a);
+ WriteUInt32(aPublicsStream,HashRecordBytes);
+ WriteUInt32(aPublicsStream,(BitmapWordCount*4)+BucketBytes);
+
+ for Index:=0 to Count-1 do begin
+  // The offset of a record is stored one based here, unlike in the address map
+  // below, which is one of the traps of this format.
+  WriteUInt32(aPublicsStream,Records[Index].SymbolOffset+1);
+  WriteUInt32(aPublicsStream,1); // reference count, always one
+ end;
+
+ for Index:=0 to BitmapWordCount-1 do begin
+  WriteUInt32(aPublicsStream,Bitmap[Index]);
+ end;
+
+ for Index:=0 to length(Buckets)-1 do begin
+  WriteUInt32(aPublicsStream,Buckets[Index]);
+ end;
+
+ // And the address map, which is the same set ordered by address so that a
+ // consumer can find the symbol covering an address by bisection.
+ SortByAddress(0,Count-1);
+ for Index:=0 to Count-1 do begin
+  WriteUInt32(aPublicsStream,Records[Index].SymbolOffset);
+ end;
+
 end;
 
 // The hash a PDB uses for its string tables. It folds the string four bytes at
@@ -799,7 +1037,7 @@ begin
 end;
 
 procedure TPDBWriter.SaveToFile(const aFileName:String);
-var DebugInformation,Information:TMemoryStream;
+var DebugInformation,Information,PublicsStream,SymbolRecordStream:TMemoryStream;
     SectionHeadersStreamIndex,FirstModuleStreamIndex,StringTableStreamIndex:TpvSizeInt;
     GlobalsStreamIndex,PublicsStreamIndex,SymbolRecordStreamIndex:TpvSizeInt;
     Index:TpvSizeInt;
@@ -824,13 +1062,15 @@ begin
  GlobalsStreamIndex:=fMSF.StreamCount;
  BuildGlobalsStream(fMSF.AddStream);
 
+ // The publics stream indexes into the record stream, so both are created
+ // together and filled in one pass.
  PublicsStreamIndex:=fMSF.StreamCount;
- BuildPublicsStream(fMSF.AddStream);
+ PublicsStream:=fMSF.AddStream;
 
- // The records the two hash tables above would point at. Empty for now, but the
- // stream has to exist, since the debug information header names it.
  SymbolRecordStreamIndex:=fMSF.StreamCount;
- fMSF.AddStream;
+ SymbolRecordStream:=fMSF.AddStream;
+
+ BuildPublicSymbols(SymbolRecordStream,PublicsStream);
 
  StringTableStreamIndex:=fMSF.StreamCount;
  BuildStringTableStream(fMSF.AddStream);

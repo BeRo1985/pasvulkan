@@ -73,6 +73,7 @@ function SymCleanup(aProcess:THandle):LongBool; stdcall; external 'dbghelp.dll' 
 function SymLoadModuleEx(aProcess,aFile:THandle;aImageName,aModuleName:PAnsiChar;aBase:TpvUInt64;aSize:TpvUInt32;aData:TpvPointer;aFlags:TpvUInt32):TpvUInt64; stdcall; external 'dbghelp.dll' name 'SymLoadModuleEx';
 function SymFromAddr(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointer;aSymbol:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymFromAddr';
 function SymGetLineFromAddr64(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointer;aLine:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymGetLineFromAddr64';
+function SymFromName(aProcess:THandle;aName:PAnsiChar;aSymbol:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymFromName';
 
 function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable:Boolean):Boolean;
 const PreferredBase=TpvUInt64($400000);
@@ -84,7 +85,8 @@ var Process:THandle;
     Displacement32:TpvUInt32;
     Index,Step:TpvSizeInt;
     LineRecord:TSymbolBuilder.TLineRecord;
-    ImageName:TpvRawByteString;
+    SymbolRecord:TSymbolBuilder.TSymbolRecord;
+    ImageName,SymbolName:TpvRawByteString;
 begin
 
  aResolved:=0;
@@ -142,6 +144,24 @@ begin
 
    inc(Index,Step);
 
+  end;
+
+  // A lookup by name goes through the hash table of the publics stream rather
+  // than the address map, so it tests a part nothing above touches. A wrong
+  // bucket offset there fails exactly here and nowhere else.
+  if aBuilder.SymbolCount>0 then begin
+   SymbolRecord:=aBuilder.GetSymbol(aBuilder.SymbolCount div 2);
+   SymbolName:=TpvRawByteString(String(SymbolRecord.Name));
+   if length(SymbolName)>0 then begin
+    inc(aProbes);
+    FillChar(Symbol,SizeOf(Symbol),0);
+    Symbol.SizeOfStruct:=88;
+    Symbol.MaxNameLen:=1000;
+    if SymFromName(Process,PAnsiChar(SymbolName),@Symbol) and
+       (Symbol.Address=(Base+SymbolRecord.RVA)) then begin
+     inc(aResolved);
+    end;
+   end;
   end;
 
   result:=aResolved=aProbes;
