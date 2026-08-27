@@ -126,7 +126,11 @@ const pvCrashReportRingBufferSize=64; // Must stay a power of two
 
 type PpvCrashReportEntry=^TpvCrashReportEntry;
      TpvCrashReportEntry=record
-      Sequence:TpvUInt64; // Zero while the entry is being written
+      // Zero while the entry is being written. Deliberately no wider than a
+      // word, so that reading and writing it is a single indivisible access on
+      // every supported platform, 32 bit ones included, where a 64 bit store
+      // can be split in two and a reader could catch it halfway.
+      Sequence:TpvUInt32;
       ThreadID:TpvUInt64;
       Address:TpvPointer;
       Kind:TpvUInt32;
@@ -161,6 +165,14 @@ function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBuff
 // The frame arguments are only used by FreePascal and are ignored by Delphi.
 function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil):String;
 
+// Formats the call stack of every other thread of the process. When a job
+// system is involved the thread which crashed is often only the one which
+// noticed, and the thread which caused it is somewhere else entirely, which is
+// what this is for.
+//
+// Currently answers on Windows only, see the implementation for why.
+function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32=32):String;
+
 procedure pvCrashReportInstall;
 
 procedure pvCrashReportUninstall;
@@ -175,11 +187,32 @@ const LineEnding={$if defined(Windows)}#13#10{$else}#10{$ifend};
 
       cFPCException=TpvUInt32($e0465043);
 
+      // The code the runtime of this compiler raises its own exceptions with,
+      // as opposed to a fault reported by the operating system.
+      cLanguageException={$ifdef fpc}cFPCException{$else}cDelphiException{$endif};
+
       cAccessViolation=TpvUInt32($c0000005);
 
       cMaximalStackFrames=48;
 
-type PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
+const // How many modules the resolver remembers. A process with more loaded
+      // than this still resolves, it just stops caching beyond that point.
+      pvCrashReportMaximalModules=32;
+
+type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
+     TpvCrashReportModuleEntry=record
+      // What identifies the module, the module handle on Windows and the
+      // address it was loaded at on anything else.
+      Key:TpvPtrUInt;
+      // What has to be taken off a runtime address to get the image relative
+      // one the table is keyed by, which is where the module begins in memory.
+      RVABase:TpvPtrUInt;
+      // Nil when the module carries no table. That is remembered too, so that a
+      // module without one is not opened again for every single frame.
+      Table:TpvSymbolTable;
+     end;
+
+     PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
      // What the Delphi raise point hook hands back to the RTL. It deliberately
      // holds raw addresses only, so that the cost at the raise point stays a
      // stack walk and nothing more. Turning those into names happens in
@@ -210,26 +243,81 @@ type PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
 function RtlCaptureStackBackTrace(aFramesToSkip:TpvUInt32;aFramesToCapture:TpvUInt32;aBackTrace:PPointer;aBackTraceHash:PpvUInt32):TpvUInt16; stdcall; external 'kernel32.dll' name 'RtlCaptureStackBackTrace';
 {$ifend}
 
-{$if defined(fpc) and defined(Windows)}
+{$if defined(Windows)}
 function AddVectoredExceptionHandler(aFirst:TpvUInt32;aHandler:TpvPointer):TpvPointer; stdcall; external 'kernel32.dll' name 'AddVectoredExceptionHandler';
 
 function RemoveVectoredExceptionHandler(aHandle:TpvPointer):TpvUInt32; stdcall; external 'kernel32.dll' name 'RemoveVectoredExceptionHandler';
+
+// Declared here rather than taken from the Windows unit, which does not offer
+// it on every supported compiler version.
+function GetModuleHandleExW(aFlags:TpvUInt32;aName:PWideChar;var aModule:HMODULE):LongBool; stdcall; external 'kernel32.dll' name 'GetModuleHandleExW';
+
+// What a thread snapshot hands back. Declared here for the same reason as
+// above, so that this does not depend on which helper unit a given compiler
+// happens to ship it in.
+type TpvCrashReportThreadEntry32=record
+      Size:TpvUInt32;
+      Usage:TpvUInt32;
+      ThreadID:TpvUInt32;
+      OwnerProcessID:TpvUInt32;
+      BasePriority:TpvInt32;
+      DeltaPriority:TpvInt32;
+      Flags:TpvUInt32;
+     end;
+
+function CreateToolhelp32Snapshot(aFlags,aProcessID:TpvUInt32):THandle; stdcall; external 'kernel32.dll' name 'CreateToolhelp32Snapshot';
+function Thread32First(aSnapshot:THandle;var aEntry:TpvCrashReportThreadEntry32):LongBool; stdcall; external 'kernel32.dll' name 'Thread32First';
+function Thread32Next(aSnapshot:THandle;var aEntry:TpvCrashReportThreadEntry32):LongBool; stdcall; external 'kernel32.dll' name 'Thread32Next';
+function OpenThread(aAccess:TpvUInt32;aInherit:LongBool;aThreadID:TpvUInt32):THandle; stdcall; external 'kernel32.dll' name 'OpenThread';
+
+{$if defined(cpux86_64) or defined(cpuamd64) or defined(cpu64)}
+// The unwinder of the operating system itself, which is what makes walking the
+// stack of another thread possible without a frame pointer and without pulling
+// in a symbol handler.
+function RtlLookupFunctionEntry(aControlPC:TpvUInt64;var aImageBase:TpvUInt64;aHistoryTable:TpvPointer):TpvPointer; stdcall; external 'kernel32.dll' name 'RtlLookupFunctionEntry';
+function RtlVirtualUnwind(aHandlerType:TpvUInt32;aImageBase,aControlPC:TpvUInt64;aFunctionEntry:TpvPointer;aContext:TpvPointer;var aHandlerData:TpvPointer;var aEstablisherFrame:TpvUInt64;aContextPointers:TpvPointer):TpvPointer; stdcall; external 'kernel32.dll' name 'RtlVirtualUnwind';
+{$ifend}
+{$ifend}
+
+{$if defined(Linux) or defined(Android)}
+// What dladdr fills in. Only the first two fields are of interest here, but the
+// whole record has to be there, since the library writes all of it.
+type TpvCrashReportDlInfo=record
+      FileName:PAnsiChar;
+      BaseAddress:TpvPointer;
+      SymbolName:PAnsiChar;
+      SymbolAddress:TpvPointer;
+     end;
+
+function dladdr(aAddress:TpvPointer;var aInfo:TpvCrashReportDlInfo):TpvInt32; cdecl; external 'dl' name 'dladdr';
 {$ifend}
 
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
-    CrashReportSequence:TpvInt64=0;
+    CrashReportSequence:TpvInt32=0;
+{$ifndef fpc}
+    // Only ever written by the fallback in the barriers below, on a compiler
+    // which offers nothing better.
+    CrashReportBarrierDummy:TpvInt32=0;
+{$endif}
     CrashReportInstalled:Boolean=false;
-    CrashReportSymbolTable:TpvSymbolTable=nil;
-    CrashReportSymbolTableState:TpvInt32=0;
-{$if defined(Windows) or defined(Linux)}
-    CrashReportModuleBase:TpvPtrUInt=0;
-{$ifend}
+    // One entry per module an address has been resolved in so far. A process
+    // is not only its executable: shared libraries carry their own appended
+    // table, and a frame inside one of them would otherwise be nothing but an
+    // address, which is exactly the frame worth having a name for.
+    CrashReportModules:array[0..pvCrashReportMaximalModules-1] of TpvCrashReportModuleEntry;
+    CrashReportModuleCount:TpvInt32=0;
+    CrashReportModuleLock:TpvInt32=0;
 {$ifndef fpc}
     CrashReportOwnsStackInfoProcs:Boolean=false;
 {$endif}
-{$if defined(fpc) and defined(Windows)}
+{$if defined(Windows)}
     CrashReportVectoredHandle:TpvPointer=nil;
-{$elseif defined(fpc)}
+    // Index of an operating system thread local slot, used by the vectored
+    // handler, which cannot use a threadvar. Not allocated is all ones, which
+    // is what TlsAlloc itself reports on failure.
+    CrashReportTLSIndex:TpvUInt32=$ffffffff;
+{$ifend}
+{$if defined(fpc) and not defined(Windows)}
     CrashReportOldRaiseProc:TExceptProc=nil;
 {$ifend}
 
@@ -242,14 +330,91 @@ var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashRep
 threadvar CrashReportInsideHandler:Boolean;
 {$ifend}
 
-function CrashReportNextSequence:TpvUInt64;
+function CrashReportNextSequence:TpvUInt32;
 begin
 {$ifdef fpc}
- result:=TpvUInt64(InterLockedIncrement64(CrashReportSequence));
+ result:=TpvUInt32(InterLockedIncrement(CrashReportSequence));
 {$else}
- result:=TpvUInt64(AtomicIncrement(CrashReportSequence));
+ result:=TpvUInt32(AtomicIncrement(CrashReportSequence));
 {$endif}
 end;
+
+// Publishing an entry and reading one back need the stores and the loads around
+// the sequence number to stay in the order they were written in. On x86 the
+// hardware orders them anyway and these cost nothing, on ARM it does not and
+// the ring buffer would be unsound without them: a reader could see the new
+// sequence number of an entry next to the contents of the entry before it.
+procedure CrashReportWriteBarrier;
+begin
+{$if defined(fpc)}
+ WriteBarrier;
+{$elseif declared(MemoryBarrier)}
+ MemoryBarrier;
+{$else}
+ AtomicExchange(CrashReportBarrierDummy,0);
+{$ifend}
+end;
+
+procedure CrashReportReadBarrier;
+begin
+{$if defined(fpc)}
+ ReadBarrier;
+{$elseif declared(MemoryBarrier)}
+ MemoryBarrier;
+{$else}
+ AtomicExchange(CrashReportBarrierDummy,0);
+{$ifend}
+end;
+
+// Takes the module cache. Only ever held while a report is being formatted,
+// never in the vectored handler, so a plain spin is enough and saves bringing
+// in anything which would have to be created and destroyed.
+procedure CrashReportAcquireModuleLock;
+begin
+{$ifdef fpc}
+ while InterLockedExchange(CrashReportModuleLock,1)<>0 do begin
+{$else}
+ while AtomicExchange(CrashReportModuleLock,1)<>0 do begin
+{$endif}
+{$if defined(Windows)}
+  Sleep(0);
+{$ifend}
+ end;
+end;
+
+procedure CrashReportReleaseModuleLock;
+begin
+ CrashReportWriteBarrier;
+ CrashReportModuleLock:=0;
+end;
+
+{$if defined(Windows)}
+// Marks this thread as being inside the part of the vectored handler which
+// dereferences the exception object, and reports whether it was already. A
+// threadvar is deliberately not used, since the handler can run on threads the
+// runtime never created and whose thread local storage is therefore not set up,
+// where reading a threadvar is itself a fault.
+function CrashReportEnterObjectInspection:Boolean;
+begin
+ if CrashReportTLSIndex=TpvUInt32($ffffffff) then begin
+  // No slot, so no protection can be offered and the object is left alone
+  // rather than risking the recursion.
+  result:=false;
+ end else if assigned(TlsGetValue(CrashReportTLSIndex)) then begin
+  result:=false;
+ end else begin
+  TlsSetValue(CrashReportTLSIndex,TpvPointer(TpvPtrUInt(1)));
+  result:=true;
+ end;
+end;
+
+procedure CrashReportLeaveObjectInspection;
+begin
+ if CrashReportTLSIndex<>TpvUInt32($ffffffff) then begin
+  TlsSetValue(CrashReportTLSIndex,nil);
+ end;
+end;
+{$ifend}
 
 function CrashReportCurrentThreadID:TpvUInt64;
 begin
@@ -264,7 +429,11 @@ end;
 
 procedure CrashReportEntryBegin(const aEntry:PpvCrashReportEntry;const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aThreadID:TpvUInt64;const aFlags:TpvUInt32);
 begin
+ // Zero marks the slot as being written. It has to become visible before the
+ // fields change, otherwise a reader could still see the old sequence number
+ // next to fields which are already the new ones.
  aEntry^.Sequence:=0;
+ CrashReportWriteBarrier;
  aEntry^.ThreadID:=aThreadID;
  aEntry^.Address:=aAddress;
  aEntry^.Kind:=aKind;
@@ -297,6 +466,40 @@ begin
    inc(Count);
   end;
   CrashReportEntryAppendChars(aEntry,aValue,Count);
+ end;
+end;
+
+// Appends a UTF-16 string as UTF-8, walking it as raw memory up to its
+// terminator. This is what a Delphi Message needs, and unlike anything which
+// takes a String it neither allocates nor touches a reference count, which the
+// vectored handler must not do.
+procedure CrashReportEntryAppendPWideChar(const aEntry:PpvCrashReportEntry;const aValue:PWideChar);
+var Index:TpvInt32;
+    CodeUnit:TpvUInt32;
+begin
+ if assigned(aValue) then begin
+  Index:=0;
+  while (Index<pvCrashReportEntryTextSize) and (aValue[Index]<>#0) do begin
+   if aEntry^.TextLength>=(pvCrashReportEntryTextSize-4) then begin
+    break;
+   end;
+   CodeUnit:=TpvUInt32(Ord(aValue[Index]));
+   if CodeUnit<$80 then begin
+    aEntry^.Text[aEntry^.TextLength]:=AnsiChar(TpvUInt8(CodeUnit));
+    inc(aEntry^.TextLength);
+   end else if CodeUnit<$800 then begin
+    aEntry^.Text[aEntry^.TextLength]:=AnsiChar(TpvUInt8($c0 or (CodeUnit shr 6)));
+    aEntry^.Text[aEntry^.TextLength+1]:=AnsiChar(TpvUInt8($80 or (CodeUnit and $3f)));
+    inc(aEntry^.TextLength,2);
+   end else begin
+    aEntry^.Text[aEntry^.TextLength]:=AnsiChar(TpvUInt8($e0 or (CodeUnit shr 12)));
+    aEntry^.Text[aEntry^.TextLength+1]:=AnsiChar(TpvUInt8($80 or ((CodeUnit shr 6) and $3f)));
+    aEntry^.Text[aEntry^.TextLength+2]:=AnsiChar(TpvUInt8($80 or (CodeUnit and $3f)));
+    inc(aEntry^.TextLength,3);
+   end;
+   inc(Index);
+  end;
+  aEntry^.Text[aEntry^.TextLength]:=#0;
  end;
 end;
 
@@ -356,7 +559,7 @@ end;
 
 procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String;const aReturnAddress:Boolean);
 var Entry:PpvCrashReportEntry;
-    Sequence:TpvUInt64;
+    Sequence:TpvUInt32;
     Flags:TpvUInt32;
 begin
  if aReturnAddress then begin
@@ -368,6 +571,8 @@ begin
  Entry:=@CrashReportRingBuffer[(Sequence-1) and (pvCrashReportRingBufferSize-1)];
  CrashReportEntryBegin(Entry,aKind,aCode,aAddress,CrashReportCurrentThreadID,Flags);
  CrashReportEntryAppendString(Entry,aText);
+ // Published last, and only once everything above is visible.
+ CrashReportWriteBarrier;
  Entry^.Sequence:=Sequence;
 end;
 
@@ -475,40 +680,173 @@ end;
 // which normally means a crash is already being reported. Loading it eagerly at
 // startup would mean paying for a table which is many megabytes on a large
 // project, in every run, for nothing.
-function CrashReportGetSymbolTable:TpvSymbolTable;
-var Previous:TpvInt32;
-begin
-{$ifdef fpc}
- Previous:=InterLockedExchange(CrashReportSymbolTableState,1);
-{$else}
- Previous:=AtomicExchange(CrashReportSymbolTableState,1);
-{$endif}
- if Previous=0 then begin
-  try
-   CrashReportSymbolTable:=TpvSymbolTable.Create;
-   if CrashReportSymbolTable.LoadFromFile(ParamStr(0)) then begin
+// Names the module an address belongs to, and where it was loaded. This is what
+// makes a frame inside a shared library resolvable rather than a bare address.
+function CrashReportModuleForAddress(const aAddress:TpvPointer;out aKey:TpvPtrUInt;out aFileName:String):Boolean;
 {$if defined(Windows)}
-    // The loader already reports where the image ended up, so this covers
-    // address space layout randomization on its own.
-    CrashReportModuleBase:=TpvPtrUInt(GetModuleHandle(nil));
-{$else}
-    CrashReportModuleBase:=CrashReportLinuxModuleBase;
-    if CrashReportModuleBase=0 then begin
-     // Nothing readable in proc, so assume the image sits where it was linked,
-     // which is true for every non position independent executable.
-     CrashReportModuleBase:=TpvPtrUInt(CrashReportSymbolTable.ImageBase);
-    end;
-{$ifend}
-   end else begin
-    // No table appended, which is the normal case for a build the mapsymbols
-    // tool has not been run on.
-    FreeAndNil(CrashReportSymbolTable);
-   end;
-  except
-   FreeAndNil(CrashReportSymbolTable);
+const GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT=TpvUInt32($00000002);
+      GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS=TpvUInt32($00000004);
+var Module:HMODULE;
+    Buffer:array[0..1023] of WideChar;
+    Count:TpvUInt32;
+begin
+ result:=false;
+ aKey:=0;
+ aFileName:='';
+ Module:=0;
+ // Asking for the module by address rather than walking a list, and without
+ // taking a reference, so that this cannot keep a library alive.
+ if GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS or GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,PWideChar(aAddress),Module) and (Module<>0) then begin
+  Count:=GetModuleFileNameW(Module,@Buffer[0],length(Buffer)-1);
+  if (Count>0) and (Count<TpvUInt32(length(Buffer))) then begin
+   Buffer[Count]:=#0;
+   aKey:=TpvPtrUInt(Module);
+   aFileName:=String(PWideChar(@Buffer[0]));
+   result:=true;
   end;
  end;
- result:=CrashReportSymbolTable;
+end;
+{$elseif defined(Linux) or defined(Android)}
+var Info:TpvCrashReportDlInfo;
+begin
+ result:=false;
+ aKey:=0;
+ aFileName:='';
+ FillChar(Info,SizeOf(TpvCrashReportDlInfo),#0);
+ if (dladdr(aAddress,Info)<>0) and assigned(Info.FileName) then begin
+  // The base reported here is the load bias, which is zero for an executable
+  // linked to a fixed address and the mapping address for one which is not.
+  aKey:=TpvPtrUInt(Info.BaseAddress);
+  aFileName:=String(Info.FileName);
+  result:=true;
+ end;
+end;
+{$else}
+begin
+ result:=false;
+ aKey:=0;
+ aFileName:='';
+end;
+{$ifend}
+
+// Returns the table covering an address, loading it on first use, together with
+// what has to be subtracted from a runtime address to look something up in it.
+function CrashReportTableForAddress(const aAddress:TpvPointer;out aRVABase:TpvPtrUInt):TpvSymbolTable;
+var Index,Slot:TpvInt32;
+    Key:TpvPtrUInt;
+    FileName:String;
+    Table:TpvSymbolTable;
+    RVABase:TpvPtrUInt;
+    Known:Boolean;
+begin
+
+ result:=nil;
+ aRVABase:=0;
+
+ if not CrashReportModuleForAddress(aAddress,Key,FileName) then begin
+{$if defined(Windows)}
+  exit;
+{$else}
+  // Without a way to ask, fall back to the executable itself, which is the
+  // module every address belonged to before this could tell them apart.
+  Key:=0;
+  FileName:=ParamStr(0);
+{$ifend}
+ end;
+
+ Known:=false;
+ CrashReportAcquireModuleLock;
+ try
+  for Index:=0 to CrashReportModuleCount-1 do begin
+   if CrashReportModules[Index].Key=Key then begin
+    result:=CrashReportModules[Index].Table;
+    aRVABase:=CrashReportModules[Index].RVABase;
+    Known:=true;
+    break;
+   end;
+  end;
+ finally
+  CrashReportReleaseModuleLock;
+ end;
+
+ if Known then begin
+  exit;
+ end;
+
+ // Loading happens outside the lock, since it reads a file and there is no
+ // reason to hold every other thread up for that. Two threads may then load the
+ // same module at once, which costs one wasted read and nothing else.
+ Table:=nil;
+ RVABase:=0;
+ try
+  Table:=TpvSymbolTable.Create;
+  if Table.LoadFromFile(FileName) then begin
+{$if defined(Windows)}
+   // A module handle already is the image base as it ended up in memory, so it
+   // covers address space layout randomization on its own.
+   RVABase:=Key;
+{$else}
+   // What dladdr reports is documented as the address the object was loaded at,
+   // and that is what it is: the start of the mapping, which for an executable
+   // linked to a fixed address is its own link time base and for a position
+   // independent one is wherever it ended up. Either way it is what has to come
+   // off, exactly like a module handle on Windows.
+   //
+   // A library which reports the load bias instead, zero for a fixed address
+   // image, would be off by the link time base, so that case is caught by
+   // adding it back where the answer is plainly too low to be a mapping.
+   RVABase:=Key;
+   if RVABase<TpvPtrUInt(Table.ImageBase) then begin
+    inc(RVABase,TpvPtrUInt(Table.ImageBase));
+   end;
+{$if defined(Linux)}
+   if RVABase=0 then begin
+    // Last resort, from the process map, for a runtime whose dladdr said
+    // nothing useful.
+    RVABase:=CrashReportLinuxModuleBase;
+   end;
+{$ifend}
+{$ifend}
+  end else begin
+   // No table appended, which is the normal case for a module the mapsymbols
+   // tool has not been run on, and for every system library.
+   FreeAndNil(Table);
+  end;
+ except
+  FreeAndNil(Table);
+ end;
+
+ CrashReportAcquireModuleLock;
+ try
+  // Checked once more, because another thread may have got here first while
+  // the load above was running.
+  for Index:=0 to CrashReportModuleCount-1 do begin
+   if CrashReportModules[Index].Key=Key then begin
+    FreeAndNil(Table);
+    result:=CrashReportModules[Index].Table;
+    aRVABase:=CrashReportModules[Index].RVABase;
+    exit;
+   end;
+  end;
+  if CrashReportModuleCount<pvCrashReportMaximalModules then begin
+   Slot:=CrashReportModuleCount;
+   CrashReportModules[Slot].Key:=Key;
+   CrashReportModules[Slot].RVABase:=RVABase;
+   CrashReportModules[Slot].Table:=Table;
+   CrashReportWriteBarrier;
+   CrashReportModuleCount:=Slot+1;
+   result:=Table;
+   aRVABase:=RVABase;
+  end else begin
+   // Out of room, so this one is answered but not remembered.
+   FreeAndNil(Table);
+   result:=nil;
+   aRVABase:=0;
+  end;
+ finally
+  CrashReportReleaseModuleLock;
+ end;
+
 end;
 
 // Returns false when there is no table, or when the address does not belong to
@@ -516,15 +854,15 @@ end;
 function CrashReportResolveAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aText:String):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
-    LookupAddress:TpvPtrUInt;
+    LookupAddress,RVABase:TpvPtrUInt;
 begin
  result:=false;
  aText:='';
- SymbolTable:=CrashReportGetSymbolTable;
+ SymbolTable:=CrashReportTableForAddress(aAddress,RVABase);
  if not assigned(SymbolTable) then begin
   exit;
  end;
- if (CrashReportModuleBase=0) or (TpvPtrUInt(aAddress)<=CrashReportModuleBase) then begin
+ if TpvPtrUInt(aAddress)<=RVABase then begin
   exit;
  end;
  LookupAddress:=TpvPtrUInt(aAddress);
@@ -536,7 +874,7 @@ begin
  // The table stores image relative addresses, so subtracting the actual load
  // address here is what makes this correct under address space layout
  // randomization.
- if not SymbolTable.Resolve(TpvUInt64(LookupAddress-CrashReportModuleBase),Location) then begin
+ if not SymbolTable.Resolve(TpvUInt64(LookupAddress-RVABase),Location) then begin
   exit;
  end;
  aText:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
@@ -649,11 +987,12 @@ end;
 
 function pvCrashReportHistory(const aMaximalCount:TpvInt32):String;
 var Index,Count:TpvInt32;
-    Newest,Wanted:TpvUInt64;
+    Newest,Wanted:TpvUInt32;
     Entry:PpvCrashReportEntry;
+    Snapshot:TpvCrashReportEntry;
 begin
  result:='';
- Newest:=TpvUInt64(CrashReportSequence);
+ Newest:=TpvUInt32(CrashReportSequence);
  if Newest=0 then begin
   exit;
  end;
@@ -661,29 +1000,41 @@ begin
  if Count>pvCrashReportRingBufferSize then begin
   Count:=pvCrashReportRingBufferSize;
  end;
- if TpvUInt64(Count)>Newest then begin
+ // Only relevant before the counter has gone round the first time, which is
+ // also the only moment at which it says how many entries there are at all.
+ if TpvUInt32(Count)>Newest then begin
   Count:=TpvInt32(Newest);
  end;
  result:='First chance exception history, oldest first, at most '+IntToStr(Count)+' entries:'+LineEnding;
  for Index:=Count-1 downto 0 do begin
-  Wanted:=Newest-TpvUInt64(Index);
+  Wanted:=Newest-TpvUInt32(Index);
   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
   // A mismatching sequence means the entry is either still being written or has
-  // already been overwritten by a newer one while this was being formatted.
+  // already been overwritten by a newer one.
   if Entry^.Sequence<>Wanted then begin
    continue;
   end;
-  result:=result+'  #'+IntToStr(Entry^.Sequence)+
-                 ' thread $'+IntToHex(Entry^.ThreadID,8)+
-                 ' '+CrashReportKindToString(Entry^.Kind);
-  if Entry^.Code<>0 then begin
-   result:=result+' code $'+IntToHex(Entry^.Code,8);
+  // Taken as a copy, and the sequence checked once more afterwards. Formatting
+  // straight out of the ring buffer would leave a window in which a writer
+  // takes the slot over halfway through, and the result would then be one half
+  // of one entry next to one half of another, with nothing to show for it.
+  CrashReportReadBarrier;
+  Snapshot:=Entry^;
+  CrashReportReadBarrier;
+  if Entry^.Sequence<>Wanted then begin
+   continue;
   end;
-  if assigned(Entry^.Address) then begin
-   result:=result+' at '+pvCrashReportFormatAddress(Entry^.Address,(Entry^.Flags and pvCrashReportFlagReturnAddress)<>0);
+  result:=result+'  #'+IntToStr(Snapshot.Sequence)+
+                 ' thread $'+IntToHex(Snapshot.ThreadID,8)+
+                 ' '+CrashReportKindToString(Snapshot.Kind);
+  if Snapshot.Code<>0 then begin
+   result:=result+' code $'+IntToHex(Snapshot.Code,8);
   end;
-  if Entry^.TextLength>0 then begin
-   result:=result+' : '+String(PAnsiChar(@Entry^.Text[0]));
+  if assigned(Snapshot.Address) then begin
+   result:=result+' at '+pvCrashReportFormatAddress(Snapshot.Address,(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0);
+  end;
+  if Snapshot.TextLength>0 then begin
+   result:=result+' : '+String(PAnsiChar(@Snapshot.Text[0]));
   end;
   result:=result+LineEnding;
  end;
@@ -787,7 +1138,11 @@ begin
  CrashReportInsideHandler:=true;
  try
   try
+{$ifndef Windows}
+   // On Windows the vectored handler has already recorded this, and doing it
+   // here as well would put every exception into the history twice.
    CrashReportNoteNativeExceptionRecord(PpvCrashReportNativeExceptionRecord(P));
+{$endif}
    GetMem(StackInfo,SizeOf(TpvCrashReportStackInfo));
    FillChar(StackInfo^,SizeOf(TpvCrashReportStackInfo),#0);
    StackInfo^.Count:=RtlCaptureStackBackTrace(2,cMaximalStackFrames,@StackInfo^.Addresses[0],nil);
@@ -829,12 +1184,12 @@ begin
 end;
 {$endif}
 
-{$if defined(fpc) and defined(Windows)}
+{$if defined(Windows)}
 function CrashReportVectoredExceptionHandler(aExceptionInformation:PpvCrashReportNativeExceptionPointers):TpvInt32; stdcall;
 const EXCEPTION_CONTINUE_SEARCH=TpvInt32(0);
 var ExceptionRecord:PpvCrashReportNativeExceptionRecord;
     Entry:PpvCrashReportEntry;
-    Sequence:TpvUInt64;
+    Sequence:TpvUInt32;
     ExceptionObject:TObject;
     ClassNameString:PShortString;
 begin
@@ -851,25 +1206,51 @@ begin
  end;
  Sequence:=CrashReportNextSequence;
  Entry:=@CrashReportRingBuffer[(Sequence-1) and (pvCrashReportRingBufferSize-1)];
- if ExceptionRecord^.ExceptionCode=cFPCException then begin
+ if ExceptionRecord^.ExceptionCode=cLanguageException then begin
+{$ifdef fpc}
   // fpc_RaiseException passes address, object, frame count and frames, see
   // rtl/win64/seh64.inc and rtl/win32/seh32.inc.
   // fpc_RaiseException passes the address of the raise statement itself, not
   // the address behind it, so no adjustment is wanted here.
   CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),0);
+{$else}
+  // Delphi hands over the return address of the raise site instead.
+  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),pvCrashReportFlagReturnAddress);
+{$endif}
   if ExceptionRecord^.NumberParameters>=2 then begin
+   // Both runtimes pass the address of the raise as the first parameter. The
+   // one in the record itself is the address inside RaiseException, which is
+   // the same for every raise in the program and therefore of no use.
    Entry^.Address:=TpvPointer(ExceptionRecord^.ExceptionInformation[0]);
    ExceptionObject:=TObject(ExceptionRecord^.ExceptionInformation[1]);
-   if assigned(ExceptionObject) then begin
-    ClassNameString:=PShortString(PPointer(TpvPtrUInt(TpvPtrUInt(ExceptionObject.ClassType)+TpvPtrUInt(vmtClassName)))^);
-    if assigned(ClassNameString) then begin
-     CrashReportEntryAppendChars(Entry,@ClassNameString^[1],length(ClassNameString^));
-    end;
-    if ExceptionObject is Exception then begin
-     CrashReportEntryAppendPAnsiChar(Entry,': ');
-     // Casting the string field to a pointer reads it without touching its
-     // reference count and without allocating a temporary.
-     CrashReportEntryAppendPAnsiChar(Entry,PAnsiChar(TpvPointer(Exception(ExceptionObject).Message)));
+   // Everything below this point dereferences a pointer which the raising code
+   // supplied, and a corrupted one faults right here. That fault is dispatched
+   // to the vectored handlers as well, which is to say back into this function,
+   // and without a guard it would keep going until the stack runs out, at the
+   // one moment where the report is wanted most. A thread local flag from the
+   // runtime cannot be used for it, since this can run on threads whose thread
+   // local storage the runtime has never set up, so the slot comes from the
+   // operating system directly.
+   if assigned(ExceptionObject) and CrashReportEnterObjectInspection then begin
+    try
+     // Read out of the virtual method table rather than through ClassName,
+     // which builds a string and would therefore allocate.
+     ClassNameString:=PShortString(PPointer(TpvPtrUInt(TpvPtrUInt(ExceptionObject.ClassType)+TpvPtrUInt(vmtClassName)))^);
+     if assigned(ClassNameString) then begin
+      CrashReportEntryAppendChars(Entry,@ClassNameString^[1],length(ClassNameString^));
+     end;
+     if ExceptionObject is Exception then begin
+      CrashReportEntryAppendPAnsiChar(Entry,': ');
+      // Casting the string field to a pointer reads it without touching its
+      // reference count and without allocating a temporary.
+{$if defined(fpc) and (SizeOf(Char)=1)}
+      CrashReportEntryAppendPAnsiChar(Entry,PAnsiChar(TpvPointer(Exception(ExceptionObject).Message)));
+{$else}
+      CrashReportEntryAppendPWideChar(Entry,PWideChar(TpvPointer(Exception(ExceptionObject).Message)));
+{$ifend}
+     end;
+    finally
+     CrashReportLeaveObjectInspection;
     end;
    end;
   end;
@@ -892,6 +1273,7 @@ begin
    CrashReportEntryAppendHex(Entry,TpvUInt64(ExceptionRecord^.ExceptionInformation[1]),SizeOf(TpvPointer) shl 1);
   end;
  end;
+ CrashReportWriteBarrier;
  Entry^.Sequence:=Sequence;
 end;
 {$elseif defined(fpc)}
@@ -923,6 +1305,199 @@ begin
 end;
 {$ifend}
 
+{$if defined(Windows)}
+// Walks the stack of a thread which is already suspended and whose context has
+// been read.
+//
+// On x86-64 this goes through the unwind information of the image, the same way
+// the operating system itself unwinds, so it works regardless of whether a
+// frame pointer was kept. On x86-32 there is no such information and the chain
+// of saved frame pointers is all there is, which means a routine compiled
+// without one is skipped over. Every address read out of the stack is read
+// through ReadProcessMemory, so that a broken chain ends the walk instead of
+// faulting.
+function CrashReportWalkSuspendedThread(var aContext:TContext;const aFrames:PPointer;const aMaximalFrames:TpvInt32):TpvInt32;
+{$if defined(cpux86_64) or defined(cpuamd64) or defined(cpu64)}
+var ImageBase,EstablisherFrame,ReturnAddress:TpvUInt64;
+    FunctionEntry,HandlerData:TpvPointer;
+    Read:{$ifdef fpc}TpvSizeUInt{$else}NativeUInt{$endif};
+begin
+ result:=0;
+ while result<aMaximalFrames do begin
+  if aContext.Rip=0 then begin
+   break;
+  end;
+  PPointerArray(aFrames)^[result]:=TpvPointer(TpvPtrUInt(aContext.Rip));
+  inc(result);
+  ImageBase:=0;
+  FunctionEntry:=RtlLookupFunctionEntry(aContext.Rip,ImageBase,nil);
+  if assigned(FunctionEntry) then begin
+   HandlerData:=nil;
+   EstablisherFrame:=0;
+   RtlVirtualUnwind(0,ImageBase,aContext.Rip,FunctionEntry,@aContext,HandlerData,EstablisherFrame,nil);
+  end else begin
+   // A leaf function, which has no unwind information because it never moves
+   // the stack pointer. Its return address is simply on top of the stack.
+   ReturnAddress:=0;
+   if not ReadProcessMemory(GetCurrentProcess,TpvPointer(TpvPtrUInt(aContext.Rsp)),@ReturnAddress,SizeOf(TpvUInt64),{$ifdef fpc}Read{$else}Read{$endif}) then begin
+    break;
+   end;
+   aContext.Rip:=ReturnAddress;
+   inc(aContext.Rsp,SizeOf(TpvUInt64));
+  end;
+ end;
+end;
+{$else}
+var Frame,NextFrame,ReturnAddress:TpvUInt32;
+    Read:{$ifdef fpc}TpvSizeUInt{$else}NativeUInt{$endif};
+begin
+ result:=0;
+ if aContext.Eip<>0 then begin
+  PPointerArray(aFrames)^[result]:=TpvPointer(TpvPtrUInt(aContext.Eip));
+  inc(result);
+ end;
+ Frame:=aContext.Ebp;
+ while result<aMaximalFrames do begin
+  NextFrame:=0;
+  ReturnAddress:=0;
+  if not ReadProcessMemory(GetCurrentProcess,TpvPointer(TpvPtrUInt(Frame)),@NextFrame,SizeOf(TpvUInt32),Read) then begin
+   break;
+  end;
+  if not ReadProcessMemory(GetCurrentProcess,TpvPointer(TpvPtrUInt(Frame)+SizeOf(TpvUInt32)),@ReturnAddress,SizeOf(TpvUInt32),Read) then begin
+   break;
+  end;
+  if (ReturnAddress=0) or (NextFrame<=Frame) then begin
+   // Either the end of the chain or something which is no longer a chain.
+   break;
+  end;
+  PPointerArray(aFrames)^[result]:=TpvPointer(TpvPtrUInt(ReturnAddress));
+  inc(result);
+  Frame:=NextFrame;
+ end;
+end;
+{$ifend}
+{$ifend}
+
+function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32):String;
+{$if defined(Windows)}
+const TH32CS_SNAPTHREAD=TpvUInt32($00000004);
+      THREAD_GET_CONTEXT=TpvUInt32($0008);
+      THREAD_QUERY_INFORMATION=TpvUInt32($0040);
+      THREAD_SUSPEND_RESUME=TpvUInt32($0002);
+var Snapshot,Thread:THandle;
+    Entry:TpvCrashReportThreadEntry32;
+    Context:TContext;
+    Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
+    Count,Index,Handled:TpvInt32;
+    ProcessID,CurrentID:TpvUInt32;
+    Text:String;
+begin
+
+ result:='';
+
+ ProcessID:=GetCurrentProcessId;
+ CurrentID:=GetCurrentThreadId;
+
+ Snapshot:=CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD,0);
+ if Snapshot=THandle(-1) then begin
+  exit;
+ end;
+
+ try
+
+  Handled:=0;
+
+  FillChar(Entry,SizeOf(TpvCrashReportThreadEntry32),#0);
+  Entry.Size:=SizeOf(TpvCrashReportThreadEntry32);
+  if not Thread32First(Snapshot,Entry) then begin
+   exit;
+  end;
+
+  repeat
+
+   if (Entry.OwnerProcessID<>ProcessID) or (Entry.ThreadID=CurrentID) then begin
+    continue;
+   end;
+
+   if Handled>=aMaximalThreads then begin
+    result:=result+'  (more threads exist, stopped after '+IntToStr(aMaximalThreads)+')'+LineEnding;
+    break;
+   end;
+   inc(Handled);
+
+   Thread:=OpenThread(THREAD_GET_CONTEXT or THREAD_QUERY_INFORMATION or THREAD_SUSPEND_RESUME,false,Entry.ThreadID);
+   if Thread=0 then begin
+    result:=result+'Thread $'+IntToHex(Entry.ThreadID,8)+', could not be opened'+LineEnding;
+    continue;
+   end;
+
+   try
+
+    // A running thread has no stack worth reading, since it changes underneath.
+    if SuspendThread(Thread)=TpvUInt32($ffffffff) then begin
+     result:=result+'Thread $'+IntToHex(Entry.ThreadID,8)+', could not be suspended'+LineEnding;
+     continue;
+    end;
+
+    // Nothing between here and the resume below may allocate, take a lock or
+    // touch a file. The suspended thread can be holding the lock of the heap or
+    // of anything else, and waiting for it while its owner is stopped is a
+    // deadlock, in the one situation where the program has to keep going long
+    // enough to write its report. So the frames are only collected here, by
+    // reading memory and unwinding, and turned into text further down once the
+    // thread is running again.
+    Count:=-1;
+    try
+     FillChar(Context,SizeOf(TContext),#0);
+     Context.ContextFlags:=CONTEXT_FULL;
+     if GetThreadContext(Thread,Context) then begin
+      FillChar(Frames,SizeOf(Frames),#0);
+      Count:=CrashReportWalkSuspendedThread(Context,@Frames[0],cMaximalStackFrames);
+     end;
+    finally
+     ResumeThread(Thread);
+    end;
+
+    if Count>=0 then begin
+     result:=result+'Thread $'+IntToHex(Entry.ThreadID,8)+', '+IntToStr(Count)+' frames:'+LineEnding;
+     for Index:=0 to Count-1 do begin
+      // Every frame but the first is a return address, so it points behind the
+      // call rather than at it.
+      result:=result+'  '+pvCrashReportFormatAddress(Frames[Index],Index>0)+LineEnding;
+     end;
+    end else begin
+     result:=result+'Thread $'+IntToHex(Entry.ThreadID,8)+', context not readable'+LineEnding;
+    end;
+
+   finally
+    CloseHandle(Thread);
+   end;
+
+  until not Thread32Next(Snapshot,Entry);
+
+  if Handled=0 then begin
+   result:='No other threads were running.'+LineEnding;
+  end else begin
+   result:='Stacks of the other '+IntToStr(Handled)+' threads of this process:'+LineEnding+result;
+  end;
+
+ finally
+  CloseHandle(Snapshot);
+ end;
+
+end;
+{$else}
+begin
+ // Not answered elsewhere. Reading the stack of another thread means stopping
+ // it first, and the ways of doing that on a unix, a signal handler which
+ // captures its own context or a helper process attached through ptrace, both
+ // reach a good deal further into the program than a crash logger should on its
+ // own. Saying so is better than returning an empty string which reads like
+ // there was nothing to report.
+ result:='Stacks of other threads are not available on this platform.'+LineEnding;
+end;
+{$ifend}
+
 procedure pvCrashReportInstall;
 begin
  if CrashReportInstalled then begin
@@ -940,7 +1515,15 @@ begin
   CrashReportOwnsStackInfoProcs:=true;
  end;
 {$endif}
-{$if defined(fpc) and defined(Windows)}
+{$if defined(Windows)}
+ // The slot the vectored handler guards itself with. Allocated before the
+ // handler goes in, so that it is there from the first exception on.
+ CrashReportTLSIndex:=TlsAlloc;
+ // Installed on both compilers, and on Delphi even when the stack info hooks
+ // above went to somebody else. It is what fills the history, so giving way
+ // there must not mean giving up the record of what led to the crash. It also
+ // sees faults on threads the runtime has never heard of, which no hook of the
+ // runtime can.
  CrashReportVectoredHandle:=AddVectoredExceptionHandler(1,@CrashReportVectoredExceptionHandler);
 {$elseif defined(fpc)}
  // Plain assignment, not Addr, since RaiseProc is a procedural variable and Addr
@@ -957,24 +1540,48 @@ begin
  end;
  CrashReportInstalled:=false;
 {$ifndef fpc}
+ // Only taken back when these are still the ones which were put in. Somebody
+ // else may have installed themselves in the meantime, and clearing their
+ // hooks would leave them without the ones they rely on.
  if CrashReportOwnsStackInfoProcs then begin
-  Exception.GetExceptionStackInfoProc:=nil;
-  Exception.GetStackInfoStringProc:=nil;
-  Exception.CleanUpStackInfoProc:=nil;
+  // Compared through a pointer, since this is a plain procedure variable and
+  // reading it in an expression would otherwise call it.
+  if PPointer(@Exception.GetExceptionStackInfoProc)^=TpvPointer(@CrashReportGetExceptionStackInfoProc) then begin
+   Exception.GetExceptionStackInfoProc:=nil;
+   Exception.GetStackInfoStringProc:=nil;
+   Exception.CleanUpStackInfoProc:=nil;
+  end;
   CrashReportOwnsStackInfoProcs:=false;
  end;
 {$endif}
-{$if defined(fpc) and defined(Windows)}
+{$if defined(Windows)}
  if assigned(CrashReportVectoredHandle) then begin
   RemoveVectoredExceptionHandler(CrashReportVectoredHandle);
   CrashReportVectoredHandle:=nil;
  end;
+ if CrashReportTLSIndex<>TpvUInt32($ffffffff) then begin
+  TlsFree(CrashReportTLSIndex);
+  CrashReportTLSIndex:=TpvUInt32($ffffffff);
+ end;
 {$elseif defined(fpc)}
- System.RaiseProc:=CrashReportOldRaiseProc;
+ // Same reasoning as above, only put back when nobody else has taken over.
+ if TpvPointer(@System.RaiseProc)<>nil then begin
+  if PPointer(@System.RaiseProc)^=TpvPointer(@CrashReportRaiseProc) then begin
+   System.RaiseProc:=CrashReportOldRaiseProc;
+  end;
+ end;
  CrashReportOldRaiseProc:=nil;
 {$ifend}
- if assigned(CrashReportSymbolTable) then begin
-  FreeAndNil(CrashReportSymbolTable);
+ CrashReportAcquireModuleLock;
+ try
+  while CrashReportModuleCount>0 do begin
+   dec(CrashReportModuleCount);
+   FreeAndNil(CrashReportModules[CrashReportModuleCount].Table);
+   CrashReportModules[CrashReportModuleCount].Key:=0;
+   CrashReportModules[CrashReportModuleCount].RVABase:=0;
+  end;
+ finally
+  CrashReportReleaseModuleLock;
  end;
 end;
 

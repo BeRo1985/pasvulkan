@@ -3306,6 +3306,11 @@ begin
         aExceptionString+LineEnding+
         LineEnding+
         pvCrashReportHistory+
+        LineEnding+
+        // The thread which crashed is often only the one which noticed. With a
+        // job system the one which caused it is somewhere else entirely, and its
+        // stack is not in the report unless it is asked for.
+        pvCrashReportThreadStacks+
         LineEnding;
 
 {$ifdef fpc}

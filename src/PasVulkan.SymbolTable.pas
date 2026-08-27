@@ -96,6 +96,12 @@ const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B
       // address, since a unit range is the better bound where it exists.
       pvSymbolTableMaximalSymbolDistance=TpvUInt64(65536);
 
+      // How far back from the end of the file the footer is looked for. It only
+      // has to cover whatever a signing tool or an installer appended behind the
+      // table, which is a few kilobytes of certificate at most, so this is
+      // generous rather than tight.
+      pvSymbolTableFooterScanSize=TpvInt64(1) shl 20;
+
 type PpvSymbolTableHeader=^TpvSymbolTableHeader;
      TpvSymbolTableHeader=packed record
       Magic:array[0..7] of AnsiChar;
@@ -160,6 +166,9 @@ type PpvSymbolTableHeader=^TpvSymbolTableHeader;
        function FindSymbol(const aRVA:TpvUInt64):TpvSizeInt;
        function FindLine(const aRVA:TpvUInt64):TpvSizeInt;
        function FindUnit(const aRVA:TpvUInt64):TpvSizeInt;
+       // Locates the footer, which is normally at the very end of the file but
+       // is not guaranteed to be, see the implementation.
+       function FindFooter(const aStream:TStream;out aFooter:TpvSymbolTableFooter;out aFooterPosition:TpvInt64):Boolean;
       public
        constructor Create;
        destructor Destroy; override;
@@ -211,11 +220,99 @@ begin
  end;
 end;
 
+// Code signing appends a certificate table behind the end of the image, and an
+// installer or an archiver may append a trailer of its own, so the footer is
+// only the last thing in the file for as long as nobody touches the file after
+// the table was written. Reading a fixed position would therefore find nothing
+// at all on a signed executable, and would do so without a word.
+//
+// The search walks backwards from the end instead. The magic on its own is not
+// taken as proof, since the same eight bytes can occur inside appended data by
+// chance, so a candidate only counts once its offset leads to a readable header.
+function TpvSymbolTable.FindFooter(const aStream:TStream;out aFooter:TpvSymbolTableFooter;out aFooterPosition:TpvInt64):Boolean;
+var Buffer:TpvRawByteString;
+    ScanSize,BasePosition,CandidatePosition:TpvInt64;
+    Position,Index:TpvSizeInt;
+    Candidate:TpvSymbolTableFooter;
+    Header:TpvSymbolTableHeader;
+    Matches:Boolean;
+begin
+
+ result:=false;
+ FillChar(aFooter,SizeOf(TpvSymbolTableFooter),#0);
+ aFooterPosition:=0;
+
+ ScanSize:=aStream.Size;
+ if ScanSize>pvSymbolTableFooterScanSize then begin
+  ScanSize:=pvSymbolTableFooterScanSize;
+ end;
+ if ScanSize<TpvInt64(SizeOf(TpvSymbolTableFooter)) then begin
+  exit;
+ end;
+
+ BasePosition:=aStream.Size-ScanSize;
+
+ Buffer:='';
+ SetLength(Buffer,ScanSize);
+ aStream.Seek(BasePosition,soBeginning);
+ aStream.ReadBuffer(Buffer[1],ScanSize);
+
+ for Position:=TpvSizeInt(ScanSize)-TpvSizeInt(SizeOf(TpvSymbolTableFooter)) downto 0 do begin
+
+  if Buffer[Position+1]<>pvSymbolTableMagic[0] then begin
+   continue;
+  end;
+
+  // Copied out rather than read in place, because a candidate can sit at any
+  // byte position and the offset field would then be an unaligned load.
+  Move(Buffer[Position+1],Candidate,SizeOf(TpvSymbolTableFooter));
+
+  Matches:=true;
+  for Index:=0 to 7 do begin
+   if Candidate.Magic[Index]<>pvSymbolTableMagic[Index] then begin
+    Matches:=false;
+    break;
+   end;
+  end;
+  if not Matches then begin
+   continue;
+  end;
+
+  CandidatePosition:=BasePosition+Position;
+  if (Candidate.Offset=0) or
+     (Candidate.Offset>TpvUInt64(CandidatePosition)) or
+     ((TpvUInt64(CandidatePosition)-Candidate.Offset)<TpvUInt64(SizeOf(TpvSymbolTableHeader))) then begin
+   continue;
+  end;
+
+  aStream.Seek(TpvInt64(Candidate.Offset),soBeginning);
+  aStream.ReadBuffer(Header,SizeOf(TpvSymbolTableHeader));
+
+  Matches:=true;
+  for Index:=0 to 7 do begin
+   if Header.Magic[Index]<>pvSymbolTableMagic[Index] then begin
+    Matches:=false;
+    break;
+   end;
+  end;
+
+  if Matches and (Header.Version=pvSymbolTableVersion) then begin
+   aFooter:=Candidate;
+   aFooterPosition:=CandidatePosition;
+   result:=true;
+   exit;
+  end;
+
+ end;
+
+end;
+
 function TpvSymbolTable.LoadFromFile(const aFileName:String):Boolean;
 var Stream:TFileStream;
     Footer:TpvSymbolTableFooter;
     Header:TpvSymbolTableHeader;
     Expected:TpvUInt64;
+    FooterPosition:TpvInt64;
     Index:TpvSizeInt;
 begin
 
@@ -241,17 +338,7 @@ begin
     exit;
    end;
 
-   Stream.Seek(-TpvInt64(SizeOf(TpvSymbolTableFooter)),soEnd);
-   Stream.ReadBuffer(Footer,SizeOf(TpvSymbolTableFooter));
-
-   for Index:=0 to 7 do begin
-    if Footer.Magic[Index]<>pvSymbolTableMagic[Index] then begin
-     exit;
-    end;
-   end;
-
-   if (Footer.Offset=0) or
-      (Footer.Offset>=TpvUInt64(Stream.Size-TpvInt64(SizeOf(TpvSymbolTableFooter)))) then begin
+   if not FindFooter(Stream,Footer,FooterPosition) then begin
     exit;
    end;
 
@@ -276,8 +363,10 @@ begin
              (TpvUInt64(Header.SymbolCount)*TpvUInt64(SizeOf(TpvSymbolTableSymbolEntry)))+
              (TpvUInt64(Header.LineCount)*TpvUInt64(SizeOf(TpvSymbolTableLineEntry)))+
              TpvUInt64(Header.StringSize);
+   // Measured against the footer rather than against the end of the file,
+   // since anything appended behind the footer does not belong to the table.
    if (Header.StringSize=0) or
-      (Expected>TpvUInt64(TpvInt64(Stream.Size)-TpvInt64(Footer.Offset)-TpvInt64(SizeOf(TpvSymbolTableFooter)))) then begin
+      (Expected>TpvUInt64(FooterPosition-TpvInt64(Footer.Offset))) then begin
     exit;
    end;
 
@@ -443,6 +532,10 @@ begin
    // belongs to the unit the address is in, since not every unit necessarily
    // carries line information.
    if LineEntry^.UnitIndex=TpvUInt32(UnitIndex) then begin
+    // A line number of zero is an end of sequence marker, which says that the
+    // code described by the records before it has stopped here. Carrying it
+    // over is exactly right: it leaves the line unknown for an address in a
+    // hole inside a unit, rather than naming the last line before the hole.
     aLocation.LineNumber:=LineEntry^.LineNumber;
    end;
   end;

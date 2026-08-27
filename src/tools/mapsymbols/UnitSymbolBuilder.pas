@@ -40,6 +40,9 @@ type TSymbolBuilder=class
              UnitIndex:TpvUInt32;
             end;
             TLineRecords=array of TLineRecord;
+            // A fingerprint of everything which was collected, wide enough to
+            // be used as a debug identity.
+            TDigest=array[0..15] of TpvUInt8;
       private
        fUnits:TUnitRecords;
        fSymbols:TSymbolRecords;
@@ -50,6 +53,8 @@ type TSymbolBuilder=class
        fStringStream:TMemoryStream;
        fUniqueStrings:TStringList;
        fImageBase:TpvUInt64;
+       fStripPaths:Boolean;
+       function PreparePath(const aFileName:String):String;
        procedure SortUnits(const aLeft,aRight:TpvSizeInt);
        procedure SortSymbols(const aLeft,aRight:TpvSizeInt);
        procedure SortLines(const aLeft,aRight:TpvSizeInt);
@@ -72,9 +77,16 @@ type TSymbolBuilder=class
        // Reads the written table back through the public reader and checks that
        // a spread of line records resolves to the line it was built from.
        function SelfCheck(const aFileName:String;out aResolved,aProbes:TpvSizeInt):Boolean;
+       // Digests the collected content, see the implementation for why a
+       // counter would not do.
+       procedure ComputeDigest(out aDigest:TDigest);
        // Link time base of the image, written into the header so that the
        // reader can turn a load bias back into a base at runtime.
        property ImageBase:TpvUInt64 read fImageBase write fImageBase;
+       // When set, only the base name of a source file is kept. A shipped
+       // binary otherwise carries the full build tree of whoever built it,
+       // which says more about that machine than a crash log needs to.
+       property StripPaths:Boolean read fStripPaths write fStripPaths;
        // Read access for the writers, which need the collected data again in a
        // different shape. Only valid after Finish, since that is what sorts it.
        function GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
@@ -99,6 +111,16 @@ begin
  fStringStream:=nil;
  fUniqueStrings:=nil;
  fImageBase:=0;
+ fStripPaths:=false;
+end;
+
+function TSymbolBuilder.PreparePath(const aFileName:String):String;
+begin
+ if fStripPaths then begin
+  result:=ExtractFileName(aFileName);
+ end else begin
+  result:=aFileName;
+ end;
 end;
 
 destructor TSymbolBuilder.Destroy;
@@ -117,7 +139,7 @@ begin
   SetLength(fUnits,(fUnitCount+1)*2);
  end;
  fUnits[fUnitCount].Name:=aName;
- fUnits[fUnitCount].FileName:=aFileName;
+ fUnits[fUnitCount].FileName:=PreparePath(aFileName);
  fUnits[fUnitCount].StartRVA:=aStartRVA;
  fUnits[fUnitCount].Size:=aSize;
  fUnits[fUnitCount].NameOffset:=0;
@@ -152,9 +174,75 @@ var Index:TpvSizeInt;
 begin
  for Index:=0 to fUnitCount-1 do begin
   if SameText(fUnits[Index].Name,aUnitName) and (length(fUnits[Index].FileName)=0) then begin
-   fUnits[Index].FileName:=aFileName;
+   fUnits[Index].FileName:=PreparePath(aFileName);
   end;
  end;
+end;
+
+// A fingerprint over everything which was collected, so that two builds which
+// differ anywhere in their units, symbols or line records end up with different
+// identities, while building the same input twice keeps giving the same one.
+//
+// A counter of any kind will not do here. Two builds with the same number of
+// line records are the normal case for a small change, and anything which
+// caches debug information by identity, a symbol server or a debugger, would
+// then quietly hand out the symbols of the wrong build.
+procedure TSymbolBuilder.ComputeDigest(out aDigest:TSymbolBuilder.TDigest);
+var Index:TpvSizeInt;
+    Low,High:TpvUInt64;
+
+ procedure Feed(const aValue:TpvUInt64);
+ begin
+  Low:=Low xor aValue;
+  Low:=Low*TpvUInt64($00000100000001b3);
+  Low:=Low xor (Low shr 29);
+  inc(High,Low xor TpvUInt64($9e3779b97f4a7c15));
+  High:=High*TpvUInt64($ff51afd7ed558ccd);
+  High:=High xor (High shr 32);
+ end;
+
+ procedure FeedString(const aValue:String);
+ var Position:TpvSizeInt;
+ begin
+  Feed(TpvUInt64(length(aValue)));
+  for Position:=1 to length(aValue) do begin
+   Feed(TpvUInt64(Ord(aValue[Position])));
+  end;
+ end;
+
+begin
+
+ Low:=TpvUInt64($cbf29ce484222325);
+ High:=TpvUInt64($9e3779b97f4a7c15);
+
+ Feed(fImageBase);
+
+ Feed(TpvUInt64(fUnitCount));
+ for Index:=0 to fUnitCount-1 do begin
+  Feed(fUnits[Index].StartRVA);
+  Feed(fUnits[Index].Size);
+  FeedString(fUnits[Index].Name);
+  FeedString(fUnits[Index].FileName);
+ end;
+
+ Feed(TpvUInt64(fSymbolCount));
+ for Index:=0 to fSymbolCount-1 do begin
+  Feed(fSymbols[Index].RVA);
+  FeedString(fSymbols[Index].Name);
+ end;
+
+ Feed(TpvUInt64(fLineCount));
+ for Index:=0 to fLineCount-1 do begin
+  Feed(fLines[Index].RVA);
+  Feed(TpvUInt64(fLines[Index].LineNumber));
+  Feed(TpvUInt64(fLines[Index].UnitIndex));
+ end;
+
+ for Index:=0 to 7 do begin
+  aDigest[Index]:=TpvUInt8((Low shr (Index shl 3)) and $ff);
+  aDigest[Index+8]:=TpvUInt8((High shr (Index shl 3)) and $ff);
+ end;
+
 end;
 
 function TSymbolBuilder.GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
@@ -454,10 +542,15 @@ begin
   end;
   Index:=0;
   while (Index<fLineCount) and (aProbes<64) do begin
-   inc(aProbes);
-   if SymbolTable.Resolve(fLines[Index].RVA,Location) and
-      (Location.LineNumber=fLines[Index].LineNumber) then begin
-    inc(aResolved);
+   // End of sequence markers are skipped rather than probed. They would match
+   // trivially, since both sides are then zero, and would only water down what
+   // the count says.
+   if fLines[Index].LineNumber>0 then begin
+    inc(aProbes);
+    if SymbolTable.Resolve(fLines[Index].RVA,Location) and
+       (Location.LineNumber=fLines[Index].LineNumber) then begin
+     inc(aResolved);
+    end;
    end;
    inc(Index,Step);
   end;

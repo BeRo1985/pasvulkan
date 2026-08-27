@@ -223,6 +223,7 @@ var UnitRecord:TSymbolBuilder.TUnitRecord;
     CurrentAddress,RowAddress:TpvUInt64;
     CurrentLine:TpvInt64;
     ImageBase:TpvUInt64;
+    InSequence:Boolean;
 begin
 
  UnitRecord:=fBuilder.GetUnit(aUnitIndex);
@@ -280,13 +281,34 @@ begin
 
  CurrentAddress:=0;
  CurrentLine:=1;
+ InSequence:=false;
 
  for Index:=aFirstLine to aLastLine do begin
 
   LineRecord:=fBuilder.GetLine(Index);
   RowAddress:=ImageBase+LineRecord.RVA;
 
-  if Index=aFirstLine then begin
+  // A line number of zero is an end of sequence marker rather than a row. It is
+  // written out as one, which is what keeps the last line of the sequence from
+  // being carried on over the gap behind it.
+  if LineRecord.LineNumber=0 then begin
+   if InSequence then begin
+    if RowAddress>CurrentAddress then begin
+     WriteByte(fDebugLine,DW_LNS_advance_pc);
+     WriteULEB128(fDebugLine,RowAddress-CurrentAddress);
+     CurrentAddress:=RowAddress;
+    end;
+    WriteByte(fDebugLine,0);
+    WriteULEB128(fDebugLine,1);
+    WriteByte(fDebugLine,DW_LNE_end_sequence);
+    // The state machine starts over behind an end of sequence.
+    InSequence:=false;
+    CurrentLine:=1;
+   end;
+   continue;
+  end;
+
+  if not InSequence then begin
    // A sequence has to start by stating where it is.
    WriteByte(fDebugLine,0);
    WriteULEB128(fDebugLine,9);
@@ -295,6 +317,7 @@ begin
    CurrentAddress:=RowAddress;
    WriteByte(fDebugLine,DW_LNS_set_file);
    WriteULEB128(fDebugLine,1);
+   InSequence:=true;
   end else if RowAddress>CurrentAddress then begin
    WriteByte(fDebugLine,DW_LNS_advance_pc);
    WriteULEB128(fDebugLine,RowAddress-CurrentAddress);
@@ -311,14 +334,17 @@ begin
 
  end;
 
- // Close the sequence one past the last byte of the unit.
- if (ImageBase+UnitRecord.StartRVA+UnitRecord.Size)>CurrentAddress then begin
-  WriteByte(fDebugLine,DW_LNS_advance_pc);
-  WriteULEB128(fDebugLine,(ImageBase+UnitRecord.StartRVA+UnitRecord.Size)-CurrentAddress);
+ // Close the last sequence one past the last byte of the unit, unless a marker
+ // has closed it already.
+ if InSequence then begin
+  if (ImageBase+UnitRecord.StartRVA+UnitRecord.Size)>CurrentAddress then begin
+   WriteByte(fDebugLine,DW_LNS_advance_pc);
+   WriteULEB128(fDebugLine,(ImageBase+UnitRecord.StartRVA+UnitRecord.Size)-CurrentAddress);
+  end;
+  WriteByte(fDebugLine,0);
+  WriteULEB128(fDebugLine,1);
+  WriteByte(fDebugLine,DW_LNE_end_sequence);
  end;
- WriteByte(fDebugLine,0);
- WriteULEB128(fDebugLine,1);
- WriteByte(fDebugLine,DW_LNE_end_sequence);
 
  // Patch the unit length, which counts from behind its own field.
  EndPosition:=fDebugLine.Position;

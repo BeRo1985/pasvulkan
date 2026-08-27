@@ -54,6 +54,7 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        fSymbolTableOffset:TpvUInt64;
        fSymbolCount:TpvUInt32;
        fELF64:Boolean;
+       fMachine:TpvUInt16;
        function StringTableOffset:TpvInt64;
        function ReadStringTableEntry(const aOffset:TpvInt64):String;
        function ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
@@ -88,11 +89,26 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        property CodeLow:TpvUInt64 read fCodeLow;
        property CodeHigh:TpvUInt64 read fCodeHigh;
        property Sections:TImageSections read fSections;
+       // The processor the image was built for, as the value a COFF header
+       // uses. An ELF machine is translated into the matching one, so that a
+       // consumer does not have to know which container this came out of.
+       property Machine:TpvUInt16 read fMachine;
      end;
 
 implementation
 
-const PT_LOAD=TpvUInt32(1);
+const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
+      IMAGE_FILE_MACHINE_I386=TpvUInt16($014c);
+      IMAGE_FILE_MACHINE_ARMNT=TpvUInt16($01c4);
+      IMAGE_FILE_MACHINE_AMD64=TpvUInt16($8664);
+      IMAGE_FILE_MACHINE_ARM64=TpvUInt16($aa64);
+
+      EM_386=TpvUInt16(3);
+      EM_ARM=TpvUInt16(40);
+      EM_X86_64=TpvUInt16(62);
+      EM_AARCH64=TpvUInt16(183);
+
+      PT_LOAD=TpvUInt32(1);
 
       SHF_EXECINSTR=TpvUInt64($4);
       SHF_ALLOC=TpvUInt64($2);
@@ -111,6 +127,7 @@ begin
  fSymbolTableOffset:=0;
  fSymbolCount:=0;
  fELF64:=true;
+ fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
 end;
 
 destructor TImageFile.Destroy;
@@ -275,6 +292,9 @@ begin
 
  // COFF file header: machine, number of sections, time stamp, symbol table
  // pointer, symbol count, size of the optional header, characteristics.
+ fStream.Seek(TpvInt64(NewHeaderOffset)+4,soBeginning);
+ fStream.ReadBuffer(fMachine,SizeOf(TpvUInt16));
+
  fStream.Seek(TpvInt64(NewHeaderOffset)+6,soBeginning);
  fStream.ReadBuffer(NumberOfSections,SizeOf(TpvUInt16));
  fStream.Seek(TpvInt64(NewHeaderOffset)+12,soBeginning);
@@ -332,6 +352,7 @@ end;
 
 function TImageFile.ReadELF:Boolean;
 var ELFClass,DataEncoding:TpvUInt8;
+    ELFMachine:TpvUInt16;
     ProgramHeaderOffset,SectionHeaderOffset:TpvUInt64;
     ProgramHeaderEntrySize,ProgramHeaderCount:TpvUInt16;
     SectionHeaderEntrySize,SectionHeaderCount,SectionNameIndex:TpvUInt16;
@@ -356,6 +377,26 @@ begin
   exit;
  end;
  fELF64:=true;
+
+ fStream.Seek($12,soBeginning);
+ fStream.ReadBuffer(ELFMachine,SizeOf(TpvUInt16));
+ case ELFMachine of
+  EM_386:begin
+   fMachine:=IMAGE_FILE_MACHINE_I386;
+  end;
+  EM_ARM:begin
+   fMachine:=IMAGE_FILE_MACHINE_ARMNT;
+  end;
+  EM_X86_64:begin
+   fMachine:=IMAGE_FILE_MACHINE_AMD64;
+  end;
+  EM_AARCH64:begin
+   fMachine:=IMAGE_FILE_MACHINE_ARM64;
+  end;
+  else begin
+   fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
+  end;
+ end;
 
  fStream.Seek($20,soBeginning);
  fStream.ReadBuffer(ProgramHeaderOffset,SizeOf(TpvUInt64));

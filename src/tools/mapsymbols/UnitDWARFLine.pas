@@ -9,9 +9,10 @@
 //
 // The line number program is a little state machine described in the DWARF
 // standard. Versions 2, 3 and 4 differ only in one extra header field, and both
-// FreePascal and Delphi emit version 2 here, so those are handled. Version 5
-// replaced the directory and file tables with a form encoded variant, which is
-// detected and skipped rather than guessed at.
+// FreePascal and Delphi emit version 2 here. Version 5 replaced the directory
+// and file tables with a form encoded variant, and moved the strings out into
+// their own sections, which is handled as well: linked in C objects bring it
+// along even where the Pascal compiler does not emit it.
 unit UnitDWARFLine;
 {$ifdef fpc}
  {$mode delphi}
@@ -37,6 +38,9 @@ type // A line number of zero marks the end of a sequence. Such a row has no
      // of an entire unit.
      TDWARFLineUnitEvent=procedure(const aFileName:String) of object;
 
+     // The content types and forms which describe one version 5 table entry.
+     TDWARFLineFormArray=array of TpvUInt64;
+
      TDWARFLineReader=class
       private
        fData:PpvUInt8;
@@ -45,6 +49,10 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        fUnitCount:TpvSizeInt;
        fRowCount:TpvSizeInt;
        fSkippedUnitCount:TpvSizeInt;
+       fLineStrData:PpvUInt8;
+       fLineStrSize:TpvSizeInt;
+       fStrData:PpvUInt8;
+       fStrSize:TpvSizeInt;
        function AtEnd:Boolean;
        function ReadUInt8:TpvUInt8;
        function ReadUInt16:TpvUInt16;
@@ -53,8 +61,22 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        function ReadULEB128:TpvUInt64;
        function ReadSLEB128:TpvInt64;
        function ReadString:String;
+       function StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):String;
+       // Reads or steps over one value of the given form. Version 5 describes
+       // its tables through forms, so both are needed to get at the entries.
+       // Returns false for a form this does not know, which makes the unit
+       // unusable, since the position in the stream is then lost.
+       function SkipForm(const aForm:TpvUInt64;const aIs64Bit:Boolean):Boolean;
+       function ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:String):Boolean;
+       function ReadFormUnsigned(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:TpvUInt64):Boolean;
+       function ReadEntryFormat(out aTypes,aForms:TDWARFLineFormArray):Boolean;
+       function ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:String;out aDirectoryIndex:TpvInt64):Boolean;
       public
        constructor Create(const aData:TpvPointer;const aSize:TpvSizeInt);
+       // Hands over the sections version 5 keeps its path strings in. Without
+       // them a version 5 unit still yields its rows, only the file name stays
+       // empty.
+       procedure SetStringSections(const aLineStrData:TpvPointer;const aLineStrSize:TpvSizeInt;const aStrData:TpvPointer;const aStrSize:TpvSizeInt);
        function Parse(const aOnRow:TDWARFLineRowEvent;const aOnUnit:TDWARFLineUnitEvent):Boolean;
        property UnitCount:TpvSizeInt read fUnitCount;
        property RowCount:TpvSizeInt read fRowCount;
@@ -80,6 +102,32 @@ const DW_LNS_copy=1;
       DW_LNE_set_address=2;
       DW_LNE_define_file=3;
 
+      // Content types of a version 5 directory or file entry.
+      DW_LNCT_path=1;
+      DW_LNCT_directory_index=2;
+
+      DW_FORM_block2=$03;
+      DW_FORM_block4=$04;
+      DW_FORM_data2=$05;
+      DW_FORM_data4=$06;
+      DW_FORM_data8=$07;
+      DW_FORM_string=$08;
+      DW_FORM_block=$09;
+      DW_FORM_block1=$0a;
+      DW_FORM_data1=$0b;
+      DW_FORM_flag=$0c;
+      DW_FORM_sdata=$0d;
+      DW_FORM_strp=$0e;
+      DW_FORM_udata=$0f;
+      DW_FORM_sec_offset=$17;
+      DW_FORM_strx=$1a;
+      DW_FORM_data16=$1e;
+      DW_FORM_line_strp=$1f;
+      DW_FORM_strx1=$25;
+      DW_FORM_strx2=$26;
+      DW_FORM_strx3=$27;
+      DW_FORM_strx4=$28;
+
 constructor TDWARFLineReader.Create(const aData:TpvPointer;const aSize:TpvSizeInt);
 begin
  inherited Create;
@@ -89,6 +137,162 @@ begin
  fUnitCount:=0;
  fRowCount:=0;
  fSkippedUnitCount:=0;
+ fLineStrData:=nil;
+ fLineStrSize:=0;
+ fStrData:=nil;
+ fStrSize:=0;
+end;
+
+procedure TDWARFLineReader.SetStringSections(const aLineStrData:TpvPointer;const aLineStrSize:TpvSizeInt;const aStrData:TpvPointer;const aStrSize:TpvSizeInt);
+begin
+ fLineStrData:=PpvUInt8(aLineStrData);
+ fLineStrSize:=aLineStrSize;
+ fStrData:=PpvUInt8(aStrData);
+ fStrSize:=aStrSize;
+end;
+
+// Reads a zero terminated string out of one of the string sections.
+function TDWARFLineReader.StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):String;
+var Position,Start:TpvSizeInt;
+    Raw:TpvRawByteString;
+begin
+ result:='';
+ if (not assigned(aData)) or (aOffset>=TpvUInt64(aSize)) then begin
+  exit;
+ end;
+ Start:=TpvSizeInt(aOffset);
+ Position:=Start;
+ while (Position<aSize) and (PpvUInt8(TpvPointer(TpvPtrUInt(TpvPtrUInt(aData)+TpvPtrUInt(Position))))^<>0) do begin
+  inc(Position);
+ end;
+ if Position>Start then begin
+  SetLength(Raw,Position-Start);
+  Move(PpvUInt8(TpvPointer(TpvPtrUInt(TpvPtrUInt(aData)+TpvPtrUInt(Start))))^,Raw[1],Position-Start);
+  result:=String(Raw);
+ end;
+end;
+
+function TDWARFLineReader.SkipForm(const aForm:TpvUInt64;const aIs64Bit:Boolean):Boolean;
+var Length:TpvUInt64;
+begin
+ result:=true;
+ case aForm of
+  DW_FORM_string:begin
+   ReadString;
+  end;
+  DW_FORM_flag,DW_FORM_data1,DW_FORM_strx1:begin
+   ReadUInt8;
+  end;
+  DW_FORM_data2,DW_FORM_strx2:begin
+   ReadUInt16;
+  end;
+  DW_FORM_strx3:begin
+   ReadUInt8;
+   ReadUInt16;
+  end;
+  DW_FORM_data4,DW_FORM_strx4:begin
+   ReadUInt32;
+  end;
+  DW_FORM_data8:begin
+   ReadUInt64;
+  end;
+  DW_FORM_data16:begin
+   ReadUInt64;
+   ReadUInt64;
+  end;
+  DW_FORM_udata,DW_FORM_strx:begin
+   ReadULEB128;
+  end;
+  DW_FORM_sdata:begin
+   ReadSLEB128;
+  end;
+  DW_FORM_strp,DW_FORM_line_strp,DW_FORM_sec_offset:begin
+   if aIs64Bit then begin
+    ReadUInt64;
+   end else begin
+    ReadUInt32;
+   end;
+  end;
+  DW_FORM_block1:begin
+   inc(fPosition,ReadUInt8);
+  end;
+  DW_FORM_block2:begin
+   inc(fPosition,ReadUInt16);
+  end;
+  DW_FORM_block4:begin
+   inc(fPosition,ReadUInt32);
+  end;
+  DW_FORM_block:begin
+   Length:=ReadULEB128;
+   inc(fPosition,TpvSizeInt(Length));
+  end;
+  else begin
+   // Unknown, and since a form carries no length of its own there is no way to
+   // step past it. Saying so is the only honest answer.
+   result:=false;
+  end;
+ end;
+end;
+
+function TDWARFLineReader.ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:String):Boolean;
+var Offset:TpvUInt64;
+begin
+ result:=true;
+ aValue:='';
+ case aForm of
+  DW_FORM_string:begin
+   aValue:=ReadString;
+  end;
+  DW_FORM_line_strp:begin
+   if aIs64Bit then begin
+    Offset:=ReadUInt64;
+   end else begin
+    Offset:=ReadUInt32;
+   end;
+   aValue:=StringAt(fLineStrData,fLineStrSize,Offset);
+  end;
+  DW_FORM_strp:begin
+   if aIs64Bit then begin
+    Offset:=ReadUInt64;
+   end else begin
+    Offset:=ReadUInt32;
+   end;
+   aValue:=StringAt(fStrData,fStrSize,Offset);
+  end;
+  else begin
+   // Anything else, the indexed string forms in particular, needs the string
+   // offsets table of the compilation unit, which lives in a section this
+   // reader deliberately does not read. The entry is stepped over instead, so
+   // the unit still yields its rows without a file name.
+   result:=SkipForm(aForm,aIs64Bit);
+  end;
+ end;
+end;
+
+function TDWARFLineReader.ReadFormUnsigned(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:TpvUInt64):Boolean;
+begin
+ result:=true;
+ aValue:=0;
+ case aForm of
+  DW_FORM_data1:begin
+   aValue:=ReadUInt8;
+  end;
+  DW_FORM_data2:begin
+   aValue:=ReadUInt16;
+  end;
+  DW_FORM_data4:begin
+   aValue:=ReadUInt32;
+  end;
+  DW_FORM_data8:begin
+   aValue:=ReadUInt64;
+  end;
+  DW_FORM_udata:begin
+   aValue:=ReadULEB128;
+  end;
+  else begin
+   result:=SkipForm(aForm,aIs64Bit);
+  end;
+ end;
 end;
 
 function TDWARFLineReader.AtEnd:Boolean;
@@ -175,6 +379,51 @@ begin
  end;
 end;
 
+// Reads the description of what each entry of a version 5 directory or file
+// table holds, as a list of content type and form pairs.
+function TDWARFLineReader.ReadEntryFormat(out aTypes,aForms:TDWARFLineFormArray):Boolean;
+var Count,Index:TpvSizeInt;
+begin
+ Count:=ReadUInt8;
+ SetLength(aTypes,Count);
+ SetLength(aForms,Count);
+ for Index:=0 to Count-1 do begin
+  aTypes[Index]:=ReadULEB128;
+  aForms[Index]:=ReadULEB128;
+ end;
+ result:=not AtEnd;
+end;
+
+// Reads one entry of such a table, keeping the path and the directory it
+// belongs to and stepping over everything else.
+function TDWARFLineReader.ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:String;out aDirectoryIndex:TpvInt64):Boolean;
+var Index:TpvSizeInt;
+    Value:TpvUInt64;
+begin
+ result:=true;
+ aName:='';
+ // Nothing said means the compilation directory, which this reader has no name
+ // for, so the path is left as it stands.
+ aDirectoryIndex:=-1;
+ for Index:=0 to length(aTypes)-1 do begin
+  case aTypes[Index] of
+   DW_LNCT_path:begin
+    result:=ReadFormString(aForms[Index],aIs64Bit,aName);
+   end;
+   DW_LNCT_directory_index:begin
+    result:=ReadFormUnsigned(aForms[Index],aIs64Bit,Value);
+    aDirectoryIndex:=TpvInt64(Value);
+   end;
+   else begin
+    result:=SkipForm(aForms[Index],aIs64Bit);
+   end;
+  end;
+  if not result then begin
+   break;
+  end;
+ end;
+end;
+
 function TDWARFLineReader.Parse(const aOnRow:TDWARFLineRowEvent;const aOnUnit:TDWARFLineUnitEvent):Boolean;
 var UnitLength:TpvUInt64;
     UnitEnd,ProgramStart:TpvSizeInt;
@@ -192,7 +441,10 @@ var UnitLength:TpvUInt64;
     FileNames:TStringList;
     FileDirectories:array of TpvInt32;
     Name,PrimaryFileName,Directory:String;
-    DirectoryIndex:TpvUInt64;
+    DirectoryIndex:TpvInt64;
+    EntryTypes,EntryForms:TDWARFLineFormArray;
+    EntryCount:TpvUInt64;
+    Usable:Boolean;
     Address:TpvUInt64;
     Line:TpvInt64;
     Opcode,SubOpcode:TpvUInt8;
@@ -246,13 +498,19 @@ begin
   UnitEnd:=fPosition+TpvSizeInt(UnitLength);
 
   Version:=ReadUInt16;
-  if (Version<2) or (Version>4) then begin
-   // Version 5 encodes the directory and file tables through forms, which is a
-   // different parser. Skipping is honest, guessing would silently produce
-   // wrong line numbers.
+  if (Version<2) or (Version>5) then begin
+   // Anything outside this is a version whose header layout is unknown, and
+   // guessing at it would silently produce wrong line numbers.
    inc(fSkippedUnitCount);
    fPosition:=UnitEnd;
    continue;
+  end;
+
+  if Version>=5 then begin
+   // Two fields which the earlier versions do not have, sitting in front of the
+   // header length rather than behind it.
+   ReadUInt8; // address size
+   ReadUInt8; // segment selector size
   end;
 
   if Is64Bit then begin
@@ -288,25 +546,74 @@ begin
   FileNames:=TStringList.Create;
   try
 
-   repeat
-    Name:=ReadString;
-    if length(Name)>0 then begin
-     Directories.Add(Name);
-    end;
-   until (length(Name)=0) or AtEnd;
-
    FileDirectories:=nil;
-   repeat
-    Name:=ReadString;
-    if length(Name)>0 then begin
-     DirectoryIndex:=ReadULEB128;
-     ReadULEB128; // modification time
-     ReadULEB128; // file length
-     SetLength(FileDirectories,FileNames.Count+1);
-     FileDirectories[FileNames.Count]:=TpvInt32(DirectoryIndex);
-     FileNames.Add(Name);
+   Usable:=true;
+
+   if Version>=5 then begin
+
+    // Both tables are preceded by a description of what each of their entries
+    // holds, as a list of content type and form pairs, so the entries can only
+    // be read by walking that description.
+    Usable:=ReadEntryFormat(EntryTypes,EntryForms);
+    if Usable then begin
+     EntryCount:=ReadULEB128;
+     for Index:=0 to TpvSizeInt(EntryCount)-1 do begin
+      if not ReadEntry(EntryTypes,EntryForms,Is64Bit,Name,DirectoryIndex) then begin
+       Usable:=false;
+       break;
+      end;
+      Directories.Add(Name);
+     end;
     end;
-   until (length(Name)=0) or AtEnd;
+
+    if Usable then begin
+     Usable:=ReadEntryFormat(EntryTypes,EntryForms);
+    end;
+    if Usable then begin
+     EntryCount:=ReadULEB128;
+     for Index:=0 to TpvSizeInt(EntryCount)-1 do begin
+      if not ReadEntry(EntryTypes,EntryForms,Is64Bit,Name,DirectoryIndex) then begin
+       Usable:=false;
+       break;
+      end;
+      SetLength(FileDirectories,FileNames.Count+1);
+      // Version 5 indexes the directory table from zero, where the earlier
+      // versions reserve zero for the compilation directory. Stored normalized
+      // here, so that everything below is version independent.
+      FileDirectories[FileNames.Count]:=TpvInt32(DirectoryIndex);
+      FileNames.Add(Name);
+     end;
+    end;
+
+   end else begin
+
+    repeat
+     Name:=ReadString;
+     if length(Name)>0 then begin
+      Directories.Add(Name);
+     end;
+    until (length(Name)=0) or AtEnd;
+
+    repeat
+     Name:=ReadString;
+     if length(Name)>0 then begin
+      DirectoryIndex:=ReadULEB128;
+      ReadULEB128; // modification time
+      ReadULEB128; // file length
+      SetLength(FileDirectories,FileNames.Count+1);
+      // See above, made zero based to match what version 5 stores.
+      FileDirectories[FileNames.Count]:=TpvInt32(DirectoryIndex)-1;
+      FileNames.Add(Name);
+     end;
+    until (length(Name)=0) or AtEnd;
+
+   end;
+
+   if not Usable then begin
+    inc(fSkippedUnitCount);
+    fPosition:=UnitEnd;
+    continue;
+   end;
 
    // The first file entry is the primary source of the compilation unit, which
    // for Pascal is the unit itself. Line rows which point into an include file
@@ -314,8 +621,8 @@ begin
    PrimaryFileName:='';
    if FileNames.Count>0 then begin
     PrimaryFileName:=FileNames[0];
-    if (FileDirectories[0]>0) and (FileDirectories[0]<=Directories.Count) then begin
-     Directory:=Directories[FileDirectories[0]-1];
+    if (FileDirectories[0]>=0) and (FileDirectories[0]<Directories.Count) then begin
+     Directory:=Directories[FileDirectories[0]];
      if (length(Directory)>0) and
         (Directory[length(Directory)]<>'/') and
         (Directory[length(Directory)]<>'\') then begin

@@ -49,6 +49,7 @@ type TPDBSection=record
        fMSF:TMSFWriter;
        fAge:TpvUInt32;
        fSignature:TpvUInt32;
+       fMachine:TpvUInt16;
        fGUID:array[0..15] of TpvUInt8;
        fSections:TPDBSections;
        fSectionCount:TpvSizeInt;
@@ -87,14 +88,20 @@ type TPDBSection=record
        // The sections of the image, needed because a PDB addresses code as a
        // section and an offset rather than as an address.
        procedure AddSection(const aName:String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
-       // The signature and age end up in the executable as well, so that the two
-       // can be recognized as belonging together.
-       procedure SetIdentity(const aSignature,aAge:TpvUInt32);
+       // The guid and age end up in the executable as well, so that the two can
+       // be recognized as belonging together. The guid is the digest of the
+       // collected content, which is what makes one build distinguishable from
+       // the next.
+       procedure SetIdentity(const aDigest:TSymbolBuilder.TDigest;const aAge:TpvUInt32);
        procedure SaveToFile(const aFileName:String);
        property Age:TpvUInt32 read fAge;
        property Signature:TpvUInt32 read fSignature;
        // The identity the executable has to repeat in its debug directory.
        function GUIDPointer:TpvPointer;
+       // The processor the image was built for. Written into the debug
+       // information header, where a wrong value makes a debugger disassemble
+       // for the wrong architecture.
+       property Machine:TpvUInt16 read fMachine write fMachine;
      end;
 
 implementation
@@ -127,6 +134,7 @@ begin
  fMSF:=TMSFWriter.Create;
  fAge:=1;
  fSignature:=0;
+ fMachine:=IMAGE_FILE_MACHINE_AMD64;
  for Index:=0 to 15 do begin
   fGUID[Index]:=0;
  end;
@@ -199,16 +207,19 @@ begin
  end;
 end;
 
-procedure TPDBWriter.SetIdentity(const aSignature,aAge:TpvUInt32);
+procedure TPDBWriter.SetIdentity(const aDigest:TSymbolBuilder.TDigest;const aAge:TpvUInt32);
 var Index:TpvSizeInt;
 begin
- fSignature:=aSignature;
  fAge:=aAge;
- // A GUID derived from the signature, so that rebuilding the same input twice
- // yields the same identity and a stale PDB is recognized as stale.
  for Index:=0 to 15 do begin
-  fGUID[Index]:=TpvUInt8((aSignature shr ((Index and 3) shl 3)) xor TpvUInt32(Index*37));
+  fGUID[Index]:=aDigest[Index];
  end;
+ // The stream header still carries the older, narrower signature next to the
+ // guid. It is taken from the same digest so that the two cannot disagree.
+ fSignature:=TpvUInt32(aDigest[0]) or
+             (TpvUInt32(aDigest[1]) shl 8) or
+             (TpvUInt32(aDigest[2]) shl 16) or
+             (TpvUInt32(aDigest[3]) shl 24);
 end;
 
 function TPDBWriter.GUIDPointer:TpvPointer;
@@ -358,10 +369,12 @@ begin
   WriteUInt16(Lines,0); // padding to four
 
   // And the line numbers, as one block referring to the only file above.
+  // A line number of zero marks the end of a sequence rather than a line, and
+  // a pdb has no way of saying that, so those records are left out here.
   LineCount:=0;
   for Index:=0 to fBuilder.LineCount-1 do begin
    LineRecord:=fBuilder.GetLine(Index);
-   if LineRecord.UnitIndex=TpvUInt32(aUnitIndex) then begin
+   if (LineRecord.UnitIndex=TpvUInt32(aUnitIndex)) and (LineRecord.LineNumber>0) then begin
     inc(LineCount);
    end;
   end;
@@ -370,7 +383,7 @@ begin
 
    for Index:=0 to fBuilder.LineCount-1 do begin
     LineRecord:=fBuilder.GetLine(Index);
-    if LineRecord.UnitIndex<>TpvUInt32(aUnitIndex) then begin
+    if (LineRecord.UnitIndex<>TpvUInt32(aUnitIndex)) or (LineRecord.LineNumber=0) then begin
      continue;
     end;
     WriteUInt32(LineBlock,TpvUInt32(LineRecord.RVA-UnitLow));
@@ -1007,7 +1020,7 @@ begin
   WriteInt32(aStream,TpvInt32(EditAndContinue.Size));
 
   WriteUInt16(aStream,0);            // flags
-  WriteUInt16(aStream,IMAGE_FILE_MACHINE_AMD64);
+  WriteUInt16(aStream,fMachine);
   WriteUInt32(aStream,0);            // padding
 
   // The substreams follow the header in exactly this order.

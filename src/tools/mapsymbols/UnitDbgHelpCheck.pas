@@ -126,6 +126,12 @@ begin
   while (Index<aBuilder.LineCount) and (aProbes<32) do begin
 
    LineRecord:=aBuilder.GetLine(Index);
+   if LineRecord.LineNumber=0 then begin
+    // An end of sequence marker, which is not a line and is not written into
+    // the pdb either.
+    inc(Index,Step);
+    continue;
+   end;
    inc(aProbes);
 
    FillChar(Symbol,SizeOf(Symbol),0);

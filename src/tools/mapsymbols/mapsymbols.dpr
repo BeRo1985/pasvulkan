@@ -140,11 +140,13 @@ begin
   end;
  end;
 
- // A line number of zero is an end of sequence marker, which bounds the code
- // but is not a line of its own.
- if aLineNumber>0 then begin
-  Builder.AddLine(aAddress-ImageBase,aLineNumber);
- end;
+ // A line number of zero is an end of sequence marker. It is not a line of its
+ // own, but it is kept, because it is the only thing which says where the code
+ // described by the rows before it stops. Dropping it would leave a hole inside
+ // a unit, a routine without line information or padding between two sequences,
+ // looking like a continuation of the line in front of it, and a reader would
+ // then name that line with full confidence.
+ Builder.AddLine(aAddress-ImageBase,aLineNumber);
 
 end;
 
@@ -273,6 +275,7 @@ end;
 function WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String):TPDBWriter;
 var PDBWriter:TPDBWriter;
     Index:TpvSizeInt;
+    Digest:TSymbolBuilder.TDigest;
 begin
  PDBWriter:=TPDBWriter.Create(aBuilder);
  result:=PDBWriter;
@@ -284,9 +287,12 @@ begin
                         TpvUInt32(aImage.Sections[Index].RawSize),
                         0);
   end;
-  // The signature is derived from what was collected rather than from the
-  // clock, so that building the same input twice gives the same identity.
-  PDBWriter.SetIdentity(TpvUInt32(aBuilder.LineCount*2654435761),1);
+  // The identity is a digest of what was collected rather than the clock, so
+  // that building the same input twice gives the same identity while two
+  // builds which differ anywhere do not.
+  PDBWriter.Machine:=aImage.Machine;
+  aBuilder.ComputeDigest(Digest);
+  PDBWriter.SetIdentity(Digest,1);
   PDBWriter.SaveToFile(aFileName);
   WriteLn('Wrote ',aFileName,'.');
  except
@@ -297,7 +303,7 @@ end;
 
 var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     ParameterIndex:TpvSizeInt;
-    WantSymbols,WantLines,ForceMap,ForceDWARF:Boolean;
+    WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths:Boolean;
     DebugOutputFileName:String;
     InjectIntoExecutable:Boolean;
     PDBOutputFileName:String;
@@ -305,7 +311,9 @@ var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     PDBWriter:TPDBWriter;
     Image,DebugImage,SymbolImage:TImageFile;
     Section:TImageSection;
-    LineData:TMemoryStream;
+    LineData,LineStringData,StringData:TMemoryStream;
+    LineStringMemory,StringMemory:TpvPointer;
+    LineStringSize,StringSize:TpvSizeInt;
     DWARFReader:TDWARFLineReader;
     MapReader:TMapFileReader;
     Builder:TSymbolBuilder;
@@ -320,6 +328,7 @@ begin
  ExecutableFileName:='';
  MapFileName:='';
  WantSymbols:=true;
+ StripPaths:=false;
  WantLines:=true;
  ForceMap:=false;
  ForceDWARF:=false;
@@ -333,6 +342,8 @@ begin
   inc(ParameterIndex);
   if Parameter='--no-symbols' then begin
    WantSymbols:=false;
+  end else if Parameter='--basenames' then begin
+   StripPaths:=true;
   end else if Parameter='--no-lines' then begin
    WantLines:=false;
   end else if Parameter='--map' then begin
@@ -368,6 +379,9 @@ begin
   WriteLn('  --dwarf        force the DWARF frontend');
   WriteLn('  --no-symbols   omit routine names, which is by far the larger part');
   WriteLn('  --no-lines     omit line numbers');
+  WriteLn('  --basenames    keep only the file name of a source, not the directory it');
+  WriteLn('                 was built in, so that a shipped binary does not carry the');
+  WriteLn('                 build tree of whoever built it');
   WriteLn('  --gdb <file>   additionally write the same information as a standalone');
   WriteLn('                 ELF debug file, which addr2line, gdb and everything else');
   WriteLn('                 built on DWARF can read, also for a Delphi build');
@@ -392,6 +406,8 @@ begin
  Builder:=nil;
  Collector:=nil;
  LineData:=nil;
+ LineStringData:=nil;
+ StringData:=nil;
  DWARFReader:=nil;
  MapReader:=nil;
  try
@@ -406,6 +422,7 @@ begin
   WriteLn('Image base $',IntToHex(Image.ImageBase,16));
 
   Builder:=TSymbolBuilder.Create;
+  Builder.StripPaths:=StripPaths;
   Collector:=TCollector.Create;
   Collector.Builder:=Builder;
   Collector.ImageBase:=Image.ImageBase;
@@ -437,13 +454,36 @@ begin
 
    if assigned(DebugImage) then begin
     LineData:=DebugImage.ReadSection('.debug_line');
+    LineStringData:=DebugImage.ReadSection('.debug_line_str');
+    StringData:=DebugImage.ReadSection('.debug_str');
    end else begin
     LineData:=Image.ReadSection('.debug_line');
+    LineStringData:=Image.ReadSection('.debug_line_str');
+    StringData:=Image.ReadSection('.debug_str');
    end;
 
    if assigned(LineData) and (LineData.Size>0) then begin
     if WantLines then begin
      DWARFReader:=TDWARFLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
+     // Version 5 keeps its path strings in sections of their own, so those are
+     // handed over as well where they exist.
+     if assigned(LineStringData) or assigned(StringData) then begin
+      if assigned(LineStringData) then begin
+       LineStringMemory:=LineStringData.Memory;
+       LineStringSize:=TpvSizeInt(LineStringData.Size);
+      end else begin
+       LineStringMemory:=nil;
+       LineStringSize:=0;
+      end;
+      if assigned(StringData) then begin
+       StringMemory:=StringData.Memory;
+       StringSize:=TpvSizeInt(StringData.Size);
+      end else begin
+       StringMemory:=nil;
+       StringSize:=0;
+      end;
+      DWARFReader.SetStringSections(LineStringMemory,LineStringSize,StringMemory,StringSize);
+     end;
      DWARFReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
      WriteLn('DWARF: ',DWARFReader.UnitCount,' compilation units, ',DWARFReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
      if DWARFReader.SkippedUnitCount>0 then begin
@@ -569,6 +609,8 @@ begin
   FreeAndNil(MapReader);
   FreeAndNil(DWARFReader);
   FreeAndNil(LineData);
+  FreeAndNil(LineStringData);
+  FreeAndNil(StringData);
   FreeAndNil(Collector);
   FreeAndNil(Builder);
   FreeAndNil(DebugImage);
