@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p fpctemp
+fpc -Sd -B -O2 -FUfpctemp -Fu../../../src -Fu../../../externals/pucu/src -Fu../../../externals/pasmp/src -Fi../../../src -omapsymbols mapsymbols.dpr
+rm -Rf fpctemp
