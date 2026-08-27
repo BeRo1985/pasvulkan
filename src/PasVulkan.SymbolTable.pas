@@ -91,6 +91,11 @@ const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B
 
       pvSymbolTableVersion=TpvUInt32(1);
 
+      // How far an address may sit behind a symbol before that symbol is no
+      // longer believed to name it. Only used when no unit range covers the
+      // address, since a unit range is the better bound where it exists.
+      pvSymbolTableMaximalSymbolDistance=TpvUInt64(65536);
+
 type PpvSymbolTableHeader=^TpvSymbolTableHeader;
      TpvSymbolTableHeader=packed record
       Magic:array[0..7] of AnsiChar;
@@ -385,41 +390,51 @@ begin
   exit;
  end;
 
+ // A unit range is optional. Code compiled without line information, which is
+ // common for parts of the runtime library, belongs to no unit here but can
+ // still be named by a symbol.
  UnitIndex:=FindUnit(aRVA);
- if UnitIndex<0 then begin
-  // Outside of every known unit, so this address does not belong to the image
-  // the table was built for.
-  exit;
+ if UnitIndex>=0 then begin
+  UnitEntry:=PpvSymbolTableUnitEntry(TpvPointer(TpvPtrUInt(TpvPtrUInt(fUnits)+(TpvPtrUInt(UnitIndex)*TpvPtrUInt(SizeOf(TpvSymbolTableUnitEntry))))));
+  aLocation.UnitName:=GetString(UnitEntry^.NameOffset);
+  aLocation.FileName:=GetString(UnitEntry^.FileNameOffset);
+ end else begin
+  UnitEntry:=nil;
  end;
-
- UnitEntry:=PpvSymbolTableUnitEntry(TpvPointer(TpvPtrUInt(TpvPtrUInt(fUnits)+(TpvPtrUInt(UnitIndex)*TpvPtrUInt(SizeOf(TpvSymbolTableUnitEntry))))));
- aLocation.UnitName:=GetString(UnitEntry^.NameOffset);
- aLocation.FileName:=GetString(UnitEntry^.FileNameOffset);
 
  SymbolIndex:=FindSymbol(aRVA);
  if SymbolIndex>=0 then begin
   SymbolEntry:=PpvSymbolTableSymbolEntry(TpvPointer(TpvPtrUInt(TpvPtrUInt(fSymbols)+(TpvPtrUInt(SymbolIndex)*TpvPtrUInt(SizeOf(TpvSymbolTableSymbolEntry))))));
-  // Only trust the symbol when it lies inside the same unit, otherwise it is
-  // just the last one before a gap and would name the wrong routine.
-  if (SymbolEntry^.RVA>=UnitEntry^.StartRVA) and
-     (SymbolEntry^.RVA<(UnitEntry^.StartRVA+UnitEntry^.Size)) then begin
+  if assigned(UnitEntry) then begin
+   // Only trust the symbol when it lies inside the same unit, otherwise it is
+   // just the last one before a gap and would name the wrong routine.
+   if (SymbolEntry^.RVA>=UnitEntry^.StartRVA) and
+      (SymbolEntry^.RVA<(UnitEntry^.StartRVA+UnitEntry^.Size)) then begin
+    aLocation.SymbolName:=GetString(SymbolEntry^.NameOffset);
+    aLocation.SymbolRVA:=SymbolEntry^.RVA;
+   end;
+  end else if (aRVA-SymbolEntry^.RVA)<pvSymbolTableMaximalSymbolDistance then begin
+   // Without a unit range to bound it, a plausibility distance has to do, so
+   // that an address in a gap does not borrow the name of something far away.
    aLocation.SymbolName:=GetString(SymbolEntry^.NameOffset);
    aLocation.SymbolRVA:=SymbolEntry^.RVA;
   end;
  end;
 
- LineIndex:=FindLine(aRVA);
- if LineIndex>=0 then begin
-  LineEntry:=PpvSymbolTableLineEntry(TpvPointer(TpvPtrUInt(TpvPtrUInt(fLines)+(TpvPtrUInt(LineIndex)*TpvPtrUInt(SizeOf(TpvSymbolTableLineEntry))))));
-  // Same reasoning as for the symbol above, a line record only counts when it
-  // belongs to the unit the address is in, since not every unit necessarily
-  // carries line information.
-  if LineEntry^.UnitIndex=TpvUInt32(UnitIndex) then begin
-   aLocation.LineNumber:=LineEntry^.LineNumber;
+ if assigned(UnitEntry) then begin
+  LineIndex:=FindLine(aRVA);
+  if LineIndex>=0 then begin
+   LineEntry:=PpvSymbolTableLineEntry(TpvPointer(TpvPtrUInt(TpvPtrUInt(fLines)+(TpvPtrUInt(LineIndex)*TpvPtrUInt(SizeOf(TpvSymbolTableLineEntry))))));
+   // Same reasoning as for the symbol above, a line record only counts when it
+   // belongs to the unit the address is in, since not every unit necessarily
+   // carries line information.
+   if LineEntry^.UnitIndex=TpvUInt32(UnitIndex) then begin
+    aLocation.LineNumber:=LineEntry^.LineNumber;
+   end;
   end;
  end;
 
- result:=true;
+ result:=assigned(UnitEntry) or (length(aLocation.SymbolName)>0);
 
 end;
 

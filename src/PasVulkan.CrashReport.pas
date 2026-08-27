@@ -117,6 +117,13 @@ const pvCrashReportRingBufferSize=64; // Must stay a power of two
 
       pvCrashReportKindNote=TpvUInt32(2); // Manually added note
 
+      // The recorded address sits behind a call rather than on the instruction
+      // it belongs to, so a lookup has to be done one byte earlier. Which of the
+      // two applies is known only where the address is captured, and it differs
+      // per compiler: Delphi reports the return address of the raise, while
+      // FreePascal reports the address of the raise statement itself.
+      pvCrashReportFlagReturnAddress=TpvUInt32(1);
+
 type PpvCrashReportEntry=^TpvCrashReportEntry;
      TpvCrashReportEntry=record
       Sequence:TpvUInt64; // Zero while the entry is being written
@@ -124,6 +131,7 @@ type PpvCrashReportEntry=^TpvCrashReportEntry;
       Address:TpvPointer;
       Kind:TpvUInt32;
       Code:TpvUInt32;
+      Flags:TpvUInt32;
       TextLength:TpvInt32;
       Text:array[0..pvCrashReportEntryTextSize-1] of AnsiChar;
      end;
@@ -131,7 +139,7 @@ type PpvCrashReportEntry=^TpvCrashReportEntry;
 // Adds a manually formatted entry to the ring buffer. Safe to call at any time,
 // but not from inside a vectored exception handler, since it works with managed
 // strings.
-procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String);
+procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String;const aReturnAddress:Boolean=false);
 
 // Formats a single code address as readable as the current build allows.
 //
@@ -254,13 +262,14 @@ begin
 {$ifend}
 end;
 
-procedure CrashReportEntryBegin(const aEntry:PpvCrashReportEntry;const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aThreadID:TpvUInt64);
+procedure CrashReportEntryBegin(const aEntry:PpvCrashReportEntry;const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aThreadID:TpvUInt64;const aFlags:TpvUInt32);
 begin
  aEntry^.Sequence:=0;
  aEntry^.ThreadID:=aThreadID;
  aEntry^.Address:=aAddress;
  aEntry^.Kind:=aKind;
  aEntry^.Code:=aCode;
+ aEntry^.Flags:=aFlags;
  aEntry^.TextLength:=0;
  aEntry^.Text[0]:=#0;
 end;
@@ -345,13 +354,19 @@ begin
 end;
 {$endif}
 
-procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String);
+procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String;const aReturnAddress:Boolean);
 var Entry:PpvCrashReportEntry;
     Sequence:TpvUInt64;
+    Flags:TpvUInt32;
 begin
+ if aReturnAddress then begin
+  Flags:=pvCrashReportFlagReturnAddress;
+ end else begin
+  Flags:=0;
+ end;
  Sequence:=CrashReportNextSequence;
  Entry:=@CrashReportRingBuffer[(Sequence-1) and (pvCrashReportRingBufferSize-1)];
- CrashReportEntryBegin(Entry,aKind,aCode,aAddress,CrashReportCurrentThreadID);
+ CrashReportEntryBegin(Entry,aKind,aCode,aAddress,CrashReportCurrentThreadID,Flags);
  CrashReportEntryAppendString(Entry,aText);
  Entry^.Sequence:=Sequence;
 end;
@@ -554,9 +569,7 @@ begin
    result:=result+' code $'+IntToHex(Entry^.Code,8);
   end;
   if assigned(Entry^.Address) then begin
-   // A hardware fault reports the faulting instruction itself, while the raise
-   // address of a language level exception is the address behind the call.
-   result:=result+' at '+pvCrashReportFormatAddress(Entry^.Address,Entry^.Kind<>pvCrashReportKindFault);
+   result:=result+' at '+pvCrashReportFormatAddress(Entry^.Address,(Entry^.Flags and pvCrashReportFlagReturnAddress)<>0);
   end;
   if Entry^.TextLength>0 then begin
    result:=result+' : '+String(PAnsiChar(@Entry^.Text[0]));
@@ -643,7 +656,8 @@ begin
   if length(Text)=0 then begin
    Text:='Unknown exception object';
   end;
-  pvCrashReportNote(pvCrashReportKindRaise,0,aExceptionRecord^.ExceptionAddress,Text);
+  // Delphi hands over the return address of the raise site.
+  pvCrashReportNote(pvCrashReportKindRaise,0,aExceptionRecord^.ExceptionAddress,Text,true);
  end else begin
   pvCrashReportNote(pvCrashReportKindFault,
                     aExceptionRecord^.ExceptionCode,
@@ -729,7 +743,9 @@ begin
  if ExceptionRecord^.ExceptionCode=cFPCException then begin
   // fpc_RaiseException passes address, object, frame count and frames, see
   // rtl/win64/seh64.inc and rtl/win32/seh32.inc.
-  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId));
+  // fpc_RaiseException passes the address of the raise statement itself, not
+  // the address behind it, so no adjustment is wanted here.
+  CrashReportEntryBegin(Entry,pvCrashReportKindRaise,0,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),0);
   if ExceptionRecord^.NumberParameters>=2 then begin
    Entry^.Address:=TpvPointer(ExceptionRecord^.ExceptionInformation[0]);
    ExceptionObject:=TObject(ExceptionRecord^.ExceptionInformation[1]);
@@ -747,7 +763,7 @@ begin
    end;
   end;
  end else begin
-  CrashReportEntryBegin(Entry,pvCrashReportKindFault,ExceptionRecord^.ExceptionCode,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId));
+  CrashReportEntryBegin(Entry,pvCrashReportKindFault,ExceptionRecord^.ExceptionCode,ExceptionRecord^.ExceptionAddress,TpvUInt64(GetCurrentThreadId),0);
   CrashReportEntryAppendPAnsiChar(Entry,'Operating system fault code $');
   CrashReportEntryAppendHex(Entry,ExceptionRecord^.ExceptionCode,8);
   if (ExceptionRecord^.ExceptionCode=cAccessViolation) and (ExceptionRecord^.NumberParameters>=2) then begin
