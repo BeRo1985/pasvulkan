@@ -212,6 +212,13 @@ const LineEnding={$if defined(Windows)}#13#10{$else}#10{$ifend};
 
       cMaximalStackFrames=48;
 
+{$ifdef PasVulkanCrashReportFixedModuleCache}
+const // How many modules the resolver remembers, when the cache is the fixed
+      // size one. A process with more loaded than this stops resolving beyond
+      // that point, which is why the growing cache is the default.
+      pvCrashReportMaximalModules=32;
+{$endif}
+
 type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
      TpvCrashReportModuleEntry=record
       // Where the module was loaded, the module handle on Windows and the
@@ -394,7 +401,11 @@ var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashRep
     CrashReportUnwindGetIPProc:TpvCrashReportUnwindGetIP=nil;
     CrashReportUnwinderState:TpvInt32=0;
 {$ifend}
+{$ifdef PasVulkanCrashReportFixedModuleCache}
+    CrashReportModules:array[0..pvCrashReportMaximalModules-1] of TpvCrashReportModuleEntry;
+{$else}
     CrashReportModules:array of TpvCrashReportModuleEntry;
+{$endif}
     CrashReportModuleCount:TpvInt32=0;
     CrashReportModuleLock:TpvInt32=0;
 {$ifndef fpc}
@@ -950,11 +961,29 @@ begin
   end;
 
   if Slot<0 then begin
+{$ifdef PasVulkanCrashReportFixedModuleCache}
+   // A fixed number of entries, which is how this was first written. Once they
+   // are used up nothing further is remembered, and since the table would then
+   // be reloaded for every single frame it is not handed out either, so a
+   // process with more modules than this loses the ones past the limit.
+   if CrashReportModuleCount>=pvCrashReportMaximalModules then begin
+    FreeAndNil(Table);
+    result:=nil;
+    aRVABase:=0;
+    exit;
+   end;
+   Slot:=CrashReportModuleCount;
+   inc(CrashReportModuleCount);
+{$else}
+   // Grown as needed instead, so that every module of the process can be named
+   // however many there are. One entry is a handful of bytes, and a table is
+   // only read for a module which actually turned up in a stack trace.
    Slot:=CrashReportModuleCount;
    if Slot>=length(CrashReportModules) then begin
     SetLength(CrashReportModules,(Slot+1)*2);
    end;
    inc(CrashReportModuleCount);
+{$endif}
   end;
 
   CrashReportModules[Slot].Key:=Key;
@@ -2013,7 +2042,10 @@ begin
    CrashReportModules[CrashReportModuleCount].FileName:='';
    CrashReportModules[CrashReportModuleCount].RVABase:=0;
   end;
+{$ifndef PasVulkanCrashReportFixedModuleCache}
+  // Only the growing one holds room of its own to give back.
   CrashReportModules:=nil;
+{$endif}
  finally
   CrashReportReleaseModuleLock;
  end;

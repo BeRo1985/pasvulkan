@@ -208,6 +208,19 @@ var Index:TpvSizeInt;
   High:=High xor (High shr 32);
  end;
 
+{$ifdef PasVulkanSymbolBuilderCharacterWiseDigest}
+ // One character at a time, which is how this was first written. Kept because
+ // the two do not produce the same digest, so a build which has to keep giving
+ // the identity an older version of this tool gave it needs this one.
+ procedure FeedString(const aValue:String);
+ var Position:TpvSizeInt;
+ begin
+  Feed(TpvUInt64(length(aValue)));
+  for Position:=1 to length(aValue) do begin
+   Feed(TpvUInt64(Ord(aValue[Position])));
+  end;
+ end;
+{$else}
  // Eight characters at a time. A table of a million symbols would otherwise
  // mean tens of millions of rounds through the mixer for the names alone.
  procedure FeedString(const aValue:String);
@@ -228,6 +241,7 @@ var Index:TpvSizeInt;
    Feed(Block);
   end;
  end;
+{$endif}
 
 begin
 
