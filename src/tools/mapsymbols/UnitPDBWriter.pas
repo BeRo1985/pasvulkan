@@ -69,10 +69,16 @@ type TPDBSection=record
        // reports how many bytes each of the two parts took, which the module
        // list has to state.
        procedure BuildModuleStream(const aStream:TMemoryStream;const aUnitIndex:TpvSizeInt;const aFileNameOffset:TpvUInt32;out aSymbolBytes,aLineBytes:TpvUInt32);
+       // The hash table shared by the globals and the publics streams. Written
+       // empty, but in the shape a reader expects, since a missing stream and an
+       // ill formed one are not the same thing to it.
+       procedure BuildSymbolHashTable(const aStream:TMemoryStream);
+       procedure BuildGlobalsStream(const aStream:TMemoryStream);
+       procedure BuildPublicsStream(const aStream:TMemoryStream);
        procedure BuildStringTableStream(const aStream:TMemoryStream);
        procedure BuildInfoStream(const aStream:TMemoryStream;const aStringTableStreamIndex:TpvUInt16);
        procedure BuildTypeStream(const aStream:TMemoryStream);
-       procedure BuildDebugInformationStream(const aStream:TMemoryStream;const aSectionHeadersStreamIndex:TpvUInt16;const aFirstModuleStreamIndex:TpvSizeInt);
+       procedure BuildDebugInformationStream(const aStream:TMemoryStream;const aSectionHeadersStreamIndex,aGlobalsStreamIndex,aPublicsStreamIndex,aSymbolRecordStreamIndex:TpvUInt16;const aFirstModuleStreamIndex:TpvSizeInt);
       public
        constructor Create(const aBuilder:TSymbolBuilder);
        destructor Destroy; override;
@@ -399,6 +405,40 @@ begin
 
 end;
 
+// Size of the empty hash table below, which the publics header has to state.
+const SymbolHashTableSize=16;
+
+procedure TPDBWriter.BuildSymbolHashTable(const aStream:TMemoryStream);
+begin
+ WriteUInt32(aStream,$ffffffff); // signature saying this is the newer layout
+ WriteUInt32(aStream,$f12f091a); // version of that layout
+ WriteUInt32(aStream,0);         // bytes of hash records, none
+ WriteUInt32(aStream,0);         // buckets in use, none
+ // Nothing else follows. The bucket bitmap is only there when the table has
+ // records, so writing it for an empty table leaves bytes a reader does not
+ // account for, and the publics stream is then rejected as corrupt.
+end;
+
+procedure TPDBWriter.BuildGlobalsStream(const aStream:TMemoryStream);
+begin
+ BuildSymbolHashTable(aStream);
+end;
+
+procedure TPDBWriter.BuildPublicsStream(const aStream:TMemoryStream);
+begin
+ // Sizes of the two blocks which follow the header, then the thunk description
+ // which is only meaningful for incrementally linked images.
+ WriteUInt32(aStream,SymbolHashTableSize); // bytes of hash table
+ WriteUInt32(aStream,0);  // bytes of the address map
+ WriteUInt32(aStream,0);  // number of thunks
+ WriteUInt32(aStream,0);  // size of a thunk
+ WriteUInt16(aStream,0);  // section of the thunk table
+ WriteUInt16(aStream,0);  // padding
+ WriteUInt32(aStream,0);  // offset of the thunk table
+ WriteUInt32(aStream,0);  // number of sections in the map
+ BuildSymbolHashTable(aStream);
+end;
+
 // The hash a PDB uses for its string tables. It folds the string four bytes at
 // a time, then forces the case bits, which is what makes the lookup case
 // insensitive without lowercasing anything first.
@@ -553,8 +593,8 @@ begin
  WriteUInt32(aStream,0);     // hash adjustment buffer length
 end;
 
-procedure TPDBWriter.BuildDebugInformationStream(const aStream:TMemoryStream;const aSectionHeadersStreamIndex:TpvUInt16;const aFirstModuleStreamIndex:TpvSizeInt);
-var ModuleInfo,SectionContribution,SectionMap,SourceInfo,OptionalHeader,SourceNames:TMemoryStream;
+procedure TPDBWriter.BuildDebugInformationStream(const aStream:TMemoryStream;const aSectionHeadersStreamIndex,aGlobalsStreamIndex,aPublicsStreamIndex,aSymbolRecordStreamIndex:TpvUInt16;const aFirstModuleStreamIndex:TpvSizeInt);
+var ModuleInfo,SectionContribution,SectionMap,SourceInfo,OptionalHeader,SourceNames,EditAndContinue:TMemoryStream;
     SourceNameOffsets:array of TpvUInt32;
     Index:TpvSizeInt;
     UnitRecord:TSymbolBuilder.TUnitRecord;
@@ -603,6 +643,7 @@ begin
  SectionMap:=TMemoryStream.Create;
  SourceInfo:=TMemoryStream.Create;
  OptionalHeader:=TMemoryStream.Create;
+ EditAndContinue:=TMemoryStream.Create;
  try
 
   // One module per unit, each with its own stream carrying its symbols.
@@ -684,6 +725,20 @@ begin
    FreeAndNil(SourceNames);
   end;
 
+  // The edit and continue substream is a string table of the same shape as
+  // /names. It is not about edit and continue here: the module list stores the
+  // names of its object file and of this pdb as indices into it, and a reader
+  // resolves them even when nothing else asks for them. An absent substream
+  // makes that resolution fail, so a minimal one holding just the empty string
+  // is written.
+  WriteUInt32(EditAndContinue,$effeeffe);
+  WriteUInt32(EditAndContinue,1);
+  WriteUInt32(EditAndContinue,1);
+  WriteByte(EditAndContinue,0);
+  WriteUInt32(EditAndContinue,1);
+  WriteUInt32(EditAndContinue,0);
+  WriteUInt32(EditAndContinue,0);
+
   // Eleven slots of stream indices, of which only the section headers, at index
   // five, is filled in here.
   for Index:=0 to 10 do begin
@@ -697,11 +752,11 @@ begin
   WriteInt32(aStream,-1);            // version signature
   WriteUInt32(aStream,DBIVersionV70);
   WriteUInt32(aStream,fAge);
-  WriteUInt16(aStream,$ffff);        // global symbol stream, none yet
+  WriteUInt16(aStream,aGlobalsStreamIndex);
   WriteUInt16(aStream,$8e1d);        // toolchain build number
-  WriteUInt16(aStream,$ffff);        // public symbol stream, none yet
+  WriteUInt16(aStream,aPublicsStreamIndex);
   WriteUInt16(aStream,0);            // version of the producing dll
-  WriteUInt16(aStream,$ffff);        // symbol record stream, none yet
+  WriteUInt16(aStream,aSymbolRecordStreamIndex);
   WriteUInt16(aStream,0);            // rebuild number of the producing dll
 
   WriteInt32(aStream,TpvInt32(ModuleInfo.Size));
@@ -711,7 +766,7 @@ begin
   WriteInt32(aStream,0);             // type server map substream
   WriteUInt32(aStream,0);            // index of the type server
   WriteInt32(aStream,TpvInt32(OptionalHeader.Size));
-  WriteInt32(aStream,0);             // edit and continue substream
+  WriteInt32(aStream,TpvInt32(EditAndContinue.Size));
 
   WriteUInt16(aStream,0);            // flags
   WriteUInt16(aStream,IMAGE_FILE_MACHINE_AMD64);
@@ -726,10 +781,14 @@ begin
   aStream.CopyFrom(SectionMap,SectionMap.Size);
   SourceInfo.Position:=0;
   aStream.CopyFrom(SourceInfo,SourceInfo.Size);
+  // The edit and continue substream comes before the optional header, not after.
+  EditAndContinue.Position:=0;
+  aStream.CopyFrom(EditAndContinue,EditAndContinue.Size);
   OptionalHeader.Position:=0;
   aStream.CopyFrom(OptionalHeader,OptionalHeader.Size);
 
  finally
+  FreeAndNil(EditAndContinue);
   FreeAndNil(OptionalHeader);
   FreeAndNil(SourceInfo);
   FreeAndNil(SectionMap);
@@ -742,6 +801,7 @@ end;
 procedure TPDBWriter.SaveToFile(const aFileName:String);
 var DebugInformation,Information:TMemoryStream;
     SectionHeadersStreamIndex,FirstModuleStreamIndex,StringTableStreamIndex:TpvSizeInt;
+    GlobalsStreamIndex,PublicsStreamIndex,SymbolRecordStreamIndex:TpvSizeInt;
     Index:TpvSizeInt;
     ModuleStream:TMemoryStream;
 begin
@@ -761,6 +821,17 @@ begin
 
  BuildTypeStream(fMSF.AddStream); // identifiers, same shape as the types
 
+ GlobalsStreamIndex:=fMSF.StreamCount;
+ BuildGlobalsStream(fMSF.AddStream);
+
+ PublicsStreamIndex:=fMSF.StreamCount;
+ BuildPublicsStream(fMSF.AddStream);
+
+ // The records the two hash tables above would point at. Empty for now, but the
+ // stream has to exist, since the debug information header names it.
+ SymbolRecordStreamIndex:=fMSF.StreamCount;
+ fMSF.AddStream;
+
  StringTableStreamIndex:=fMSF.StreamCount;
  BuildStringTableStream(fMSF.AddStream);
 
@@ -776,7 +847,12 @@ begin
  end;
 
  BuildInfoStream(Information,TpvUInt16(StringTableStreamIndex));
- BuildDebugInformationStream(DebugInformation,TpvUInt16(SectionHeadersStreamIndex),FirstModuleStreamIndex);
+ BuildDebugInformationStream(DebugInformation,
+                             TpvUInt16(SectionHeadersStreamIndex),
+                             TpvUInt16(GlobalsStreamIndex),
+                             TpvUInt16(PublicsStreamIndex),
+                             TpvUInt16(SymbolRecordStreamIndex),
+                             FirstModuleStreamIndex);
 
  fMSF.SaveToFile(aFileName);
 
