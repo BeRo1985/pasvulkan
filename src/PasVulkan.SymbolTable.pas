@@ -63,6 +63,13 @@ interface
 
 uses SysUtils,
      Classes,
+     {$ifdef PasVulkanSymbolTableCompression}
+      // Only for reading a packed table back. It is behind the define because
+      // unpacking means asking for a block of memory at the one moment where
+      // that request is the least likely to succeed, namely while a report is
+      // being written after the heap has been damaged.
+      PasVulkan.Compression.LZBRSF,
+     {$endif}
      PasVulkan.Types;
 
 // A compact address to source location table, together with the reader for it.
@@ -90,6 +97,15 @@ uses SysUtils,
 const pvSymbolTableMagic:array[0..7] of AnsiChar=('P','V','S','Y','M','T','A','B');
 
       pvSymbolTableVersion=TpvUInt32(2);
+
+      // Everything behind the header is compressed. The counts in the header
+      // still describe the contents as they are once unpacked, so they say how
+      // much room the unpacking needs.
+      //
+      // The flag is known whether or not this was built with the unpacking
+      // side, so that a build without it turns such a table down instead of
+      // reading compressed bytes as if they were entries.
+      pvSymbolTableFlagCompressed=TpvUInt32(1) shl 0;
 
       // How far an address may sit behind a symbol before that symbol is no
       // longer believed to name it. Only used when no unit range covers the
@@ -386,9 +402,13 @@ function TpvSymbolTable.LoadFromFile(const aFileName:String):Boolean;
 var Stream:TFileStream;
     Footer:TpvSymbolTableFooter;
     Header:TpvSymbolTableHeader;
-    Expected:TpvUInt64;
+    Expected,Stored:TpvUInt64;
     FooterPosition:TpvInt64;
     Index:TpvSizeInt;
+{$ifdef PasVulkanSymbolTableCompression}
+    Packed_,Unpacked:TpvPointer;
+    UnpackedSize:TpvUInt64;
+{$endif}
 begin
 
  result:=false;
@@ -438,17 +458,66 @@ begin
              (TpvUInt64(Header.SymbolCount)*TpvUInt64(SizeOf(TpvSymbolTableSymbolEntry)))+
              (TpvUInt64(Header.LineCount)*TpvUInt64(SizeOf(TpvSymbolTableLineEntry)))+
              TpvUInt64(Header.StringSize);
-   // Measured against the footer rather than against the end of the file,
-   // since anything appended behind the footer does not belong to the table.
-   if (Header.StringSize=0) or
-      (Expected>TpvUInt64(FooterPosition-TpvInt64(Footer.Offset))) then begin
+   if Header.StringSize=0 then begin
     exit;
    end;
 
-   fSize:=TpvSizeInt(Expected);
-   GetMem(fData,fSize);
-   Stream.Seek(TpvInt64(Footer.Offset),soBeginning);
-   Stream.ReadBuffer(fData^,fSize);
+   // Everything between the header and the footer, which is what the contents
+   // were stored as, packed or not.
+   Stored:=TpvUInt64(FooterPosition-TpvInt64(Footer.Offset))-TpvUInt64(SizeOf(TpvSymbolTableHeader));
+
+   if (Header.Flags and pvSymbolTableFlagCompressed)<>0 then begin
+
+{$ifdef PasVulkanSymbolTableCompression}
+    if Stored=0 then begin
+     exit;
+    end;
+    fSize:=TpvSizeInt(Expected);
+    GetMem(fData,fSize);
+    Move(Header,fData^,SizeOf(TpvSymbolTableHeader));
+    Packed_:=nil;
+    try
+     GetMem(Packed_,TpvSizeInt(Stored));
+     Stream.Seek(TpvInt64(Footer.Offset)+TpvInt64(SizeOf(TpvSymbolTableHeader)),soBeginning);
+     Stream.ReadBuffer(Packed_^,TpvSizeInt(Stored));
+     Unpacked:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fData)+TpvPtrUInt(SizeOf(TpvSymbolTableHeader))));
+     UnpackedSize:=0;
+     // A destination which is already there is written into rather than
+     // replaced, so the block stays the one which was just laid out.
+     if not LZBRSFDecompress(Packed_,Stored,Unpacked,UnpackedSize,TpvInt64(Expected)-TpvInt64(SizeOf(TpvSymbolTableHeader))) then begin
+      FreeMem(fData);
+      fData:=nil;
+      fSize:=0;
+      exit;
+     end;
+    finally
+     if assigned(Packed_) then begin
+      FreeMem(Packed_);
+     end;
+    end;
+{$else}
+    // Built without the unpacking side, so this is turned down rather than
+    // read as if the packed bytes were entries.
+    exit;
+{$endif}
+
+   end else begin
+
+    // Check that the announced contents actually fit into what is there, so
+    // that a truncated or otherwise damaged file cannot send the reader off
+    // into arbitrary memory later on. Measured against the footer rather than
+    // against the end of the file, since anything appended behind the footer
+    // does not belong to the table.
+    if (Expected-TpvUInt64(SizeOf(TpvSymbolTableHeader)))>Stored then begin
+     exit;
+    end;
+
+    fSize:=TpvSizeInt(Expected);
+    GetMem(fData,fSize);
+    Stream.Seek(TpvInt64(Footer.Offset),soBeginning);
+    Stream.ReadBuffer(fData^,fSize);
+
+   end;
 
   finally
    FreeAndNil(Stream);

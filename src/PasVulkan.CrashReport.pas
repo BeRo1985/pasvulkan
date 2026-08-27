@@ -76,6 +76,12 @@ uses {$if defined(Windows)}
        lnfodwrf,
       {$endif}
      {$ifend}
+     {$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+      // Only for the signal based thread stacks, which are the one thing here
+      // which has to reach into the operating system past what the runtime
+      // already offers.
+      BaseUnix,
+     {$ifend}
      SysUtils,
      Classes,
      PasVulkan.Types,
@@ -164,6 +170,19 @@ function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBuff
 // The single implementation behind every DumpExceptionCallStack in PasVulkan.
 // The frame arguments are only used by FreePascal and are ignored by Delphi.
 function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil):String;
+
+// A short identifier for where a crash happened, so that two reports of the
+// same fault can be recognized as one thing seen twice rather than read one by
+// one. Empty when nothing on the stack could be named, since an identifier made
+// only of the exception class would be the same for every crash of that class
+// and would say nothing at all.
+//
+// Built from the names of the topmost routines rather than from their
+// addresses. An address moves with every run under address space layout
+// randomization, and with every build which merely shifted code around, while
+// the names stay where they are, so the same defect keeps its identifier across
+// both.
+function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5):String;
 
 // Formats the processor state of the last fault which was recorded. Empty when
 // none has happened, and empty on a platform which does not hand one over.
@@ -381,6 +400,31 @@ type TpvCrashReportUnwindTrace=function(aContext,aData:TpvPointer):TpvInt32; cde
      end;
 {$ifend}
 
+{$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+// Where a thread which was asked for its stack leaves the answer. One of these
+// is enough, since the threads are asked one after another, and one is also all
+// a signal handler can be given without a table it would have to look itself up
+// in.
+type TpvCrashReportUnixThreadSlot=record
+      // Zero while nothing is being asked, one while a thread has been asked
+      // and has not answered, two once it has.
+      State:TpvInt32;
+      Count:TpvInt32;
+      Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
+     end;
+
+     // The registers inside the context a signal handler is given. Declared
+     // wide enough for the largest of the two layouts, and only the few indices
+     // which are actually read are ever touched.
+     PpvCrashReportGeneralRegisters=^TpvCrashReportGeneralRegisters;
+     TpvCrashReportGeneralRegisters=array[0..22] of TpvPtrUInt;
+
+// Reaching past what the runtime offers: there is no wrapper for sending a
+// signal to one thread rather than to the process, and none for asking for the
+// own thread identifier, so both go through the system call gate directly.
+function CrashReportSysCall(aNumber:TpvPtrInt):TpvPtrInt; cdecl; varargs; external name 'syscall';
+{$ifend}
+
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
     CrashReportSequence:TpvInt32=0;
 {$ifndef fpc}
@@ -400,6 +444,10 @@ var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashRep
     CrashReportUnwindBacktraceProc:TpvCrashReportUnwindBacktrace=nil;
     CrashReportUnwindGetIPProc:TpvCrashReportUnwindGetIP=nil;
     CrashReportUnwinderState:TpvInt32=0;
+{$ifend}
+{$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+    CrashReportUnixThreadSlot:TpvCrashReportUnixThreadSlot;
+    CrashReportThreadSignalInstalled:Boolean=false;
 {$ifend}
 {$ifdef PasVulkanCrashReportFixedModuleCache}
     CrashReportModules:array[0..pvCrashReportMaximalModules-1] of TpvCrashReportModuleEntry;
@@ -1002,6 +1050,47 @@ end;
 
 // Returns false when there is no table, or when the address does not belong to
 // the executable itself, for example because it points into a system library.
+// The name of the routine an address sits in, on its own. The fingerprint is
+// built from names rather than from formatted lines, so that neither the
+// address nor the line number, both of which move for reasons which have
+// nothing to do with the defect, end up in it.
+function CrashReportSymbolNameOf(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aName:String):Boolean;
+var SymbolTable:TpvSymbolTable;
+    Location:TpvSymbolTableLocation;
+    LookupAddress,RVABase:TpvPtrUInt;
+begin
+
+ result:=false;
+ aName:='';
+
+ SymbolTable:=CrashReportTableForAddress(aAddress,RVABase);
+ if not assigned(SymbolTable) then begin
+  exit;
+ end;
+ if TpvPtrUInt(aAddress)<=RVABase then begin
+  exit;
+ end;
+
+ LookupAddress:=TpvPtrUInt(aAddress);
+ if aReturnAddress then begin
+  dec(LookupAddress);
+ end;
+
+ if not SymbolTable.Resolve(TpvUInt64(LookupAddress-RVABase),Location) then begin
+  exit;
+ end;
+
+ if length(Location.SymbolName)>0 then begin
+  aName:=String(Location.SymbolName);
+ end else if length(Location.UnitName)>0 then begin
+  // No routine, but the unit still says more than nothing.
+  aName:=String(Location.UnitName);
+ end;
+
+ result:=length(aName)>0;
+
+end;
+
 function CrashReportResolveAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aText:String):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
@@ -1288,11 +1377,12 @@ begin
 end;
 
 function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer):String;
+var Fingerprint:String;
 {$ifdef fpc}
-var Index,FrameCount:TpvInt32;
+    Index,FrameCount:TpvInt32;
     Frames:PPointer;
 {$else}
-var StackTrace:String;
+    StackTrace:String;
 {$endif}
 begin
  result:='Program exception!'+LineEnding+'Stack trace:'+LineEnding+LineEnding;
@@ -1341,6 +1431,10 @@ begin
                  pvCrashReportCaptureStackTrace(2);
  end;
 {$endif}
+ Fingerprint:=pvCrashReportFingerprint(aException);
+ if length(Fingerprint)>0 then begin
+  result:=result+'Crash fingerprint: '+Fingerprint+LineEnding;
+ end;
 end;
 
 {$ifndef fpc}
@@ -1691,6 +1785,100 @@ end;
 {$endif}
 {$ifend}
 
+function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32):String;
+var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
+    Count,Index,Named:TpvInt32;
+    Hash:TpvUInt64;
+    Name:String;
+{$ifdef fpc}
+    Frames:PPointer;
+{$else}
+    StackInfo:PpvCrashReportStackInfo;
+{$endif}
+
+ procedure Feed(const aValue:String);
+ var Position:TpvSizeInt;
+ begin
+  for Position:=1 to length(aValue) do begin
+   Hash:=Hash xor TpvUInt64(Ord(aValue[Position]));
+   Hash:=Hash*TpvUInt64($00000100000001b3);
+  end;
+  // A separator between the names, so that two different splits of the same
+  // letters cannot come out the same.
+  Hash:=Hash xor (Hash shr 29);
+ end;
+
+begin
+
+ result:='';
+ Count:=0;
+ FillChar(Addresses,SizeOf(Addresses),#0);
+
+{$ifdef fpc}
+ // The raise point first, then the frames behind it.
+ if assigned(ExceptAddr) then begin
+  Addresses[Count]:=ExceptAddr;
+  inc(Count);
+ end;
+ Frames:=ExceptFrames;
+ if assigned(Frames) then begin
+  for Index:=0 to ExceptFrameCount-1 do begin
+   if Count>=cMaximalStackFrames then begin
+    break;
+   end;
+   Addresses[Count]:=Frames^;
+   inc(Count);
+   inc(Frames);
+  end;
+ end;
+{$else}
+ // Only reachable when the stack info hooks are the ones installed here, since
+ // the block behind them is what holds the raw addresses. Where somebody else
+ // owns them their block has a layout of its own, and reading it would be a
+ // guess.
+ if assigned(aException) and CrashReportOwnsStackInfoProcs then begin
+  StackInfo:=PpvCrashReportStackInfo(aException.StackInfo);
+  if assigned(StackInfo) then begin
+   for Index:=0 to StackInfo^.Count-1 do begin
+    if Count>=cMaximalStackFrames then begin
+     break;
+    end;
+    Addresses[Count]:=StackInfo^.Addresses[Index];
+    inc(Count);
+   end;
+  end;
+ end;
+{$endif}
+
+ Hash:=TpvUInt64($cbf29ce484222325);
+
+ if assigned(aException) then begin
+  Feed(aException.ClassName);
+ end;
+
+ Named:=0;
+ for Index:=0 to Count-1 do begin
+  if Named>=aMaximalNames then begin
+   break;
+  end;
+  // Everything but the raise point itself is a return address, so it points
+  // behind its call rather than at it.
+  if CrashReportSymbolNameOf(Addresses[Index],Index>0,Name) then begin
+   Feed(Name);
+   inc(Named);
+  end;
+ end;
+
+ if Named=0 then begin
+  // Nothing could be named, so anything built here would only say which class
+  // it was, which every crash of that class would say too.
+  exit;
+ end;
+
+ result:=IntToHex(Hash,16);
+
+end;
+
 function pvCrashReportRegisters:String;
 // Only Windows, because the vectored handler is the only place a processor
 // context is handed over. On a unix that would take a signal handler, which is
@@ -1819,6 +2007,220 @@ begin
 end;
 {$ifend}
 
+{$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+// Reading the stack of another thread on a unix means stopping it first, and
+// there is no equivalent of suspending it from the outside. What there is, is
+// asking it to stop itself: a signal is delivered on the thread it is sent to,
+// and the handler is given the processor state of whatever that thread was
+// doing. So the thread walks its own stack and leaves the answer behind.
+//
+// This is behind a define because it takes a signal away from the program. A
+// real time signal is used, which nothing in the runtime and nothing in the
+// usual libraries claims, but only the program itself can know that for sure,
+// which is why this is its decision and not the default.
+const cCrashReportThreadSignal=34; // The first real time signal, the two below
+                                   // it belong to the thread library.
+{$ifdef PasVulkanCrashReportX64}
+      cCrashReportSysTgkill=234;
+      cCrashReportSysGetTid=186;
+      // Offsets into the context the handler is given, which is a ucontext:
+      // eight bytes of flags, a link, a stack description of twenty four bytes,
+      // and then the registers as an array of long long.
+      cCrashReportContextGRegs=40;
+      cCrashReportRegFramePointer=10;
+      cCrashReportRegStackPointer=15;
+      cCrashReportRegInstructionPointer=16;
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+      cCrashReportSysTgkill=270;
+      cCrashReportSysGetTid=224;
+      cCrashReportContextGRegs=20;
+      cCrashReportRegFramePointer=6;
+      cCrashReportRegStackPointer=7;
+      cCrashReportRegInstructionPointer=14;
+{$endif}
+
+      // How far above the stack pointer a frame is still believed to be one.
+      cCrashReportMaximalStackSpan=TpvPtrUInt(16) shl 20;
+
+function CrashReportGetTid:TpvInt32;
+begin
+ result:=TpvInt32(CrashReportSysCall(cCrashReportSysGetTid));
+end;
+
+// Runs on the thread which is being asked. Everything here has to be safe to do
+// from a signal handler, which rules out allocating, locking and anything which
+// could raise, so it reads registers and memory and nothing else.
+//
+// The walk is over the chain of saved frame pointers, since that is all a unix
+// build of FreePascal leaves behind, and it is bounded rather than trusted: a
+// frame has to be aligned, has to lie above the stack pointer and below a span
+// which a stack does not exceed, and has to be above the frame before it.
+procedure CrashReportThreadSignalHandler(aSignal:TpvInt32;aInfo:TpvPointer;aContext:TpvPointer); cdecl;
+var Registers:PpvCrashReportGeneralRegisters;
+    Frame,NextFrame,ReturnAddress,StackPointer,Span:TpvPtrUInt;
+    Count:TpvInt32;
+begin
+
+ if CrashReportUnixThreadSlot.State<>1 then begin
+  exit;
+ end;
+
+ Count:=0;
+
+ if assigned(aContext) then begin
+
+  Registers:=PpvCrashReportGeneralRegisters(TpvPointer(TpvPtrUInt(TpvPtrUInt(aContext)+cCrashReportContextGRegs)));
+
+  StackPointer:=Registers^[cCrashReportRegStackPointer];
+  Span:=StackPointer+cCrashReportMaximalStackSpan;
+
+  // The instruction which was interrupted, which is the frame the thread is
+  // actually in and the only one not read out of the stack.
+  CrashReportUnixThreadSlot.Frames[Count]:=TpvPointer(Registers^[cCrashReportRegInstructionPointer]);
+  inc(Count);
+
+  Frame:=Registers^[cCrashReportRegFramePointer];
+
+  while Count<cMaximalStackFrames do begin
+   if (Frame<StackPointer) or (Frame>=Span) or ((Frame and (SizeOf(TpvPtrUInt)-1))<>0) then begin
+    break;
+   end;
+   NextFrame:=PpvPtrUInt(TpvPointer(Frame))^;
+   ReturnAddress:=PpvPtrUInt(TpvPointer(TpvPtrUInt(Frame+SizeOf(TpvPtrUInt))))^;
+   if ReturnAddress=0 then begin
+    break;
+   end;
+   CrashReportUnixThreadSlot.Frames[Count]:=TpvPointer(ReturnAddress);
+   inc(Count);
+   if NextFrame<=Frame then begin
+    break;
+   end;
+   Frame:=NextFrame;
+  end;
+
+ end;
+
+ CrashReportUnixThreadSlot.Count:=Count;
+ CrashReportWriteBarrier;
+ CrashReportUnixThreadSlot.State:=2;
+
+end;
+
+// Puts the handler in place. Called from the install, so that the signal is
+// claimed at a quiet moment rather than while a crash is being written up.
+procedure CrashReportInstallThreadSignalHandler;
+var Action:SigActionRec;
+begin
+ FillChar(Action,SizeOf(SigActionRec),#0);
+ Action.sa_handler:=SigActionHandler(TpvPointer(@CrashReportThreadSignalHandler));
+ FpSigEmptySet(Action.sa_mask);
+ // Asking for the processor state, and for interrupted system calls to be
+ // resumed rather than to fail, since the thread being asked is a bystander and
+ // must not notice this beyond a moment of delay.
+ Action.sa_flags:=SA_SIGINFO or SA_RESTART;
+ if FpSigAction(cCrashReportThreadSignal,@Action,nil)=0 then begin
+  CrashReportThreadSignalInstalled:=true;
+ end;
+end;
+
+function CrashReportUnixThreadStacks(const aMaximalThreads:TpvInt32):String;
+const cWaitRounds=20000;
+var SearchRec:TSearchRec;
+    ThreadID,OwnThreadID,ProcessID:TpvInt32;
+    Handled,Index,Round,Count:TpvInt32;
+    Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
+    Code:TpvInt32;
+begin
+
+ result:='';
+
+ if not CrashReportThreadSignalInstalled then begin
+  result:='Stacks of other threads were not asked for, since the signal they need was not claimed.'+LineEnding;
+  exit;
+ end;
+
+ OwnThreadID:=CrashReportGetTid;
+ ProcessID:=FpGetPid;
+ Handled:=0;
+
+ if FindFirst('/proc/self/task/*',faAnyFile,SearchRec)<>0 then begin
+  exit;
+ end;
+
+ try
+
+  repeat
+
+   Val(SearchRec.Name,ThreadID,Code);
+   if (Code<>0) or (ThreadID<=0) or (ThreadID=OwnThreadID) then begin
+    continue;
+   end;
+
+   if Handled>=aMaximalThreads then begin
+    result:=result+'  (more threads exist, stopped after '+IntToStr(aMaximalThreads)+')'+LineEnding;
+    break;
+   end;
+   inc(Handled);
+
+   CrashReportUnixThreadSlot.Count:=0;
+   CrashReportWriteBarrier;
+   CrashReportUnixThreadSlot.State:=1;
+   CrashReportWriteBarrier;
+
+   if CrashReportSysCall(cCrashReportSysTgkill,ProcessID,ThreadID,cCrashReportThreadSignal)<>0 then begin
+    CrashReportUnixThreadSlot.State:=0;
+    result:=result+'Thread '+IntToStr(ThreadID)+', could not be reached'+LineEnding;
+    continue;
+   end;
+
+   // Waiting rather than blocking on anything, since whatever this would block
+   // on could be held by the very thread which is being asked. A thread which
+   // never answers is left alone and reported as such.
+   Round:=0;
+   while (CrashReportUnixThreadSlot.State<>2) and (Round<cWaitRounds) do begin
+    inc(Round);
+    ThreadSwitch;
+   end;
+
+   if CrashReportUnixThreadSlot.State<>2 then begin
+    CrashReportUnixThreadSlot.State:=0;
+    result:=result+'Thread '+IntToStr(ThreadID)+', did not answer'+LineEnding;
+    continue;
+   end;
+
+   CrashReportReadBarrier;
+   Count:=CrashReportUnixThreadSlot.Count;
+   if Count>cMaximalStackFrames then begin
+    Count:=cMaximalStackFrames;
+   end;
+   for Index:=0 to Count-1 do begin
+    Frames[Index]:=CrashReportUnixThreadSlot.Frames[Index];
+   end;
+   CrashReportUnixThreadSlot.State:=0;
+
+   result:=result+'Thread '+IntToStr(ThreadID)+', '+IntToStr(Count)+' frames:'+LineEnding;
+   for Index:=0 to Count-1 do begin
+    // Everything but the interrupted instruction is a return address, so it
+    // points behind its call rather than at it.
+    result:=result+'  '+pvCrashReportFormatAddress(Frames[Index],Index>0)+LineEnding;
+   end;
+
+  until FindNext(SearchRec)<>0;
+
+  if Handled=0 then begin
+   result:='No other threads were running.'+LineEnding;
+  end else begin
+   result:='Stacks of the other '+IntToStr(Handled)+' threads of this process:'+LineEnding+result;
+  end;
+
+ finally
+  FindClose(SearchRec);
+ end;
+
+end;
+{$ifend}
+
 function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32):String;
 {$if defined(Windows) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
 const TH32CS_SNAPTHREAD=TpvUInt32($00000004);
@@ -1936,14 +2338,17 @@ begin
  end;
 
 end;
+{$elseif defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+begin
+ result:=CrashReportUnixThreadStacks(aMaximalThreads);
+end;
 {$else}
 begin
- // Not answered elsewhere. Reading the stack of another thread means stopping
- // it first, and the ways of doing that on a unix, a signal handler which
- // captures its own context or a helper process attached through ptrace, both
- // reach a good deal further into the program than a crash logger should on its
- // own. Saying so is better than returning an empty string which reads like
- // there was nothing to report.
+ // Not answered here. Reading the stack of another thread on a unix means
+ // asking it to stop itself through a signal, and taking a signal away from the
+ // program is not something a crash logger should do on its own, so it is
+ // behind PasVulkanCrashReportUnixThreadStacks. Saying so is better than
+ // returning an empty string, which reads like there was nothing to report.
  result:='Stacks of other threads are not available on this platform.'+LineEnding;
 end;
 {$ifend}
@@ -1984,6 +2389,10 @@ begin
  // Found now rather than in the middle of a crash, where opening a library is
  // the last thing worth doing.
  CrashReportLoadUnwinder;
+{$ifend}
+{$if defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks)}
+ FillChar(CrashReportUnixThreadSlot,SizeOf(TpvCrashReportUnixThreadSlot),#0);
+ CrashReportInstallThreadSignalHandler;
 {$ifend}
  // Plain assignment, not Addr, since RaiseProc is a procedural variable and Addr
  // would yield the address of the variable itself rather than its value.

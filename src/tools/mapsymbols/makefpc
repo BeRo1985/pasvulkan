@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p fpctemp
-fpc -Sd -B -O2 -FUfpctemp -Fu../../../src -Fu../../../externals/pucu/src -Fu../../../externals/pasmp/src -Fi../../../src -omapsymbols mapsymbols.dpr
+# The tool reads its own output back for the self check, so it needs the
+# unpacking side even though only --compress ever produces a packed table.
+fpc -Sd -B -O2 -dPasVulkanSymbolTableCompression -FUfpctemp -Fu../../../src -Fu../../../externals/pucu/src -Fu../../../externals/pasmp/src -Fi../../../src -omapsymbols mapsymbols.dpr
 rm -Rf fpctemp

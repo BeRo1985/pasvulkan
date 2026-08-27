@@ -321,7 +321,7 @@ end;
 
 var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     ParameterIndex:TpvSizeInt;
-    WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths:Boolean;
+    WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
     DebugOutputFileName:String;
     InjectIntoExecutable:Boolean;
     PDBOutputFileName:String;
@@ -349,6 +349,7 @@ begin
  MapFileName:='';
  WantSymbols:=true;
  StripPaths:=false;
+ Compress:=false;
  WantLines:=true;
  ForceMap:=false;
  ForceDWARF:=false;
@@ -364,6 +365,8 @@ begin
    WantSymbols:=false;
   end else if Parameter='--basenames' then begin
    StripPaths:=true;
+  end else if Parameter='--compress' then begin
+   Compress:=true;
   end else if Parameter='--no-lines' then begin
    WantLines:=false;
   end else if Parameter='--map' then begin
@@ -402,6 +405,11 @@ begin
   WriteLn('  --basenames    keep only the file name of a source, not the directory it');
   WriteLn('                 was built in, so that a shipped binary does not carry the');
   WriteLn('                 build tree of whoever built it');
+  WriteLn('  --compress     pack the appended table, which measured at about a third of');
+  WriteLn('                 its size. Needs the reading side built with the define');
+  WriteLn('                 PasVulkanSymbolTableCompression, since unpacking asks for');
+  WriteLn('                 memory at the worst moment for it. A build without that');
+  WriteLn('                 define turns a packed table down rather than misreading it');
   WriteLn('  --gdb <file>   additionally write the same information as a standalone');
   WriteLn('                 ELF debug file, which addr2line, gdb and everything else');
   WriteLn('                 built on DWARF can read, also for a Delphi build');
@@ -443,6 +451,7 @@ begin
 
   Builder:=TSymbolBuilder.Create;
   Builder.StripPaths:=StripPaths;
+  Builder.Compress:=Compress;
   Collector:=TCollector.Create;
   Collector.Builder:=Builder;
   Collector.ImageBase:=Image.ImageBase;

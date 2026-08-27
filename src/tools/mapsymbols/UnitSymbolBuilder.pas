@@ -15,6 +15,7 @@ interface
 uses SysUtils,
      Classes,
      PasVulkan.Types,
+     PasVulkan.Compression.LZBRSF,
      PasVulkan.SymbolTable;
 
 type TSymbolBuilder=class
@@ -54,10 +55,13 @@ type TSymbolBuilder=class
        fUniqueStrings:TStringList;
        fImageBase:TpvUInt64;
        fStripPaths:Boolean;
+       fCompress:Boolean;
        function PreparePath(const aFileName:String):String;
+       procedure WritePayload(const aStream:TStream);
        procedure SortUnits(const aLeft,aRight:TpvSizeInt);
        procedure SortSymbols(const aLeft,aRight:TpvSizeInt);
        procedure SortLines(const aLeft,aRight:TpvSizeInt);
+       procedure DropRedundantEndMarkers;
        procedure AssignLinesToUnits;
        function AddString(const aValue:String;const aUnique:Boolean):TpvUInt32;
       public
@@ -89,6 +93,11 @@ type TSymbolBuilder=class
        // needs to. Does not affect the pdb or the standalone debug file, see
        // PreparePath.
        property StripPaths:Boolean read fStripPaths write fStripPaths;
+       // When set, everything behind the header is packed. Measured at about a
+       // third of what the executable would otherwise grow by, at the price of
+       // the reader having to ask for memory while it is unpacking, which is
+       // why the reading side of it is behind a define of its own.
+       property Compress:Boolean read fCompress write fCompress;
        // Read access for the writers, which need the collected data again in a
        // different shape. Only valid after Finish, since that is what sorts it.
        function GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
@@ -114,6 +123,43 @@ begin
  fUniqueStrings:=nil;
  fImageBase:=0;
  fStripPaths:=false;
+ fCompress:=false;
+end;
+
+// The contents behind the header, which is what is either written straight out
+// or packed first. Split out so that both ways lay out exactly the same bytes.
+procedure TSymbolBuilder.WritePayload(const aStream:TStream);
+var Index:TpvSizeInt;
+    UnitEntry:TpvSymbolTableUnitEntry;
+    SymbolEntry:TpvSymbolTableSymbolEntry;
+    LineEntry:TpvSymbolTableLineEntry;
+begin
+
+ for Index:=0 to fUnitCount-1 do begin
+  UnitEntry.StartRVA:=fUnits[Index].StartRVA;
+  UnitEntry.Size:=fUnits[Index].Size;
+  UnitEntry.NameOffset:=fUnits[Index].NameOffset;
+  UnitEntry.FileNameOffset:=fUnits[Index].FileNameOffset;
+  aStream.WriteBuffer(UnitEntry,SizeOf(TpvSymbolTableUnitEntry));
+ end;
+
+ for Index:=0 to fSymbolCount-1 do begin
+  SymbolEntry.RVA:=fSymbols[Index].RVA;
+  SymbolEntry.NameOffset:=fSymbols[Index].NameOffset;
+  SymbolEntry.Reserved:=0;
+  aStream.WriteBuffer(SymbolEntry,SizeOf(TpvSymbolTableSymbolEntry));
+ end;
+
+ for Index:=0 to fLineCount-1 do begin
+  LineEntry.RVA:=fLines[Index].RVA;
+  LineEntry.LineNumber:=fLines[Index].LineNumber;
+  LineEntry.UnitIndex:=fLines[Index].UnitIndex;
+  aStream.WriteBuffer(LineEntry,SizeOf(TpvSymbolTableLineEntry));
+ end;
+
+ fStringStream.Seek(0,soBeginning);
+ aStream.CopyFrom(fStringStream,fStringStream.Size);
+
 end;
 
 // Applied where the string table of the appended block is built, and nowhere
@@ -409,6 +455,47 @@ begin
  end;
 end;
 
+// Drops the end of sequence markers which do not mark the end of anything.
+//
+// A marker says that the code described by the rows before it stops at its
+// address. Where a real row starts at that same address the code does not stop
+// there at all, the next sequence simply begins where the last one ended, and
+// the marker describes a gap of zero length. Keeping it would do harm rather
+// than nothing: the reader looks for the last record at or below an address,
+// which would be the marker, and it would then report that address as having no
+// line although the row right next to it says which one it is.
+//
+// Must run after the sort, since only then is a record next to the ones it
+// shares an address with.
+procedure TSymbolBuilder.DropRedundantEndMarkers;
+var Index,Kept:TpvSizeInt;
+    Redundant:Boolean;
+begin
+ Kept:=0;
+ for Index:=0 to fLineCount-1 do begin
+  Redundant:=false;
+  if fLines[Index].LineNumber=0 then begin
+   if (Index>0) and
+      (fLines[Index-1].RVA=fLines[Index].RVA) and
+      (fLines[Index-1].LineNumber>0) then begin
+    Redundant:=true;
+   end;
+   if (Index<(fLineCount-1)) and
+      (fLines[Index+1].RVA=fLines[Index].RVA) and
+      (fLines[Index+1].LineNumber>0) then begin
+    Redundant:=true;
+   end;
+  end;
+  if not Redundant then begin
+   if Kept<>Index then begin
+    fLines[Kept]:=fLines[Index];
+   end;
+   inc(Kept);
+  end;
+ end;
+ fLineCount:=Kept;
+end;
+
 procedure TSymbolBuilder.Finish;
 begin
  if fUnitCount>0 then begin
@@ -419,6 +506,7 @@ begin
  end;
  if fLineCount>0 then begin
   SortLines(0,fLineCount-1);
+  DropRedundantEndMarkers;
   AssignLinesToUnits;
  end;
 end;
@@ -457,12 +545,12 @@ procedure TSymbolBuilder.AppendToFile(const aFileName:String);
 var Stream:TFileStream;
     Header:TpvSymbolTableHeader;
     Footer,ExistingFooter:TpvSymbolTableFooter;
-    UnitEntry:TpvSymbolTableUnitEntry;
-    SymbolEntry:TpvSymbolTableSymbolEntry;
-    LineEntry:TpvSymbolTableLineEntry;
     Index,MatchIndex:TpvSizeInt;
     BlobOffset:TpvInt64;
     Matches:Boolean;
+    Payload:TMemoryStream;
+    PackedData:TpvPointer;
+    PackedSize:TpvUInt64;
 begin
 
  FreeAndNil(fStringStream);
@@ -515,32 +603,47 @@ begin
   Header.SymbolCount:=TpvUInt32(fSymbolCount);
   Header.LineCount:=TpvUInt32(fLineCount);
   Header.StringSize:=TpvUInt32(fStringStream.Size);
-  Stream.WriteBuffer(Header,SizeOf(TpvSymbolTableHeader));
 
-  for Index:=0 to fUnitCount-1 do begin
-   UnitEntry.StartRVA:=fUnits[Index].StartRVA;
-   UnitEntry.Size:=fUnits[Index].Size;
-   UnitEntry.NameOffset:=fUnits[Index].NameOffset;
-   UnitEntry.FileNameOffset:=fUnits[Index].FileNameOffset;
-   Stream.WriteBuffer(UnitEntry,SizeOf(TpvSymbolTableUnitEntry));
+  Payload:=nil;
+  PackedData:=nil;
+  PackedSize:=0;
+  try
+
+   if fCompress then begin
+    Payload:=TMemoryStream.Create;
+    WritePayload(Payload);
+    // Only kept when it actually came out smaller. A table which does not pack
+    // is written plainly rather than larger than it was.
+    if LZBRSFCompress(Payload.Memory,Payload.Size,PackedData,PackedSize) and
+       (PackedSize<TpvUInt64(Payload.Size)) then begin
+     Header.Flags:=Header.Flags or pvSymbolTableFlagCompressed;
+    end else begin
+     if assigned(PackedData) then begin
+      FreeMem(PackedData);
+      PackedData:=nil;
+     end;
+     PackedSize:=0;
+    end;
+   end;
+
+   Stream.WriteBuffer(Header,SizeOf(TpvSymbolTableHeader));
+
+   if (Header.Flags and pvSymbolTableFlagCompressed)<>0 then begin
+    Stream.WriteBuffer(PackedData^,TpvSizeInt(PackedSize));
+    WriteLn('Packed ',Payload.Size,' bytes of contents down to ',PackedSize,'.');
+   end else if assigned(Payload) then begin
+    Payload.Seek(0,soBeginning);
+    Stream.CopyFrom(Payload,Payload.Size);
+   end else begin
+    WritePayload(Stream);
+   end;
+
+  finally
+   if assigned(PackedData) then begin
+    FreeMem(PackedData);
+   end;
+   FreeAndNil(Payload);
   end;
-
-  for Index:=0 to fSymbolCount-1 do begin
-   SymbolEntry.RVA:=fSymbols[Index].RVA;
-   SymbolEntry.NameOffset:=fSymbols[Index].NameOffset;
-   SymbolEntry.Reserved:=0;
-   Stream.WriteBuffer(SymbolEntry,SizeOf(TpvSymbolTableSymbolEntry));
-  end;
-
-  for Index:=0 to fLineCount-1 do begin
-   LineEntry.RVA:=fLines[Index].RVA;
-   LineEntry.LineNumber:=fLines[Index].LineNumber;
-   LineEntry.UnitIndex:=fLines[Index].UnitIndex;
-   Stream.WriteBuffer(LineEntry,SizeOf(TpvSymbolTableLineEntry));
-  end;
-
-  fStringStream.Seek(0,soBeginning);
-  Stream.CopyFrom(fStringStream,fStringStream.Size);
 
   FillChar(Footer,SizeOf(TpvSymbolTableFooter),#0);
   Move(pvSymbolTableMagic[0],Footer.Magic[0],8);

@@ -73,6 +73,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="../../PasVulkan.Compression.LZBRSF.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../../PasVulkan.Types.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -101,6 +105,9 @@
         <SyntaxMode Value="Delphi"/>
       </SyntaxOptions>
     </Parsing>
+    <Other>
+      <CustomOptions Value="-dPasVulkanSymbolTableCompression"/>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>
