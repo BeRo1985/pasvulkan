@@ -577,6 +577,19 @@ function CrashReportSysCall(aNumber:TpvPtrInt):TpvPtrInt; cdecl; varargs; extern
 
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
     CrashReportSequence:TpvInt32=0;
+    // Whether the counter above has ever come round.
+    //
+    // The readers work out how many entries there are to look at from the
+    // newest number, which is right for exactly as long as that number has only
+    // ever gone up: before the first four billion events it is the count, and
+    // after that it is not. A ring which has just come round would then be read
+    // as holding one entry while it holds all of them, and would grow back to
+    // its full length one event at a time.
+    //
+    // Set where it happens rather than counted alongside, so that the ordinary
+    // path of every recorded event stays what it was. It is one store, once,
+    // after four billion of them.
+    CrashReportSequenceWrapped:Boolean=false;
 {$ifndef fpc}
     // Only ever written by the fallback in the barriers below, on a compiler
     // which offers nothing better.
@@ -653,6 +666,11 @@ begin
 {$else}
   result:=TpvUInt32(AtomicIncrement(CrashReportSequence));
 {$endif}
+  if result=0 then begin
+   // Which is also the moment the counter stops saying how many entries there
+   // are, see CrashReportSequenceWrapped.
+   CrashReportSequenceWrapped:=true;
+  end;
  until result<>0;
 end;
 
@@ -1552,7 +1570,9 @@ begin
  end;
  Newest:=TpvUInt32(CrashReportSequence);
  ScanCount:=pvCrashReportRingBufferSize;
- if TpvUInt32(ScanCount)>Newest then begin
+ // The newest number is the count of entries only for as long as the counter
+ // has never come round, see CrashReportSequenceWrapped.
+ if (not CrashReportSequenceWrapped) and (TpvUInt32(ScanCount)>Newest) then begin
   ScanCount:=TpvInt32(Newest);
  end;
  if aThreadID=0 then begin
@@ -1564,6 +1584,12 @@ begin
  // while it is being read. The same dance as everywhere else in here.
  for Scan:=0 to ScanCount-1 do begin
   Wanted:=Newest-TpvUInt32(Scan);
+  // Zero is the mark of a slot which is being written and of one which never
+  // was, so it is never a number to look for. Reachable only just after the
+  // counter came round, where the scan reaches back past its own beginning.
+  if Wanted=0 then begin
+   continue;
+  end;
   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
   if Entry^.Sequence<>Wanted then begin
    continue;
@@ -1619,7 +1645,9 @@ begin
  end;
  Newest:=TpvUInt32(CrashReportSequence);
  ScanCount:=pvCrashReportRingBufferSize;
- if TpvUInt32(ScanCount)>Newest then begin
+ // The newest number is the count of entries only for as long as the counter
+ // has never come round, see CrashReportSequenceWrapped.
+ if (not CrashReportSequenceWrapped) and (TpvUInt32(ScanCount)>Newest) then begin
   ScanCount:=TpvInt32(Newest);
  end;
  if aThreadID=0 then begin
@@ -1629,6 +1657,12 @@ begin
  end;
  for Scan:=0 to ScanCount-1 do begin
   Wanted:=Newest-TpvUInt32(Scan);
+  // Zero is the mark of a slot which is being written and of one which never
+  // was, so it is never a number to look for. Reachable only just after the
+  // counter came round, where the scan reaches back past its own beginning.
+  if Wanted=0 then begin
+   continue;
+  end;
   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
   if Entry^.Sequence<>Wanted then begin
    continue;
@@ -1753,12 +1787,16 @@ begin
  end;
  // Only relevant before the counter has gone round the first time, which is
  // also the only moment at which it says how many entries there are at all.
- if TpvUInt32(Count)>Newest then begin
+ if (not CrashReportSequenceWrapped) and (TpvUInt32(Count)>Newest) then begin
   Count:=TpvInt32(Newest);
  end;
  result:='First chance exception history, oldest first, at most '+IntToStr(Count)+' entries:'+LineEnding;
  for Index:=Count-1 downto 0 do begin
   Wanted:=Newest-TpvUInt32(Index);
+  // Never zero, see the same line in the other readers.
+  if Wanted=0 then begin
+   continue;
+  end;
   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
   // A mismatching sequence means the entry is either still being written or has
   // already been overwritten by a newer one.
@@ -2815,7 +2853,7 @@ begin
  end;
 
  Count:=pvCrashReportRingBufferSize;
- if TpvUInt32(Count)>Newest then begin
+ if (not CrashReportSequenceWrapped) and (TpvUInt32(Count)>Newest) then begin
   Count:=TpvInt32(Newest);
  end;
 
@@ -2837,6 +2875,10 @@ begin
  Found:=false;
  for Index:=0 to Count-1 do begin
   Wanted:=Newest-TpvUInt32(Index);
+  // Never zero, see the same line in the other readers.
+  if Wanted=0 then begin
+   continue;
+  end;
   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
   if Entry^.Sequence<>Wanted then begin
    continue;
