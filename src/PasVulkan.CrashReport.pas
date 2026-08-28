@@ -3560,7 +3560,7 @@ type TpvCrashReportSigInfoHandler=procedure(aSignal:TpvInt32;aInfo:TpvPointer;aC
       Size:TpvSizeUInt;
      end;
 
-function CrashReportSigAltStack(const aNew,aOld:TpvPointer):TpvInt32; cdecl; external name 'sigaltstack';
+     TpvCrashReportSigAltStack=function(const aNew,aOld:TpvPointer):TpvInt32; cdecl;
 {$endif}
 
 var CrashReportUnixFault:TpvCrashReportUnixFault;
@@ -3570,6 +3570,9 @@ var CrashReportUnixFault:TpvCrashReportUnixFault;
     CrashReportUnixFaultBusy:TpvInt32=0;
     CrashReportOldFaultActions:array[0..high(cCrashReportFaultSignals)] of SigActionRec;
     CrashReportFaultSignalsInstalled:Boolean=false;
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+    CrashReportSigAltStackProc:TpvCrashReportSigAltStack=nil;
+{$endif}
 
 {$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
 // Puts the calling thread on a stack of its own for the four signals above.
@@ -3583,10 +3586,23 @@ var CrashReportUnixFault:TpvCrashReportUnixFault;
 // for it, it has to outlive everything which might fault, and a crash reporter
 // which frees the ground it stands on has misunderstood its job.
 function CrashReportInstallFaultStack:Boolean;
+const RTLD_NOW=2;
 var Stack:TpvCrashReportAltStack;
-    Memory:TpvPointer;
+    Memory,Library_:TpvPointer;
 begin
  result:=false;
+ // Looked up rather than linked against, so that a program which never asks for
+ // a stack of its own carries no dependency on it. Wherever it already is
+ // first, which is what a program has when its C library is loaded at all.
+ if not assigned(CrashReportSigAltStackProc) then begin
+  Library_:=dlopen(nil,RTLD_NOW);
+  if assigned(Library_) then begin
+   CrashReportSigAltStackProc:=TpvCrashReportSigAltStack(dlsym(Library_,'sigaltstack'));
+  end;
+  if not assigned(CrashReportSigAltStackProc) then begin
+   exit;
+  end;
+ end;
  Memory:=GetMem(cCrashReportFaultStackSize);
  if not assigned(Memory) then begin
   exit;
@@ -3595,7 +3611,7 @@ begin
  Stack.Pointer_:=Memory;
  Stack.Flags:=0;
  Stack.Size:=cCrashReportFaultStackSize;
- if CrashReportSigAltStack(@Stack,nil)=0 then begin
+ if CrashReportSigAltStackProc(@Stack,nil)=0 then begin
   result:=true;
  end else begin
   FreeMem(Memory);

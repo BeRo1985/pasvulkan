@@ -890,10 +890,38 @@ type TpvCrashReportMiniDumpBuffer=record
 
      TpvCrashReportMiniDumpModules=array of TpvCrashReportMiniDumpModule;
 
-// The state of the calling thread, for a dump which is asked for when nothing
-// has faulted. The same thing the fault handler is handed, only about here and
-// now instead of about a crash.
-function CrashReportMiniDumpGetContext(aContext:TpvPointer):TpvInt32; cdecl; external name 'getcontext';
+type // The state of the calling thread, for a dump which is asked for when
+     // nothing has faulted. The same thing the fault handler is handed, only
+     // about here and now instead of about a crash.
+     TpvCrashReportMiniDumpGetContext=function(aContext:TpvPointer):TpvInt32; cdecl;
+
+     TpvCrashReportMiniDumpDlOpen=function(aFileName:PAnsiChar;aFlags:TpvInt32):TpvPointer; cdecl;
+     TpvCrashReportMiniDumpDlSym=function(aHandle:TpvPointer;aName:PAnsiChar):TpvPointer; cdecl;
+
+// The two which open a library and look a name up in it. Everything else this
+// unit needs from outside is found through them rather than linked against, so
+// a program which never writes a dump carries no dependency on any of it.
+function CrashReportMiniDumpDlOpen(aFileName:PAnsiChar;aFlags:TpvInt32):TpvPointer; cdecl; external 'dl' name 'dlopen';
+function CrashReportMiniDumpDlSym(aHandle:TpvPointer;aName:PAnsiChar):TpvPointer; cdecl; external 'dl' name 'dlsym';
+
+var CrashReportMiniDumpGetContextProc:TpvCrashReportMiniDumpGetContext=nil;
+    CrashReportMiniDumpGetContextTried:Boolean=false;
+
+// Finds it once, wherever it already is, which for a program whose C library is
+// loaded at all is the program itself.
+function CrashReportMiniDumpLoadGetContext:Boolean;
+const RTLD_NOW=2;
+var Library_:TpvPointer;
+begin
+ if not CrashReportMiniDumpGetContextTried then begin
+  CrashReportMiniDumpGetContextTried:=true;
+  Library_:=CrashReportMiniDumpDlOpen(nil,RTLD_NOW);
+  if assigned(Library_) then begin
+   CrashReportMiniDumpGetContextProc:=TpvCrashReportMiniDumpGetContext(CrashReportMiniDumpDlSym(Library_,'getcontext'));
+  end;
+ end;
+ result:=assigned(CrashReportMiniDumpGetContextProc);
+end;
 
 procedure CrashReportMiniDumpBufferNeed(var aBuffer:TpvCrashReportMiniDumpBuffer;const aExtra:TpvSizeInt);
 var Wanted:TpvSizeInt;
@@ -1491,7 +1519,10 @@ begin
  if pvCrashReportLastFault(Fault)=0 then begin
   FillChar(Fault,SizeOf(TpvCrashReportUnixFault),#0);
   FillChar(UnixContext,SizeOf(UnixContext),#0);
-  if CrashReportMiniDumpGetContext(@UnixContext[0])<>0 then begin
+  if not CrashReportMiniDumpLoadGetContext then begin
+   exit;
+  end;
+  if CrashReportMiniDumpGetContextProc(@UnixContext[0])<>0 then begin
    exit;
   end;
   // Taken apart by the sibling unit rather than here, so that what a register
