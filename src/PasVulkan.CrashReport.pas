@@ -1349,6 +1349,12 @@ begin
   exit;
  end;
  try
+  // What is behind BackTraceStrFunc is a variable, and what a variable points at
+  // may fault on an address which is not what it expected. This is the one place
+  // in a crash report which calls into something it does not own, and a crash
+  // reporter which crashes takes the report with it. The bare address is a worse
+  // line in a report which still gets written.
+  try
  if not aReturnAddress then begin
   result:=Trim(String(BackTraceStrFunc(aAddress)));
   exit;
@@ -1383,6 +1389,9 @@ begin
  if Position<=length(Answer) then begin
   result:=result+'  '+copy(Answer,Position,(length(Answer)-Position)+1);
  end;
+  except
+   result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
+  end;
  finally
   CrashReportLeaveBackTrace;
  end;
@@ -1474,7 +1483,7 @@ begin
  // space. This is a public entry point with a default of true on that second
  // argument, so it is the one place where that can arrive.
  if not assigned(aAddress) then begin
-  result:='$'+IntToHex(TpvPtrUInt(0),SizeOf(TpvPointer) shl 1);
+  result:='$'+IntToHex(0,SizeOf(TpvPointer) shl 1);
   exit;
  end;
 {$if defined(Windows) or defined(Linux) or defined(Android)}
@@ -1723,6 +1732,14 @@ var Fingerprint:String;
     // there can the same address turn up twice for no reason, and only there is
     // one of the two thrown away.
     AtBoundary:Boolean;
+    // The kind of the address which was handed in, worked out once here and
+    // handed on as a fact, so that the line printed from it and the identifier
+    // built from it cannot end up describing it differently.
+    AddressIsReturnAddress:Boolean;
+    ResolvedKind:TpvCrashReportAddressKind;
+    // Whether the exception state of the runtime belongs to this report, see
+    // the same question in pvCrashReportFingerprint.
+    UseLocalExceptState:Boolean;
     // The last address which was put into the text, so that the same one does
     // not go in twice in a row. Nothing is printed twice for the ordinary
     // reason that nothing crashed twice at one address in a row.
@@ -1772,6 +1789,22 @@ begin
  Have:=false;
  AtBoundary:=false;
  LastLine:='';
+ UseLocalExceptState:=(aThreadID=0) or (aThreadID=CrashReportCurrentThreadID);
+ // Once, and then handed on as a decided fact rather than as the question
+ // again. The ring is written into while a report is being written, so asking
+ // the same question twice can get two answers, and the line above and the
+ // identifier below would be about the same address in two different ways.
+ if assigned(aAddress) then begin
+  AddressIsReturnAddress:=CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID);
+  if AddressIsReturnAddress then begin
+   ResolvedKind:=TpvCrashReportAddressKind.Return;
+  end else begin
+   ResolvedKind:=TpvCrashReportAddressKind.Instruction;
+  end;
+ end else begin
+  AddressIsReturnAddress:=false;
+  ResolvedKind:=aAddressKind;
+ end;
 {$ifdef fpc}
  // Through the same formatter as everything else in here, rather than through
  // the runtime's own. That formatter asks the appended symbol table first, which
@@ -1782,8 +1815,8 @@ begin
  //
  // The runtime is still asked where the table has nothing, inside the fallback.
  if assigned(aAddress) then begin
-  AddAddress(aAddress,CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID));
- end else if assigned(ExceptAddr) then begin
+  AddAddress(aAddress,AddressIsReturnAddress);
+ end else if UseLocalExceptState and assigned(ExceptAddr) then begin
   // The address of the raise statement itself on this compiler, not the one
   // behind it.
   AddAddress(ExceptAddr,false);
@@ -1794,9 +1827,15 @@ begin
  if assigned(aFrames) and (aFrameCount>0) then begin
   Frames:=aFrames;
   FrameCount:=aFrameCount;
- end else begin
+ end else if UseLocalExceptState then begin
+  // Only where they are about this crash. They belong to the thread which is
+  // asking, and a logger thread writing somebody else's report would otherwise
+  // put its own stack behind somebody else's crash address.
   Frames:=ExceptFrames;
   FrameCount:=ExceptFrameCount;
+ end else begin
+  Frames:=nil;
+  FrameCount:=0;
  end;
  if assigned(Frames) then begin
   for Index:=0 to FrameCount-1 do begin
@@ -1815,7 +1854,7 @@ begin
  // captured stack, it stands in front of it; frames do replace it, since they
  // are another answer to the same question.
  if assigned(aAddress) then begin
-  AddAddress(aAddress,CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID));
+  AddAddress(aAddress,AddressIsReturnAddress);
  end;
  AtBoundary:=true;
  if assigned(aFrames) and (aFrameCount>0) then begin
@@ -1884,7 +1923,10 @@ begin
  // describe different frames. It takes them from the crash site onwards, which
  // is the one difference, and it is there on purpose: see the note at its
  // declaration.
- Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress,aAddressKind,aThreadID);
+ // With the kind as it was decided above rather than as it was asked, so that
+ // the identifier cannot get a second, different answer to a question which has
+ // already been answered for the line printed from the same address.
+ Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress,ResolvedKind,aThreadID);
  if length(Fingerprint)>0 then begin
   result:=result+'Crash fingerprint: '+Fingerprint+LineEnding;
  end;
@@ -2328,9 +2370,13 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
 {$ifndef fpc}
     StackInfo:PpvCrashReportStackInfo;
 {$endif}
-    Found:Boolean;
     RaiseAddress:TpvPointer;
     RaiseIsReturnAddress:Boolean;
+    // The kind of the address which was handed in, worked out once.
+    AddressIsReturnAddress:Boolean;
+    // Whether ExceptAddr and ExceptFrames are about the crash being reported,
+    // which they are not when the report belongs to another thread.
+    UseLocalExceptState:Boolean;
     // As in the dump: only the step from the one supplied address into the list
     // behind it can hold the same address twice for no reason.
     AtBoundary:Boolean;
@@ -2362,7 +2408,9 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
   end;
   if AtBoundary then begin
    AtBoundary:=false;
-   if (Count>0) and (Addresses[Count-1]=aValue) then begin
+   // Address and kind, since the same number in the two kinds is two different
+   // frames and only two of the same kind can be one thing said twice.
+   if (Count>0) and (Addresses[Count-1]=aValue) and (ReturnAddresses[Count-1]=aValueIsReturnAddress) then begin
     exit;
    end;
   end;
@@ -2444,27 +2492,78 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
  // Only looked for near the top, since the frames being cut away are the few of
  // the raise itself. A routine which recursed onto its own raise address deeper
  // down keeps its frames.
- procedure BeginAtRaiseAddress(const aRaiseAddress:TpvPointer);
+ procedure BeginAtRaiseAddress(const aRaiseAddress:TpvPointer;const aRaiseIsReturnAddress:Boolean);
  const cMaximalRaiseMachineryFrames=8;
- var Position,Source,Target:TpvInt32;
+ var Position,Source,Target,Found:TpvInt32;
  begin
   if not assigned(aRaiseAddress) then begin
    exit;
   end;
+  // Where the crash site already stands in the list, everything in front of it
+  // goes.
+  //
+  // Looked for by address and kind first, and only then by address alone. The
+  // same number can be two different frames, a faulting instruction at X and a
+  // return into X, so an exact match is worth more than a numeric one; but a
+  // numeric one is still the crash site seen the other way round, and cutting
+  // there is right as long as what ends up first says which of the two it
+  // really is. That case is the ordinary one for a fault: the recorded address
+  // is the instruction, while the captured block holds the same address as one
+  // of its return addresses.
+  // Searched from the second entry on. The first may be the crash site put
+  // there a moment ago by this very function's caller, and finding that would
+  // only find what is already known while the same address further down, which
+  // is where the list itself starts, would go unnoticed and the machinery in
+  // front of it would stay.
+  Found:=-1;
   Position:=1;
   while (Position<Count) and (Position<=cMaximalRaiseMachineryFrames) do begin
    if Addresses[Position]=aRaiseAddress then begin
-    Target:=0;
-    for Source:=Position to Count-1 do begin
-     Addresses[Target]:=Addresses[Source];
-     ReturnAddresses[Target]:=ReturnAddresses[Source];
-     inc(Target);
+    if ReturnAddresses[Position]=aRaiseIsReturnAddress then begin
+     Found:=Position;
+     break;
+    end else if Found<0 then begin
+     Found:=Position;
     end;
-    Count:=Target;
-    exit;
    end;
    inc(Position);
   end;
+  if Found>0 then begin
+   Target:=0;
+   for Source:=Found to Count-1 do begin
+    Addresses[Target]:=Addresses[Source];
+    ReturnAddresses[Target]:=ReturnAddresses[Source];
+    inc(Target);
+   end;
+   Count:=Target;
+   // And it is of the kind which was recorded, whatever the list said about it.
+   ReturnAddresses[0]:=aRaiseIsReturnAddress;
+   exit;
+  end;
+  // Not in the list behind it, but already at the front of it, which is where
+  // it was put. Then there is nothing to move and nothing to add.
+  if (Count>0) and (Addresses[0]=aRaiseAddress) then begin
+   ReturnAddresses[0]:=aRaiseIsReturnAddress;
+   exit;
+  end;
+  // And where it does not stand in the list at all, it goes in front of it.
+  //
+  // Which is the case a fault of the operating system makes: the address the
+  // handler was given is the instruction which faulted, while the frames were
+  // captured separately by walking the stack, and nothing says the one has to
+  // turn up among the others. The list would then describe the way to the crash
+  // without ever naming the crash, and the one address which says which crash
+  // this is would be missing from the thing whose whole job is to say that.
+  if Count>=cMaximalStackFrames then begin
+   Count:=cMaximalStackFrames-1;
+  end;
+  for Source:=Count-1 downto 0 do begin
+   Addresses[Source+1]:=Addresses[Source];
+   ReturnAddresses[Source+1]:=ReturnAddresses[Source];
+  end;
+  Addresses[0]:=aRaiseAddress;
+  ReturnAddresses[0]:=aRaiseIsReturnAddress;
+  inc(Count);
  end;
 
 begin
@@ -2474,6 +2573,31 @@ begin
  AtBoundary:=false;
  FillChar(Addresses,SizeOf(Addresses),#0);
  FillChar(ReturnAddresses,SizeOf(ReturnAddresses),#0);
+
+ // Whether the state the runtime keeps about the exception being handled is
+ // about this report at all.
+ //
+ // ExceptAddr and ExceptFrames belong to the thread which is asking, and a
+ // logger thread writing the report of another thread is asking about somebody
+ // else. Its own last exception, or none, would then be pasted behind the
+ // address of a crash it did not have. The crash address of the right thread
+ // followed by nothing is a shorter answer and a true one.
+ UseLocalExceptState:=(aThreadID=0) or (aThreadID=CrashReportCurrentThreadID);
+
+ // Said by the caller where the caller said it, and otherwise looked up rather
+ // than guessed: a raise address from Delphi is the one behind the raise, the
+ // one FreePascal reports and the one a hardware fault reports are the
+ // instruction itself, and both kinds turn up on both compilers.
+ //
+ // Asked once and kept, because asking twice can answer twice: the ring is
+ // written into while this runs, and the entry which answered the first time
+ // may be gone by the second. The printed line and this identifier are supposed
+ // to be about the same frame.
+ if assigned(aAddress) then begin
+  AddressIsReturnAddress:=CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID);
+ end else begin
+  AddressIsReturnAddress:=false;
+ end;
 
  // The raise point first, then the frames behind it. The ones which were handed
  // in win, so that this and the printed stack are about the same frames.
@@ -2485,20 +2609,16 @@ begin
  // therefore describing one stack in the report and a different one in the
  // fingerprint of that same report.
  if assigned(aAddress) then begin
-  // Said by the caller where the caller said it, and otherwise looked up rather
-  // than guessed: a raise address from Delphi is the one behind the raise, the
-  // one FreePascal reports and the one a hardware fault reports are the
-  // instruction itself, and both kinds turn up on both compilers.
-  AddAddress(aAddress,CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID));
+  AddAddress(aAddress,AddressIsReturnAddress);
  end;
  Frames:=aFrames;
  FrameCount:=aFrameCount;
 {$ifdef fpc}
- if (Count=0) and assigned(ExceptAddr) then begin
+ if (Count=0) and UseLocalExceptState and assigned(ExceptAddr) then begin
   // The address of the raise statement itself on this compiler.
   AddAddress(ExceptAddr,false);
  end;
- if not (assigned(Frames) and (FrameCount>0)) then begin
+ if UseLocalExceptState and not (assigned(Frames) and (FrameCount>0)) then begin
   Frames:=ExceptFrames;
   FrameCount:=ExceptFrameCount;
  end;
@@ -2553,40 +2673,35 @@ begin
  // recorded, which is the only one of the three which is there when somebody
  // else owns the hooks of the runtime.
  RaiseAddress:=aAddress;
- if assigned(RaiseAddress) then begin
-  RaiseIsReturnAddress:=CrashReportAddressKindIsReturn(RaiseAddress,aAddressKind,aThreadID);
- end else begin
-  RaiseIsReturnAddress:=false;
- end;
+ RaiseIsReturnAddress:=AddressIsReturnAddress;
 {$ifdef fpc}
- if not assigned(RaiseAddress) then begin
+ if (not assigned(RaiseAddress)) and UseLocalExceptState then begin
   RaiseAddress:=ExceptAddr;
   RaiseIsReturnAddress:=false;
  end;
 {$endif}
- Found:=false;
  if not assigned(RaiseAddress) then begin
-  Found:=NewestRecordedAddress(RaiseAddress,RaiseIsReturnAddress);
+  // The recorded one, which is the only one of the three which is there when
+  // somebody else owns the hooks of the runtime, and the only one which belongs
+  // to another thread when another thread is being reported on.
+  NewestRecordedAddress(RaiseAddress,RaiseIsReturnAddress);
  end;
 
- // The last resort, for a list which is still empty: the recorded address on
- // its own.
+ // And now the list begins where the crash is: trimmed back to it where it is
+ // already in there, and with it put in front where it is not.
  //
- // Under Delphi with madExcept or anything else owning the stack info hooks
- // there was nothing at all up to here, and the fingerprint came out empty,
- // which is the one output of this unit which then said less than the log next
- // to it. The vectored handler and the raise hook write into the ring buffer
- // whoever owns those hooks, so the address of the crash is known even when the
- // frames behind it are somebody else's business.
+ // The second case is the one an operating system fault makes. The address the
+ // handler was given is the instruction which faulted, the frames come from a
+ // separate walk of the stack, and nothing says the one has to appear among the
+ // others. Under Delphi with the hooks of this unit it usually does not: the
+ // block is captured at the raise and a fault is not a raise. The identifier
+ // would then be made of the machinery around the crash while the one address
+ // which says which crash it is was known all along and left out.
  //
- // One address makes a coarse fingerprint. It is still the difference between
- // grouping crashes by where they happened and not grouping them at all.
- if (Count=0) and Found then begin
-  AddAddress(RaiseAddress,RaiseIsReturnAddress);
- end;
-
- // And now the list starts where the crash is.
- BeginAtRaiseAddress(RaiseAddress);
+ // It also subsumes what used to be a separate last resort here, an empty list
+ // getting the recorded address: an empty list is a list which does not contain
+ // it either.
+ BeginAtRaiseAddress(RaiseAddress,RaiseIsReturnAddress);
 
  Hash:=TpvUInt64($cbf29ce484222325);
 
