@@ -79,6 +79,8 @@ unit PasVulkan.CrashReport;
  {$define PasVulkanCrashReportUnixThreadStacksBuilt}
 {$ifend}
 
+{$scopedenums on}
+
 interface
 
 uses {$if defined(Windows)}
@@ -225,13 +227,7 @@ type
      //
      // The three names are short and unprefixed because they are reached
      // through the type, TpvCrashReportAddressKind.Return, which is how every
-     // other enumeration in this framework is written. That rests on scoped
-     // enumerations, which PasVulkan.inc turns on for everything which includes
-     // it, and it is said again here so that this file states what its own
-     // declaration depends on rather than leaving it to be found two files
-     // away. Without it these three would be plain global identifiers in every
-     // unit which uses this one.
-{$scopedenums on}
+     // other enumeration in this framework is written.
      TpvCrashReportAddressKind=
       (
        Unknown,
@@ -362,6 +358,37 @@ function pvCrashReportContext(const aThreadID:TpvUInt64=0):String;
 // which will be missing one of them, and it is the report from a player which
 // then turns out to be missing it.
 function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown):String;
+
+{$if defined(Windows)}
+// Hands out the operating system state of the most recent fault, in the shape
+// an exception filter is given it and every minidump writer asks for.
+//
+// The state is there because the vectored handler copies it aside as it goes
+// past, which is the only moment it is certainly valid. Neither of the two
+// places which would want to write a minidump has it otherwise: a top level
+// filter runs much later, and a report assembled after the runtime has already
+// turned the fault into an exception never sees those pointers at all.
+//
+// aExceptionPointers is a PEXCEPTION_POINTERS pointing into storage of this
+// unit, which lives as long as the process does, so it may be handed to
+// MiniDumpWriteDump or to whatever else wants one, with ClientPointers false.
+//
+// The result is the ring buffer sequence number of that fault, which is zero
+// when none has been seen yet, and which a caller can read again afterwards to
+// notice that a second fault has overwritten what it was looking at.
+//
+// Only faults are kept here, never raises. A raise which is caught two lines
+// later is the commonest event a program has, and keeping those would mean what
+// is on offer here is almost never the one worth dumping.
+//
+// Written down at the moment of the fault, read whenever. The further apart
+// those two are, the less of it still describes the present: the registers and
+// the faulting address stay true, but the stack the context points into belongs
+// to a thread which has long since walked on. A dump taken from an exception
+// filter, while that stack still stands, is worth more than one taken later,
+// and this is what makes the later one possible at all rather than good.
+function pvCrashReportLastFault(out aExceptionPointers:TpvPointer;out aExceptionCode:TpvUInt32;out aThreadID:TpvUInt64):TpvUInt32;
+{$ifend}
 
 procedure pvCrashReportInstall;
 
@@ -641,6 +668,28 @@ var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashRep
     // handler, which cannot use a threadvar. Not allocated is all ones, which
     // is what TlsAlloc itself reports on failure.
     CrashReportTLSIndex:TpvUInt32=$ffffffff;
+    // The operating system state of the most recent fault, see
+    // pvCrashReportLastFault.
+    CrashReportFaultRecord:TpvCrashReportNativeExceptionRecord;
+    // Room for a context and for the up to fifteen bytes which aligning one to
+    // sixteen can cost. Same reason as in the walk of a suspended thread
+    // further down: a context carries vector registers, and the routines which
+    // read those use instructions which insist on that alignment.
+    CrashReportFaultContextBuffer:array[0..SizeOf(TContext)+15] of TpvUInt8;
+    // The two above, tied together in the shape a filter is handed. Filled in
+    // once, at install time, and unchanged afterwards, so that the pointer
+    // given out stays the same one for the life of the process.
+    CrashReportFaultPointers:TpvCrashReportNativeExceptionPointers;
+    CrashReportFaultThreadID:TpvUInt64=0;
+    // Zero while the state above is being written, and zero for as long as no
+    // fault has been seen at all. The same rule the ring buffer entries follow,
+    // and for the same reason.
+    CrashReportFaultSequence:TpvUInt32=0;
+    // Non zero while a thread is writing into the state above. Unlike the ring
+    // buffer, where every thread gets a slot of its own, this is a single
+    // place, and two threads faulting at the same moment would otherwise leave
+    // a mixture of both behind.
+    CrashReportFaultBusy:TpvInt32=0;
 {$ifend}
 {$if defined(fpc) and not defined(Windows)}
     CrashReportOldRaiseProc:TExceptProc=nil;
@@ -2259,6 +2308,49 @@ begin
 end;
 {$ifend}
 
+// Puts the operating system state of a fault somewhere it can still be reached
+// after the handler has returned, see pvCrashReportLastFault.
+//
+// Every architecture, not only the two whose registers the entry above knows.
+// What is kept here is the untouched context of the operating system, copied
+// rather than taken apart, so there is nothing in it to understand, and a dump
+// written from it on an architecture this unit cannot decode a register of is
+// exactly as good as one written on the two it can.
+//
+// Plain stores and one block copy, no allocation and no call which could raise,
+// which is the same rule the rest of the handler follows.
+procedure CrashReportKeepFaultState(const aExceptionRecord:PpvCrashReportNativeExceptionRecord;const aContext:TpvPointer;const aThreadID:TpvUInt64;const aSequence:TpvUInt32);
+begin
+ if not (assigned(aExceptionRecord) and
+         assigned(aContext) and
+         assigned(CrashReportFaultPointers.ContextRecord)) then begin
+  exit;
+ end;
+ // The second thread steps aside instead of waiting for the first, since
+ // waiting inside a fault handler is how a crash turns into a hang. It loses
+ // nothing which is not written down elsewhere: its ring buffer entry, with the
+ // faulting address and the registers, is made either way.
+{$ifdef fpc}
+ if InterLockedExchange(CrashReportFaultBusy,1)<>0 then begin
+{$else}
+ if AtomicExchange(CrashReportFaultBusy,1)<>0 then begin
+{$endif}
+  exit;
+ end;
+ // Cleared first, so that a reader which arrives in the middle of this sees a
+ // slot which says nothing rather than one which is half of the last fault and
+ // half of this one.
+ CrashReportFaultSequence:=0;
+ CrashReportWriteBarrier;
+ CrashReportFaultRecord:=aExceptionRecord^;
+ Move(aContext^,CrashReportFaultPointers.ContextRecord^,SizeOf(TContext));
+ CrashReportFaultThreadID:=aThreadID;
+ CrashReportWriteBarrier;
+ CrashReportFaultSequence:=aSequence;
+ CrashReportWriteBarrier;
+ CrashReportFaultBusy:=0;
+end;
+
 function CrashReportVectoredExceptionHandler(aExceptionInformation:PpvCrashReportNativeExceptionPointers):TpvInt32; stdcall;
 const EXCEPTION_CONTINUE_SEARCH=TpvInt32(0);
 var ExceptionRecord:PpvCrashReportNativeExceptionRecord;
@@ -2372,6 +2464,10 @@ begin
   // The context has been sitting in the arguments all along. Only plain stores
   // here, no allocation and no call, so this is as safe as the rest.
   CrashReportNoteFaultState(Entry,aExceptionInformation^.ContextRecord);
+  // The same context once more, whole and untouched this time, for anything
+  // which wants to write a minidump later on and no longer has what is being
+  // pointed at here.
+  CrashReportKeepFaultState(ExceptionRecord,aExceptionInformation^.ContextRecord,TpvUInt64(GetCurrentThreadId),Sequence);
   CrashReportEntryAppendPAnsiChar(Entry,'Operating system fault code $');
   CrashReportEntryAppendHex(Entry,ExceptionRecord^.ExceptionCode,8);
   if (ExceptionRecord^.ExceptionCode=cAccessViolation) and (ExceptionRecord^.NumberParameters>=2) then begin
@@ -3620,6 +3716,30 @@ begin
          pvCrashReportContext(aThreadID);
 end;
 
+{$if defined(Windows)}
+function pvCrashReportLastFault(out aExceptionPointers:TpvPointer;out aExceptionCode:TpvUInt32;out aThreadID:TpvUInt64):TpvUInt32;
+begin
+ aExceptionPointers:=nil;
+ aExceptionCode:=0;
+ aThreadID:=0;
+ result:=CrashReportFaultSequence;
+ // Zero covers both of the cases in which there is nothing to hand out: no
+ // fault has been seen yet, and one is being written down right now.
+ if result=0 then begin
+  exit;
+ end;
+ CrashReportReadBarrier;
+ aExceptionPointers:=@CrashReportFaultPointers;
+ aExceptionCode:=CrashReportFaultRecord.ExceptionCode;
+ aThreadID:=CrashReportFaultThreadID;
+ // Deliberately not read back and compared here. A caller which cares whether
+ // the state changed underneath it can ask again once it is done with it, and
+ // one which does not care should not be made to pay for the question. What
+ // matters is that the pointer itself never goes stale: it addresses storage of
+ // this unit, not of the handler.
+end;
+{$ifend}
+
 procedure pvCrashReportInstall;
 begin
  if CrashReportInstalled then begin
@@ -3645,6 +3765,17 @@ begin
  // The slot the vectored handler guards itself with. Allocated before the
  // handler goes in, so that it is there from the first exception on.
  CrashReportTLSIndex:=TlsAlloc;
+ // The place the state of a fault is kept, tied together here rather than at
+ // the moment of the fault, so that the pointer handed out by
+ // pvCrashReportLastFault is the same one for as long as the process runs. The
+ // context itself goes at the next sixteen byte boundary inside its buffer.
+ FillChar(CrashReportFaultRecord,SizeOf(TpvCrashReportNativeExceptionRecord),#0);
+ FillChar(CrashReportFaultContextBuffer,SizeOf(CrashReportFaultContextBuffer),#0);
+ CrashReportFaultPointers.ExceptionRecord:=@CrashReportFaultRecord;
+ CrashReportFaultPointers.ContextRecord:=TpvPointer((TpvPtrUInt(@CrashReportFaultContextBuffer[0])+15) and not TpvPtrUInt(15));
+ CrashReportFaultThreadID:=0;
+ CrashReportFaultSequence:=0;
+ CrashReportFaultBusy:=0;
  // Installed on both compilers, and on Delphi even when the stack info hooks
  // above went to somebody else. It is what fills the history, so giving way
  // there must not mean giving up the record of what led to the crash. It also
