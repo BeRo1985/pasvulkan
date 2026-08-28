@@ -1729,6 +1729,7 @@ type EpvApplication=class(Exception)
        fUseBreadcrumbs:boolean;
        fManualBreadcrumbs:boolean;
        fManualSyncBreadcrumbs:boolean;
+       fCrashLog:boolean;
        fCrashDumps:boolean;
        fCrashDumpKind:TpvCrashReportMiniDumpKind;
        fAndroidMouseTouchEvents:boolean;
@@ -2510,10 +2511,13 @@ type EpvApplication=class(Exception)
 
        property ManualSyncBreadcrumbs:boolean read fManualSyncBreadcrumbs write fManualSyncBreadcrumbs;
 
-       // Whether a crash writes a minidump beside the crash log. Set it in the
-       // constructor of the program, or leave it to --crashdumps on the command
-       // line. Read when the storage paths are settled, which is where the
-       // library a dump needs is brought up as well.
+       // Whether a crash writes a report at all, and whether a minidump goes
+       // beside it. Set them in the constructor of the program or in its
+       // ReadConfig, or leave them to the command line. Both are read when the
+       // storage paths are settled, which is also where whatever a dump needs is
+       // brought up.
+       property CrashLog:boolean read fCrashLog write fCrashLog;
+
        property CrashDumps:boolean read fCrashDumps write fCrashDumps;
 
        property CrashDumpKind:TpvCrashReportMiniDumpKind read fCrashDumpKind write fCrashDumpKind;
@@ -2780,16 +2784,20 @@ function GetCrashLogFileName:String;
 // because a dump is a file and not a line: two of them cannot share one.
 function GetCrashDumpFileName:String;
 
-var // Whether LogCrash writes a minidump beside the text it writes.
+var // Whether LogCrash writes anything at all, and whether it writes a minidump
+    // beside the text.
     //
-    // A setting and not a define, so that the same executable can be asked for
-    // one without being built again, which is what somebody needs on the
-    // machine where the fault actually happens. TpvApplication turns it on from
-    // its own property and from --crashdumps on the command line; a program
-    // which is not built on TpvApplication sets it itself.
+    // Settings and not defines, so that the same executable can be asked for a
+    // report without being built again, which is what somebody needs on the
+    // machine where the fault actually happens. TpvApplication turns them on
+    // from its own properties and from the command line; a program which is not
+    // built on TpvApplication sets them itself.
     //
-    // Off to begin with, for the same reason the crash log is: what a program
-    // leaves lying about on somebody else's machine is its decision to make.
+    // Both off to begin with: what a program leaves lying about on somebody
+    // else's machine is its own decision to make, and neither of these should
+    // start happening to a program which never asked.
+    pvCrashLog:Boolean=false;
+
     pvCrashDumps:Boolean=false;
 
     // How much of the process goes into it, see the same named type in
@@ -3323,14 +3331,13 @@ procedure LogCrash(const aExceptionString:String);
 // Outside the condition below, since the dump underneath wants it as well and
 // either of the two can be asked for without the other.
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
-{$ifdef PasVulkanUseCrashLog}
 var FileName:String;
     Text:String;
     RawText:TpvRawByteString;
     FileHandle:THandle;
-{$endif}
 begin
-{$ifdef PasVulkanUseCrashLog}
+
+ if pvCrashLog then begin
  // Everything in here is wrapped, because a crash log which cannot be written
  // must never turn into a second exception on top of the one currently being
  // reported. The previous version used a TextFile with I/O checking left on, so
@@ -3341,51 +3348,52 @@ begin
  try
 
   FileName:=GetCrashLogFileName;
-  if length(FileName)=0 then begin
-   exit;
-  end;
+  if length(FileName)>0 then begin
 
-  Text:=LineEnding+
-        '-----------------------------------------'+LineEnding+
-        LineEnding+
-        DateTimeToStr(Now)+':'+LineEnding+
-        LineEnding+
-        aExceptionString+LineEnding+
-        LineEnding+
-        // Everything else the crash report backend knows, in one call, so that
-        // nothing is left out here by having been forgotten. The exception
-        // itself was already formatted into aExceptionString by the caller.
-        pvCrashReportContext+
-        LineEnding;
+   Text:=LineEnding+
+         '-----------------------------------------'+LineEnding+
+         LineEnding+
+         DateTimeToStr(Now)+':'+LineEnding+
+         LineEnding+
+         aExceptionString+LineEnding+
+         LineEnding+
+         // Everything else the crash report backend knows, in one call, so that
+         // nothing is left out here by having been forgotten. The exception
+         // itself was already formatted into aExceptionString by the caller.
+         pvCrashReportContext+
+         LineEnding;
 
 {$ifdef fpc}
-  RawText:=TpvRawByteString(Text);
+   RawText:=TpvRawByteString(Text);
 {$else}
-  RawText:=TpvRawByteString(UTF8Encode(Text));
+   RawText:=TpvRawByteString(UTF8Encode(Text));
 {$endif}
 
-  if FileExists(FileName) then begin
-   FileHandle:=FileOpen(FileName,fmOpenWrite or fmShareDenyNone);
-   if FileHandle<>THandle(-1) then begin
-    FileSeek(FileHandle,TpvInt64(0),2);
-   end;
-  end else begin
-   FileHandle:=FileCreate(FileName);
-  end;
-  if FileHandle<>THandle(-1) then begin
-   try
-    if length(RawText)>0 then begin
-     FileWrite(FileHandle,RawText[1],length(RawText));
+   if FileExists(FileName) then begin
+    FileHandle:=FileOpen(FileName,fmOpenWrite or fmShareDenyNone);
+    if FileHandle<>THandle(-1) then begin
+     FileSeek(FileHandle,TpvInt64(0),2);
     end;
-   finally
-    FileClose(FileHandle);
+   end else begin
+    FileHandle:=FileCreate(FileName);
    end;
+   if FileHandle<>THandle(-1) then begin
+    try
+     if length(RawText)>0 then begin
+      FileWrite(FileHandle,RawText[1],length(RawText));
+     end;
+    finally
+     FileClose(FileHandle);
+    end;
+   end;
+
   end;
 
  except
   // Deliberately silent, see above.
  end;
-{$endif}
+ end;
+
  // And the machine state itself, beside the text, where the program asked for
  // it. The two answer different questions: the text says what happened in words
  // which travel in a bug report, the dump lets a debugger stand where the
@@ -10084,6 +10092,7 @@ begin
  fUseBreadcrumbs:=false;
  fManualBreadcrumbs:=false;
  fManualSyncBreadcrumbs:=false;
+ fCrashLog:=false;
  fCrashDumps:=false;
  fCrashDumpKind:=TpvCrashReportMiniDumpKind.Normal;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
@@ -10505,6 +10514,15 @@ begin
     fManualBreadcrumbs:=true;
    end else if Parameter='manualsyncbreadcrumbs' then begin
     fManualSyncBreadcrumbs:=true;
+   end else if Parameter='crashlogging' then begin
+    // Not spelled crashlog, which is already taken and names the file rather
+    // than switching the writing of it on.
+    fCrashLog:=true;
+   end else if Parameter='nocrashlogging' then begin
+    fCrashLog:=false;
+   end else if Parameter='crashlog' then begin
+    // Naming a file to write to is asking for it to be written.
+    fCrashLog:=true;
    end else if Parameter='crashdumps' then begin
     fCrashDumps:=true;
    end else if Parameter='nocrashdumps' then begin
@@ -18052,14 +18070,20 @@ begin
 
 {$ifend}
 
- // Now that the storage paths are known, the crash log lands at its final
- // location, so say where that is instead of leaving it to be guessed.
- Log(LOG_INFO,'PasVulkanApplication','Crash log file: '+TpvUTF8String(GetCrashLogFileName));
-
  // What the program and the command line together decided, handed to the one
- // place which writes the dump.
+ // place which writes a report.
+ pvCrashLog:=fCrashLog;
  pvCrashDumps:=fCrashDumps;
  pvCrashDumpKind:=fCrashDumpKind;
+
+ // Now that the storage paths are known, the crash log lands at its final
+ // location, so say where that is instead of leaving it to be guessed.
+ if pvCrashLog then begin
+  Log(LOG_INFO,'PasVulkanApplication','Crash log file: '+TpvUTF8String(GetCrashLogFileName));
+ end else begin
+  Log(LOG_INFO,'PasVulkanApplication','Crash log: off, see --crashlogging');
+ end;
+
  if pvCrashDumps then begin
   // Here rather than at the moment of a crash, which is the whole point of it:
   // it brings up whatever writing a dump needs and the thread which writes one,
