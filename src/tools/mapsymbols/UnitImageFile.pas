@@ -880,9 +880,11 @@ function TImageFile.CodeViewInfo(out aInfo:TImageCodeViewInfo):Boolean;
 const IMAGE_DEBUG_TYPE_CODEVIEW=TpvUInt32(2);
       DebugDirectoryEntrySize=28;
 var DirectoryAddress,DirectorySize,EntryType,DataSize,DataOffset:TpvUInt32;
-    Index,EntryCount:TpvSizeInt;
+    NumberOfRvaAndSizes:TpvUInt32;
+    Index,EntryCount,NameLength:TpvSizeInt;
     EntryOffset:TpvInt64;
     Signature:array[0..3] of AnsiChar;
+    NameBytes:array[0..1023] of AnsiChar;
 begin
 
  result:=false;
@@ -890,6 +892,15 @@ begin
  aInfo.FileName:='';
 
  if (fFormat<>iffPE) or (fDataDirectoryOffset=0) or not assigned(fStream) then begin
+  exit;
+ end;
+
+ // How many data directories there actually are. Sixteen is what every real
+ // linker writes, but it is a field and not a constant, and reading the seventh
+ // of six would be reading the section header table as if it were one.
+ fStream.Seek(fDataDirectoryOffset-4,soBeginning);
+ fStream.ReadBuffer(NumberOfRvaAndSizes,SizeOf(TpvUInt32));
+ if NumberOfRvaAndSizes<7 then begin
   exit;
  end;
 
@@ -936,7 +947,19 @@ begin
 
   fStream.ReadBuffer(aInfo.GUID[0],16);
   fStream.ReadBuffer(aInfo.Age,SizeOf(TpvUInt32));
-  aInfo.FileName:=ReadStringAt(TpvInt64(DataOffset)+24);
+  // The name is what is left of the record, and it is read as that rather than
+  // as a string which is trusted to end somewhere: the entry states its own
+  // size, and a name which runs to the end of it without a terminator has to
+  // stop there and not carry on into whatever follows.
+  NameLength:=TpvSizeInt(DataSize)-24;
+  if NameLength>TpvSizeInt(SizeOf(NameBytes)-1) then begin
+   NameLength:=SizeOf(NameBytes)-1;
+  end;
+  FillChar(NameBytes,SizeOf(NameBytes),#0);
+  if NameLength>0 then begin
+   fStream.ReadBuffer(NameBytes[0],NameLength);
+  end;
+  aInfo.FileName:=String(PAnsiChar(@NameBytes[0]));
   result:=true;
   exit;
 

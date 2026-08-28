@@ -767,39 +767,99 @@ begin
 
 end;
 
+// Reads the table back out of the file it was just appended to and asks it
+// everything it was built to answer.
+//
+// This is the check which matters most and used to be the weakest. The debug
+// file and the pdb are read by somebody sitting at a debugger; this table is
+// the one which ships, and every line of every crash report from every machine
+// comes out of it. It used to take sixty four samples of line numbers and never
+// look at a single symbol, although the resolver hands the name back in the same
+// call. And with no line numbers collected it took no samples at all and
+// returned true, so a run could deliver a table nobody had looked at and report
+// success.
+//
+// Everything is asked now, in both directions the resolver is used in. The
+// lookups are binary searches over data which is already in memory, so this
+// costs a fraction of what packing the same table costs.
 function TSymbolBuilder.SelfCheck(const aFileName:String;out aResolved,aProbes:TpvSizeInt):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
-    Index,Step:TpvSizeInt;
+    Index,Last,Scan:TpvSizeInt;
+    Found:Boolean;
 begin
  aResolved:=0;
  aProbes:=0;
  result:=false;
  SymbolTable:=TpvSymbolTable.Create;
  try
+
   if not SymbolTable.LoadFromFile(aFileName) then begin
    exit;
   end;
-  if fLineCount>64 then begin
-   Step:=fLineCount div 64;
-  end else begin
-   Step:=1;
-  end;
+
+  // Every address a routine starts at. That is the question a crash actually
+  // asks, and it was not being asked here at all.
+  //
+  // Once per address rather than once per name: two names at one address are
+  // ordinary, _start and the routine it is an alias of, main and PASCALMAIN,
+  // SYSTEM.MOVE and FPC_MOVE, and a resolver can only hand one of them back.
+  // Demanding a particular one would be demanding something the format does
+  // not promise. What it does promise is that the answer is a routine which
+  // really is there, and that is what is asked.
   Index:=0;
-  while (Index<fLineCount) and (aProbes<64) do begin
-   // End of sequence markers are skipped rather than probed. They would match
-   // trivially, since both sides are then zero, and would only water down what
-   // the count says.
-   if fLines[Index].LineNumber>0 then begin
-    inc(aProbes);
-    if SymbolTable.Resolve(fLines[Index].RVA,Location) and
-       (Location.LineNumber=fLines[Index].LineNumber) then begin
-     inc(aResolved);
+  while Index<fSymbolCount do begin
+   Last:=Index;
+   while ((Last+1)<fSymbolCount) and (fSymbols[Last+1].RVA=fSymbols[Index].RVA) do begin
+    inc(Last);
+   end;
+   inc(aProbes);
+   if SymbolTable.Resolve(fSymbols[Index].RVA,Location) then begin
+    for Scan:=Index to Last do begin
+     if Location.SymbolName=fSymbols[Scan].Name then begin
+      inc(aResolved);
+      break;
+     end;
     end;
    end;
-   inc(Index,Step);
+   Index:=Last+1;
   end;
-  result:=aResolved=aProbes;
+
+  // And every address a line record stands at, the same way round. End of
+  // sequence markers are not probed: they would match trivially, since both
+  // sides are then zero, and would only water down what the count says.
+  Index:=0;
+  while Index<fLineCount do begin
+   Last:=Index;
+   while ((Last+1)<fLineCount) and (fLines[Last+1].RVA=fLines[Index].RVA) do begin
+    inc(Last);
+   end;
+   Found:=false;
+   for Scan:=Index to Last do begin
+    if fLines[Scan].LineNumber>0 then begin
+     Found:=true;
+     break;
+    end;
+   end;
+   if Found then begin
+    inc(aProbes);
+    if SymbolTable.Resolve(fLines[Index].RVA,Location) then begin
+     for Scan:=Index to Last do begin
+      if (fLines[Scan].LineNumber>0) and (Location.LineNumber=fLines[Scan].LineNumber) then begin
+       inc(aResolved);
+       break;
+      end;
+     end;
+    end;
+   end;
+   Index:=Last+1;
+  end;
+
+  // Nothing asked is not the same as nothing wrong, and it must not read as a
+  // pass. A table with neither a symbol nor a line in it is one which should
+  // never have been written.
+  result:=(aProbes>0) and (aResolved=aProbes);
+
  finally
   FreeAndNil(SymbolTable);
  end;

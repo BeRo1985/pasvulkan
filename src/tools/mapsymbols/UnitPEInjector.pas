@@ -71,6 +71,68 @@ const IMAGE_SCN_CNT_INITIALIZED_DATA=TpvUInt32($00000040);
       IMAGE_SCN_MEM_READ=TpvUInt32($40000000);
 
       SectionHeaderSize=40;
+      DebugDirectoryEntrySize=28;
+      IMAGE_DEBUG_TYPE_CODEVIEW=TpvUInt32(2);
+
+      // The magic of the symbol table this tool appends. Known here so that a
+      // second run can tell the difference between a block it wrote itself and
+      // something else somebody put behind the sections.
+      AppendedTableMagic='PVSYMTAB';
+
+type TExistingSection=record
+      Name:String;
+      // The forty bytes of the header as they stand, so that a section which is
+      // kept is written back exactly as it was apart from its file offset.
+      Raw:array[0..SectionHeaderSize-1] of TpvUInt8;
+      VirtualAddress:TpvUInt32;
+      VirtualSize:TpvUInt32;
+      RawPointer:TpvUInt32;
+      RawSize:TpvUInt32;
+      // Set for a section which one of the new ones replaces, which is what
+      // makes running this twice over the same executable work.
+      Dropped:Boolean;
+     end;
+
+     TExistingSections=array of TExistingSection;
+
+     // One entry of the debug directory the image already had. Kept so that
+     // adding one of our own does not throw the others away.
+     TExistingDebugEntry=record
+      Raw:array[0..DebugDirectoryEntrySize-1] of TpvUInt8;
+      EntryType:TpvUInt32;
+      RawPointer:TpvUInt32;
+      // Which slot of the directory this came out of. Kept because the entries
+      // which survive are not the whole directory, so their position in this
+      // list is not their position in the file.
+      SourceIndex:TpvSizeInt;
+     end;
+
+     TExistingDebugEntries=array of TExistingDebugEntry;
+
+// The name of a section as it stands in its header, following the slash and
+// decimal offset into the string table where the name did not fit into the
+// eight bytes of the header itself.
+function SectionName(const aRaw:array of TpvUInt8;const aStringTable:TMemoryStream):String;
+var Length_,Offset,Terminator:TpvSizeInt;
+    Bytes:PpvUInt8Array;
+begin
+ Length_:=0;
+ while (Length_<8) and (aRaw[Length_]<>0) do begin
+  inc(Length_);
+ end;
+ SetString(result,PAnsiChar(@aRaw[0]),Length_);
+ if (Length_>1) and (result[1]='/') and assigned(aStringTable) then begin
+  Offset:=StrToIntDef(Copy(result,2,Length_-1),-1);
+  if (Offset>=4) and (Offset<TpvSizeInt(aStringTable.Size)) then begin
+   Bytes:=PpvUInt8Array(aStringTable.Memory);
+   Terminator:=Offset;
+   while (Terminator<TpvSizeInt(aStringTable.Size)) and (Bytes^[Terminator]<>0) do begin
+    inc(Terminator);
+   end;
+   SetString(result,PAnsiChar(@Bytes^[Offset]),Terminator-Offset);
+  end;
+ end;
+end;
 
 function AlignUp(const aValue,aAlignment:TpvUInt64):TpvUInt64;
 begin
@@ -194,6 +256,64 @@ var Source,Target:TFileStream;
     Zero:AnsiChar;
     Padding:array[0..4095] of AnsiChar;
     SizeOfImageOffset,SizeOfHeadersOffset,DataDirectoryOffset:TpvInt64;
+    NumberOfRvaAndSizes:TpvUInt32;
+    ExistingSections:TExistingSections;
+    KeptCount,DroppedCount,NewIndex:TpvSizeInt;
+    OldStringTable:TMemoryStream;
+    OldStringTableSize:TpvUInt32;
+    BodyEnd,KnownEnd:TpvInt64;
+    NeedStringTable:Boolean;
+    NewSectionHeaderTableEnd:TpvInt64;
+    DebugDirectoryAddress,DebugDirectorySize:TpvUInt32;
+    ExistingDebugEntries:TExistingDebugEntries;
+    ExistingDebugCount,LostDebugCount:TpvSizeInt;
+    HaveCodeView:Boolean;
+    FooterMagic:array[0..7] of AnsiChar;
+    FooterOffset:TpvUInt64;
+    DebugEntryCount:TpvSizeInt;
+    EntryOffset:TpvInt64;
+    MergedDirectory:TMemoryStream;
+
+ // Where an address relative to the image base lands in the source file, going
+ // by the sections as they were before anything moved.
+ function SourceOffsetOfRVA(const aRVA:TpvUInt32):TpvInt64;
+ var Scan:TpvSizeInt;
+     Size:TpvUInt32;
+ begin
+  result:=0;
+  for Scan:=0 to length(ExistingSections)-1 do begin
+   if ExistingSections[Scan].RawSize=0 then begin
+    continue;
+   end;
+   if ExistingSections[Scan].VirtualSize>0 then begin
+    Size:=ExistingSections[Scan].VirtualSize;
+   end else begin
+    Size:=ExistingSections[Scan].RawSize;
+   end;
+   if (aRVA>=ExistingSections[Scan].VirtualAddress) and (aRVA<(ExistingSections[Scan].VirtualAddress+Size)) then begin
+    result:=TpvInt64(ExistingSections[Scan].RawPointer)+TpvInt64(aRVA-ExistingSections[Scan].VirtualAddress);
+    exit;
+   end;
+  end;
+ end;
+
+ // Whether a file offset falls inside a section which is being kept, which is
+ // what decides whether whatever sits there survives this.
+ function InsideKeptSection(const aOffset:TpvUInt32):Boolean;
+ var Scan:TpvSizeInt;
+ begin
+  result:=false;
+  for Scan:=0 to length(ExistingSections)-1 do begin
+   if ExistingSections[Scan].Dropped or (ExistingSections[Scan].RawSize=0) then begin
+    continue;
+   end;
+   if (aOffset>=ExistingSections[Scan].RawPointer) and
+      (aOffset<(ExistingSections[Scan].RawPointer+ExistingSections[Scan].RawSize)) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
 
  procedure PadTo(const aStream:TFileStream;const aPosition:TpvInt64);
  var Remaining:TpvInt64;
@@ -223,6 +343,19 @@ begin
  FillChar(Padding,SizeOf(Padding),#0);
  Zero:=#0;
  Delta:=0;
+ ExistingSections:=nil;
+ ExistingDebugEntries:=nil;
+ ExistingDebugCount:=0;
+ LostDebugCount:=0;
+ OldStringTable:=nil;
+
+ HaveCodeView:=false;
+ for Index:=0 to fSectionCount-1 do begin
+  if fSections[Index].IsDebugDirectory then begin
+   HaveCodeView:=true;
+   break;
+  end;
+ end;
 
  StringTable:=TMemoryStream.Create;
  try
@@ -246,11 +379,13 @@ begin
    Source.ReadBuffer(SymbolCount,SizeOf(TpvUInt32));
    Source.ReadBuffer(SizeOfOptionalHeader,SizeOf(TpvUInt16));
 
-   if SymbolTablePointer<>0 then begin
-    // Rewriting an existing COFF string table would mean moving whatever sits
-    // behind it, so this case is refused rather than half handled. It does not
-    // arise for Delphi builds, which carry no symbol table at all.
-    fMessage:='The executable already has a COFF symbol table, which this does not rewrite.';
+   // A real symbol table is refused: rebuilding one means understanding every
+   // entry in it, and the string table behind it cannot be moved without that.
+   // A pointer with no symbols behind it is a different thing entirely, it is a
+   // string table on its own, which is what this tool leaves behind when it
+   // writes section names longer than eight characters. That one is rebuilt.
+   if (SymbolTablePointer<>0) and (SymbolCount<>0) then begin
+    fMessage:='The executable has a COFF symbol table, which this does not rewrite.';
     exit;
    end;
 
@@ -279,53 +414,255 @@ begin
    end else begin
     DataDirectoryOffset:=TpvInt64(NewHeaderOffset)+24+96;
    end;
-   Source.Seek(DataDirectoryOffset+(4*8),soBeginning);
-   Source.ReadBuffer(CertificateAddress,SizeOf(TpvUInt32));
-   Source.ReadBuffer(CertificateSize,SizeOf(TpvUInt32));
+   // How many of them there actually are. Sixteen is what every real linker
+   // writes, but the count is a field rather than a constant, and reading the
+   // seventh of six would be reading the section headers as if they were one.
+   Source.Seek(DataDirectoryOffset-4,soBeginning);
+   Source.ReadBuffer(NumberOfRvaAndSizes,SizeOf(TpvUInt32));
+   if NumberOfRvaAndSizes>16 then begin
+    NumberOfRvaAndSizes:=16;
+   end;
+   if NumberOfRvaAndSizes>4 then begin
+    Source.Seek(DataDirectoryOffset+(4*8),soBeginning);
+    Source.ReadBuffer(CertificateAddress,SizeOf(TpvUInt32));
+    Source.ReadBuffer(CertificateSize,SizeOf(TpvUInt32));
+   end else begin
+    CertificateAddress:=0;
+    CertificateSize:=0;
+   end;
    if (CertificateAddress<>0) or (CertificateSize<>0) then begin
     fMessage:='The executable is signed, which this would invalidate.';
     exit;
    end;
+   if NumberOfRvaAndSizes<7 then begin
+    // Without a debug directory entry in the table there is nowhere to say that
+    // this image has one, and growing the table means moving the section header
+    // table, which is a different job than this one.
+    if HaveCodeView then begin
+     fMessage:='The optional header has no room for a debug directory entry.';
+     exit;
+    end;
+    DebugDirectoryAddress:=0;
+    DebugDirectorySize:=0;
+   end else begin
+    Source.Seek(DataDirectoryOffset+(6*8),soBeginning);
+    Source.ReadBuffer(DebugDirectoryAddress,SizeOf(TpvUInt32));
+    Source.ReadBuffer(DebugDirectorySize,SizeOf(TpvUInt32));
+   end;
 
    SectionHeaderTableOffset:=TpvInt64(NewHeaderOffset)+24+TpvInt64(SizeOfOptionalHeader);
+
+   // The string table which is already there, if there is one. It is needed to
+   // read the names of the existing sections, since a name longer than eight
+   // characters only lives there, and those are exactly the sections an earlier
+   // run of this added.
+   OldStringTableSize:=0;
+   if SymbolTablePointer<>0 then begin
+    if (TpvInt64(SymbolTablePointer)+4)>Source.Size then begin
+     fMessage:='The string table of the executable points past its end.';
+     exit;
+    end;
+    Source.Seek(TpvInt64(SymbolTablePointer),soBeginning);
+    Source.ReadBuffer(OldStringTableSize,SizeOf(TpvUInt32));
+    if (OldStringTableSize<4) or ((TpvInt64(SymbolTablePointer)+TpvInt64(OldStringTableSize))>Source.Size) then begin
+     fMessage:='The string table of the executable states a size which does not fit.';
+     exit;
+    end;
+    OldStringTable:=TMemoryStream.Create;
+    Source.Seek(TpvInt64(SymbolTablePointer),soBeginning);
+    OldStringTable.CopyFrom(Source,TpvInt64(OldStringTableSize));
+   end;
+
+   // Read the section table as it stands, names resolved, so that the ones this
+   // run replaces can be told apart from the ones which have to survive.
+   SetLength(ExistingSections,NumberOfSections);
+   for Index:=0 to NumberOfSections-1 do begin
+    Source.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize),soBeginning);
+    Source.ReadBuffer(ExistingSections[Index].Raw[0],SectionHeaderSize);
+    Move(ExistingSections[Index].Raw[8],ExistingSections[Index].VirtualSize,SizeOf(TpvUInt32));
+    Move(ExistingSections[Index].Raw[12],ExistingSections[Index].VirtualAddress,SizeOf(TpvUInt32));
+    Move(ExistingSections[Index].Raw[16],ExistingSections[Index].RawSize,SizeOf(TpvUInt32));
+    Move(ExistingSections[Index].Raw[20],ExistingSections[Index].RawPointer,SizeOf(TpvUInt32));
+    ExistingSections[Index].Name:=SectionName(ExistingSections[Index].Raw,OldStringTable);
+    ExistingSections[Index].Dropped:=false;
+   end;
+
+   // A section which one of the new ones is called after is replaced rather
+   // than added beside. That is what makes a second run over the same
+   // executable do what the first one did instead of stacking another copy of
+   // everything behind it.
+   DroppedCount:=0;
+   for Index:=0 to NumberOfSections-1 do begin
+    for NewIndex:=0 to fSectionCount-1 do begin
+     if ExistingSections[Index].Name=fSections[NewIndex].Name then begin
+      ExistingSections[Index].Dropped:=true;
+      inc(DroppedCount);
+      break;
+     end;
+    end;
+   end;
+   KeptCount:=NumberOfSections-DroppedCount;
+
+   // Where the body of the file ends once the replaced sections and the old
+   // string table are gone. Everything from there on is reused space rather
+   // than copied through, which is what keeps a second run from growing the
+   // file by a copy of everything it wrote the first time.
+   BodyEnd:=TpvInt64(SizeOfHeaders);
+   for Index:=0 to NumberOfSections-1 do begin
+    if (not ExistingSections[Index].Dropped) and (ExistingSections[Index].RawPointer<>0) and
+       ((TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>BodyEnd) then begin
+     BodyEnd:=TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize);
+    end;
+   end;
+
+   // But only when everything being dropped really is behind it. What lies
+   // past the last kept section has to be accounted for, or this would throw
+   // away something somebody else put there. Known are the sections being
+   // replaced, the old string table, and the table this tool appends, which is
+   // recognized by the magic in its footer.
+   KnownEnd:=BodyEnd;
+   for Index:=0 to NumberOfSections-1 do begin
+    if ExistingSections[Index].Dropped and (ExistingSections[Index].RawPointer<>0) then begin
+     if TpvInt64(ExistingSections[Index].RawPointer)<BodyEnd then begin
+      fMessage:='A section which would be replaced sits in front of one which has to stay.';
+      exit;
+     end;
+     if (TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>KnownEnd then begin
+      KnownEnd:=TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize);
+     end;
+    end;
+   end;
+   if SymbolTablePointer<>0 then begin
+    if TpvInt64(SymbolTablePointer)<BodyEnd then begin
+     fMessage:='The string table of the executable sits in front of its own sections.';
+     exit;
+    end;
+    if (TpvInt64(SymbolTablePointer)+TpvInt64(OldStringTableSize))>KnownEnd then begin
+     KnownEnd:=TpvInt64(SymbolTablePointer)+TpvInt64(OldStringTableSize);
+    end;
+   end;
+   if Source.Size>KnownEnd then begin
+    // Whatever is left has to be the appended symbol table, which the run this
+    // is part of writes again anyway. Anything else and this stops rather than
+    // discarding it.
+    FooterOffset:=0;
+    if Source.Size>=(KnownEnd+16) then begin
+     Source.Seek(Source.Size-16,soBeginning);
+     Source.ReadBuffer(FooterMagic,8);
+     Source.ReadBuffer(FooterOffset,SizeOf(TpvUInt64));
+    end else begin
+     FillChar(FooterMagic,SizeOf(FooterMagic),#0);
+    end;
+    if (FooterMagic<>AppendedTableMagic) or (TpvInt64(FooterOffset)<KnownEnd) or
+       (TpvInt64(FooterOffset)>=Source.Size) then begin
+     fMessage:='There is something behind the sections of the executable which this does not recognize.';
+     exit;
+    end;
+   end;
+
+   // The debug directory the image already has. Its entries are kept, because
+   // replacing the whole directory with one entry of our own would throw away
+   // whatever else was in it, and because each of them holds a file offset to
+   // its own payload which moves when the header area grows. Both of those are
+   // silent losses otherwise: the image stays valid and says less than it did.
+   //
+   // An entry whose payload is not inside a section which survives is left out,
+   // since what it points at is about to stop existing.
+   ExistingDebugCount:=0;
+   if (DebugDirectoryAddress<>0) and (DebugDirectorySize>=DebugDirectoryEntrySize) then begin
+    EntryOffset:=SourceOffsetOfRVA(DebugDirectoryAddress);
+    if (EntryOffset>0) and ((EntryOffset+TpvInt64(DebugDirectorySize))<=Source.Size) then begin
+     DebugEntryCount:=DebugDirectorySize div DebugDirectoryEntrySize;
+     SetLength(ExistingDebugEntries,DebugEntryCount);
+     for Index:=0 to DebugEntryCount-1 do begin
+      Source.Seek(EntryOffset+(TpvInt64(Index)*DebugDirectoryEntrySize),soBeginning);
+      Source.ReadBuffer(ExistingDebugEntries[ExistingDebugCount].Raw[0],DebugDirectoryEntrySize);
+      Move(ExistingDebugEntries[ExistingDebugCount].Raw[12],ExistingDebugEntries[ExistingDebugCount].EntryType,SizeOf(TpvUInt32));
+      Move(ExistingDebugEntries[ExistingDebugCount].Raw[24],ExistingDebugEntries[ExistingDebugCount].RawPointer,SizeOf(TpvUInt32));
+      ExistingDebugEntries[ExistingDebugCount].SourceIndex:=Index;
+      // One of ours replaces any codeview entry which is there, since two of
+      // them would leave a debugger to pick.
+      if HaveCodeView and (ExistingDebugEntries[ExistingDebugCount].EntryType=IMAGE_DEBUG_TYPE_CODEVIEW) then begin
+       continue;
+      end;
+      if (ExistingDebugEntries[ExistingDebugCount].RawPointer<>0) and
+         not InsideKeptSection(ExistingDebugEntries[ExistingDebugCount].RawPointer) then begin
+       // Its payload is in a section which is being replaced, so there is
+       // nothing left for it to point at. Counted and said out loud rather than
+       // dropped quietly, since it is the one thing here which is lost.
+       inc(LostDebugCount);
+       continue;
+      end;
+      inc(ExistingDebugCount);
+     end;
+    end;
+   end;
+
    SectionHeaderTableEnd:=SectionHeaderTableOffset+(TpvInt64(NumberOfSections)*SectionHeaderSize);
+   NewSectionHeaderTableEnd:=SectionHeaderTableOffset+(TpvInt64(KeptCount)*SectionHeaderSize);
 
    // Grow the header area when the new section headers do not fit. Delphi
    // leaves only 64 bytes of slack, so this is the normal case rather than the
    // exception, and every section then moves along in the file by that amount.
-   NewSizeOfHeaders:=TpvUInt32(AlignUp(TpvUInt64(SectionHeaderTableEnd+(TpvInt64(fSectionCount)*SectionHeaderSize)),FileAlignment));
+   NewSizeOfHeaders:=TpvUInt32(AlignUp(TpvUInt64(NewSectionHeaderTableEnd+(TpvInt64(fSectionCount)*SectionHeaderSize)),FileAlignment));
    if NewSizeOfHeaders<SizeOfHeaders then begin
     NewSizeOfHeaders:=SizeOfHeaders;
    end;
    Delta:=NewSizeOfHeaders-SizeOfHeaders;
 
    // Where the new sections go in the address space, which is behind everything
-   // the image already covers.
+   // the image still covers once the replaced ones are gone. Their addresses
+   // are given up with them, so a second run reuses the same range rather than
+   // pushing the image further out every time.
    NextRVA:=0;
    for Index:=0 to NumberOfSections-1 do begin
-    Source.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+8,soBeginning);
-    Source.ReadBuffer(VirtualSize,SizeOf(TpvUInt32));
-    Source.ReadBuffer(VirtualAddress,SizeOf(TpvUInt32));
-    if (TpvUInt64(VirtualAddress)+TpvUInt64(VirtualSize))>NextRVA then begin
-     NextRVA:=TpvUInt64(VirtualAddress)+TpvUInt64(VirtualSize);
+    if ExistingSections[Index].Dropped then begin
+     continue;
+    end;
+    if (TpvUInt64(ExistingSections[Index].VirtualAddress)+TpvUInt64(ExistingSections[Index].VirtualSize))>NextRVA then begin
+     NextRVA:=TpvUInt64(ExistingSections[Index].VirtualAddress)+TpvUInt64(ExistingSections[Index].VirtualSize);
     end;
    end;
    NextRVA:=AlignUp(NextRVA,SectionAlignment);
 
-   // The string table starts with its own size, and offsets are counted from
-   // its beginning, so the first name sits at four.
-   Value32:=0;
-   StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
-   SetLength(NameOffsets,fSectionCount);
+   // A name of eight characters or fewer goes into the header itself, which is
+   // what a PE is meant to look like. Only a longer one needs the string table,
+   // which is a gnu extension that gdb relies on for the debug sections and
+   // which nothing else here should have to pay for: adding only the entry
+   // which names a pdb leaves an ordinary executable with no string table at
+   // all, and one which can therefore be built over again without trouble.
+   NeedStringTable:=false;
    for Index:=0 to fSectionCount-1 do begin
-    NameOffsets[Index]:=TpvUInt32(StringTable.Position);
-    NameText:=TpvRawByteString(fSections[Index].Name);
-    StringTable.WriteBuffer(NameText[1],length(NameText));
-    StringTable.WriteBuffer(Zero,1);
+    if length(fSections[Index].Name)>8 then begin
+     NeedStringTable:=true;
+     break;
+    end;
    end;
-   Value32:=TpvUInt32(StringTable.Size);
-   StringTable.Position:=0;
-   StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+
+   SetLength(NameOffsets,fSectionCount);
+   if NeedStringTable then begin
+    // The string table starts with its own size, and offsets are counted from
+    // its beginning, so the first name sits at four.
+    Value32:=0;
+    StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    for Index:=0 to fSectionCount-1 do begin
+     if length(fSections[Index].Name)>8 then begin
+      NameOffsets[Index]:=TpvUInt32(StringTable.Position);
+      NameText:=TpvRawByteString(fSections[Index].Name);
+      StringTable.WriteBuffer(NameText[1],length(NameText));
+      StringTable.WriteBuffer(Zero,1);
+     end else begin
+      NameOffsets[Index]:=0;
+     end;
+    end;
+    Value32:=TpvUInt32(StringTable.Size);
+    StringTable.Position:=0;
+    StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+   end else begin
+    for Index:=0 to fSectionCount-1 do begin
+     NameOffsets[Index]:=0;
+    end;
+   end;
 
    // Everything is written into a new file rather than in place, because the
    // header area may have to grow, which shifts every section behind it.
@@ -337,31 +674,84 @@ begin
     Target.CopyFrom(Source,TpvInt64(SizeOfHeaders));
 
     Target.Seek(TpvInt64(NewHeaderOffset)+6,soBeginning);
-    Value16:=TpvUInt16(TpvInt64(NumberOfSections)+fSectionCount);
+    Value16:=TpvUInt16(TpvInt64(KeptCount)+fSectionCount);
     Target.WriteBuffer(Value16,SizeOf(TpvUInt16));
     Target.Seek(SizeOfHeadersOffset,soBeginning);
     Target.WriteBuffer(NewSizeOfHeaders,SizeOf(TpvUInt32));
 
-    // Move every existing section along by what the header area gained. Their
-    // virtual addresses are untouched, so the image in memory is identical.
-    if Delta>0 then begin
-     for Index:=0 to NumberOfSections-1 do begin
-      Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+20,soBeginning);
-      Target.ReadBuffer(RawPointer,SizeOf(TpvUInt32));
-      if RawPointer<>0 then begin
-       Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+20,soBeginning);
-       Value32:=RawPointer+Delta;
+    // Write the section table again from the ones which stay, so that the
+    // entries of the replaced ones are gone rather than left pointing at bytes
+    // nothing writes any more. Their virtual addresses are untouched and only
+    // the file offset moves, by whatever the header area gained, so the image
+    // in memory is the same one.
+    NewIndex:=0;
+    for Index:=0 to NumberOfSections-1 do begin
+     if ExistingSections[Index].Dropped then begin
+      continue;
+     end;
+     if ExistingSections[Index].RawPointer<>0 then begin
+      Value32:=ExistingSections[Index].RawPointer+Delta;
+      Move(Value32,ExistingSections[Index].Raw[20],SizeOf(TpvUInt32));
+     end;
+     Target.Seek(SectionHeaderTableOffset+(TpvInt64(NewIndex)*SectionHeaderSize),soBeginning);
+     Target.WriteBuffer(ExistingSections[Index].Raw[0],SectionHeaderSize);
+     inc(NewIndex);
+    end;
+    // The slots the dropped ones used are cleared. Most of them are written
+    // over by the new sections below, but any which are not would otherwise
+    // leave an old header standing in a table which no longer counts it.
+    while NewIndex<NumberOfSections do begin
+     Target.Seek(SectionHeaderTableOffset+(TpvInt64(NewIndex)*SectionHeaderSize),soBeginning);
+     Target.WriteBuffer(Padding,SectionHeaderSize);
+     inc(NewIndex);
+    end;
+
+    // Pad out to the new header size and copy the body, which is everything up
+    // to the end of the last section which stays. What lies behind that is the
+    // sections this run replaces, the old string table and the appended symbol
+    // table, all of which are written again, so copying them through would only
+    // make the file longer every time it is built.
+    Target.Seek(0,soEnd);
+    PadTo(Target,TpvInt64(NewSizeOfHeaders));
+    if BodyEnd>TpvInt64(SizeOfHeaders) then begin
+     Source.Seek(TpvInt64(SizeOfHeaders),soBeginning);
+     Target.CopyFrom(Source,BodyEnd-TpvInt64(SizeOfHeaders));
+    end;
+
+    // The entries of a debug directory which stays hold a file offset to their
+    // own payload, and that payload has just moved with its section. Nothing
+    // else corrects it, and an entry which points at where its data used to be
+    // is worse than none: the image is still valid and a debugger reads
+    // whatever is there now.
+    if (not HaveCodeView) and (Delta>0) and (ExistingDebugCount>0) then begin
+     EntryOffset:=SourceOffsetOfRVA(DebugDirectoryAddress)+TpvInt64(Delta);
+     for Index:=0 to ExistingDebugCount-1 do begin
+      if ExistingDebugEntries[Index].RawPointer<>0 then begin
+       Target.Seek(EntryOffset+(TpvInt64(ExistingDebugEntries[Index].SourceIndex)*DebugDirectoryEntrySize)+24,soBeginning);
+       Value32:=ExistingDebugEntries[Index].RawPointer+Delta;
        Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
       end;
      end;
     end;
 
-    // Pad out to the new header size and copy the rest of the original file.
-    Target.Seek(0,soEnd);
-    PadTo(Target,TpvInt64(NewSizeOfHeaders));
-    if Source.Size>TpvInt64(SizeOfHeaders) then begin
-     Source.Seek(TpvInt64(SizeOfHeaders),soBeginning);
-     Target.CopyFrom(Source,Source.Size-TpvInt64(SizeOfHeaders));
+    // Room in front of the entry which was built here for the ones which stay.
+    // A debug directory is a run of entries and the payloads behind them, so
+    // the kept ones have to come first and the section has to be that much
+    // longer before anything about its placement is written down.
+    if HaveCodeView and (ExistingDebugCount>0) then begin
+     for Index:=0 to fSectionCount-1 do begin
+      if fSections[Index].IsDebugDirectory then begin
+       MergedDirectory:=TMemoryStream.Create;
+       MergedDirectory.Size:=TpvInt64(ExistingDebugCount)*DebugDirectoryEntrySize;
+       FillChar(MergedDirectory.Memory^,MergedDirectory.Size,#0);
+       MergedDirectory.Position:=MergedDirectory.Size;
+       fSections[Index].Data.Position:=0;
+       MergedDirectory.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
+       FreeAndNil(fSections[Index].Data);
+       fSections[Index].Data:=MergedDirectory;
+       break;
+      end;
+     end;
     end;
 
     // Append the new sections, each starting on a file alignment boundary.
@@ -374,12 +764,26 @@ begin
      fSections[Index].Data.Position:=0;
      Target.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
 
+     // Out to the full size the header is about to claim for it. Every section
+     // but the last one got this for free from the padding in front of the next
+     // one, and the last one did not: what followed it was the string table,
+     // which then began inside the range this section says is its own.
+     PadTo(Target,TpvInt64(DataOffset)+TpvInt64(AlignUp(TpvUInt64(fSections[Index].Data.Size),FileAlignment)));
+
      // Write the header entry for this section.
-     Target.Seek(SectionHeaderTableEnd+(TpvInt64(Index)*SectionHeaderSize),soBeginning);
+     Target.Seek(NewSectionHeaderTableEnd+(TpvInt64(Index)*SectionHeaderSize),soBeginning);
      FillChar(RawName,SizeOf(RawName),#0);
-     NameText:=TpvRawByteString('/'+IntToStr(NameOffsets[Index]));
-     if length(NameText)>8 then begin
-      SetLength(NameText,8);
+     // A name which fits goes in as it is. Only a longer one is put into the
+     // string table and referred to by a slash and an offset, which is the gnu
+     // extension gdb needs for the debug sections and which nothing else should
+     // have to carry.
+     if length(fSections[Index].Name)>8 then begin
+      NameText:=TpvRawByteString('/'+IntToStr(NameOffsets[Index]));
+      if length(NameText)>8 then begin
+       SetLength(NameText,8);
+      end;
+     end else begin
+      NameText:=TpvRawByteString(fSections[Index].Name);
      end;
      Move(NameText[1],RawName[0],length(NameText));
      Target.WriteBuffer(RawName,8);
@@ -404,17 +808,32 @@ begin
      // has to point at the directory, so both are filled in now that the
      // placement is known.
      if fSections[Index].IsDebugDirectory then begin
-      // The two address fields sit at twenty and twenty four, behind the size
-      // of the data at sixteen, which must not be overwritten.
-      Target.Seek(TpvInt64(DataOffset)+20,soBeginning);
-      Value32:=TpvUInt32(NextRVA)+28;
+      // The entries which were already there come first, each with its own file
+      // offset moved along by what the header area gained, and the one written
+      // here follows them. The directory is therefore the old one with ours
+      // added rather than ours instead of it.
+      for NewIndex:=0 to ExistingDebugCount-1 do begin
+       if ExistingDebugEntries[NewIndex].RawPointer<>0 then begin
+        Value32:=ExistingDebugEntries[NewIndex].RawPointer+Delta;
+        Move(Value32,ExistingDebugEntries[NewIndex].Raw[24],SizeOf(TpvUInt32));
+       end;
+       Target.Seek(TpvInt64(DataOffset)+(TpvInt64(NewIndex)*DebugDirectoryEntrySize),soBeginning);
+       Target.WriteBuffer(ExistingDebugEntries[NewIndex].Raw[0],DebugDirectoryEntrySize);
+      end;
+      // Ours sits behind them, and the payload behind all of them. The two
+      // address fields of an entry sit at twenty and twenty four, behind the
+      // size of the data at sixteen, which must not be overwritten.
+      EntryOffset:=TpvInt64(DataOffset)+(TpvInt64(ExistingDebugCount)*DebugDirectoryEntrySize);
+      DebugEntryCount:=ExistingDebugCount+1;
+      Target.Seek(EntryOffset+20,soBeginning);
+      Value32:=TpvUInt32(NextRVA)+TpvUInt32(DebugEntryCount*DebugDirectoryEntrySize);
       Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // address of the record
-      Value32:=TpvUInt32(DataOffset)+28;
+      Value32:=TpvUInt32(DataOffset)+TpvUInt32(DebugEntryCount*DebugDirectoryEntrySize);
       Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // file offset of the record
       Target.Seek(DataDirectoryOffset+(6*8),soBeginning);
       Value32:=TpvUInt32(NextRVA);
       Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
-      Value32:=28;
+      Value32:=TpvUInt32(DebugEntryCount*DebugDirectoryEntrySize);
       Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
      end;
 
@@ -425,13 +844,22 @@ begin
     // The string table goes last, and the COFF header has to point at it. A
     // symbol count of zero is what tells a reader that only the string table is
     // there, which is exactly what FreePascal produces for a stripped build.
-    Target.Seek(0,soEnd);
-    StringTableOffset:=TpvUInt64(Target.Position);
-    StringTable.Position:=0;
-    Target.CopyFrom(StringTable,StringTable.Size);
-
+    //
+    // Only when one of the names actually needed it. Where none did, the
+    // pointer is cleared instead, so that adding nothing but a debug directory
+    // leaves an executable which has no string table at all rather than one
+    // which carries the machinery for a name that fitted anyway.
     Target.Seek(TpvInt64(NewHeaderOffset)+12,soBeginning);
-    Value32:=TpvUInt32(StringTableOffset);
+    if NeedStringTable then begin
+     Target.Seek(0,soEnd);
+     StringTableOffset:=TpvUInt64(Target.Position);
+     StringTable.Position:=0;
+     Target.CopyFrom(StringTable,StringTable.Size);
+     Target.Seek(TpvInt64(NewHeaderOffset)+12,soBeginning);
+     Value32:=TpvUInt32(StringTableOffset);
+    end else begin
+     Value32:=0;
+    end;
     Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
     Value32:=0;
     Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
@@ -481,15 +909,26 @@ begin
   end;
   DeleteFile(BackupName);
 
-  if Delta>0 then begin
-   fMessage:='Injected '+IntToStr(fSectionCount)+' sections, header area grown by '+IntToStr(Delta)+' bytes.';
+  if DroppedCount>0 then begin
+   fMessage:='Injected '+IntToStr(fSectionCount)+' sections, replacing '+IntToStr(DroppedCount)+' from an earlier run';
   end else begin
-   fMessage:='Injected '+IntToStr(fSectionCount)+' sections.';
+   fMessage:='Injected '+IntToStr(fSectionCount)+' sections';
+  end;
+  if Delta>0 then begin
+   fMessage:=fMessage+', header area grown by '+IntToStr(Delta)+' bytes.';
+  end else begin
+   fMessage:=fMessage+'.';
+  end;
+  if LostDebugCount>0 then begin
+   fMessage:=fMessage+' '+IntToStr(LostDebugCount)+' debug directory entries were dropped, because what they pointed at was in a section which was replaced.';
   end;
   result:=true;
 
  finally
   FreeAndNil(StringTable);
+  FreeAndNil(OldStringTable);
+  ExistingSections:=nil;
+  ExistingDebugEntries:=nil;
  end;
 
 end;
