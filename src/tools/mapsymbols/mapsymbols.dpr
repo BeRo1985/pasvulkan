@@ -1453,8 +1453,10 @@ end;
 // Puts the same DWARF sections into the executable itself, so that no separate
 // file is needed at all. Has to happen before the symbol table is appended,
 // since that has to stay at the very end of the file.
-function InjectDebugSections(const aDWARFWriter:TDWARFWriter;const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String):Boolean;
+function InjectDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aPDBWriter:TPDBWriter;
+                            const aImage:TImageFile;const aPDBFileName,aFileName:String):Boolean;
 var Injector:TPEInjector;
+    SavedExitCode:TpvSizeInt;
 begin
  Injector:=TPEInjector.Create;
  try
@@ -1466,8 +1468,50 @@ begin
   if assigned(aPDBWriter) then begin
    Injector.AddCodeViewDirectory(aPDBWriter.GUIDPointer,aPDBWriter.Age,aPDBFileName,aPDBWriter.Signature);
   end;
-  result:=Injector.InjectInto(aFileName);
+
+  // Built beside the original first, then looked at, and only put in its place
+  // once it holds up. The injector already compares the sections it moved
+  // before it commits; what is read back here is what it wrote, which nothing
+  // had looked at until the executable had already been replaced. A failure now
+  // leaves the file exactly as it was rather than leaving a finished executable
+  // with an error code beside it.
+  result:=Injector.Prepare(aFileName);
   WriteLn(Injector.Message);
+  if not result then begin
+   exit;
+  end;
+
+  // The checks report by setting the exit code, which is what they are for
+  // everywhere else. Here their answer is needed as an answer, so the code is
+  // put aside around them and only what they add to it is kept.
+  SavedExitCode:=ExitCode;
+  ExitCode:=0;
+  try
+   if assigned(aDWARFWriter) then begin
+    CheckInjectedDebugSections(aBuilder,aDWARFWriter,aImage,Injector.TemporaryFileName);
+   end;
+   if assigned(aPDBWriter) then begin
+    CheckCodeViewEntry(aPDBWriter,aPDBFileName,Injector.TemporaryFileName);
+   end;
+   result:=ExitCode=0;
+  finally
+   if not result then begin
+    ExitCode:=1;
+   end else begin
+    ExitCode:=SavedExitCode;
+   end;
+  end;
+
+  if result then begin
+   result:=Injector.Commit;
+   if not result then begin
+    WriteLn(Injector.Message);
+   end;
+  end else begin
+   Injector.Discard;
+   WriteLn('The sections which were written did not read back correctly, so the executable was left alone.');
+  end;
+
  finally
   FreeAndNil(Injector);
  end;
@@ -1644,6 +1688,25 @@ begin
   Collector.CodeLow:=Image.CodeLow;
   Collector.CodeHigh:=Image.CodeHigh;
   Builder.ImageBase:=Image.ImageBase;
+
+  // Whether the executable itself carries debug sections which a compiler put
+  // there. Asked of the image and of nothing else, before any of the deciding
+  // about where the symbols are going to be read from: that is a separate
+  // question, and reading them out of a map file instead does not make it any
+  // more acceptable to write over what a compiler emitted. Asking it inside
+  // that decision left it unanswered whenever the map was forced, which is
+  // exactly the combination somebody reaches for when the map has the better
+  // names, and the sections would then have been replaced after all.
+  //
+  // Any of the sections counts, not the line programs alone. What is protected
+  // here is the compiler's description, and a file which has the types and the
+  // abbreviations without the lines still has more in it than what would take
+  // its place.
+  ForeignDWARFInExecutable:=(Image.FindSection('.debug_info',Section) or
+                             Image.FindSection('.debug_abbrev',Section) or
+                             Image.FindSection('.debug_line',Section)) and
+                            not HasOwnDWARF(Image);
+
   Collector.WantSymbols:=WantSymbols;
   Collector.WantLines:=WantLines;
   Collector.SymbolsAdded:=0;
@@ -1654,7 +1717,6 @@ begin
   // preferring DWARF when it is present is unambiguous.
   UsedDWARF:=false;
   OwnDWARF:=false;
-  ForeignDWARFInExecutable:=false;
   if not ForceMap then begin
    SymbolImage:=Image;
 
@@ -1694,12 +1756,6 @@ begin
     LineStringData:=Image.ReadSection('.debug_line_str');
     StringData:=Image.ReadSection('.debug_str');
    end;
-
-   // The executable carries DWARF of its own, put there by a compiler rather
-   // than by this. Remembered because injecting into such a file would replace
-   // it with the plainer kind written here, which is enough to name a line and
-   // a routine and nothing like what a compiler emits.
-   ForeignDWARFInExecutable:=assigned(LineData) and (LineData.Size>0) and not assigned(DebugImage);
 
    if assigned(LineData) and (LineData.Size>0) then begin
     // Read whether or not the line numbers are wanted. What a compilation unit
@@ -1918,31 +1974,22 @@ begin
     // them. Carrying on and finishing with a zero would report success for an
     // executable which does not hold what was asked for, and the build which
     // asked would go on believing it does.
-    if not InjectDebugSections(DWARFWriter,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
+    if not InjectDebugSections(Builder,DWARFWriter,PDBWriter,Image,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
      WriteLn('Error: the debug sections which were asked for could not be put into the executable.');
      ReportUnchanged(ExecutableFileName,PDBOutputFileName,assigned(PDBWriter));
      ExitCode:=1;
      exit;
     end;
-    // And the injected sections are read back out of the executable, which is
-    // the same DWARF the standalone file gets but written into a different
-    // container. Only the DWARF: the symbols of the executable are its own and
-    // have nothing to do with what was collected here.
-    CheckInjectedDebugSections(Builder,DWARFWriter,Image,ExecutableFileName);
-    if assigned(PDBWriter) then begin
-     CheckCodeViewEntry(PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
-    end;
    end else if assigned(PDBWriter) then begin
     // The same for the entry which names the pdb. Without it the pdb is on
     // disk and no debugger will ever look at it, which is a run that produced
     // a file and not the thing the file is for.
-    if not InjectDebugSections(nil,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
+    if not InjectDebugSections(Builder,nil,PDBWriter,Image,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
      WriteLn('Error: the executable could not be made to name the pdb which was just written.');
      ReportUnchanged(ExecutableFileName,PDBOutputFileName,true);
      ExitCode:=1;
      exit;
     end;
-    CheckCodeViewEntry(PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
    end;
 
    Builder.AppendToFile(ExecutableFileName);

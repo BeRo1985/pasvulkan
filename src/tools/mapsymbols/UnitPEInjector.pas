@@ -53,6 +53,9 @@ type TPEInjectorSection=record
        fSections:TPEInjectorSections;
        fSectionCount:TpvSizeInt;
        fMessage:String;
+       // What Prepare built and where it is meant to go, kept for Commit.
+       fTargetName:String;
+       fFileName:String;
       public
        constructor Create;
        destructor Destroy; override;
@@ -64,6 +67,16 @@ type TPEInjectorSection=record
        // Returns false and leaves the file untouched when the image is one this
        // must not touch. The reason is then in Message.
        function InjectInto(const aFileName:String):Boolean;
+       // The same in two steps, for a caller which wants to look at the result
+       // before it takes the place of anything. Prepare builds the replacement
+       // beside the original and leaves the original alone; the file it built is
+       // named by TemporaryFileName. Commit puts it in place, Discard throws it
+       // away. Between the two the original is still exactly as it was, which is
+       // what makes a check which fails cost nothing.
+       function Prepare(const aFileName:String):Boolean;
+       function Commit:Boolean;
+       procedure Discard;
+       property TemporaryFileName:String read fTargetName;
        property Message:String read fMessage;
      end;
 
@@ -158,8 +171,7 @@ begin
   while (Position<TpvSizeInt(aStringTable.Size)) and (Bytes^[Position]<>0) do begin
    inc(Position);
   end;
-  if ((Position-Start)=Length_) and
-     ((Length_=0) or CompareMem(@Bytes^[Start],@Wanted[1],Length_)) then begin
+  if ((Position-Start)=Length_) and CompareMem(@Bytes^[Start],@Wanted[1],Length_) then begin
    result:=TpvUInt32(Start);
    exit;
   end;
@@ -182,11 +194,16 @@ begin
  fSections:=nil;
  fSectionCount:=0;
  fMessage:='';
+ fTargetName:='';
+ fFileName:='';
 end;
 
 destructor TPEInjector.Destroy;
 var Index:TpvSizeInt;
 begin
+ // A replacement which was prepared and never put in place is not left lying
+ // beside the original.
+ Discard;
  // Only the debug directory stream was created here, the rest belongs to the
  // caller.
  for Index:=0 to fSectionCount-1 do begin
@@ -264,9 +281,69 @@ begin
 
 end;
 
+// Puts the file which Prepare built in the place of the original.
+//
+// The original is set aside first and only thrown away once the replacement is
+// in place. Deleting it first and renaming afterwards, which is what this used
+// to do, left neither of them whenever the rename did not go through: a scanner
+// holding the name for a moment, a full volume, a target which turns out to be
+// somewhere else. Every way out of here leaves either the untouched original or
+// the finished new file under that name.
+function TPEInjector.Commit:Boolean;
+var BackupName:String;
+begin
+ result:=false;
+ if (length(fTargetName)=0) or (length(fFileName)=0) then begin
+  fMessage:='There is nothing to put in place.';
+  exit;
+ end;
+ BackupName:=fFileName+'.mapsymbols-old';
+ DeleteFile(BackupName);
+ if not RenameFile(fFileName,BackupName) then begin
+  DeleteFile(fTargetName);
+  fTargetName:='';
+  fMessage:='Could not set '+fFileName+' aside, so it was left alone.';
+  exit;
+ end;
+ if not RenameFile(fTargetName,fFileName) then begin
+  // Put back what was there. If even this does not work the original is still
+  // on disk under the name in the message, which is worth more than a message
+  // which does not say where it went.
+  if not RenameFile(BackupName,fFileName) then begin
+   fMessage:='Could not replace '+fFileName+', and it is now at '+BackupName+'.';
+   exit;
+  end;
+  DeleteFile(fTargetName);
+  fTargetName:='';
+  fMessage:='Could not replace '+fFileName+', so it was left alone.';
+  exit;
+ end;
+ DeleteFile(BackupName);
+ fTargetName:='';
+ result:=true;
+end;
+
+// Throws the replacement away. The original never moved, so there is nothing
+// else to undo.
+procedure TPEInjector.Discard;
+begin
+ if length(fTargetName)>0 then begin
+  DeleteFile(fTargetName);
+  fTargetName:='';
+ end;
+end;
+
 function TPEInjector.InjectInto(const aFileName:String):Boolean;
+begin
+ result:=Prepare(aFileName) and Commit;
+ if not result then begin
+  Discard;
+ end;
+end;
+
+function TPEInjector.Prepare(const aFileName:String):Boolean;
 var Source,Target:TFileStream;
-    TargetName,BackupName:String;
+    TargetName:String;
     NewHeaderOffset:TpvUInt32;
     Signature:array[0..3] of AnsiChar;
     NumberOfSections:TpvUInt16;
@@ -309,9 +386,9 @@ var Source,Target:TFileStream;
     Corrupted:String;
     CorruptedFound:Boolean;
     Remaining:TpvInt64;
-    Chunk:TpvInt32;
-    Blank:Boolean;
     Scratch:array[0..4095] of TpvUInt8;
+    SuffixStarts,SuffixEnds:array of TpvInt64;
+    SuffixCount:TpvSizeInt;
 
  // Where an address relative to the image base lands in the source file, going
  // by the sections as they were before anything moved.
@@ -334,6 +411,58 @@ var Source,Target:TFileStream;
     exit;
    end;
   end;
+ end;
+
+ // Remembers one stretch of the file behind the body whose contents are known
+ // and are written again rather than copied.
+ procedure AddSuffix(const aStart,aSize:TpvInt64);
+ begin
+  if aSize<=0 then begin
+   exit;
+  end;
+  if SuffixCount>=length(SuffixStarts) then begin
+   SetLength(SuffixStarts,(SuffixCount+1)*2);
+   SetLength(SuffixEnds,(SuffixCount+1)*2);
+  end;
+  SuffixStarts[SuffixCount]:=aStart;
+  SuffixEnds[SuffixCount]:=aStart+aSize;
+  inc(SuffixCount);
+ end;
+
+ // Whether the bytes between two offsets are nothing but alignment. They have
+ // to be zero and there have to be fewer of them than a section is aligned to,
+ // since a megabyte of zeroes is not padding whatever it looks like, and this
+ // is the only thing allowed to sit in a place nobody claims.
+ function BlankBetween(const aFrom,aTo:TpvInt64):Boolean;
+ var Left:TpvInt64;
+     Piece,Position:TpvInt32;
+ begin
+  result:=false;
+  if (aTo-aFrom)>=TpvInt64(FileAlignment) then begin
+   fMessage:='There is a stretch behind the sections of the executable which this does not recognize.';
+   exit;
+  end;
+  Source.Seek(aFrom,soBeginning);
+  Left:=aTo-aFrom;
+  while Left>0 do begin
+   if Left>TpvInt64(SizeOf(Scratch)) then begin
+    Piece:=SizeOf(Scratch);
+   end else begin
+    Piece:=TpvInt32(Left);
+   end;
+   Piece:=Source.Read(Scratch,Piece);
+   if Piece<=0 then begin
+    break;
+   end;
+   for Position:=0 to Piece-1 do begin
+    if Scratch[Position]<>0 then begin
+     fMessage:='There is something behind the sections of the executable which this does not recognize.';
+     exit;
+    end;
+   end;
+   dec(Left,Piece);
+  end;
+  result:=true;
  end;
 
  // Whether a file offset falls inside a section which is being kept, which is
@@ -554,83 +683,66 @@ begin
     end;
    end;
 
-   // But only when everything being dropped really is behind it. What lies
-   // past the last kept section has to be accounted for, or this would throw
-   // away something somebody else put there. Known are the sections being
-   // replaced, the old string table, and the table this tool appends, which is
-   // recognized by the magic in its footer.
-   KnownEnd:=BodyEnd;
+   // And everything from there to the end of the file has to be accounted for,
+   // because none of it is copied. Known are the sections being replaced, the
+   // old string table, and the table this tool appends, which is recognized by
+   // the magic in its footer.
+   //
+   // Walked as a run of intervals from front to back rather than by keeping the
+   // furthest end of them. The furthest end says nothing about a hole in front
+   // of it, and a hole is exactly what would be lost: an executable which
+   // carried an overlay before a plain run appended a table behind it has one,
+   // and taking the end of the table as proof that everything before it is
+   // known would have thrown the overlay away.
+   SuffixCount:=0;
    for Index:=0 to NumberOfSections-1 do begin
-    if ExistingSections[Index].Dropped and (ExistingSections[Index].RawPointer<>0) then begin
-     if TpvInt64(ExistingSections[Index].RawPointer)<BodyEnd then begin
-      fMessage:='A section which would be replaced sits in front of one which has to stay.';
-      exit;
-     end;
-     if (TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>KnownEnd then begin
-      KnownEnd:=TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize);
-     end;
+    if ExistingSections[Index].Dropped and (ExistingSections[Index].RawPointer<>0) and
+       (ExistingSections[Index].RawSize<>0) then begin
+     AddSuffix(TpvInt64(ExistingSections[Index].RawPointer),TpvInt64(ExistingSections[Index].RawSize));
     end;
    end;
    if SymbolTablePointer<>0 then begin
-    if TpvInt64(SymbolTablePointer)<BodyEnd then begin
-     fMessage:='The string table of the executable sits in front of its own sections.';
-     exit;
-    end;
-    if (TpvInt64(SymbolTablePointer)+TpvInt64(OldStringTableSize))>KnownEnd then begin
-     KnownEnd:=TpvInt64(SymbolTablePointer)+TpvInt64(OldStringTableSize);
+    AddSuffix(TpvInt64(SymbolTablePointer),TpvInt64(OldStringTableSize));
+   end;
+   if Source.Size>=16 then begin
+    Source.Seek(Source.Size-16,soBeginning);
+    Source.ReadBuffer(FooterMagic,8);
+    Source.ReadBuffer(FooterOffset,SizeOf(TpvUInt64));
+    if (FooterMagic=AppendedTableMagic) and (TpvInt64(FooterOffset)>=BodyEnd) and
+       (TpvInt64(FooterOffset)<Source.Size) then begin
+     AddSuffix(TpvInt64(FooterOffset),Source.Size-TpvInt64(FooterOffset));
     end;
    end;
-   if Source.Size>KnownEnd then begin
-    // Whatever is left has to be the appended symbol table, which the run this
-    // is part of writes again anyway. Anything else and this stops rather than
-    // discarding it.
-    FooterOffset:=0;
-    if Source.Size>=(KnownEnd+16) then begin
-     Source.Seek(Source.Size-16,soBeginning);
-     Source.ReadBuffer(FooterMagic,8);
-     Source.ReadBuffer(FooterOffset,SizeOf(TpvUInt64));
-    end else begin
-     FillChar(FooterMagic,SizeOf(FooterMagic),#0);
+
+   // In order, so that the walk below meets them the way they lie in the file.
+   for Index:=1 to SuffixCount-1 do begin
+    NewIndex:=Index;
+    while (NewIndex>0) and (SuffixStarts[NewIndex-1]>SuffixStarts[NewIndex]) do begin
+     Remaining:=SuffixStarts[NewIndex-1];
+     SuffixStarts[NewIndex-1]:=SuffixStarts[NewIndex];
+     SuffixStarts[NewIndex]:=Remaining;
+     Remaining:=SuffixEnds[NewIndex-1];
+     SuffixEnds[NewIndex-1]:=SuffixEnds[NewIndex];
+     SuffixEnds[NewIndex]:=Remaining;
+     dec(NewIndex);
     end;
-    if (FooterMagic<>AppendedTableMagic) or (TpvInt64(FooterOffset)<KnownEnd) or
-       (TpvInt64(FooterOffset)>=Source.Size) then begin
-     fMessage:='There is something behind the sections of the executable which this does not recognize.';
+   end;
+
+   KnownEnd:=BodyEnd;
+   for Index:=0 to SuffixCount-1 do begin
+    if SuffixStarts[Index]<BodyEnd then begin
+     fMessage:='Something which would be replaced sits in front of a section which has to stay.';
      exit;
     end;
-    // And the table has to begin where the known part ends. Accepting it merely
-    // somewhere behind would leave whatever lies in between unaccounted for,
-    // and everything from here on is dropped rather than copied, so those bytes
-    // would be gone. That is exactly the case this was supposed to refuse: an
-    // executable which already carried an overlay before a plain run appended a
-    // table behind it. Alignment is the one thing allowed to sit there, and it
-    // has to actually be alignment and not merely look like it.
-    if TpvInt64(FooterOffset)>KnownEnd then begin
-     Source.Seek(KnownEnd,soBeginning);
-     Remaining:=TpvInt64(FooterOffset)-KnownEnd;
-     Blank:=true;
-     while (Remaining>0) and Blank do begin
-      if Remaining>TpvInt64(SizeOf(Padding)) then begin
-       Chunk:=SizeOf(Padding);
-      end else begin
-       Chunk:=TpvInt32(Remaining);
-      end;
-      Chunk:=Source.Read(Scratch,Chunk);
-      if Chunk<=0 then begin
-       break;
-      end;
-      for Index:=0 to Chunk-1 do begin
-       if Scratch[Index]<>0 then begin
-        Blank:=false;
-        break;
-       end;
-      end;
-      dec(Remaining,Chunk);
-     end;
-     if not Blank then begin
-      fMessage:='There is something between the sections of the executable and the table behind them which this does not recognize.';
-      exit;
-     end;
+    if (SuffixStarts[Index]>KnownEnd) and not BlankBetween(KnownEnd,SuffixStarts[Index]) then begin
+     exit;
     end;
+    if SuffixEnds[Index]>KnownEnd then begin
+     KnownEnd:=SuffixEnds[Index];
+    end;
+   end;
+   if (Source.Size>KnownEnd) and not BlankBetween(KnownEnd,Source.Size) then begin
+    exit;
    end;
 
    // The debug directory the image already has. Its entries are kept, because
@@ -1043,38 +1155,12 @@ begin
    FreeAndNil(Source);
   end;
 
-  // Everything up to here only read the original and built the replacement
-  // beside it, and this is where that care would have been thrown away. The
-  // original was deleted first and the replacement renamed into the free name
-  // afterwards, so a rename which does not go through, a scanner holding the
-  // name for a moment, a full volume, a target which turns out to be elsewhere,
-  // left neither of them: the one good copy was already gone and its
-  // replacement never took the name.
-  //
-  // So the original is set aside instead, and only thrown away once the
-  // replacement is in place. Every way out of here now leaves either the
-  // untouched original or the finished new file under that name, which is what
-  // lets the caller say that a failure changed nothing.
-  BackupName:=aFileName+'.mapsymbols-old';
-  DeleteFile(BackupName);
-  if not RenameFile(aFileName,BackupName) then begin
-   DeleteFile(TargetName);
-   fMessage:='Could not set '+aFileName+' aside, so it was left alone.';
-   exit;
-  end;
-  if not RenameFile(TargetName,aFileName) then begin
-   // Put back what was there. If even this does not work the original is still
-   // on disk under the name in the message, which is worth more than a message
-   // which does not say where it went.
-   if not RenameFile(BackupName,aFileName) then begin
-    fMessage:='Could not replace '+aFileName+', and it is now at '+BackupName+'.';
-    exit;
-   end;
-   DeleteFile(TargetName);
-   fMessage:='Could not replace '+aFileName+', so it was left alone.';
-   exit;
-  end;
-  DeleteFile(BackupName);
+  // The replacement is finished and sits beside the original, which has not
+  // been touched. Putting it in place is Commit, and it is left to the caller
+  // so that anything which wants to look at the result can do so while a
+  // failure still costs nothing.
+  fFileName:=aFileName;
+  fTargetName:=TargetName;
 
   if DroppedCount>0 then begin
    fMessage:='Injected '+IntToStr(fSectionCount)+' sections, replacing '+IntToStr(DroppedCount)+' from an earlier run';

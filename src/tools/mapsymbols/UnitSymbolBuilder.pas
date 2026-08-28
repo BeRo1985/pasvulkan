@@ -816,6 +816,19 @@ begin
       (String(Location.FileName)=PreparePath(fUnits[Index].FileName)) then begin
     inc(aResolved);
    end;
+   // And the last byte it covers, which is the only thing which says anything
+   // about the size it was written with. A range which came out too short
+   // answers at its start exactly as it should and stops early, and with
+   // neither a symbol nor a line in the table there is nothing else which would
+   // have noticed.
+   if fUnits[Index].Size>1 then begin
+    inc(aProbes);
+    if SymbolTable.Resolve(fUnits[Index].StartRVA+(fUnits[Index].Size-1),Location) and
+       (String(Location.UnitName)=fUnits[Index].Name) and
+       (String(Location.FileName)=PreparePath(fUnits[Index].FileName)) then begin
+     inc(aResolved);
+    end;
+   end;
   end;
 
   // Every address a routine starts at. That is the question a crash actually
