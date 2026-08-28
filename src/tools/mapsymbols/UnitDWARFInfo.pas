@@ -86,6 +86,7 @@ type TDWARFInfoSubprogram=record
        function ReadUInt32:TpvUInt32;
        function ReadUInt64:TpvUInt64;
        function ReadULEB128:TpvUInt64;
+       function ReadSLEB128:TpvInt64;
        function ReadString:String;
        function ReadAbbreviations(const aOffset:TpvUInt64):Boolean;
        function FindAbbreviation(const aCode:TpvUInt64;out aIndex:TpvSizeInt):Boolean;
@@ -225,6 +226,26 @@ begin
   end;
   inc(Shift,7);
  until ((Current and $80)=0) or (fPosition>fSize);
+end;
+
+function TDWARFInfoReader.ReadSLEB128:TpvInt64;
+var Shift:TpvInt32;
+    Current:TpvUInt8;
+begin
+ result:=0;
+ Shift:=0;
+ repeat
+  Current:=ReadUInt8;
+  if Shift<64 then begin
+   result:=result or (TpvInt64(Current and $7f) shl Shift);
+  end;
+  inc(Shift,7);
+ until ((Current and $80)=0) or (fPosition>fSize);
+ // The sign lives in the second highest bit of the last byte, so what is above
+ // it has to be filled in.
+ if (Shift<64) and ((Current and $40)<>0) then begin
+  result:=result or -(TpvInt64(1) shl Shift);
+ end;
 end;
 
 function TDWARFInfoReader.ReadString:String;
@@ -378,7 +399,7 @@ begin
    aUnsigned:=ReadULEB128;
   end;
   DW_FORM_sdata:begin
-   aUnsigned:=ReadULEB128;
+   aUnsigned:=TpvUInt64(ReadSLEB128);
   end;
   DW_FORM_block1:begin
    Length_:=ReadUInt8;
@@ -473,8 +494,12 @@ begin
   fUnits[UnitIndex].SubprogramCount:=0;
 
   // The compile unit itself and then its children. Only one level of them is
-  // ever written here, but the depth is tracked rather than assumed, since a
-  // reader which assumes it would walk off the end of a file which has more.
+  // ever written here, but the nesting is followed rather than assumed: a
+  // description which says it has children opens a level and a zero closes one,
+  // and the unit is done when the level the compile unit opened is closed
+  // again. The unit length bounds this as well, but only that would mean a file
+  // with deeper nesting than expected is read to the end of the unit as if
+  // everything in it sat at the top, which is not the same thing as reading it.
   Depth:=0;
   while fPosition<UnitEnd do begin
 
@@ -483,6 +508,9 @@ begin
     // The end of a list of children.
     if Depth>0 then begin
      dec(Depth);
+     if Depth=0 then begin
+      break;
+     end;
     end;
     continue;
    end;

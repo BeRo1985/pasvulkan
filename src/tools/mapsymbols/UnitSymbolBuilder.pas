@@ -309,23 +309,37 @@ var Index:TpvSizeInt;
   end;
  end;
 {$else}
- // Eight characters at a time. A table of a million symbols would otherwise
- // mean tens of millions of rounds through the mixer for the names alone.
+ // Eight bytes at a time. A table of a million symbols would otherwise mean
+ // tens of millions of rounds through the mixer for the names alone.
+ //
+ // Every byte of a character, not just its lowest. Where this is built a
+ // character is one byte and the two are the same thing, but a Delphi build has
+ // two, and masking one away would make two names which differ only above the
+ // low byte feed exactly the same thing in. That is not a collision of the kind
+ // a digest of this width always has: it is information thrown away before the
+ // mixer ever sees it, so those two names could not come out different however
+ // wide the digest were.
  procedure FeedString(const aValue:String);
- var Position,Count,ByteIndex:TpvSizeInt;
-     Block:TpvUInt64;
+ var Position,Count,ByteIndex,ByteShift:TpvSizeInt;
+     Block,Current:TpvUInt64;
  begin
   Count:=length(aValue);
   Feed(TpvUInt64(Count));
-  Position:=1;
-  while Position<=Count do begin
-   Block:=0;
-   ByteIndex:=0;
-   while (Position<=Count) and (ByteIndex<8) do begin
-    Block:=(Block shl 8) or (TpvUInt64(Ord(aValue[Position])) and $ff);
-    inc(Position);
+  Block:=0;
+  ByteIndex:=0;
+  for Position:=1 to Count do begin
+   Current:=TpvUInt64(Ord(aValue[Position]));
+   for ByteShift:=0 to TpvSizeInt(SizeOf(Char))-1 do begin
+    Block:=(Block shl 8) or ((Current shr (ByteShift shl 3)) and $ff);
     inc(ByteIndex);
+    if ByteIndex=8 then begin
+     Feed(Block);
+     Block:=0;
+     ByteIndex:=0;
+    end;
    end;
+  end;
+  if ByteIndex>0 then begin
    Feed(Block);
   end;
  end;
