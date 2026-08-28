@@ -165,6 +165,32 @@ var // Unassigned means the built in writer, see the type above.
     // stood still for good.
     pvCrashReportMiniDumpWaitMilliseconds:TpvUInt32=10000;
 
+    // How long the thread which asked for a dump waits for the one which writes
+    // it. Longer than the above on purpose: the first is a queue in front of a
+    // job, this is the job.
+    pvCrashReportMiniDumpWriteMilliseconds:TpvUInt32=60000;
+
+    // Whether the install brings up a thread of its own to do the writing.
+    //
+    // Read once, by pvCrashReportMiniDumpInstall, so setting it afterwards
+    // changes nothing.
+    //
+    // There are two reasons for the thread and they point the same way. The
+    // first is that the operating system advises against a thread dumping
+    // itself, and the reason it gives is the second one: a stack overflow. That
+    // fault arrives with a few hundred bytes of stack left, which is not enough
+    // for the library to work in, so the dump which is wanted most is the one
+    // which cannot be written from where the fault happened. A thread which has
+    // been asleep since startup has its whole stack.
+    //
+    // It also improves every other dump, for a reason which has nothing to do
+    // with stacks: writing a dump stops all threads except the one writing it.
+    // Written from the faulting thread, that thread is the one thread which is
+    // still moving while its own state is being written down. Written from
+    // somewhere else, it is stopped like all the others and what lands in the
+    // file is what was actually there.
+    pvCrashReportMiniDumpWantDumperThread:Boolean=true;
+
 // Brings up whatever writing a dump needs, so that the crash path itself does
 // none of it. Loads the library and resolves the one routine which is used.
 //
@@ -246,6 +272,13 @@ const MiniDumpNormal=TpvUInt32($00000000);
       MiniDumpWithThreadInfo=TpvUInt32($00001000);
       MiniDumpIgnoreInaccessibleMemory=TpvUInt32($00020000);
 
+      // The right to delete a file and the flag which does it when the last
+      // handle goes, both spelled out here. The name the header of the
+      // operating system gives the first one is a word which is already taken
+      // in this language, by the standard routine which shortens a string.
+      cDeleteAccess=TpvUInt32($00010000);
+      cDeleteOnClose=TpvUInt32($04000000);
+
       // The stream number the format reserves for a wide comment. A number of
       // its own would work as well, but this one is understood by every reader
       // of the format, and being readable by somebody else's tools is the whole
@@ -320,6 +353,29 @@ type // Only the first field is read here, so the rest is named but never
       ContextRecord:TpvPointer;
      end;
 
+     // What one thread hands the writing thread.
+     //
+     // The two strings are pointers into the caller and not copies, because the
+     // caller waits for the answer and its strings are therefore alive the whole
+     // time, and because copying a string on a thread which has just run out of
+     // stack is the sort of thing which turns one fault into two.
+     //
+     // One of these for the whole process, which is enough because the right to
+     // fill it in is the same right as the right to write a dump at all, and
+     // that is handed out one at a time.
+     PpvCrashReportMiniDumpString=^String;
+
+     PpvCrashReportMiniDumpRequest=^TpvCrashReportMiniDumpRequest;
+     TpvCrashReportMiniDumpRequest=record
+      FileName:PpvCrashReportMiniDumpString;
+      Comment:PpvCrashReportMiniDumpString;
+      Pointers:TpvPointer;
+      Code:TpvUInt32;
+      ThreadID:TpvUInt64;
+      Kind:TpvCrashReportMiniDumpKind;
+      Answer:Boolean;
+     end;
+
      TpvCrashReportMiniDumpWriteDump=function(aProcess:THandle;
                                               aProcessID:TpvUInt32;
                                               aFile:THandle;
@@ -338,6 +394,26 @@ var CrashReportMiniDumpLibrary:HMODULE=0;
     CrashReportMiniDumpLock:TpvInt32=0;
     // Held while a dump is being written, see pvCrashReportMiniDumpWaitMilliseconds.
     CrashReportMiniDumpWriteLock:TpvInt32=0;
+    // The thread which does the writing and the two events it lives by, see
+    // pvCrashReportMiniDumpWantDumperThread.
+    CrashReportMiniDumpThreadID:TThreadID=0;
+    CrashReportMiniDumpGoEvent:THandle=0;
+    CrashReportMiniDumpDoneEvent:THandle=0;
+    // Set by the thread itself on its way out, and waited for by the uninstall.
+    //
+    // A third event rather than waiting on the thread, because what BeginThread
+    // hands back is a thread identifier on one compiler and a handle on the
+    // other, and only one of those two is something to wait on. This asks the
+    // thread instead of asking the operating system about it, and that answer
+    // means the same thing everywhere. It stays set once set, since the one
+    // thing waited for here happens once.
+    CrashReportMiniDumpStoppedEvent:THandle=0;
+    // Whether handing work over to it is still worth trying. Cleared for good
+    // once a hand over has gone unanswered, since after that nothing is known
+    // about what the thread is doing with the request below.
+    CrashReportMiniDumpThreadReady:Boolean=false;
+    CrashReportMiniDumpThreadQuit:Boolean=false;
+    CrashReportMiniDumpRequest:TpvCrashReportMiniDumpRequest;
 
 procedure CrashReportMiniDumpAcquireLock;
 begin
@@ -452,9 +528,24 @@ end;
 //
 // Exclusive creation is what decides it, not a look beforehand, so two threads
 // or two processes cannot both come away believing the same name is theirs.
+//
+// One of these can be left behind, and by exactly the fault this unit is for: a
+// process which is killed in the middle of writing a dump does not get to tidy
+// up after itself. So a name which is taken is looked at once more before it is
+// given up on. Everything here opens with no sharing at all, which turns the
+// question of whether somebody is still writing that file into a question the
+// operating system answers: an open which succeeds is proof that nobody holds
+// it, and a file nobody holds under this name is the remains of a run which
+// died. It is then deleted by the closing of the very handle which proved it,
+// and the name is free again.
+//
+// Note what this does not do: it never looks at how old the file is or how big.
+// The only thing it goes by is whether anyone still has it open, which is the
+// one thing about it which cannot be wrong.
 function CrashReportMiniDumpAcquireTemporaryFile(const aFileName:String;out aTemporaryName:String):THandle;
 var Index:TpvInt32;
     Candidate:String;
+    Stale:THandle;
 begin
  result:=INVALID_HANDLE_VALUE;
  aTemporaryName:='';
@@ -465,10 +556,198 @@ begin
    Candidate:=aFileName+'.part'+IntToStr(Index);
   end;
   result:=CreateFileW(PWideChar(UnicodeString(Candidate)),GENERIC_READ or GENERIC_WRITE,0,nil,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,0);
+  if result=INVALID_HANDLE_VALUE then begin
+   Stale:=CreateFileW(PWideChar(UnicodeString(Candidate)),cDeleteAccess,0,nil,OPEN_EXISTING,cDeleteOnClose,0);
+   if Stale<>INVALID_HANDLE_VALUE then begin
+    CloseHandle(Stale);
+    result:=CreateFileW(PWideChar(UnicodeString(Candidate)),GENERIC_READ or GENERIC_WRITE,0,nil,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,0);
+   end;
+  end;
   if result<>INVALID_HANDLE_VALUE then begin
    aTemporaryName:=Candidate;
    exit;
   end;
+ end;
+end;
+
+// The writing itself, on whichever thread ends up doing it.
+//
+// A function of its own so that the two ways in, straight from the caller and
+// through the thread which was made for it, are one and the same piece of work
+// and not two which have to be kept in step. It also keeps everything the
+// library needs on the stack of whoever writes rather than on the stack of
+// whoever asked, which for a caller whose stack has just run out is the whole
+// difference.
+//
+// The right to write must already be held, and is not taken or given back here.
+function CrashReportMiniDumpWriteHere(const aRequest:PpvCrashReportMiniDumpRequest):Boolean;
+var Attempt:TpvInt32;
+    ExceptionInformation:TpvCrashReportMiniDumpExceptionInformation;
+    ExceptionParameter:PpvCrashReportMiniDumpExceptionInformation;
+    UserStream:TpvCrashReportMiniDumpUserStream;
+    UserStreamInformation:TpvCrashReportMiniDumpUserStreamInformation;
+    UserStreamParameter:PpvCrashReportMiniDumpUserStreamInformation;
+    CommentText:UnicodeString;
+    Handle:THandle;
+    TemporaryName:String;
+    Written:Boolean;
+begin
+ result:=false;
+ try
+
+  Handle:=CrashReportMiniDumpAcquireTemporaryFile(aRequest^.FileName^,TemporaryName);
+  if Handle=INVALID_HANDLE_VALUE then begin
+   exit;
+  end;
+  Written:=false;
+  // Two of these around one another, and both are needed. The inner one gives
+  // the handle back, the outer one makes sure the half built file goes away no
+  // matter which of the steps between here and the move gave up or faulted.
+  try
+   try
+
+    ExceptionParameter:=nil;
+    if assigned(aRequest^.Pointers) then begin
+     ExceptionInformation.ThreadID:=TpvUInt32(aRequest^.ThreadID);
+     ExceptionInformation.ExceptionPointers:=aRequest^.Pointers;
+     ExceptionInformation.ClientPointers:=false;
+     ExceptionParameter:=@ExceptionInformation;
+    end;
+
+    UserStreamParameter:=nil;
+    CommentText:='';
+    if length(aRequest^.Comment^)>0 then begin
+     CommentText:=UnicodeString(aRequest^.Comment^);
+     UserStream.StreamType:=cCommentStreamW;
+     // With the terminator, which is what a reader of a comment stream expects
+     // to find and what tells it where the text ends.
+     UserStream.BufferSize:=TpvUInt32((length(CommentText)+1)*SizeOf(WideChar));
+     UserStream.Buffer:=PWideChar(CommentText);
+     UserStreamInformation.UserStreamCount:=1;
+     UserStreamInformation.UserStreamArray:=@UserStream;
+     UserStreamParameter:=@UserStreamInformation;
+    end;
+
+    for Attempt:=0 to 2 do begin
+     if Attempt>0 then begin
+      // Back to the start of the file, since a refused attempt may still have
+      // put a header there, and a second header behind the first is not a dump.
+      SetFilePointer(Handle,0,nil,FILE_BEGIN);
+      SetEndOfFile(Handle);
+     end;
+     if CrashReportMiniDumpWriteDumpProc(GetCurrentProcess,
+                                         GetCurrentProcessId,
+                                         Handle,
+                                         CrashReportMiniDumpFlags(aRequest^.Kind,Attempt),
+                                         ExceptionParameter,
+                                         UserStreamParameter,
+                                         nil) then begin
+      Written:=true;
+      break;
+     end;
+    end;
+
+    FlushFileBuffers(Handle);
+
+   finally
+    CloseHandle(Handle);
+   end;
+
+   if Written then begin
+    // Into place only now that there is something whole to move. A dump which
+    // was interrupted halfway never wore the name of a dump, so nobody is going
+    // to open it, wonder why it stops in the middle, and mistrust the tool.
+    result:=MoveFileExW(PWideChar(UnicodeString(TemporaryName)),PWideChar(UnicodeString(aRequest^.FileName^)),MOVEFILE_REPLACE_EXISTING);
+   end;
+
+  finally
+   if not result then begin
+    DeleteFileW(PWideChar(UnicodeString(TemporaryName)));
+   end;
+  end;
+
+ except
+  // The report about the crash outranks everything which happens while it is
+  // being made.
+  result:=false;
+ end;
+end;
+
+// The thread which was made for the writing. Asleep from the install until it
+// is woken, and asleep again afterwards.
+function CrashReportMiniDumpThreadProc(aParameter:TpvPointer):{$ifdef fpc}TpvPtrInt{$else}Integer{$endif};
+begin
+ result:=0;
+ while WaitForSingleObject(CrashReportMiniDumpGoEvent,INFINITE)=WAIT_OBJECT_0 do begin
+  if CrashReportMiniDumpThreadQuit then begin
+   break;
+  end;
+  try
+   CrashReportMiniDumpRequest.Answer:=CrashReportMiniDumpWriteHere(@CrashReportMiniDumpRequest);
+  except
+   CrashReportMiniDumpRequest.Answer:=false;
+  end;
+  SetEvent(CrashReportMiniDumpDoneEvent);
+ end;
+ SetEvent(CrashReportMiniDumpStoppedEvent);
+end;
+
+// Hands one dump over to that thread and waits for it.
+//
+// The result says whether the thread dealt with the request at all, and
+// aAnswer says whether the dump got written. The two are kept apart on purpose:
+// a request the thread took and could not carry out must not be tried again by
+// the caller, since it would fail for the same reason, and on a thread which
+// has run out of stack the second attempt is the one which does the damage.
+//
+// A hand over which goes unanswered is the end of the thread as far as this
+// unit is concerned. Not because it is certainly dead, but because it may still
+// be reading the one request there is, and filling that in again while somebody
+// reads it is worse than writing every further dump the slower way.
+function CrashReportMiniDumpHandOver(const aFileName,aComment:PpvCrashReportMiniDumpString;
+                                     const aPointers:TpvPointer;
+                                     const aCode:TpvUInt32;
+                                     const aThreadID:TpvUInt64;
+                                     const aKind:TpvCrashReportMiniDumpKind;
+                                     out aAnswer:Boolean):Boolean;
+begin
+ result:=false;
+ aAnswer:=false;
+ if not CrashReportMiniDumpThreadReady then begin
+  exit;
+ end;
+ CrashReportMiniDumpRequest.FileName:=aFileName;
+ CrashReportMiniDumpRequest.Comment:=aComment;
+ CrashReportMiniDumpRequest.Pointers:=aPointers;
+ CrashReportMiniDumpRequest.Code:=aCode;
+ CrashReportMiniDumpRequest.ThreadID:=aThreadID;
+ CrashReportMiniDumpRequest.Kind:=aKind;
+ CrashReportMiniDumpRequest.Answer:=false;
+ if not SetEvent(CrashReportMiniDumpGoEvent) then begin
+  CrashReportMiniDumpThreadReady:=false;
+  exit;
+ end;
+ if WaitForSingleObject(CrashReportMiniDumpDoneEvent,pvCrashReportMiniDumpWriteMilliseconds)=WAIT_OBJECT_0 then begin
+  aAnswer:=CrashReportMiniDumpRequest.Answer;
+  result:=true;
+ end else begin
+  CrashReportMiniDumpThreadReady:=false;
+ end;
+end;
+
+procedure CrashReportMiniDumpCloseEvents;
+begin
+ if CrashReportMiniDumpGoEvent<>0 then begin
+  CloseHandle(CrashReportMiniDumpGoEvent);
+  CrashReportMiniDumpGoEvent:=0;
+ end;
+ if CrashReportMiniDumpDoneEvent<>0 then begin
+  CloseHandle(CrashReportMiniDumpDoneEvent);
+  CrashReportMiniDumpDoneEvent:=0;
+ end;
+ if CrashReportMiniDumpStoppedEvent<>0 then begin
+  CloseHandle(CrashReportMiniDumpStoppedEvent);
+  CrashReportMiniDumpStoppedEvent:=0;
  end;
 end;
 
@@ -478,6 +757,37 @@ procedure pvCrashReportMiniDumpInstall;
 begin
 {$if defined(Windows)}
  CrashReportMiniDumpLoad;
+ // The thread and its two events, all three of which have to be there before
+ // the first fault rather than made at the moment of one.
+ //
+ // Both events reset themselves after one waiter, which is what makes the
+ // handshake a handshake: one dump asked for is one dump woken, and an answer
+ // which nobody was still waiting for does not stay behind for the next one.
+ if pvCrashReportMiniDumpWantDumperThread and not CrashReportMiniDumpThreadReady then begin
+  CrashReportMiniDumpThreadQuit:=false;
+  CrashReportMiniDumpGoEvent:=CreateEvent(nil,false,false,nil);
+  CrashReportMiniDumpDoneEvent:=CreateEvent(nil,false,false,nil);
+  CrashReportMiniDumpStoppedEvent:=CreateEvent(nil,true,false,nil);
+  if (CrashReportMiniDumpGoEvent<>0) and (CrashReportMiniDumpDoneEvent<>0) and (CrashReportMiniDumpStoppedEvent<>0) then begin
+   // Through the runtime rather than through CreateThread, so that the thread
+   // is one the runtime knows about. It works with strings and it catches
+   // exceptions, and both of those want the per thread state which only this
+   // way sets up.
+   //
+   // A megabyte of stack, said out loud rather than left to the header of the
+   // executable, because the one thing this thread exists for is to have stack
+   // when the thread which crashed has none.
+   CrashReportMiniDumpThreadID:=0;
+   CrashReportMiniDumpThreadReady:=BeginThread(nil,1024*1024,@CrashReportMiniDumpThreadProc,nil,0,CrashReportMiniDumpThreadID)<>0;
+  end;
+  if not CrashReportMiniDumpThreadReady then begin
+   // No thread means every dump is written where it was asked for, which is
+   // what this unit did before the thread existed and still does when the
+   // program asks for it. So there is nothing to report here beyond giving the
+   // handles back.
+   CrashReportMiniDumpCloseEvents;
+  end;
+ end;
 {$ifend}
 end;
 
@@ -485,6 +795,26 @@ procedure pvCrashReportMiniDumpUninstall;
 {$if defined(Windows)}
 var Library_:HMODULE;
 begin
+ // The thread first, since it is the one which might still be using the
+ // library. Told to stop and then waited for, but not waited for without end:
+ // if it is in the middle of a dump which will not finish, this cannot be the
+ // place where that becomes somebody else's hang.
+ if CrashReportMiniDumpThreadReady then begin
+  CrashReportMiniDumpThreadReady:=false;
+  CrashReportMiniDumpThreadQuit:=true;
+  SetEvent(CrashReportMiniDumpGoEvent);
+  if WaitForSingleObject(CrashReportMiniDumpStoppedEvent,pvCrashReportMiniDumpWaitMilliseconds)<>WAIT_OBJECT_0 then begin
+   // Still in there. Nothing is taken away from it: not the handles, since
+   // closing one a thread is about to wait on is how a shutdown turns into a
+   // fault, and not the library, since it is what that thread is inside of.
+   // What is given up instead is three handles and a library in a process which
+   // is on its way out.
+   CrashReportMiniDumpThreadID:=0;
+   exit;
+  end;
+ end;
+ CrashReportMiniDumpCloseEvents;
+ CrashReportMiniDumpThreadID:=0;
  CrashReportMiniDumpAcquireLock;
  try
   Library_:=CrashReportMiniDumpLibrary;
@@ -552,21 +882,17 @@ function pvCrashReportWriteMiniDump(const aFileName:String;
                                     const aComment:String;
                                     const aKind:TpvCrashReportMiniDumpKind):Boolean;
 {$if defined(Windows)}
-var Attempt:TpvInt32;
-    Pointers:TpvPointer;
+// Deliberately few of these, and none of them large. This is the frame which
+// has to fit on the stack of the thread which crashed, and that thread may have
+// crashed precisely because there was no more stack. Everything the library
+// needs is a frame further on, in CrashReportMiniDumpWriteHere, which normally
+// runs on a thread which has its whole stack left.
+var Pointers:TpvPointer;
     Code:TpvUInt32;
     ThreadID:TpvUInt64;
     Sequence,KeptCode:TpvUInt32;
     KeptThreadID:TpvUInt64;
-    ExceptionInformation:TpvCrashReportMiniDumpExceptionInformation;
-    ExceptionParameter:PpvCrashReportMiniDumpExceptionInformation;
-    UserStream:TpvCrashReportMiniDumpUserStream;
-    UserStreamInformation:TpvCrashReportMiniDumpUserStreamInformation;
-    UserStreamParameter:PpvCrashReportMiniDumpUserStreamInformation;
-    CommentText:UnicodeString;
-    Handle:THandle;
-    TemporaryName:String;
-    Written:Boolean;
+    Request:TpvCrashReportMiniDumpRequest;
 begin
  result:=false;
  if length(aFileName)=0 then begin
@@ -616,93 +942,28 @@ begin
   exit;
  end;
 
- // One at a time from here on, and the name is taken inside as well, so that
- // two threads cannot even be in the middle of choosing one at once.
+ // One at a time from here on, and the name is taken further in as well, so
+ // that two threads cannot even be in the middle of choosing one at once.
  if not CrashReportMiniDumpAcquireWriteLock then begin
   exit;
  end;
- // Again two of these around one another: the outer one gives the right to
- // write back under every circumstance including an exit in the middle, and the
- // inner one keeps whatever went wrong from leaving through this function.
- try
  try
 
-  Handle:=CrashReportMiniDumpAcquireTemporaryFile(aFileName,TemporaryName);
-  if Handle=INVALID_HANDLE_VALUE then begin
-   exit;
-  end;
-  Written:=false;
-  // Two of these around one another, and both are needed. The inner one gives
-  // the handle back, the outer one makes sure the half built file goes away no
-  // matter which of the steps between here and the move gave up or faulted.
-  try
-   try
-
-    ExceptionParameter:=nil;
-    if assigned(Pointers) then begin
-     ExceptionInformation.ThreadID:=TpvUInt32(ThreadID);
-     ExceptionInformation.ExceptionPointers:=Pointers;
-     ExceptionInformation.ClientPointers:=false;
-     ExceptionParameter:=@ExceptionInformation;
-    end;
-
-    UserStreamParameter:=nil;
-    CommentText:='';
-    if length(aComment)>0 then begin
-     CommentText:=UnicodeString(aComment);
-     UserStream.StreamType:=cCommentStreamW;
-     // With the terminator, which is what a reader of a comment stream expects
-     // to find and what tells it where the text ends.
-     UserStream.BufferSize:=TpvUInt32((length(CommentText)+1)*SizeOf(WideChar));
-     UserStream.Buffer:=PWideChar(CommentText);
-     UserStreamInformation.UserStreamCount:=1;
-     UserStreamInformation.UserStreamArray:=@UserStream;
-     UserStreamParameter:=@UserStreamInformation;
-    end;
-
-    for Attempt:=0 to 2 do begin
-     if Attempt>0 then begin
-      // Back to the start of the file, since a refused attempt may still have
-      // put a header there, and a second header behind the first is not a dump.
-      SetFilePointer(Handle,0,nil,FILE_BEGIN);
-      SetEndOfFile(Handle);
-     end;
-     if CrashReportMiniDumpWriteDumpProc(GetCurrentProcess,
-                                         GetCurrentProcessId,
-                                         Handle,
-                                         CrashReportMiniDumpFlags(aKind,Attempt),
-                                         ExceptionParameter,
-                                         UserStreamParameter,
-                                         nil) then begin
-      Written:=true;
-      break;
-     end;
-    end;
-
-    FlushFileBuffers(Handle);
-
-   finally
-    CloseHandle(Handle);
-   end;
-
-   if Written then begin
-    // Into place only now that there is something whole to move. A dump which
-    // was interrupted halfway never wore the name of a dump, so nobody is going
-    // to open it, wonder why it stops in the middle, and mistrust the tool.
-    result:=MoveFileExW(PWideChar(UnicodeString(TemporaryName)),PWideChar(UnicodeString(aFileName)),MOVEFILE_REPLACE_EXISTING);
-   end;
-
-  finally
-   if not result then begin
-    DeleteFileW(PWideChar(UnicodeString(TemporaryName)));
-   end;
+  // The thread which was made for this if there is one, and this thread itself
+  // if there is not or if it did not answer. The right to write is held here
+  // and not taken again over there, which is what keeps the two from waiting
+  // for one another.
+  if not CrashReportMiniDumpHandOver(@aFileName,@aComment,Pointers,Code,ThreadID,aKind,result) then begin
+   Request.FileName:=@aFileName;
+   Request.Comment:=@aComment;
+   Request.Pointers:=Pointers;
+   Request.Code:=Code;
+   Request.ThreadID:=ThreadID;
+   Request.Kind:=aKind;
+   Request.Answer:=false;
+   result:=CrashReportMiniDumpWriteHere(@Request);
   end;
 
- except
-  // Same rule as above: the report about the crash outranks everything which
-  // happens while it is being made.
-  result:=false;
- end;
  finally
   CrashReportMiniDumpReleaseWriteLock;
  end;
