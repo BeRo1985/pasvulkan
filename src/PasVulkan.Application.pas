@@ -2760,11 +2760,26 @@ function DumpExceptionCallStack(e:Exception):string;
 // which the candidates are tried.
 function GetCrashLogFileName:String;
 
+{$ifdef PasVulkanUseCrashDump}
+// And the file the minidump of the same crash goes to, which is beside the
+// crash log and carries the time and the process number in its name.
+//
+// A name of its own for every crash rather than one which is appended to,
+// because a dump is a file and not a line: two of them cannot share one.
+function GetCrashDumpFileName:String;
+{$endif}
+
 procedure LogCrash(const aExceptionString:String);
 
 implementation
 
-uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport;
+uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport
+{$ifdef PasVulkanUseCrashDump}
+     // Only where the program asked for dumps, so that nobody who did not is
+     // made to carry the library one of them needs.
+     ,PasVulkan.CrashReport.MiniDump
+{$endif}
+     ;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -3274,9 +3289,20 @@ begin
 
 end;
 
+{$ifdef PasVulkanUseCrashDump}
+function GetCrashDumpFileName:String;
+begin
+ // Wherever the crash log goes, since that is where somebody will look, and
+ // both halves of one report belong next to each other.
+ result:=pvCrashReportMiniDumpFileName(ExtractFilePath(GetCrashLogFileName));
+end;
+{$endif}
+
 procedure LogCrash(const aExceptionString:String);
-{$ifdef PasVulkanUseCrashLog}
+// Outside the condition below, since the dump underneath wants it as well and
+// either of the two can be asked for without the other.
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
+{$ifdef PasVulkanUseCrashLog}
 var FileName:String;
     Text:String;
     RawText:TpvRawByteString;
@@ -3335,6 +3361,22 @@ begin
    end;
   end;
 
+ except
+  // Deliberately silent, see above.
+ end;
+{$endif}
+{$ifdef PasVulkanUseCrashDump}
+ // And the machine state itself, beside the text. The two answer different
+ // questions: the text says what happened in words which travel in a bug
+ // report, the dump lets a debugger stand where the program stood.
+ //
+ // After the text and not before it, so that a dump which goes wrong still
+ // leaves the report which was already written, and wrapped in the same silence
+ // for the same reason.
+ try
+  // The text of this report goes into the dump as well, so that the file is
+  // worth something on its own even when the crash log beside it is lost.
+  pvCrashReportWriteMiniDump(GetCrashDumpFileName,nil,0,0,aExceptionString+LineEnding+pvCrashReportContext);
  except
   // Deliberately silent, see above.
  end;
@@ -17980,6 +18022,15 @@ begin
  // Now that the storage paths are known, the crash log lands at its final
  // location, so say where that is instead of leaving it to be guessed.
  Log(LOG_INFO,'PasVulkanApplication','Crash log file: '+TpvUTF8String(GetCrashLogFileName));
+
+{$ifdef PasVulkanUseCrashDump}
+ // Here rather than at the moment of a crash, which is the whole point of it:
+ // it brings up the library a dump needs and the thread which writes one, so
+ // that the crash path itself has neither to do. Asked for once, and harmless
+ // to ask for twice.
+ pvCrashReportMiniDumpInstall;
+ Log(LOG_INFO,'PasVulkanApplication','Crash dumps: '+TpvUTF8String(BoolToStr(pvCrashReportMiniDumpAvailable,true))+', beside the crash log');
+{$endif}
 
  fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 

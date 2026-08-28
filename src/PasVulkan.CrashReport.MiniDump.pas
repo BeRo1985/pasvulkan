@@ -66,6 +66,12 @@ unit PasVulkan.CrashReport.MiniDump;
  {$define PasVulkanCrashReportMiniDumpX64}
 {$elseif defined(cpu386) or defined(cpui386) or defined(cpux86)}
  {$define PasVulkanCrashReportMiniDumpX86}
+{$elseif defined(cpuaarch64) or defined(cpuarm64)}
+ {$define PasVulkanCrashReportMiniDumpARM64}
+{$ifend}
+
+{$if defined(PasVulkanCrashReportMiniDumpX64) or defined(PasVulkanCrashReportMiniDumpX86) or defined(PasVulkanCrashReportMiniDumpARM64)}
+ {$define PasVulkanCrashReportMiniDumpKnownRegisters}
 {$ifend}
 
 // Whether the minidump is written by this unit itself rather than by a library.
@@ -75,8 +81,16 @@ unit PasVulkan.CrashReport.MiniDump;
 // define belongs to the file it is made in. If the two ever disagree, this one
 // asks for something the other one does not offer and the compiler says so at
 // once, which is the failure worth having.
-{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and (defined(PasVulkanCrashReportMiniDumpX64) or defined(PasVulkanCrashReportMiniDumpX86))}
+{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and defined(PasVulkanCrashReportMiniDumpKnownRegisters)}
  {$define PasVulkanCrashReportMiniDumpUnix}
+{$ifend}
+
+// And whether the other threads can be asked where they are, which is the same
+// question PasVulkan.CrashReport answers with
+// PasVulkanCrashReportUnixThreadStacksBuilt. Written out again for the same
+// reason as above: a define belongs to the file it is made in.
+{$if defined(PasVulkanCrashReportMiniDumpUnix) and defined(PasVulkanCrashReportUnixThreadStacks)}
+ {$define PasVulkanCrashReportMiniDumpUnixThreads}
 {$ifend}
 
 {$scopedenums on}
@@ -816,14 +830,21 @@ const cMiniDumpSignature=TpvUInt32($504d444d); // MDMP
       cMiniDumpArchitecture=TpvUInt16(9);
       cMiniDumpContextSize=1232;
       cMiniDumpContextFlags=TpvUInt32($0010000b);
-      // Where the registers sit inside the context the operating system fills
-      // in, which is the same offset PasVulkan.CrashReport reads them at.
-      cMiniDumpContextGRegs=40;
-{$else}
+{$endif}
+{$ifdef PasVulkanCrashReportMiniDumpX86}
       cMiniDumpArchitecture=TpvUInt16(0);
       cMiniDumpContextSize=716;
       cMiniDumpContextFlags=TpvUInt32($00010007);
-      cMiniDumpContextGRegs=20;
+{$endif}
+{$ifdef PasVulkanCrashReportMiniDumpARM64}
+      // Twelve is the number this machine has in the same list the two above
+      // are numbered in. There is an older number for it as well, which the
+      // crash reporters of the free world used before the operating system
+      // itself had one, and reading either is up to the reader; what is written
+      // here is the current one.
+      cMiniDumpArchitecture=TpvUInt16(12);
+      cMiniDumpContextSize=912;
+      cMiniDumpContextFlags=TpvUInt32($00400007);
 {$endif}
 
       // How much of a stack goes into the file. A thread which has just run out
@@ -835,6 +856,11 @@ const cMiniDumpSignature=TpvUInt32($504d444d); // MDMP
       // disassembler has something to work with even when the module it came
       // from is not at hand.
       cMiniDumpBytesAroundInstruction=256;
+
+      // How many threads at most go into the file. Every one of them is stopped
+      // for as long as it takes to ask it, so a process with a thousand threads
+      // would spend a long time on this at the worst possible moment.
+      cMiniDumpMaximalThreads=64;
 
 type TpvCrashReportMiniDumpBuffer=record
       Data:array of TpvUInt8;
@@ -1255,52 +1281,70 @@ end;
 // where the field sits in the record of the format; the numbers on the right
 // are which entry of the register array of the operating system holds it, in
 // the order the C library numbers them in.
-procedure CrashReportMiniDumpFillContext(var aData:array of TpvUInt8;const aFault:TpvCrashReportUnixFault);
+procedure CrashReportMiniDumpFillContext(var aData:array of TpvUInt8;const aRegisters:TpvCrashReportFaultRegisters);
+{$ifdef PasVulkanCrashReportMiniDumpARM64}
+var Index:TpvInt32;
+{$endif}
 begin
  FillChar(aData[0],length(aData),#0);
 {$ifdef PasVulkanCrashReportMiniDumpX64}
  CrashReportMiniDumpPutBytes32(aData,48,cMiniDumpContextFlags);
- // The segment registers arrive packed into one entry: the code segment in the
- // low sixteen bits, then gs, then fs.
- CrashReportMiniDumpPutBytes16(aData,56,TpvUInt16(aFault.Registers[18] and $ffff));
- CrashReportMiniDumpPutBytes16(aData,62,TpvUInt16((aFault.Registers[18] shr 32) and $ffff));
- CrashReportMiniDumpPutBytes16(aData,64,TpvUInt16((aFault.Registers[18] shr 16) and $ffff));
- CrashReportMiniDumpPutBytes32(aData,68,TpvUInt32(aFault.Registers[17]));
- CrashReportMiniDumpPutBytes64(aData,120,aFault.Registers[13]); // rax
- CrashReportMiniDumpPutBytes64(aData,128,aFault.Registers[14]); // rcx
- CrashReportMiniDumpPutBytes64(aData,136,aFault.Registers[12]); // rdx
- CrashReportMiniDumpPutBytes64(aData,144,aFault.Registers[11]); // rbx
- CrashReportMiniDumpPutBytes64(aData,152,aFault.Registers[15]); // rsp
- CrashReportMiniDumpPutBytes64(aData,160,aFault.Registers[10]); // rbp
- CrashReportMiniDumpPutBytes64(aData,168,aFault.Registers[9]);  // rsi
- CrashReportMiniDumpPutBytes64(aData,176,aFault.Registers[8]);  // rdi
- CrashReportMiniDumpPutBytes64(aData,184,aFault.Registers[0]);  // r8
- CrashReportMiniDumpPutBytes64(aData,192,aFault.Registers[1]);  // r9
- CrashReportMiniDumpPutBytes64(aData,200,aFault.Registers[2]);  // r10
- CrashReportMiniDumpPutBytes64(aData,208,aFault.Registers[3]);  // r11
- CrashReportMiniDumpPutBytes64(aData,216,aFault.Registers[4]);  // r12
- CrashReportMiniDumpPutBytes64(aData,224,aFault.Registers[5]);  // r13
- CrashReportMiniDumpPutBytes64(aData,232,aFault.Registers[6]);  // r14
- CrashReportMiniDumpPutBytes64(aData,240,aFault.Registers[7]);  // r15
- CrashReportMiniDumpPutBytes64(aData,248,aFault.Registers[16]); // rip
-{$else}
+ CrashReportMiniDumpPutBytes16(aData,56,aRegisters.Cs);
+ CrashReportMiniDumpPutBytes16(aData,58,aRegisters.Ds);
+ CrashReportMiniDumpPutBytes16(aData,60,aRegisters.Es);
+ CrashReportMiniDumpPutBytes16(aData,62,aRegisters.Fs);
+ CrashReportMiniDumpPutBytes16(aData,64,aRegisters.Gs);
+ CrashReportMiniDumpPutBytes16(aData,66,aRegisters.Ss);
+ CrashReportMiniDumpPutBytes32(aData,68,aRegisters.EFlags);
+ CrashReportMiniDumpPutBytes64(aData,120,aRegisters.Rax);
+ CrashReportMiniDumpPutBytes64(aData,128,aRegisters.Rcx);
+ CrashReportMiniDumpPutBytes64(aData,136,aRegisters.Rdx);
+ CrashReportMiniDumpPutBytes64(aData,144,aRegisters.Rbx);
+ CrashReportMiniDumpPutBytes64(aData,152,aRegisters.Rsp);
+ CrashReportMiniDumpPutBytes64(aData,160,aRegisters.Rbp);
+ CrashReportMiniDumpPutBytes64(aData,168,aRegisters.Rsi);
+ CrashReportMiniDumpPutBytes64(aData,176,aRegisters.Rdi);
+ CrashReportMiniDumpPutBytes64(aData,184,aRegisters.R8);
+ CrashReportMiniDumpPutBytes64(aData,192,aRegisters.R9);
+ CrashReportMiniDumpPutBytes64(aData,200,aRegisters.R10);
+ CrashReportMiniDumpPutBytes64(aData,208,aRegisters.R11);
+ CrashReportMiniDumpPutBytes64(aData,216,aRegisters.R12);
+ CrashReportMiniDumpPutBytes64(aData,224,aRegisters.R13);
+ CrashReportMiniDumpPutBytes64(aData,232,aRegisters.R14);
+ CrashReportMiniDumpPutBytes64(aData,240,aRegisters.R15);
+ CrashReportMiniDumpPutBytes64(aData,248,aRegisters.Rip);
+{$endif}
+{$ifdef PasVulkanCrashReportMiniDumpX86}
  CrashReportMiniDumpPutBytes32(aData,0,cMiniDumpContextFlags);
- CrashReportMiniDumpPutBytes32(aData,140,TpvUInt32(aFault.Registers[0]));  // gs
- CrashReportMiniDumpPutBytes32(aData,144,TpvUInt32(aFault.Registers[1]));  // fs
- CrashReportMiniDumpPutBytes32(aData,148,TpvUInt32(aFault.Registers[2]));  // es
- CrashReportMiniDumpPutBytes32(aData,152,TpvUInt32(aFault.Registers[3]));  // ds
- CrashReportMiniDumpPutBytes32(aData,156,TpvUInt32(aFault.Registers[4]));  // edi
- CrashReportMiniDumpPutBytes32(aData,160,TpvUInt32(aFault.Registers[5]));  // esi
- CrashReportMiniDumpPutBytes32(aData,164,TpvUInt32(aFault.Registers[8]));  // ebx
- CrashReportMiniDumpPutBytes32(aData,168,TpvUInt32(aFault.Registers[9]));  // edx
- CrashReportMiniDumpPutBytes32(aData,172,TpvUInt32(aFault.Registers[10])); // ecx
- CrashReportMiniDumpPutBytes32(aData,176,TpvUInt32(aFault.Registers[11])); // eax
- CrashReportMiniDumpPutBytes32(aData,180,TpvUInt32(aFault.Registers[6]));  // ebp
- CrashReportMiniDumpPutBytes32(aData,184,TpvUInt32(aFault.Registers[14])); // eip
- CrashReportMiniDumpPutBytes32(aData,188,TpvUInt32(aFault.Registers[15])); // cs
- CrashReportMiniDumpPutBytes32(aData,192,TpvUInt32(aFault.Registers[16])); // eflags
- CrashReportMiniDumpPutBytes32(aData,196,TpvUInt32(aFault.Registers[7]));  // esp
- CrashReportMiniDumpPutBytes32(aData,200,TpvUInt32(aFault.Registers[18])); // ss
+ CrashReportMiniDumpPutBytes32(aData,140,aRegisters.Gs);
+ CrashReportMiniDumpPutBytes32(aData,144,aRegisters.Fs);
+ CrashReportMiniDumpPutBytes32(aData,148,aRegisters.Es);
+ CrashReportMiniDumpPutBytes32(aData,152,aRegisters.Ds);
+ CrashReportMiniDumpPutBytes32(aData,156,aRegisters.Edi);
+ CrashReportMiniDumpPutBytes32(aData,160,aRegisters.Esi);
+ CrashReportMiniDumpPutBytes32(aData,164,aRegisters.Ebx);
+ CrashReportMiniDumpPutBytes32(aData,168,aRegisters.Edx);
+ CrashReportMiniDumpPutBytes32(aData,172,aRegisters.Ecx);
+ CrashReportMiniDumpPutBytes32(aData,176,aRegisters.Eax);
+ CrashReportMiniDumpPutBytes32(aData,180,aRegisters.Ebp);
+ CrashReportMiniDumpPutBytes32(aData,184,aRegisters.Eip);
+ CrashReportMiniDumpPutBytes32(aData,188,aRegisters.Cs);
+ CrashReportMiniDumpPutBytes32(aData,192,aRegisters.EFlags);
+ CrashReportMiniDumpPutBytes32(aData,196,aRegisters.Esp);
+ CrashReportMiniDumpPutBytes32(aData,200,aRegisters.Ss);
+{$endif}
+{$ifdef PasVulkanCrashReportMiniDumpARM64}
+ // Flags, then the processor state, then the thirty one general registers in a
+ // row, then the stack pointer and the program counter. The vector registers
+ // and the debug ones follow in the record and are left at zero, which is what
+ // a reader gets when nobody saved them.
+ CrashReportMiniDumpPutBytes32(aData,0,cMiniDumpContextFlags);
+ CrashReportMiniDumpPutBytes32(aData,4,TpvUInt32(aRegisters.Pstate));
+ for Index:=0 to 30 do begin
+  CrashReportMiniDumpPutBytes64(aData,8+(Index*8),aRegisters.X[Index]);
+ end;
+ CrashReportMiniDumpPutBytes64(aData,256,aRegisters.Sp);
+ CrashReportMiniDumpPutBytes64(aData,264,aRegisters.Pc);
 {$endif}
 end;
 
@@ -1317,7 +1361,8 @@ end;
 // into place under a name which carries the process number.
 function CrashReportMiniDumpWriteHereUnix(const aRequest:PpvCrashReportMiniDumpRequest):Boolean;
 const cMaximalStreams=7;
-      cMaximalMemoryRanges=2;
+      // One stack and one window around the instruction per thread.
+      cMaximalMemoryRanges=cMiniDumpMaximalThreads*2;
 type TpvCrashReportMiniDumpDirectoryEntry=record
       StreamType:TpvUInt32;
       Size:TpvUInt32;
@@ -1330,6 +1375,15 @@ type TpvCrashReportMiniDumpDirectoryEntry=record
       RVA:TpvUInt32;
      end;
      PpvCrashReportMiniDumpRange=^TpvCrashReportMiniDumpRange;
+     // One thread of the process, as far as the file is concerned: which thread
+     // it is, where its machine state landed in the file, and which of the
+     // memory ranges above is its stack.
+     TpvCrashReportMiniDumpThread=record
+      ThreadID:TpvUInt32;
+      ContextRVA:TpvUInt32;
+      StackRange:TpvInt32;
+     end;
+     PpvCrashReportMiniDumpThread=^TpvCrashReportMiniDumpThread;
 var Buffer:TpvCrashReportMiniDumpBuffer;
     Fault:TpvCrashReportUnixFault;
     Mappings:TpvCrashReportMiniDumpMappings;
@@ -1339,7 +1393,14 @@ var Buffer:TpvCrashReportMiniDumpBuffer;
     UnixContext:array[0..4095] of TpvUInt8;
     Directory:array[0..cMaximalStreams-1] of TpvCrashReportMiniDumpDirectoryEntry;
     Ranges:array[0..cMaximalMemoryRanges-1] of TpvCrashReportMiniDumpRange;
-    StreamCount,RangeCount:TpvInt32;
+    Threads:array[0..cMiniDumpMaximalThreads-1] of TpvCrashReportMiniDumpThread;
+    ThreadRecord:PpvCrashReportMiniDumpThread;
+    StreamCount,RangeCount,ThreadCount:TpvInt32;
+{$ifdef PasVulkanCrashReportMiniDumpUnixThreads}
+    SearchRec:TSearchRec;
+    OtherThreadID,Code:TpvInt32;
+    OtherFault:TpvCrashReportUnixFault;
+{$endif}
     Index,Inner:TpvSizeInt;
     ContextRVA,StreamRVA,DirectoryRVA,Value32:TpvUInt32;
     Value16:TpvUInt16;
@@ -1352,6 +1413,7 @@ var Buffer:TpvCrashReportMiniDumpBuffer;
     Module:PpvCrashReportMiniDumpModule;
     Entry:PpvCrashReportMiniDumpDirectoryEntry;
     Range:PpvCrashReportMiniDumpRange;
+    StackPointer,InstructionPointer:TpvPtrUInt;
 
  procedure AddStream(const aType,aSize,aRVA:TpvUInt32);
  var Where:PpvCrashReportMiniDumpDirectoryEntry;
@@ -1368,11 +1430,13 @@ var Buffer:TpvCrashReportMiniDumpBuffer;
  // Copies a piece of the address space into the file, if it is really there.
  // Nothing is trusted: the range has to lie inside one readable mapping, which
  // is what the process map is read for.
- procedure AddRange(const aStart:TpvPtrUInt;const aWanted:TpvSizeInt);
+ // Answers which range it became, or minus one when there was nothing there.
+ function AddRange(const aStart:TpvPtrUInt;const aWanted:TpvSizeInt):TpvInt32;
  var Which,Size:TpvSizeInt;
      Where:PpvCrashReportMiniDumpMapping;
      Into:PpvCrashReportMiniDumpRange;
  begin
+  result:=-1;
   if (RangeCount>=cMaximalMemoryRanges) or (aStart=0) or (aWanted<=0) then begin
    exit;
   end;
@@ -1388,11 +1452,34 @@ var Buffer:TpvCrashReportMiniDumpBuffer;
      Into^.Start:=aStart;
      Into^.Size:=TpvUInt32(Size);
      Into^.RVA:=CrashReportMiniDumpAppend(Buffer,TpvPointer(aStart)^,Size);
+     result:=RangeCount;
      inc(RangeCount);
     end;
     exit;
    end;
   end;
+ end;
+
+ // Puts one thread into the file: its machine state, its stack, and a window
+ // around the instruction it was interrupted at.
+ procedure AddThread(const aThreadID:TpvInt32;const aRegisters:TpvCrashReportFaultRegisters);
+ var Into:PpvCrashReportMiniDumpThread;
+     Stack,Instruction:TpvPtrUInt;
+ begin
+  if ThreadCount>=cMiniDumpMaximalThreads then begin
+   exit;
+  end;
+  Into:=@Threads[ThreadCount];
+  Into^.ThreadID:=TpvUInt32(aThreadID);
+  CrashReportMiniDumpFillContext(ContextData,aRegisters);
+  Into^.ContextRVA:=CrashReportMiniDumpAppend(Buffer,ContextData[0],cMiniDumpContextSize);
+  Stack:=pvCrashReportStackPointerOf(aRegisters);
+  Instruction:=pvCrashReportInstructionPointerOf(aRegisters);
+  Into^.StackRange:=AddRange(Stack,cMiniDumpMaximalStackBytes);
+  if Instruction>cMiniDumpBytesAroundInstruction then begin
+   AddRange(Instruction-cMiniDumpBytesAroundInstruction,cMiniDumpBytesAroundInstruction*2);
+  end;
+  inc(ThreadCount);
  end;
 
 begin
@@ -1407,7 +1494,9 @@ begin
   if CrashReportMiniDumpGetContext(@UnixContext[0])<>0 then begin
    exit;
   end;
-  Move(UnixContext[cMiniDumpContextGRegs],Fault.Registers,SizeOf(Fault.Registers));
+  // Taken apart by the sibling unit rather than here, so that what a register
+  // is called and where it sits is answered in one place for both ways in.
+  pvCrashReportUnixContextRegisters(@UnixContext[0],Fault.Registers);
   Fault.ThreadID:=TpvInt32(GetProcessID);
  end;
 
@@ -1420,6 +1509,7 @@ begin
  Buffer.Size:=0;
  StreamCount:=0;
  RangeCount:=0;
+ ThreadCount:=0;
 
  try
 
@@ -1427,48 +1517,64 @@ begin
   // it is only known once everything else has been written.
   CrashReportMiniDumpAppendZeros(Buffer,32);
 
-  CrashReportMiniDumpFillContext(ContextData,Fault);
-  ContextRVA:=CrashReportMiniDumpAppend(Buffer,ContextData[0],cMiniDumpContextSize);
+  // The thread this is about first, so that it is the one whose context the
+  // exception stream points at and the one a reader sees at the top.
+  AddThread(Fault.ThreadID,Fault.Registers);
+  ContextRVA:=Threads[0].ContextRVA;
 
-  // The stack of the thread which faulted, from where it stood up to the end of
-  // the mapping it stands in, and a window around the instruction which
-  // faulted.
-{$ifdef PasVulkanCrashReportMiniDumpX64}
-  AddRange(TpvPtrUInt(Fault.Registers[15]),cMiniDumpMaximalStackBytes);
-  if Fault.Registers[16]>cMiniDumpBytesAroundInstruction then begin
-   AddRange(TpvPtrUInt(Fault.Registers[16])-cMiniDumpBytesAroundInstruction,cMiniDumpBytesAroundInstruction*2);
-  end;
-{$else}
-  AddRange(TpvPtrUInt(Fault.Registers[7]),cMiniDumpMaximalStackBytes);
-  if Fault.Registers[14]>cMiniDumpBytesAroundInstruction then begin
-   AddRange(TpvPtrUInt(Fault.Registers[14])-cMiniDumpBytesAroundInstruction,cMiniDumpBytesAroundInstruction*2);
+{$ifdef PasVulkanCrashReportMiniDumpUnixThreads}
+  // And then the others, each stopped just long enough to say where it is. Only
+  // where the program asked for that, since it costs a signal, see
+  // PasVulkanCrashReportUnixThreadStacks. Without it the file describes the one
+  // thread which crashed, and the stacks of the rest are in the text report
+  // which travels in the comment stream.
+  if pvCrashReportUnixBeginAskingThreads then begin
+   try
+    if FindFirst('/proc/self/task/*',faAnyFile,SearchRec)=0 then begin
+     try
+      repeat
+       Val(SearchRec.Name,OtherThreadID,Code);
+       if (Code<>0) or (OtherThreadID<=0) or (OtherThreadID=Fault.ThreadID) then begin
+        continue;
+       end;
+       if ThreadCount>=cMiniDumpMaximalThreads then begin
+        break;
+       end;
+       if pvCrashReportUnixAskThread(OtherThreadID,OtherFault) then begin
+        AddThread(OtherThreadID,OtherFault.Registers);
+       end;
+      until FindNext(SearchRec)<>0;
+     finally
+      FindClose(SearchRec);
+     end;
+    end;
+   finally
+    pvCrashReportUnixEndAskingThreads;
+   end;
   end;
 {$endif}
 
-  // One thread, the one this is about. The others are named in the text report
-  // which travels in the comment stream, with their stacks, when the program
-  // asked for that; what is not here is a machine state for each of them, which
-  // would mean stopping every thread from the outside and is a piece of work of
-  // its own.
   StreamRVA:=Buffer.Size;
-  Value32:=1;
+  Value32:=TpvUInt32(ThreadCount);
   CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
-  Value32:=TpvUInt32(Fault.ThreadID);
-  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));   // thread id
-  CrashReportMiniDumpAppendZeros(Buffer,12);                     // suspend count, priorities
-  Value64:=0;
-  CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));   // no thread block here
-  if RangeCount>0 then begin
-   Range:=@Ranges[0];
-   CrashReportMiniDumpAppend(Buffer,Range^.Start,SizeOf(TpvUInt64));
-   CrashReportMiniDumpAppend(Buffer,Range^.Size,SizeOf(TpvUInt32));
-   CrashReportMiniDumpAppend(Buffer,Range^.RVA,SizeOf(TpvUInt32));
-  end else begin
-   CrashReportMiniDumpAppendZeros(Buffer,16);
+  for Index:=0 to ThreadCount-1 do begin
+   ThreadRecord:=@Threads[Index];
+   CrashReportMiniDumpAppend(Buffer,ThreadRecord^.ThreadID,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppendZeros(Buffer,12);                    // suspend count, priorities
+   Value64:=0;
+   CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));  // no thread block here
+   if ThreadRecord^.StackRange>=0 then begin
+    Range:=@Ranges[ThreadRecord^.StackRange];
+    CrashReportMiniDumpAppend(Buffer,Range^.Start,SizeOf(TpvUInt64));
+    CrashReportMiniDumpAppend(Buffer,Range^.Size,SizeOf(TpvUInt32));
+    CrashReportMiniDumpAppend(Buffer,Range^.RVA,SizeOf(TpvUInt32));
+   end else begin
+    CrashReportMiniDumpAppendZeros(Buffer,16);
+   end;
+   Value32:=cMiniDumpContextSize;
+   CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,ThreadRecord^.ContextRVA,SizeOf(TpvUInt32));
   end;
-  Value32:=cMiniDumpContextSize;
-  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
-  CrashReportMiniDumpAppend(Buffer,ContextRVA,SizeOf(TpvUInt32));
   AddStream(cMiniDumpStreamThreadList,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
 
   // The names and the identities first, since the list itself is a run of

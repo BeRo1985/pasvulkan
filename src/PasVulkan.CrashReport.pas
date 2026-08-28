@@ -61,21 +61,30 @@ unit PasVulkan.CrashReport;
 
 // Which instruction set this is being built for, as far as reading registers
 // and walking stacks is concerned. Asking for a 64 bit cpu is not the same
-// question: an ARM64 build is 64 bit as well and has neither the registers nor
-// the unwind tables any of this uses.
+// question: an ARM64 build is 64 bit as well and has neither the same registers
+// nor the unwind tables the two others use.
 //
 // Settled before the uses clause, since what is needed there depends on it.
 {$if defined(cpux86_64) or defined(cpuamd64) or defined(cpux64)}
  {$define PasVulkanCrashReportX64}
 {$elseif defined(cpu386) or defined(cpui386) or defined(cpux86)}
  {$define PasVulkanCrashReportX86}
+{$elseif defined(cpuaarch64) or defined(cpuarm64)}
+ {$define PasVulkanCrashReportARM64}
+{$ifend}
+
+// The three of them together, for everything which needs to know that the
+// registers of this machine are described here at all rather than which ones
+// they are.
+{$if defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86) or defined(PasVulkanCrashReportARM64)}
+ {$define PasVulkanCrashReportKnownRegisters}
 {$ifend}
 
 // Whether the signal based stacks of other threads are actually built. Asked
 // for by PasVulkanCrashReportUnixThreadStacks, but only possible where the
 // layout of the context a signal handler is given is known, which is to say on
 // the two architectures above and nowhere else.
-{$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
+{$if defined(fpc) and defined(Linux) and defined(PasVulkanCrashReportUnixThreadStacks) and defined(PasVulkanCrashReportKnownRegisters)}
  {$define PasVulkanCrashReportUnixThreadStacksBuilt}
 {$ifend}
 
@@ -91,7 +100,13 @@ unit PasVulkan.CrashReport;
 //
 // PasVulkanCrashReportWithoutUnixFaultState turns it off for a program which
 // wants nothing at all in front of the handlers of the runtime.
-{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
+//
+// The layouts it reads are not written out here. They are the ones the runtime
+// itself declares for this platform and this machine, so what the registers
+// look like is the compiler's answer rather than a set of numbers typed in from
+// a header, which is what makes a third architecture a matter of naming the
+// fields rather than of counting offsets.
+{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and defined(PasVulkanCrashReportKnownRegisters)}
  {$define PasVulkanCrashReportUnixFaultState}
 {$ifend}
 
@@ -201,7 +216,7 @@ const pvCrashReportRingBufferSize=64; // Must stay a power of two
       pvCrashReportFlagRegisters=TpvUInt32(2);
 
 type
-{$if defined(Windows) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
+{$if defined(PasVulkanCrashReportKnownRegisters)}
      // The processor state at the moment of a fault, taken straight out of the
      // context the operating system hands to the handler, which was there all
      // along and simply went unused. Half the questions an address only log
@@ -211,17 +226,37 @@ type
      // the sequence number of the entry publishes the registers together with
      // everything else about that fault. Two threads which fault at the same
      // moment write into two different slots and cannot mix.
+     //
+     // Named fields and not an array of numbers, because everything which reads
+     // this asks for a particular register, and a table of indices between here
+     // and there is a table which can be wrong without saying so.
+     //
+     // The segment registers are here because a minidump wants them. They are
+     // of no interest in a text report and are not printed there.
      TpvCrashReportFaultRegisters=record
 {$ifdef PasVulkanCrashReportX64}
       Rax,Rbx,Rcx,Rdx,Rsi,Rdi,Rbp,Rsp:TpvUInt64;
       R8,R9,R10,R11,R12,R13,R14,R15:TpvUInt64;
       Rip:TpvUInt64;
       EFlags:TpvUInt32;
+      Cs,Ds,Es,Fs,Gs,Ss:TpvUInt16;
 {$endif}
 {$ifdef PasVulkanCrashReportX86}
       Eax,Ebx,Ecx,Edx,Esi,Edi,Ebp,Esp:TpvUInt32;
       Eip:TpvUInt32;
       EFlags:TpvUInt32;
+      Cs,Ds,Es,Fs,Gs,Ss:TpvUInt16;
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+      // Thirty one general purpose registers, of which the last two are the
+      // frame pointer and the link register by convention rather than by name,
+      // then the stack pointer, the program counter and the processor state.
+      // Kept as one array because that is how the machine numbers them and how
+      // every reader of a dump expects to find them.
+      X:array[0..30] of TpvUInt64;
+      Sp:TpvUInt64;
+      Pc:TpvUInt64;
+      Pstate:TpvUInt64;
 {$endif}
      end;
 {$ifend}
@@ -237,10 +272,10 @@ type
       Kind:TpvUInt32;
       Code:TpvUInt32;
       Flags:TpvUInt32;
-{$if defined(Windows) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
+{$ifdef PasVulkanCrashReportKnownRegisters}
       // Only meaningful when Flags says so, see pvCrashReportFlagRegisters.
       Registers:TpvCrashReportFaultRegisters;
-{$ifend}
+{$endif}
       TextLength:TpvInt32;
       Text:array[0..pvCrashReportEntryTextSize-1] of AnsiChar;
      end;
@@ -277,17 +312,15 @@ type
      // and nothing more: which signal, what the kernel said about it, where it
      // happened and what was in the registers.
      //
-     // The registers are the general purpose ones of the machine context, in
-     // the order the operating system keeps them in, which is the order the
-     // header of the C library numbers them in. Written out as a plain array
-     // rather than as the named type this unit uses for it, because that type
-     // belongs to the part of this file which nobody outside needs to see.
+     // The registers are the same named ones the ring buffer entries carry, so
+     // that whatever reads them asks for a register by name on every
+     // architecture rather than by an index which only means something on one.
      TpvCrashReportUnixFault=record
       Signal:TpvInt32;
       Code:TpvInt32;
       ThreadID:TpvInt32;
       Address:TpvPointer;
-      Registers:array[0..22] of TpvPtrUInt;
+      Registers:TpvCrashReportFaultRegisters;
      end;
      PpvCrashReportUnixFault=^TpvCrashReportUnixFault;
 {$endif}
@@ -462,6 +495,42 @@ function pvCrashReportLastFault(out aExceptionPointers:TpvPointer;out aException
 // is read from the moment it was written, the less of it still describes a
 // stack which is standing.
 function pvCrashReportLastFault(out aFault:TpvCrashReportUnixFault):TpvUInt32;
+
+// Takes a machine state apart the way the fault handler takes its own apart.
+//
+// For a caller which has a context of its own, from a handler it installed
+// itself or from asking the operating system for the state of this thread here
+// and now, and wants it in the shape everything else here speaks.
+procedure pvCrashReportUnixContextRegisters(const aContext:TpvPointer;out aRegisters:TpvCrashReportFaultRegisters);
+
+// The two registers everything which walks a stack or writes a dump asks for,
+// named by what they do rather than by what they are called on one machine.
+function pvCrashReportStackPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+
+function pvCrashReportInstructionPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+
+{$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
+// Asking the other threads of this process where they are, one at a time.
+//
+// There is no stopping a thread from the outside here, so each one is asked
+// instead: a signal is delivered on the thread it is sent to, and its handler
+// writes down where that thread was. Which is why this needs a signal of its
+// own and is therefore behind a define, see PasVulkanCrashReportUnixThreadStacks.
+//
+// The three of them belong together. Begin takes the right to ask, which only
+// one collector may hold at a time, and reads the process map once for all the
+// questions which follow; Ask puts one question; End gives the right back.
+// Beginning and never ending leaves every later collector turned away.
+//
+// What comes back is the same record a fault produces, with the signal and the
+// address left empty, since a thread which was asked did not fault: it was
+// interrupted wherever it happened to be.
+function pvCrashReportUnixBeginAskingThreads:Boolean;
+
+function pvCrashReportUnixAskThread(const aThreadID:TpvInt32;out aFault:TpvCrashReportUnixFault):Boolean;
+
+procedure pvCrashReportUnixEndAskingThreads;
+{$endif}
 
 {$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
 // Gives the calling thread a stack of its own to take a fault on.
@@ -672,6 +741,12 @@ type TpvCrashReportUnixThreadSlot=record
       WantedThreadID:TpvInt32;
       Count:TpvInt32;
       Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
+      // The state of the machine the asked thread was interrupted in, which the
+      // handler has in its hands anyway and used to throw away once it had
+      // walked the stack with it. It costs a block copy of under two hundred
+      // bytes and it is what a minidump of this platform is built out of.
+      HaveRegisters:Boolean;
+      Registers:TpvCrashReportFaultRegisters;
      end;
 
      // One readable range of the process, taken from the process map. Kept as
@@ -686,19 +761,17 @@ type TpvCrashReportUnixThreadSlot=record
 {$endif}
 
 {$if defined(PasVulkanCrashReportUnixThreadStacksBuilt) or defined(PasVulkanCrashReportUnixFaultState)}
-     // The registers inside the context a signal handler is given. Declared
-     // wide enough for the largest of the two layouts, and only the few indices
-     // which are actually read are ever touched.
-     //
-     // Here rather than with the two above, because either of the two things
-     // which reads a context can be built without the other.
-type PpvCrashReportGeneralRegisters=^TpvCrashReportGeneralRegisters;
-     TpvCrashReportGeneralRegisters=array[0..22] of TpvPtrUInt;
-
 // Reaching past what the runtime offers: there is no wrapper for sending a
 // signal to one thread rather than to the process, and none for asking for the
 // own thread identifier, so both go through the system call gate directly.
 function CrashReportSysCall(aNumber:TpvPtrInt):TpvPtrInt; cdecl; varargs; external name 'syscall';
+
+// Which thread is asking, in the numbering the kernel uses, which is not the
+// numbering the runtime hands out for a thread. Declared here and written down
+// further along, next to the other things which know about the machine, because
+// the register formatting up here needs to ask and the number it needs is the
+// kernel's one.
+function CrashReportGetTid:TpvInt32; forward;
 {$ifend}
 
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
@@ -2388,6 +2461,14 @@ begin
  aEntry^.Registers.R15:=Context^.R15;
  aEntry^.Registers.Rip:=Context^.Rip;
  aEntry^.Registers.EFlags:=Context^.EFlags;
+ // Of no interest in a text report, which does not print them, but a minidump
+ // written out of this record wants them.
+ aEntry^.Registers.Cs:=Context^.SegCs;
+ aEntry^.Registers.Ds:=Context^.SegDs;
+ aEntry^.Registers.Es:=Context^.SegEs;
+ aEntry^.Registers.Fs:=Context^.SegFs;
+ aEntry^.Registers.Gs:=Context^.SegGs;
+ aEntry^.Registers.Ss:=Context^.SegSs;
 {$endif}
 {$ifdef PasVulkanCrashReportX86}
  aEntry^.Registers.Eax:=Context^.Eax;
@@ -2400,6 +2481,12 @@ begin
  aEntry^.Registers.Esp:=Context^.Esp;
  aEntry^.Registers.Eip:=Context^.Eip;
  aEntry^.Registers.EFlags:=Context^.EFlags;
+ aEntry^.Registers.Cs:=Context^.SegCs;
+ aEntry^.Registers.Ds:=Context^.SegDs;
+ aEntry^.Registers.Es:=Context^.SegEs;
+ aEntry^.Registers.Fs:=Context^.SegFs;
+ aEntry^.Registers.Gs:=Context^.SegGs;
+ aEntry^.Registers.Ss:=Context^.SegSs;
 {$endif}
  aEntry^.Flags:=aEntry^.Flags or pvCrashReportFlagRegisters;
 end;
@@ -3024,10 +3111,63 @@ begin
 
 end;
 
+{$ifdef PasVulkanCrashReportKnownRegisters}
+// The registers themselves, once, for whichever of the two ways of getting hold
+// of them the platform offers. One place which knows how a machine is written
+// down, rather than one per way in.
+function CrashReportFormatRegisters(const aRegisters:TpvCrashReportFaultRegisters):String;
+
+ function Reg(const aName:String;const aValue:TpvUInt64):String;
+ begin
+  result:=aName+'='+IntToHex(aValue,SizeOf(TpvPointer) shl 1)+' ';
+ end;
+
+{$ifdef PasVulkanCrashReportARM64}
+var Index:TpvInt32;
+{$endif}
+begin
+{$ifdef PasVulkanCrashReportX64}
+ result:='  '+Reg('rip',aRegisters.Rip)+Reg('rsp',aRegisters.Rsp)+Reg('rbp',aRegisters.Rbp)+LineEnding+
+         '  '+Reg('rax',aRegisters.Rax)+Reg('rbx',aRegisters.Rbx)+Reg('rcx',aRegisters.Rcx)+LineEnding+
+         '  '+Reg('rdx',aRegisters.Rdx)+Reg('rsi',aRegisters.Rsi)+Reg('rdi',aRegisters.Rdi)+LineEnding+
+         '  '+Reg('r8 ',aRegisters.R8)+Reg('r9 ',aRegisters.R9)+Reg('r10',aRegisters.R10)+LineEnding+
+         '  '+Reg('r11',aRegisters.R11)+Reg('r12',aRegisters.R12)+Reg('r13',aRegisters.R13)+LineEnding+
+         '  '+Reg('r14',aRegisters.R14)+Reg('r15',aRegisters.R15)+'eflags='+IntToHex(aRegisters.EFlags,8)+LineEnding;
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+ result:='  '+Reg('eip',aRegisters.Eip)+Reg('esp',aRegisters.Esp)+Reg('ebp',aRegisters.Ebp)+LineEnding+
+         '  '+Reg('eax',aRegisters.Eax)+Reg('ebx',aRegisters.Ebx)+Reg('ecx',aRegisters.Ecx)+LineEnding+
+         '  '+Reg('edx',aRegisters.Edx)+Reg('esi',aRegisters.Esi)+Reg('edi',aRegisters.Edi)+LineEnding+
+         '  eflags='+IntToHex(aRegisters.EFlags,8)+LineEnding;
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+ // The program counter, the stack and the two registers which hold the frame
+ // and the return address first, since those four are what a report is read
+ // for, and the numbered ones after them, three to a line.
+ result:='  '+Reg('pc ',aRegisters.Pc)+Reg('sp ',aRegisters.Sp)+Reg('fp ',aRegisters.X[29])+LineEnding+
+         '  '+Reg('lr ',aRegisters.X[30])+'pstate='+IntToHex(aRegisters.Pstate,8)+LineEnding;
+ Index:=0;
+ while Index<=28 do begin
+  result:=result+'  '+Reg('x'+IntToStr(Index),aRegisters.X[Index]);
+  if (Index+1)<=28 then begin
+   result:=result+Reg('x'+IntToStr(Index+1),aRegisters.X[Index+1]);
+  end;
+  if (Index+2)<=28 then begin
+   result:=result+Reg('x'+IntToStr(Index+2),aRegisters.X[Index+2]);
+  end;
+  result:=result+LineEnding;
+  inc(Index,3);
+ end;
+{$endif}
+end;
+{$endif}
+
 function pvCrashReportRegisters(const aThreadID:TpvUInt64):String;
-// Only Windows, because the vectored handler is the only place a processor
-// context is handed over. On a unix that would take a signal handler, which is
-// the same decision the thread stacks are waiting on.
+// Two ways in and one way out. On Windows the vectored handler wrote the state
+// into the ring buffer entry of that fault, so the newest entry of the asking
+// thread which carries one is the answer. On a unix the fault handler put it
+// aside on its own, since the ring buffer entry there is written by the runtime
+// afterwards and has no room for it.
 {$if defined(Windows) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
 var Snapshot:TpvCrashReportEntry;
     Entry:PpvCrashReportEntry;
@@ -3096,21 +3236,29 @@ begin
   exit;
  end;
 
- result:='Processor state at fault #'+IntToStr(Snapshot.Sequence)+':'+LineEnding;
-{$ifdef PasVulkanCrashReportX64}
- result:=result+'  '+Reg('rip',Snapshot.Registers.Rip)+Reg('rsp',Snapshot.Registers.Rsp)+Reg('rbp',Snapshot.Registers.Rbp)+LineEnding+
-                '  '+Reg('rax',Snapshot.Registers.Rax)+Reg('rbx',Snapshot.Registers.Rbx)+Reg('rcx',Snapshot.Registers.Rcx)+LineEnding+
-                '  '+Reg('rdx',Snapshot.Registers.Rdx)+Reg('rsi',Snapshot.Registers.Rsi)+Reg('rdi',Snapshot.Registers.Rdi)+LineEnding+
-                '  '+Reg('r8 ',Snapshot.Registers.R8)+Reg('r9 ',Snapshot.Registers.R9)+Reg('r10',Snapshot.Registers.R10)+LineEnding+
-                '  '+Reg('r11',Snapshot.Registers.R11)+Reg('r12',Snapshot.Registers.R12)+Reg('r13',Snapshot.Registers.R13)+LineEnding+
-                '  '+Reg('r14',Snapshot.Registers.R14)+Reg('r15',Snapshot.Registers.R15)+'eflags='+IntToHex(Snapshot.Registers.EFlags,8)+LineEnding;
-{$endif}
-{$ifdef PasVulkanCrashReportX86}
- result:=result+'  '+Reg('eip',Snapshot.Registers.Eip)+Reg('esp',Snapshot.Registers.Esp)+Reg('ebp',Snapshot.Registers.Ebp)+LineEnding+
-                '  '+Reg('eax',Snapshot.Registers.Eax)+Reg('ebx',Snapshot.Registers.Ebx)+Reg('ecx',Snapshot.Registers.Ecx)+LineEnding+
-                '  '+Reg('edx',Snapshot.Registers.Edx)+Reg('esi',Snapshot.Registers.Esi)+Reg('edi',Snapshot.Registers.Edi)+LineEnding+
-                '  eflags='+IntToHex(Snapshot.Registers.EFlags,8)+LineEnding;
-{$endif}
+ result:='Processor state at fault #'+IntToStr(Snapshot.Sequence)+':'+LineEnding+
+        CrashReportFormatRegisters(Snapshot.Registers);
+end;
+{$elseif defined(PasVulkanCrashReportUnixFaultState)}
+var Fault:TpvCrashReportUnixFault;
+    Sequence:TpvUInt32;
+begin
+ result:='';
+ Sequence:=pvCrashReportLastFault(Fault);
+ if Sequence=0 then begin
+  exit;
+ end;
+ // The same condition as on the other platform: what is shown has to belong to
+ // the thread this report is about, since a fault which some other thread
+ // caught and carried on from is not the state being reported.
+ if (aThreadID<>0) and (TpvUInt64(TpvUInt32(Fault.ThreadID))<>aThreadID) then begin
+  exit;
+ end;
+ if (aThreadID=0) and (Fault.ThreadID<>CrashReportGetTid) then begin
+  exit;
+ end;
+ result:='Processor state at fault #'+IntToStr(Sequence)+':'+LineEnding+
+         CrashReportFormatRegisters(Fault.Registers);
 end;
 {$else}
 begin
@@ -3228,31 +3376,153 @@ end;
 
 {$if defined(PasVulkanCrashReportUnixFaultState) or defined(PasVulkanCrashReportUnixThreadStacksBuilt)}
 // What both of the two things below need to know about the machine: which
-// thread is asking, and where in the context a signal handler is given the
-// registers are. Here rather than inside either of them, because either one can
-// be built without the other.
+// thread is asking, and how to get at the registers in the context a signal
+// handler is given. Here rather than inside either of them, because either one
+// can be built without the other.
 const
 {$ifdef PasVulkanCrashReportX64}
       cCrashReportSysGetTid=186;
-      // Offsets into the context the handler is given, which is a ucontext:
-      // eight bytes of flags, a link, a stack description of twenty four bytes,
-      // and then the registers as an array of long long.
-      cCrashReportContextGRegs=40;
-      cCrashReportRegFramePointer=10;
-      cCrashReportRegStackPointer=15;
-      cCrashReportRegInstructionPointer=16;
 {$endif}
 {$ifdef PasVulkanCrashReportX86}
       cCrashReportSysGetTid=224;
-      cCrashReportContextGRegs=20;
-      cCrashReportRegFramePointer=6;
-      cCrashReportRegStackPointer=7;
-      cCrashReportRegInstructionPointer=14;
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+      // The numbering every architecture added after the older ones shares.
+      cCrashReportSysGetTid=178;
 {$endif}
 
 function CrashReportGetTid:TpvInt32;
 begin
  result:=TpvInt32(CrashReportSysCall(cCrashReportSysGetTid));
+end;
+
+// Reads the state of the machine out of the context a signal handler is handed.
+//
+// Not a single offset is written down here. The structures are the ones the
+// runtime declares for this platform and this machine, so where a register sits
+// is what the compiler says it is. That is also why a third architecture was a
+// matter of naming fields rather than of counting bytes, and why nothing here
+// can quietly go wrong when a C library rearranges something.
+//
+// The three of them are handed the same thing by the kernel and reach it
+// differently only because the runtime describes it differently: on one the
+// pointer already is the machine state, on the other two it is the context
+// which holds it.
+procedure CrashReportReadUnixContext(const aContext:TpvPointer;out aRegisters:TpvCrashReportFaultRegisters);
+{$ifdef PasVulkanCrashReportX64}
+var Source:PSigContext;
+begin
+ FillChar(aRegisters,SizeOf(TpvCrashReportFaultRegisters),#0);
+ Source:=PSigContext(aContext);
+ aRegisters.Rax:=Source^.rax;
+ aRegisters.Rbx:=Source^.rbx;
+ aRegisters.Rcx:=Source^.rcx;
+ aRegisters.Rdx:=Source^.rdx;
+ aRegisters.Rsi:=Source^.rsi;
+ aRegisters.Rdi:=Source^.rdi;
+ aRegisters.Rbp:=Source^.rbp;
+ aRegisters.Rsp:=Source^.rsp;
+ aRegisters.R8:=Source^.r8;
+ aRegisters.R9:=Source^.r9;
+ aRegisters.R10:=Source^.r10;
+ aRegisters.R11:=Source^.r11;
+ aRegisters.R12:=Source^.r12;
+ aRegisters.R13:=Source^.r13;
+ aRegisters.R14:=Source^.r14;
+ aRegisters.R15:=Source^.r15;
+ aRegisters.Rip:=Source^.rip;
+ aRegisters.EFlags:=TpvUInt32(Source^.eflags);
+ aRegisters.Cs:=Source^.cs;
+ aRegisters.Gs:=Source^.gs;
+ aRegisters.Fs:=Source^.fs;
+ // The kernel does not save these three on this machine, and they are the same
+ // for every thread of a process here anyway.
+ aRegisters.Ds:=0;
+ aRegisters.Es:=0;
+ aRegisters.Ss:=0;
+end;
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+var Source:PSigContext;
+begin
+ FillChar(aRegisters,SizeOf(TpvCrashReportFaultRegisters),#0);
+ Source:=@Pucontext(aContext)^.uc_mcontext;
+ aRegisters.Eax:=Source^.eax;
+ aRegisters.Ebx:=Source^.ebx;
+ aRegisters.Ecx:=Source^.ecx;
+ aRegisters.Edx:=Source^.edx;
+ aRegisters.Esi:=Source^.esi;
+ aRegisters.Edi:=Source^.edi;
+ aRegisters.Ebp:=Source^.ebp;
+ aRegisters.Esp:=Source^.esp;
+ aRegisters.Eip:=Source^.eip;
+ aRegisters.EFlags:=Source^.eflags;
+ aRegisters.Cs:=Source^.cs;
+ aRegisters.Ds:=Source^.ds;
+ aRegisters.Es:=Source^.es;
+ aRegisters.Fs:=Source^.fs;
+ aRegisters.Gs:=Source^.gs;
+ aRegisters.Ss:=Source^.ss;
+end;
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+var Source:PSigContext;
+    Index:TpvInt32;
+begin
+ FillChar(aRegisters,SizeOf(TpvCrashReportFaultRegisters),#0);
+ Source:=@PUContext(aContext)^.uc_mcontext;
+ for Index:=0 to 30 do begin
+  aRegisters.X[Index]:=Source^.regs[Index];
+ end;
+ aRegisters.Sp:=Source^.sp;
+ aRegisters.Pc:=Source^.pc;
+ aRegisters.Pstate:=Source^.pstate;
+end;
+{$endif}
+
+// The three registers a stack walk needs, asked for by what they do rather than
+// by what they are called on one machine.
+function CrashReportFramePointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+begin
+{$ifdef PasVulkanCrashReportX64}
+ result:=TpvPtrUInt(aRegisters.Rbp);
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+ result:=TpvPtrUInt(aRegisters.Ebp);
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+ // The frame pointer is the twenty ninth general register by convention. The
+ // frame it points at is the same pair as everywhere else, the previous frame
+ // and the address to return to, which is why the walk itself needs no second
+ // version for this machine.
+ result:=TpvPtrUInt(aRegisters.X[29]);
+{$endif}
+end;
+
+function CrashReportStackPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+begin
+{$ifdef PasVulkanCrashReportX64}
+ result:=TpvPtrUInt(aRegisters.Rsp);
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+ result:=TpvPtrUInt(aRegisters.Esp);
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+ result:=TpvPtrUInt(aRegisters.Sp);
+{$endif}
+end;
+
+function CrashReportInstructionPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+begin
+{$ifdef PasVulkanCrashReportX64}
+ result:=TpvPtrUInt(aRegisters.Rip);
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+ result:=TpvPtrUInt(aRegisters.Eip);
+{$endif}
+{$ifdef PasVulkanCrashReportARM64}
+ result:=TpvPtrUInt(aRegisters.Pc);
+{$endif}
 end;
 {$ifend}
 
@@ -3362,11 +3632,9 @@ begin
   end;
   CrashReportUnixFault.ThreadID:=CrashReportGetTid;
   if assigned(aContext) then begin
-   Move(TpvPointer(TpvPtrUInt(TpvPtrUInt(aContext)+cCrashReportContextGRegs))^,
-        CrashReportUnixFault.Registers,
-        SizeOf(TpvCrashReportGeneralRegisters));
+   CrashReportReadUnixContext(aContext,CrashReportUnixFault.Registers);
   end else begin
-   FillChar(CrashReportUnixFault.Registers,SizeOf(TpvCrashReportGeneralRegisters),#0);
+   FillChar(CrashReportUnixFault.Registers,SizeOf(TpvCrashReportFaultRegisters),#0);
   end;
   CrashReportWriteBarrier;
   CrashReportUnixFaultSequence:=CrashReportNextSequence;
@@ -3473,6 +3741,9 @@ const // The first real time signal on glibc, where the two below it belong to
 {$ifdef PasVulkanCrashReportX86}
       cCrashReportSysTgkill=270;
 {$endif}
+{$ifdef PasVulkanCrashReportARM64}
+      cCrashReportSysTgkill=131;
+{$endif}
 
       // How far above the stack pointer a frame is still believed to be one.
       cCrashReportMaximalStackSpan=TpvPtrUInt(16) shl 20;
@@ -3522,8 +3793,7 @@ end;
 // and below the end of the mapping it is in, has to be readable, and has to be
 // above the frame before it.
 procedure CrashReportThreadSignalHandler(aSignal:TpvInt32;aInfo:TpvPointer;aContext:TpvPointer); cdecl;
-var Registers:PpvCrashReportGeneralRegisters;
-    Frame,NextFrame,ReturnAddress,StackPointer:TpvPtrUInt;
+var Frame,NextFrame,ReturnAddress,StackPointer:TpvPtrUInt;
     Count:TpvInt32;
 begin
 
@@ -3538,19 +3808,23 @@ begin
  end;
 
  Count:=0;
+ CrashReportUnixThreadSlot.HaveRegisters:=false;
 
  if assigned(aContext) then begin
 
-  Registers:=PpvCrashReportGeneralRegisters(TpvPointer(TpvPtrUInt(TpvPtrUInt(aContext)+cCrashReportContextGRegs)));
+  // Kept whole, not only the three the walk below reads. Plain stores, which is
+  // all a signal handler may do.
+  CrashReportReadUnixContext(aContext,CrashReportUnixThreadSlot.Registers);
+  CrashReportUnixThreadSlot.HaveRegisters:=true;
 
-  StackPointer:=Registers^[cCrashReportRegStackPointer];
+  StackPointer:=CrashReportStackPointerOf(CrashReportUnixThreadSlot.Registers);
 
   // The instruction which was interrupted, which is the frame the thread is
   // actually in and the only one not read out of the stack.
-  CrashReportUnixThreadSlot.Frames[Count]:=TpvPointer(Registers^[cCrashReportRegInstructionPointer]);
+  CrashReportUnixThreadSlot.Frames[Count]:=TpvPointer(CrashReportInstructionPointerOf(CrashReportUnixThreadSlot.Registers));
   inc(Count);
 
-  Frame:=Registers^[cCrashReportRegFramePointer];
+  Frame:=CrashReportFramePointerOf(CrashReportUnixThreadSlot.Registers);
 
   while Count<cMaximalStackFrames do begin
    if (Frame<StackPointer) or
@@ -3711,6 +3985,70 @@ begin
  end;
 end;
 
+// What came back from asking one thread. Nothing worse than not answering can
+// happen, since the thread is asked and not stopped from the outside.
+type TpvCrashReportThreadAnswer=
+      (
+       Unreachable,
+       Silent,
+       Answered
+      );
+
+// Asks one thread where it is and waits for it to say.
+//
+// The one place this handshake is written down, since both the text report and
+// the minidump want it and two copies of a protocol with a timeout in it are
+// two chances to get it subtly different. The answer is left in the slot, which
+// is where the handler wrote it; the caller takes what it needs out of it
+// before asking the next one.
+//
+// Waiting rather than blocking on anything, since whatever this would block on
+// could be held by the very thread which is being asked. A thread which never
+// answers is left alone and reported as such.
+function CrashReportAskThread(const aProcessID,aThreadID:TpvInt32):TpvCrashReportThreadAnswer;
+const cWaitRounds=20000;
+var Round:TpvInt32;
+begin
+
+ CrashReportUnixThreadSlot.Count:=0;
+ CrashReportUnixThreadSlot.HaveRegisters:=false;
+ CrashReportUnixThreadSlot.WantedThreadID:=aThreadID;
+ CrashReportWriteBarrier;
+ CrashReportUnixThreadSlot.State:=1;
+ CrashReportWriteBarrier;
+
+ if CrashReportSysCall(cCrashReportSysTgkill,aProcessID,aThreadID,cCrashReportThreadSignal)<>0 then begin
+  CrashReportUnixThreadSlot.WantedThreadID:=0;
+  CrashReportUnixThreadSlot.State:=0;
+  result:=TpvCrashReportThreadAnswer.Unreachable;
+  exit;
+ end;
+
+ Round:=0;
+ while (CrashReportUnixThreadSlot.State<>2) and (Round<cWaitRounds) do begin
+  inc(Round);
+  ThreadSwitch;
+ end;
+
+ if CrashReportUnixThreadSlot.State<>2 then begin
+  CrashReportUnixThreadSlot.WantedThreadID:=0;
+  CrashReportUnixThreadSlot.State:=0;
+  result:=TpvCrashReportThreadAnswer.Silent;
+  exit;
+ end;
+
+ CrashReportReadBarrier;
+ result:=TpvCrashReportThreadAnswer.Answered;
+
+end;
+
+// Closes one question, whatever its answer was.
+procedure CrashReportFinishAskingThread;
+begin
+ CrashReportUnixThreadSlot.WantedThreadID:=0;
+ CrashReportUnixThreadSlot.State:=0;
+end;
+
 function CrashReportUnixThreadStacks(const aMaximalThreads:TpvInt32):String;
 const cWaitRounds=20000;
 var SearchRec:TSearchRec;
@@ -3754,36 +4092,19 @@ begin
    end;
    inc(Handled);
 
-   CrashReportUnixThreadSlot.Count:=0;
-   CrashReportUnixThreadSlot.WantedThreadID:=ThreadID;
-   CrashReportWriteBarrier;
-   CrashReportUnixThreadSlot.State:=1;
-   CrashReportWriteBarrier;
-
-   if CrashReportSysCall(cCrashReportSysTgkill,ProcessID,ThreadID,cCrashReportThreadSignal)<>0 then begin
-    CrashReportUnixThreadSlot.WantedThreadID:=0;
-    CrashReportUnixThreadSlot.State:=0;
-    result:=result+'Thread '+IntToStr(ThreadID)+', could not be reached'+LineEnding;
-    continue;
+   case CrashReportAskThread(ProcessID,ThreadID) of
+    TpvCrashReportThreadAnswer.Unreachable:begin
+     result:=result+'Thread '+IntToStr(ThreadID)+', could not be reached'+LineEnding;
+     continue;
+    end;
+    TpvCrashReportThreadAnswer.Silent:begin
+     result:=result+'Thread '+IntToStr(ThreadID)+', did not answer'+LineEnding;
+     continue;
+    end;
+    else begin
+    end;
    end;
 
-   // Waiting rather than blocking on anything, since whatever this would block
-   // on could be held by the very thread which is being asked. A thread which
-   // never answers is left alone and reported as such.
-   Round:=0;
-   while (CrashReportUnixThreadSlot.State<>2) and (Round<cWaitRounds) do begin
-    inc(Round);
-    ThreadSwitch;
-   end;
-
-   if CrashReportUnixThreadSlot.State<>2 then begin
-    CrashReportUnixThreadSlot.WantedThreadID:=0;
-    CrashReportUnixThreadSlot.State:=0;
-    result:=result+'Thread '+IntToStr(ThreadID)+', did not answer'+LineEnding;
-    continue;
-   end;
-
-   CrashReportReadBarrier;
    Count:=CrashReportUnixThreadSlot.Count;
    if Count>cMaximalStackFrames then begin
     Count:=cMaximalStackFrames;
@@ -3791,8 +4112,7 @@ begin
    for Index:=0 to Count-1 do begin
     Frames[Index]:=CrashReportUnixThreadSlot.Frames[Index];
    end;
-   CrashReportUnixThreadSlot.WantedThreadID:=0;
-   CrashReportUnixThreadSlot.State:=0;
+   CrashReportFinishAskingThread;
 
    result:=result+'Thread '+IntToStr(ThreadID)+', '+IntToStr(Count)+' frames:'+LineEnding;
    for Index:=0 to Count-1 do begin
@@ -4076,6 +4396,56 @@ begin
   result:=0;
  end;
 end;
+
+procedure pvCrashReportUnixContextRegisters(const aContext:TpvPointer;out aRegisters:TpvCrashReportFaultRegisters);
+begin
+ if assigned(aContext) then begin
+  CrashReportReadUnixContext(aContext,aRegisters);
+ end else begin
+  FillChar(aRegisters,SizeOf(TpvCrashReportFaultRegisters),#0);
+ end;
+end;
+
+function pvCrashReportStackPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+begin
+ result:=CrashReportStackPointerOf(aRegisters);
+end;
+
+function pvCrashReportInstructionPointerOf(const aRegisters:TpvCrashReportFaultRegisters):TpvPtrUInt;
+begin
+ result:=CrashReportInstructionPointerOf(aRegisters);
+end;
+
+{$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
+function pvCrashReportUnixBeginAskingThreads:Boolean;
+begin
+ result:=CrashReportThreadSignalInstalled and CrashReportEnterThreadStacks;
+ if result then begin
+  // Once for all the questions, so that the handlers have the bounds they need
+  // without having to ask the operating system anything themselves.
+  CrashReportLoadMappings;
+ end;
+end;
+
+function pvCrashReportUnixAskThread(const aThreadID:TpvInt32;out aFault:TpvCrashReportUnixFault):Boolean;
+begin
+ FillChar(aFault,SizeOf(TpvCrashReportUnixFault),#0);
+ aFault.ThreadID:=aThreadID;
+ result:=CrashReportAskThread(FpGetPid,aThreadID)=TpvCrashReportThreadAnswer.Answered;
+ if result then begin
+  result:=CrashReportUnixThreadSlot.HaveRegisters;
+  if result then begin
+   aFault.Registers:=CrashReportUnixThreadSlot.Registers;
+  end;
+  CrashReportFinishAskingThread;
+ end;
+end;
+
+procedure pvCrashReportUnixEndAskingThreads;
+begin
+ CrashReportLeaveThreadStacks;
+end;
+{$endif}
 
 {$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
 function pvCrashReportUnixFaultStackHere:Boolean;
