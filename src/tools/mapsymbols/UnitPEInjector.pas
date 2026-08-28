@@ -47,6 +47,21 @@ uses SysUtils,
 // whatever is appended behind the sections afterwards.
 function UpdateImageCheckSum(const aFileName:String):Boolean;
 
+// Puts one file in the place of another without there being a moment in which
+// neither of them exists.
+//
+// The one being replaced is set aside first and only thrown away once the new
+// one has taken its name. Deleting it first and renaming afterwards leaves
+// nothing at all whenever the rename does not go through, and a rename can fail
+// for reasons which have nothing to do with the caller: a scanner holding the
+// name, a full volume, a target which turns out to be somewhere else.
+//
+// aMessage says what happened whenever this returns false, and aBothRemain says
+// that neither name ended up holding what it should and both files are still on
+// disk under the names the message gives. The replacement must not be thrown
+// away in that case.
+function ReplaceFileWith(const aFileName,aReplacementFileName:String;out aMessage:String;out aBothRemain:Boolean):Boolean;
+
 type TPEInjectorSection=record
       Name:String;
       Data:TMemoryStream;
@@ -386,45 +401,54 @@ end;
 // holding the name for a moment, a full volume, a target which turns out to be
 // somewhere else. Every way out of here leaves either the untouched original or
 // the finished new file under that name.
-function TPEInjector.Commit:Boolean;
+function ReplaceFileWith(const aFileName,aReplacementFileName:String;out aMessage:String;out aBothRemain:Boolean):Boolean;
 var BackupName:String;
+begin
+ result:=false;
+ aMessage:='';
+ aBothRemain:=false;
+ BackupName:=aFileName+'.mapsymbols-old';
+ DeleteFile(BackupName);
+ if not RenameFile(aFileName,BackupName) then begin
+  aMessage:='Could not set '+aFileName+' aside, so it was left alone.';
+  exit;
+ end;
+ if not RenameFile(aReplacementFileName,aFileName) then begin
+  // Put back what was there. If even this does not work, both files are still
+  // on disk and the message says where, which is worth more than a message
+  // which only says that something went wrong. The caller is told so it does
+  // not throw the replacement away on the one path where everything somebody
+  // can get is worth having.
+  if not RenameFile(BackupName,aFileName) then begin
+   aMessage:='Could not replace '+aFileName+'. The original is at '+BackupName+
+             ' and the finished new file is at '+aReplacementFileName+'.';
+   aBothRemain:=true;
+   exit;
+  end;
+  aMessage:='Could not replace '+aFileName+', so it was left alone.';
+  exit;
+ end;
+ DeleteFile(BackupName);
+ result:=true;
+end;
+
+function TPEInjector.Commit:Boolean;
+var Reason:String;
+    BothRemain:Boolean;
 begin
  result:=false;
  if (length(fTargetName)=0) or (length(fFileName)=0) then begin
   fMessage:='There is nothing to put in place.';
   exit;
  end;
- BackupName:=fFileName+'.mapsymbols-old';
- DeleteFile(BackupName);
- if not RenameFile(fFileName,BackupName) then begin
-  DeleteFile(fTargetName);
-  fTargetName:='';
-  fMessage:='Could not set '+fFileName+' aside, so it was left alone.';
-  exit;
- end;
- if not RenameFile(fTargetName,fFileName) then begin
-  // Put back what was there. If even this does not work the original is still
-  // on disk under the name in the message, which is worth more than a message
-  // which does not say where it went.
-  if not RenameFile(BackupName,fFileName) then begin
-   // Neither name is free any more, and both files are worth keeping: the one
-   // which was there and the finished one which was already read back and found
-   // good. Emptying the name here is what stops the destructor from throwing
-   // the second one away, on the one path where whoever has to sort this out
-   // needs everything they can get.
-   fMessage:='Could not replace '+fFileName+'. The original is at '+BackupName+
-             ' and the finished new file is at '+fTargetName+'.';
-   fTargetName:='';
-   exit;
+ result:=ReplaceFileWith(fFileName,fTargetName,Reason,BothRemain);
+ if not result then begin
+  fMessage:=Reason;
+  if not BothRemain then begin
+   DeleteFile(fTargetName);
   end;
-  DeleteFile(fTargetName);
-  fTargetName:='';
-  fMessage:='Could not replace '+fFileName+', so it was left alone.';
-  exit;
  end;
- DeleteFile(BackupName);
  fTargetName:='';
- result:=true;
 end;
 
 // Throws the replacement away. The original never moved, so there is nothing

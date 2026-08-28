@@ -585,6 +585,33 @@ begin
 end;
 {$endif}
 
+// A copy of a file, which is where everything is written before any of it takes
+// the place of what was there.
+function CopyFileTo(const aFromFileName,aToFileName:String):Boolean;
+var Source,Target:TFileStream;
+begin
+ result:=false;
+ try
+  Source:=TFileStream.Create(aFromFileName,fmOpenRead or fmShareDenyWrite);
+  try
+   Target:=TFileStream.Create(aToFileName,fmCreate);
+   try
+    if Source.Size>0 then begin
+     Target.CopyFrom(Source,Source.Size);
+    end;
+    result:=true;
+   finally
+    FreeAndNil(Target);
+   end;
+  finally
+   FreeAndNil(Source);
+  end;
+ except
+  // A copy which did not come off leaves nothing behind to be mistaken for one.
+  DeleteFile(aToFileName);
+ end;
+end;
+
 // Says what a run which is giving up left behind. The executable is the thing
 // which matters, and it really is untouched wherever this is called, but a pdb
 // is written before the executable is asked to name it, so a plain claim that
@@ -1569,6 +1596,8 @@ begin
 end;
 
 var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:String;
+    WorkFileName,ReplaceMessage:String;
+    OutputOk,BothRemain:Boolean;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
     DebugOutputFileName:String;
@@ -1607,6 +1636,10 @@ begin
  DebugOutputFileName:='';
  InjectIntoExecutable:=false;
  PDBOutputFileName:='';
+ // Empty until there is one, since the way out of here deletes whatever it
+ // names and every way out passes through it, including the early ones.
+ WorkFileName:='';
+ OutputOk:=false;
 
  ParameterIndex:=1;
  while ParameterIndex<=ParamCount do begin
@@ -1947,6 +1980,28 @@ begin
    InjectIntoExecutable:=false;
   end;
 
+  // Everything from here on is written to a copy, and the copy takes the place
+  // of the executable at the very end and only if every check of it passed.
+  //
+  // The injector already worked this way for its own part, but the part after
+  // it did not: the table was appended to the executable itself, its own footer
+  // truncated first, and only then was any of it read back. A failure there, or
+  // a disk which filled up in the middle of it, left a program whose symbol
+  // table was half rewritten. That the program still ran is not the point: the
+  // run said it had failed and had already changed the file it was given.
+  //
+  // Now nothing is changed until everything holds. What is left behind on a
+  // failure is a copy which is deleted, and the executable is the file it was.
+  WorkFileName:=ExecutableFileName+'.mapsymbols-work';
+  DeleteFile(WorkFileName);
+  if not CopyFileTo(ExecutableFileName,WorkFileName) then begin
+   WriteLn('Error: ',ExecutableFileName,' could not be copied to work on.');
+   ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
+   ExitCode:=1;
+   exit;
+  end;
+  OutputOk:=true;
+
   DWARFWriter:=nil;
   PDBWriter:=nil;
   try
@@ -1995,7 +2050,7 @@ begin
     // them. Carrying on and finishing with a zero would report success for an
     // executable which does not hold what was asked for, and the build which
     // asked would go on believing it does.
-    if not InjectDebugSections(Builder,DWARFWriter,PDBWriter,Image,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
+    if not InjectDebugSections(Builder,DWARFWriter,PDBWriter,Image,ExtractFileName(PDBOutputFileName),WorkFileName) then begin
      WriteLn('Error: the debug sections which were asked for could not be put into the executable.');
      ReportUnchanged(ExecutableFileName,PDBOutputFileName,assigned(PDBWriter));
      ExitCode:=1;
@@ -2005,7 +2060,7 @@ begin
     // The same for the entry which names the pdb. Without it the pdb is on
     // disk and no debugger will ever look at it, which is a run that produced
     // a file and not the thing the file is for.
-    if not InjectDebugSections(Builder,nil,PDBWriter,Image,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
+    if not InjectDebugSections(Builder,nil,PDBWriter,Image,ExtractFileName(PDBOutputFileName),WorkFileName) then begin
      WriteLn('Error: the executable could not be made to name the pdb which was just written.');
      ReportUnchanged(ExecutableFileName,PDBOutputFileName,true);
      ExitCode:=1;
@@ -2013,13 +2068,13 @@ begin
     end;
    end;
 
-   Builder.AppendToFile(ExecutableFileName);
+   Builder.AppendToFile(WorkFileName);
 
    // The file is finished now, so a checksum which the linker put into it can
    // be worked out again over what it actually is. This has to come last: the
    // checksum covers the whole file, and everything before this was still
    // adding to it.
-   UpdateImageCheckSum(ExecutableFileName);
+   UpdateImageCheckSum(WorkFileName);
 
    if Builder.PackedTo>0 then begin
     WriteLn('Packed ',Builder.PackedFrom,' bytes of contents down to ',Builder.PackedTo,'.');
@@ -2040,24 +2095,53 @@ begin
   // one which wrote it, and which also has to accept the debug directory in the
   // executable before it will look at the pdb at all.
   if length(PDBOutputFileName)>0 then begin
-   if CheckPDBWithDbgHelp(Builder,ExecutableFileName,DbgHelpResolved,DbgHelpProbes,DbgHelpAvailable) then begin
+   if CheckPDBWithDbgHelp(Builder,WorkFileName,DbgHelpResolved,DbgHelpProbes,DbgHelpAvailable) then begin
     WriteLn('Debugger check: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
    end else if DbgHelpAvailable then begin
     WriteLn('Debugger check FAILED: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
     ExitCode:=1;
+    OutputOk:=false;
    end else begin
     WriteLn('Debugger check skipped, dbghelp did not accept the executable.');
    end;
   end;
 
-  if Builder.SelfCheck(ExecutableFileName,Resolved,Probes) then begin
+  if Builder.SelfCheck(WorkFileName,Resolved,Probes) then begin
    WriteLn('Self check: ',Resolved,' of ',Probes,' probes resolved to the expected line.');
   end else begin
    WriteLn('Self check FAILED: ',Resolved,' of ',Probes,' probes resolved to the expected line.');
    ExitCode:=1;
+   OutputOk:=false;
+  end;
+
+  // And only now, when everything which was written into the copy has been read
+  // back out of it, does it become the executable. A run which got this far and
+  // found something wrong leaves the file it was given exactly as it was.
+  //
+  // The separate debug file is not part of this. It is a file of its own which
+  // replaces nothing, so its failure is reported and costs the run its exit
+  // code without deciding anything about the executable.
+  if OutputOk then begin
+   if not ReplaceFileWith(ExecutableFileName,WorkFileName,ReplaceMessage,BothRemain) then begin
+    WriteLn('Error: ',ReplaceMessage);
+    if not BothRemain then begin
+     DeleteFile(WorkFileName);
+    end;
+    WorkFileName:='';
+    ExitCode:=1;
+   end else begin
+    WorkFileName:='';
+   end;
+  end else begin
+   WriteLn('The executable was not changed, because what was written into the copy of it did not read back correctly.');
   end;
 
  finally
+  // Whatever is left of the copy goes, on every way out of here including the
+  // ones which gave up early.
+  if length(WorkFileName)>0 then begin
+   DeleteFile(WorkFileName);
+  end;
   FreeAndNil(MapReader);
   FreeAndNil(DWARFReader);
   FreeAndNil(LineData);
