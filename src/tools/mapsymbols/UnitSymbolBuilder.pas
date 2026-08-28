@@ -235,6 +235,15 @@ end;
 
 procedure TSymbolBuilder.AddSymbol(const aRVA:TpvUInt64;const aName:String);
 begin
+ // A symbol without a name names nothing, so it has nothing to contribute to a
+ // stack trace. Turned away here rather than carried along, which also settles
+ // a question the check would otherwise have to ask: a reader is entitled to
+ // skip a nameless entry, and the count coming back would then be short of the
+ // count which went in and the file would be called broken over an entry which
+ // never said anything.
+ if length(aName)=0 then begin
+  exit;
+ end;
  if fSymbolCount>=length(fSymbols) then begin
   SetLength(fSymbols,(fSymbolCount+1)*2);
  end;
@@ -541,21 +550,35 @@ end;
 // stronger statement than another one saying where it stops, since the second
 // is only ever one past the last byte and is what the compiler is loose about.
 //
-// Nothing is trimmed away from the front, and a range which the one behind it
-// starts at or before is left exactly as it is. That is containment rather than
-// a boundary being off by a few bytes, it means the linker really did put the
-// code of two units through one another, and it is the case the caller has to
-// be told about rather than have quietly papered over.
+// Only a boundary which came out a little long is repaired, and three things
+// have to hold for that to be what this is. The next range has to begin behind
+// this one, or the two do not stand in that relation at all. It has to end at
+// or behind this one, or it sits inside this one, which is the linker having
+// woven two units together and not an end marker being off. And the overlap has
+// to be small, since a large one is not a marker being off either whatever else
+// it is. Anything which fails one of those is left exactly as it stands and
+// walks straight into the check which stops the run.
+//
+// Trimming everything which merely overlaps would be worse than not trimming at
+// all: a range enclosing another would be cut back to where that one begins, the
+// tail it had behind it would silently disappear, and the check afterwards would
+// then find nothing left to complain about.
 function TSymbolBuilder.TrimOverlappingUnits:TpvSizeInt;
+const cMaximalTrim=TpvUInt64(64);
 var Index:TpvSizeInt;
-    PreviousEnd:TpvUInt64;
+    PreviousStart,PreviousEnd,CurrentStart,CurrentEnd:TpvUInt64;
 begin
  result:=0;
  for Index:=1 to fUnitCount-1 do begin
-  PreviousEnd:=fUnits[Index-1].StartRVA+fUnits[Index-1].Size;
-  if (PreviousEnd>fUnits[Index].StartRVA) and
-     (fUnits[Index].StartRVA>fUnits[Index-1].StartRVA) then begin
-   fUnits[Index-1].Size:=fUnits[Index].StartRVA-fUnits[Index-1].StartRVA;
+  PreviousStart:=fUnits[Index-1].StartRVA;
+  PreviousEnd:=PreviousStart+fUnits[Index-1].Size;
+  CurrentStart:=fUnits[Index].StartRVA;
+  CurrentEnd:=CurrentStart+fUnits[Index].Size;
+  if (PreviousEnd>CurrentStart) and
+     (CurrentStart>PreviousStart) and
+     (CurrentEnd>=PreviousEnd) and
+     ((PreviousEnd-CurrentStart)<=cMaximalTrim) then begin
+   fUnits[Index-1].Size:=CurrentStart-PreviousStart;
    inc(result);
   end;
  end;

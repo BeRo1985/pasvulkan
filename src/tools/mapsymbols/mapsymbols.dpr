@@ -30,12 +30,19 @@ uses SysUtils,
      UnitSymbolBuilder,
      UnitImageFile,
      UnitDWARFLine,
+     UnitDWARFInfo,
      UnitDWARFWriter,
      UnitELFWriter,
      UnitPEInjector,
      UnitPDBWriter,
      UnitDbgHelpCheck,
      UnitMapFile;
+
+// How many symbols may be searched for in vain before the check stops looking
+// and only keeps counting. A sound file never reaches one, since every symbol
+// is found where it was put, so this only ever bites on a file which is already
+// known to be wrong.
+const cMaximalSearchedMismatches=64;
 
 type
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
@@ -133,6 +140,15 @@ var Found:Boolean;
 {$endif}
 begin
  inc(Seen);
+ // Once this many have failed, the file is wrong and the only thing still open
+ // is how thoroughly. Every further search is a walk over the whole table for
+ // an answer which is already known, and on a file whose names came out
+ // scrambled not one of them succeeds, so the tool would appear to hang for
+ // minutes before saying what it knew after the first handful.
+ if Mismatched>=cMaximalSearchedMismatches then begin
+  inc(Mismatched);
+  exit;
+ end;
  Found:=false;
 {$ifndef PasVulkanMapSymbolsLinearLookups}
  // Nothing promises the order, but a reader which walks the table from front to
@@ -557,6 +573,237 @@ begin
 end;
 {$endif}
 
+// Collects the rows of one line program, to see where the program a compile
+// unit points at actually lies.
+type TDWARFProgramCollector=class
+      public
+       Low:TpvUInt64;
+       High:TpvUInt64;
+       Rows:TpvSizeInt;
+       procedure OnRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
+     end;
+
+procedure TDWARFProgramCollector.OnRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
+begin
+ // The marker which closes a sequence sits one past the last byte, so it says
+ // nothing about where the code is and is left out of the span.
+ if aLineNumber=0 then begin
+  exit;
+ end;
+ if Rows=0 then begin
+  Low:=aAddress;
+  High:=aAddress;
+ end else begin
+  if aAddress<Low then begin
+   Low:=aAddress;
+  end;
+  if aAddress>High then begin
+   High:=aAddress;
+  end;
+ end;
+ inc(Rows);
+end;
+
+// Reads back the compilation unit descriptions and holds them against the unit
+// ranges and against the line programs they point at.
+//
+// The line rows being right is not enough on its own. Nothing reaches them by
+// scanning the line section: a consumer starts at a compile unit, takes the
+// source file and the address range from it, and follows DW_AT_stmt_list to the
+// rows. So a file whose every row is correct still resolves to the wrong source
+// file, or to nothing at all, when a compile unit names the wrong range or
+// points at another unit's program. Neither the symbol table nor the line rows
+// say anything about that, which is why it is looked at separately.
+procedure CheckCompileUnits(const aBuilder:TSymbolBuilder;const aCheck:TImageFile;const aLineSection:TMemoryStream);
+var InfoSection,AbbrevSection:TMemoryStream;
+    Reader:TDWARFInfoReader;
+    ProgramCollector:TDWARFProgramCollector;
+    ProgramReader:TDWARFLineReader;
+    InfoUnit:TDWARFInfoUnit;
+    UnitRecord:TSymbolBuilder.TUnitRecord;
+    Index,RangeIndex,Complaints,WithLines:TpvSizeInt;
+    LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+    Offset,ProgramLength:TpvUInt64;
+    ImageBase:TpvUInt64;
+    Used:array of Boolean;
+    ProgramOffsets:array of TpvUInt64;
+    ProgramLengths:array of TpvUInt64;
+    ProgramCount,Found:TpvSizeInt;
+    Bytes:PpvUInt8Array;
+begin
+
+ InfoSection:=nil;
+ AbbrevSection:=nil;
+ Reader:=nil;
+ ProgramCollector:=nil;
+ ProgramReader:=nil;
+ Used:=nil;
+ ProgramOffsets:=nil;
+ ProgramLengths:=nil;
+
+ try
+
+  InfoSection:=aCheck.ReadSection('.debug_info');
+  AbbrevSection:=aCheck.ReadSection('.debug_abbrev');
+  if (not assigned(InfoSection)) or (not assigned(AbbrevSection)) then begin
+   WriteLn('Debug file check FAILED: the file which was just written has no readable compilation units.');
+   ExitCode:=1;
+   exit;
+  end;
+
+  Reader:=TDWARFInfoReader.Create(InfoSection.Memory,InfoSection.Size,AbbrevSection.Memory,AbbrevSection.Size);
+  Reader.BigEndian:=aCheck.BigEndian;
+  if not Reader.Parse then begin
+   WriteLn('Debug file check FAILED: the compilation units cannot be read back, ',Reader.Message,'.');
+   ExitCode:=1;
+   exit;
+  end;
+
+  // Where the line programs lie. Walked here rather than taken from the writer,
+  // since the point of this is whether a compile unit points at one of them.
+  ProgramCount:=0;
+  Bytes:=PpvUInt8Array(aLineSection.Memory);
+  Offset:=0;
+  while (Offset+4)<=TpvUInt64(aLineSection.Size) do begin
+   if aCheck.BigEndian then begin
+    ProgramLength:=(TpvUInt64(Bytes^[Offset]) shl 24) or (TpvUInt64(Bytes^[Offset+1]) shl 16) or
+                   (TpvUInt64(Bytes^[Offset+2]) shl 8) or TpvUInt64(Bytes^[Offset+3]);
+   end else begin
+    ProgramLength:=TpvUInt64(Bytes^[Offset]) or (TpvUInt64(Bytes^[Offset+1]) shl 8) or
+                   (TpvUInt64(Bytes^[Offset+2]) shl 16) or (TpvUInt64(Bytes^[Offset+3]) shl 24);
+   end;
+   if (ProgramLength=0) or ((Offset+4+ProgramLength)>TpvUInt64(aLineSection.Size)) then begin
+    break;
+   end;
+   if ProgramCount>=length(ProgramOffsets) then begin
+    SetLength(ProgramOffsets,(ProgramCount+1)*2);
+    SetLength(ProgramLengths,(ProgramCount+1)*2);
+   end;
+   ProgramOffsets[ProgramCount]:=Offset;
+   ProgramLengths[ProgramCount]:=4+ProgramLength;
+   inc(ProgramCount);
+   inc(Offset,4+ProgramLength);
+  end;
+
+  SetLength(Used,ProgramCount);
+  for Index:=0 to ProgramCount-1 do begin
+   Used[Index]:=false;
+  end;
+
+  ImageBase:=aBuilder.ImageBase;
+  Complaints:=0;
+
+  for Index:=0 to Reader.UnitCount-1 do begin
+
+   InfoUnit:=Reader.GetUnit(Index);
+
+   if not InfoUnit.HaveStatementList then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' does not point at a line program at all.');
+    inc(Complaints);
+    continue;
+   end;
+
+   // The range it claims has to be one which was collected. Looked up by
+   // address rather than by position, so that what is checked is the range and
+   // not the order the units happen to come out in. The ranges are sorted by
+   // start, so the search is the same binary one as everywhere else here.
+   RangeIndex:=-1;
+   if InfoUnit.LowPC>=ImageBase then begin
+    LowIndex:=0;
+    HighIndex:=aBuilder.UnitCount-1;
+    while LowIndex<=HighIndex do begin
+     MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+     UnitRecord:=aBuilder.GetUnit(MiddleIndex);
+     if (ImageBase+UnitRecord.StartRVA)<InfoUnit.LowPC then begin
+      LowIndex:=MiddleIndex+1;
+     end else if (ImageBase+UnitRecord.StartRVA)>InfoUnit.LowPC then begin
+      HighIndex:=MiddleIndex-1;
+     end else begin
+      if (ImageBase+UnitRecord.StartRVA+UnitRecord.Size)=InfoUnit.HighPC then begin
+       RangeIndex:=MiddleIndex;
+      end;
+      break;
+     end;
+    end;
+   end;
+   if RangeIndex<0 then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' claims $',IntToHex(InfoUnit.LowPC,8),'..$',IntToHex(InfoUnit.HighPC,8),
+            ', which is not a range which was collected.');
+    inc(Complaints);
+    continue;
+   end;
+
+   Found:=-1;
+   for RangeIndex:=0 to ProgramCount-1 do begin
+    if ProgramOffsets[RangeIndex]=InfoUnit.StatementListOffset then begin
+     Found:=RangeIndex;
+     break;
+    end;
+   end;
+   if Found<0 then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' points at offset ',InfoUnit.StatementListOffset,
+            ', where no line program begins.');
+    inc(Complaints);
+    continue;
+   end;
+   if Used[Found] then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' points at a line program which another one already points at.');
+    inc(Complaints);
+    continue;
+   end;
+   Used[Found]:=true;
+
+   // And the rows of that program have to lie inside the range this unit
+   // claims. That is what catches a stmt_list which is a valid offset but the
+   // wrong one, which nothing above would notice.
+   FreeAndNil(ProgramCollector);
+   FreeAndNil(ProgramReader);
+   ProgramCollector:=TDWARFProgramCollector.Create;
+   ProgramReader:=TDWARFLineReader.Create(@Bytes^[ProgramOffsets[Found]],TpvSizeInt(ProgramLengths[Found]));
+   ProgramReader.BigEndian:=aCheck.BigEndian;
+   ProgramReader.Parse(ProgramCollector.OnRow,nil);
+   if ProgramCollector.Rows=0 then begin
+    WriteLn('  the line program of ',InfoUnit.Name,' has no rows.');
+    inc(Complaints);
+   end else if (ProgramCollector.Low<InfoUnit.LowPC) or (ProgramCollector.High>=InfoUnit.HighPC) then begin
+    WriteLn('  the line program of ',InfoUnit.Name,' covers $',IntToHex(ProgramCollector.Low,8),'..$',IntToHex(ProgramCollector.High,8),
+            ', which is outside the $',IntToHex(InfoUnit.LowPC,8),'..$',IntToHex(InfoUnit.HighPC,8),' it claims.');
+    inc(Complaints);
+   end;
+
+  end;
+
+  WithLines:=0;
+  for Index:=0 to ProgramCount-1 do begin
+   if Used[Index] then begin
+    inc(WithLines);
+   end;
+  end;
+  if WithLines<>ProgramCount then begin
+   WriteLn('  ',ProgramCount-WithLines,' line programs are in the file which no compilation unit points at.');
+   inc(Complaints);
+  end;
+
+  if Complaints>0 then begin
+   WriteLn('Debug file check FAILED: ',Complaints,' complaints about the ',Reader.UnitCount,' compilation units.');
+   ExitCode:=1;
+  end else begin
+   WriteLn('Debug file check: ',Reader.UnitCount,' compilation units name the ranges they were built from and point at their own line programs.');
+  end;
+
+ finally
+  FreeAndNil(ProgramReader);
+  FreeAndNil(ProgramCollector);
+  FreeAndNil(Reader);
+  FreeAndNil(AbbrevSection);
+  FreeAndNil(InfoSection);
+  Used:=nil;
+  ProgramOffsets:=nil;
+  ProgramLengths:=nil;
+ end;
+
+end;
+
 // Reads the debug file which was just written back through the reader of this
 // tool and holds what comes out against what went in.
 //
@@ -579,7 +826,8 @@ var Check:TImageFile;
     LineCollector:TDWARFCheckCollector;
     LineSection:TMemoryStream;
     LineReader:TDWARFLineReader;
-    Expected:TpvSizeInt;
+    LineRecord:TSymbolBuilder.TLineRecord;
+    Expected,Index:TpvSizeInt;
 begin
 
  Collector:=TCheckCollector.Create;
@@ -605,7 +853,8 @@ begin
   if (Check.Machine<>aImage.Machine) or
      (Check.BigEndian<>aImage.BigEndian) or
      (Check.AddressSize<>ImageAddressSize(aImage)) or
-     ((aImage.ELFMachine<>0) and (Check.ELFMachine<>aImage.ELFMachine)) then begin
+     ((aImage.ELFMachine<>0) and
+      ((Check.ELFMachine<>aImage.ELFMachine) or (Check.ELFFlags<>aImage.ELFFlags))) then begin
    WriteLn('Debug file check failed: it describes a different machine than the image does.');
    ExitCode:=1;
    exit;
@@ -639,18 +888,35 @@ begin
    LineCollector.ImageBase:=aBuilder.ImageBase;
    LineReader.Parse(LineCollector.OnRow,nil);
 
-   // Against what the writer counted rather than against the number of
-   // collected records: a record which closes a sequence is not a row, and a
-   // unit without line information contributes no program, so the two are not
-   // the same number and working the difference out a second way here would
-   // only be a second chance to get it wrong.
-   Expected:=aDWARFWriter.LineRowCount;
+   // Counted out of the collected records rather than taken from the writer.
+   // A record which closes a sequence is not a row and a record which fell
+   // outside every unit range never reaches a line program, so the number is
+   // not simply the record count, but it is arrived at without asking the side
+   // being checked. The writer keeps its own count as well, and the two are
+   // held against each other below: taking the writer's number as the target
+   // would have let a writer which quietly dropped a whole unit agree with
+   // itself, since the reader would then find exactly the fewer rows it wrote.
+   Expected:=0;
+   for Index:=0 to aBuilder.LineCount-1 do begin
+    LineRecord:=aBuilder.GetLine(Index);
+    if (LineRecord.LineNumber>0) and (LineRecord.UnitIndex<TpvUInt32(aBuilder.UnitCount)) then begin
+     inc(Expected);
+    end;
+   end;
+
    if (LineCollector.Rows<>Expected) or (LineCollector.Mismatched>0) then begin
     WriteLn('Debug file check FAILED: ',LineCollector.Rows,' of ',Expected,' line rows came back, ',LineCollector.Mismatched,' with the wrong line number.');
     ExitCode:=1;
    end else begin
     WriteLn('Debug file check: ',LineCollector.Rows,' line rows came back with the line numbers they went in with.');
    end;
+
+   if aDWARFWriter.LineRowCount<>Expected then begin
+    WriteLn('Debug file check FAILED: the writer put down ',aDWARFWriter.LineRowCount,' line rows where the collected records come to ',Expected,'.');
+    ExitCode:=1;
+   end;
+
+   CheckCompileUnits(aBuilder,Check,LineSection);
 
   end;
 
@@ -1163,7 +1429,10 @@ begin
    // this just called wrong, and every one of them still there after the build
    // system noticed. Stopping here is what makes the sentence above true.
    WriteLn('Error: ',OverlapCount,' unit ranges overlap, so some addresses would be attributed to the wrong unit.');
-   WriteLn('Nothing was written.');
+   // Not "nothing was written": an executable which already carried a table
+   // from an earlier run still carries it, and saying nothing was written would
+   // read as if it did not.
+   WriteLn('Nothing was changed.');
    ExitCode:=1;
    exit;
   end;

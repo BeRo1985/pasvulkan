@@ -48,6 +48,12 @@ type TELFWriterSymbol=record
              Info:TpvUInt32;
              EntrySize:TpvUInt64;
              FileOffset:TpvUInt64;
+             // What the section header states as sh_addralign, and what the
+             // file offset is actually rounded up to when the file is laid
+             // out. The two have to be the same number, since a consumer which
+             // maps the file and reaches into it typed believes the first and
+             // lands at the second.
+             Alignment:TpvUInt64;
              NameOffset:TpvUInt32;
             end;
             TSectionRecords=array of TSectionRecord;
@@ -198,6 +204,9 @@ begin
  fSections[result].Info:=0;
  fSections[result].EntrySize:=0;
  fSections[result].FileOffset:=0;
+ // Byte granularity unless the caller says otherwise, which is what a string
+ // table or a stream of debug information is.
+ fSections[result].Alignment:=1;
  fSections[result].NameOffset:=0;
 end;
 
@@ -345,10 +354,17 @@ begin
   fSections[SymbolTableIndex].Link:=TpvUInt32(StringTableIndex+1);
   // Every symbol here is global, so the first one already is the first global.
   fSections[SymbolTableIndex].Info:=1;
+  // A symbol entry is a structure of words rather than a run of bytes, and a
+  // consumer which maps the file and reads it as one expects it to sit where
+  // its widest field wants it. Byte granularity is what everything else here
+  // is, and what binutils copes with because it reads bytes, but stating the
+  // real thing costs one field and one round up in the layout below.
   if fBits=32 then begin
    fSections[SymbolTableIndex].EntrySize:=SymbolSize32;
+   fSections[SymbolTableIndex].Alignment:=4;
   end else begin
    fSections[SymbolTableIndex].EntrySize:=SymbolSize64;
+   fSections[SymbolTableIndex].Alignment:=8;
   end;
 
   SectionNameIndex:=AddSection('.shstrtab',SHT_STRTAB,0,SectionNames,false);
@@ -370,6 +386,11 @@ begin
   end;
   Offset:=HeaderSize;
   for Index:=0 to length(fSections)-1 do begin
+   // Rounded up to what the section says it needs, so that what the header
+   // states and where the bytes actually are agree.
+   if (fSections[Index].Alignment>1) and ((Offset mod fSections[Index].Alignment)<>0) then begin
+    inc(Offset,fSections[Index].Alignment-(Offset mod fSections[Index].Alignment));
+   end;
    fSections[Index].FileOffset:=Offset;
    if (fSections[Index].SectionType<>SHT_NOBITS) and assigned(fSections[Index].Data) then begin
     inc(Offset,TpvUInt64(fSections[Index].Data.Size));
@@ -418,8 +439,14 @@ begin
    WriteU16(Stream,TpvUInt16(length(fSections)+1));
    WriteU16(Stream,TpvUInt16(SectionNameIndex+1));
 
-   // Section contents
+   // Section contents, each one placed at the offset the layout above gave it
+   // rather than simply after the one before, since a section which had to be
+   // rounded up has a few bytes of nothing in front of it.
+   Value8:=0;
    for Index:=0 to length(fSections)-1 do begin
+    while TpvUInt64(Stream.Position)<fSections[Index].FileOffset do begin
+     Stream.WriteBuffer(Value8,1);
+    end;
     if (fSections[Index].SectionType<>SHT_NOBITS) and assigned(fSections[Index].Data) then begin
      fSections[Index].Data.Position:=0;
      Stream.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
@@ -453,7 +480,7 @@ begin
      WriteU32(Stream,TpvUInt32(Value64));
      WriteU32(Stream,fSections[Index].Link);
      WriteU32(Stream,fSections[Index].Info);
-     WriteU32(Stream,1); // alignment
+     WriteU32(Stream,TpvUInt32(fSections[Index].Alignment));
      WriteU32(Stream,TpvUInt32(fSections[Index].EntrySize));
     end else begin
      WriteU32(Stream,fSections[Index].NameOffset);
@@ -464,7 +491,7 @@ begin
      WriteU64(Stream,Value64);
      WriteU32(Stream,fSections[Index].Link);
      WriteU32(Stream,fSections[Index].Info);
-     WriteU64(Stream,1); // alignment
+     WriteU64(Stream,fSections[Index].Alignment);
      WriteU64(Stream,fSections[Index].EntrySize);
     end;
 

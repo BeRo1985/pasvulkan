@@ -244,6 +244,23 @@ begin
  FreeAndNil(fStream);
  fFileName:=aFileName;
  fFormat:=iffUnknown;
+ // Everything the previous image left behind, back to what a fresh object has.
+ // Not every reader sets every field, an ELF one being the only thing which
+ // touches the byte order and the ELF machine at all, so opening a PE on an
+ // object which last held a big endian ELF would otherwise answer about the
+ // one before rather than about this one.
+ fImageBase:=0;
+ fCodeLow:=0;
+ fCodeHigh:=0;
+ fSections:=nil;
+ fSymbolTableOffset:=0;
+ fSymbolCount:=0;
+ fELF64:=true;
+ fBigEndian:=false;
+ fAddressSize:=8;
+ fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
+ fELFMachine:=0;
+ fELFFlags:=0;
  if not FileExists(aFileName) then begin
   exit;
  end;

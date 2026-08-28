@@ -179,7 +179,7 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
   DoOutputUInt8((aValue shr 0) and $ff);
   DoOutputUInt8((aValue shr 8) and $ff);
   DoOutputUInt8((aValue shr 16) and $ff);
-  DoOutputUInt8((aValue shr 32) and $ff);
+  DoOutputUInt8((aValue shr 24) and $ff);
 {$endif}
  end;
  procedure DoOutputUInt64(const aValue:TpvUInt64);
