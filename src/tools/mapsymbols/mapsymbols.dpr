@@ -722,7 +722,7 @@ var InfoSection,AbbrevSection:TMemoryStream;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
     Directory:String;
     Offset,ProgramLength:TpvUInt64;
-    ImageBase:TpvUInt64;
+    ImageBase,Expected:TpvUInt64;
     Used:array of Boolean;
     ProgramOffsets:array of TpvUInt64;
     ProgramLengths:array of TpvUInt64;
@@ -943,12 +943,19 @@ begin
           (InfoUnit.Subprograms[SubprogramNext].LowPC=Subprogram.LowPC) do begin
      inc(SubprogramNext);
     end;
-    if (SubprogramNext<InfoUnit.SubprogramCount) and
-       (Subprogram.HighPC>InfoUnit.Subprograms[SubprogramNext].LowPC) then begin
+    // Reaching past it is the failure which matters, but stopping short of it
+    // is one too: the bytes in between then belong to no routine at all, and an
+    // address in them resolves to nothing where it should have resolved to
+    // this. Code is laid down without holes here, so the two boundaries meet.
+    if SubprogramNext<InfoUnit.SubprogramCount then begin
+     Expected:=InfoUnit.Subprograms[SubprogramNext].LowPC;
+    end else begin
+     Expected:=InfoUnit.HighPC;
+    end;
+    if Subprogram.HighPC<>Expected then begin
      if SubprogramComplaints<8 then begin
-      WriteLn('  ',Subprogram.Name,' reaches to $',IntToHex(Subprogram.HighPC,8),
-              ', past $',IntToHex(InfoUnit.Subprograms[SubprogramNext].LowPC,8),' where ',
-              InfoUnit.Subprograms[SubprogramNext].Name,' begins.');
+      WriteLn('  ',Subprogram.Name,' covers $',IntToHex(Subprogram.LowPC,8),'..$',IntToHex(Subprogram.HighPC,8),
+              ' where the ground up to $',IntToHex(Expected,8),' is its own.');
      end;
      inc(SubprogramComplaints);
     end;
@@ -1285,7 +1292,7 @@ var ELFWriter:TELFWriter;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     ImageBase,Low,High,SymbolSize,SymbolEnd:TpvUInt64;
-    RangeIndex:TpvSizeInt;
+    RangeIndex,NextIndex:TpvSizeInt;
     Have:Boolean;
 begin
 
@@ -1370,9 +1377,18 @@ begin
    // way off, and a size which reaches over that gap would claim ground which
    // belongs to something else. Where they are not, nothing is claimed, which
    // is what a size of zero means.
+   // The next one is the next at a different address. Two names at one address
+   // are ordinary, and taking the one right behind meant comparing an address
+   // with itself, finding it no larger, and leaving the size at zero for the
+   // first of every such pair while its twin got the real one.
    SymbolSize:=0;
-   if (Index+1)<aBuilder.SymbolCount then begin
-    NextSymbol:=aBuilder.GetSymbol(Index+1);
+   NextIndex:=Index+1;
+   while (NextIndex<aBuilder.SymbolCount) and
+         (aBuilder.GetSymbol(NextIndex).RVA=SymbolRecord.RVA) do begin
+    inc(NextIndex);
+   end;
+   if NextIndex<aBuilder.SymbolCount then begin
+    NextSymbol:=aBuilder.GetSymbol(NextIndex);
     if NextSymbol.RVA>SymbolRecord.RVA then begin
      SymbolEnd:=NextSymbol.RVA;
 {$ifdef PasVulkanMapSymbolsLinearLookups}
@@ -1511,6 +1527,7 @@ var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:Stri
     DbgHelpAvailable:Boolean;
     UsedDWARF:Boolean;
     OwnDWARF:Boolean;
+    ForeignDWARFInExecutable:Boolean;
 
 begin
 
@@ -1637,9 +1654,22 @@ begin
   // preferring DWARF when it is present is unambiguous.
   UsedDWARF:=false;
   OwnDWARF:=false;
+  ForeignDWARFInExecutable:=false;
   if not ForceMap then begin
    SymbolImage:=Image;
-   if not Image.FindSection('.debug_line',Section) then begin
+
+   // Whether the DWARF in the executable is what an earlier run of this put
+   // there. Settled before the debug link is considered, and not afterwards:
+   // once sections have been injected the executable has a .debug_line of its
+   // own, so a link to the real debug file beside it would never be followed
+   // again, and a stripped build would go from working to having no source at
+   // all on its second run.
+   OwnDWARF:=Image.FindSection('.debug_line',Section) and HasOwnDWARF(Image);
+   if OwnDWARF then begin
+    WriteLn('The debug sections in this file were written by an earlier run of this tool, so they are not read back as a source.');
+   end;
+
+   if OwnDWARF or not Image.FindSection('.debug_line',Section) then begin
     DebugFileName:=Image.DebugLinkFileName(DebugLinkMessage);
     if length(DebugLinkMessage)>0 then begin
      WriteLn('Debug link: ',DebugLinkMessage,'.');
@@ -1659,21 +1689,19 @@ begin
     LineData:=DebugImage.ReadSection('.debug_line');
     LineStringData:=DebugImage.ReadSection('.debug_line_str');
     StringData:=DebugImage.ReadSection('.debug_str');
-   end else begin
+   end else if not OwnDWARF then begin
     LineData:=Image.ReadSection('.debug_line');
     LineStringData:=Image.ReadSection('.debug_line_str');
     StringData:=Image.ReadSection('.debug_str');
    end;
 
-   // DWARF which an earlier run of this tool wrote is not treated as one. See
-   // HasOwnDWARF for why reading it back would lose the routine names of the
-   // build rather than find them.
-   OwnDWARF:=assigned(LineData) and (LineData.Size>0) and HasOwnDWARF(SymbolImage);
-   if OwnDWARF then begin
-    WriteLn('The debug sections in this file were written by an earlier run of this tool, so they are not read back as a source.');
-   end;
+   // The executable carries DWARF of its own, put there by a compiler rather
+   // than by this. Remembered because injecting into such a file would replace
+   // it with the plainer kind written here, which is enough to name a line and
+   // a routine and nothing like what a compiler emits.
+   ForeignDWARFInExecutable:=assigned(LineData) and (LineData.Size>0) and not assigned(DebugImage);
 
-   if assigned(LineData) and (LineData.Size>0) and not OwnDWARF then begin
+   if assigned(LineData) and (LineData.Size>0) then begin
     // Read whether or not the line numbers are wanted. What a compilation unit
     // covers is only stated by where its rows are, and nothing else in a DWARF
     // says it, so skipping the rows leaves no ranges and without ranges there
@@ -1826,6 +1854,20 @@ begin
 
   if Builder.LineCount=0 then begin
    WriteLn('Warning: no line numbers were found, so only routine names will resolve.');
+  end;
+
+  // Putting debug sections into an executable which already has its own is not
+  // adding to it, it is writing over it. What a compiler emits carries types,
+  // variables, scopes and much else; what is written here is a compilation unit,
+  // its routines and its lines, which is what turns a crash address into a
+  // place and no more. The injector replaces sections by name, so the richer
+  // one would simply be gone, and for a build which is already debuggable that
+  // is a loss with nothing gained: the executable already holds what this was
+  // going to put in it.
+  if InjectIntoExecutable and ForeignDWARFInExecutable then begin
+   WriteLn(ExecutableFileName,' already carries debug sections of its own, so none are put into it.');
+   WriteLn('The appended symbol table is written as usual.');
+   InjectIntoExecutable:=false;
   end;
 
   DWARFWriter:=nil;

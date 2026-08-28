@@ -36,6 +36,12 @@ const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
       IMAGE_FILE_MACHINE_AMD64=TpvUInt16($8664);
       IMAGE_FILE_MACHINE_ARM64=TpvUInt16($aa64);
 
+// The ordinary reflected CRC32 over a stretch of a stream. Here because two
+// places need it and it is the same function in both: holding an external debug
+// file against the checksum the executable names, and holding the bytes of a
+// section against themselves across a rewrite.
+function StreamCRC32(const aStream:TStream;const aOffset,aSize:TpvInt64):TpvUInt32;
+
 type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
      // What the debug directory of a PE says about the pdb belonging to it.
@@ -746,21 +752,15 @@ begin
  end;
 end;
 
-// The checksum a .gnu_debuglink section carries, over the whole of the named
-// file. The ordinary reflected CRC32, which is what the gnu tools write there.
-function FileCRC32(const aFileName:String;out aCRC:TpvUInt32):Boolean;
+function StreamCRC32(const aStream:TStream;const aOffset,aSize:TpvInt64):TpvUInt32;
 const Polynomial=TpvUInt32($edb88320);
 var Table:array[0..255] of TpvUInt32;
     Index,Bit:TpvInt32;
     Value:TpvUInt32;
-    Stream:TFileStream;
     Buffer:array[0..65535] of TpvUInt8;
-    Read,Position:TpvInt32;
+    Remaining:TpvInt64;
+    Chunk,Position:TpvInt32;
 begin
-
- result:=false;
- aCRC:=0;
-
  for Index:=0 to 255 do begin
   Value:=TpvUInt32(Index);
   for Bit:=0 to 7 do begin
@@ -772,26 +772,45 @@ begin
   end;
   Table[Index]:=Value;
  end;
+ Value:=TpvUInt32($ffffffff);
+ aStream.Seek(aOffset,soBeginning);
+ Remaining:=aSize;
+ while Remaining>0 do begin
+  if Remaining>TpvInt64(SizeOf(Buffer)) then begin
+   Chunk:=SizeOf(Buffer);
+  end else begin
+   Chunk:=TpvInt32(Remaining);
+  end;
+  Chunk:=aStream.Read(Buffer,Chunk);
+  if Chunk<=0 then begin
+   break;
+  end;
+  for Position:=0 to Chunk-1 do begin
+   Value:=(Value shr 8) xor Table[(Value xor TpvUInt32(Buffer[Position])) and $ff];
+  end;
+  dec(Remaining,Chunk);
+ end;
+ result:=Value xor TpvUInt32($ffffffff);
+end;
 
+// The checksum a .gnu_debuglink section carries, over the whole of the named
+// file.
+function FileCRC32(const aFileName:String;out aCRC:TpvUInt32):Boolean;
+var Stream:TFileStream;
+begin
+ result:=false;
+ aCRC:=0;
  try
   Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyNone);
  except
   exit;
  end;
  try
-  Value:=TpvUInt32($ffffffff);
-  repeat
-   Read:=Stream.Read(Buffer,SizeOf(Buffer));
-   for Position:=0 to Read-1 do begin
-    Value:=(Value shr 8) xor Table[(Value xor TpvUInt32(Buffer[Position])) and $ff];
-   end;
-  until Read<=0;
-  aCRC:=Value xor TpvUInt32($ffffffff);
+  aCRC:=StreamCRC32(Stream,0,Stream.Size);
   result:=true;
  finally
   FreeAndNil(Stream);
  end;
-
 end;
 
 function TImageFile.DebugLinkFileName(out aMessage:String):String;

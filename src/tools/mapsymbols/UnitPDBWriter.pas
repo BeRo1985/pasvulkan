@@ -256,7 +256,7 @@ var Symbols,Lines,LineBlock:TMemoryStream;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     LineRecord:TSymbolBuilder.TLineRecord;
-    Index,LineCount:TpvSizeInt;
+    Index,NextIndex,LineCount:TpvSizeInt;
     UnitLow,UnitHigh,SymbolHigh:TpvUInt64;
     SectionIndex:TpvUInt16;
     Offset,CodeStart,CodeSize:TpvUInt32;
@@ -308,9 +308,21 @@ begin
     continue;
    end;
 
+   // Where this routine stops is where the next one starts, and the next one is
+   // the next at a different address rather than the next in the list. Two
+   // names at one address are ordinary, main and PASCALMAIN, SYSTEM.MOVE and
+   // FPC_MOVE, and taking the one right behind meant comparing an address with
+   // itself, finding it no larger, and falling back on the end of the whole
+   // compilation unit. The first of the two then claimed everything to the end
+   // of it, and a debugger goes by these ranges.
    SymbolHigh:=UnitHigh;
-   if (Index+1)<fBuilder.SymbolCount then begin
-    NextSymbol:=fBuilder.GetSymbol(Index+1);
+   NextIndex:=Index+1;
+   while (NextIndex<fBuilder.SymbolCount) and
+         (fBuilder.GetSymbol(NextIndex).RVA=SymbolRecord.RVA) do begin
+    inc(NextIndex);
+   end;
+   if NextIndex<fBuilder.SymbolCount then begin
+    NextSymbol:=fBuilder.GetSymbol(NextIndex);
     if (NextSymbol.RVA>SymbolRecord.RVA) and (NextSymbol.RVA<SymbolHigh) then begin
      SymbolHigh:=NextSymbol.RVA;
     end;

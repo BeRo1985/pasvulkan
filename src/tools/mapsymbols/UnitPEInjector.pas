@@ -32,7 +32,10 @@ interface
 
 uses SysUtils,
      Classes,
-     PasVulkan.Types;
+     PasVulkan.Types,
+     // For the checksum, which is the same one the reader there uses on a debug
+     // file and is not worth having twice.
+     UnitImageFile;
 
 type TPEInjectorSection=record
       Name:String;
@@ -134,47 +137,34 @@ begin
  end;
 end;
 
-// The ordinary reflected CRC32 over a stretch of a stream. Used to hold the
-// bytes of a section against themselves across the rewrite.
-function StreamCRC32(const aStream:TStream;const aOffset,aSize:TpvInt64):TpvUInt32;
-const Polynomial=TpvUInt32($edb88320);
-var Table:array[0..255] of TpvUInt32;
-    Index,Bit:TpvInt32;
-    Value:TpvUInt32;
-    Buffer:array[0..65535] of TpvUInt8;
-    Remaining:TpvInt64;
-    Chunk,Position:TpvInt32;
+// Where a name already sits in a string table, or zero when it is not in it.
+// Zero cannot be a real answer, since the first four bytes of the table are its
+// own size and no name can begin there.
+function FindInStringTable(const aStringTable:TMemoryStream;const aName:String):TpvUInt32;
+var Bytes:PpvUInt8Array;
+    Wanted:TpvRawByteString;
+    Position,Start,Length_:TpvSizeInt;
 begin
- for Index:=0 to 255 do begin
-  Value:=TpvUInt32(Index);
-  for Bit:=0 to 7 do begin
-   if (Value and 1)<>0 then begin
-    Value:=(Value shr 1) xor Polynomial;
-   end else begin
-    Value:=Value shr 1;
-   end;
-  end;
-  Table[Index]:=Value;
+ result:=0;
+ Wanted:=TpvRawByteString(aName);
+ Length_:=length(Wanted);
+ if (Length_=0) or (aStringTable.Size<=4) then begin
+  exit;
  end;
- Value:=TpvUInt32($ffffffff);
- aStream.Seek(aOffset,soBeginning);
- Remaining:=aSize;
- while Remaining>0 do begin
-  if Remaining>TpvInt64(SizeOf(Buffer)) then begin
-   Chunk:=SizeOf(Buffer);
-  end else begin
-   Chunk:=TpvInt32(Remaining);
+ Bytes:=PpvUInt8Array(aStringTable.Memory);
+ Position:=4;
+ while Position<TpvSizeInt(aStringTable.Size) do begin
+  Start:=Position;
+  while (Position<TpvSizeInt(aStringTable.Size)) and (Bytes^[Position]<>0) do begin
+   inc(Position);
   end;
-  Chunk:=aStream.Read(Buffer,Chunk);
-  if Chunk<=0 then begin
-   break;
+  if ((Position-Start)=Length_) and
+     ((Length_=0) or CompareMem(@Bytes^[Start],@Wanted[1],Length_)) then begin
+   result:=TpvUInt32(Start);
+   exit;
   end;
-  for Position:=0 to Chunk-1 do begin
-   Value:=(Value shr 8) xor Table[(Value xor TpvUInt32(Buffer[Position])) and $ff];
-  end;
-  dec(Remaining,Chunk);
+  inc(Position);
  end;
- result:=Value xor TpvUInt32($ffffffff);
 end;
 
 function AlignUp(const aValue,aAlignment:TpvUInt64):TpvUInt64;
@@ -317,6 +307,11 @@ var Source,Target:TFileStream;
     EntryOffset:TpvInt64;
     MergedDirectory:TMemoryStream;
     Corrupted:String;
+    CorruptedFound:Boolean;
+    Remaining:TpvInt64;
+    Chunk:TpvInt32;
+    Blank:Boolean;
+    Scratch:array[0..4095] of TpvUInt8;
 
  // Where an address relative to the image base lands in the source file, going
  // by the sections as they were before anything moved.
@@ -602,6 +597,40 @@ begin
      fMessage:='There is something behind the sections of the executable which this does not recognize.';
      exit;
     end;
+    // And the table has to begin where the known part ends. Accepting it merely
+    // somewhere behind would leave whatever lies in between unaccounted for,
+    // and everything from here on is dropped rather than copied, so those bytes
+    // would be gone. That is exactly the case this was supposed to refuse: an
+    // executable which already carried an overlay before a plain run appended a
+    // table behind it. Alignment is the one thing allowed to sit there, and it
+    // has to actually be alignment and not merely look like it.
+    if TpvInt64(FooterOffset)>KnownEnd then begin
+     Source.Seek(KnownEnd,soBeginning);
+     Remaining:=TpvInt64(FooterOffset)-KnownEnd;
+     Blank:=true;
+     while (Remaining>0) and Blank do begin
+      if Remaining>TpvInt64(SizeOf(Padding)) then begin
+       Chunk:=SizeOf(Padding);
+      end else begin
+       Chunk:=TpvInt32(Remaining);
+      end;
+      Chunk:=Source.Read(Scratch,Chunk);
+      if Chunk<=0 then begin
+       break;
+      end;
+      for Index:=0 to Chunk-1 do begin
+       if Scratch[Index]<>0 then begin
+        Blank:=false;
+        break;
+       end;
+      end;
+      dec(Remaining,Chunk);
+     end;
+     if not Blank then begin
+      fMessage:='There is something between the sections of the executable and the table behind them which this does not recognize.';
+      exit;
+     end;
+    end;
    end;
 
    // The debug directory the image already has. Its entries are kept, because
@@ -642,14 +671,17 @@ begin
     end;
    end;
 
-   // An entry whose payload is going away can only be left out where the whole
-   // directory is written again, which is what adding one of our own does.
-   // Without that the directory stays where it is and is only nudged along, so
-   // the entry would remain in it, still counted by its size, pointing at a
-   // section which no longer exists. Saying it was dropped would then be untrue
-   // twice over, so this stops instead of half doing it.
-   if (LostDebugCount>0) and not HaveCodeView then begin
-    fMessage:='The debug directory of the executable points into a section which would be replaced, and there is no way to rewrite it here.';
+   // An entry whose payload is going away is not something to carry on from.
+   // A codeview entry is different and is not counted here: one of ours takes
+   // its place, which is the whole point. Anything else, a repro entry, a
+   // pogo entry, whatever a linker put there, is information this run was not
+   // asked to touch, and losing it because its payload happened to sit in a
+   // section being replaced is a loss whether or not it is reported. And
+   // without a directory of our own it cannot even be left out: the old one
+   // stays where it is and the entry would remain in it, still counted by its
+   // size, pointing at a section which no longer exists.
+   if LostDebugCount>0 then begin
+    fMessage:='The debug directory of the executable points into a section which would be replaced, and those entries cannot be carried over.';
     exit;
    end;
 
@@ -732,10 +764,19 @@ begin
     end;
     for Index:=0 to fSectionCount-1 do begin
      if length(fSections[Index].Name)>8 then begin
-      NameOffsets[Index]:=TpvUInt32(StringTable.Position);
-      NameText:=TpvRawByteString(fSections[Index].Name);
-      StringTable.WriteBuffer(NameText[1],length(NameText));
-      StringTable.WriteBuffer(Zero,1);
+      // The name this run writes is the same name the run before it wrote, so
+      // one which is already in the table is used again rather than added a
+      // second time. Without that the table gains a copy of every long name on
+      // every run, which is the one place where doing this twice would not have
+      // left the same file as doing it once.
+      NameOffsets[Index]:=FindInStringTable(StringTable,fSections[Index].Name);
+      if NameOffsets[Index]=0 then begin
+       NameOffsets[Index]:=TpvUInt32(StringTable.Size);
+       StringTable.Position:=StringTable.Size;
+       NameText:=TpvRawByteString(fSections[Index].Name);
+       StringTable.WriteBuffer(NameText[1],length(NameText));
+       StringTable.WriteBuffer(Zero,1);
+      end;
      end;
     end;
     Value32:=TpvUInt32(StringTable.Size);
@@ -960,6 +1001,7 @@ begin
     // before the original is replaced rather than after. A file which fails
     // here is thrown away and the original never moves.
     Corrupted:='';
+    CorruptedFound:=false;
     NewIndex:=0;
     for Index:=0 to NumberOfSections-1 do begin
      if ExistingSections[Index].Dropped then begin
@@ -977,13 +1019,16 @@ begin
       Value32:=StreamCRC32(Source,TpvInt64(ExistingSections[Index].RawPointer),TpvInt64(ExistingSections[Index].RawSize));
       if ((TpvInt64(RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>Target.Size) or
          (StreamCRC32(Target,TpvInt64(RawPointer),TpvInt64(ExistingSections[Index].RawSize))<>Value32) then begin
+       // A separate flag rather than the name alone: a section with an empty
+       // name would otherwise let the failure through unnoticed.
        Corrupted:=ExistingSections[Index].Name;
+       CorruptedFound:=true;
        break;
       end;
      end;
      inc(NewIndex);
     end;
-    if length(Corrupted)>0 then begin
+    if CorruptedFound then begin
      fMessage:='The contents of '+Corrupted+' did not survive being moved, so the executable was left alone.';
      FreeAndNil(Target);
      DeleteFile(TargetName);
@@ -1040,9 +1085,6 @@ begin
    fMessage:=fMessage+', header area grown by '+IntToStr(Delta)+' bytes.';
   end else begin
    fMessage:=fMessage+'.';
-  end;
-  if LostDebugCount>0 then begin
-   fMessage:=fMessage+' '+IntToStr(LostDebugCount)+' debug directory entries were dropped, because what they pointed at was in a section which was replaced.';
   end;
   result:=true;
 
