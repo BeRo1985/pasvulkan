@@ -59,7 +59,20 @@ type
        ImageBase:TpvUInt64;
        Seen:TpvSizeInt;
        Mismatched:TpvSizeInt;
+       function FindByName(const aAddress:TpvUInt64;const aName:String):Boolean;
        procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
+     end;
+
+     // The same for the line rows of a written debug file: how many came back
+     // out of it and whether each one says about its address what the table
+     // says about it.
+     TDWARFCheckCollector=class
+      public
+       Builder:TSymbolBuilder;
+       ImageBase:TpvUInt64;
+       Rows:TpvSizeInt;
+       Mismatched:TpvSizeInt;
+       procedure OnRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
      end;
 
      TCollector=class
@@ -95,35 +108,142 @@ type
        procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
      end;
 
-procedure TCheckCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
+// The answer which does not need the order to be anything in particular: every
+// symbol of that name is tried, and one of them being at this address is enough.
+function TCheckCollector.FindByName(const aAddress:TpvUInt64;const aName:String):Boolean;
 var Index:TpvSizeInt;
     SymbolRecord:TSymbolBuilder.TSymbolRecord;
-    Found:Boolean;
 begin
- inc(Seen);
- // Looked up by name rather than by position, since nothing promises that a
- // reader hands them back in the order they were written in.
- Found:=false;
+ result:=false;
  for Index:=0 to Builder.SymbolCount-1 do begin
   SymbolRecord:=Builder.GetSymbol(Index);
   if SymbolRecord.Name=aName then begin
-   Found:=(ImageBase+SymbolRecord.RVA)=aAddress;
-   if Found then begin
-    break;
+   result:=(ImageBase+SymbolRecord.RVA)=aAddress;
+   if result then begin
+    exit;
    end;
   end;
+ end;
+end;
+
+procedure TCheckCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
+var Found:Boolean;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+    SymbolRecord:TSymbolBuilder.TSymbolRecord;
+{$endif}
+begin
+ inc(Seen);
+ Found:=false;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+ // Nothing promises the order, but a reader which walks the table from front to
+ // back does hand them back in it, and they were written in it. So the one at
+ // this position is tried before anything is searched for, which turns a search
+ // per symbol into a comparison per symbol. Without it the check is quadratic:
+ // a build with a hundred thousand symbols would spend billions of iterations
+ // here, each of them copying a record which carries a string, and a step which
+ // took seconds would take minutes.
+ if (Seen-1)<Builder.SymbolCount then begin
+  SymbolRecord:=Builder.GetSymbol(Seen-1);
+  Found:=(SymbolRecord.Name=aName) and ((ImageBase+SymbolRecord.RVA)=aAddress);
+ end;
+{$endif}
+ if not Found then begin
+  Found:=FindByName(aAddress,aName);
  end;
  if not Found then begin
   inc(Mismatched);
  end;
 end;
 
+procedure TDWARFCheckCollector.OnRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
+var LowIndex,HighIndex,MiddleIndex,Index:TpvSizeInt;
+    LineRecord:TSymbolBuilder.TLineRecord;
+    RVA:TpvUInt64;
+    Found:Boolean;
+begin
+
+ // A line number of zero is the end of a sequence rather than a row.
+ if aLineNumber=0 then begin
+  exit;
+ end;
+
+ inc(Rows);
+
+ if aAddress<ImageBase then begin
+  inc(Mismatched);
+  exit;
+ end;
+ RVA:=aAddress-ImageBase;
+
+ // The records are sorted by address, so the ones at this one are found rather
+ // than searched for. Held against by address rather than by position, since
+ // what matters is that the file says the same thing about an address as the
+ // table does, not that it says it in the same order.
+ LowIndex:=0;
+ HighIndex:=Builder.LineCount;
+ while LowIndex<HighIndex do begin
+  MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+  if Builder.GetLine(MiddleIndex).RVA<RVA then begin
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   HighIndex:=MiddleIndex;
+  end;
+ end;
+
+ // More than one record can sit at an address, so the whole run of them is
+ // looked through rather than just the first.
+ Found:=false;
+ Index:=LowIndex;
+ while Index<Builder.LineCount do begin
+  LineRecord:=Builder.GetLine(Index);
+  if LineRecord.RVA<>RVA then begin
+   break;
+  end;
+  if LineRecord.LineNumber=aLineNumber then begin
+   Found:=true;
+   break;
+  end;
+  inc(Index);
+ end;
+
+ if not Found then begin
+  inc(Mismatched);
+ end;
+
+end;
+
+{$ifdef PasVulkanMapSymbolsMachineBasedAddressSize}
 // Whether an image of this machine has thirty two bit addresses. Decides the
 // width of everything which describes it: the ELF container, the address size
 // in the DWARF, and the addresses inside both.
 function Is32BitMachine(const aMachine:TpvUInt16):Boolean;
 begin
  result:=(aMachine=IMAGE_FILE_MACHINE_I386) or (aMachine=IMAGE_FILE_MACHINE_ARMNT);
+end;
+{$endif}
+
+// How wide an address of this image is. Decides the width of everything which
+// describes it: the ELF container, the address size in the DWARF, and the
+// addresses inside both.
+//
+// Asked of the image rather than worked out from the processor it is for. Both
+// containers state it outright, in the class byte of an ELF and in the magic of
+// a PE optional header, while the processor only implies it and only for the
+// processors one happens to have a number for. A thirty two bit image for
+// anything outside that handful, which is exactly what carrying the ELF machine
+// number over was for, would fall through to the default and be described in
+// sixty four bits: right processor, wrong width, every address in the file off.
+function ImageAddressSize(const aImage:TImageFile):TpvUInt8;
+begin
+{$ifdef PasVulkanMapSymbolsMachineBasedAddressSize}
+ if Is32BitMachine(aImage.Machine) then begin
+  result:=4;
+ end else begin
+  result:=8;
+ end;
+{$else}
+ result:=aImage.AddressSize;
+{$endif}
 end;
 
 // Turns a FreePascal mangled symbol into something a reader recognizes.
@@ -409,22 +529,64 @@ begin
  inc(SymbolsAdded);
 end;
 
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+// The unit range this address falls in, or minus one when it falls into none of
+// them. The ranges are sorted by start and are checked for overlap before
+// anything is written, which is what makes a binary search over them the right
+// answer rather than merely a fast one. It is also how the reader in the
+// runtime looks a unit up.
+function FindUnitRange(const aBuilder:TSymbolBuilder;const aRVA:TpvUInt64):TpvSizeInt;
+var LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+    UnitRecord:TSymbolBuilder.TUnitRecord;
+begin
+ result:=-1;
+ LowIndex:=0;
+ HighIndex:=aBuilder.UnitCount-1;
+ while LowIndex<=HighIndex do begin
+  MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+  UnitRecord:=aBuilder.GetUnit(MiddleIndex);
+  if aRVA<UnitRecord.StartRVA then begin
+   HighIndex:=MiddleIndex-1;
+  end else if aRVA>=(UnitRecord.StartRVA+UnitRecord.Size) then begin
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   result:=MiddleIndex;
+   exit;
+  end;
+ end;
+end;
+{$endif}
+
 // Reads the debug file which was just written back through the reader of this
 // tool and holds what comes out against what went in.
 //
-// The symbols are what is checked. They carry an address and a name each and go
+// The symbols are one half of it. They carry an address and a name each and go
 // through the whole of the container: the header says where the section table
 // is, the section table says where the symbols and their names are, and a
 // symbol entry has its fields in an order which differs between the two widths.
 // Any of that written wrongly and the names or the addresses do not come back.
-procedure CheckDebugFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String);
+//
+// The line programs are the other half, and the half a symbolizer actually
+// reads. They go into a section as a block this tool never opens again, which
+// is exactly where the address width in the header of a compilation unit, the
+// length of the set address opcode and the byte order of every number in them
+// sit. All of those can be wrong while every symbol still comes back perfectly,
+// so the line programs are read back too, with the reader this same tool uses
+// on somebody else's DWARF.
+procedure CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
 var Check:TImageFile;
     Collector:TCheckCollector;
+    LineCollector:TDWARFCheckCollector;
+    LineSection:TMemoryStream;
+    LineReader:TDWARFLineReader;
     Expected:TpvSizeInt;
 begin
 
  Collector:=TCheckCollector.Create;
+ LineCollector:=TDWARFCheckCollector.Create;
  Check:=TImageFile.Create;
+ LineSection:=nil;
+ LineReader:=nil;
  try
 
   if not Check.Open(aFileName) then begin
@@ -433,7 +595,17 @@ begin
    exit;
   end;
 
-  if (Check.Machine<>aImage.Machine) or (Check.BigEndian<>aImage.BigEndian) then begin
+  // The width and the processor as the file itself states them. A file written
+  // in the wrong width is read back in the wrong width by this same reader and
+  // agrees with itself all the way through, so nothing but the image it is
+  // supposed to describe can catch it. And the COFF number alone says nothing
+  // about a processor which has none: it is unknown on both sides and compares
+  // equal, which is why the ELF one is held against it as well wherever the
+  // image had one.
+  if (Check.Machine<>aImage.Machine) or
+     (Check.BigEndian<>aImage.BigEndian) or
+     (Check.AddressSize<>ImageAddressSize(aImage)) or
+     ((aImage.ELFMachine<>0) and (Check.ELFMachine<>aImage.ELFMachine)) then begin
    WriteLn('Debug file check failed: it describes a different machine than the image does.');
    ExitCode:=1;
    exit;
@@ -452,8 +624,41 @@ begin
    WriteLn('Debug file check: ',Collector.Seen,' symbols came back at the addresses they went in at.');
   end;
 
+  if assigned(aDWARFWriter) then begin
+
+   LineSection:=Check.ReadSection('.debug_line');
+   if not assigned(LineSection) then begin
+    WriteLn('Debug file check FAILED: the file which was just written has no readable line programs.');
+    ExitCode:=1;
+    exit;
+   end;
+
+   LineReader:=TDWARFLineReader.Create(LineSection.Memory,LineSection.Size);
+   LineReader.BigEndian:=Check.BigEndian;
+   LineCollector.Builder:=aBuilder;
+   LineCollector.ImageBase:=aBuilder.ImageBase;
+   LineReader.Parse(LineCollector.OnRow,nil);
+
+   // Against what the writer counted rather than against the number of
+   // collected records: a record which closes a sequence is not a row, and a
+   // unit without line information contributes no program, so the two are not
+   // the same number and working the difference out a second way here would
+   // only be a second chance to get it wrong.
+   Expected:=aDWARFWriter.LineRowCount;
+   if (LineCollector.Rows<>Expected) or (LineCollector.Mismatched>0) then begin
+    WriteLn('Debug file check FAILED: ',LineCollector.Rows,' of ',Expected,' line rows came back, ',LineCollector.Mismatched,' with the wrong line number.');
+    ExitCode:=1;
+   end else begin
+    WriteLn('Debug file check: ',LineCollector.Rows,' line rows came back with the line numbers they went in with.');
+   end;
+
+  end;
+
  finally
+  FreeAndNil(LineReader);
+  FreeAndNil(LineSection);
   FreeAndNil(Check);
+  FreeAndNil(LineCollector);
   FreeAndNil(Collector);
  end;
 
@@ -499,12 +704,12 @@ begin
     end;
    end;
   end;
-  if Is32BitMachine(aImage.Machine) then begin
-   ELFWriter.Bits:=32;
-  end else begin
-   ELFWriter.Bits:=64;
-  end;
+  ELFWriter.Bits:=ImageAddressSize(aImage)*8;
   ELFWriter.BigEndian:=aImage.BigEndian;
+  // Nothing on the desktop targets uses these, but on arm and on mips they name
+  // the abi and the instruction set, and a debug file which claims something
+  // else about the image than the image does is one a reader can refuse.
+  ELFWriter.Flags:=aImage.ELFFlags;
 
   ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
   ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
@@ -551,6 +756,7 @@ begin
     NextSymbol:=aBuilder.GetSymbol(Index+1);
     if NextSymbol.RVA>SymbolRecord.RVA then begin
      SymbolEnd:=NextSymbol.RVA;
+{$ifdef PasVulkanMapSymbolsLinearLookups}
      for RangeIndex:=0 to aBuilder.UnitCount-1 do begin
       UnitRecord:=aBuilder.GetUnit(RangeIndex);
       if (SymbolRecord.RVA>=UnitRecord.StartRVA) and
@@ -561,6 +767,21 @@ begin
        break;
       end;
      end;
+{$else}
+     // The ranges are sorted by start and do not overlap, which is checked
+     // before anything is written, so the one this symbol is in can be found
+     // rather than looked for. Looking for it walks all of them once per
+     // symbol, and this runs on every build which writes a debug file: with a
+     // hundred thousand symbols and a few thousand ranges that is hundreds of
+     // millions of iterations, each copying a record which carries two strings.
+     RangeIndex:=FindUnitRange(aBuilder,SymbolRecord.RVA);
+     if RangeIndex>=0 then begin
+      UnitRecord:=aBuilder.GetUnit(RangeIndex);
+      if SymbolEnd>(UnitRecord.StartRVA+UnitRecord.Size) then begin
+       SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
+      end;
+     end;
+{$endif}
      if SymbolEnd>SymbolRecord.RVA then begin
       SymbolSize:=SymbolEnd-SymbolRecord.RVA;
      end;
@@ -583,7 +804,7 @@ begin
   // built are exactly the ones which are quietly broken half a year later. A
   // swapped pair of fields in a symbol entry gives a file of the right length
   // full of nonsense, and this is what notices.
-  CheckDebugFile(aBuilder,aImage,aFileName);
+  CheckDebugFile(aBuilder,aDWARFWriter,aImage,aFileName);
 
   WriteLn('Wrote ',aFileName,' with ',aDWARFWriter.DebugLine.Size,' bytes of line programs and ',
           aDWARFWriter.DebugInfo.Size,' bytes of compile units.');
@@ -897,15 +1118,31 @@ begin
 
   Builder.Finish;
 
+  if Builder.TrimmedUnitCount>0 then begin
+   WriteLn(Builder.TrimmedUnitCount,' unit ranges reached a few bytes into the one behind them and were pulled back to its start.');
+  end;
+
   // The runtime resolver looks a unit up by binary search, which assumes the
   // ranges do not overlap. A compilation unit whose code the linker scattered
   // could break that assumption, so it is checked rather than hoped for.
+  //
+  // What is left here is what pulling a range back off the next one cannot
+  // explain: a range which the following one begins inside of rather than
+  // behind, which is two units genuinely woven through each other and not a
+  // boundary which came in a few bytes long.
   OverlapCount:=0;
   for UnitIndex:=1 to Builder.UnitCount-1 do begin
    PreviousUnit:=Builder.GetUnit(UnitIndex-1);
    CurrentUnit:=Builder.GetUnit(UnitIndex);
    if (PreviousUnit.StartRVA+PreviousUnit.Size)>CurrentUnit.StartRVA then begin
     inc(OverlapCount);
+    // Named rather than only counted, since the two files which overlap are the
+    // whole of what somebody looking into this needs and are not recoverable
+    // from anything the tool prints otherwise.
+    if OverlapCount<=8 then begin
+     WriteLn('  ',PreviousUnit.FileName,' [$',IntToHex(PreviousUnit.StartRVA,8),'..$',IntToHex(PreviousUnit.StartRVA+PreviousUnit.Size,8),
+             ') overlaps ',CurrentUnit.FileName,' [$',IntToHex(CurrentUnit.StartRVA,8),'..$',IntToHex(CurrentUnit.StartRVA+CurrentUnit.Size,8),')');
+    end;
    end;
   end;
   if OverlapCount>0 then begin
@@ -919,8 +1156,16 @@ begin
    // If this ever fires, try PasVulkanMapSymbolsNoPaddingTolerance: the merging
    // of runs separated by padding is the only thing here which can create an
    // overlap out of ranges which had none.
+   //
+   // And nothing is written. An exit code beside a finished table would have
+   // said one thing and done the other: the executable would have been changed,
+   // the table appended and the debug file written, all of them in the state
+   // this just called wrong, and every one of them still there after the build
+   // system noticed. Stopping here is what makes the sentence above true.
    WriteLn('Error: ',OverlapCount,' unit ranges overlap, so some addresses would be attributed to the wrong unit.');
+   WriteLn('Nothing was written.');
    ExitCode:=1;
+   exit;
   end;
 
   // Everything needed has been read, and the executable is about to be written
@@ -949,11 +1194,7 @@ begin
     // header of every compilation unit announces and every consumer reads it
     // by. Writing eight for a thirty two bit image would describe something
     // which is not there.
-    if Is32BitMachine(Image.Machine) then begin
-     DWARFWriter.AddressSize:=4;
-    end else begin
-     DWARFWriter.AddressSize:=8;
-    end;
+    DWARFWriter.AddressSize:=ImageAddressSize(Image);
     // And in the order the image is written in, since the sections describe
     // that image and are read alongside it.
     DWARFWriter.BigEndian:=Image.BigEndian;

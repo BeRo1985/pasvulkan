@@ -60,6 +60,7 @@ type TELFWriterSymbol=record
        fMachine:TpvUInt16;
        fBits:TpvUInt8;
        fBigEndian:Boolean;
+       fFlags:TpvUInt32;
        // Write one number in the byte order of the described image rather than
        // in the one of the machine this runs on.
        procedure WriteU16(const aStream:TStream;const aValue:TpvUInt16);
@@ -84,12 +85,16 @@ type TELFWriterSymbol=record
        // bit shape. That decides the size of the header, of a section header
        // and of a symbol entry, and for a symbol also the order of its fields,
        // which is not the same in the two.
-       //
-       // Little endian either way, which is what every target of this is.
        property Bits:TpvUInt8 read fBits write fBits;
        // The byte order of the described image. Goes into the identification
        // byte of the header and into every number of the file.
        property BigEndian:Boolean read fBigEndian write fBigEndian;
+       // The processor specific header flags, carried over from the described
+       // image. Nothing on x86 uses them, but on arm and on mips they state
+       // which abi and which instruction set the image is for, and a file which
+       // claims none of that while the image it belongs to does is a file two
+       // readers can disagree about.
+       property Flags:TpvUInt32 read fFlags write fFlags;
        procedure SaveToFile(const aFileName:String);
      end;
 
@@ -128,6 +133,7 @@ begin
  fMachine:=EM_X86_64;
  fBits:=64;
  fBigEndian:=false;
+ fFlags:=0;
 end;
 
 procedure TELFWriter.WriteU16(const aStream:TStream;const aValue:TpvUInt16);
@@ -404,7 +410,7 @@ begin
     WriteU64(Stream,0); // program header offset
     WriteU64(Stream,SectionHeaderOffset);
    end;
-   WriteU32(Stream,0); // flags
+   WriteU32(Stream,fFlags); // flags
    WriteU16(Stream,HeaderSize);
    WriteU16(Stream,0); // program header entry size
    WriteU16(Stream,0); // program header count

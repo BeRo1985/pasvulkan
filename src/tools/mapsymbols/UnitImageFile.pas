@@ -68,8 +68,10 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        fSymbolCount:TpvUInt32;
        fELF64:Boolean;
        fBigEndian:Boolean;
+       fAddressSize:TpvUInt8;
        fMachine:TpvUInt16;
        fELFMachine:TpvUInt16;
+       fELFFlags:TpvUInt32;
        // Read one number of the image, in the byte order the image has rather
        // than the one this program runs in. Only ELF is ever big endian, PE is
        // little endian by definition, so these pass straight through for it.
@@ -120,9 +122,25 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        // number would come back as something else entirely if it went through
        // that translation and back. Zero when the image was not an ELF.
        property ELFMachine:TpvUInt16 read fELFMachine;
+       // The processor specific flags of an ELF header, kept so that a file
+       // written about this image can carry them over. On arm and on mips they
+       // name the abi and the instruction set the image was built for, and a
+       // reader which cares takes them at their word. Zero for a PE, which has
+       // nothing of the kind.
+       property ELFFlags:TpvUInt32 read fELFFlags;
        // The byte order the image is written in. Anything which describes it,
        // the appended table aside, has to be written the same way round.
        property BigEndian:Boolean read fBigEndian;
+       // How wide an address of this image is, four bytes or eight. Comes from
+       // the class byte of an ELF and from the magic of a PE optional header,
+       // which is where it is actually stated.
+       //
+       // Worth having as its own answer rather than deriving it from the
+       // processor: that derivation can only work for the processors it knows
+       // a number for, and an image for one it does not know, which is exactly
+       // what the two byte orders and two widths were added for, would then be
+       // described in whichever width the fallback happens to be.
+       property AddressSize:TpvUInt8 read fAddressSize;
      end;
 
 implementation
@@ -166,8 +184,10 @@ begin
  fSymbolCount:=0;
  fELF64:=true;
  fBigEndian:=false;
+ fAddressSize:=8;
  fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
  fELFMachine:=0;
+ fELFFlags:=0;
 end;
 
 destructor TImageFile.Destroy;
@@ -381,9 +401,13 @@ begin
  fStream.Seek(TpvInt64(NewHeaderOffset)+24,soBeginning);
  fStream.ReadBuffer(OptionalMagic,SizeOf(TpvUInt16));
  if OptionalMagic=$20b then begin
+  fAddressSize:=8;
   fStream.Seek(TpvInt64(NewHeaderOffset)+24+24,soBeginning);
   fStream.ReadBuffer(fImageBase,SizeOf(TpvUInt64));
  end else if OptionalMagic=$10b then begin
+  // The magic of the optional header is what says which of the two a PE is,
+  // and the image base sitting four bytes further in is a consequence of it.
+  fAddressSize:=4;
   fStream.Seek(TpvInt64(NewHeaderOffset)+24+28,soBeginning);
   fStream.ReadBuffer(Value32,SizeOf(TpvUInt32));
   fImageBase:=Value32;
@@ -458,6 +482,11 @@ begin
  end;
  fELF64:=ELFClass=2;
  fBigEndian:=DataEncoding=2;
+ if fELF64 then begin
+  fAddressSize:=8;
+ end else begin
+  fAddressSize:=4;
+ end;
 
  fStream.Seek($12,soBeginning);
  ELFMachine:=ReadImageUInt16;
@@ -484,6 +513,8 @@ begin
   fStream.Seek($20,soBeginning);
   ProgramHeaderOffset:=ReadImageUInt64;
   SectionHeaderOffset:=ReadImageUInt64;
+  // The processor specific flags follow directly behind the two offsets.
+  fELFFlags:=ReadImageUInt32;
   fStream.Seek($36,soBeginning);
  end else begin
   // The entry point, and with it everything behind it, is four bytes rather
@@ -491,6 +522,7 @@ begin
   fStream.Seek($1c,soBeginning);
   ProgramHeaderOffset:=ReadImageUInt32;
   SectionHeaderOffset:=ReadImageUInt32;
+  fELFFlags:=ReadImageUInt32;
   fStream.Seek($2a,soBeginning);
  end;
  ProgramHeaderEntrySize:=ReadImageUInt16;

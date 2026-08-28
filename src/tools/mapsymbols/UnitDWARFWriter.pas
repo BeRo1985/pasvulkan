@@ -41,6 +41,7 @@ type TDWARFWriter=class
        fDebugAbbrev:TMemoryStream;
        fAddressSize:TpvUInt8;
        fBigEndian:Boolean;
+       fLineRowCount:TpvSizeInt;
        procedure WriteByte(const aStream:TMemoryStream;const aValue:TpvUInt8);
        procedure WriteUInt16(const aStream:TMemoryStream;const aValue:TpvUInt16);
        procedure WriteUInt32(const aStream:TMemoryStream;const aValue:TpvUInt32);
@@ -65,6 +66,12 @@ type TDWARFWriter=class
        // The byte order of the described image, which every number written
        // here follows. Has to be set before Build, like the address size.
        property BigEndian:Boolean read fBigEndian write fBigEndian;
+       // How many rows the line programs came to. Not the number of collected
+       // line records: a record which closes a sequence is not a row, and a
+       // unit without line information contributes no program at all. Kept so
+       // that a reader can be held against a number which was counted rather
+       // than one which was worked out a second way.
+       property LineRowCount:TpvSizeInt read fLineRowCount;
        property DebugLine:TMemoryStream read fDebugLine;
        property DebugInfo:TMemoryStream read fDebugInfo;
        property DebugAbbrev:TMemoryStream read fDebugAbbrev;
@@ -111,6 +118,7 @@ begin
  // desktop build is.
  fAddressSize:=8;
  fBigEndian:=false;
+ fLineRowCount:=0;
 end;
 
 destructor TDWARFWriter.Destroy;
@@ -381,6 +389,7 @@ begin
   end;
 
   WriteByte(fDebugLine,DW_LNS_copy);
+  inc(fLineRowCount);
 
  end;
 
@@ -409,6 +418,9 @@ var UnitRecord:TSymbolBuilder.TUnitRecord;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     StartPosition,LengthPosition,EndPosition:TpvInt64;
     Index:TpvSizeInt;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+    LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+{$endif}
     ImageBase,UnitLow,UnitHigh,SymbolHigh:TpvUInt64;
     Directory:String;
 begin
@@ -442,11 +454,35 @@ begin
 
  // Subprograms, taken from the symbols which fall inside this unit. They are
  // sorted by address, so the end of one is the start of the next.
+{$ifdef PasVulkanMapSymbolsLinearLookups}
  for Index:=0 to fBuilder.SymbolCount-1 do begin
   SymbolRecord:=fBuilder.GetSymbol(Index);
   if ((ImageBase+SymbolRecord.RVA)<UnitLow) or ((ImageBase+SymbolRecord.RVA)>=UnitHigh) then begin
    continue;
   end;
+{$else}
+ // Being sorted by address also means the ones which fall inside this unit are
+ // a run, so its beginning can be found instead of walked to. This is called
+ // once per unit, and a build with thousands of units and a hundred thousand
+ // symbols would otherwise spend hundreds of millions of iterations here, each
+ // of them copying a record which carries a string.
+ LowIndex:=0;
+ HighIndex:=fBuilder.SymbolCount;
+ while LowIndex<HighIndex do begin
+  MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+  if fBuilder.GetSymbol(MiddleIndex).RVA<UnitRecord.StartRVA then begin
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   HighIndex:=MiddleIndex;
+  end;
+ end;
+ Index:=LowIndex;
+ while Index<fBuilder.SymbolCount do begin
+  SymbolRecord:=fBuilder.GetSymbol(Index);
+  if (ImageBase+SymbolRecord.RVA)>=UnitHigh then begin
+   break;
+  end;
+{$endif}
   SymbolHigh:=UnitHigh;
   if (Index+1)<fBuilder.SymbolCount then begin
    NextSymbol:=fBuilder.GetSymbol(Index+1);
@@ -459,6 +495,9 @@ begin
   WriteZeroTerminated(fDebugInfo,SymbolRecord.Name);
   WriteAddress(fDebugInfo,ImageBase+SymbolRecord.RVA);
   WriteAddress(fDebugInfo,SymbolHigh);
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+  inc(Index);
+{$endif}
  end;
 
  // End of the children of the compile unit.
@@ -475,6 +514,9 @@ procedure TDWARFWriter.Build;
 var UnitIndex,LineIndex,FirstLine,LastLine:TpvSizeInt;
     StatementListOffset:TpvUInt32;
     LineRecord:TSymbolBuilder.TLineRecord;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+    FirstLines,LastLines:array of TpvSizeInt;
+{$endif}
 begin
 
  // Anything but these two would put a width into the header of every
@@ -488,13 +530,37 @@ begin
  fDebugLine.Clear;
  fDebugInfo.Clear;
  fDebugAbbrev.Clear;
+ fLineRowCount:=0;
 
  BuildAbbrev;
+
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+ // Where the rows of each unit begin and end. Found in one pass over the rows
+ // rather than in one pass per unit: each row names its unit, so asking the
+ // rows is enough, while asking the units means walking the whole row array
+ // once for every one of them.
+ SetLength(FirstLines,fBuilder.UnitCount);
+ SetLength(LastLines,fBuilder.UnitCount);
+ for UnitIndex:=0 to fBuilder.UnitCount-1 do begin
+  FirstLines[UnitIndex]:=-1;
+  LastLines[UnitIndex]:=-1;
+ end;
+ for LineIndex:=0 to fBuilder.LineCount-1 do begin
+  LineRecord:=fBuilder.GetLine(LineIndex);
+  if LineRecord.UnitIndex<TpvUInt32(fBuilder.UnitCount) then begin
+   if FirstLines[LineRecord.UnitIndex]<0 then begin
+    FirstLines[LineRecord.UnitIndex]:=LineIndex;
+   end;
+   LastLines[LineRecord.UnitIndex]:=LineIndex;
+  end;
+ end;
+{$endif}
 
  for UnitIndex:=0 to fBuilder.UnitCount-1 do begin
 
   // The line records are sorted by address and each carries its unit, so the
   // rows of one unit form a contiguous run.
+{$ifdef PasVulkanMapSymbolsLinearLookups}
   FirstLine:=-1;
   LastLine:=-1;
   for LineIndex:=0 to fBuilder.LineCount-1 do begin
@@ -508,6 +574,10 @@ begin
     break;
    end;
   end;
+{$else}
+  FirstLine:=FirstLines[UnitIndex];
+  LastLine:=LastLines[UnitIndex];
+{$endif}
 
   if FirstLine<0 then begin
    // Nothing to say about a unit without line information.

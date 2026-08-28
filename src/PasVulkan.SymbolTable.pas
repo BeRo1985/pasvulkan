@@ -608,6 +608,12 @@ begin
     // of a crash is exactly too late.
     Stream.Seek(TpvInt64(Footer.Offset)+TpvInt64(SizeOf(TpvSymbolTableHeader)),soBeginning);
     Stream.ReadBuffer(EmbeddedSize,SizeOf(TpvUInt64));
+    // Written least significant byte first whatever the machine, which is what
+    // the packer does deliberately and what its own unpacker undoes again. This
+    // check sits in front of the unpacker and has to undo it as well, or it
+    // compares a number against the same number with its bytes the other way
+    // round and turns every packed table on a big endian host away.
+    EmbeddedSize:=FixUInt64(EmbeddedSize);
     if EmbeddedSize<>(Expected-TpvUInt64(SizeOf(TpvSymbolTableHeader))) then begin
      exit;
     end;

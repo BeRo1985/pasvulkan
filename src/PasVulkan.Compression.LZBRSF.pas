@@ -540,7 +540,7 @@ begin
 {$else}
       Len:=TpvUInt16(Pointer(InputPointer)^);
       inc(InputPointer,SizeOf(TpvUInt16));
-      Len:=((((Len and $ff00) shr 8) or ((Len and $ff) shl 8))+1;
+      Len:=(((Len and $ff00) shr 8) or ((Len and $ff) shl 8))+1;
 {$endif}
      end;
      62:begin
@@ -611,7 +611,7 @@ begin
 {$else}
     Offset:=TpvUInt16(Pointer(InputPointer)^);
     inc(InputPointer,SizeOf(TpvUInt16));
-    Offset:=((((Offset and $ff00) shr 8) or ((Offset and $ff) shl 8))+1;
+    Offset:=(((Offset and $ff00) shr 8) or ((Offset and $ff) shl 8))+1;
 {$endif}
     CopyFromPointer:=pointer(TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(Offset)));
     if TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(aDestData) then begin

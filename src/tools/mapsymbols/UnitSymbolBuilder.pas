@@ -5,10 +5,23 @@
 // .debug_line reader, and the on disk format, so that both of them describe what
 // they found in the same terms and neither has to know anything about the
 // layout, the sorting or the string table.
+//
+// The written table is little endian whatever machine it describes, which is
+// what the reader in PasVulkan.SymbolTable states and undoes for itself. The
+// writing here does no such thing: it puts records down as this machine holds
+// them, which is the same thing only as long as this machine is little endian.
+// So rather than leave the rule and the one implementation which has to keep it
+// free to drift apart unnoticed, a big endian host does not build this at all.
+// Writing it the other way round is a few lines, but they would be a few lines
+// nobody could run.
 unit UnitSymbolBuilder;
 {$ifdef fpc}
  {$mode delphi}
 {$endif}
+
+{$if defined(ENDIAN_BIG) or defined(FPC_BIG_ENDIAN) or defined(BIG_ENDIAN)}
+ {$error This tool writes its table in host byte order and the format is little endian, so it cannot be built on a big endian host}
+{$ifend}
 
 interface
 
@@ -58,7 +71,11 @@ type TSymbolBuilder=class
        fCompress:Boolean;
        fPackedFrom:TpvUInt64;
        fPackedTo:TpvUInt64;
+       fTrimmedUnitCount:TpvSizeInt;
        function PreparePath(const aFileName:String):String;
+{$ifndef PasVulkanMapSymbolsNoOverlapTrimming}
+       function TrimOverlappingUnits:TpvSizeInt;
+{$endif}
        procedure WritePayload(const aStream:TStream);
        procedure SortUnits(const aLeft,aRight:TpvSizeInt);
        procedure SortSymbols(const aLeft,aRight:TpvSizeInt);
@@ -106,6 +123,11 @@ type TSymbolBuilder=class
        // from inside, so that every message of the tool comes from one place.
        property PackedFrom:TpvUInt64 read fPackedFrom;
        property PackedTo:TpvUInt64 read fPackedTo;
+       // How many unit ranges Finish had to pull back off the one behind them.
+       // Reported rather than kept quiet, since it is a repair of information
+       // which came in slightly wrong and the caller should be able to see that
+       // it happened at all.
+       property TrimmedUnitCount:TpvSizeInt read fTrimmedUnitCount;
        // Read access for the writers, which need the collected data again in a
        // different shape. Only valid after Finish, since that is what sorts it.
        function GetUnit(const aIndex:TpvSizeInt):TUnitRecord;
@@ -134,6 +156,7 @@ begin
  fCompress:=false;
  fPackedFrom:=0;
  fPackedTo:=0;
+ fTrimmedUnitCount:=0;
 end;
 
 // The contents behind the header, which is what is either written straight out
@@ -506,10 +529,48 @@ begin
  fLineCount:=Kept;
 end;
 
+{$ifndef PasVulkanMapSymbolsNoOverlapTrimming}
+// Pulls a range which reaches into the one behind it back to where that one
+// begins, and reports how many had to be pulled back.
+//
+// FreePascal really does emit this. The end of sequence marker which closes the
+// line program of a unit can sit a handful of bytes past the first row of the
+// next one, so the two ranges genuinely overlap in the information as it was
+// read, by fourteen to thirty odd bytes on a build of this very tool. Which of
+// the two owns those bytes is not in doubt: a unit saying where it begins is a
+// stronger statement than another one saying where it stops, since the second
+// is only ever one past the last byte and is what the compiler is loose about.
+//
+// Nothing is trimmed away from the front, and a range which the one behind it
+// starts at or before is left exactly as it is. That is containment rather than
+// a boundary being off by a few bytes, it means the linker really did put the
+// code of two units through one another, and it is the case the caller has to
+// be told about rather than have quietly papered over.
+function TSymbolBuilder.TrimOverlappingUnits:TpvSizeInt;
+var Index:TpvSizeInt;
+    PreviousEnd:TpvUInt64;
+begin
+ result:=0;
+ for Index:=1 to fUnitCount-1 do begin
+  PreviousEnd:=fUnits[Index-1].StartRVA+fUnits[Index-1].Size;
+  if (PreviousEnd>fUnits[Index].StartRVA) and
+     (fUnits[Index].StartRVA>fUnits[Index-1].StartRVA) then begin
+   fUnits[Index-1].Size:=fUnits[Index].StartRVA-fUnits[Index-1].StartRVA;
+   inc(result);
+  end;
+ end;
+end;
+{$endif}
+
 procedure TSymbolBuilder.Finish;
 begin
  if fUnitCount>0 then begin
   SortUnits(0,fUnitCount-1);
+{$ifndef PasVulkanMapSymbolsNoOverlapTrimming}
+  // Before the lines are handed out, so that a line in the disputed bytes goes
+  // to the unit which keeps them.
+  fTrimmedUnitCount:=TrimOverlappingUnits;
+{$endif}
  end;
  if fSymbolCount>0 then begin
   SortSymbols(0,fSymbolCount-1);
