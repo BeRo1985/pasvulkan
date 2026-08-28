@@ -229,8 +229,22 @@ function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32=1):String;
 function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBufferSize):String;
 
 // The single implementation behind every DumpExceptionCallStack in PasVulkan.
-// The frame arguments are only used by FreePascal and are ignored by Delphi.
-function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil):String;
+//
+// The frame arguments are used on both compilers. They used to be read only
+// under FreePascal and ignored under Delphi, where the stack came from
+// Exception.StackTrace instead; a caller which knew the addresses and said so
+// therefore got a printed stack about one set of frames and an identifier below
+// it about another. Where nothing is handed in, Delphi still uses the stack
+// which was captured at the raise, which is the same one the identifier is
+// built from.
+//
+// aAddressIsReturnAddress says which of the two kinds aAddress is, see
+// pvCrashReportFormatAddress. A raise address handed over by Delphi is the
+// address behind the raise; the one FreePascal reports and the one a hardware
+// fault reports are the faulting instruction itself, which is the default here.
+// Guessing it from the compiler would be wrong in both directions, since both
+// kinds occur on both.
+function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddressIsReturnAddress:Boolean=false):String;
 
 // A short identifier for where a crash happened, so that two reports of the
 // same fault can be recognized as one thing seen twice rather than read one by
@@ -250,7 +264,17 @@ function pvCrashReportDumpException(const aException:Exception;const aAddress:Tp
 // yields the identifier of whatever was handled last. Pass the addresses in
 // where they are known, which is what pvCrashReportDumpException does, so that
 // the identifier and the printed stack are always about the same frames.
-function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddress:TpvPointer=nil):String;
+//
+// An address handed in does not replace the frames which were captured at the
+// raise, it is put in front of them: a caller who knows where the crash was and
+// says so should not end up with a shorter identifier than one who said
+// nothing. Only frames handed in replace captured frames, since those are two
+// answers to the same question.
+//
+// aAddressIsReturnAddress, as in pvCrashReportDumpException, says which kind of
+// address aAddress is, because that decides whether the name is looked up one
+// byte earlier.
+function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddress:TpvPointer=nil;const aAddressIsReturnAddress:Boolean=false):String;
 
 // Formats the processor state of the last fault of a thread. Empty when that
 // thread had none, and empty on a platform which does not hand one over.
@@ -292,7 +316,7 @@ function pvCrashReportContext(const aThreadID:TpvUInt64=0):String;
 // but a shipping path which has to remember four of them is a shipping path
 // which will be missing one of them, and it is the report from a player which
 // then turns out to be missing it.
-function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0):String;
+function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0;const aAddressIsReturnAddress:Boolean=false):String;
 
 procedure pvCrashReportInstall;
 
@@ -1465,11 +1489,12 @@ begin
  end;
 end;
 
-function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer):String;
+function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddressIsReturnAddress:Boolean):String;
 var Fingerprint:String;
-{$ifdef fpc}
-    Index,FrameCount:TpvInt32;
+    Index:TpvInt32;
     Frames:PPointer;
+{$ifdef fpc}
+    FrameCount:TpvInt32;
 {$else}
     StackTrace:String;
 {$endif}
@@ -1502,27 +1527,48 @@ begin
   end;
  end;
 {$else}
- if assigned(aException) then begin
-  StackTrace:=aException.StackTrace;
- end else begin
-  StackTrace:='';
+ // What was handed in comes first, exactly as it does under FreePascal and
+ // exactly as the identifier below reads it. An address does not replace the
+ // captured stack, it stands in front of it; frames do replace it, since they
+ // are another answer to the same question.
+ if assigned(aAddress) then begin
+  result:=result+'  '+pvCrashReportFormatAddress(aAddress,aAddressIsReturnAddress)+LineEnding;
  end;
- if length(StackTrace)>0 then begin
-  result:=result+StackTrace;
-  if StackTrace[length(StackTrace)]<>#10 then begin
-   result:=result+LineEnding;
+ if assigned(aFrames) and (aFrameCount>0) then begin
+  Frames:=aFrames;
+  for Index:=0 to aFrameCount-1 do begin
+   // The value in the slot, not the slot.
+   result:=result+'  '+pvCrashReportFormatAddress(Frames^)+LineEnding;
+   inc(Frames);
   end;
  end else begin
-  // No stack was captured at the raise point, so this is the stack of the
-  // handler rather than of the raise. Say so, instead of quietly pretending
-  // otherwise.
-  result:=result+'No stack trace was captured at the raise point, showing the handler stack instead:'+LineEnding+
-                 pvCrashReportCaptureStackTrace(2);
+  if assigned(aException) then begin
+   StackTrace:=aException.StackTrace;
+  end else begin
+   StackTrace:='';
+  end;
+  if length(StackTrace)>0 then begin
+   // The stack which was captured at the raise. Where the hooks are the ones of
+   // this unit, these are the very addresses the identifier below is built
+   // from. Where they belong to another tool, this is that tool's text and the
+   // identifier falls back to the recorded raise address, which is then the
+   // only thing both sides can agree on.
+   result:=result+StackTrace;
+   if StackTrace[length(StackTrace)]<>#10 then begin
+    result:=result+LineEnding;
+   end;
+  end else if not assigned(aAddress) then begin
+   // No stack was captured at the raise point, so this is the stack of the
+   // handler rather than of the raise. Say so, instead of quietly pretending
+   // otherwise.
+   result:=result+'No stack trace was captured at the raise point, showing the handler stack instead:'+LineEnding+
+                  pvCrashReportCaptureStackTrace(2);
+  end;
  end;
 {$endif}
  // The same addresses the stack above was printed from, so that the two cannot
  // describe different frames.
- Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress);
+ Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress,aAddressIsReturnAddress);
  if length(Fingerprint)>0 then begin
   result:=result+'Crash fingerprint: '+Fingerprint+LineEnding;
  end;
@@ -1945,7 +1991,7 @@ end;
 {$endif}
 {$ifend}
 
-function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddress:TpvPointer):String;
+function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddress:TpvPointer;const aAddressIsReturnAddress:Boolean):String;
 var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
     // Whether each of them sits behind its call rather than on it, which decides
     // where the name is looked up. It used to be worked out from the position:
@@ -1999,6 +2045,11 @@ begin
  // fingerprint of that same report.
  if assigned(aAddress) then begin
   Addresses[Count]:=aAddress;
+  // Said by the caller, because only the caller knows. A raise address from
+  // Delphi is the one behind the raise, the one FreePascal reports and the one
+  // a hardware fault reports are the instruction itself, and both kinds turn up
+  // on both compilers.
+  ReturnAddresses[Count]:=aAddressIsReturnAddress;
   inc(Count);
  end;
  Frames:=aFrames;
@@ -2006,6 +2057,8 @@ begin
 {$ifdef fpc}
  if (Count=0) and assigned(ExceptAddr) then begin
   Addresses[Count]:=ExceptAddr;
+  // The address of the raise statement itself on this compiler.
+  ReturnAddresses[Count]:=false;
   inc(Count);
  end;
  if not (assigned(Frames) and (FrameCount>0)) then begin
@@ -2030,9 +2083,14 @@ begin
  // are the ones installed here: where somebody else owns them their block has a
  // layout of its own and reading it would be a guess.
  //
- // Only when nothing was handed in, the same way the frames of the exception
- // are only used under FreePascal when nothing was handed in.
- if (Count=0) and assigned(aException) and CrashReportStackInfoProcsAreOurs then begin
+ // Only when no frames were handed in, the same way the frames of the exception
+ // are only used under FreePascal when none were handed in. An address alone
+ // does not turn this off: it is where the crash was, the block is how it got
+ // there, and a caller who says the first should not thereby lose the second.
+ // Asking for Count=0 here did exactly that, so naming the crash site made the
+ // identifier of that crash less specific than saying nothing.
+ if not (assigned(aFrames) and (aFrameCount>0)) and
+    assigned(aException) and CrashReportStackInfoProcsAreOurs then begin
   StackInfo:=PpvCrashReportStackInfo(aException.StackInfo);
   if assigned(StackInfo) then begin
    for Index:=0 to StackInfo^.Count-1 do begin
@@ -2583,9 +2641,15 @@ begin
   // there. Somebody else may have claimed the signal in the meantime, and
   // restoring over them would leave them without the handler they installed.
   // Same reasoning as for the stack info hooks and for RaiseProc.
+  //
+  // Read with the address operator and not through it. sa_handler is a field of
+  // a procedural type, and on such a thing the address operator already yields
+  // what is stored rather than where it is stored, so a further dereference
+  // takes the first bytes of the handler for a pointer and matches nothing.
+  // Which meant this never put the signal back.
   FillChar(Current,SizeOf(SigActionRec),#0);
   if (FpSigAction(cCrashReportThreadSignal,nil,@Current)=0) and
-     (PPointer(@Current.sa_handler)^=TpvPointer(@CrashReportThreadSignalHandler)) then begin
+     (TpvPointer(@Current.sa_handler)=TpvPointer(@CrashReportThreadSignalHandler)) then begin
    FpSigAction(cCrashReportThreadSignal,@CrashReportOldThreadSignalAction,nil);
   end;
   CrashReportThreadSignalInstalled:=false;
@@ -2903,9 +2967,9 @@ begin
 
 end;
 
-function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aThreadID:TpvUInt64):String;
+function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aThreadID:TpvUInt64;const aAddressIsReturnAddress:Boolean):String;
 begin
- result:=pvCrashReportDumpException(aException,aAddress,aFrameCount,aFrames)+LineEnding+
+ result:=pvCrashReportDumpException(aException,aAddress,aFrameCount,aFrames,aAddressIsReturnAddress)+LineEnding+
          pvCrashReportContext(aThreadID);
 end;
 
@@ -3000,8 +3064,11 @@ begin
   CrashReportTLSIndex:=TpvUInt32($ffffffff);
  end;
 {$elseif defined(fpc)}
- // Same reasoning as above, only put back when nobody else has taken over.
- if PPointer(@System.RaiseProc)^=TpvPointer(@CrashReportRaiseProc) then begin
+ // Same reasoning as above, only put back when nobody else has taken over, and
+ // read the same way: the address operator on a procedural variable is already
+ // the reading. The dereference which used to be here made the comparison fail
+ // always, so this never gave the raise hook back either.
+ if TpvPointer(@System.RaiseProc)=TpvPointer(@CrashReportRaiseProc) then begin
   System.RaiseProc:=CrashReportOldRaiseProc;
  end;
  CrashReportOldRaiseProc:=nil;

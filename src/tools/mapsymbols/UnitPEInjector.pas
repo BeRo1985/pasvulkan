@@ -76,6 +76,17 @@ function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean
 // what it is about to do to the signature.
 function ImageIsSigned(const aFileName:String):Boolean;
 
+// The files this run was told to write. A name which is free on disk can still
+// be one of those, since those are not there yet precisely because they are
+// going to be written later, and a temporary name which comes out equal to one
+// of them means building something where something else is going to be put.
+//
+// Said once, by the program, before anything is built. It is one property of
+// one run rather than of any particular call, and every name this unit hands
+// out has to respect it, including the one the injector takes for itself, which
+// nobody outside it ever sees.
+procedure KeepFileNamesClear(const aFileNames:array of String);
+
 // A name beside a file for something which is being built there, which nothing
 // else holds and which this run takes for itself by creating it.
 //
@@ -94,18 +105,28 @@ function ImageIsSigned(const aFileName:String):Boolean;
 // on. There are readers which decide what a file is by its name.
 function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
 
-// The same for what is being set aside, which differs in that it is not created
-// here: it comes into being by something being renamed onto it, and a file
-// which is already there cannot be renamed onto.
-function FindFreeBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+// The same for what is being set aside. Taken by being created, like the one
+// above, so that two runs cannot pick the same one; what is renamed onto it
+// therefore has to be allowed to replace it, which is what RenameFileOver is
+// for.
+function AcquireBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
 
-// Whether two names lead to the same file, as far as that can be told without
-// opening them. Both are made absolute, and on windows the comparison ignores
-// case, since the file system does.
+// A rename which is allowed to take a name which is already held. Needed for
+// the one above and for nothing else: everywhere else a name which is taken is
+// a reason to stop rather than to overwrite.
+function RenameFileOver(const aFromFileName,aToFileName:String):Boolean;
+
+// Whether two names lead to the same file.
 //
-// It does not follow links, and it does not know that two different names on
-// two different network paths can be one file. It is a check against the
-// ordinary mistake, not against every way two names can meet.
+// Where both are there, the file system is asked: the volume and the file
+// number on windows, the device and the inode on unix. That answers it for two
+// names which no comparison of the names themselves could see through, a hard
+// link, a second mount of the same volume, an eight dot three spelling.
+//
+// Where at least one of them is not there yet, which is the ordinary case for
+// something about to be written, the names are compared instead: both made
+// absolute, and on windows without regard to case, since the file system is
+// without regard to it.
 function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
 
 // Puts the access rights of one file onto another.
@@ -122,6 +143,19 @@ function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
 // those has to run this before the step which sets them, the same as it has to
 // run it before signing.
 function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
+
+// Whether a file which cannot be given the rights of the one it replaces may
+// take its place anyway.
+//
+// Not by default: what goes under that name is either the finished thing or
+// what was already there, and a program which will not start is not the
+// finished thing. But whether rights can be carried over is a property of the
+// volume being written to and not of this program, and a build which writes to
+// an exfat stick one day and to an ext4 disk the next would otherwise need two
+// builds of this. So it is a switch of the run rather than of the build; the
+// define of the same meaning stays, for a build which is only ever going to see
+// the one kind of volume.
+var FileRightsAreOptional:Boolean={$ifdef PasVulkanMapSymbolsIgnoreFileRights}true{$else}false{$endif};
 
 // Puts a new file under a name which may already be taken, keeping whatever was
 // there under a name of its own until the run says which of the two it wants.
@@ -638,10 +672,35 @@ end;
 // line in this file means.
 const GENERIC_WRITE_ACCESS=TpvUInt32($40000000);
       CREATE_NEW_FILE=TpvUInt32(1);
+      OPEN_EXISTING_FILE=TpvUInt32(3);
       FILE_ATTRIBUTE_NORMAL_FLAG=TpvUInt32($00000080);
+      FILE_READ_ATTRIBUTES_ACCESS=TpvUInt32($00000080);
+      FILE_SHARE_ALL=TpvUInt32($00000007);
+      FILE_FLAG_BACKUP_SEMANTICS_FLAG=TpvUInt32($02000000);
+      MOVEFILE_REPLACE_EXISTING_FLAG=TpvUInt32($00000001);
       INVALID_FILE_HANDLE=THandle(-1);
+type TFileTime=record
+      LowDateTime:TpvUInt32;
+      HighDateTime:TpvUInt32;
+     end;
+     // What GetFileInformationByHandle fills in. The volume and the file number
+     // in it are what says whether two names are one file.
+     TByHandleFileInformation=record
+      FileAttributes:TpvUInt32;
+      CreationTime:TFileTime;
+      LastAccessTime:TFileTime;
+      LastWriteTime:TFileTime;
+      VolumeSerialNumber:TpvUInt32;
+      FileSizeHigh:TpvUInt32;
+      FileSizeLow:TpvUInt32;
+      NumberOfLinks:TpvUInt32;
+      FileIndexHigh:TpvUInt32;
+      FileIndexLow:TpvUInt32;
+     end;
 function CreateFileW(aFileName:PWideChar;aAccess,aShareMode:TpvUInt32;aSecurity:TpvPointer;aDisposition,aFlags:TpvUInt32;aTemplate:THandle):THandle; stdcall; external 'kernel32.dll' name 'CreateFileW';
 function CloseHandle(aHandle:THandle):LongBool; stdcall; external 'kernel32.dll' name 'CloseHandle';
+function GetFileInformationByHandle(aFile:THandle;var aInformation:TByHandleFileInformation):LongBool; stdcall; external 'kernel32.dll' name 'GetFileInformationByHandle';
+function MoveFileExW(aFromFileName,aToFileName:PWideChar;aFlags:TpvUInt32):LongBool; stdcall; external 'kernel32.dll' name 'MoveFileExW';
 {$endif}
 
 // Makes a file only if that name is free, and says whether it got it. The
@@ -690,10 +749,22 @@ begin
 {$endif}
 end;
 
+var FileNamesToKeepClear:array of String=nil;
+
+procedure KeepFileNamesClear(const aFileNames:array of String);
+var Index:TpvSizeInt;
+begin
+ SetLength(FileNamesToKeepClear,length(aFileNames));
+ for Index:=0 to length(aFileNames)-1 do begin
+  FileNamesToKeepClear[Index]:=aFileNames[Index];
+ end;
+end;
+
 function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
 const cMaximalAttempts=1000;
-var Attempt:TpvSizeInt;
+var Attempt,Index:TpvSizeInt;
     Extension,Candidate:String;
+    Wanted:Boolean;
 begin
  result:=false;
  aFileName:='';
@@ -705,6 +776,18 @@ begin
   end else begin
    Candidate:=ChangeFileExt(aBaseFileName,'.'+aTag+'-'+IntToStr(Attempt+1)+Extension);
   end;
+  // A name which somebody asked this run to write is not free, however free it
+  // looks: it is not there yet because it is going to be written later.
+  Wanted:=false;
+  for Index:=0 to length(FileNamesToKeepClear)-1 do begin
+   if SameFileName(Candidate,FileNamesToKeepClear[Index]) then begin
+    Wanted:=true;
+    break;
+   end;
+  end;
+  if Wanted then begin
+   continue;
+  end;
   if CreateFileExclusively(Candidate) then begin
    aFileName:=Candidate;
    result:=true;
@@ -714,7 +797,7 @@ begin
  aMessage:='There is no free name beside '+aBaseFileName+' to build anything in.';
 end;
 
-function FindFreeBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+function AcquireBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
 const cMaximalAttempts=1000;
 var Attempt:TpvSizeInt;
     Candidate:String;
@@ -728,7 +811,10 @@ begin
   end else begin
    Candidate:=aBaseFileName+'.mapsymbols-old-'+IntToStr(Attempt+1);
   end;
-  if not FileExists(Candidate) then begin
+  // Created rather than only asked about. Asking and then using the answer
+  // leaves a gap in which a second run asks the same question and gets the same
+  // answer, and then one of the two puts its file where the other one's is.
+  if CreateFileExclusively(Candidate) then begin
    aFileName:=Candidate;
    result:=true;
    exit;
@@ -737,17 +823,84 @@ begin
  aMessage:='There is no free name beside '+aBaseFileName+' to set it aside under.';
 end;
 
+function RenameFileOver(const aFromFileName,aToFileName:String):Boolean;
+begin
+{$ifdef Windows}
+ result:=MoveFileExW(PWideChar(WideString(aFromFileName)),PWideChar(WideString(aToFileName)),MOVEFILE_REPLACE_EXISTING_FLAG);
+{$else}
+ // Everywhere else the plain rename already replaces what is there, which is
+ // what rename itself is defined to do.
+ result:=RenameFile(aFromFileName,aToFileName);
+{$endif}
+end;
+
+// Whether two names which both lead to a file lead to the same one, asked of the
+// file system rather than of the names.
+function SameExistingFile(const aLeftFileName,aRightFileName:String;out aAnswered:Boolean):Boolean;
+{$ifdef Unix}
+var Left,Right:stat;
+{$endif}
+{$ifdef Windows}
+var LeftHandle,RightHandle:THandle;
+    Left,Right:TByHandleFileInformation;
+{$endif}
+begin
+ result:=false;
+ aAnswered:=false;
+{$ifdef Unix}
+ if (FpStat(aLeftFileName,Left)=0) and (FpStat(aRightFileName,Right)=0) then begin
+  aAnswered:=true;
+  result:=(Left.st_dev=Right.st_dev) and (Left.st_ino=Right.st_ino);
+ end;
+{$endif}
+{$ifdef Windows}
+ LeftHandle:=CreateFileW(PWideChar(WideString(aLeftFileName)),FILE_READ_ATTRIBUTES_ACCESS,FILE_SHARE_ALL,nil,
+                         OPEN_EXISTING_FILE,FILE_FLAG_BACKUP_SEMANTICS_FLAG,0);
+ if LeftHandle=INVALID_FILE_HANDLE then begin
+  exit;
+ end;
+ try
+  RightHandle:=CreateFileW(PWideChar(WideString(aRightFileName)),FILE_READ_ATTRIBUTES_ACCESS,FILE_SHARE_ALL,nil,
+                           OPEN_EXISTING_FILE,FILE_FLAG_BACKUP_SEMANTICS_FLAG,0);
+  if RightHandle=INVALID_FILE_HANDLE then begin
+   exit;
+  end;
+  try
+   FillChar(Left,SizeOf(TByHandleFileInformation),#0);
+   FillChar(Right,SizeOf(TByHandleFileInformation),#0);
+   if GetFileInformationByHandle(LeftHandle,Left) and GetFileInformationByHandle(RightHandle,Right) then begin
+    aAnswered:=true;
+    result:=(Left.VolumeSerialNumber=Right.VolumeSerialNumber) and
+            (Left.FileIndexHigh=Right.FileIndexHigh) and
+            (Left.FileIndexLow=Right.FileIndexLow);
+   end;
+  finally
+   CloseHandle(RightHandle);
+  end;
+ finally
+  CloseHandle(LeftHandle);
+ end;
+{$endif}
+end;
+
 function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
+var Answered:Boolean;
 begin
  if (length(aLeftFileName)=0) or (length(aRightFileName)=0) then begin
   result:=false;
- end else begin
-{$ifdef Windows}
-  result:=SameText(ExpandFileName(aLeftFileName),ExpandFileName(aRightFileName));
-{$else}
-  result:=ExpandFileName(aLeftFileName)=ExpandFileName(aRightFileName);
-{$endif}
+  exit;
  end;
+ // The file system first, where it can answer. Two names can be one file
+ // without looking anything like each other.
+ result:=SameExistingFile(aLeftFileName,aRightFileName,Answered);
+ if Answered then begin
+  exit;
+ end;
+{$ifdef Windows}
+ result:=SameText(ExpandFileName(aLeftFileName),ExpandFileName(aRightFileName));
+{$else}
+ result:=ExpandFileName(aLeftFileName)=ExpandFileName(aRightFileName);
+{$endif}
 end;
 
 function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
@@ -817,24 +970,26 @@ begin
  // the finished thing or the file which was already there, and a program which
  // will not start is not the finished thing. The original is untouched at this
  // point, so refusing here costs nothing but the run.
-{$ifndef PasVulkanMapSymbolsIgnoreFileRights}
- if not CopyFileRights(aFileName,aReplacementFileName) then begin
+ if not (CopyFileRights(aFileName,aReplacementFileName) or FileRightsAreOptional) then begin
   aMessage:='The access rights of '+aFileName+' could not be carried over, so it was left alone.';
   exit;
  end;
-{$else}
- // What this did before, for a file system which has no rights to carry over
- // and answers every such question with no.
- CopyFileRights(aFileName,aReplacementFileName);
-{$endif}
- // A free name, rather than a fixed one which is cleared out first. What sits
- // under the fixed one may be the last copy of an earlier run which could not
- // put things back, and that is the file to delete last, not first.
- if not FindFreeBackupName(aFileName,BackupName,Reason) then begin
+ // A free name, taken by being created, rather than a fixed one which is
+ // cleared out first. What sits under the fixed one may be the last copy of an
+ // earlier run which could not put things back, and that is the file to delete
+ // last, not first. Taking it by creating it also means a second run cannot
+ // pick the same one.
+ //
+ // Which is why the rename below has to be one which is allowed to replace: the
+ // name it goes to is held by the empty file just made.
+ if not AcquireBackupName(aFileName,BackupName,Reason) then begin
   aMessage:=Reason;
   exit;
  end;
- if not RenameFile(aFileName,BackupName) then begin
+ if not RenameFileOver(aFileName,BackupName) then begin
+  // The name was taken by creating an empty file under it, and nothing came to
+  // stand in its place, so it goes again.
+  DeleteFile(BackupName);
   aMessage:='Could not set '+aFileName+' aside, so it was left alone.';
   exit;
  end;
@@ -880,20 +1035,18 @@ begin
   exit;
  end;
  if FileExists(aFinalFileName) then begin
-{$ifndef PasVulkanMapSymbolsIgnoreFileRights}
-  if not CopyFileRights(aFinalFileName,aNewFileName) then begin
+  if not (CopyFileRights(aFinalFileName,aNewFileName) or FileRightsAreOptional) then begin
    aMessage:='The access rights of '+aFinalFileName+' could not be carried over, so it was left alone.';
    exit;
   end;
-{$else}
-  CopyFileRights(aFinalFileName,aNewFileName);
-{$endif}
-  if not FindFreeBackupName(aFinalFileName,aBackupFileName,Reason) then begin
+  if not AcquireBackupName(aFinalFileName,aBackupFileName,Reason) then begin
    aBackupFileName:='';
    aMessage:=Reason;
    exit;
   end;
-  if not RenameFile(aFinalFileName,aBackupFileName) then begin
+  if not RenameFileOver(aFinalFileName,aBackupFileName) then begin
+   // The same here: an empty file under a name which is not going to be used.
+   DeleteFile(aBackupFileName);
    aBackupFileName:='';
    aMessage:='Could not set '+aFinalFileName+' aside, so it was left alone.';
    exit;

@@ -657,6 +657,14 @@ begin
   end;
   Target:=FpReadLink(aResolvedFileName);
   if length(Target)=0 then begin
+   // A link which is there and cannot be read. On the first turn nothing has
+   // been resolved yet and leaving quietly would be right, but from the second
+   // on the name which is being held is itself a link, since that is the only
+   // way the loop got here, and reporting success would hand the caller a link
+   // to work on. Which is the one thing this exists to prevent.
+   aFailure:=aFileName+' is a symbolic link which could not be read.';
+   aResolvedFileName:=aFileName;
+   result:=false;
    exit;
   end;
   // A link may name its target relative to the directory the link sits in,
@@ -720,6 +728,44 @@ begin
   result:=true;
  end;
 {$endif}
+end;
+
+// Whether any two of the files a run reads or writes are one file.
+//
+// Two names for one file among them costs that file. Everything written here is
+// built beside its name and then put under it, and the names it is built beside
+// are worked out from the names given, so two which mean the same file means one
+// piece of work being built on top of another and put in place as if it were the
+// other. Saying --gdb game.exe used to end with the debug file under the name of
+// the program, the program gone, and the copy which could have put it back
+// thrown away as part of the same step.
+//
+// Every pair, and the inputs among themselves as well: a map file which is the
+// executable is not going to end well either, and there is no reason to find
+// that out halfway through parsing it.
+//
+// aLabels says what each name is for, so that the message names the two things
+// which collided rather than only stating that two of them did.
+function FilesCollide(const aFileNames,aLabels:array of String;out aMessage:String):Boolean;
+var Left,Right:TpvSizeInt;
+begin
+ result:=false;
+ aMessage:='';
+ for Left:=0 to length(aFileNames)-2 do begin
+  if length(aFileNames[Left])=0 then begin
+   continue;
+  end;
+  for Right:=Left+1 to length(aFileNames)-1 do begin
+   if length(aFileNames[Right])=0 then begin
+    continue;
+   end;
+   if SameFileName(aFileNames[Left],aFileNames[Right]) then begin
+    aMessage:=aLabels[Left]+' and '+aLabels[Right]+' are the same file, '+aFileNames[Left]+'.';
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
 end;
 
 // A copy of a file, which is where everything is written before any of it takes
@@ -1751,7 +1797,7 @@ var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:Stri
     // reader which checks it finds it by the name the executable gives. So it
     // goes under that name straight away and whatever was there is kept, until
     // the run knows whether it wants the new one or the old one back.
-    PDBWorkFileName,PDBBackupFileName,StageMessage,CheckSumMessage:String;
+    PDBWorkFileName,PDBBackupFileName,StageMessage,CheckSumMessage,CollisionMessage:String;
     // The same for the separate debug file, which is decided on its own rather
     // than together with the executable: it describes the executable but
     // nothing about the executable points at it, so it is put in place as soon
@@ -1826,6 +1872,8 @@ begin
   end else if (Parameter='--pdb') and (ParameterIndex<=ParamCount) then begin
    PDBOutputFileName:=ParamStr(ParameterIndex);
    inc(ParameterIndex);
+  end else if Parameter='--any-rights' then begin
+   FileRightsAreOptional:=true;
   end else if Parameter='--pe-debug' then begin
    InjectIntoExecutable:=true;
   end else if (Parameter='--gdb') and (ParameterIndex<=ParamCount) then begin
@@ -1864,6 +1912,11 @@ begin
   WriteLn('                 ELF debug file, which addr2line, gdb and everything else');
   WriteLn('                 built on DWARF can read, also for a Delphi build');
   WriteLn('  --pdb <file>   additionally write a PDB, for the Microsoft debuggers');
+  WriteLn('  --any-rights   go ahead even when the access rights of the executable');
+  WriteLn('                 cannot be given to the file which replaces it. Without');
+  WriteLn('                 this such a run stops and leaves the executable alone,');
+  WriteLn('                 since a program which will not start is not a result. For');
+  WriteLn('                 a volume which has no such rights to begin with');
   WriteLn('  --pe-debug     put those DWARF sections into the executable itself, so');
   WriteLn('                 that no separate file is needed. Needs room in the section');
   WriteLn('                 header table and says so when there is none');
@@ -1937,30 +1990,24 @@ begin
    end;
   end;
 
-  // Two names for one file among what this run was told to write is a mistake
-  // which costs the file. Everything written here is built beside its name and
-  // then put under it, and those names are worked out from the names given, so
-  // two of them which mean the same file means one piece of work being built on
-  // top of another and then put in place as if it were the other.
-  //
-  // Saying --gdb game.exe used to end with the debug file under the name of the
-  // program and the program gone: the copy which was going to become the
-  // executable and the file the debug information was written to were the same
-  // name, so the debug file was put where the program was, and the copy of the
-  // program which could have put it back was thrown away as part of that.
-  //
-  // Asked before anything is opened, and every pair of them, since any two of
-  // these overwriting each other is the same kind of loss.
-  if SameFileName(PDBOutputFileName,ExecutableFileName) or
-     SameFileName(DebugOutputFileName,ExecutableFileName) or
-     SameFileName(PDBOutputFileName,DebugOutputFileName) or
-     SameFileName(PDBOutputFileName,MapFileName) or
-     SameFileName(DebugOutputFileName,MapFileName) then begin
-   WriteLn('Error: two of the files this run was given are the same file.');
-   WriteLn('The executable, the map file, the pdb and the debug file each have to be a file of their own, since what is written into one would otherwise take the place of another.');
+  // Asked before anything is opened, of the names this run was given. Asked
+  // again further down of the files it turned out to actually read, because two
+  // of those are not named on the command line at all: the map file which is
+  // found beside the executable when none was named, and the debug file a
+  // .gnu_debuglink points at.
+  if FilesCollide([ExecutableFileName,MapFileName,PDBOutputFileName,DebugOutputFileName],
+                  ['the executable','the map file','the pdb','the debug file to write'],
+                  CollisionMessage) then begin
+   WriteLn('Error: ',CollisionMessage);
+   WriteLn('Each of them has to be a file of its own, since what is written into one would otherwise take the place of another.');
    ExitCode:=1;
    exit;
   end;
+
+  // What this run is going to write, so that no name it picks for itself to
+  // build in can turn out to be one of them. Those files are not there yet,
+  // which is exactly why looking at the disk does not answer it.
+  KeepFileNamesClear([ExecutableFileName,PDBOutputFileName,DebugOutputFileName]);
 
   Image:=TImageFile.Create;
   if not Image.Open(ExecutableFileName) then begin
@@ -2230,6 +2277,51 @@ begin
    WriteLn(ExecutableFileName,' already carries debug sections of its own, so none are put into it.');
    WriteLn('The appended symbol table is written as usual.');
    InjectIntoExecutable:=false;
+  end;
+
+  // And the same question again, now that it is known which files were really
+  // read. Two of them were not named on the command line: a map file is looked
+  // for beside the executable when none was given, and a .gnu_debuglink names a
+  // debug file which is opened without anybody having asked for it here.
+  //
+  // Both are ordinary things to write over by accident. A build which says
+  // --gdb program.dbg on a stripped executable whose debug link points at
+  // program.dbg has just read the compiler's own debug file, with its types and
+  // its scopes and its variables, and is about to put this tool's much smaller
+  // one in its place. That the run read it first only means the run finishes;
+  // the file is gone either way.
+  //
+  // The names are resolved through links first, since two names for one file is
+  // the question being asked and a link is one way for that to happen.
+  if length(MapFileName)>0 then begin
+   if ResolveSymbolicLink(MapFileName,ResolvedFileName,ResolveFailure) then begin
+    MapFileName:=ResolvedFileName;
+   end else if length(ResolveFailure)>0 then begin
+    // A name which leads to a link which cannot be followed. The file behind it
+    // was read a moment ago, so this is not about reading it; it is about not
+    // being able to tell whether it is one of the files about to be written.
+    WriteLn('Error: ',ResolveFailure);
+    ExitCode:=1;
+    exit;
+   end;
+  end;
+  if length(DebugFileName)>0 then begin
+   if ResolveSymbolicLink(DebugFileName,ResolvedFileName,ResolveFailure) then begin
+    DebugFileName:=ResolvedFileName;
+   end else if length(ResolveFailure)>0 then begin
+    WriteLn('Error: ',ResolveFailure);
+    ExitCode:=1;
+    exit;
+   end;
+  end;
+  if FilesCollide([ExecutableFileName,MapFileName,DebugFileName,PDBOutputFileName,DebugOutputFileName],
+                  ['the executable','the map file which was read','the debug file which was read','the pdb','the debug file to write'],
+                  CollisionMessage) then begin
+   WriteLn('Error: ',CollisionMessage);
+   WriteLn('What was read cannot be what is written, since the run would then replace the description it was built from.');
+   ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
+   ExitCode:=1;
+   exit;
   end;
 
   // Everything from here on is written to a copy, and the copy takes the place
