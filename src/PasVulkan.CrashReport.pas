@@ -222,6 +222,16 @@ type
      // Not said is answered rather than assumed: the ring buffer wrote down
      // which kind it was at the moment it recorded the crash, and where it has
      // nothing to say the convention of the compiler decides.
+     //
+     // The three names are short and unprefixed because they are reached
+     // through the type, TpvCrashReportAddressKind.Return, which is how every
+     // other enumeration in this framework is written. That rests on scoped
+     // enumerations, which PasVulkan.inc turns on for everything which includes
+     // it, and it is said again here so that this file states what its own
+     // declaration depends on rather than leaving it to be found two files
+     // away. Without it these three would be plain global identifiers in every
+     // unit which uses this one.
+{$scopedenums on}
      TpvCrashReportAddressKind=
       (
        Unknown,
@@ -1517,6 +1527,64 @@ end;
 // than a rule of thumb. Only when it has nothing does the convention of the
 // compiler decide, which is the same convention the recording side follows:
 // Delphi hands over the address behind the raise, FreePascal the raise itself.
+// The newest raise or fault a thread recorded, which is where its crash was.
+//
+// Written down by the vectored handler and by the raise hook, whoever owns the
+// hooks of the runtime, so this is the one source of a crash address which is
+// there when somebody else owns them, and the one which can be asked about a
+// thread other than the one asking.
+//
+// Zero is the calling thread. A logger thread writing the report of another has
+// to say whose crash it wants, otherwise it finds its own newest exception and
+// the whole report describes the wrong thing.
+function CrashReportNewestRecordedAddress(const aThreadID:TpvUInt64;out aRecorded:TpvPointer;out aRecordedIsReturnAddress:Boolean):Boolean;
+var Snapshot:TpvCrashReportEntry;
+    Entry:PpvCrashReportEntry;
+    Newest,Wanted:TpvUInt32;
+    WantedThreadID:TpvUInt64;
+    Scan,ScanCount:TpvInt32;
+begin
+ result:=false;
+ aRecorded:=nil;
+ aRecordedIsReturnAddress:=false;
+ if TpvUInt32(CrashReportSequence)=0 then begin
+  exit;
+ end;
+ Newest:=TpvUInt32(CrashReportSequence);
+ ScanCount:=pvCrashReportRingBufferSize;
+ if TpvUInt32(ScanCount)>Newest then begin
+  ScanCount:=TpvInt32(Newest);
+ end;
+ if aThreadID=0 then begin
+  WantedThreadID:=CrashReportCurrentThreadID;
+ end else begin
+  WantedThreadID:=aThreadID;
+ end;
+ // Taken as a copy and rechecked afterwards, since the slot can be taken over
+ // while it is being read. The same dance as everywhere else in here.
+ for Scan:=0 to ScanCount-1 do begin
+  Wanted:=Newest-TpvUInt32(Scan);
+  Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
+  if Entry^.Sequence<>Wanted then begin
+   continue;
+  end;
+  CrashReportReadBarrier;
+  Snapshot:=Entry^;
+  CrashReportReadBarrier;
+  if (Entry^.Sequence=Wanted) and
+     (Snapshot.ThreadID=WantedThreadID) and
+     assigned(Snapshot.Address) and
+     ((Snapshot.Kind=pvCrashReportKindRaise) or (Snapshot.Kind=pvCrashReportKindFault)) then begin
+   aRecorded:=Snapshot.Address;
+   // Which kind of address it is was written down when it was recorded, because
+   // only there was it known.
+   aRecordedIsReturnAddress:=(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0;
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
 function CrashReportAddressKindIsReturn(const aAddress:TpvPointer;const aKind:TpvCrashReportAddressKind;const aThreadID:TpvUInt64):Boolean;
 var Snapshot:TpvCrashReportEntry;
     Entry:PpvCrashReportEntry;
@@ -1744,7 +1812,16 @@ var Fingerprint:String;
     // not go in twice in a row. Nothing is printed twice for the ordinary
     // reason that nothing crashed twice at one address in a row.
     Previous:TpvPointer;
+    // And of which kind it was, because the same number in the two kinds is two
+    // different frames and only two of the same kind can be one thing said
+    // twice. The identifier compares both; this used to compare only the
+    // number, so the two could end up describing different frames after all.
+    PreviousIsReturnAddress:Boolean;
     Have:Boolean;
+    // The crash address of the thread being reported on, where that thread is
+    // not the one asking and nothing was handed in.
+    RecordedAddress:TpvPointer;
+    RecordedIsReturnAddress:Boolean;
     // The text of that last line, for the one place where the thing which
     // follows is not a list of addresses but a block of text somebody else
     // formatted.
@@ -1769,13 +1846,14 @@ var Fingerprint:String;
  begin
   if AtBoundary then begin
    AtBoundary:=false;
-   if Have and (Previous=aValue) then begin
+   if Have and (Previous=aValue) and (PreviousIsReturnAddress=aValueIsReturnAddress) then begin
     exit;
    end;
   end;
   LastLine:=CrashReportStackLine(aValue,aValueIsReturnAddress);
   result:=result+LastLine+LineEnding;
   Previous:=aValue;
+  PreviousIsReturnAddress:=aValueIsReturnAddress;
   Have:=true;
  end;
 
@@ -1786,10 +1864,20 @@ begin
                  'Message: '+aException.Message+LineEnding;
  end;
  Previous:=nil;
+ PreviousIsReturnAddress:=false;
  Have:=false;
  AtBoundary:=false;
  LastLine:='';
  UseLocalExceptState:=(aThreadID=0) or (aThreadID=CrashReportCurrentThreadID);
+ // Where the report is about another thread and nothing was handed in, the one
+ // thing which is known about that thread is what it recorded when it crashed.
+ // Without this the stack of such a report is empty, or worse, the stack of the
+ // thread which is writing it.
+ RecordedAddress:=nil;
+ RecordedIsReturnAddress:=false;
+ if (not assigned(aAddress)) and not UseLocalExceptState then begin
+  CrashReportNewestRecordedAddress(aThreadID,RecordedAddress,RecordedIsReturnAddress);
+ end;
  // Once, and then handed on as a decided fact rather than as the question
  // again. The ring is written into while a report is being written, so asking
  // the same question twice can get two answers, and the line above and the
@@ -1820,6 +1908,8 @@ begin
   // The address of the raise statement itself on this compiler, not the one
   // behind it.
   AddAddress(ExceptAddr,false);
+ end else if assigned(RecordedAddress) then begin
+  AddAddress(RecordedAddress,RecordedIsReturnAddress);
  end;
  // What follows is the list, so the one place where a repeat can be an artifact
  // is the step into it.
@@ -1855,6 +1945,10 @@ begin
  // are another answer to the same question.
  if assigned(aAddress) then begin
   AddAddress(aAddress,AddressIsReturnAddress);
+ end else if assigned(RecordedAddress) then begin
+  // The crash of the thread this report is about, for a report which was
+  // written by another thread and given nothing else to go on.
+  AddAddress(RecordedAddress,RecordedIsReturnAddress);
  end;
  AtBoundary:=true;
  if assigned(aFrames) and (aFrameCount>0) then begin
@@ -1885,7 +1979,12 @@ begin
    // The comparison is of text rather than of addresses, because that is all
    // there is here: what comes back is one formatted block. It holds because
    // both lines come out of CrashReportStackLine.
-   if AtBoundary and Have then begin
+   // Only where the two could be the same frame at all. What comes back here
+   // holds return addresses throughout, so a line which was written for an
+   // instruction address is not the same frame however alike the two read, and
+   // where nothing could be resolved they read exactly alike: a module and an
+   // offset say nothing about which of the two kinds this was.
+   if AtBoundary and Have and PreviousIsReturnAddress then begin
     AtBoundary:=false;
     Position:=Pos(#10,StackTrace);
     if Position>0 then begin
@@ -1910,10 +2009,17 @@ begin
    if StackTrace[length(StackTrace)]<>#10 then begin
     result:=result+LineEnding;
    end;
-  end else if not assigned(aAddress) then begin
+  end else if (not assigned(aAddress)) and (not assigned(RecordedAddress)) and UseLocalExceptState then begin
    // No stack was captured at the raise point, so this is the stack of the
    // handler rather than of the raise. Say so, instead of quietly pretending
    // otherwise.
+   //
+   // And only where the handler is on the thread being reported on. A logger
+   // thread writing somebody else's report would otherwise walk its own stack
+   // and print it under a line which calls it the handler stack, which is the
+   // same mistake the exception state of the runtime made one branch above:
+   // complete, and completely about the wrong thread. What that report gets
+   // instead is the crash address of the right one, or nothing.
    result:=result+'No stack trace was captured at the raise point, showing the handler stack instead:'+LineEnding+
                   pvCrashReportCaptureStackTrace(2);
   end;
@@ -2419,60 +2525,6 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
   inc(Count);
  end;
 
- // The newest raise or fault this thread recorded, which is where the crash
- // was. Written down by the vectored handler and by the raise hook, whoever
- // owns the hooks of the runtime.
- function NewestRecordedAddress(out aRecorded:TpvPointer;out aRecordedIsReturnAddress:Boolean):Boolean;
- var Snapshot:TpvCrashReportEntry;
-     Entry:PpvCrashReportEntry;
-     Newest,Wanted:TpvUInt32;
-     OwnThreadID:TpvUInt64;
-     Scan,ScanCount:TpvInt32;
- begin
-  result:=false;
-  aRecorded:=nil;
-  aRecordedIsReturnAddress:=false;
-  if TpvUInt32(CrashReportSequence)=0 then begin
-   exit;
-  end;
-  Newest:=TpvUInt32(CrashReportSequence);
-  ScanCount:=pvCrashReportRingBufferSize;
-  if TpvUInt32(ScanCount)>Newest then begin
-   ScanCount:=TpvInt32(Newest);
-  end;
-  // Whose crash this is. A logger thread writing the report of another thread
-  // has to say so, otherwise this finds the newest exception of the logger and
-  // the identifier describes the wrong crash entirely. The registers already
-  // took the same argument for the same reason.
-  if aThreadID=0 then begin
-   OwnThreadID:=CrashReportCurrentThreadID;
-  end else begin
-   OwnThreadID:=aThreadID;
-  end;
-  // Taken as a copy and rechecked afterwards, since the slot can be taken over
-  // while it is being read. The same dance as everywhere else in here.
-  for Scan:=0 to ScanCount-1 do begin
-   Wanted:=Newest-TpvUInt32(Scan);
-   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
-   if Entry^.Sequence<>Wanted then begin
-    continue;
-   end;
-   CrashReportReadBarrier;
-   Snapshot:=Entry^;
-   CrashReportReadBarrier;
-   if (Entry^.Sequence=Wanted) and
-      (Snapshot.ThreadID=OwnThreadID) and
-      assigned(Snapshot.Address) and
-      ((Snapshot.Kind=pvCrashReportKindRaise) or (Snapshot.Kind=pvCrashReportKindFault)) then begin
-    aRecorded:=Snapshot.Address;
-    // Which kind of address it is was written down when it was recorded,
-    // because only there was it known.
-    aRecordedIsReturnAddress:=(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0;
-    result:=true;
-    exit;
-   end;
-  end;
- end;
 
  // Throws away what stands between the report and the crash.
  //
@@ -2684,7 +2736,7 @@ begin
   // The recorded one, which is the only one of the three which is there when
   // somebody else owns the hooks of the runtime, and the only one which belongs
   // to another thread when another thread is being reported on.
-  NewestRecordedAddress(RaiseAddress,RaiseIsReturnAddress);
+  CrashReportNewestRecordedAddress(aThreadID,RaiseAddress,RaiseIsReturnAddress);
  end;
 
  // And now the list begins where the crash is: trimmed back to it where it is
