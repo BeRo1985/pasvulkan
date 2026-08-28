@@ -24,6 +24,11 @@ program mapsymbols;
 // next to the executable.
 
 uses SysUtils,
+{$ifdef Unix}
+     // For finding out whether the name a run was given is a symbolic link,
+     // which nothing in the portable part of the library answers.
+     BaseUnix,
+{$endif}
      Classes,
      PasVulkan.Types,
      PasVulkan.SymbolTable,
@@ -585,6 +590,54 @@ begin
 end;
 {$endif}
 
+// Follows a symbolic link to the file it really names.
+//
+// It matters because of how the executable is replaced at the end: what was
+// there is renamed out of the way and the new file takes its name. Done to a
+// link, that leaves a real file where the link was, the link is gone, and a
+// layout which had one name pointing at the build of the day has quietly become
+// two unrelated files. The one being read was the target all along, since
+// reading a link reads through it, so the one being written has to be the
+// target as well.
+//
+// Refusing links outright would be the other defensible answer. Following them
+// is the one which keeps working for whoever set the link up, and it is said
+// out loud rather than done quietly.
+function ResolveSymbolicLink(const aFileName:String;out aResolvedFileName:String):Boolean;
+{$ifdef Unix}
+var Information:stat;
+    Target,Directory:String;
+    Steps:TpvSizeInt;
+{$endif}
+begin
+ aResolvedFileName:=aFileName;
+ result:=false;
+{$ifdef Unix}
+ Steps:=0;
+ // A link may point at a link. Bounded, because it may also point at itself.
+ while Steps<32 do begin
+  if (FpLStat(aResolvedFileName,Information)<>0) or not FpS_ISLNK(Information.st_mode) then begin
+   break;
+  end;
+  Target:=FpReadLink(aResolvedFileName);
+  if length(Target)=0 then begin
+   break;
+  end;
+  // A link may name its target relative to the directory the link sits in,
+  // which is not necessarily the directory this run was started in.
+  if Target[1]<>'/' then begin
+   Directory:=ExtractFilePath(ExpandFileName(aResolvedFileName));
+   if length(Directory)>0 then begin
+    Target:=IncludeTrailingPathDelimiter(Directory)+Target;
+   end;
+  end;
+  aResolvedFileName:=Target;
+  result:=true;
+  inc(Steps);
+ end;
+{$endif}
+end;
+
 // A copy of a file, which is where everything is written before any of it takes
 // the place of what was there.
 function CopyFileTo(const aFromFileName,aToFileName:String):Boolean;
@@ -613,13 +666,19 @@ begin
 end;
 
 // Says what a run which is giving up left behind. The executable is the thing
-// which matters, and it really is untouched wherever this is called, but a pdb
-// is written before the executable is asked to name it, so a plain claim that
-// nothing changed would be a lie about a file which is sitting right there.
+// which matters, and it really is untouched wherever this is called.
+//
+// The pdb used to be the exception: it is written before the executable can be
+// asked to name it, so a run which gave up afterwards left a file behind which
+// nothing pointed at, and the message said so because saying nothing would have
+// been a lie about a file sitting right there. It is now put under its name
+// with whatever was there kept beside it, and a run which ends this way puts
+// that back, so the claim holds again. Still mentioned, because a file which is
+// written and then unwritten is worth a word.
 procedure ReportUnchanged(const aExecutableFileName,aPDBFileName:String;const aPDBWritten:Boolean);
 begin
  if aPDBWritten and (length(aPDBFileName)>0) then begin
-  WriteLn(aExecutableFileName,' was not changed, but ',aPDBFileName,' was written and nothing points at it.');
+  WriteLn('Nothing was changed. ',aPDBFileName,' was written and is being put back the way it was.');
  end else begin
   WriteLn('Nothing was changed.');
  end;
@@ -1323,7 +1382,11 @@ end;
 
 // Emits everything which was collected a second time, as DWARF inside a
 // standalone ELF file. Nothing about the original executable changes.
-procedure WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
+//
+// Writes the file it is given and reads it back. Whether that file then takes
+// the name the run asked for is the caller's question, and it asks it by
+// looking at what this returns.
+function WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String):Boolean;
 var ELFWriter:TELFWriter;
     Index:TpvSizeInt;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
@@ -1335,6 +1398,8 @@ var ELFWriter:TELFWriter;
 {$endif}
     Have:Boolean;
 begin
+
+ result:=false;
 
  ELFWriter:=TELFWriter.Create;
  try
@@ -1496,12 +1561,10 @@ begin
   // built are exactly the ones which are quietly broken half a year later. A
   // swapped pair of fields in a symbol entry gives a file of the right length
   // full of nonsense, and this is what notices.
-  if not CheckDebugFile(aBuilder,aDWARFWriter,aImage,aFileName) then begin
+  result:=CheckDebugFile(aBuilder,aDWARFWriter,aImage,aFileName);
+  if not result then begin
    ExitCode:=1;
   end;
-
-  WriteLn('Wrote ',aFileName,' with ',aDWARFWriter.DebugLine.Size,' bytes of line programs and ',
-          aDWARFWriter.DebugInfo.Size,' bytes of compile units.');
 
  finally
   FreeAndNil(ELFWriter);
@@ -1587,8 +1650,11 @@ begin
   PDBWriter.Machine:=aImage.Machine;
   aBuilder.ComputeDigest(Digest);
   PDBWriter.SetIdentity(Digest,1);
+  // Said by the caller rather than here, once the file is under the name it is
+  // supposed to have. This writes it beside that name, and announcing a file
+  // under a name it does not yet carry is a message which is not true when it
+  // is printed and may never become true.
   PDBWriter.SaveToFile(aFileName);
-  WriteLn('Wrote ',aFileName,'.');
  except
   FreeAndNil(result);
   raise;
@@ -1596,7 +1662,18 @@ begin
 end;
 
 var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:String;
-    WorkFileName,ReplaceMessage:String;
+    WorkFileName,ReplaceMessage,ResolvedFileName:String;
+    // The pdb cannot wait for the end the way the executable does, because the
+    // reader which checks it finds it by the name the executable gives. So it
+    // goes under that name straight away and whatever was there is kept, until
+    // the run knows whether it wants the new one or the old one back.
+    PDBWorkFileName,PDBBackupFileName,StageMessage,CheckSumMessage:String;
+    // The same for the separate debug file, which is decided on its own rather
+    // than together with the executable: it describes the executable but
+    // nothing about the executable points at it, so it is put in place as soon
+    // as it has been read back.
+    DebugWorkFileName,DebugBackupFileName:String;
+    PDBStaged:Boolean;
     OutputOk,BothRemain:Boolean;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
@@ -1618,7 +1695,7 @@ var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:Stri
     Collector:TCollector;
     Resolved,Probes:TpvSizeInt;
     DbgHelpResolved,DbgHelpProbes:TpvSizeInt;
-    DbgHelpAvailable:Boolean;
+    DbgHelpAvailable,DbgHelpRefused:Boolean;
     UsedDWARF:Boolean;
     OwnDWARF:Boolean;
     ForeignDWARFInExecutable:Boolean;
@@ -1639,6 +1716,11 @@ begin
  // Empty until there is one, since the way out of here deletes whatever it
  // names and every way out passes through it, including the early ones.
  WorkFileName:='';
+ PDBWorkFileName:='';
+ PDBBackupFileName:='';
+ DebugWorkFileName:='';
+ DebugBackupFileName:='';
+ PDBStaged:=false;
  OutputOk:=false;
 
  ParameterIndex:=1;
@@ -1724,6 +1806,14 @@ begin
  MapReader:=nil;
  try
 
+  // Before anything is read, and long before anything is written, since what is
+  // written at the end takes the name this run was given.
+  if ResolveSymbolicLink(ExecutableFileName,ResolvedFileName) then begin
+   WriteLn(ExecutableFileName,' is a symbolic link to ',ResolvedFileName,'.');
+   WriteLn('That file is the one which is worked on, so the link stays a link and keeps pointing where it did.');
+   ExecutableFileName:=ResolvedFileName;
+  end;
+
   Image:=TImageFile.Create;
   if not Image.Open(ExecutableFileName) then begin
    WriteLn('Could not read ',ExecutableFileName,', is that a PE executable?');
@@ -1732,6 +1822,20 @@ begin
   end;
 
   WriteLn('Image base $',IntToHex(Image.ImageBase,16));
+
+  // A signature is taken over the file as it was signed, so anything written
+  // into that file makes it stop matching, and everything this tool does is
+  // written into that file. The injector turns such an image away outright, but
+  // a run which only appends the table never reaches the injector, and that run
+  // used to say nothing at all about what it was doing to the signature.
+  //
+  // Said rather than refused. Signing after this tool has run is the ordinary
+  // order of a build, and a run which is part of such a build would be stopped
+  // by a refusal for no reason.
+  if ImageIsSigned(ExecutableFileName) then begin
+   WriteLn('Note: this executable is signed, and everything written here is written into the file the signature was taken over.');
+   WriteLn('The signature will no longer match afterwards, so this has to run before the signing rather than after it.');
+  end;
 
   Builder:=TSymbolBuilder.Create;
   Builder.StripPaths:=StripPaths;
@@ -1992,7 +2096,12 @@ begin
   //
   // Now nothing is changed until everything holds. What is left behind on a
   // failure is a copy which is deleted, and the executable is the file it was.
-  WorkFileName:=ExecutableFileName+'.mapsymbols-work';
+  // The extension is kept, so the copy is still an .exe while it is being
+  // worked on. Not cosmetic: dbghelp is handed this file, and a reader which
+  // decides what a file is by its name has to keep deciding the same thing.
+  // Everything else about the run would carry on as if nothing had happened,
+  // with one line saying the check was skipped.
+  WorkFileName:=ChangeFileExt(ExecutableFileName,'.mapsymbols-work'+ExtractFileExt(ExecutableFileName));
   DeleteFile(WorkFileName);
   if not CopyFileTo(ExecutableFileName,WorkFileName) then begin
    WriteLn('Error: ',ExecutableFileName,' could not be copied to work on.');
@@ -2021,8 +2130,29 @@ begin
 
    // The pdb has to exist before the executable can name it, since the identity
    // in the debug directory has to be the one the pdb was written with.
+   //
+   // It is written beside its name and then put under it, keeping whatever was
+   // there. The executable can be left untouched until the very end because
+   // nothing has to read it under its real name in the meantime; the pdb cannot,
+   // because dbghelp looks for it by the name the executable gives, in the
+   // directory the executable is in. So the two are staged differently and
+   // decided together: a run which ends up not replacing the executable puts
+   // the old pdb back, since the pair which was there worked and the pair it
+   // would otherwise leave behind is an executable naming an identity which the
+   // pdb next to it no longer has.
    if length(PDBOutputFileName)>0 then begin
-    PDBWriter:=WritePDBFile(Builder,Image,PDBOutputFileName);
+    PDBWorkFileName:=ChangeFileExt(PDBOutputFileName,'.mapsymbols-work'+ExtractFileExt(PDBOutputFileName));
+    DeleteFile(PDBWorkFileName);
+    PDBWriter:=WritePDBFile(Builder,Image,PDBWorkFileName);
+    if not StageFileOver(PDBOutputFileName,PDBWorkFileName,PDBBackupFileName,StageMessage) then begin
+     WriteLn('Error: ',StageMessage);
+     ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
+     ExitCode:=1;
+     exit;
+    end;
+    PDBWorkFileName:='';
+    PDBStaged:=true;
+    WriteLn('Wrote ',PDBOutputFileName,'.');
    end;
 
    // Injection changes the size of the file, so it has to come first. The
@@ -2074,7 +2204,32 @@ begin
    // be worked out again over what it actually is. This has to come last: the
    // checksum covers the whole file, and everything before this was still
    // adding to it.
-   UpdateImageCheckSum(WorkFileName);
+   //
+   // Only asked of a PE, since only a PE has such a field. The function says so
+   // itself now, but a run on an ELF has no business asking a question about a
+   // header which is not there.
+   //
+   // The answer is looked at. False means there was a checksum and it could not
+   // be replaced, which is a file going out stating one which no longer
+   // describes it, and windows turns such a file away for anything which is
+   // loaded as a driver or early in the boot path. That was the one thing
+   // written here which nobody read the outcome of.
+   if Image.Format=iffPE then begin
+    if not UpdateImageCheckSum(WorkFileName) then begin
+     WriteLn('Error: the checksum in the header could not be worked out again.');
+     ExitCode:=1;
+     OutputOk:=false;
+    end else begin
+     // And read back out of the finished file by the code which computes it
+     // rather than by the code which wrote it, which is what everything else
+     // written here gets. Four bytes, but they are the four a loader compares.
+     if not VerifyImageCheckSum(WorkFileName,CheckSumMessage) then begin
+      WriteLn('Checksum check FAILED: ',CheckSumMessage);
+      ExitCode:=1;
+      OutputOk:=false;
+     end;
+    end;
+   end;
 
    if Builder.PackedTo>0 then begin
     WriteLn('Packed ',Builder.PackedFrom,' bytes of contents down to ',Builder.PackedTo,'.');
@@ -2082,8 +2237,29 @@ begin
     WriteLn('Not packed, since it would not have come out smaller.');
    end;
 
+   // The separate debug file, written beside its name and only put under it
+   // once it has been read back. It replaces nothing about the executable, but
+   // it may well replace a debug file of its own from an earlier run, and that
+   // one described a build somebody may still have. The same rule as
+   // everywhere else here: nothing takes the place of anything before it has
+   // been looked at.
    if length(DebugOutputFileName)>0 then begin
-    WriteDebugFile(Builder,DWARFWriter,Image,DebugOutputFileName);
+    DebugWorkFileName:=ChangeFileExt(DebugOutputFileName,'.mapsymbols-work'+ExtractFileExt(DebugOutputFileName));
+    DeleteFile(DebugWorkFileName);
+    if WriteDebugFile(Builder,DWARFWriter,Image,DebugWorkFileName) then begin
+     if StageFileOver(DebugOutputFileName,DebugWorkFileName,DebugBackupFileName,StageMessage) then begin
+      CommitStagedFile(DebugBackupFileName);
+      DebugBackupFileName:='';
+      DebugWorkFileName:='';
+      WriteLn('Wrote ',DebugOutputFileName,' with ',DWARFWriter.DebugLine.Size,' bytes of line programs and ',
+              DWARFWriter.DebugInfo.Size,' bytes of compile units.');
+     end else begin
+      WriteLn('Error: ',StageMessage);
+      ExitCode:=1;
+     end;
+    end else begin
+     WriteLn('What was written into ',DebugWorkFileName,' did not read back correctly, so ',DebugOutputFileName,' was left alone.');
+    end;
    end;
 
   finally
@@ -2095,14 +2271,30 @@ begin
   // one which wrote it, and which also has to accept the debug directory in the
   // executable before it will look at the pdb at all.
   if length(PDBOutputFileName)>0 then begin
-   if CheckPDBWithDbgHelp(Builder,WorkFileName,DbgHelpResolved,DbgHelpProbes,DbgHelpAvailable) then begin
+   if CheckPDBWithDbgHelp(Builder,WorkFileName,DbgHelpResolved,DbgHelpProbes,DbgHelpAvailable,DbgHelpRefused) then begin
     WriteLn('Debugger check: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
    end else if DbgHelpAvailable then begin
     WriteLn('Debugger check FAILED: ',DbgHelpResolved,' of ',DbgHelpProbes,' probes resolved to the expected line.');
     ExitCode:=1;
     OutputOk:=false;
+   end else if (Builder.SymbolCount=0) and (Builder.LineCount=0) then begin
+    // A run which asked for neither names nor line numbers wrote a pdb which
+    // describes the sections of the image and nothing else, and there is
+    // nothing in it to ask a debugger about. Said as what it is rather than
+    // being folded into one of the two below, both of which would be a claim
+    // about dbghelp which is not true.
+    WriteLn('Debugger check skipped, the pdb holds neither routine names nor line numbers to ask about.');
+   end else if DbgHelpRefused then begin
+    // dbghelp is there and would not take the file. This is the only check
+    // which asks a reader this tool did not write, so losing it costs more than
+    // losing any of the others, and it used to be lost with a line which read
+    // like an aside. A run which asked for a pdb and got no word from the one
+    // reader which could say anything about it has not been checked.
+    WriteLn('Debugger check FAILED: dbghelp would not take ',WorkFileName,', so the pdb was never looked at.');
+    ExitCode:=1;
+    OutputOk:=false;
    end else begin
-    WriteLn('Debugger check skipped, dbghelp did not accept the executable.');
+    WriteLn('Debugger check skipped, there is no dbghelp here to ask.');
    end;
   end;
 
@@ -2131,6 +2323,14 @@ begin
     ExitCode:=1;
    end else begin
     WorkFileName:='';
+    // The executable is in place and names this pdb, so the one which was there
+    // before it can go. Only now: everything before this point could still have
+    // ended with the old executable staying where it was.
+    if PDBStaged then begin
+     CommitStagedFile(PDBBackupFileName);
+     PDBStaged:=false;
+     PDBBackupFileName:='';
+    end;
    end;
   end else begin
    WriteLn('The executable was not changed, because what was written into the copy of it did not read back correctly.');
@@ -2141,6 +2341,28 @@ begin
   // ones which gave up early.
   if length(WorkFileName)>0 then begin
    DeleteFile(WorkFileName);
+  end;
+  if length(PDBWorkFileName)>0 then begin
+   DeleteFile(PDBWorkFileName);
+  end;
+  if length(DebugWorkFileName)>0 then begin
+   DeleteFile(DebugWorkFileName);
+  end;
+  // And a pdb which was put in place for a run which then did not replace the
+  // executable is taken back out again, whichever way that run ended. What was
+  // beside the executable before belongs to the executable which is still
+  // there; leaving the new one would mean an executable naming an identity
+  // which the pdb next to it does not have, which is worse than either of the
+  // two states this run could have ended in.
+  if PDBStaged then begin
+   if RollbackStagedFile(PDBOutputFileName,PDBBackupFileName) then begin
+    if length(PDBBackupFileName)>0 then begin
+     WriteLn('The pdb which was there before is back in place, since the executable was not changed.');
+    end;
+   end else begin
+    WriteLn('Warning: ',PDBOutputFileName,' could not be put back the way it was.');
+   end;
+   PDBStaged:=false;
   end;
   FreeAndNil(MapReader);
   FreeAndNil(DWARFReader);

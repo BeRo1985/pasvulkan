@@ -58,6 +58,15 @@ type TPDBSection=record
        fStringOffsets:array of TpvUInt32;
        fModuleSymbolBytes:array of TpvUInt32;
        fModuleLineBytes:array of TpvUInt32;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+       // Where the line records of each unit begin and end. Found once in a
+       // pass over the records rather than by walking all of them again for
+       // every unit, which is a module stream builder spending the product of
+       // the two counts on nothing but skipping.
+       fFirstLines:array of TpvSizeInt;
+       fLastLines:array of TpvSizeInt;
+       procedure PrepareLineRanges;
+{$endif}
        // Turns an image relative address into the section and offset pair which
        // every record in a PDB is expressed in.
        function FindSection(const aRVA:TpvUInt64;out aSectionIndex:TpvUInt16;out aOffset:TpvUInt32):Boolean;
@@ -247,6 +256,31 @@ begin
  aStream.WriteBuffer(aValue,SizeOf(TpvInt32));
 end;
 
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+procedure TPDBWriter.PrepareLineRanges;
+var UnitIndex,LineIndex:TpvSizeInt;
+    LineRecord:TSymbolBuilder.TLineRecord;
+begin
+ SetLength(fFirstLines,fBuilder.UnitCount);
+ SetLength(fLastLines,fBuilder.UnitCount);
+ for UnitIndex:=0 to fBuilder.UnitCount-1 do begin
+  fFirstLines[UnitIndex]:=-1;
+  fLastLines[UnitIndex]:=-1;
+ end;
+ // Each record names its unit, so asking the records once answers it for every
+ // unit at the same time.
+ for LineIndex:=0 to fBuilder.LineCount-1 do begin
+  LineRecord:=fBuilder.GetLine(LineIndex);
+  if LineRecord.UnitIndex<TpvUInt32(fBuilder.UnitCount) then begin
+   if fFirstLines[LineRecord.UnitIndex]<0 then begin
+    fFirstLines[LineRecord.UnitIndex]:=LineIndex;
+   end;
+   fLastLines[LineRecord.UnitIndex]:=LineIndex;
+  end;
+ end;
+end;
+{$endif}
+
 procedure TPDBWriter.BuildModuleStream(const aStream:TMemoryStream;const aUnitIndex:TpvSizeInt;const aFileNameOffset:TpvUInt32;out aSymbolBytes,aLineBytes:TpvUInt32);
 const S_END=$0006;
       S_GPROC32=$1110;
@@ -256,7 +290,10 @@ var Symbols,Lines,LineBlock:TMemoryStream;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     LineRecord:TSymbolBuilder.TLineRecord;
-    Index,NextIndex,LineCount:TpvSizeInt;
+    Index,NextIndex,LineCount,FirstLine,LastLine:TpvSizeInt;
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+    LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+{$endif}
     UnitLow,UnitHigh,SymbolHigh:TpvUInt64;
     SectionIndex:TpvUInt16;
     Offset,CodeStart,CodeSize:TpvUInt32;
@@ -298,13 +335,42 @@ begin
 
   // One procedure record per symbol which falls inside this unit. They are
   // sorted by address, so the end of one is the start of the next.
+{$ifdef PasVulkanMapSymbolsLinearLookups}
   for Index:=0 to fBuilder.SymbolCount-1 do begin
 
    SymbolRecord:=fBuilder.GetSymbol(Index);
    if (SymbolRecord.RVA<UnitLow) or (SymbolRecord.RVA>=UnitHigh) then begin
     continue;
    end;
+{$else}
+  // Being sorted by address also means the ones which fall inside this unit are
+  // a run, so its beginning can be found instead of walked to. This is done
+  // once per unit, and a build with thousands of units and a hundred thousand
+  // symbols would otherwise spend hundreds of millions of iterations here, each
+  // of them copying a record which carries a string. The same shape the DWARF
+  // writer uses, which had this done to it a while ago.
+  LowIndex:=0;
+  HighIndex:=fBuilder.SymbolCount;
+  while LowIndex<HighIndex do begin
+   MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+   if fBuilder.GetSymbol(MiddleIndex).RVA<UnitLow then begin
+    LowIndex:=MiddleIndex+1;
+   end else begin
+    HighIndex:=MiddleIndex;
+   end;
+  end;
+  Index:=LowIndex;
+  while Index<fBuilder.SymbolCount do begin
+
+   SymbolRecord:=fBuilder.GetSymbol(Index);
+   if SymbolRecord.RVA>=UnitHigh then begin
+    break;
+   end;
+{$endif}
    if not FindSection(SymbolRecord.RVA,SectionIndex,Offset) then begin
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+    inc(Index);
+{$endif}
     continue;
    end;
 
@@ -369,6 +435,9 @@ begin
    WriteUInt32(Symbols,TpvUInt32(EndOffset));
    Symbols.Position:=Symbols.Size;
 
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+   inc(Index);
+{$endif}
   end;
 
   // The file table of this module. No checksum is computed, which is allowed
@@ -383,8 +452,25 @@ begin
   // And the line numbers, as one block referring to the only file above.
   // A line number of zero marks the end of a sequence rather than a line, and
   // a pdb has no way of saying that, so those records are left out here.
+  // The records of one unit form a run, since they are sorted by address and
+  // the units do not overlap, so both passes over them are over that run and
+  // not over all of them. Where it starts and ends was worked out once for
+  // every unit before any module stream was built.
+{$ifdef PasVulkanMapSymbolsLinearLookups}
+  FirstLine:=0;
+  LastLine:=fBuilder.LineCount-1;
+{$else}
+  FirstLine:=fFirstLines[aUnitIndex];
+  LastLine:=fLastLines[aUnitIndex];
+  if FirstLine<0 then begin
+   // Nothing to say about a unit without line information.
+   FirstLine:=0;
+   LastLine:=-1;
+  end;
+{$endif}
+
   LineCount:=0;
-  for Index:=0 to fBuilder.LineCount-1 do begin
+  for Index:=FirstLine to LastLine do begin
    LineRecord:=fBuilder.GetLine(Index);
    if (LineRecord.UnitIndex=TpvUInt32(aUnitIndex)) and (LineRecord.LineNumber>0) then begin
     inc(LineCount);
@@ -393,7 +479,7 @@ begin
 
   if LineCount>0 then begin
 
-   for Index:=0 to fBuilder.LineCount-1 do begin
+   for Index:=FirstLine to LastLine do begin
     LineRecord:=fBuilder.GetLine(Index);
     if (LineRecord.UnitIndex<>TpvUInt32(aUnitIndex)) or (LineRecord.LineNumber=0) then begin
      continue;
@@ -1106,6 +1192,9 @@ begin
  FirstModuleStreamIndex:=fMSF.StreamCount;
  SetLength(fModuleSymbolBytes,fBuilder.UnitCount);
  SetLength(fModuleLineBytes,fBuilder.UnitCount);
+{$ifndef PasVulkanMapSymbolsLinearLookups}
+ PrepareLineRanges;
+{$endif}
  for Index:=0 to fBuilder.UnitCount-1 do begin
   ModuleStream:=fMSF.AddStream;
   BuildModuleStream(ModuleStream,Index,fStringOffsets[Index],fModuleSymbolBytes[Index],fModuleLineBytes[Index]);

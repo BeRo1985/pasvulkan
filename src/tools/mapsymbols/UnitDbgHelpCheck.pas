@@ -28,7 +28,14 @@ uses SysUtils,
 // Resolves a spread of the collected line records and compares the answers with
 // what they were built from. Returns false when dbghelp is not available, which
 // aAvailable then reports separately from an actual failure.
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable:Boolean):Boolean;
+//
+// aRefused tells the two apart which aAvailable alone does not: there being no
+// dbghelp at all, which is every machine which is not windows and is nothing
+// this run can do anything about, and dbghelp being there and turning the image
+// away, which is this run handing it something it does not accept. The second
+// one is the check silently not happening, and a check which silently does not
+// happen is worse than one which fails, since a failure is at least read.
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 
 implementation
 
@@ -75,7 +82,7 @@ function SymFromAddr(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointe
 function SymGetLineFromAddr64(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointer;aLine:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymGetLineFromAddr64';
 function SymFromName(aProcess:THandle;aName:PAnsiChar;aSymbol:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymFromName';
 
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable:Boolean):Boolean;
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 const PreferredBase=TpvUInt64($400000);
 var Process:THandle;
     Base:TpvUInt64;
@@ -94,6 +101,7 @@ begin
  aResolved:=0;
  aProbes:=0;
  aAvailable:=false;
+ aRefused:=false;
  result:=false;
 
  // Not turned away for having no line numbers. The lookup by name below tests
@@ -109,6 +117,9 @@ begin
  Process:=GetCurrentProcess;
  SymSetOptions(SYMOPT_LOAD_LINES or SYMOPT_UNDNAME);
  if not SymInitialize(Process,nil,false) then begin
+  // dbghelp is there, since the import of it is what starts this program at
+  // all, and it did not come up. That is not the same as not having it.
+  aRefused:=true;
   exit;
  end;
  try
@@ -117,6 +128,7 @@ begin
   // the table can be used as they are.
   Base:=SymLoadModuleEx(Process,0,PAnsiChar(ImageName),nil,PreferredBase,0,nil,0);
   if Base=0 then begin
+   aRefused:=true;
    exit;
   end;
 
@@ -258,11 +270,13 @@ end;
 
 {$else}
 
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable:Boolean):Boolean;
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 begin
  aResolved:=0;
  aProbes:=0;
  aAvailable:=false;
+ // There is no dbghelp here to refuse anything.
+ aRefused:=false;
  result:=false;
 end;
 

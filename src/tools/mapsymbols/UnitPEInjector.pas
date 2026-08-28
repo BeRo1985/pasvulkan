@@ -31,6 +31,11 @@ unit UnitPEInjector;
 interface
 
 uses SysUtils,
+{$ifdef Unix}
+     // For the access rights of a file, which nothing in the portable part of
+     // the library gives out in a form which can be put onto another file.
+     BaseUnix,
+{$endif}
      Classes,
      PasVulkan.Types,
      // For the checksum, which is the same one the reader there uses on a debug
@@ -45,7 +50,59 @@ uses SysUtils,
 // Done at the very end rather than while the sections are being written,
 // because the checksum covers the whole file and the whole file includes
 // whatever is appended behind the sections afterwards.
+//
+// False means there was a checksum and it could not be worked out again, which
+// is a file going out with a stated checksum which does not describe it. That
+// is the one thing this exists to prevent, so the caller has to look.
 function UpdateImageCheckSum(const aFileName:String):Boolean;
+
+// Reads the checksum out of a finished file and works out what it should be,
+// which is the same question a loader asks and a different one than the one the
+// writer answered. Everything else this tool writes is read back by something
+// which did not write it; this closes that row.
+//
+// A file which states no checksum states nothing which could be wrong, so that
+// passes.
+function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean;
+
+// Whether the image carries an authenticode signature, which is to say whether
+// its certificate data directory names anything.
+//
+// Nothing here can keep such a signature valid: it is taken over the file as it
+// was signed, so appending to that file or moving anything in it makes it stop
+// matching. The injector refuses such an image outright, but a run which only
+// appends the symbol table never reaches the injector, and that run has to say
+// what it is about to do to the signature.
+function ImageIsSigned(const aFileName:String):Boolean;
+
+// Puts the access rights of one file onto another.
+//
+// A file which is built beside another and then takes its name is a new file,
+// and a new file is made with whatever the process defaults say rather than
+// with what the file it replaces had. On unix that loses the execute bits,
+// which turns an executable into a file the shell refuses to start; on windows
+// it loses the attributes, a read only build artifact being the ordinary case.
+function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
+
+// Puts a new file under a name which may already be taken, keeping whatever was
+// there under a name of its own until the run says which of the two it wants.
+//
+// The executable is written to a copy and only replaces the original once every
+// check passed. A pdb cannot be written that way, because the check which reads
+// it is dbghelp and dbghelp finds a pdb by the name the executable gives, next
+// to the executable. So it is written under the name it has to have, and what
+// was there is set aside rather than overwritten, so that a run which then fails
+// somewhere else can put back the pair which was there before it started.
+//
+// aBackupFileName is empty when there was nothing under that name to keep.
+function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String):Boolean;
+
+// Throws away what StageFileOver kept, which is what a run does when it has
+// decided to keep the new file.
+procedure CommitStagedFile(const aBackupFileName:String);
+
+// And the other way: the new file goes and what was there before comes back.
+function RollbackStagedFile(const aFinalFileName,aBackupFileName:String):Boolean;
 
 // Puts one file in the place of another without there being a moment in which
 // neither of them exists.
@@ -207,8 +264,10 @@ end;
 // The checksum a PE optional header carries. A sum of the whole file taken
 // sixteen bits at a time with the carries folded back in, and the size of the
 // file added at the end. The field itself counts as zero, so the caller clears
-// it before asking.
-function ImageCheckSum(const aStream:TStream):TpvUInt32;
+// it before asking, or names where it sits and has it counted as zero without
+// the file being touched at all, which is what a reader wants: asking what the
+// checksum should be must not be a thing which writes.
+function ImageCheckSum(const aStream:TStream;const aZeroOffset:TpvInt64=-1):TpvUInt32;
 var Buffer:array[0..65535] of TpvUInt8;
     Position,Total:TpvInt64;
     Read,Index:TpvInt32;
@@ -222,6 +281,16 @@ begin
   Read:=aStream.Read(Buffer,SizeOf(Buffer));
   if Read<=0 then begin
    break;
+  end;
+  // The four bytes of the field, wherever in this block they fall. Written out
+  // byte by byte rather than as a range, so that a field which straddles two
+  // blocks is handled by each of them for its own part.
+  if aZeroOffset>=0 then begin
+   for Index:=0 to 3 do begin
+    if ((aZeroOffset+Index)>=Position) and ((aZeroOffset+Index)<(Position+Read)) then begin
+     Buffer[(aZeroOffset+Index)-Position]:=0;
+    end;
+   end;
   end;
   // An odd tail is padded with a zero byte, which is what makes the last half
   // word of a file of odd length well defined.
@@ -244,10 +313,144 @@ begin
  result:=Sum+TpvUInt32(Total);
 end;
 
-function UpdateImageCheckSum(const aFileName:String):Boolean;
+// Finds the checksum field of a PE, and says so rather than guessing.
+//
+// The two bytes at the front are asked about first. Without them the four at
+// $3c are not a header offset but whatever a file of another kind has there,
+// and an ELF has a real field of its own at that place: following it leads to
+// some offset inside the file, and the only thing standing between that and a
+// checksum being written into the middle of somebody's program is that the four
+// bytes found there are unlikely to read PE. Unlikely is not a check.
+function FindCheckSumField(const aStream:TStream;out aFieldOffset:TpvInt64):Boolean;
+var NewHeaderOffset:TpvUInt32;
+    Magic:array[0..1] of AnsiChar;
+    Signature:array[0..3] of AnsiChar;
+begin
+ result:=false;
+ aFieldOffset:=0;
+ if aStream.Size<64 then begin
+  exit;
+ end;
+ aStream.Seek(0,soBeginning);
+ aStream.ReadBuffer(Magic,2);
+ if (Magic[0]<>'M') or (Magic[1]<>'Z') then begin
+  exit;
+ end;
+ aStream.Seek(TpvInt64($3c),soBeginning);
+ aStream.ReadBuffer(NewHeaderOffset,SizeOf(TpvUInt32));
+ if (TpvInt64(NewHeaderOffset)+24+68)>aStream.Size then begin
+  exit;
+ end;
+ aStream.Seek(TpvInt64(NewHeaderOffset),soBeginning);
+ aStream.ReadBuffer(Signature,4);
+ if (Signature[0]<>'P') or (Signature[1]<>'E') or (Signature[2]<>#0) or (Signature[3]<>#0) then begin
+  exit;
+ end;
+ // The field sits at the same place in both shapes of the optional header,
+ // since everything in front of it is the same size in each.
+ aFieldOffset:=TpvInt64(NewHeaderOffset)+24+64;
+ result:=true;
+end;
+
+function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean;
+var Stream:TFileStream;
+    FieldOffset:TpvInt64;
+    Stated,Wanted:TpvUInt32;
+begin
+ result:=false;
+ aMessage:='';
+ if not FileExists(aFileName) then begin
+  aMessage:=aFileName+' is not there to be read back.';
+  exit;
+ end;
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  if not FindCheckSumField(Stream,FieldOffset) then begin
+   // Not a PE, so there is no such field and nothing to disagree with.
+   result:=true;
+   exit;
+  end;
+  Stream.Seek(FieldOffset,soBeginning);
+  Stream.ReadBuffer(Stated,SizeOf(TpvUInt32));
+  if Stated=0 then begin
+   result:=true;
+   exit;
+  end;
+  Wanted:=ImageCheckSum(Stream,FieldOffset);
+  if Stated=Wanted then begin
+   result:=true;
+  end else begin
+   aMessage:='The checksum in the header of '+aFileName+' says $'+IntToHex(Stated,8)+
+             ' and the file adds up to $'+IntToHex(Wanted,8)+'.';
+  end;
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function ImageIsSigned(const aFileName:String):Boolean;
 var Stream:TFileStream;
     NewHeaderOffset:TpvUInt32;
+    Magic:array[0..1] of AnsiChar;
     Signature:array[0..3] of AnsiChar;
+    OptionalMagic:TpvUInt16;
+    NumberOfRvaAndSizes:TpvUInt32;
+    DataDirectoryOffset:TpvInt64;
+    CertificateAddress,CertificateSize:TpvUInt32;
+begin
+ result:=false;
+ if not FileExists(aFileName) then begin
+  exit;
+ end;
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  if Stream.Size<64 then begin
+   exit;
+  end;
+  Stream.Seek(0,soBeginning);
+  Stream.ReadBuffer(Magic,2);
+  if (Magic[0]<>'M') or (Magic[1]<>'Z') then begin
+   exit;
+  end;
+  Stream.Seek(TpvInt64($3c),soBeginning);
+  Stream.ReadBuffer(NewHeaderOffset,SizeOf(TpvUInt32));
+  if (TpvInt64(NewHeaderOffset)+24+96)>Stream.Size then begin
+   exit;
+  end;
+  Stream.Seek(TpvInt64(NewHeaderOffset),soBeginning);
+  Stream.ReadBuffer(Signature,4);
+  if (Signature[0]<>'P') or (Signature[1]<>'E') or (Signature[2]<>#0) or (Signature[3]<>#0) then begin
+   exit;
+  end;
+  Stream.Seek(TpvInt64(NewHeaderOffset)+24,soBeginning);
+  Stream.ReadBuffer(OptionalMagic,SizeOf(TpvUInt16));
+  // The data directories sit behind an optional header whose length differs
+  // between the two shapes, and the count of them sits right in front.
+  if OptionalMagic=$20b then begin
+   DataDirectoryOffset:=TpvInt64(NewHeaderOffset)+24+112;
+  end else if OptionalMagic=$10b then begin
+   DataDirectoryOffset:=TpvInt64(NewHeaderOffset)+24+96;
+  end else begin
+   exit;
+  end;
+  Stream.Seek(DataDirectoryOffset-4,soBeginning);
+  Stream.ReadBuffer(NumberOfRvaAndSizes,SizeOf(TpvUInt32));
+  // Four is the certificate table, and an image which does not go that far
+  // states no certificates at all.
+  if (NumberOfRvaAndSizes<=4) or ((DataDirectoryOffset+(4*8)+8)>Stream.Size) then begin
+   exit;
+  end;
+  Stream.Seek(DataDirectoryOffset+(4*8),soBeginning);
+  Stream.ReadBuffer(CertificateAddress,SizeOf(TpvUInt32));
+  Stream.ReadBuffer(CertificateSize,SizeOf(TpvUInt32));
+  result:=(CertificateAddress<>0) or (CertificateSize<>0);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function UpdateImageCheckSum(const aFileName:String):Boolean;
+var Stream:TFileStream;
     FieldOffset:TpvInt64;
     Value32:TpvUInt32;
 begin
@@ -257,22 +460,13 @@ begin
  end;
  Stream:=TFileStream.Create(aFileName,fmOpenReadWrite or fmShareExclusive);
  try
-  if Stream.Size<64 then begin
+  if not FindCheckSumField(Stream,FieldOffset) then begin
+   // Nothing which has such a field, so there is nothing to keep up to date and
+   // nothing went wrong either. A file which is not a PE at all reaches this,
+   // and so does a run on a machine where the executable is an ELF.
+   result:=true;
    exit;
   end;
-  Stream.Seek(TpvInt64($3c),soBeginning);
-  Stream.ReadBuffer(NewHeaderOffset,SizeOf(TpvUInt32));
-  if (TpvInt64(NewHeaderOffset)+24+68)>Stream.Size then begin
-   exit;
-  end;
-  Stream.Seek(TpvInt64(NewHeaderOffset),soBeginning);
-  Stream.ReadBuffer(Signature,4);
-  if (Signature[0]<>'P') or (Signature[1]<>'E') or (Signature[2]<>#0) or (Signature[3]<>#0) then begin
-   exit;
-  end;
-  // The field sits at the same place in both shapes of the optional header,
-  // since everything in front of it is the same size in each.
-  FieldOffset:=TpvInt64(NewHeaderOffset)+24+64;
   Stream.Seek(FieldOffset,soBeginning);
   Stream.ReadBuffer(Value32,SizeOf(TpvUInt32));
   if Value32=0 then begin
@@ -393,6 +587,39 @@ begin
 
 end;
 
+function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
+{$ifdef Unix}
+var Info:stat;
+{$else}
+var Attributes:TpvInt32;
+{$endif}
+begin
+ result:=false;
+{$ifdef Unix}
+ // The mode bits, which is what makes an executable one. A file which is built
+ // beside a program and then takes its name is created with whatever the umask
+ // allows, and that is a file the shell answers about with permission denied.
+ //
+ // Asked of what the name leads to rather than of the name itself, which for a
+ // link is the file at the end of it. That is the file whose rights are wanted,
+ // and by the time anything gets here a link has already been followed once, so
+ // the two are the same thing.
+ if FpStat(aFromFileName,Info)<>0 then begin
+  exit;
+ end;
+ // The set user and set group bits go along with the rest. They are part of how
+ // the file was installed, and a run which is only supposed to add symbols to a
+ // program has no business deciding that it should no longer have them.
+ result:=FpChmod(aToFileName,Info.st_mode and $0fff)=0;
+{$else}
+ Attributes:=FileGetAttr(aFromFileName);
+ if Attributes<0 then begin
+  exit;
+ end;
+ result:=FileSetAttr(aToFileName,Attributes)=0;
+{$endif}
+end;
+
 // Puts the file which Prepare built in the place of the original.
 //
 // The original is set aside first and only thrown away once the replacement is
@@ -407,7 +634,26 @@ begin
  result:=false;
  aMessage:='';
  aBothRemain:=false;
+ // Everything about the file except its contents, carried over before the two
+ // change places. This is the one place where a file takes the name of another,
+ // so it is also the one place where that has to happen.
+ //
+ // Failing at it is not a reason to stop. What the caller wants is the new
+ // contents under that name, and a program which is there but has to be made
+ // executable again is worth more than no new program at all. It is said, and
+ // that is as far as it goes.
+ if not CopyFileRights(aFileName,aReplacementFileName) then begin
+  WriteLn('Note: the access rights of ',aFileName,' could not be carried over, so ',
+          aFileName,' now has the ones a newly written file gets.');
+ end;
  BackupName:=aFileName+'.mapsymbols-old';
+ // A file which is only there to be thrown away may still be one nothing is
+ // allowed to delete, which on windows is what a read only attribute means.
+ // Carried over from the original a moment ago, so this is the ordinary case
+ // rather than a strange one.
+ if FileExists(BackupName) then begin
+  FileSetAttr(BackupName,faArchive);
+ end;
  DeleteFile(BackupName);
  if not RenameFile(aFileName,BackupName) then begin
   aMessage:='Could not set '+aFileName+' aside, so it was left alone.';
@@ -428,8 +674,74 @@ begin
   aMessage:='Could not replace '+aFileName+', so it was left alone.';
   exit;
  end;
+ // And the same for the one which is now really being thrown away. It carries
+ // whatever the original carried, which on windows can be the attribute which
+ // makes a file undeletable, and a leftover .mapsymbols-old beside every
+ // executable is what that would come to.
+ FileSetAttr(BackupName,faArchive);
  DeleteFile(BackupName);
  result:=true;
+end;
+
+// The same swap as above, taken apart into the two halves it consists of, for
+// the file which cannot wait until the end to have its name.
+//
+// ReplaceFileWith is this pair done in one go, and it stays that way rather
+// than being written in terms of these, because it is the path every run takes
+// and it has been proven where it stands.
+function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String):Boolean;
+begin
+ result:=false;
+ aBackupFileName:='';
+ aMessage:='';
+ if not FileExists(aNewFileName) then begin
+  aMessage:=aNewFileName+' is not there to be put in place.';
+  exit;
+ end;
+ if FileExists(aFinalFileName) then begin
+  CopyFileRights(aFinalFileName,aNewFileName);
+  aBackupFileName:=aFinalFileName+'.mapsymbols-old';
+  if FileExists(aBackupFileName) then begin
+   FileSetAttr(aBackupFileName,faArchive);
+  end;
+  DeleteFile(aBackupFileName);
+  if not RenameFile(aFinalFileName,aBackupFileName) then begin
+   aBackupFileName:='';
+   aMessage:='Could not set '+aFinalFileName+' aside, so it was left alone.';
+   exit;
+  end;
+ end;
+ if not RenameFile(aNewFileName,aFinalFileName) then begin
+  if length(aBackupFileName)>0 then begin
+   RenameFile(aBackupFileName,aFinalFileName);
+   aBackupFileName:='';
+  end;
+  aMessage:='Could not put '+aNewFileName+' under the name '+aFinalFileName+'.';
+  exit;
+ end;
+ result:=true;
+end;
+
+procedure CommitStagedFile(const aBackupFileName:String);
+begin
+ if length(aBackupFileName)>0 then begin
+  FileSetAttr(aBackupFileName,faArchive);
+  DeleteFile(aBackupFileName);
+ end;
+end;
+
+function RollbackStagedFile(const aFinalFileName,aBackupFileName:String):Boolean;
+begin
+ // No backup means there was nothing under that name before this run, so
+ // putting things back means there is nothing under it again.
+ if length(aBackupFileName)=0 then begin
+  FileSetAttr(aFinalFileName,faArchive);
+  result:=DeleteFile(aFinalFileName);
+  exit;
+ end;
+ FileSetAttr(aFinalFileName,faArchive);
+ DeleteFile(aFinalFileName);
+ result:=RenameFile(aBackupFileName,aFinalFileName);
 end;
 
 function TPEInjector.Commit:Boolean;
@@ -484,6 +796,12 @@ var Source,Target:TFileStream;
     NewSizeOfHeaders,Delta:TpvUInt32;
     Index:TpvSizeInt;
     VirtualAddress,VirtualSize,RawPointer:TpvUInt32;
+    // Read back out of the section table which was just written, to sum up how
+    // much initialized data the image ends up holding. Named for what they hold
+    // rather than borrowed from the two above, since a size which is kept in a
+    // variable called a pointer is read wrongly by the next person on the first
+    // try.
+    SectionRawSize,SectionCharacteristics:TpvUInt32;
     NextRVA,DataOffset,StringTableOffset:TpvUInt64;
     StringTable:TMemoryStream;
     NameOffsets:array of TpvUInt32;
@@ -1245,11 +1563,11 @@ begin
     Value32:=0;
     for Index:=0 to (TpvSizeInt(KeptCount)+fSectionCount)-1 do begin
      Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+16,soBeginning);
-     Target.ReadBuffer(RawPointer,SizeOf(TpvUInt32));
+     Target.ReadBuffer(SectionRawSize,SizeOf(TpvUInt32));
      Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+36,soBeginning);
-     Target.ReadBuffer(VirtualSize,SizeOf(TpvUInt32));
-     if (VirtualSize and IMAGE_SCN_CNT_INITIALIZED_DATA)<>0 then begin
-      inc(Value32,RawPointer);
+     Target.ReadBuffer(SectionCharacteristics,SizeOf(TpvUInt32));
+     if (SectionCharacteristics and IMAGE_SCN_CNT_INITIALIZED_DATA)<>0 then begin
+      inc(Value32,SectionRawSize);
      end;
     end;
     Target.Seek(TpvInt64(NewHeaderOffset)+24+8,soBeginning);
