@@ -38,6 +38,15 @@ const IMAGE_FILE_MACHINE_UNKNOWN=TpvUInt16($0000);
 
 type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
+     // What the debug directory of a PE says about the pdb belonging to it.
+     // This is the first thing a debugger looks at, and everything else about
+     // the pdb only matters once it has led there.
+     TImageCodeViewInfo=record
+      GUID:array[0..15] of TpvUInt8;
+      Age:TpvUInt32;
+      FileName:String;
+     end;
+
      TImageSection=record
       Name:String;
       VirtualAddress:TpvUInt64;
@@ -72,6 +81,9 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        fMachine:TpvUInt16;
        fELFMachine:TpvUInt16;
        fELFFlags:TpvUInt32;
+       // Where the data directories of a PE optional header begin, which is not
+       // at the same place in the two shapes of it. Zero for anything else.
+       fDataDirectoryOffset:TpvInt64;
        // Read one number of the image, in the byte order the image has rather
        // than the one this program runs in. Only ELF is ever big endian, PE is
        // little endian by definition, so these pass straight through for it.
@@ -82,6 +94,9 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        function ReadStringTableEntry(const aOffset:TpvInt64):String;
        function ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
        function ReadLongSectionName(const aOffset:TpvInt64):String;
+       // Where an address relative to the image base lands in the file, or zero
+       // when it lands in no section which has bytes there.
+       function RVAToFileOffset(const aRVA:TpvUInt32):TpvInt64;
        procedure ComputeCodeRange;
        function ReadPE:Boolean;
        function ReadELF:Boolean;
@@ -99,11 +114,29 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        function ReadSection(const aName:String):TMemoryStream;
        // Returns the file named by a .gnu_debuglink section, already resolved
        // against the directory of this image, or an empty string when there is
-       // none or the named file does not exist.
-       function DebugLinkFileName:String;
+       // none, the named file does not exist, or it is not the file this image
+       // was linked against.
+       //
+       // That last one is what the checksum in the section is for, and it is
+       // worth acting on: a debug file left over from an earlier build carries
+       // the same name and is found in the same place, and its line information
+       // is wrong in a way which looks entirely plausible, because the two
+       // builds are of the same program and most addresses still land inside
+       // some routine. A wrong answer given confidently is worse here than no
+       // answer at all, and the checksum is the only thing which can tell them
+       // apart.
+       //
+       // aMessage says what happened whenever the answer is not simply the
+       // file, so that a caller can pass the reason on rather than only the
+       // outcome.
+       function DebugLinkFileName(out aMessage:String):String;
        // Walks the symbol table and reports every symbol which lives in a
        // section, translated into a link time virtual address.
        procedure EnumerateSymbols(const aEvent:TImageSymbolEvent);
+       // The codeview entry of the debug directory, which names the pdb and
+       // carries the identity it has to have. False when this is not a PE or
+       // has no such entry.
+       function CodeViewInfo(out aInfo:TImageCodeViewInfo):Boolean;
        property Format:TImageFileFormat read fFormat;
        property ImageBase:TpvUInt64 read fImageBase;
        // Lowest and highest link time address covered by executable sections.
@@ -188,6 +221,7 @@ begin
  fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
  fELFMachine:=0;
  fELFFlags:=0;
+ fDataDirectoryOffset:=0;
 end;
 
 destructor TImageFile.Destroy;
@@ -261,6 +295,7 @@ begin
  fMachine:=IMAGE_FILE_MACHINE_UNKNOWN;
  fELFMachine:=0;
  fELFFlags:=0;
+ fDataDirectoryOffset:=0;
  if not FileExists(aFileName) then begin
   exit;
  end;
@@ -375,6 +410,31 @@ begin
  end;
 end;
 
+function TImageFile.RVAToFileOffset(const aRVA:TpvUInt32):TpvInt64;
+var Index:TpvSizeInt;
+    Address,Size:TpvUInt64;
+begin
+ result:=0;
+ // Section addresses are kept as link time addresses here, so the base has to
+ // go back on before they can be compared.
+ Address:=fImageBase+TpvUInt64(aRVA);
+ for Index:=0 to length(fSections)-1 do begin
+  if fSections[Index].RawSize=0 then begin
+   continue;
+  end;
+  // A section whose virtual size is not stated covers what it has in the file.
+  if fSections[Index].VirtualSize>0 then begin
+   Size:=fSections[Index].VirtualSize;
+  end else begin
+   Size:=fSections[Index].RawSize;
+  end;
+  if (Address>=fSections[Index].VirtualAddress) and (Address<(fSections[Index].VirtualAddress+Size)) then begin
+   result:=TpvInt64(fSections[Index].FileOffset)+TpvInt64(Address-fSections[Index].VirtualAddress);
+   exit;
+  end;
+ end;
+end;
+
 function TImageFile.ReadPE:Boolean;
 var NewHeaderOffset:TpvUInt32;
     PESignature:array[0..3] of AnsiChar;
@@ -419,9 +479,11 @@ begin
  fStream.ReadBuffer(OptionalMagic,SizeOf(TpvUInt16));
  if OptionalMagic=$20b then begin
   fAddressSize:=8;
+  fDataDirectoryOffset:=TpvInt64(NewHeaderOffset)+24+112;
   fStream.Seek(TpvInt64(NewHeaderOffset)+24+24,soBeginning);
   fStream.ReadBuffer(fImageBase,SizeOf(TpvUInt64));
  end else if OptionalMagic=$10b then begin
+  fDataDirectoryOffset:=TpvInt64(NewHeaderOffset)+24+96;
   // The magic of the optional header is what says which of the two a PE is,
   // and the image base sitting four bytes further in is a consequence of it.
   fAddressSize:=4;
@@ -684,33 +746,202 @@ begin
  end;
 end;
 
-function TImageFile.DebugLinkFileName:String;
+// The checksum a .gnu_debuglink section carries, over the whole of the named
+// file. The ordinary reflected CRC32, which is what the gnu tools write there.
+function FileCRC32(const aFileName:String;out aCRC:TpvUInt32):Boolean;
+const Polynomial=TpvUInt32($edb88320);
+var Table:array[0..255] of TpvUInt32;
+    Index,Bit:TpvInt32;
+    Value:TpvUInt32;
+    Stream:TFileStream;
+    Buffer:array[0..65535] of TpvUInt8;
+    Read,Position:TpvInt32;
+begin
+
+ result:=false;
+ aCRC:=0;
+
+ for Index:=0 to 255 do begin
+  Value:=TpvUInt32(Index);
+  for Bit:=0 to 7 do begin
+   if (Value and 1)<>0 then begin
+    Value:=(Value shr 1) xor Polynomial;
+   end else begin
+    Value:=Value shr 1;
+   end;
+  end;
+  Table[Index]:=Value;
+ end;
+
+ try
+  Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyNone);
+ except
+  exit;
+ end;
+ try
+  Value:=TpvUInt32($ffffffff);
+  repeat
+   Read:=Stream.Read(Buffer,SizeOf(Buffer));
+   for Position:=0 to Read-1 do begin
+    Value:=(Value shr 8) xor Table[(Value xor TpvUInt32(Buffer[Position])) and $ff];
+   end;
+  until Read<=0;
+  aCRC:=Value xor TpvUInt32($ffffffff);
+  result:=true;
+ finally
+  FreeAndNil(Stream);
+ end;
+
+end;
+
+function TImageFile.DebugLinkFileName(out aMessage:String):String;
 var Data:TMemoryStream;
     Name,Directory,Candidate:String;
+    Bytes:PpvUInt8Array;
+    NameLength,CRCOffset:TpvSizeInt;
+    StoredCRC,ActualCRC:TpvUInt32;
 begin
+
  result:='';
+ aMessage:='';
+
  Data:=ReadSection('.gnu_debuglink');
  if not assigned(Data) then begin
   exit;
  end;
+
  try
-  // The section holds a null terminated file name, padded to a four byte
-  // boundary, followed by a CRC32 of the debug file. The name alone is enough
-  // here, since the tool is pointed at a specific build by the caller.
-  Name:=String(PAnsiChar(Data.Memory));
-  if length(Name)=0 then begin
+
+  // The section holds a null terminated file name, padded up to a four byte
+  // boundary, followed by the checksum of the debug file. Its length is taken
+  // by looking for the terminator inside the section rather than by trusting
+  // that there is one, since a section without it would otherwise be read
+  // beyond its end.
+  Bytes:=PpvUInt8Array(Data.Memory);
+  NameLength:=0;
+  while (NameLength<TpvSizeInt(Data.Size)) and (Bytes^[NameLength]<>0) do begin
+   inc(NameLength);
+  end;
+  if (NameLength=0) or (NameLength>=TpvSizeInt(Data.Size)) then begin
    exit;
   end;
+  SetString(Name,PAnsiChar(Data.Memory),NameLength);
+
   Directory:=ExtractFilePath(ExpandFileName(fFileName));
   Candidate:=Directory+Name;
   if FileExists(Candidate) then begin
    result:=Candidate;
   end else if FileExists(Name) then begin
    result:=Name;
+  end else begin
+   aMessage:=Name+' is named as the debug file but is not there';
+   exit;
   end;
+
+  // The name and its terminator, rounded up to the next four byte boundary.
+  CRCOffset:=(NameLength+4) and not TpvSizeInt(3);
+  if (CRCOffset+4)>TpvSizeInt(Data.Size) then begin
+   // No room for it, so there is nothing to hold the file against. Taken as it
+   // is rather than turned away, since refusing a section which is merely short
+   // would break a setup which works.
+   aMessage:=result+' carries no checksum, so it is taken as the right one';
+   exit;
+  end;
+
+  Bytes:=PpvUInt8Array(Data.Memory);
+  if fBigEndian then begin
+   StoredCRC:=(TpvUInt32(Bytes^[CRCOffset]) shl 24) or (TpvUInt32(Bytes^[CRCOffset+1]) shl 16) or
+              (TpvUInt32(Bytes^[CRCOffset+2]) shl 8) or TpvUInt32(Bytes^[CRCOffset+3]);
+  end else begin
+   StoredCRC:=TpvUInt32(Bytes^[CRCOffset]) or (TpvUInt32(Bytes^[CRCOffset+1]) shl 8) or
+              (TpvUInt32(Bytes^[CRCOffset+2]) shl 16) or (TpvUInt32(Bytes^[CRCOffset+3]) shl 24);
+  end;
+
+  if not FileCRC32(result,ActualCRC) then begin
+   aMessage:=result+' cannot be read';
+   result:='';
+   exit;
+  end;
+
+  if ActualCRC<>StoredCRC then begin
+   aMessage:=result+' is not the debug file of this build, its checksum is $'+IntToHex(ActualCRC,8)+
+             ' where this one was linked against $'+IntToHex(StoredCRC,8);
+   result:='';
+   exit;
+  end;
+
  finally
   FreeAndNil(Data);
  end;
+
+end;
+
+function TImageFile.CodeViewInfo(out aInfo:TImageCodeViewInfo):Boolean;
+const IMAGE_DEBUG_TYPE_CODEVIEW=TpvUInt32(2);
+      DebugDirectoryEntrySize=28;
+var DirectoryAddress,DirectorySize,EntryType,DataSize,DataOffset:TpvUInt32;
+    Index,EntryCount:TpvSizeInt;
+    EntryOffset:TpvInt64;
+    Signature:array[0..3] of AnsiChar;
+begin
+
+ result:=false;
+ FillChar(aInfo,SizeOf(TImageCodeViewInfo),#0);
+ aInfo.FileName:='';
+
+ if (fFormat<>iffPE) or (fDataDirectoryOffset=0) or not assigned(fStream) then begin
+  exit;
+ end;
+
+ // The seventh data directory is the debug one, and it holds an address and a
+ // size rather than a file offset.
+ fStream.Seek(fDataDirectoryOffset+(6*8),soBeginning);
+ fStream.ReadBuffer(DirectoryAddress,SizeOf(TpvUInt32));
+ fStream.ReadBuffer(DirectorySize,SizeOf(TpvUInt32));
+ if (DirectoryAddress=0) or (DirectorySize<DebugDirectoryEntrySize) then begin
+  exit;
+ end;
+
+ // Every entry names where its own payload sits in the file, so the directory
+ // only has to be found once and the entries are read from there.
+ EntryOffset:=RVAToFileOffset(DirectoryAddress);
+ // A section can be larger in memory than in the file, so an address inside one
+ // does not have to be inside the file. Checked before anything is read, since
+ // reading past the end raises rather than returning nothing.
+ if (EntryOffset<=0) or ((EntryOffset+TpvInt64(DirectorySize))>fStream.Size) then begin
+  exit;
+ end;
+
+ EntryCount:=DirectorySize div DebugDirectoryEntrySize;
+ for Index:=0 to EntryCount-1 do begin
+
+  fStream.Seek(EntryOffset+(TpvInt64(Index)*DebugDirectoryEntrySize)+12,soBeginning);
+  fStream.ReadBuffer(EntryType,SizeOf(TpvUInt32));
+  fStream.ReadBuffer(DataSize,SizeOf(TpvUInt32));
+  // The address of the payload and then its file offset, and the second is the
+  // one to use, since a debug payload is not always mapped.
+  fStream.Seek(EntryOffset+(TpvInt64(Index)*DebugDirectoryEntrySize)+24,soBeginning);
+  fStream.ReadBuffer(DataOffset,SizeOf(TpvUInt32));
+
+  if (EntryType<>IMAGE_DEBUG_TYPE_CODEVIEW) or (DataOffset=0) or (DataSize<25) or
+     ((TpvInt64(DataOffset)+TpvInt64(DataSize))>fStream.Size) then begin
+   continue;
+  end;
+
+  fStream.Seek(TpvInt64(DataOffset),soBeginning);
+  fStream.ReadBuffer(Signature,4);
+  if (Signature[0]<>'R') or (Signature[1]<>'S') or (Signature[2]<>'D') or (Signature[3]<>'S') then begin
+   continue;
+  end;
+
+  fStream.ReadBuffer(aInfo.GUID[0],16);
+  fStream.ReadBuffer(aInfo.Age,SizeOf(TpvUInt32));
+  aInfo.FileName:=ReadStringAt(TpvInt64(DataOffset)+24);
+  result:=true;
+  exit;
+
+ end;
+
 end;
 
 procedure TImageFile.EnumerateSymbols(const aEvent:TImageSymbolEvent);

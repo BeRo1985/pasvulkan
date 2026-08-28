@@ -87,6 +87,12 @@ type
        Builder:TSymbolBuilder;
        ImageBase:TpvUInt64;
        WantSymbols:Boolean;
+       // Whether the line numbers themselves are wanted. The rows are read
+       // either way, because the ranges of a compilation unit are worked out
+       // from where its rows are and there is nothing else in a DWARF which
+       // says it. Not reading them at all left the run with no ranges, and a
+       // switch which asks for less then produced nothing rather than less.
+       WantLines:Boolean;
        // Link time window covered by executable sections. Anything outside is
        // not code of this image.
        CodeLow:TpvUInt64;
@@ -367,7 +373,13 @@ begin
  // a unit, a routine without line information or padding between two sequences,
  // looking like a continuation of the line in front of it, and a reader would
  // then name that line with full confidence.
- Builder.AddLine(aAddress-ImageBase,aLineNumber);
+ //
+ // Only the record is skipped when the caller does not want line numbers. The
+ // measuring above and the closing below are what the ranges are made of and
+ // happen either way.
+ if WantLines then begin
+  Builder.AddLine(aAddress-ImageBase,aLineNumber);
+ end;
 
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
  // The marker also ends the run of code being measured, so that what the unit
@@ -573,6 +585,87 @@ begin
 end;
 {$endif}
 
+// Says what a run which is giving up left behind. The executable is the thing
+// which matters, and it really is untouched wherever this is called, but a pdb
+// is written before the executable is asked to name it, so a plain claim that
+// nothing changed would be a lie about a file which is sitting right there.
+procedure ReportUnchanged(const aExecutableFileName,aPDBFileName:String;const aPDBWritten:Boolean);
+begin
+ if aPDBWritten and (length(aPDBFileName)>0) then begin
+  WriteLn(aExecutableFileName,' was not changed, but ',aPDBFileName,' was written and nothing points at it.');
+ end else begin
+  WriteLn('Nothing was changed.');
+ end;
+end;
+
+// Whether the compilation units of this image name this tool as their producer,
+// which is to say whether the DWARF in it was put there by an earlier run.
+//
+// It matters because such DWARF must not be read back as a source. It was made
+// out of a map file, so it holds nothing the map file does not, and it costs
+// something the map file has: the routine names. A Delphi executable which went
+// through the injector carries a COFF string table where a symbol table would
+// be, and enumerating its symbols yields none, so a run which believed the
+// DWARF would collect ranges and lines and no names at all, and would then
+// replace a table which had them with one which does not.
+//
+// A plain scan for the string. It is written inline into every compilation unit
+// with DW_FORM_string, so it stands there in the section as it is, and no
+// compiler produces it.
+function HasOwnDWARF(const aImage:TImageFile):Boolean;
+var Section:TMemoryStream;
+    Marker:TpvRawByteString;
+    Bytes:PpvUInt8Array;
+    Index,Position,Length_:TpvSizeInt;
+begin
+ result:=false;
+ Section:=aImage.ReadSection('.debug_info');
+ if not assigned(Section) then begin
+  exit;
+ end;
+ try
+  Marker:=TpvRawByteString(DWARFProducer);
+  Length_:=length(Marker);
+  if (Length_=0) or (Section.Size<Length_) then begin
+   exit;
+  end;
+  Bytes:=PpvUInt8Array(Section.Memory);
+  for Index:=0 to TpvSizeInt(Section.Size)-Length_ do begin
+   Position:=0;
+   while (Position<Length_) and (Bytes^[Index+Position]=TpvUInt8(Marker[Position+1])) do begin
+    inc(Position);
+   end;
+   if Position=Length_ then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ finally
+  FreeAndNil(Section);
+ end;
+end;
+
+// The position of the first collected symbol at or above an address, or the
+// symbol count when there is none. The symbols are sorted by address, so this
+// and the same call for the end of a range give the run which falls inside it.
+function FirstSymbolAtOrAbove(const aBuilder:TSymbolBuilder;const aAddress:TpvUInt64):TpvSizeInt;
+var LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+    ImageBase:TpvUInt64;
+begin
+ ImageBase:=aBuilder.ImageBase;
+ LowIndex:=0;
+ HighIndex:=aBuilder.SymbolCount;
+ while LowIndex<HighIndex do begin
+  MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+  if (ImageBase+aBuilder.GetSymbol(MiddleIndex).RVA)<aAddress then begin
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   HighIndex:=MiddleIndex;
+  end;
+ end;
+ result:=LowIndex;
+end;
+
 // Collects the rows of one line program, to see where the program a compile
 // unit points at actually lies.
 type TDWARFProgramCollector=class
@@ -624,8 +717,10 @@ var InfoSection,AbbrevSection:TMemoryStream;
     Subprogram:TDWARFInfoSubprogram;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     Index,RangeIndex,Complaints,WithLines:TpvSizeInt;
-    SubprogramIndex,SubprogramComplaints,SubprogramsSeen:TpvSizeInt;
+    SubprogramIndex,SubprogramComplaints,SubprogramsSeen,SymbolIndex:TpvSizeInt;
+    ExpectedSubprograms:TpvSizeInt;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+    Directory:String;
     Offset,ProgramLength:TpvUInt64;
     ImageBase:TpvUInt64;
     Used:array of Boolean;
@@ -749,6 +844,22 @@ begin
     inc(Complaints);
    end;
 
+   // And the directory it names, which is the other half of finding the source:
+   // a debugger puts the two together, so a right file name under a wrong
+   // directory gives a correct line number with nothing to show beside it. The
+   // dot is what the writer puts down for a unit whose file name carries no
+   // directory, so the same substitution is made here rather than comparing
+   // against an empty string the writer never emits.
+   Directory:=ExtractFileDir(UnitRecord.FileName);
+   if length(Directory)=0 then begin
+    Directory:='.';
+   end;
+   if InfoUnit.Directory<>Directory then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' names the directory ',InfoUnit.Directory,
+            ' where the range it covers was collected under ',Directory,'.');
+    inc(Complaints);
+   end;
+
    // And the width it announces, which every address behind it is written in.
    if InfoUnit.AddressSize<>aExpectedAddressSize then begin
     WriteLn('  compilation unit ',InfoUnit.Name,' announces ',InfoUnit.AddressSize,
@@ -824,10 +935,11 @@ begin
 
     // And it has to be a routine which was collected, at the address it was
     // collected at. Searched by address, since that is the direction a reader
-    // uses it in.
+    // uses it in. In its own variable rather than in the one which holds the
+    // line program above, which is still needed after this loop.
     LowIndex:=0;
     HighIndex:=aBuilder.SymbolCount-1;
-    Found:=-1;
+    SymbolIndex:=-1;
     while LowIndex<=HighIndex do begin
      MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
      if (ImageBase+aBuilder.GetSymbol(MiddleIndex).RVA)<Subprogram.LowPC then begin
@@ -835,26 +947,26 @@ begin
      end else if (ImageBase+aBuilder.GetSymbol(MiddleIndex).RVA)>Subprogram.LowPC then begin
       HighIndex:=MiddleIndex-1;
      end else begin
-      Found:=MiddleIndex;
+      SymbolIndex:=MiddleIndex;
       break;
      end;
     end;
     // More than one name can sit at an address, so the run of them is walked.
-    if Found>=0 then begin
-     while (Found>0) and ((ImageBase+aBuilder.GetSymbol(Found-1).RVA)=Subprogram.LowPC) do begin
-      dec(Found);
+    if SymbolIndex>=0 then begin
+     while (SymbolIndex>0) and ((ImageBase+aBuilder.GetSymbol(SymbolIndex-1).RVA)=Subprogram.LowPC) do begin
+      dec(SymbolIndex);
      end;
-     while (Found<aBuilder.SymbolCount) and ((ImageBase+aBuilder.GetSymbol(Found).RVA)=Subprogram.LowPC) do begin
-      if aBuilder.GetSymbol(Found).Name=Subprogram.Name then begin
+     while (SymbolIndex<aBuilder.SymbolCount) and ((ImageBase+aBuilder.GetSymbol(SymbolIndex).RVA)=Subprogram.LowPC) do begin
+      if aBuilder.GetSymbol(SymbolIndex).Name=Subprogram.Name then begin
        break;
       end;
-      inc(Found);
+      inc(SymbolIndex);
      end;
-     if (Found>=aBuilder.SymbolCount) or ((ImageBase+aBuilder.GetSymbol(Found).RVA)<>Subprogram.LowPC) then begin
-      Found:=-1;
+     if (SymbolIndex>=aBuilder.SymbolCount) or ((ImageBase+aBuilder.GetSymbol(SymbolIndex).RVA)<>Subprogram.LowPC) then begin
+      SymbolIndex:=-1;
      end;
     end;
-    if Found<0 then begin
+    if SymbolIndex<0 then begin
      if SubprogramComplaints<8 then begin
       WriteLn('  ',Subprogram.Name,' is described at $',IntToHex(Subprogram.LowPC,8),
               ', where no routine of that name was collected.');
@@ -864,6 +976,19 @@ begin
      inc(SubprogramsSeen);
     end;
 
+   end;
+
+   // The other direction. Every subprogram being right says nothing about one
+   // which is not there at all: a writer which drops a routine leaves the ones
+   // it did write perfectly correct, and the loop above would pass. The
+   // symbols are sorted by address, so what has to be described here is simply
+   // the run which falls inside this range.
+   ExpectedSubprograms:=FirstSymbolAtOrAbove(aBuilder,InfoUnit.HighPC)-
+                        FirstSymbolAtOrAbove(aBuilder,InfoUnit.LowPC);
+   if InfoUnit.SubprogramCount<>ExpectedSubprograms then begin
+    WriteLn('  compilation unit ',InfoUnit.Name,' describes ',InfoUnit.SubprogramCount,
+            ' routines where ',ExpectedSubprograms,' were collected in the range it covers.');
+    inc(Complaints);
    end;
 
   end;
@@ -923,19 +1048,6 @@ begin
  LineCollector:=TDWARFCheckCollector.Create;
  try
 
-  LineSection:=aCheck.ReadSection('.debug_line');
-  if not assigned(LineSection) then begin
-   WriteLn('Debug file check FAILED: the file which was just written has no readable line programs.');
-   ExitCode:=1;
-   exit;
-  end;
-
-  LineReader:=TDWARFLineReader.Create(LineSection.Memory,LineSection.Size);
-  LineReader.BigEndian:=aCheck.BigEndian;
-  LineCollector.Builder:=aBuilder;
-  LineCollector.ImageBase:=aBuilder.ImageBase;
-  LineReader.Parse(LineCollector.OnRow,nil);
-
   // Counted out of the collected records rather than taken from the writer.
   // A record which closes a sequence is not a row and a record which fell
   // outside every unit range never reaches a line program, so the number is
@@ -951,6 +1063,28 @@ begin
     inc(Expected);
    end;
   end;
+
+  // Nothing was collected and nothing was written, which is what asking for no
+  // line numbers looks like from here. Both halves are required: a writer which
+  // put down nothing while records were there is a failure and falls through to
+  // the checks below rather than into this.
+  if (Expected=0) and (aDWARFWriter.LineRowCount=0) then begin
+   WriteLn('Debug file check: no line numbers were collected, so there are no line programs to read back.');
+   exit;
+  end;
+
+  LineSection:=aCheck.ReadSection('.debug_line');
+  if not assigned(LineSection) then begin
+   WriteLn('Debug file check FAILED: the file which was just written has no readable line programs.');
+   ExitCode:=1;
+   exit;
+  end;
+
+  LineReader:=TDWARFLineReader.Create(LineSection.Memory,LineSection.Size);
+  LineReader.BigEndian:=aCheck.BigEndian;
+  LineCollector.Builder:=aBuilder;
+  LineCollector.ImageBase:=aBuilder.ImageBase;
+  LineReader.Parse(LineCollector.OnRow,nil);
 
   if (LineCollector.Rows<>Expected) or (LineCollector.Mismatched>0) then begin
    WriteLn('Debug file check FAILED: ',LineCollector.Rows,' of ',Expected,' line rows came back, ',LineCollector.Mismatched,' with the wrong line number.');
@@ -993,18 +1127,11 @@ end;
 procedure CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
 var Check:TImageFile;
     Collector:TCheckCollector;
-    LineCollector:TDWARFCheckCollector;
-    LineSection:TMemoryStream;
-    LineReader:TDWARFLineReader;
-    LineRecord:TSymbolBuilder.TLineRecord;
-    Expected,Index:TpvSizeInt;
+    Expected:TpvSizeInt;
 begin
 
  Collector:=TCheckCollector.Create;
- LineCollector:=TDWARFCheckCollector.Create;
  Check:=TImageFile.Create;
- LineSection:=nil;
- LineReader:=nil;
  try
 
   if not Check.Open(aFileName) then begin
@@ -1052,6 +1179,56 @@ begin
   FreeAndNil(Collector);
  end;
 
+end;
+
+// Reads back the entry which names the pdb, out of the executable which was
+// just written.
+//
+// This is the one thing a debugger looks at before anything else, and until now
+// it was the one thing nobody looked at again. The pdb itself is held against
+// dbghelp and comes back clean, but that says nothing about whether the
+// executable leads there: a wrong identity and the debugger refuses the pdb it
+// just found, a wrong name and it never finds it at all, and in both cases the
+// symbols are perfect and unreachable.
+procedure CheckCodeViewEntry(const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String);
+var Check:TImageFile;
+    Info:TImageCodeViewInfo;
+    Written:PpvUInt8Array;
+    Index:TpvSizeInt;
+    Same:Boolean;
+begin
+ Check:=TImageFile.Create;
+ try
+  if not Check.Open(aFileName) then begin
+   WriteLn('Debug directory check FAILED: the executable cannot be read back.');
+   ExitCode:=1;
+   exit;
+  end;
+  if not Check.CodeViewInfo(Info) then begin
+   WriteLn('Debug directory check FAILED: the executable does not name a pdb at all.');
+   ExitCode:=1;
+   exit;
+  end;
+  Written:=PpvUInt8Array(aPDBWriter.GUIDPointer);
+  Same:=true;
+  for Index:=0 to 15 do begin
+   if Info.GUID[Index]<>Written^[Index] then begin
+    Same:=false;
+    break;
+   end;
+  end;
+  if (not Same) or (Info.Age<>aPDBWriter.Age) then begin
+   WriteLn('Debug directory check FAILED: the identity in the executable is not the one the pdb was written with.');
+   ExitCode:=1;
+  end else if Info.FileName<>aPDBFileName then begin
+   WriteLn('Debug directory check FAILED: the executable names ',Info.FileName,' where the pdb was written as ',aPDBFileName,'.');
+   ExitCode:=1;
+  end else begin
+   WriteLn('Debug directory check: the executable names ',Info.FileName,' with the identity it was written with.');
+  end;
+ finally
+  FreeAndNil(Check);
+ end;
 end;
 
 // The same for the DWARF which was put into the executable itself. That is the
@@ -1127,9 +1304,15 @@ begin
   // else about the image than the image does is one a reader can refuse.
   ELFWriter.Flags:=aImage.ELFFlags;
 
-  ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
-  ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
-  ELFWriter.AddDebugSection('.debug_line',aDWARFWriter.DebugLine);
+  // Only when there is something to describe. Without line numbers there are no
+  // compilation units either, since the writer has nothing to say about a unit
+  // it knows no rows for, and an abbreviation table on its own describes
+  // nothing. What is left is a file of symbols, which is still worth having.
+  if aDWARFWriter.DebugLine.Size>0 then begin
+   ELFWriter.AddDebugSection('.debug_info',aDWARFWriter.DebugInfo);
+   ELFWriter.AddDebugSection('.debug_abbrev',aDWARFWriter.DebugAbbrev);
+   ELFWriter.AddDebugSection('.debug_line',aDWARFWriter.DebugLine);
+  end;
 
   ImageBase:=aBuilder.ImageBase;
 
@@ -1284,7 +1467,7 @@ begin
  end;
 end;
 
-var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
+var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:String;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
     DebugOutputFileName:String;
@@ -1307,6 +1490,7 @@ var ExecutableFileName,MapFileName,DebugFileName,Parameter:String;
     DbgHelpResolved,DbgHelpProbes:TpvSizeInt;
     DbgHelpAvailable:Boolean;
     UsedDWARF:Boolean;
+    OwnDWARF:Boolean;
 
 begin
 
@@ -1424,6 +1608,7 @@ begin
   Collector.CodeHigh:=Image.CodeHigh;
   Builder.ImageBase:=Image.ImageBase;
   Collector.WantSymbols:=WantSymbols;
+  Collector.WantLines:=WantLines;
   Collector.SymbolsAdded:=0;
   Collector.DiscardedRows:=0;
   Collector.HaveCurrent:=false;
@@ -1431,10 +1616,14 @@ begin
   // Decide which frontend applies. A Delphi build never carries DWARF, so
   // preferring DWARF when it is present is unambiguous.
   UsedDWARF:=false;
+  OwnDWARF:=false;
   if not ForceMap then begin
    SymbolImage:=Image;
    if not Image.FindSection('.debug_line',Section) then begin
-    DebugFileName:=Image.DebugLinkFileName;
+    DebugFileName:=Image.DebugLinkFileName(DebugLinkMessage);
+    if length(DebugLinkMessage)>0 then begin
+     WriteLn('Debug link: ',DebugLinkMessage,'.');
+    end;
     if length(DebugFileName)>0 then begin
      WriteLn('Following the debug link to ',ExtractFileName(DebugFileName),'.');
      DebugImage:=TImageFile.Create;
@@ -1456,39 +1645,50 @@ begin
     StringData:=Image.ReadSection('.debug_str');
    end;
 
-   if assigned(LineData) and (LineData.Size>0) then begin
-    if WantLines then begin
-     DWARFReader:=TDWARFLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
-     // The section was written in the order of the image it came out of, which
-     // for a big endian target is not the order this tool runs in.
-     DWARFReader.BigEndian:=SymbolImage.BigEndian;
-     // Version 5 keeps its path strings in sections of their own, so those are
-     // handed over as well where they exist.
-     if assigned(LineStringData) or assigned(StringData) then begin
-      if assigned(LineStringData) then begin
-       LineStringMemory:=LineStringData.Memory;
-       LineStringSize:=TpvSizeInt(LineStringData.Size);
-      end else begin
-       LineStringMemory:=nil;
-       LineStringSize:=0;
-      end;
-      if assigned(StringData) then begin
-       StringMemory:=StringData.Memory;
-       StringSize:=TpvSizeInt(StringData.Size);
-      end else begin
-       StringMemory:=nil;
-       StringSize:=0;
-      end;
-      DWARFReader.SetStringSections(LineStringMemory,LineStringSize,StringMemory,StringSize);
+   // DWARF which an earlier run of this tool wrote is not treated as one. See
+   // HasOwnDWARF for why reading it back would lose the routine names of the
+   // build rather than find them.
+   OwnDWARF:=assigned(LineData) and (LineData.Size>0) and HasOwnDWARF(SymbolImage);
+   if OwnDWARF then begin
+    WriteLn('The debug sections in this file were written by an earlier run of this tool, so they are not read back as a source.');
+   end;
+
+   if assigned(LineData) and (LineData.Size>0) and not OwnDWARF then begin
+    // Read whether or not the line numbers are wanted. What a compilation unit
+    // covers is only stated by where its rows are, and nothing else in a DWARF
+    // says it, so skipping the rows leaves no ranges and without ranges there
+    // is nothing to write at all. Asking for fewer line numbers used to produce
+    // nothing rather than fewer. The rows are dropped in the collector instead.
+    DWARFReader:=TDWARFLineReader.Create(LineData.Memory,TpvSizeInt(LineData.Size));
+    // The section was written in the order of the image it came out of, which
+    // for a big endian target is not the order this tool runs in.
+    DWARFReader.BigEndian:=SymbolImage.BigEndian;
+    // Version 5 keeps its path strings in sections of their own, so those are
+    // handed over as well where they exist.
+    if assigned(LineStringData) or assigned(StringData) then begin
+     if assigned(LineStringData) then begin
+      LineStringMemory:=LineStringData.Memory;
+      LineStringSize:=TpvSizeInt(LineStringData.Size);
+     end else begin
+      LineStringMemory:=nil;
+      LineStringSize:=0;
      end;
-     DWARFReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
-     WriteLn('DWARF: ',DWARFReader.UnitCount,' compilation units, ',DWARFReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
-     if DWARFReader.SkippedUnitCount>0 then begin
-      // Version 5 used to be the usual reason and no longer is, since it is
-      // read now. What is left are versions outside two to five, a line range
-      // of zero, and an entry format this does not know how to step over.
-      WriteLn('Warning: ',DWARFReader.SkippedUnitCount,' compilation units were skipped, because their line program header could not be read.');
+     if assigned(StringData) then begin
+      StringMemory:=StringData.Memory;
+      StringSize:=TpvSizeInt(StringData.Size);
+     end else begin
+      StringMemory:=nil;
+      StringSize:=0;
      end;
+     DWARFReader.SetStringSections(LineStringMemory,LineStringSize,StringMemory,StringSize);
+    end;
+    DWARFReader.Parse(Collector.OnLineRow,Collector.OnLineUnit);
+    WriteLn('DWARF: ',DWARFReader.UnitCount,' compilation units, ',DWARFReader.RowCount,' line rows, ',Collector.DiscardedRows,' of them for discarded code.');
+    if DWARFReader.SkippedUnitCount>0 then begin
+     // Version 5 used to be the usual reason and no longer is, since it is
+     // read now. What is left are versions outside two to five, a line range
+     // of zero, and an entry format this does not know how to step over.
+     WriteLn('Warning: ',DWARFReader.SkippedUnitCount,' compilation units were skipped, because their line program header could not be read.');
     end;
     // The symbol table normally lives in whichever image carries the debug
     // information, since a stripped executable has none left.
@@ -1503,7 +1703,12 @@ begin
   if not UsedDWARF then begin
 
    if ForceDWARF then begin
-    WriteLn('No DWARF line information found in ',ExecutableFileName,'.');
+    if OwnDWARF then begin
+     WriteLn('The only DWARF in ',ExecutableFileName,' is what an earlier run of this tool put there, which is not a source.');
+     WriteLn('Build the executable again and run this on the fresh one.');
+    end else begin
+     WriteLn('No DWARF line information found in ',ExecutableFileName,'.');
+    end;
     ExitCode:=1;
     exit;
    end;
@@ -1629,18 +1834,31 @@ begin
    // Injection changes the size of the file, so it has to come first. The
    // appended table is found through a footer at the very end and would be
    // orphaned by anything written behind it.
+   //
    // The DWARF sections only go in when that was actually asked for, even if a
    // writer exists because a separate debug file was requested as well.
-   // The result is looked at. Refusing is a normal outcome here, an executable
-   // which is signed or already carries a symbol table being turned away, and
-   // the message says so, but the run asked for these sections and did not get
-   // them. Carrying on and finishing with a zero would report success for an
-   // executable which does not hold what was asked for, and the build which
-   // asked would go on believing it does.
+   //
+   // Sections which describe nothing are not a smaller version of the job, they
+   // are the job not done, and they would leave the executable changed for
+   // nothing. Said before the executable is touched rather than after.
+   if InjectIntoExecutable and (DWARFWriter.DebugLine.Size=0) then begin
+    WriteLn('Error: there are no line numbers to put into the executable.');
+    WriteLn('Debug sections in an executable are read through their compilation units, and there are none without line numbers.');
+    ReportUnchanged(ExecutableFileName,PDBOutputFileName,assigned(PDBWriter));
+    ExitCode:=1;
+    exit;
+   end;
+
    if InjectIntoExecutable then begin
+    // The result is looked at. Refusing is a normal outcome here, an executable
+    // which is signed or already carries a symbol table being turned away, and
+    // the message says so, but the run asked for these sections and did not get
+    // them. Carrying on and finishing with a zero would report success for an
+    // executable which does not hold what was asked for, and the build which
+    // asked would go on believing it does.
     if not InjectDebugSections(DWARFWriter,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
      WriteLn('Error: the debug sections which were asked for could not be put into the executable.');
-     WriteLn('Nothing was changed.');
+     ReportUnchanged(ExecutableFileName,PDBOutputFileName,assigned(PDBWriter));
      ExitCode:=1;
      exit;
     end;
@@ -1649,16 +1867,20 @@ begin
     // container. Only the DWARF: the symbols of the executable are its own and
     // have nothing to do with what was collected here.
     CheckInjectedDebugSections(Builder,DWARFWriter,Image,ExecutableFileName);
+    if assigned(PDBWriter) then begin
+     CheckCodeViewEntry(PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
+    end;
    end else if assigned(PDBWriter) then begin
     // The same for the entry which names the pdb. Without it the pdb is on
     // disk and no debugger will ever look at it, which is a run that produced
     // a file and not the thing the file is for.
     if not InjectDebugSections(nil,PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName) then begin
      WriteLn('Error: the executable could not be made to name the pdb which was just written.');
-     WriteLn('Nothing was changed.');
+     ReportUnchanged(ExecutableFileName,PDBOutputFileName,true);
      ExitCode:=1;
      exit;
     end;
+    CheckCodeViewEntry(PDBWriter,ExtractFileName(PDBOutputFileName),ExecutableFileName);
    end;
 
    Builder.AppendToFile(ExecutableFileName);

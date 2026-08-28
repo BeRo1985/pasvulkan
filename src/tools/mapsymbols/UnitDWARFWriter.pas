@@ -33,6 +33,11 @@ uses SysUtils,
      PasVulkan.Types,
      UnitSymbolBuilder;
 
+// What every compilation unit written here names as its producer. Out here
+// rather than beside the writing, because a later run has to be able to tell
+// that the DWARF it is looking at is one of these and not a compiler's.
+const DWARFProducer='PasVulkan mapsymbols';
+
 type TDWARFWriter=class
       private
        fBuilder:TSymbolBuilder;
@@ -104,8 +109,6 @@ const DW_TAG_compile_unit=$11;
 
       DW_LNE_end_sequence=1;
       DW_LNE_set_address=2;
-
-      DWARFProducer='PasVulkan mapsymbols';
 
 constructor TDWARFWriter.Create(const aBuilder:TSymbolBuilder);
 begin

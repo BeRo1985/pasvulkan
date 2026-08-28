@@ -171,7 +171,7 @@ end;
 
 function TPEInjector.InjectInto(const aFileName:String):Boolean;
 var Source,Target:TFileStream;
-    TargetName:String;
+    TargetName,BackupName:String;
     NewHeaderOffset:TpvUInt32;
     Signature:array[0..3] of AnsiChar;
     NumberOfSections:TpvUInt16;
@@ -448,11 +448,38 @@ begin
    FreeAndNil(Source);
   end;
 
-  DeleteFile(aFileName);
-  if not RenameFile(TargetName,aFileName) then begin
-   fMessage:='Could not replace '+aFileName+'.';
+  // Everything up to here only read the original and built the replacement
+  // beside it, and this is where that care would have been thrown away. The
+  // original was deleted first and the replacement renamed into the free name
+  // afterwards, so a rename which does not go through, a scanner holding the
+  // name for a moment, a full volume, a target which turns out to be elsewhere,
+  // left neither of them: the one good copy was already gone and its
+  // replacement never took the name.
+  //
+  // So the original is set aside instead, and only thrown away once the
+  // replacement is in place. Every way out of here now leaves either the
+  // untouched original or the finished new file under that name, which is what
+  // lets the caller say that a failure changed nothing.
+  BackupName:=aFileName+'.mapsymbols-old';
+  DeleteFile(BackupName);
+  if not RenameFile(aFileName,BackupName) then begin
+   DeleteFile(TargetName);
+   fMessage:='Could not set '+aFileName+' aside, so it was left alone.';
    exit;
   end;
+  if not RenameFile(TargetName,aFileName) then begin
+   // Put back what was there. If even this does not work the original is still
+   // on disk under the name in the message, which is worth more than a message
+   // which does not say where it went.
+   if not RenameFile(BackupName,aFileName) then begin
+    fMessage:='Could not replace '+aFileName+', and it is now at '+BackupName+'.';
+    exit;
+   end;
+   DeleteFile(TargetName);
+   fMessage:='Could not replace '+aFileName+', so it was left alone.';
+   exit;
+  end;
+  DeleteFile(BackupName);
 
   if Delta>0 then begin
    fMessage:='Injected '+IntToStr(fSectionCount)+' sections, header area grown by '+IntToStr(Delta)+' bytes.';
