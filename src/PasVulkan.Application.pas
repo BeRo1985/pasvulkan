@@ -2773,13 +2773,13 @@ procedure LogCrash(const aExceptionString:String);
 
 implementation
 
-uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport
+uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport,
 {$ifdef PasVulkanUseCrashDump}
      // Only where the program asked for dumps, so that nobody who did not is
      // made to carry the library one of them needs.
-     ,PasVulkan.CrashReport.MiniDump
+     PasVulkan.CrashReport.MiniDump,
 {$endif}
-     ;
+     PasDblStrUtils;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
