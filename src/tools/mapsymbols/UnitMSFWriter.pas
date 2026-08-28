@@ -37,6 +37,7 @@ type TMSFWriter=class
              Data:TMemoryStream;
              Owned:Boolean;
             end;
+            PStreamRecord=^TStreamRecord;
             TStreamRecords=array of TStreamRecord;
       private
        fStreams:TStreamRecords;
@@ -69,10 +70,12 @@ end;
 
 destructor TMSFWriter.Destroy;
 var Index:TpvSizeInt;
+    StreamRecord:PStreamRecord;
 begin
  for Index:=0 to fStreamCount-1 do begin
-  if fStreams[Index].Owned then begin
-   FreeAndNil(fStreams[Index].Data);
+  StreamRecord:=@fStreams[Index];
+  if StreamRecord^.Owned then begin
+   FreeAndNil(StreamRecord^.Data);
   end;
  end;
  fStreams:=nil;
@@ -80,24 +83,28 @@ begin
 end;
 
 function TMSFWriter.AddStream:TMemoryStream;
+var StreamRecord:PStreamRecord;
 begin
  if fStreamCount>=length(fStreams) then begin
   SetLength(fStreams,(fStreamCount+1)*2);
  end;
  result:=TMemoryStream.Create;
- fStreams[fStreamCount].Data:=result;
- fStreams[fStreamCount].Owned:=true;
+ StreamRecord:=@fStreams[fStreamCount];
+ StreamRecord^.Data:=result;
+ StreamRecord^.Owned:=true;
  inc(fStreamCount);
 end;
 
 function TMSFWriter.AddExistingStream(const aData:TMemoryStream):TpvSizeInt;
+var StreamRecord:PStreamRecord;
 begin
  if fStreamCount>=length(fStreams) then begin
   SetLength(fStreams,(fStreamCount+1)*2);
  end;
  result:=fStreamCount;
- fStreams[fStreamCount].Data:=aData;
- fStreams[fStreamCount].Owned:=false;
+ StreamRecord:=@fStreams[fStreamCount];
+ StreamRecord^.Data:=aData;
+ StreamRecord^.Owned:=false;
  inc(fStreamCount);
 end;
 
@@ -120,6 +127,7 @@ var Stream:TFileStream;
     FreeBlockMap:array[0..pvMSFBlockSize-1] of TpvUInt8;
     Padding:array[0..pvMSFBlockSize-1] of TpvUInt8;
     Written:TpvInt64;
+    Data:TMemoryStream;
 
  // Hands out the next block which is not one of the free block maps. Those sit
  // at one and two of every block size sized interval.
@@ -209,15 +217,16 @@ begin
 
    // Stream data, block by block, in the order the blocks were handed out.
    for Index:=0 to fStreamCount-1 do begin
-    fStreams[Index].Data.Position:=0;
+    Data:=fStreams[Index].Data;
+    Data.Position:=0;
     for BlockIndex:=0 to length(StreamBlocks[Index])-1 do begin
      Stream.Position:=TpvInt64(StreamBlocks[Index][BlockIndex])*pvMSFBlockSize;
-     Written:=fStreams[Index].Data.Size-fStreams[Index].Data.Position;
+     Written:=Data.Size-Data.Position;
      if Written>pvMSFBlockSize then begin
       Written:=pvMSFBlockSize;
      end;
      if Written>0 then begin
-      Stream.CopyFrom(fStreams[Index].Data,Written);
+      Stream.CopyFrom(Data,Written);
      end;
      if Written<pvMSFBlockSize then begin
       Stream.WriteBuffer(Padding,pvMSFBlockSize-Written);

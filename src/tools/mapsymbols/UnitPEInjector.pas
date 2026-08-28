@@ -206,6 +206,7 @@ type TPEInjectorSection=record
       // to point at it.
       IsDebugDirectory:Boolean;
      end;
+     PPEInjectorSection=^TPEInjectorSection;
 
      TPEInjectorSections=array of TPEInjectorSection;
 
@@ -269,6 +270,7 @@ type TExistingSection=record
       // makes running this twice over the same executable work.
       Dropped:Boolean;
      end;
+     PExistingSection=^TExistingSection;
 
      TExistingSections=array of TExistingSection;
 
@@ -283,6 +285,7 @@ type TExistingSection=record
       // list is not their position in the file.
       SourceIndex:TpvSizeInt;
      end;
+     PExistingDebugEntry=^TExistingDebugEntry;
 
      TExistingDebugEntries=array of TExistingDebugEntry;
 
@@ -585,6 +588,7 @@ end;
 
 destructor TPEInjector.Destroy;
 var Index:TpvSizeInt;
+    Section:PPEInjectorSection;
 begin
  // A replacement which was prepared and never put in place is not left lying
  // beside the original.
@@ -592,8 +596,9 @@ begin
  // Only the debug directory stream was created here, the rest belongs to the
  // caller.
  for Index:=0 to fSectionCount-1 do begin
-  if fSections[Index].IsDebugDirectory then begin
-   FreeAndNil(fSections[Index].Data);
+  Section:=@fSections[Index];
+  if Section^.IsDebugDirectory then begin
+   FreeAndNil(Section^.Data);
   end;
  end;
  fSections:=nil;
@@ -601,14 +606,16 @@ begin
 end;
 
 procedure TPEInjector.AddSection(const aName:String;const aData:TMemoryStream);
+var Section:PPEInjectorSection;
 begin
  if assigned(aData) and (aData.Size>0) then begin
   if fSectionCount>=length(fSections) then begin
    SetLength(fSections,(fSectionCount+1)*2);
   end;
-  fSections[fSectionCount].Name:=aName;
-  fSections[fSectionCount].Data:=aData;
-  fSections[fSectionCount].IsDebugDirectory:=false;
+  Section:=@fSections[fSectionCount];
+  Section^.Name:=aName;
+  Section^.Data:=aData;
+  Section^.IsDebugDirectory:=false;
   inc(fSectionCount);
  end;
 end;
@@ -621,6 +628,7 @@ var Data:TMemoryStream;
     NameText:TpvRawByteString;
     Terminator:AnsiChar;
     RecordSize:TpvUInt32;
+    Section:PPEInjectorSection;
 begin
 
  NameText:=TpvRawByteString(aPDBFileName);
@@ -659,9 +667,10 @@ begin
  if fSectionCount>=length(fSections) then begin
   SetLength(fSections,(fSectionCount+1)*2);
  end;
- fSections[fSectionCount].Name:='.debug';
- fSections[fSectionCount].Data:=Data;
- fSections[fSectionCount].IsDebugDirectory:=true;
+ Section:=@fSections[fSectionCount];
+ Section^.Name:='.debug';
+ Section^.Data:=Data;
+ Section^.IsDebugDirectory:=true;
  inc(fSectionCount);
 
 end;
@@ -1232,25 +1241,30 @@ var Source,Target:TFileStream;
     Scratch:array[0..4095] of TpvUInt8;
     SuffixStarts,SuffixEnds:array of TpvInt64;
     SuffixCount:TpvSizeInt;
+    Section:PPEInjectorSection;
+    Existing:PExistingSection;
+    DebugEntry:PExistingDebugEntry;
 
  // Where an address relative to the image base lands in the source file, going
  // by the sections as they were before anything moved.
  function SourceOffsetOfRVA(const aRVA:TpvUInt32):TpvInt64;
  var Scan:TpvSizeInt;
      Size:TpvUInt32;
+     Existing:PExistingSection;
  begin
   result:=0;
   for Scan:=0 to length(ExistingSections)-1 do begin
-   if ExistingSections[Scan].RawSize=0 then begin
+   Existing:=@ExistingSections[Scan];
+   if Existing^.RawSize=0 then begin
     continue;
    end;
-   if ExistingSections[Scan].VirtualSize>0 then begin
-    Size:=ExistingSections[Scan].VirtualSize;
+   if Existing^.VirtualSize>0 then begin
+    Size:=Existing^.VirtualSize;
    end else begin
-    Size:=ExistingSections[Scan].RawSize;
+    Size:=Existing^.RawSize;
    end;
-   if (aRVA>=ExistingSections[Scan].VirtualAddress) and (aRVA<(ExistingSections[Scan].VirtualAddress+Size)) then begin
-    result:=TpvInt64(ExistingSections[Scan].RawPointer)+TpvInt64(aRVA-ExistingSections[Scan].VirtualAddress);
+   if (aRVA>=Existing^.VirtualAddress) and (aRVA<(Existing^.VirtualAddress+Size)) then begin
+    result:=TpvInt64(Existing^.RawPointer)+TpvInt64(aRVA-Existing^.VirtualAddress);
     exit;
    end;
   end;
@@ -1312,14 +1326,16 @@ var Source,Target:TFileStream;
  // what decides whether whatever sits there survives this.
  function InsideKeptSection(const aOffset:TpvUInt32):Boolean;
  var Scan:TpvSizeInt;
+     Existing:PExistingSection;
  begin
   result:=false;
   for Scan:=0 to length(ExistingSections)-1 do begin
-   if ExistingSections[Scan].Dropped or (ExistingSections[Scan].RawSize=0) then begin
+   Existing:=@ExistingSections[Scan];
+   if Existing^.Dropped or (Existing^.RawSize=0) then begin
     continue;
    end;
-   if (aOffset>=ExistingSections[Scan].RawPointer) and
-      (aOffset<(ExistingSections[Scan].RawPointer+ExistingSections[Scan].RawSize)) then begin
+   if (aOffset>=Existing^.RawPointer) and
+      (aOffset<(Existing^.RawPointer+Existing^.RawSize)) then begin
     result:=true;
     exit;
    end;
@@ -1488,14 +1504,15 @@ begin
    // run replaces can be told apart from the ones which have to survive.
    SetLength(ExistingSections,NumberOfSections);
    for Index:=0 to NumberOfSections-1 do begin
+    Existing:=@ExistingSections[Index];
     Source.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize),soBeginning);
-    Source.ReadBuffer(ExistingSections[Index].Raw[0],SectionHeaderSize);
-    Move(ExistingSections[Index].Raw[8],ExistingSections[Index].VirtualSize,SizeOf(TpvUInt32));
-    Move(ExistingSections[Index].Raw[12],ExistingSections[Index].VirtualAddress,SizeOf(TpvUInt32));
-    Move(ExistingSections[Index].Raw[16],ExistingSections[Index].RawSize,SizeOf(TpvUInt32));
-    Move(ExistingSections[Index].Raw[20],ExistingSections[Index].RawPointer,SizeOf(TpvUInt32));
-    ExistingSections[Index].Name:=SectionName(ExistingSections[Index].Raw,OldStringTable);
-    ExistingSections[Index].Dropped:=false;
+    Source.ReadBuffer(Existing^.Raw[0],SectionHeaderSize);
+    Move(Existing^.Raw[8],Existing^.VirtualSize,SizeOf(TpvUInt32));
+    Move(Existing^.Raw[12],Existing^.VirtualAddress,SizeOf(TpvUInt32));
+    Move(Existing^.Raw[16],Existing^.RawSize,SizeOf(TpvUInt32));
+    Move(Existing^.Raw[20],Existing^.RawPointer,SizeOf(TpvUInt32));
+    Existing^.Name:=SectionName(Existing^.Raw,OldStringTable);
+    Existing^.Dropped:=false;
    end;
 
    // A section which one of the new ones is called after is replaced rather
@@ -1504,9 +1521,10 @@ begin
    // everything behind it.
    DroppedCount:=0;
    for Index:=0 to NumberOfSections-1 do begin
+    Existing:=@ExistingSections[Index];
     for NewIndex:=0 to fSectionCount-1 do begin
-     if ExistingSections[Index].Name=fSections[NewIndex].Name then begin
-      ExistingSections[Index].Dropped:=true;
+     if Existing^.Name=fSections[NewIndex].Name then begin
+      Existing^.Dropped:=true;
       inc(DroppedCount);
       break;
      end;
@@ -1520,9 +1538,10 @@ begin
    // file by a copy of everything it wrote the first time.
    BodyEnd:=TpvInt64(SizeOfHeaders);
    for Index:=0 to NumberOfSections-1 do begin
-    if (not ExistingSections[Index].Dropped) and (ExistingSections[Index].RawPointer<>0) and
-       ((TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>BodyEnd) then begin
-     BodyEnd:=TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize);
+    Existing:=@ExistingSections[Index];
+    if (not Existing^.Dropped) and (Existing^.RawPointer<>0) and
+       ((TpvInt64(Existing^.RawPointer)+TpvInt64(Existing^.RawSize))>BodyEnd) then begin
+     BodyEnd:=TpvInt64(Existing^.RawPointer)+TpvInt64(Existing^.RawSize);
     end;
    end;
 
@@ -1539,9 +1558,10 @@ begin
    // known would have thrown the overlay away.
    SuffixCount:=0;
    for Index:=0 to NumberOfSections-1 do begin
-    if ExistingSections[Index].Dropped and (ExistingSections[Index].RawPointer<>0) and
-       (ExistingSections[Index].RawSize<>0) then begin
-     AddSuffix(TpvInt64(ExistingSections[Index].RawPointer),TpvInt64(ExistingSections[Index].RawSize));
+    Existing:=@ExistingSections[Index];
+    if Existing^.Dropped and (Existing^.RawPointer<>0) and
+       (Existing^.RawSize<>0) then begin
+     AddSuffix(TpvInt64(Existing^.RawPointer),TpvInt64(Existing^.RawSize));
     end;
    end;
    if SymbolTablePointer<>0 then begin
@@ -1611,18 +1631,19 @@ begin
      DebugEntryCount:=DebugDirectorySize div DebugDirectoryEntrySize;
      SetLength(ExistingDebugEntries,DebugEntryCount);
      for Index:=0 to DebugEntryCount-1 do begin
+      DebugEntry:=@ExistingDebugEntries[ExistingDebugCount];
       Source.Seek(EntryOffset+(TpvInt64(Index)*DebugDirectoryEntrySize),soBeginning);
-      Source.ReadBuffer(ExistingDebugEntries[ExistingDebugCount].Raw[0],DebugDirectoryEntrySize);
-      Move(ExistingDebugEntries[ExistingDebugCount].Raw[12],ExistingDebugEntries[ExistingDebugCount].EntryType,SizeOf(TpvUInt32));
-      Move(ExistingDebugEntries[ExistingDebugCount].Raw[24],ExistingDebugEntries[ExistingDebugCount].RawPointer,SizeOf(TpvUInt32));
-      ExistingDebugEntries[ExistingDebugCount].SourceIndex:=Index;
+      Source.ReadBuffer(DebugEntry^.Raw[0],DebugDirectoryEntrySize);
+      Move(DebugEntry^.Raw[12],DebugEntry^.EntryType,SizeOf(TpvUInt32));
+      Move(DebugEntry^.Raw[24],DebugEntry^.RawPointer,SizeOf(TpvUInt32));
+      DebugEntry^.SourceIndex:=Index;
       // One of ours replaces any codeview entry which is there, since two of
       // them would leave a debugger to pick.
-      if HaveCodeView and (ExistingDebugEntries[ExistingDebugCount].EntryType=IMAGE_DEBUG_TYPE_CODEVIEW) then begin
+      if HaveCodeView and (DebugEntry^.EntryType=IMAGE_DEBUG_TYPE_CODEVIEW) then begin
        continue;
       end;
-      if (ExistingDebugEntries[ExistingDebugCount].RawPointer<>0) and
-         not InsideKeptSection(ExistingDebugEntries[ExistingDebugCount].RawPointer) then begin
+      if (DebugEntry^.RawPointer<>0) and
+         not InsideKeptSection(DebugEntry^.RawPointer) then begin
        // Its payload is in a section which is being replaced, so there is
        // nothing left for it to point at. Counted and said out loud rather than
        // dropped quietly, since it is the one thing here which is lost.
@@ -1665,11 +1686,12 @@ begin
    // pushing the image further out every time.
    NextRVA:=0;
    for Index:=0 to NumberOfSections-1 do begin
-    if ExistingSections[Index].Dropped then begin
+    Existing:=@ExistingSections[Index];
+    if Existing^.Dropped then begin
      continue;
     end;
-    if (TpvUInt64(ExistingSections[Index].VirtualAddress)+TpvUInt64(ExistingSections[Index].VirtualSize))>NextRVA then begin
-     NextRVA:=TpvUInt64(ExistingSections[Index].VirtualAddress)+TpvUInt64(ExistingSections[Index].VirtualSize);
+    if (TpvUInt64(Existing^.VirtualAddress)+TpvUInt64(Existing^.VirtualSize))>NextRVA then begin
+     NextRVA:=TpvUInt64(Existing^.VirtualAddress)+TpvUInt64(Existing^.VirtualSize);
     end;
    end;
    NextRVA:=AlignUp(NextRVA,SectionAlignment);
@@ -1690,7 +1712,8 @@ begin
    // run was asked to touch.
    KeepOldStringTable:=false;
    for Index:=0 to NumberOfSections-1 do begin
-    if (not ExistingSections[Index].Dropped) and (ExistingSections[Index].Raw[0]=TpvUInt8(Ord('/'))) then begin
+    Existing:=@ExistingSections[Index];
+    if (not Existing^.Dropped) and (Existing^.Raw[0]=TpvUInt8(Ord('/'))) then begin
      KeepOldStringTable:=true;
      break;
     end;
@@ -1726,17 +1749,18 @@ begin
      StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
     end;
     for Index:=0 to fSectionCount-1 do begin
-     if length(fSections[Index].Name)>8 then begin
+     Section:=@fSections[Index];
+     if length(Section^.Name)>8 then begin
       // The name this run writes is the same name the run before it wrote, so
       // one which is already in the table is used again rather than added a
       // second time. Without that the table gains a copy of every long name on
       // every run, which is the one place where doing this twice would not have
       // left the same file as doing it once.
-      NameOffsets[Index]:=FindInStringTable(StringTable,fSections[Index].Name);
+      NameOffsets[Index]:=FindInStringTable(StringTable,Section^.Name);
       if NameOffsets[Index]=0 then begin
        NameOffsets[Index]:=TpvUInt32(StringTable.Size);
        StringTable.Position:=StringTable.Size;
-       NameText:=TpvRawByteString(fSections[Index].Name);
+       NameText:=TpvRawByteString(Section^.Name);
        StringTable.WriteBuffer(NameText[1],length(NameText));
        StringTable.WriteBuffer(Zero,1);
       end;
@@ -1774,15 +1798,16 @@ begin
     // in memory is the same one.
     NewIndex:=0;
     for Index:=0 to NumberOfSections-1 do begin
-     if ExistingSections[Index].Dropped then begin
+     Existing:=@ExistingSections[Index];
+     if Existing^.Dropped then begin
       continue;
      end;
-     if ExistingSections[Index].RawPointer<>0 then begin
-      Value32:=ExistingSections[Index].RawPointer+Delta;
-      Move(Value32,ExistingSections[Index].Raw[20],SizeOf(TpvUInt32));
+     if Existing^.RawPointer<>0 then begin
+      Value32:=Existing^.RawPointer+Delta;
+      Move(Value32,Existing^.Raw[20],SizeOf(TpvUInt32));
      end;
      Target.Seek(SectionHeaderTableOffset+(TpvInt64(NewIndex)*SectionHeaderSize),soBeginning);
-     Target.WriteBuffer(ExistingSections[Index].Raw[0],SectionHeaderSize);
+     Target.WriteBuffer(Existing^.Raw[0],SectionHeaderSize);
      inc(NewIndex);
     end;
     // The slots the dropped ones used are cleared. Most of them are written
@@ -1814,9 +1839,10 @@ begin
     if (not HaveCodeView) and (Delta>0) and (ExistingDebugCount>0) then begin
      EntryOffset:=SourceOffsetOfRVA(DebugDirectoryAddress)+TpvInt64(Delta);
      for Index:=0 to ExistingDebugCount-1 do begin
-      if ExistingDebugEntries[Index].RawPointer<>0 then begin
-       Target.Seek(EntryOffset+(TpvInt64(ExistingDebugEntries[Index].SourceIndex)*DebugDirectoryEntrySize)+24,soBeginning);
-       Value32:=ExistingDebugEntries[Index].RawPointer+Delta;
+      DebugEntry:=@ExistingDebugEntries[Index];
+      if DebugEntry^.RawPointer<>0 then begin
+       Target.Seek(EntryOffset+(TpvInt64(DebugEntry^.SourceIndex)*DebugDirectoryEntrySize)+24,soBeginning);
+       Value32:=DebugEntry^.RawPointer+Delta;
        Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
       end;
      end;
@@ -1828,15 +1854,16 @@ begin
     // longer before anything about its placement is written down.
     if HaveCodeView and (ExistingDebugCount>0) then begin
      for Index:=0 to fSectionCount-1 do begin
-      if fSections[Index].IsDebugDirectory then begin
+      Section:=@fSections[Index];
+      if Section^.IsDebugDirectory then begin
        MergedDirectory:=TMemoryStream.Create;
        MergedDirectory.Size:=TpvInt64(ExistingDebugCount)*DebugDirectoryEntrySize;
        FillChar(MergedDirectory.Memory^,MergedDirectory.Size,#0);
        MergedDirectory.Position:=MergedDirectory.Size;
-       fSections[Index].Data.Position:=0;
-       MergedDirectory.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
-       FreeAndNil(fSections[Index].Data);
-       fSections[Index].Data:=MergedDirectory;
+       Section^.Data.Position:=0;
+       MergedDirectory.CopyFrom(Section^.Data,Section^.Data.Size);
+       FreeAndNil(Section^.Data);
+       Section^.Data:=MergedDirectory;
        break;
       end;
      end;
@@ -1845,18 +1872,20 @@ begin
     // Append the new sections, each starting on a file alignment boundary.
     for Index:=0 to fSectionCount-1 do begin
 
+     Section:=@fSections[Index];
+
      Target.Seek(0,soEnd);
      PadTo(Target,TpvInt64(AlignUp(TpvUInt64(Target.Position),FileAlignment)));
      DataOffset:=TpvUInt64(Target.Position);
 
-     fSections[Index].Data.Position:=0;
-     Target.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
+     Section^.Data.Position:=0;
+     Target.CopyFrom(Section^.Data,Section^.Data.Size);
 
      // Out to the full size the header is about to claim for it. Every section
      // but the last one got this for free from the padding in front of the next
      // one, and the last one did not: what followed it was the string table,
      // which then began inside the range this section says is its own.
-     PadTo(Target,TpvInt64(DataOffset)+TpvInt64(AlignUp(TpvUInt64(fSections[Index].Data.Size),FileAlignment)));
+     PadTo(Target,TpvInt64(DataOffset)+TpvInt64(AlignUp(TpvUInt64(Section^.Data.Size),FileAlignment)));
 
      // Write the header entry for this section.
      Target.Seek(NewSectionHeaderTableEnd+(TpvInt64(Index)*SectionHeaderSize),soBeginning);
@@ -1865,21 +1894,21 @@ begin
      // string table and referred to by a slash and an offset, which is the gnu
      // extension gdb needs for the debug sections and which nothing else should
      // have to carry.
-     if length(fSections[Index].Name)>8 then begin
+     if length(Section^.Name)>8 then begin
       NameText:=TpvRawByteString('/'+IntToStr(NameOffsets[Index]));
       if length(NameText)>8 then begin
        SetLength(NameText,8);
       end;
      end else begin
-      NameText:=TpvRawByteString(fSections[Index].Name);
+      NameText:=TpvRawByteString(Section^.Name);
      end;
      Move(NameText[1],RawName[0],length(NameText));
      Target.WriteBuffer(RawName,8);
-     Value32:=TpvUInt32(fSections[Index].Data.Size);
+     Value32:=TpvUInt32(Section^.Data.Size);
      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // virtual size
      Value32:=TpvUInt32(NextRVA);
      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // virtual address
-     Value32:=TpvUInt32(AlignUp(TpvUInt64(fSections[Index].Data.Size),FileAlignment));
+     Value32:=TpvUInt32(AlignUp(TpvUInt64(Section^.Data.Size),FileAlignment));
      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // size of raw data
      Value32:=TpvUInt32(DataOffset);
      Target.WriteBuffer(Value32,SizeOf(TpvUInt32)); // pointer to raw data
@@ -1895,18 +1924,19 @@ begin
      // A debug directory has to say where its own payload sits, and the image
      // has to point at the directory, so both are filled in now that the
      // placement is known.
-     if fSections[Index].IsDebugDirectory then begin
+     if Section^.IsDebugDirectory then begin
       // The entries which were already there come first, each with its own file
       // offset moved along by what the header area gained, and the one written
       // here follows them. The directory is therefore the old one with ours
       // added rather than ours instead of it.
       for NewIndex:=0 to ExistingDebugCount-1 do begin
-       if ExistingDebugEntries[NewIndex].RawPointer<>0 then begin
-        Value32:=ExistingDebugEntries[NewIndex].RawPointer+Delta;
-        Move(Value32,ExistingDebugEntries[NewIndex].Raw[24],SizeOf(TpvUInt32));
+       DebugEntry:=@ExistingDebugEntries[NewIndex];
+       if DebugEntry^.RawPointer<>0 then begin
+        Value32:=DebugEntry^.RawPointer+Delta;
+        Move(Value32,DebugEntry^.Raw[24],SizeOf(TpvUInt32));
        end;
        Target.Seek(TpvInt64(DataOffset)+(TpvInt64(NewIndex)*DebugDirectoryEntrySize),soBeginning);
-       Target.WriteBuffer(ExistingDebugEntries[NewIndex].Raw[0],DebugDirectoryEntrySize);
+       Target.WriteBuffer(DebugEntry^.Raw[0],DebugDirectoryEntrySize);
       end;
       // Ours sits behind them, and the payload behind all of them. The two
       // address fields of an entry sit at twenty and twenty four, behind the
@@ -1996,11 +2026,12 @@ begin
     CorruptedFound:=false;
     NewIndex:=0;
     for Index:=0 to NumberOfSections-1 do begin
-     if ExistingSections[Index].Dropped then begin
+     Existing:=@ExistingSections[Index];
+     if Existing^.Dropped then begin
       continue;
      end;
-     if (ExistingSections[Index].RawPointer<>0) and (ExistingSections[Index].RawSize<>0) and
-        ((TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))<=Source.Size) then begin
+     if (Existing^.RawPointer<>0) and (Existing^.RawSize<>0) and
+        ((TpvInt64(Existing^.RawPointer)+TpvInt64(Existing^.RawSize))<=Source.Size) then begin
       // Read where the header which was just written says the bytes are, rather
       // than where this expects them to be. An offset corrected wrongly moves
       // the answer and not the bytes, so comparing the bytes at the place they
@@ -2008,12 +2039,12 @@ begin
       // is that a reader following the new header finds the old contents.
       Target.Seek(SectionHeaderTableOffset+(TpvInt64(NewIndex)*SectionHeaderSize)+20,soBeginning);
       Target.ReadBuffer(RawPointer,SizeOf(TpvUInt32));
-      Value32:=StreamCRC32(Source,TpvInt64(ExistingSections[Index].RawPointer),TpvInt64(ExistingSections[Index].RawSize));
-      if ((TpvInt64(RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>Target.Size) or
-         (StreamCRC32(Target,TpvInt64(RawPointer),TpvInt64(ExistingSections[Index].RawSize))<>Value32) then begin
+      Value32:=StreamCRC32(Source,TpvInt64(Existing^.RawPointer),TpvInt64(Existing^.RawSize));
+      if ((TpvInt64(RawPointer)+TpvInt64(Existing^.RawSize))>Target.Size) or
+         (StreamCRC32(Target,TpvInt64(RawPointer),TpvInt64(Existing^.RawSize))<>Value32) then begin
        // A separate flag rather than the name alone: a section with an empty
        // name would otherwise let the failure through unnoticed.
-       Corrupted:=ExistingSections[Index].Name;
+       Corrupted:=Existing^.Name;
        CorruptedFound:=true;
        break;
       end;

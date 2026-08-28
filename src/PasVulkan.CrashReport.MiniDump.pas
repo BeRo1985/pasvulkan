@@ -59,6 +59,26 @@ unit PasVulkan.CrashReport.MiniDump;
  {$endif}
 {$endif}
 
+// Which instruction set this is being built for, asked the same way and for the
+// same reason as in PasVulkan.CrashReport: the register layouts below depend on
+// it and on nothing else.
+{$if defined(cpux86_64) or defined(cpuamd64) or defined(cpux64)}
+ {$define PasVulkanCrashReportMiniDumpX64}
+{$elseif defined(cpu386) or defined(cpui386) or defined(cpux86)}
+ {$define PasVulkanCrashReportMiniDumpX86}
+{$ifend}
+
+// Whether the minidump is written by this unit itself rather than by a library.
+//
+// The condition is the same one PasVulkan.CrashReport uses to decide whether it
+// keeps the state of a fault, and it has to be written out again here because a
+// define belongs to the file it is made in. If the two ever disagree, this one
+// asks for something the other one does not offer and the compiler says so at
+// once, which is the failure worth having.
+{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and (defined(PasVulkanCrashReportMiniDumpX64) or defined(PasVulkanCrashReportMiniDumpX86))}
+ {$define PasVulkanCrashReportMiniDumpUnix}
+{$ifend}
+
 {$scopedenums on}
 
 interface
@@ -257,6 +277,28 @@ function pvCrashReportWriteMiniDump(const aFileName:String;
 
 implementation
 
+// What one place hands the place which does the writing.
+//
+// The two strings are pointers into the caller and not copies, because the
+// caller waits for the answer and its strings are therefore alive the whole
+// time, and because copying a string on a thread which has just run out of
+// stack is the sort of thing which turns one fault into two.
+//
+// Here rather than beside the rest of the machinery of either platform, since
+// both of them write dumps and both of them describe one this way.
+type PpvCrashReportMiniDumpString=^String;
+
+     TpvCrashReportMiniDumpRequest=record
+      FileName:PpvCrashReportMiniDumpString;
+      Comment:PpvCrashReportMiniDumpString;
+      Pointers:TpvPointer;
+      Code:TpvUInt32;
+      ThreadID:TpvUInt64;
+      Kind:TpvCrashReportMiniDumpKind;
+      Answer:Boolean;
+     end;
+     PpvCrashReportMiniDumpRequest=^TpvCrashReportMiniDumpRequest;
+
 {$if defined(Windows)}
 
 // The kinds of content a dump can hold, from the header of the library. Only
@@ -303,7 +345,6 @@ const MiniDumpNormal=TpvUInt32($00000000);
  {$A4}
 {$endif}
 type // What the library is handed about the fault.
-     PpvCrashReportMiniDumpExceptionInformation=^TpvCrashReportMiniDumpExceptionInformation;
      TpvCrashReportMiniDumpExceptionInformation=record
       ThreadID:TpvUInt32;
       ExceptionPointers:TpvPointer;
@@ -311,19 +352,20 @@ type // What the library is handed about the fault.
       // are, since this dumps itself.
       ClientPointers:LongBool;
      end;
+     PpvCrashReportMiniDumpExceptionInformation=^TpvCrashReportMiniDumpExceptionInformation;
 
-     PpvCrashReportMiniDumpUserStream=^TpvCrashReportMiniDumpUserStream;
      TpvCrashReportMiniDumpUserStream=record
       StreamType:TpvUInt32;
       BufferSize:TpvUInt32;
       Buffer:TpvPointer;
      end;
+     PpvCrashReportMiniDumpUserStream=^TpvCrashReportMiniDumpUserStream;
 
-     PpvCrashReportMiniDumpUserStreamInformation=^TpvCrashReportMiniDumpUserStreamInformation;
      TpvCrashReportMiniDumpUserStreamInformation=record
       UserStreamCount:TpvUInt32;
       UserStreamArray:PpvCrashReportMiniDumpUserStream;
      end;
+     PpvCrashReportMiniDumpUserStreamInformation=^TpvCrashReportMiniDumpUserStreamInformation;
 
 // And back, because what follows is not from that header. An exception record
 // is an ordinary structure of the operating system with ordinary alignment, and
@@ -337,6 +379,9 @@ type // Only the first field is read here, so the rest is named but never
      // touched. It is the same layout the sibling unit mirrors, and it is
      // repeated rather than shared because a public type of that unit would
      // then be part of its interface forever for the sake of one field.
+     //
+     // The pointer to it has to come first here, which is the one case where it
+     // has to: the record names it as one of its own fields.
      PpvCrashReportMiniDumpExceptionRecord=^TpvCrashReportMiniDumpExceptionRecord;
      TpvCrashReportMiniDumpExceptionRecord=record
       ExceptionCode:TpvUInt32;
@@ -347,34 +392,11 @@ type // Only the first field is read here, so the rest is named but never
       ExceptionInformation:array[0..14] of TpvPtrUInt;
      end;
 
-     PpvCrashReportMiniDumpPointers=^TpvCrashReportMiniDumpPointers;
      TpvCrashReportMiniDumpPointers=record
       ExceptionRecord:PpvCrashReportMiniDumpExceptionRecord;
       ContextRecord:TpvPointer;
      end;
-
-     // What one thread hands the writing thread.
-     //
-     // The two strings are pointers into the caller and not copies, because the
-     // caller waits for the answer and its strings are therefore alive the whole
-     // time, and because copying a string on a thread which has just run out of
-     // stack is the sort of thing which turns one fault into two.
-     //
-     // One of these for the whole process, which is enough because the right to
-     // fill it in is the same right as the right to write a dump at all, and
-     // that is handed out one at a time.
-     PpvCrashReportMiniDumpString=^String;
-
-     PpvCrashReportMiniDumpRequest=^TpvCrashReportMiniDumpRequest;
-     TpvCrashReportMiniDumpRequest=record
-      FileName:PpvCrashReportMiniDumpString;
-      Comment:PpvCrashReportMiniDumpString;
-      Pointers:TpvPointer;
-      Code:TpvUInt32;
-      ThreadID:TpvUInt64;
-      Kind:TpvCrashReportMiniDumpKind;
-      Answer:Boolean;
-     end;
+     PpvCrashReportMiniDumpPointers=^TpvCrashReportMiniDumpPointers;
 
      TpvCrashReportMiniDumpWriteDump=function(aProcess:THandle;
                                               aProcessID:TpvUInt32;
@@ -753,6 +775,844 @@ end;
 
 {$ifend}
 
+{$ifdef PasVulkanCrashReportMiniDumpUnix}
+
+// There is no library here which writes this format, so it is written out by
+// hand. That sounds worse than it is: a minidump is a header, a table of
+// contents and a handful of blocks, all of them plain records with no
+// compression and no pointers other than offsets from the start of the file.
+//
+// What it is written for is the same set of readers the rest of this framework
+// aims at. The format is not a Windows format by accident of where it came
+// from, it is the format the crash reporters of the free world settled on for
+// every platform, so a file written here is one the usual processing pipelines
+// already understand.
+//
+// Everything is little endian, which on the two machines this is built for is
+// also the machine order, so the numbers go in as they are.
+const cMiniDumpSignature=TpvUInt32($504d444d); // MDMP
+      cMiniDumpVersion=TpvUInt32($0000a793);
+
+      cMiniDumpStreamThreadList=TpvUInt32(3);
+      cMiniDumpStreamModuleList=TpvUInt32(4);
+      cMiniDumpStreamMemoryList=TpvUInt32(5);
+      cMiniDumpStreamException=TpvUInt32(6);
+      cMiniDumpStreamSystemInfo=TpvUInt32(7);
+      cMiniDumpStreamCommentW=TpvUInt32(11);
+      // The one stream here which is not from the original format. The
+      // processing pipelines of the free world added a few of their own for
+      // this platform, and this is the useful one: the process map exactly as
+      // the kernel prints it, which answers every question about the address
+      // space which the module list rounds off.
+      cMiniDumpStreamLinuxMaps=TpvUInt32($47670009);
+
+      cMiniDumpPlatformLinux=TpvUInt32($8201);
+
+      // What tells a reader that a module was identified by the note the linker
+      // put in it rather than by a program database.
+      cMiniDumpCVSignatureELF=TpvUInt32($4270454c); // BpEL
+
+{$ifdef PasVulkanCrashReportMiniDumpX64}
+      cMiniDumpArchitecture=TpvUInt16(9);
+      cMiniDumpContextSize=1232;
+      cMiniDumpContextFlags=TpvUInt32($0010000b);
+      // Where the registers sit inside the context the operating system fills
+      // in, which is the same offset PasVulkan.CrashReport reads them at.
+      cMiniDumpContextGRegs=40;
+{$else}
+      cMiniDumpArchitecture=TpvUInt16(0);
+      cMiniDumpContextSize=716;
+      cMiniDumpContextFlags=TpvUInt32($00010007);
+      cMiniDumpContextGRegs=20;
+{$endif}
+
+      // How much of a stack goes into the file. A thread which has just run out
+      // of stack has a megabyte of it and all of it is interesting; a thread
+      // with a hundred megabyte stack does not.
+      cMiniDumpMaximalStackBytes=TpvSizeInt(1) shl 20;
+
+      // And how much around the instruction which faulted, so that a
+      // disassembler has something to work with even when the module it came
+      // from is not at hand.
+      cMiniDumpBytesAroundInstruction=256;
+
+type TpvCrashReportMiniDumpBuffer=record
+      Data:array of TpvUInt8;
+      Size:TpvSizeInt;
+     end;
+
+     // One line of the process map, reduced to what is used.
+     TpvCrashReportMiniDumpMapping=record
+      Low:TpvPtrUInt;
+      High:TpvPtrUInt;
+      Offset:TpvUInt64;
+      Executable:Boolean;
+      Readable:Boolean;
+      Path:TpvRawByteString;
+     end;
+     PpvCrashReportMiniDumpMapping=^TpvCrashReportMiniDumpMapping;
+
+     TpvCrashReportMiniDumpMappings=array of TpvCrashReportMiniDumpMapping;
+
+     TpvCrashReportMiniDumpModule=record
+      Base:TpvPtrUInt;
+      Size:TpvPtrUInt;
+      Path:TpvRawByteString;
+      BuildID:TpvRawByteString;
+     end;
+     PpvCrashReportMiniDumpModule=^TpvCrashReportMiniDumpModule;
+
+     TpvCrashReportMiniDumpModules=array of TpvCrashReportMiniDumpModule;
+
+// The state of the calling thread, for a dump which is asked for when nothing
+// has faulted. The same thing the fault handler is handed, only about here and
+// now instead of about a crash.
+function CrashReportMiniDumpGetContext(aContext:TpvPointer):TpvInt32; cdecl; external name 'getcontext';
+
+procedure CrashReportMiniDumpBufferNeed(var aBuffer:TpvCrashReportMiniDumpBuffer;const aExtra:TpvSizeInt);
+var Wanted:TpvSizeInt;
+begin
+ Wanted:=aBuffer.Size+aExtra;
+ if Wanted>length(aBuffer.Data) then begin
+  // Doubling, so that building a file of a few megabytes out of many small
+  // pieces does not become a copy for every piece.
+  SetLength(aBuffer.Data,(Wanted+(Wanted shr 1))+4096);
+ end;
+end;
+
+// Puts bytes at the end and answers where they landed, which in this format is
+// what everything points at: an offset from the start of the file.
+function CrashReportMiniDumpAppend(var aBuffer:TpvCrashReportMiniDumpBuffer;const aData;const aSize:TpvSizeInt):TpvUInt32;
+begin
+ result:=TpvUInt32(aBuffer.Size);
+ if aSize>0 then begin
+  CrashReportMiniDumpBufferNeed(aBuffer,aSize);
+  Move(aData,aBuffer.Data[aBuffer.Size],aSize);
+  inc(aBuffer.Size,aSize);
+ end;
+end;
+
+function CrashReportMiniDumpAppendZeros(var aBuffer:TpvCrashReportMiniDumpBuffer;const aSize:TpvSizeInt):TpvUInt32;
+begin
+ result:=TpvUInt32(aBuffer.Size);
+ if aSize>0 then begin
+  CrashReportMiniDumpBufferNeed(aBuffer,aSize);
+  FillChar(aBuffer.Data[aBuffer.Size],aSize,#0);
+  inc(aBuffer.Size,aSize);
+ end;
+end;
+
+procedure CrashReportMiniDumpPut32(var aBuffer:TpvCrashReportMiniDumpBuffer;const aAt:TpvUInt32;const aValue:TpvUInt32);
+begin
+ if (TpvSizeInt(aAt)+4)<=aBuffer.Size then begin
+  PpvUInt32(TpvPointer(@aBuffer.Data[aAt]))^:=aValue;
+ end;
+end;
+
+// A string the way this format keeps one: a length in bytes and then the
+// characters, sixteen bits each, with a terminator which the length does not
+// count.
+function CrashReportMiniDumpAppendString(var aBuffer:TpvCrashReportMiniDumpBuffer;const aValue:String):TpvUInt32;
+var Wide:UnicodeString;
+    Bytes:TpvUInt32;
+begin
+ Wide:=UnicodeString(aValue);
+ Bytes:=TpvUInt32(length(Wide)*SizeOf(WideChar));
+ result:=CrashReportMiniDumpAppend(aBuffer,Bytes,SizeOf(TpvUInt32));
+ if Bytes>0 then begin
+  CrashReportMiniDumpAppend(aBuffer,PWideChar(Wide)^,Bytes);
+ end;
+ CrashReportMiniDumpAppendZeros(aBuffer,SizeOf(WideChar));
+end;
+
+// Reads one of the files the kernel makes up on the spot. They report no size,
+// so this reads until it stops giving anything.
+function CrashReportMiniDumpReadProcFile(const aFileName:String):TpvRawByteString;
+var Handle:THandle;
+    Got:TpvSizeInt;
+    Chunk:array[0..8191] of AnsiChar;
+begin
+ result:='';
+ Handle:=FileOpen(aFileName,fmOpenRead or fmShareDenyNone);
+ if Handle=THandle(-1) then begin
+  exit;
+ end;
+ try
+  repeat
+   Got:=FileRead(Handle,Chunk[0],SizeOf(Chunk));
+   if Got>0 then begin
+    SetLength(result,length(result)+Got);
+    Move(Chunk[0],result[(length(result)-Got)+1],Got);
+   end;
+  until Got<=0;
+ finally
+  FileClose(Handle);
+ end;
+end;
+
+// Takes the process map apart. One line looks like
+//
+//   7f3c1a000000-7f3c1a022000 r-xp 00000000 08:01 1234  /usr/lib/libc.so.6
+//
+// and everything this needs is in the first four fields and the last one.
+function CrashReportMiniDumpReadMappings(out aMappings:TpvCrashReportMiniDumpMappings;out aRaw:TpvRawByteString):Boolean;
+var Position,Start,Stop,Count:TpvSizeInt;
+    Line:TpvRawByteString;
+
+ function TakeHex(var aAt:TpvSizeInt;out aValue:TpvUInt64):Boolean;
+ var Digit:TpvUInt32;
+     Any:Boolean;
+ begin
+  aValue:=0;
+  Any:=false;
+  while aAt<=length(Line) do begin
+   case Line[aAt] of
+    '0'..'9':begin
+     Digit:=TpvUInt32(ord(Line[aAt])-ord('0'));
+    end;
+    'a'..'f':begin
+     Digit:=TpvUInt32(ord(Line[aAt])-ord('a'))+10;
+    end;
+    'A'..'F':begin
+     Digit:=TpvUInt32(ord(Line[aAt])-ord('A'))+10;
+    end;
+    else begin
+     break;
+    end;
+   end;
+   aValue:=(aValue shl 4) or Digit;
+   Any:=true;
+   inc(aAt);
+  end;
+  result:=Any;
+ end;
+
+var At:TpvSizeInt;
+    Low,High,Offset:TpvUInt64;
+    Perms:TpvRawByteString;
+    Fields:TpvInt32;
+    Mapping:PpvCrashReportMiniDumpMapping;
+begin
+ aMappings:=nil;
+ Count:=0;
+ aRaw:=CrashReportMiniDumpReadProcFile('/proc/self/maps');
+ result:=length(aRaw)>0;
+ if not result then begin
+  exit;
+ end;
+ Position:=1;
+ while Position<=length(aRaw) do begin
+  Start:=Position;
+  Stop:=Position;
+  while (Stop<=length(aRaw)) and (aRaw[Stop]<>#10) do begin
+   inc(Stop);
+  end;
+  Line:=copy(aRaw,Start,Stop-Start);
+  Position:=Stop+1;
+  if length(Line)=0 then begin
+   continue;
+  end;
+  At:=1;
+  if not TakeHex(At,Low) then begin
+   continue;
+  end;
+  if (At>length(Line)) or (Line[At]<>'-') then begin
+   continue;
+  end;
+  inc(At);
+  if not TakeHex(At,High) then begin
+   continue;
+  end;
+  while (At<=length(Line)) and (Line[At]=' ') do begin
+   inc(At);
+  end;
+  Perms:='';
+  while (At<=length(Line)) and (Line[At]<>' ') do begin
+   Perms:=Perms+Line[At];
+   inc(At);
+  end;
+  while (At<=length(Line)) and (Line[At]=' ') do begin
+   inc(At);
+  end;
+  if not TakeHex(At,Offset) then begin
+   Offset:=0;
+  end;
+  // Past the device and the inode to the path, which is whatever is left after
+  // the last run of spaces. A path with a space in it therefore has to be taken
+  // from the first non space after the inode, which is what this does.
+  Fields:=0;
+  while (At<=length(Line)) and (Fields<2) do begin
+   while (At<=length(Line)) and (Line[At]=' ') do begin
+    inc(At);
+   end;
+   while (At<=length(Line)) and (Line[At]<>' ') do begin
+    inc(At);
+   end;
+   inc(Fields);
+  end;
+  while (At<=length(Line)) and (Line[At]=' ') do begin
+   inc(At);
+  end;
+  if Count>=length(aMappings) then begin
+   SetLength(aMappings,(Count+1)*2);
+  end;
+  Mapping:=@aMappings[Count];
+  Mapping^.Low:=TpvPtrUInt(Low);
+  Mapping^.High:=TpvPtrUInt(High);
+  Mapping^.Offset:=Offset;
+  Mapping^.Readable:=(length(Perms)>0) and (Perms[1]='r');
+  Mapping^.Executable:=(length(Perms)>2) and (Perms[3]='x');
+  if At<=length(Line) then begin
+   Mapping^.Path:=copy(Line,At,(length(Line)-At)+1);
+  end else begin
+   Mapping^.Path:='';
+  end;
+  inc(Count);
+ end;
+ SetLength(aMappings,Count);
+ result:=Count>0;
+end;
+
+// The identity the linker left in a loaded object, read out of the object where
+// it already sits in memory.
+//
+// An ELF file begins with a header which says where the program headers are;
+// one of those describes a block of notes; and one of those notes is the build
+// identifier. Every step is checked before it is followed, because this walks
+// through memory which belongs to somebody else and is being read while the
+// process is falling apart.
+function CrashReportMiniDumpBuildID(const aBase:TpvPtrUInt;const aLimit:TpvPtrUInt):TpvRawByteString;
+const cNoteGnuBuildID=3;
+      cProgramHeaderNote=4;
+var PhOffset,NoteAt,NoteEnd,Position:TpvPtrUInt;
+    PhEntrySize,PhCount,Index:TpvUInt32;
+    NameSize,DescriptionSize,NoteType,Padded:TpvUInt32;
+
+ function Readable(const aAt:TpvPtrUInt;const aSize:TpvPtrUInt):Boolean;
+ begin
+  result:=(aAt>=aBase) and (aSize<=(aLimit-aBase)) and ((aAt+aSize)<=aLimit);
+ end;
+
+begin
+ result:='';
+ if not Readable(aBase,64) then begin
+  exit;
+ end;
+ // The four bytes every ELF object starts with, and the class byte, which has
+ // to be the one this build was made for since the offsets below differ.
+ if (PpvUInt8(TpvPointer(aBase))^<>$7f) or
+    (PpvUInt8(TpvPointer(aBase+1))^<>ord('E')) or
+    (PpvUInt8(TpvPointer(aBase+2))^<>ord('L')) or
+    (PpvUInt8(TpvPointer(aBase+3))^<>ord('F')) then begin
+  exit;
+ end;
+{$ifdef PasVulkanCrashReportMiniDumpX64}
+ if PpvUInt8(TpvPointer(aBase+4))^<>2 then begin
+  exit;
+ end;
+ PhOffset:=TpvPtrUInt(PpvUInt64(TpvPointer(aBase+32))^);
+ PhEntrySize:=PpvUInt16(TpvPointer(aBase+54))^;
+ PhCount:=PpvUInt16(TpvPointer(aBase+56))^;
+{$else}
+ if PpvUInt8(TpvPointer(aBase+4))^<>1 then begin
+  exit;
+ end;
+ PhOffset:=TpvPtrUInt(PpvUInt32(TpvPointer(aBase+28))^);
+ PhEntrySize:=PpvUInt16(TpvPointer(aBase+42))^;
+ PhCount:=PpvUInt16(TpvPointer(aBase+44))^;
+{$endif}
+ if (PhOffset=0) or (PhCount=0) or (PhCount>256) or (PhEntrySize<8) then begin
+  exit;
+ end;
+ if not Readable(aBase+PhOffset,TpvPtrUInt(PhEntrySize)*PhCount) then begin
+  exit;
+ end;
+ for Index:=0 to PhCount-1 do begin
+  Position:=aBase+PhOffset+(TpvPtrUInt(PhEntrySize)*Index);
+{$ifdef PasVulkanCrashReportMiniDumpX64}
+  if PpvUInt32(TpvPointer(Position))^<>cProgramHeaderNote then begin
+   continue;
+  end;
+  // The address the note block will have once the object is loaded, which is
+  // relative to where the object landed.
+  NoteAt:=aBase+TpvPtrUInt(PpvUInt64(TpvPointer(Position+16))^);
+  NoteEnd:=NoteAt+TpvPtrUInt(PpvUInt64(TpvPointer(Position+40))^);
+{$else}
+  if PpvUInt32(TpvPointer(Position))^<>cProgramHeaderNote then begin
+   continue;
+  end;
+  NoteAt:=aBase+TpvPtrUInt(PpvUInt32(TpvPointer(Position+8))^);
+  NoteEnd:=NoteAt+TpvPtrUInt(PpvUInt32(TpvPointer(Position+20))^);
+{$endif}
+  if (NoteEnd<=NoteAt) or not Readable(NoteAt,NoteEnd-NoteAt) then begin
+   continue;
+  end;
+  while (NoteAt+12)<=NoteEnd do begin
+   NameSize:=PpvUInt32(TpvPointer(NoteAt))^;
+   DescriptionSize:=PpvUInt32(TpvPointer(NoteAt+4))^;
+   NoteType:=PpvUInt32(TpvPointer(NoteAt+8))^;
+   // Both halves are padded out to four bytes, and neither length counts that.
+   Padded:=((NameSize+3) and not TpvUInt32(3))+((DescriptionSize+3) and not TpvUInt32(3));
+   if (Padded>(NoteEnd-NoteAt)) or (DescriptionSize>64) then begin
+    break;
+   end;
+   if (NoteType=cNoteGnuBuildID) and (NameSize=4) and (DescriptionSize>0) and
+      (PAnsiChar(TpvPointer(NoteAt+12))[0]='G') and
+      (PAnsiChar(TpvPointer(NoteAt+12))[1]='N') and
+      (PAnsiChar(TpvPointer(NoteAt+12))[2]='U') then begin
+    SetLength(result,DescriptionSize);
+    Move(TpvPointer(NoteAt+12+((NameSize+3) and not TpvUInt32(3)))^,result[1],DescriptionSize);
+    exit;
+   end;
+   inc(NoteAt,12+Padded);
+  end;
+ end;
+end;
+
+// Turns the mappings into modules.
+//
+// A loaded object shows up as several mappings in a row, one per part of it
+// with different rights, all naming the same file. The first of them, the one
+// which is mapped from the beginning of the file, is where the object starts,
+// and the last of the run is where it ends.
+//
+// Anything without a path is left out. Those are the stack, the heap and the
+// anonymous mappings, which are not modules and which the process map stream
+// describes anyway.
+function CrashReportMiniDumpBuildModules(const aMappings:TpvCrashReportMiniDumpMappings):TpvCrashReportMiniDumpModules;
+var Index,Count:TpvSizeInt;
+    Mapping:PpvCrashReportMiniDumpMapping;
+    Module:PpvCrashReportMiniDumpModule;
+begin
+ result:=nil;
+ Count:=0;
+ for Index:=0 to length(aMappings)-1 do begin
+  Mapping:=@aMappings[Index];
+  if (length(Mapping^.Path)=0) or (Mapping^.Path[1]<>'/') then begin
+   continue;
+  end;
+  if Count>0 then begin
+   Module:=@result[Count-1];
+   if Module^.Path=Mapping^.Path then begin
+    // Same file as the mapping before, so this is another part of the same
+    // object and only moves its end.
+    if Mapping^.High>(Module^.Base+Module^.Size) then begin
+     Module^.Size:=Mapping^.High-Module^.Base;
+    end;
+    continue;
+   end;
+  end;
+  if Mapping^.Offset<>0 then begin
+   // Starts somewhere in the middle of a file, so it is a piece of a mapping
+   // and not the head of an object.
+   continue;
+  end;
+  if Count>=length(result) then begin
+   SetLength(result,(Count+1)*2);
+  end;
+  Module:=@result[Count];
+  Module^.Base:=Mapping^.Low;
+  Module^.Size:=Mapping^.High-Mapping^.Low;
+  Module^.Path:=Mapping^.Path;
+  Module^.BuildID:='';
+  inc(Count);
+ end;
+ SetLength(result,Count);
+ for Index:=0 to Count-1 do begin
+  Module:=@result[Index];
+  // Read out of the copy which is already in memory, and only as far as the
+  // object reaches, so a damaged header cannot walk out of it.
+  Module^.BuildID:=CrashReportMiniDumpBuildID(Module^.Base,Module^.Base+Module^.Size);
+ end;
+end;
+
+procedure CrashReportMiniDumpPutBytes32(var aData:array of TpvUInt8;const aAt:TpvInt32;const aValue:TpvUInt32);
+begin
+ if (aAt>=0) and ((aAt+4)<=length(aData)) then begin
+  PpvUInt32(TpvPointer(@aData[aAt]))^:=aValue;
+ end;
+end;
+
+procedure CrashReportMiniDumpPutBytes64(var aData:array of TpvUInt8;const aAt:TpvInt32;const aValue:TpvUInt64);
+begin
+ if (aAt>=0) and ((aAt+8)<=length(aData)) then begin
+  PpvUInt64(TpvPointer(@aData[aAt]))^:=aValue;
+ end;
+end;
+
+procedure CrashReportMiniDumpPutBytes16(var aData:array of TpvUInt8;const aAt:TpvInt32;const aValue:TpvUInt16);
+begin
+ if (aAt>=0) and ((aAt+2)<=length(aData)) then begin
+  PpvUInt16(TpvPointer(@aData[aAt]))^:=aValue;
+ end;
+end;
+
+// Copies a machine state from the shape the operating system keeps it in into
+// the shape this format keeps it in.
+//
+// The two are unrelated layouts which happen to describe the same registers, so
+// this is a table of offsets and nothing more. The numbers on the left are
+// where the field sits in the record of the format; the numbers on the right
+// are which entry of the register array of the operating system holds it, in
+// the order the C library numbers them in.
+procedure CrashReportMiniDumpFillContext(var aData:array of TpvUInt8;const aFault:TpvCrashReportUnixFault);
+begin
+ FillChar(aData[0],length(aData),#0);
+{$ifdef PasVulkanCrashReportMiniDumpX64}
+ CrashReportMiniDumpPutBytes32(aData,48,cMiniDumpContextFlags);
+ // The segment registers arrive packed into one entry: the code segment in the
+ // low sixteen bits, then gs, then fs.
+ CrashReportMiniDumpPutBytes16(aData,56,TpvUInt16(aFault.Registers[18] and $ffff));
+ CrashReportMiniDumpPutBytes16(aData,62,TpvUInt16((aFault.Registers[18] shr 32) and $ffff));
+ CrashReportMiniDumpPutBytes16(aData,64,TpvUInt16((aFault.Registers[18] shr 16) and $ffff));
+ CrashReportMiniDumpPutBytes32(aData,68,TpvUInt32(aFault.Registers[17]));
+ CrashReportMiniDumpPutBytes64(aData,120,aFault.Registers[13]); // rax
+ CrashReportMiniDumpPutBytes64(aData,128,aFault.Registers[14]); // rcx
+ CrashReportMiniDumpPutBytes64(aData,136,aFault.Registers[12]); // rdx
+ CrashReportMiniDumpPutBytes64(aData,144,aFault.Registers[11]); // rbx
+ CrashReportMiniDumpPutBytes64(aData,152,aFault.Registers[15]); // rsp
+ CrashReportMiniDumpPutBytes64(aData,160,aFault.Registers[10]); // rbp
+ CrashReportMiniDumpPutBytes64(aData,168,aFault.Registers[9]);  // rsi
+ CrashReportMiniDumpPutBytes64(aData,176,aFault.Registers[8]);  // rdi
+ CrashReportMiniDumpPutBytes64(aData,184,aFault.Registers[0]);  // r8
+ CrashReportMiniDumpPutBytes64(aData,192,aFault.Registers[1]);  // r9
+ CrashReportMiniDumpPutBytes64(aData,200,aFault.Registers[2]);  // r10
+ CrashReportMiniDumpPutBytes64(aData,208,aFault.Registers[3]);  // r11
+ CrashReportMiniDumpPutBytes64(aData,216,aFault.Registers[4]);  // r12
+ CrashReportMiniDumpPutBytes64(aData,224,aFault.Registers[5]);  // r13
+ CrashReportMiniDumpPutBytes64(aData,232,aFault.Registers[6]);  // r14
+ CrashReportMiniDumpPutBytes64(aData,240,aFault.Registers[7]);  // r15
+ CrashReportMiniDumpPutBytes64(aData,248,aFault.Registers[16]); // rip
+{$else}
+ CrashReportMiniDumpPutBytes32(aData,0,cMiniDumpContextFlags);
+ CrashReportMiniDumpPutBytes32(aData,140,TpvUInt32(aFault.Registers[0]));  // gs
+ CrashReportMiniDumpPutBytes32(aData,144,TpvUInt32(aFault.Registers[1]));  // fs
+ CrashReportMiniDumpPutBytes32(aData,148,TpvUInt32(aFault.Registers[2]));  // es
+ CrashReportMiniDumpPutBytes32(aData,152,TpvUInt32(aFault.Registers[3]));  // ds
+ CrashReportMiniDumpPutBytes32(aData,156,TpvUInt32(aFault.Registers[4]));  // edi
+ CrashReportMiniDumpPutBytes32(aData,160,TpvUInt32(aFault.Registers[5]));  // esi
+ CrashReportMiniDumpPutBytes32(aData,164,TpvUInt32(aFault.Registers[8]));  // ebx
+ CrashReportMiniDumpPutBytes32(aData,168,TpvUInt32(aFault.Registers[9]));  // edx
+ CrashReportMiniDumpPutBytes32(aData,172,TpvUInt32(aFault.Registers[10])); // ecx
+ CrashReportMiniDumpPutBytes32(aData,176,TpvUInt32(aFault.Registers[11])); // eax
+ CrashReportMiniDumpPutBytes32(aData,180,TpvUInt32(aFault.Registers[6]));  // ebp
+ CrashReportMiniDumpPutBytes32(aData,184,TpvUInt32(aFault.Registers[14])); // eip
+ CrashReportMiniDumpPutBytes32(aData,188,TpvUInt32(aFault.Registers[15])); // cs
+ CrashReportMiniDumpPutBytes32(aData,192,TpvUInt32(aFault.Registers[16])); // eflags
+ CrashReportMiniDumpPutBytes32(aData,196,TpvUInt32(aFault.Registers[7]));  // esp
+ CrashReportMiniDumpPutBytes32(aData,200,TpvUInt32(aFault.Registers[18])); // ss
+{$endif}
+end;
+
+// Builds the whole file in memory and then puts it on disk in one piece.
+//
+// In memory because the format is full of offsets which point forwards and
+// backwards, and because it is a few hundred kilobytes. Writing it out only
+// once it is complete also means the same discipline the other platform
+// follows: a file appears under its name whole or not at all.
+//
+// No lock around any of this. Two threads writing dumps here do not disturb one
+// another the way they do on the other platform, since nothing is stopped and
+// nothing is shared: each builds its own file in its own memory and moves it
+// into place under a name which carries the process number.
+function CrashReportMiniDumpWriteHereUnix(const aRequest:PpvCrashReportMiniDumpRequest):Boolean;
+const cMaximalStreams=7;
+      cMaximalMemoryRanges=2;
+type TpvCrashReportMiniDumpDirectoryEntry=record
+      StreamType:TpvUInt32;
+      Size:TpvUInt32;
+      RVA:TpvUInt32;
+     end;
+     PpvCrashReportMiniDumpDirectoryEntry=^TpvCrashReportMiniDumpDirectoryEntry;
+     TpvCrashReportMiniDumpRange=record
+      Start:TpvUInt64;
+      Size:TpvUInt32;
+      RVA:TpvUInt32;
+     end;
+     PpvCrashReportMiniDumpRange=^TpvCrashReportMiniDumpRange;
+var Buffer:TpvCrashReportMiniDumpBuffer;
+    Fault:TpvCrashReportUnixFault;
+    Mappings:TpvCrashReportMiniDumpMappings;
+    Modules:TpvCrashReportMiniDumpModules;
+    RawMaps:TpvRawByteString;
+    ContextData:array[0..cMiniDumpContextSize-1] of TpvUInt8;
+    UnixContext:array[0..4095] of TpvUInt8;
+    Directory:array[0..cMaximalStreams-1] of TpvCrashReportMiniDumpDirectoryEntry;
+    Ranges:array[0..cMaximalMemoryRanges-1] of TpvCrashReportMiniDumpRange;
+    StreamCount,RangeCount:TpvInt32;
+    Index,Inner:TpvSizeInt;
+    ContextRVA,StreamRVA,DirectoryRVA,Value32:TpvUInt32;
+    Value16:TpvUInt16;
+    Value64:TpvUInt64;
+    NameRVAs:array of TpvUInt32;
+    CVRVAs,CVSizes:array of TpvUInt32;
+    Handle:THandle;
+    TemporaryName:String;
+    CommentText:UnicodeString;
+    Module:PpvCrashReportMiniDumpModule;
+    Entry:PpvCrashReportMiniDumpDirectoryEntry;
+    Range:PpvCrashReportMiniDumpRange;
+
+ procedure AddStream(const aType,aSize,aRVA:TpvUInt32);
+ var Where:PpvCrashReportMiniDumpDirectoryEntry;
+ begin
+  if StreamCount<cMaximalStreams then begin
+   Where:=@Directory[StreamCount];
+   Where^.StreamType:=aType;
+   Where^.Size:=aSize;
+   Where^.RVA:=aRVA;
+   inc(StreamCount);
+  end;
+ end;
+
+ // Copies a piece of the address space into the file, if it is really there.
+ // Nothing is trusted: the range has to lie inside one readable mapping, which
+ // is what the process map is read for.
+ procedure AddRange(const aStart:TpvPtrUInt;const aWanted:TpvSizeInt);
+ var Which,Size:TpvSizeInt;
+     Where:PpvCrashReportMiniDumpMapping;
+     Into:PpvCrashReportMiniDumpRange;
+ begin
+  if (RangeCount>=cMaximalMemoryRanges) or (aStart=0) or (aWanted<=0) then begin
+   exit;
+  end;
+  for Which:=0 to length(Mappings)-1 do begin
+   Where:=@Mappings[Which];
+   if Where^.Readable and (aStart>=Where^.Low) and (aStart<Where^.High) then begin
+    Size:=aWanted;
+    if TpvPtrUInt(Size)>(Where^.High-aStart) then begin
+     Size:=TpvSizeInt(Where^.High-aStart);
+    end;
+    if Size>0 then begin
+     Into:=@Ranges[RangeCount];
+     Into^.Start:=aStart;
+     Into^.Size:=TpvUInt32(Size);
+     Into^.RVA:=CrashReportMiniDumpAppend(Buffer,TpvPointer(aStart)^,Size);
+     inc(RangeCount);
+    end;
+    exit;
+   end;
+  end;
+ end;
+
+begin
+ result:=false;
+
+ // What is being described. Either the fault which was kept aside, or, when
+ // nothing has faulted, this thread as it is right now, which is what somebody
+ // asking for a dump without a crash is asking about.
+ if pvCrashReportLastFault(Fault)=0 then begin
+  FillChar(Fault,SizeOf(TpvCrashReportUnixFault),#0);
+  FillChar(UnixContext,SizeOf(UnixContext),#0);
+  if CrashReportMiniDumpGetContext(@UnixContext[0])<>0 then begin
+   exit;
+  end;
+  Move(UnixContext[cMiniDumpContextGRegs],Fault.Registers,SizeOf(Fault.Registers));
+  Fault.ThreadID:=TpvInt32(GetProcessID);
+ end;
+
+ if not CrashReportMiniDumpReadMappings(Mappings,RawMaps) then begin
+  exit;
+ end;
+ Modules:=CrashReportMiniDumpBuildModules(Mappings);
+
+ Buffer.Data:=nil;
+ Buffer.Size:=0;
+ StreamCount:=0;
+ RangeCount:=0;
+
+ try
+
+  // Room for the header, which is filled in last because half of what goes in
+  // it is only known once everything else has been written.
+  CrashReportMiniDumpAppendZeros(Buffer,32);
+
+  CrashReportMiniDumpFillContext(ContextData,Fault);
+  ContextRVA:=CrashReportMiniDumpAppend(Buffer,ContextData[0],cMiniDumpContextSize);
+
+  // The stack of the thread which faulted, from where it stood up to the end of
+  // the mapping it stands in, and a window around the instruction which
+  // faulted.
+{$ifdef PasVulkanCrashReportMiniDumpX64}
+  AddRange(TpvPtrUInt(Fault.Registers[15]),cMiniDumpMaximalStackBytes);
+  if Fault.Registers[16]>cMiniDumpBytesAroundInstruction then begin
+   AddRange(TpvPtrUInt(Fault.Registers[16])-cMiniDumpBytesAroundInstruction,cMiniDumpBytesAroundInstruction*2);
+  end;
+{$else}
+  AddRange(TpvPtrUInt(Fault.Registers[7]),cMiniDumpMaximalStackBytes);
+  if Fault.Registers[14]>cMiniDumpBytesAroundInstruction then begin
+   AddRange(TpvPtrUInt(Fault.Registers[14])-cMiniDumpBytesAroundInstruction,cMiniDumpBytesAroundInstruction*2);
+  end;
+{$endif}
+
+  // One thread, the one this is about. The others are named in the text report
+  // which travels in the comment stream, with their stacks, when the program
+  // asked for that; what is not here is a machine state for each of them, which
+  // would mean stopping every thread from the outside and is a piece of work of
+  // its own.
+  StreamRVA:=Buffer.Size;
+  Value32:=1;
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  Value32:=TpvUInt32(Fault.ThreadID);
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));   // thread id
+  CrashReportMiniDumpAppendZeros(Buffer,12);                     // suspend count, priorities
+  Value64:=0;
+  CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));   // no thread block here
+  if RangeCount>0 then begin
+   Range:=@Ranges[0];
+   CrashReportMiniDumpAppend(Buffer,Range^.Start,SizeOf(TpvUInt64));
+   CrashReportMiniDumpAppend(Buffer,Range^.Size,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,Range^.RVA,SizeOf(TpvUInt32));
+  end else begin
+   CrashReportMiniDumpAppendZeros(Buffer,16);
+  end;
+  Value32:=cMiniDumpContextSize;
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  CrashReportMiniDumpAppend(Buffer,ContextRVA,SizeOf(TpvUInt32));
+  AddStream(cMiniDumpStreamThreadList,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
+
+  // The names and the identities first, since the list itself is a run of
+  // fixed size records which point at them.
+  SetLength(NameRVAs,length(Modules));
+  SetLength(CVRVAs,length(Modules));
+  SetLength(CVSizes,length(Modules));
+  for Index:=0 to length(Modules)-1 do begin
+   Module:=@Modules[Index];
+   NameRVAs[Index]:=CrashReportMiniDumpAppendString(Buffer,String(Module^.Path));
+   if length(Module^.BuildID)>0 then begin
+    Value32:=cMiniDumpCVSignatureELF;
+    CVRVAs[Index]:=CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+    CrashReportMiniDumpAppend(Buffer,Module^.BuildID[1],length(Module^.BuildID));
+    CVSizes[Index]:=TpvUInt32(SizeOf(TpvUInt32)+length(Module^.BuildID));
+   end else begin
+    CVRVAs[Index]:=0;
+    CVSizes[Index]:=0;
+   end;
+  end;
+
+  StreamRVA:=Buffer.Size;
+  Value32:=TpvUInt32(length(Modules));
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  for Index:=0 to length(Modules)-1 do begin
+   Module:=@Modules[Index];
+   Value64:=Module^.Base;
+   CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));
+   Value32:=TpvUInt32(Module^.Size);
+   CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppendZeros(Buffer,8);                       // checksum, time stamp
+   CrashReportMiniDumpAppend(Buffer,NameRVAs[Index],SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppendZeros(Buffer,52);                      // version information
+   CrashReportMiniDumpAppend(Buffer,CVSizes[Index],SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,CVRVAs[Index],SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppendZeros(Buffer,8+16);                    // no misc record, two reserved
+  end;
+  AddStream(cMiniDumpStreamModuleList,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
+
+  StreamRVA:=Buffer.Size;
+  Value32:=TpvUInt32(RangeCount);
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  for Index:=0 to RangeCount-1 do begin
+   Range:=@Ranges[Index];
+   CrashReportMiniDumpAppend(Buffer,Range^.Start,SizeOf(TpvUInt64));
+   CrashReportMiniDumpAppend(Buffer,Range^.Size,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,Range^.RVA,SizeOf(TpvUInt32));
+  end;
+  AddStream(cMiniDumpStreamMemoryList,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
+
+  // The fault itself. The number of the signal goes where a reader expects the
+  // code of an exception, and what the kernel said about it goes into the
+  // flags, which is the arrangement the crash reporters of this platform
+  // settled on and therefore the one their tools read.
+  StreamRVA:=Buffer.Size;
+  Value32:=TpvUInt32(Fault.ThreadID);
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  CrashReportMiniDumpAppendZeros(Buffer,4);
+  Value32:=TpvUInt32(Fault.Signal);
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  Value32:=TpvUInt32(Fault.Code);
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  Value64:=0;
+  CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));    // no record behind this one
+  Value64:=TpvUInt64(TpvPtrUInt(Fault.Address));
+  CrashReportMiniDumpAppend(Buffer,Value64,SizeOf(TpvUInt64));
+  CrashReportMiniDumpAppendZeros(Buffer,8+(15*8));                // no parameters
+  Value32:=cMiniDumpContextSize;
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  CrashReportMiniDumpAppend(Buffer,ContextRVA,SizeOf(TpvUInt32));
+  AddStream(cMiniDumpStreamException,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
+
+  StreamRVA:=Buffer.Size;
+  Value16:=cMiniDumpArchitecture;
+  CrashReportMiniDumpAppend(Buffer,Value16,SizeOf(TpvUInt16));
+  CrashReportMiniDumpAppendZeros(Buffer,6);                       // level, revision, counts
+  CrashReportMiniDumpAppendZeros(Buffer,12);                      // three version numbers
+  Value32:=cMiniDumpPlatformLinux;
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  // The name of the system version, which has to point at a real string even
+  // when there is nothing to say. Written after the stream and pointed back at.
+  Value32:=0;
+  Inner:=Buffer.Size;
+  CrashReportMiniDumpAppend(Buffer,Value32,SizeOf(TpvUInt32));
+  CrashReportMiniDumpAppendZeros(Buffer,4);                       // suite mask, reserved
+  CrashReportMiniDumpAppendZeros(Buffer,24);                      // what the processor can do
+  AddStream(cMiniDumpStreamSystemInfo,TpvUInt32(Buffer.Size)-StreamRVA,StreamRVA);
+  Value32:=CrashReportMiniDumpAppendString(Buffer,'');
+  CrashReportMiniDumpPut32(Buffer,TpvUInt32(Inner),Value32);
+
+  StreamRVA:=CrashReportMiniDumpAppend(Buffer,RawMaps[1],length(RawMaps));
+  AddStream(cMiniDumpStreamLinuxMaps,TpvUInt32(length(RawMaps)),StreamRVA);
+
+  if length(aRequest^.Comment^)>0 then begin
+   CommentText:=UnicodeString(aRequest^.Comment^);
+   StreamRVA:=CrashReportMiniDumpAppend(Buffer,PWideChar(CommentText)^,length(CommentText)*SizeOf(WideChar));
+   CrashReportMiniDumpAppendZeros(Buffer,SizeOf(WideChar));
+   AddStream(cMiniDumpStreamCommentW,TpvUInt32((length(CommentText)+1)*SizeOf(WideChar)),StreamRVA);
+  end;
+
+  DirectoryRVA:=Buffer.Size;
+  for Index:=0 to StreamCount-1 do begin
+   Entry:=@Directory[Index];
+   CrashReportMiniDumpAppend(Buffer,Entry^.StreamType,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,Entry^.Size,SizeOf(TpvUInt32));
+   CrashReportMiniDumpAppend(Buffer,Entry^.RVA,SizeOf(TpvUInt32));
+  end;
+
+  CrashReportMiniDumpPut32(Buffer,0,cMiniDumpSignature);
+  CrashReportMiniDumpPut32(Buffer,4,cMiniDumpVersion);
+  CrashReportMiniDumpPut32(Buffer,8,TpvUInt32(StreamCount));
+  CrashReportMiniDumpPut32(Buffer,12,DirectoryRVA);
+  CrashReportMiniDumpPut32(Buffer,16,0);
+  CrashReportMiniDumpPut32(Buffer,20,0);
+
+  // Beside the wanted name and moved onto it, the same way as on the other
+  // platform. The process number is in the temporary name, so two processes
+  // writing to one target cannot be building the same file.
+  TemporaryName:=aRequest^.FileName^+'.part'+IntToStr(TpvInt64(GetProcessID));
+  Handle:=FileCreate(TemporaryName);
+  if Handle=THandle(-1) then begin
+   exit;
+  end;
+  try
+   result:=FileWrite(Handle,Buffer.Data[0],Buffer.Size)=Buffer.Size;
+  finally
+   FileClose(Handle);
+  end;
+  if result then begin
+   result:=RenameFile(TemporaryName,aRequest^.FileName^);
+  end;
+  if not result then begin
+   DeleteFile(TemporaryName);
+  end;
+
+ except
+  // Same rule as everywhere here: the report about the crash outranks whatever
+  // goes wrong while it is being made.
+  result:=false;
+ end;
+end;
+
+{$endif}
+
 procedure pvCrashReportMiniDumpInstall;
 begin
 {$if defined(Windows)}
@@ -838,11 +1698,17 @@ function pvCrashReportMiniDumpAvailable:Boolean;
 begin
 {$if defined(Windows)}
  result:=assigned(pvCrashReportMiniDumpWriter) or CrashReportMiniDumpLoad;
+{$elseif defined(PasVulkanCrashReportMiniDumpUnix)}
+ // Nothing to load here. The file is written by this unit itself, so the only
+ // question is whether a writer of somebody else's has taken over, and the
+ // answer either way is yes.
+ result:=true;
 {$else}
- // Nothing of the sort exists here, and saying so is more use than an empty
- // file with the right extension. What this platform has instead is the core
- // dump of the operating system, which is the business of whoever runs the
- // program, and the text report of the sibling unit, which is complete.
+ // Neither a library which writes this nor the two things it would be written
+ // out of: the state of a fault and a process map. Saying so is more use than
+ // an empty file with the right extension. What this platform has instead is
+ // the core dump of the operating system, which is the business of whoever runs
+ // the program, and the text report of the sibling unit, which is complete.
  result:=assigned(pvCrashReportMiniDumpWriter);
 {$ifend}
 end;
@@ -969,6 +1835,9 @@ begin
  end;
 end;
 {$else}
+{$ifdef PasVulkanCrashReportMiniDumpUnix}
+var Request:TpvCrashReportMiniDumpRequest;
+{$endif}
 begin
  result:=false;
  if assigned(pvCrashReportMiniDumpWriter) then begin
@@ -977,7 +1846,25 @@ begin
   except
    result:=false;
   end;
+  exit;
  end;
+{$ifdef PasVulkanCrashReportMiniDumpUnix}
+ if length(aFileName)=0 then begin
+  exit;
+ end;
+ // The kind is taken and ignored on this platform. What a dump holds here is
+ // decided by what can be got at without stopping the process, which is the
+ // faulting thread and the layout of the address space, and there is no larger
+ // and no smaller version of that to choose between.
+ Request.FileName:=@aFileName;
+ Request.Comment:=@aComment;
+ Request.Pointers:=aExceptionPointers;
+ Request.Code:=aExceptionCode;
+ Request.ThreadID:=aThreadID;
+ Request.Kind:=aKind;
+ Request.Answer:=false;
+ result:=CrashReportMiniDumpWriteHereUnix(@Request);
+{$endif}
 end;
 {$ifend}
 

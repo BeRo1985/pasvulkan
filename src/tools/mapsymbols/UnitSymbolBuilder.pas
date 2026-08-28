@@ -41,18 +41,21 @@ type TSymbolBuilder=class
              NameOffset:TpvUInt32;
              FileNameOffset:TpvUInt32;
             end;
+            PUnitRecord=^TUnitRecord;
             TUnitRecords=array of TUnitRecord;
             TSymbolRecord=record
              RVA:TpvUInt64;
              Name:String;
              NameOffset:TpvUInt32;
             end;
+            PSymbolRecord=^TSymbolRecord;
             TSymbolRecords=array of TSymbolRecord;
             TLineRecord=record
              RVA:TpvUInt64;
              LineNumber:TpvUInt32;
              UnitIndex:TpvUInt32;
             end;
+            PLineRecord=^TLineRecord;
             TLineRecords=array of TLineRecord;
             // A fingerprint of everything which was collected, wide enough to
             // be used as a debug identity.
@@ -166,27 +169,33 @@ var Index:TpvSizeInt;
     UnitEntry:TpvSymbolTableUnitEntry;
     SymbolEntry:TpvSymbolTableSymbolEntry;
     LineEntry:TpvSymbolTableLineEntry;
+    UnitRecord:PUnitRecord;
+    SymbolRecord:PSymbolRecord;
+    LineRecord:PLineRecord;
 begin
 
  for Index:=0 to fUnitCount-1 do begin
-  UnitEntry.StartRVA:=fUnits[Index].StartRVA;
-  UnitEntry.Size:=fUnits[Index].Size;
-  UnitEntry.NameOffset:=fUnits[Index].NameOffset;
-  UnitEntry.FileNameOffset:=fUnits[Index].FileNameOffset;
+  UnitRecord:=@fUnits[Index];
+  UnitEntry.StartRVA:=UnitRecord^.StartRVA;
+  UnitEntry.Size:=UnitRecord^.Size;
+  UnitEntry.NameOffset:=UnitRecord^.NameOffset;
+  UnitEntry.FileNameOffset:=UnitRecord^.FileNameOffset;
   aStream.WriteBuffer(UnitEntry,SizeOf(TpvSymbolTableUnitEntry));
  end;
 
  for Index:=0 to fSymbolCount-1 do begin
-  SymbolEntry.RVA:=fSymbols[Index].RVA;
-  SymbolEntry.NameOffset:=fSymbols[Index].NameOffset;
+  SymbolRecord:=@fSymbols[Index];
+  SymbolEntry.RVA:=SymbolRecord^.RVA;
+  SymbolEntry.NameOffset:=SymbolRecord^.NameOffset;
   SymbolEntry.Reserved:=0;
   aStream.WriteBuffer(SymbolEntry,SizeOf(TpvSymbolTableSymbolEntry));
  end;
 
  for Index:=0 to fLineCount-1 do begin
-  LineEntry.RVA:=fLines[Index].RVA;
-  LineEntry.LineNumber:=fLines[Index].LineNumber;
-  LineEntry.UnitIndex:=fLines[Index].UnitIndex;
+  LineRecord:=@fLines[Index];
+  LineEntry.RVA:=LineRecord^.RVA;
+  LineEntry.LineNumber:=LineRecord^.LineNumber;
+  LineEntry.UnitIndex:=LineRecord^.UnitIndex;
   aStream.WriteBuffer(LineEntry,SizeOf(TpvSymbolTableLineEntry));
  end;
 
@@ -220,20 +229,23 @@ begin
 end;
 
 procedure TSymbolBuilder.AddUnit(const aName,aFileName:String;const aStartRVA,aSize:TpvUInt64);
+var UnitRecord:PUnitRecord;
 begin
  if fUnitCount>=length(fUnits) then begin
   SetLength(fUnits,(fUnitCount+1)*2);
  end;
- fUnits[fUnitCount].Name:=aName;
- fUnits[fUnitCount].FileName:=aFileName;
- fUnits[fUnitCount].StartRVA:=aStartRVA;
- fUnits[fUnitCount].Size:=aSize;
- fUnits[fUnitCount].NameOffset:=0;
- fUnits[fUnitCount].FileNameOffset:=0;
+ UnitRecord:=@fUnits[fUnitCount];
+ UnitRecord^.Name:=aName;
+ UnitRecord^.FileName:=aFileName;
+ UnitRecord^.StartRVA:=aStartRVA;
+ UnitRecord^.Size:=aSize;
+ UnitRecord^.NameOffset:=0;
+ UnitRecord^.FileNameOffset:=0;
  inc(fUnitCount);
 end;
 
 procedure TSymbolBuilder.AddSymbol(const aRVA:TpvUInt64;const aName:String);
+var SymbolRecord:PSymbolRecord;
 begin
  // A symbol without a name names nothing, so it has nothing to contribute to a
  // stack trace. Turned away here rather than carried along, which also settles
@@ -247,29 +259,34 @@ begin
  if fSymbolCount>=length(fSymbols) then begin
   SetLength(fSymbols,(fSymbolCount+1)*2);
  end;
- fSymbols[fSymbolCount].RVA:=aRVA;
- fSymbols[fSymbolCount].Name:=aName;
- fSymbols[fSymbolCount].NameOffset:=0;
+ SymbolRecord:=@fSymbols[fSymbolCount];
+ SymbolRecord^.RVA:=aRVA;
+ SymbolRecord^.Name:=aName;
+ SymbolRecord^.NameOffset:=0;
  inc(fSymbolCount);
 end;
 
 procedure TSymbolBuilder.AddLine(const aRVA:TpvUInt64;const aLineNumber:TpvUInt32);
+var LineRecord:PLineRecord;
 begin
  if fLineCount>=length(fLines) then begin
   SetLength(fLines,(fLineCount+1)*2);
  end;
- fLines[fLineCount].RVA:=aRVA;
- fLines[fLineCount].LineNumber:=aLineNumber;
- fLines[fLineCount].UnitIndex:=High(TpvUInt32);
+ LineRecord:=@fLines[fLineCount];
+ LineRecord^.RVA:=aRVA;
+ LineRecord^.LineNumber:=aLineNumber;
+ LineRecord^.UnitIndex:=High(TpvUInt32);
  inc(fLineCount);
 end;
 
 procedure TSymbolBuilder.SetUnitFileName(const aUnitName,aFileName:String);
 var Index:TpvSizeInt;
+    UnitRecord:PUnitRecord;
 begin
  for Index:=0 to fUnitCount-1 do begin
-  if SameText(fUnits[Index].Name,aUnitName) and (length(fUnits[Index].FileName)=0) then begin
-   fUnits[Index].FileName:=aFileName;
+  UnitRecord:=@fUnits[Index];
+  if SameText(UnitRecord^.Name,aUnitName) and (length(UnitRecord^.FileName)=0) then begin
+   UnitRecord^.FileName:=aFileName;
   end;
  end;
 end;
@@ -285,6 +302,9 @@ end;
 procedure TSymbolBuilder.ComputeDigest(out aDigest:TSymbolBuilder.TDigest);
 var Index:TpvSizeInt;
     Low,High:TpvUInt64;
+    UnitRecord:PUnitRecord;
+    SymbolRecord:PSymbolRecord;
+    LineRecord:PLineRecord;
 
  procedure Feed(const aValue:TpvUInt64);
  begin
@@ -359,23 +379,26 @@ begin
 
  Feed(TpvUInt64(fUnitCount));
  for Index:=0 to fUnitCount-1 do begin
-  Feed(fUnits[Index].StartRVA);
-  Feed(fUnits[Index].Size);
-  FeedString(fUnits[Index].Name);
-  FeedString(fUnits[Index].FileName);
+  UnitRecord:=@fUnits[Index];
+  Feed(UnitRecord^.StartRVA);
+  Feed(UnitRecord^.Size);
+  FeedString(UnitRecord^.Name);
+  FeedString(UnitRecord^.FileName);
  end;
 
  Feed(TpvUInt64(fSymbolCount));
  for Index:=0 to fSymbolCount-1 do begin
-  Feed(fSymbols[Index].RVA);
-  FeedString(fSymbols[Index].Name);
+  SymbolRecord:=@fSymbols[Index];
+  Feed(SymbolRecord^.RVA);
+  FeedString(SymbolRecord^.Name);
  end;
 
  Feed(TpvUInt64(fLineCount));
  for Index:=0 to fLineCount-1 do begin
-  Feed(fLines[Index].RVA);
-  Feed(TpvUInt64(fLines[Index].LineNumber));
-  Feed(TpvUInt64(fLines[Index].UnitIndex));
+  LineRecord:=@fLines[Index];
+  Feed(LineRecord^.RVA);
+  Feed(TpvUInt64(LineRecord^.LineNumber));
+  Feed(TpvUInt64(LineRecord^.UnitIndex));
  end;
 
  for Index:=0 to 7 do begin
@@ -498,18 +521,22 @@ end;
 // contributes several separate code ranges.
 procedure TSymbolBuilder.AssignLinesToUnits;
 var LineIndex,Low,High,Middle:TpvSizeInt;
+    LineRecord:PLineRecord;
+    UnitRecord:PUnitRecord;
 begin
  for LineIndex:=0 to fLineCount-1 do begin
+  LineRecord:=@fLines[LineIndex];
   Low:=0;
   High:=fUnitCount-1;
   while Low<=High do begin
    Middle:=Low+((High-Low) shr 1);
-   if fUnits[Middle].StartRVA>fLines[LineIndex].RVA then begin
+   UnitRecord:=@fUnits[Middle];
+   if UnitRecord^.StartRVA>LineRecord^.RVA then begin
     High:=Middle-1;
-   end else if (fUnits[Middle].StartRVA+fUnits[Middle].Size)<=fLines[LineIndex].RVA then begin
+   end else if (UnitRecord^.StartRVA+UnitRecord^.Size)<=LineRecord^.RVA then begin
     Low:=Middle+1;
    end else begin
-    fLines[LineIndex].UnitIndex:=TpvUInt32(Middle);
+    LineRecord^.UnitIndex:=TpvUInt32(Middle);
     break;
    end;
   end;
@@ -531,18 +558,20 @@ end;
 procedure TSymbolBuilder.DropRedundantEndMarkers;
 var Index,Kept:TpvSizeInt;
     Redundant:Boolean;
+    LineRecord:PLineRecord;
 begin
  Kept:=0;
  for Index:=0 to fLineCount-1 do begin
   Redundant:=false;
-  if fLines[Index].LineNumber=0 then begin
+  LineRecord:=@fLines[Index];
+  if LineRecord^.LineNumber=0 then begin
    if (Index>0) and
-      (fLines[Index-1].RVA=fLines[Index].RVA) and
+      (fLines[Index-1].RVA=LineRecord^.RVA) and
       (fLines[Index-1].LineNumber>0) then begin
     Redundant:=true;
    end;
    if (Index<(fLineCount-1)) and
-      (fLines[Index+1].RVA=fLines[Index].RVA) and
+      (fLines[Index+1].RVA=LineRecord^.RVA) and
       (fLines[Index+1].LineNumber>0) then begin
     Redundant:=true;
    end;
@@ -586,13 +615,16 @@ function TSymbolBuilder.TrimOverlappingUnits:TpvSizeInt;
 const cMaximalTrim=TpvUInt64(64);
 var Index:TpvSizeInt;
     PreviousStart,PreviousEnd,CurrentStart,CurrentEnd:TpvUInt64;
+    UnitRecord:PUnitRecord;
 begin
  result:=0;
  for Index:=1 to fUnitCount-1 do begin
-  PreviousStart:=fUnits[Index-1].StartRVA;
-  PreviousEnd:=PreviousStart+fUnits[Index-1].Size;
-  CurrentStart:=fUnits[Index].StartRVA;
-  CurrentEnd:=CurrentStart+fUnits[Index].Size;
+  UnitRecord:=@fUnits[Index-1];
+  PreviousStart:=UnitRecord^.StartRVA;
+  PreviousEnd:=PreviousStart+UnitRecord^.Size;
+  UnitRecord:=@fUnits[Index];
+  CurrentStart:=UnitRecord^.StartRVA;
+  CurrentEnd:=CurrentStart+UnitRecord^.Size;
   if (PreviousEnd>CurrentStart) and
      (CurrentStart>PreviousStart) and
      (CurrentEnd>=PreviousEnd) and
@@ -664,6 +696,8 @@ var Stream:TFileStream;
     Payload:TMemoryStream;
     PackedData:TpvPointer;
     PackedSize:TpvUInt64;
+    UnitRecord:PUnitRecord;
+    SymbolRecord:PSymbolRecord;
 begin
 
  FreeAndNil(fStringStream);
@@ -675,12 +709,14 @@ begin
  AddString('',false);
 
  for Index:=0 to fUnitCount-1 do begin
-  fUnits[Index].NameOffset:=AddString(fUnits[Index].Name,true);
-  fUnits[Index].FileNameOffset:=AddString(PreparePath(fUnits[Index].FileName),true);
+  UnitRecord:=@fUnits[Index];
+  UnitRecord^.NameOffset:=AddString(UnitRecord^.Name,true);
+  UnitRecord^.FileNameOffset:=AddString(PreparePath(UnitRecord^.FileName),true);
  end;
 
  for Index:=0 to fSymbolCount-1 do begin
-  fSymbols[Index].NameOffset:=AddString(fSymbols[Index].Name,false);
+  SymbolRecord:=@fSymbols[Index];
+  SymbolRecord^.NameOffset:=AddString(SymbolRecord^.Name,false);
  end;
 
  Stream:=TFileStream.Create(aFileName,fmOpenReadWrite or fmShareExclusive);
@@ -794,6 +830,9 @@ var SymbolTable:TpvSymbolTable;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
     Middle,UnitEnd:TpvUInt64;
     Found:Boolean;
+    UnitRecord:PUnitRecord;
+    SymbolRecord:PSymbolRecord;
+    LineRecord,ScanLine:PLineRecord;
 begin
  aResolved:=0;
  aProbes:=0;
@@ -810,10 +849,11 @@ begin
   // is also what a run which asked for neither still produces. Without it such
   // a run had nothing to probe and passed by having asked nothing.
   for Index:=0 to fUnitCount-1 do begin
+   UnitRecord:=@fUnits[Index];
    inc(aProbes);
-   if SymbolTable.Resolve(fUnits[Index].StartRVA,Location) and
-      (String(Location.UnitName)=fUnits[Index].Name) and
-      (String(Location.FileName)=PreparePath(fUnits[Index].FileName)) then begin
+   if SymbolTable.Resolve(UnitRecord^.StartRVA,Location) and
+      (String(Location.UnitName)=UnitRecord^.Name) and
+      (String(Location.FileName)=PreparePath(UnitRecord^.FileName)) then begin
     inc(aResolved);
    end;
    // And the last byte it covers, which is the only thing which says anything
@@ -821,11 +861,11 @@ begin
    // answers at its start exactly as it should and stops early, and with
    // neither a symbol nor a line in the table there is nothing else which would
    // have noticed.
-   if fUnits[Index].Size>1 then begin
+   if UnitRecord^.Size>1 then begin
     inc(aProbes);
-    if SymbolTable.Resolve(fUnits[Index].StartRVA+(fUnits[Index].Size-1),Location) and
-       (String(Location.UnitName)=fUnits[Index].Name) and
-       (String(Location.FileName)=PreparePath(fUnits[Index].FileName)) then begin
+    if SymbolTable.Resolve(UnitRecord^.StartRVA+(UnitRecord^.Size-1),Location) and
+       (String(Location.UnitName)=UnitRecord^.Name) and
+       (String(Location.FileName)=PreparePath(UnitRecord^.FileName)) then begin
      inc(aResolved);
     end;
    end;
@@ -835,11 +875,11 @@ begin
    // is. Only where the next range does not begin there, since a unit reaching
    // exactly up to the next one is the ordinary case and the answer is then
    // rightly the next unit rather than nothing.
-   if (fUnits[Index].Size>0) and
-      (((Index+1)>=fUnitCount) or ((fUnits[Index].StartRVA+fUnits[Index].Size)<fUnits[Index+1].StartRVA)) then begin
+   if (UnitRecord^.Size>0) and
+      (((Index+1)>=fUnitCount) or ((UnitRecord^.StartRVA+UnitRecord^.Size)<fUnits[Index+1].StartRVA)) then begin
     inc(aProbes);
-    if (not SymbolTable.Resolve(fUnits[Index].StartRVA+fUnits[Index].Size,Location)) or
-       (String(Location.UnitName)<>fUnits[Index].Name) then begin
+    if (not SymbolTable.Resolve(UnitRecord^.StartRVA+UnitRecord^.Size,Location)) or
+       (String(Location.UnitName)<>UnitRecord^.Name) then begin
      inc(aResolved);
     end;
    end;
@@ -856,12 +896,13 @@ begin
   // really is there, and that is what is asked.
   Index:=0;
   while Index<fSymbolCount do begin
+   SymbolRecord:=@fSymbols[Index];
    Last:=Index;
-   while ((Last+1)<fSymbolCount) and (fSymbols[Last+1].RVA=fSymbols[Index].RVA) do begin
+   while ((Last+1)<fSymbolCount) and (fSymbols[Last+1].RVA=SymbolRecord^.RVA) do begin
     inc(Last);
    end;
    inc(aProbes);
-   if SymbolTable.Resolve(fSymbols[Index].RVA,Location) then begin
+   if SymbolTable.Resolve(SymbolRecord^.RVA,Location) then begin
     for Scan:=Index to Last do begin
      if Location.SymbolName=fSymbols[Scan].Name then begin
       inc(aResolved);
@@ -875,7 +916,7 @@ begin
    // be walked back to the nearest routine in front of it. That path was not
    // being taken by any of these probes.
    if (Last+1)<fSymbolCount then begin
-    Middle:=fSymbols[Index].RVA+((fSymbols[Last+1].RVA-fSymbols[Index].RVA) shr 1);
+    Middle:=SymbolRecord^.RVA+((fSymbols[Last+1].RVA-SymbolRecord^.RVA) shr 1);
     // Only where the middle is still inside the same unit as the routine.
     // Where the next routine belongs to the next unit, the space between them
     // does not belong to this one, and a resolver which says so is right: the
@@ -885,16 +926,17 @@ begin
     HighIndex:=fUnitCount-1;
     while LowIndex<=HighIndex do begin
      MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
-     if fSymbols[Index].RVA<fUnits[MiddleIndex].StartRVA then begin
+     UnitRecord:=@fUnits[MiddleIndex];
+     if SymbolRecord^.RVA<UnitRecord^.StartRVA then begin
       HighIndex:=MiddleIndex-1;
-     end else if fSymbols[Index].RVA>=(fUnits[MiddleIndex].StartRVA+fUnits[MiddleIndex].Size) then begin
+     end else if SymbolRecord^.RVA>=(UnitRecord^.StartRVA+UnitRecord^.Size) then begin
       LowIndex:=MiddleIndex+1;
      end else begin
-      UnitEnd:=fUnits[MiddleIndex].StartRVA+fUnits[MiddleIndex].Size;
+      UnitEnd:=UnitRecord^.StartRVA+UnitRecord^.Size;
       break;
      end;
     end;
-    if (Middle>fSymbols[Index].RVA) and (UnitEnd>0) and (Middle<UnitEnd) then begin
+    if (Middle>SymbolRecord^.RVA) and (UnitEnd>0) and (Middle<UnitEnd) then begin
      inc(aProbes);
      if SymbolTable.Resolve(Middle,Location) then begin
       for Scan:=Index to Last do begin
@@ -914,8 +956,9 @@ begin
   // sides are then zero, and would only water down what the count says.
   Index:=0;
   while Index<fLineCount do begin
+   LineRecord:=@fLines[Index];
    Last:=Index;
-   while ((Last+1)<fLineCount) and (fLines[Last+1].RVA=fLines[Index].RVA) do begin
+   while ((Last+1)<fLineCount) and (fLines[Last+1].RVA=LineRecord^.RVA) do begin
     inc(Last);
    end;
    Found:=false;
@@ -927,9 +970,10 @@ begin
    end;
    if Found then begin
     inc(aProbes);
-    if SymbolTable.Resolve(fLines[Index].RVA,Location) then begin
+    if SymbolTable.Resolve(LineRecord^.RVA,Location) then begin
      for Scan:=Index to Last do begin
-      if (fLines[Scan].LineNumber>0) and (Location.LineNumber=fLines[Scan].LineNumber) then begin
+      ScanLine:=@fLines[Scan];
+      if (ScanLine^.LineNumber>0) and (Location.LineNumber=ScanLine^.LineNumber) then begin
        inc(aResolved);
        break;
       end;

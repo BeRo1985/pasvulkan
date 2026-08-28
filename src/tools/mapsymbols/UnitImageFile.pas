@@ -65,6 +65,7 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
       // which speaks COFF gets an answer either way.
       Characteristics:TpvUInt32;
      end;
+     PImageSection=^TImageSection;
 
      TImageSections=array of TImageSection;
 
@@ -327,20 +328,22 @@ procedure TImageFile.ComputeCodeRange;
 var Index:TpvInt32;
     LowAddress,HighAddress,SectionEnd:TpvUInt64;
     Found:Boolean;
+    Section:PImageSection;
 begin
  Found:=false;
  LowAddress:=0;
  HighAddress:=0;
  for Index:=0 to length(fSections)-1 do begin
-  if fSections[Index].Executable and (fSections[Index].VirtualAddress>0) then begin
-   SectionEnd:=fSections[Index].VirtualAddress+fSections[Index].VirtualSize;
+  Section:=@fSections[Index];
+  if Section^.Executable and (Section^.VirtualAddress>0) then begin
+   SectionEnd:=Section^.VirtualAddress+Section^.VirtualSize;
    if not Found then begin
-    LowAddress:=fSections[Index].VirtualAddress;
+    LowAddress:=Section^.VirtualAddress;
     HighAddress:=SectionEnd;
     Found:=true;
    end else begin
-    if fSections[Index].VirtualAddress<LowAddress then begin
-     LowAddress:=fSections[Index].VirtualAddress;
+    if Section^.VirtualAddress<LowAddress then begin
+     LowAddress:=Section^.VirtualAddress;
     end;
     if SectionEnd>HighAddress then begin
      HighAddress:=SectionEnd;
@@ -419,23 +422,25 @@ end;
 function TImageFile.RVAToFileOffset(const aRVA:TpvUInt32):TpvInt64;
 var Index:TpvSizeInt;
     Address,Size:TpvUInt64;
+    Section:PImageSection;
 begin
  result:=0;
  // Section addresses are kept as link time addresses here, so the base has to
  // go back on before they can be compared.
  Address:=fImageBase+TpvUInt64(aRVA);
  for Index:=0 to length(fSections)-1 do begin
-  if fSections[Index].RawSize=0 then begin
+  Section:=@fSections[Index];
+  if Section^.RawSize=0 then begin
    continue;
   end;
   // A section whose virtual size is not stated covers what it has in the file.
-  if fSections[Index].VirtualSize>0 then begin
-   Size:=fSections[Index].VirtualSize;
+  if Section^.VirtualSize>0 then begin
+   Size:=Section^.VirtualSize;
   end else begin
-   Size:=fSections[Index].RawSize;
+   Size:=Section^.RawSize;
   end;
-  if (Address>=fSections[Index].VirtualAddress) and (Address<(fSections[Index].VirtualAddress+Size)) then begin
-   result:=TpvInt64(fSections[Index].FileOffset)+TpvInt64(Address-fSections[Index].VirtualAddress);
+  if (Address>=Section^.VirtualAddress) and (Address<(Section^.VirtualAddress+Size)) then begin
+   result:=TpvInt64(Section^.FileOffset)+TpvInt64(Address-Section^.VirtualAddress);
    exit;
   end;
  end;
@@ -452,6 +457,7 @@ var NewHeaderOffset:TpvUInt32;
     RawName:array[0..7] of AnsiChar;
     VirtualSize,VirtualAddress,RawSize,RawOffset,Characteristics:TpvUInt32;
     NameLength:TpvInt32;
+    Section:PImageSection;
 begin
 
  result:=false;
@@ -514,21 +520,22 @@ begin
   while (NameLength<8) and (RawName[NameLength]<>#0) do begin
    inc(NameLength);
   end;
-  SetString(fSections[SectionIndex].Name,PAnsiChar(@RawName[0]),NameLength);
+  Section:=@fSections[SectionIndex];
+  SetString(Section^.Name,PAnsiChar(@RawName[0]),NameLength);
   // A name which does not fit into the eight byte field is stored as a slash
   // followed by a decimal offset into the COFF string table. Every DWARF
   // section is affected, since .debug_line alone is already eleven characters,
   // so without this the debug sections are simply invisible.
-  if (NameLength>1) and (fSections[SectionIndex].Name[1]='/') then begin
-   fSections[SectionIndex].Name:=ReadLongSectionName(StrToIntDef(Copy(fSections[SectionIndex].Name,2,NameLength-1),-1));
+  if (NameLength>1) and (Section^.Name[1]='/') then begin
+   Section^.Name:=ReadLongSectionName(StrToIntDef(Copy(Section^.Name,2,NameLength-1),-1));
   end;
   // PE section addresses are relative to the image base.
-  fSections[SectionIndex].VirtualAddress:=fImageBase+VirtualAddress;
-  fSections[SectionIndex].VirtualSize:=VirtualSize;
-  fSections[SectionIndex].FileOffset:=RawOffset;
-  fSections[SectionIndex].RawSize:=RawSize;
-  fSections[SectionIndex].Executable:=(Characteristics and IMAGE_SCN_MEM_EXECUTE)<>0;
-  fSections[SectionIndex].Characteristics:=Characteristics;
+  Section^.VirtualAddress:=fImageBase+VirtualAddress;
+  Section^.VirtualSize:=VirtualSize;
+  Section^.FileOffset:=RawOffset;
+  Section^.RawSize:=RawSize;
+  Section^.Executable:=(Characteristics and IMAGE_SCN_MEM_EXECUTE)<>0;
+  Section^.Characteristics:=Characteristics;
  end;
 
  result:=true;
@@ -549,6 +556,7 @@ var ELFClass,DataEncoding:TpvUInt8;
     NameOffset,SectionType:TpvUInt32;
     Flags,Address,Offset,Size:TpvUInt64;
     NameTableOffset:TpvUInt64;
+    Section:PImageSection;
 begin
 
  result:=false;
@@ -672,26 +680,27 @@ begin
    Offset:=ReadImageUInt32;
    Size:=ReadImageUInt32;
   end;
-  fSections[Index].Name:=ReadStringAt(TpvInt64(NameTableOffset)+TpvInt64(NameOffset));
-  fSections[Index].VirtualAddress:=Address;
-  fSections[Index].VirtualSize:=Size;
-  fSections[Index].FileOffset:=Offset;
-  fSections[Index].RawSize:=Size;
-  fSections[Index].Executable:=((Flags and SHF_EXECINSTR)<>0) and ((Flags and SHF_ALLOC)<>0);
-  fSections[Index].Characteristics:=0;
+  Section:=@fSections[Index];
+  Section^.Name:=ReadStringAt(TpvInt64(NameTableOffset)+TpvInt64(NameOffset));
+  Section^.VirtualAddress:=Address;
+  Section^.VirtualSize:=Size;
+  Section^.FileOffset:=Offset;
+  Section^.RawSize:=Size;
+  Section^.Executable:=((Flags and SHF_EXECINSTR)<>0) and ((Flags and SHF_ALLOC)<>0);
+  Section^.Characteristics:=0;
   if (Flags and SHF_ALLOC)<>0 then begin
-   fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_MEM_READ;
+   Section^.Characteristics:=Section^.Characteristics or IMAGE_SCN_MEM_READ;
    if SectionType=SHT_NOBITS then begin
-    fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_CNT_UNINITIALIZED_DATA;
+    Section^.Characteristics:=Section^.Characteristics or IMAGE_SCN_CNT_UNINITIALIZED_DATA;
    end else begin
-    fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_CNT_INITIALIZED_DATA;
+    Section^.Characteristics:=Section^.Characteristics or IMAGE_SCN_CNT_INITIALIZED_DATA;
    end;
   end;
   if (Flags and SHF_WRITE)<>0 then begin
-   fSections[Index].Characteristics:=fSections[Index].Characteristics or IMAGE_SCN_MEM_WRITE;
+   Section^.Characteristics:=Section^.Characteristics or IMAGE_SCN_MEM_WRITE;
   end;
-  if fSections[Index].Executable then begin
-   fSections[Index].Characteristics:=(fSections[Index].Characteristics or IMAGE_SCN_MEM_EXECUTE or IMAGE_SCN_CNT_CODE) and not IMAGE_SCN_CNT_INITIALIZED_DATA;
+  if Section^.Executable then begin
+   Section^.Characteristics:=(Section^.Characteristics or IMAGE_SCN_MEM_EXECUTE or IMAGE_SCN_CNT_CODE) and not IMAGE_SCN_CNT_INITIALIZED_DATA;
   end;
   // SHT_SYMTAB is 2, and its sh_link names the string table section holding
   // the symbol names.

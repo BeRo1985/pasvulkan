@@ -49,6 +49,7 @@ type TDWARFInfoSubprogram=record
       Subprograms:TDWARFInfoSubprograms;
       SubprogramCount:TpvSizeInt;
      end;
+     PDWARFInfoUnit=^TDWARFInfoUnit;
 
      TDWARFInfoUnits=array of TDWARFInfoUnit;
 
@@ -58,6 +59,7 @@ type TDWARFInfoSubprogram=record
              Attribute:TpvUInt64;
              Form:TpvUInt64;
             end;
+            PAbbreviationAttribute=^TAbbreviationAttribute;
             TAbbreviationAttributes=array of TAbbreviationAttribute;
             TAbbreviation=record
              Code:TpvUInt64;
@@ -66,6 +68,7 @@ type TDWARFInfoSubprogram=record
              Attributes:TAbbreviationAttributes;
              AttributeCount:TpvSizeInt;
             end;
+            PAbbreviation=^TAbbreviation;
             TAbbreviations=array of TAbbreviation;
       private
        fInfoData:PpvUInt8;
@@ -271,6 +274,8 @@ var Code,Tag,Attribute,Form:TpvUInt64;
     Index:TpvSizeInt;
     SavedData:PpvUInt8;
     SavedSize,SavedPosition:TpvSizeInt;
+    Abbreviation:PAbbreviation;
+    AbbreviationAttribute:PAbbreviationAttribute;
 begin
 
  result:=false;
@@ -305,10 +310,11 @@ begin
    end;
    Index:=fAbbreviationCount;
    inc(fAbbreviationCount);
-   fAbbreviations[Index].Code:=Code;
-   fAbbreviations[Index].Tag:=Tag;
-   fAbbreviations[Index].HasChildren:=ReadUInt8<>0;
-   fAbbreviations[Index].AttributeCount:=0;
+   Abbreviation:=@fAbbreviations[Index];
+   Abbreviation^.Code:=Code;
+   Abbreviation^.Tag:=Tag;
+   Abbreviation^.HasChildren:=ReadUInt8<>0;
+   Abbreviation^.AttributeCount:=0;
 
    repeat
     Attribute:=ReadULEB128;
@@ -316,12 +322,13 @@ begin
     if (Attribute=0) and (Form=0) then begin
      break;
     end;
-    if fAbbreviations[Index].AttributeCount>=length(fAbbreviations[Index].Attributes) then begin
-     SetLength(fAbbreviations[Index].Attributes,(fAbbreviations[Index].AttributeCount+1)*2);
+    if Abbreviation^.AttributeCount>=length(Abbreviation^.Attributes) then begin
+     SetLength(Abbreviation^.Attributes,(Abbreviation^.AttributeCount+1)*2);
     end;
-    fAbbreviations[Index].Attributes[fAbbreviations[Index].AttributeCount].Attribute:=Attribute;
-    fAbbreviations[Index].Attributes[fAbbreviations[Index].AttributeCount].Form:=Form;
-    inc(fAbbreviations[Index].AttributeCount);
+    AbbreviationAttribute:=@Abbreviation^.Attributes[Abbreviation^.AttributeCount];
+    AbbreviationAttribute^.Attribute:=Attribute;
+    AbbreviationAttribute^.Form:=Form;
+    inc(Abbreviation^.AttributeCount);
    until fPosition>fSize;
 
    if fPosition>fSize then begin
@@ -433,7 +440,10 @@ var UnitLength,AbbrevOffset,Code,Value:TpvUInt64;
     AbbreviationIndex,AttributeIndex,UnitIndex,Depth:TpvSizeInt;
     Text:String;
     Subprogram:TDWARFInfoSubprogram;
-    HaveSubprogram:Boolean;
+    HaveSubprogram,IsCompileUnit:Boolean;
+    InfoUnit:PDWARFInfoUnit;
+    Abbreviation:PAbbreviation;
+    AbbreviationAttribute:PAbbreviationAttribute;
 begin
 
  result:=false;
@@ -483,15 +493,19 @@ begin
   end;
   UnitIndex:=fUnitCount;
   inc(fUnitCount);
-  fUnits[UnitIndex].Name:='';
-  fUnits[UnitIndex].Directory:='';
-  fUnits[UnitIndex].LowPC:=0;
-  fUnits[UnitIndex].HighPC:=0;
-  fUnits[UnitIndex].StatementListOffset:=0;
-  fUnits[UnitIndex].HaveStatementList:=false;
-  fUnits[UnitIndex].AddressSize:=AddressSize;
-  fUnits[UnitIndex].Subprograms:=nil;
-  fUnits[UnitIndex].SubprogramCount:=0;
+  // Taken after the growth above and used for the whole of this unit. Nothing
+  // below moves the array itself; what grows in there is the subprogram list of
+  // this one entry, which lives somewhere else.
+  InfoUnit:=@fUnits[UnitIndex];
+  InfoUnit^.Name:='';
+  InfoUnit^.Directory:='';
+  InfoUnit^.LowPC:=0;
+  InfoUnit^.HighPC:=0;
+  InfoUnit^.StatementListOffset:=0;
+  InfoUnit^.HaveStatementList:=false;
+  InfoUnit^.AddressSize:=AddressSize;
+  InfoUnit^.Subprograms:=nil;
+  InfoUnit^.SubprogramCount:=0;
 
   // The compile unit itself and then its children. Only one level of them is
   // ever written here, but the nesting is followed rather than assumed: a
@@ -520,48 +534,52 @@ begin
     exit;
    end;
 
-   HaveSubprogram:=fAbbreviations[AbbreviationIndex].Tag=DW_TAG_subprogram;
+   Abbreviation:=@fAbbreviations[AbbreviationIndex];
+   HaveSubprogram:=Abbreviation^.Tag=DW_TAG_subprogram;
+   IsCompileUnit:=Abbreviation^.Tag=DW_TAG_compile_unit;
    Subprogram.Name:='';
    Subprogram.LowPC:=0;
    Subprogram.HighPC:=0;
 
-   for AttributeIndex:=0 to fAbbreviations[AbbreviationIndex].AttributeCount-1 do begin
+   for AttributeIndex:=0 to Abbreviation^.AttributeCount-1 do begin
 
-    if not ReadValue(fAbbreviations[AbbreviationIndex].Attributes[AttributeIndex].Form,AddressSize,Value,Text) then begin
+    AbbreviationAttribute:=@Abbreviation^.Attributes[AttributeIndex];
+
+    if not ReadValue(AbbreviationAttribute^.Form,AddressSize,Value,Text) then begin
      exit;
     end;
 
-    case fAbbreviations[AbbreviationIndex].Attributes[AttributeIndex].Attribute of
+    case AbbreviationAttribute^.Attribute of
      DW_AT_name:begin
       if HaveSubprogram then begin
        Subprogram.Name:=Text;
-      end else if fAbbreviations[AbbreviationIndex].Tag=DW_TAG_compile_unit then begin
-       fUnits[UnitIndex].Name:=Text;
+      end else if IsCompileUnit then begin
+       InfoUnit^.Name:=Text;
       end;
      end;
      DW_AT_comp_dir:begin
-      if fAbbreviations[AbbreviationIndex].Tag=DW_TAG_compile_unit then begin
-       fUnits[UnitIndex].Directory:=Text;
+      if IsCompileUnit then begin
+       InfoUnit^.Directory:=Text;
       end;
      end;
      DW_AT_low_pc:begin
       if HaveSubprogram then begin
        Subprogram.LowPC:=Value;
-      end else if fAbbreviations[AbbreviationIndex].Tag=DW_TAG_compile_unit then begin
-       fUnits[UnitIndex].LowPC:=Value;
+      end else if IsCompileUnit then begin
+       InfoUnit^.LowPC:=Value;
       end;
      end;
      DW_AT_high_pc:begin
       if HaveSubprogram then begin
        Subprogram.HighPC:=Value;
-      end else if fAbbreviations[AbbreviationIndex].Tag=DW_TAG_compile_unit then begin
-       fUnits[UnitIndex].HighPC:=Value;
+      end else if IsCompileUnit then begin
+       InfoUnit^.HighPC:=Value;
       end;
      end;
      DW_AT_stmt_list:begin
-      if fAbbreviations[AbbreviationIndex].Tag=DW_TAG_compile_unit then begin
-       fUnits[UnitIndex].StatementListOffset:=Value;
-       fUnits[UnitIndex].HaveStatementList:=true;
+      if IsCompileUnit then begin
+       InfoUnit^.StatementListOffset:=Value;
+       InfoUnit^.HaveStatementList:=true;
       end;
      end;
      else begin
@@ -571,14 +589,14 @@ begin
    end;
 
    if HaveSubprogram then begin
-    if fUnits[UnitIndex].SubprogramCount>=length(fUnits[UnitIndex].Subprograms) then begin
-     SetLength(fUnits[UnitIndex].Subprograms,(fUnits[UnitIndex].SubprogramCount+1)*2);
+    if InfoUnit^.SubprogramCount>=length(InfoUnit^.Subprograms) then begin
+     SetLength(InfoUnit^.Subprograms,(InfoUnit^.SubprogramCount+1)*2);
     end;
-    fUnits[UnitIndex].Subprograms[fUnits[UnitIndex].SubprogramCount]:=Subprogram;
-    inc(fUnits[UnitIndex].SubprogramCount);
+    InfoUnit^.Subprograms[InfoUnit^.SubprogramCount]:=Subprogram;
+    inc(InfoUnit^.SubprogramCount);
    end;
 
-   if fAbbreviations[AbbreviationIndex].HasChildren then begin
+   if Abbreviation^.HasChildren then begin
     inc(Depth);
    end;
 

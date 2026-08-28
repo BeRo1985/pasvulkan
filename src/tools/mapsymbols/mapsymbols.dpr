@@ -60,6 +60,7 @@ type
       // Exclusive, like everything else about ranges here.
       High:TpvUInt64;
      end;
+     PCollectorRange=^TCollectorRange;
      TCollectorRanges=array of TCollectorRange;
 {$endif}
 
@@ -400,13 +401,15 @@ end;
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
 // Ends the run of code being measured and keeps it.
 procedure TCollector.CloseRange;
+var Range:PCollectorRange;
 begin
  if HaveCurrent and (CurrentEnd>CurrentLow) then begin
   if RangeCount>=length(Ranges) then begin
    SetLength(Ranges,(RangeCount+1)*2);
   end;
-  Ranges[RangeCount].Low:=CurrentLow;
-  Ranges[RangeCount].High:=CurrentEnd;
+  Range:=@Ranges[RangeCount];
+  Range^.Low:=CurrentLow;
+  Range^.High:=CurrentEnd;
   inc(RangeCount);
  end;
  HaveCurrent:=false;
@@ -477,6 +480,7 @@ const // A gap no larger than this is padding rather than a hole. Routines are
       cMaximalPadding=16;
 {$endif}
 var Index,Kept:TpvSizeInt;
+    Range,KeptRange:PCollectorRange;
 begin
 
  if RangeCount<2 then begin
@@ -487,11 +491,13 @@ begin
 
  Kept:=0;
  for Index:=1 to RangeCount-1 do begin
-  if Ranges[Index].Low<=(Ranges[Kept].High+cMaximalPadding) then begin
+  Range:=@Ranges[Index];
+  KeptRange:=@Ranges[Kept];
+  if Range^.Low<=(KeptRange^.High+cMaximalPadding) then begin
    // Touching, overlapping, or separated by nothing but padding, so the two
    // describe one run between them.
-   if Ranges[Index].High>Ranges[Kept].High then begin
-    Ranges[Kept].High:=Ranges[Index].High;
+   if Range^.High>KeptRange^.High then begin
+    KeptRange^.High:=Range^.High;
    end;
   end else begin
    inc(Kept);
@@ -510,6 +516,7 @@ procedure TCollector.OnLineUnit(const aFileName:String);
 var Name:String;
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
     Index:TpvSizeInt;
+    Range:PCollectorRange;
 {$endif}
 begin
 
@@ -537,7 +544,8 @@ begin
  CloseRange;
  MergeRanges;
  for Index:=0 to RangeCount-1 do begin
-  Builder.AddUnit(Name,aFileName,Ranges[Index].Low-ImageBase,Ranges[Index].High-Ranges[Index].Low);
+  Range:=@Ranges[Index];
+  Builder.AddUnit(Name,aFileName,Range^.Low-ImageBase,Range^.High-Range^.Low);
  end;
  RangeCount:=0;
 
@@ -1763,16 +1771,18 @@ function WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;cons
 var PDBWriter:TPDBWriter;
     Index:TpvSizeInt;
     Digest:TSymbolBuilder.TDigest;
+    Section:PImageSection;
 begin
  PDBWriter:=TPDBWriter.Create(aBuilder);
  result:=PDBWriter;
  try
   for Index:=0 to length(aImage.Sections)-1 do begin
-   PDBWriter.AddSection(aImage.Sections[Index].Name,
-                        TpvUInt32(aImage.Sections[Index].VirtualAddress-aImage.ImageBase),
-                        TpvUInt32(aImage.Sections[Index].VirtualSize),
-                        TpvUInt32(aImage.Sections[Index].RawSize),
-                        aImage.Sections[Index].Characteristics);
+   Section:=@aImage.Sections[Index];
+   PDBWriter.AddSection(Section^.Name,
+                        TpvUInt32(Section^.VirtualAddress-aImage.ImageBase),
+                        TpvUInt32(Section^.VirtualSize),
+                        TpvUInt32(Section^.RawSize),
+                        Section^.Characteristics);
   end;
   // The identity is a digest of what was collected rather than the clock, so
   // that building the same input twice gives the same identity while two

@@ -40,6 +40,7 @@ type TPDBSection=record
       RawSize:TpvUInt32;
       Characteristics:TpvUInt32;
      end;
+     PPDBSection=^TPDBSection;
 
      TPDBSections=array of TPDBSection;
 
@@ -156,30 +157,34 @@ begin
 end;
 
 procedure TPDBWriter.AddSection(const aName:String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
+var Section:PPDBSection;
 begin
  if fSectionCount>=length(fSections) then begin
   SetLength(fSections,(fSectionCount+1)*2);
  end;
- fSections[fSectionCount].Name:=aName;
- fSections[fSectionCount].RVA:=aRVA;
- fSections[fSectionCount].VirtualSize:=aVirtualSize;
- fSections[fSectionCount].RawSize:=aRawSize;
- fSections[fSectionCount].Characteristics:=aCharacteristics;
+ Section:=@fSections[fSectionCount];
+ Section^.Name:=aName;
+ Section^.RVA:=aRVA;
+ Section^.VirtualSize:=aVirtualSize;
+ Section^.RawSize:=aRawSize;
+ Section^.Characteristics:=aCharacteristics;
  inc(fSectionCount);
 end;
 
 function TPDBWriter.FindSection(const aRVA:TpvUInt64;out aSectionIndex:TpvUInt16;out aOffset:TpvUInt32):Boolean;
 var Index:TpvSizeInt;
+    Section:PPDBSection;
 begin
  result:=false;
  aSectionIndex:=0;
  aOffset:=0;
  for Index:=0 to fSectionCount-1 do begin
-  if (aRVA>=fSections[Index].RVA) and
-     (aRVA<(TpvUInt64(fSections[Index].RVA)+TpvUInt64(fSections[Index].VirtualSize))) then begin
+  Section:=@fSections[Index];
+  if (aRVA>=Section^.RVA) and
+     (aRVA<(TpvUInt64(Section^.RVA)+TpvUInt64(Section^.VirtualSize))) then begin
    // Section numbers are one based everywhere in a PDB.
    aSectionIndex:=TpvUInt16(Index+1);
-   aOffset:=TpvUInt32(aRVA-fSections[Index].RVA);
+   aOffset:=TpvUInt32(aRVA-Section^.RVA);
    result:=true;
    exit;
   end;
@@ -193,10 +198,12 @@ procedure TPDBWriter.BuildSectionHeadersStream(const aStream:TMemoryStream);
 var Index,NameIndex:TpvSizeInt;
     RawName:array[0..7] of AnsiChar;
     NameText:TpvRawByteString;
+    Section:PPDBSection;
 begin
  for Index:=0 to fSectionCount-1 do begin
+  Section:=@fSections[Index];
   FillChar(RawName,SizeOf(RawName),#0);
-  NameText:=TpvRawByteString(fSections[Index].Name);
+  NameText:=TpvRawByteString(Section^.Name);
   for NameIndex:=1 to length(NameText) do begin
    if NameIndex>8 then begin
     break;
@@ -204,15 +211,15 @@ begin
    RawName[NameIndex-1]:=NameText[NameIndex];
   end;
   aStream.WriteBuffer(RawName,8);
-  WriteUInt32(aStream,fSections[Index].VirtualSize);
-  WriteUInt32(aStream,fSections[Index].RVA);
-  WriteUInt32(aStream,fSections[Index].RawSize);
+  WriteUInt32(aStream,Section^.VirtualSize);
+  WriteUInt32(aStream,Section^.RVA);
+  WriteUInt32(aStream,Section^.RawSize);
   WriteUInt32(aStream,0); // pointer to raw data, not meaningful here
   WriteUInt32(aStream,0); // pointer to relocations
   WriteUInt32(aStream,0); // pointer to line numbers
   WriteUInt16(aStream,0); // number of relocations
   WriteUInt16(aStream,0); // number of line numbers
-  WriteUInt32(aStream,fSections[Index].Characteristics);
+  WriteUInt32(aStream,Section^.Characteristics);
  end;
 end;
 
@@ -556,6 +563,7 @@ type TPublicRecord=record
       Section:TpvUInt16;
       SectionOffset:TpvUInt32;
      end;
+     PPublicRecord=^TPublicRecord;
      TPublicRecords=array of TPublicRecord;
 var Records:TPublicRecords;
     Count,Index:TpvSizeInt;
@@ -563,6 +571,7 @@ var Records:TPublicRecords;
     Section:TpvUInt16;
     Offset:TpvUInt32;
     NameText:TpvRawByteString;
+    PublicRecord:PPublicRecord;
     RecordStart:TpvInt64;
     Length16:TpvUInt16;
     Zero:AnsiChar;
@@ -591,20 +600,26 @@ var Records:TPublicRecords;
      PivotName:TpvRawByteString;
      Temporary:TPublicRecord;
      Middle:TpvSizeInt;
+     Pivot,Current:PPublicRecord;
  begin
   Low:=aLeft;
   High:=aRight;
   Middle:=(aLeft+aRight) shr 1;
-  PivotBucket:=Records[Middle].Bucket;
-  PivotName:=Records[Middle].SortName;
+  Pivot:=@Records[Middle];
+  PivotBucket:=Pivot^.Bucket;
+  PivotName:=Pivot^.SortName;
   repeat
-   while (Records[Low].Bucket<PivotBucket) or
-         ((Records[Low].Bucket=PivotBucket) and NameLess(Records[Low].SortName,PivotName)) do begin
+   Current:=@Records[Low];
+   while (Current^.Bucket<PivotBucket) or
+         ((Current^.Bucket=PivotBucket) and NameLess(Current^.SortName,PivotName)) do begin
     inc(Low);
+    Current:=@Records[Low];
    end;
-   while (Records[High].Bucket>PivotBucket) or
-         ((Records[High].Bucket=PivotBucket) and NameLess(PivotName,Records[High].SortName)) do begin
+   Current:=@Records[High];
+   while (Current^.Bucket>PivotBucket) or
+         ((Current^.Bucket=PivotBucket) and NameLess(PivotName,Current^.SortName)) do begin
     dec(High);
+    Current:=@Records[High];
    end;
    if Low<=High then begin
     Temporary:=Records[Low];
@@ -627,20 +642,26 @@ var Records:TPublicRecords;
      PivotSection:TpvUInt16;
      PivotOffset:TpvUInt32;
      Temporary:TPublicRecord;
+     Pivot,Current:PPublicRecord;
  begin
   Low:=aLeft;
   High:=aRight;
   Middle:=(aLeft+aRight) shr 1;
-  PivotSection:=Records[Middle].Section;
-  PivotOffset:=Records[Middle].SectionOffset;
+  Pivot:=@Records[Middle];
+  PivotSection:=Pivot^.Section;
+  PivotOffset:=Pivot^.SectionOffset;
   repeat
-   while (Records[Low].Section<PivotSection) or
-         ((Records[Low].Section=PivotSection) and (Records[Low].SectionOffset<PivotOffset)) do begin
+   Current:=@Records[Low];
+   while (Current^.Section<PivotSection) or
+         ((Current^.Section=PivotSection) and (Current^.SectionOffset<PivotOffset)) do begin
     inc(Low);
+    Current:=@Records[Low];
    end;
-   while (Records[High].Section>PivotSection) or
-         ((Records[High].Section=PivotSection) and (Records[High].SectionOffset>PivotOffset)) do begin
+   Current:=@Records[High];
+   while (Current^.Section>PivotSection) or
+         ((Current^.Section=PivotSection) and (Current^.SectionOffset>PivotOffset)) do begin
     dec(High);
+    Current:=@Records[High];
    end;
    if Low<=High then begin
     Temporary:=Records[Low];
@@ -674,12 +695,13 @@ begin
 
   NameText:=TpvRawByteString(String(SymbolRecord.Name));
 
-  Records[Count].SymbolOffset:=TpvUInt32(aSymbolRecordStream.Size);
-  Records[Count].Section:=Section;
-  Records[Count].SectionOffset:=Offset;
+  PublicRecord:=@Records[Count];
+  PublicRecord^.SymbolOffset:=TpvUInt32(aSymbolRecordStream.Size);
+  PublicRecord^.Section:=Section;
+  PublicRecord^.SectionOffset:=Offset;
   // The raw name, since the ordering above compares the bytes as they are.
-  Records[Count].SortName:=NameText;
-  Records[Count].Bucket:=PDBHashString(NameText) mod PublicHashBuckets;
+  PublicRecord^.SortName:=NameText;
+  PublicRecord^.Bucket:=PDBHashString(NameText) mod PublicHashBuckets;
   inc(Count);
 
   RecordStart:=aSymbolRecordStream.Size;
@@ -733,10 +755,11 @@ begin
  while Index<Count do begin
   RunStart:=Index;
   RunEnd:=Index;
-  while ((RunEnd+1)<Count) and (Records[RunEnd+1].Bucket=Records[RunStart].Bucket) do begin
+  PublicRecord:=@Records[RunStart];
+  while ((RunEnd+1)<Count) and (Records[RunEnd+1].Bucket=PublicRecord^.Bucket) do begin
    inc(RunEnd);
   end;
-  Bitmap[Records[RunStart].Bucket shr 5]:=Bitmap[Records[RunStart].Bucket shr 5] or (TpvUInt32(1) shl (Records[RunStart].Bucket and 31));
+  Bitmap[PublicRecord^.Bucket shr 5]:=Bitmap[PublicRecord^.Bucket shr 5] or (TpvUInt32(1) shl (PublicRecord^.Bucket and 31));
   SetLength(Buckets,length(Buckets)+1);
   Buckets[length(Buckets)-1]:=BucketCursor;
   // The cursor counts in units of twelve rather than the eight a hash record

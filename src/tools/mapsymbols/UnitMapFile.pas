@@ -34,6 +34,7 @@ type TMapFileReader=class
              StartVA:TpvUInt64;
              Size:TpvUInt64;
             end;
+            PSegment=^TSegment;
             TSegments=array of TSegment;
       private
        fSegments:TSegments;
@@ -108,6 +109,7 @@ var ColonPosition:TpvSizeInt;
     SegmentIndex:TpvUInt32;
     Offset:TpvUInt64;
     Index:TpvSizeInt;
+    Segment:PSegment;
 begin
  result:=false;
  aVirtualAddress:=0;
@@ -118,8 +120,9 @@ begin
  SegmentIndex:=TpvUInt32(ParseHex(Copy(aToken,1,ColonPosition-1)));
  Offset:=ParseHex(Copy(aToken,ColonPosition+1,length(aToken)-ColonPosition));
  for Index:=0 to length(fSegments)-1 do begin
-  if fSegments[Index].SegmentIndex=SegmentIndex then begin
-   aVirtualAddress:=fSegments[Index].StartVA+Offset;
+  Segment:=@fSegments[Index];
+  if Segment^.SegmentIndex=SegmentIndex then begin
+   aVirtualAddress:=Segment^.StartVA+Offset;
    result:=true;
    exit;
   end;

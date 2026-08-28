@@ -32,6 +32,7 @@ type TELFWriterSymbol=record
       Address:TpvUInt64;
       Size:TpvUInt64;
      end;
+     PELFWriterSymbol=^TELFWriterSymbol;
 
      TELFWriterSymbols=array of TELFWriterSymbol;
 
@@ -56,6 +57,7 @@ type TELFWriterSymbol=record
              Alignment:TpvUInt64;
              NameOffset:TpvUInt32;
             end;
+            PSectionRecord=^TSectionRecord;
             TSectionRecords=array of TSectionRecord;
       private
        fSections:TSectionRecords;
@@ -179,10 +181,12 @@ end;
 
 destructor TELFWriter.Destroy;
 var Index:TpvSizeInt;
+    Section:PSectionRecord;
 begin
  for Index:=0 to length(fSections)-1 do begin
-  if fSections[Index].OwnsData then begin
-   FreeAndNil(fSections[Index].Data);
+  Section:=@fSections[Index];
+  if Section^.OwnsData then begin
+   FreeAndNil(Section^.Data);
   end;
  end;
  fSections:=nil;
@@ -191,23 +195,25 @@ begin
 end;
 
 function TELFWriter.AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
+var Section:PSectionRecord;
 begin
  result:=length(fSections);
  SetLength(fSections,result+1);
- fSections[result].Name:=aName;
- fSections[result].SectionType:=aSectionType;
- fSections[result].Flags:=aFlags;
- fSections[result].Address:=0;
- fSections[result].Data:=aData;
- fSections[result].OwnsData:=aOwnsData;
- fSections[result].Link:=0;
- fSections[result].Info:=0;
- fSections[result].EntrySize:=0;
- fSections[result].FileOffset:=0;
+ Section:=@fSections[result];
+ Section^.Name:=aName;
+ Section^.SectionType:=aSectionType;
+ Section^.Flags:=aFlags;
+ Section^.Address:=0;
+ Section^.Data:=aData;
+ Section^.OwnsData:=aOwnsData;
+ Section^.Link:=0;
+ Section^.Info:=0;
+ Section^.EntrySize:=0;
+ Section^.FileOffset:=0;
  // Byte granularity unless the caller says otherwise, which is what a string
  // table or a stream of debug information is.
- fSections[result].Alignment:=1;
- fSections[result].NameOffset:=0;
+ Section^.Alignment:=1;
+ Section^.NameOffset:=0;
 end;
 
 procedure TELFWriter.AddDebugSection(const aName:String;const aData:TMemoryStream);
@@ -218,13 +224,15 @@ begin
 end;
 
 procedure TELFWriter.AddSymbol(const aName:String;const aAddress,aSize:TpvUInt64);
+var Symbol:PELFWriterSymbol;
 begin
  if fSymbolCount>=length(fSymbols) then begin
   SetLength(fSymbols,(fSymbolCount+1)*2);
  end;
- fSymbols[fSymbolCount].Name:=aName;
- fSymbols[fSymbolCount].Address:=aAddress;
- fSymbols[fSymbolCount].Size:=aSize;
+ Symbol:=@fSymbols[fSymbolCount];
+ Symbol^.Name:=aName;
+ Symbol^.Address:=aAddress;
+ Symbol^.Size:=aSize;
  inc(fSymbolCount);
 end;
 
@@ -247,6 +255,8 @@ var Stream:TFileStream;
     Raw:TpvRawByteString;
     Zero:AnsiChar;
     NameOffset:TpvUInt32;
+    Section:PSectionRecord;
+    Symbol:PELFWriterSymbol;
 
  function AppendString(const aStream:TMemoryStream;const aValue:String):TpvUInt32;
  var Bytes:TpvRawByteString;
@@ -315,7 +325,8 @@ begin
 
   for Index:=0 to fSymbolCount-1 do begin
 
-   NameOffset:=AppendString(StringTable,fSymbols[Index].Name);
+   Symbol:=@fSymbols[Index];
+   NameOffset:=AppendString(StringTable,Symbol^.Name);
    // Binding in the high nibble, type in the low one.
    Value8:=TpvUInt8((STB_GLOBAL shl 4) or STT_FUNC);
    // Section indices in the file are shifted by one against this list, because
@@ -328,8 +339,8 @@ begin
 
    if fBits=32 then begin
     WriteU32(SymbolTable,NameOffset);
-    WriteU32(SymbolTable,TpvUInt32(fSymbols[Index].Address));
-    WriteU32(SymbolTable,TpvUInt32(fSymbols[Index].Size));
+    WriteU32(SymbolTable,TpvUInt32(Symbol^.Address));
+    WriteU32(SymbolTable,TpvUInt32(Symbol^.Size));
     SymbolTable.WriteBuffer(Value8,SizeOf(TpvUInt8));
     Value8Zero:=0;
     SymbolTable.WriteBuffer(Value8Zero,SizeOf(TpvUInt8)); // other
@@ -340,8 +351,8 @@ begin
     Value8Zero:=0;
     SymbolTable.WriteBuffer(Value8Zero,SizeOf(TpvUInt8)); // other
     WriteU16(SymbolTable,Value16);
-    WriteU64(SymbolTable,fSymbols[Index].Address);
-    WriteU64(SymbolTable,fSymbols[Index].Size);
+    WriteU64(SymbolTable,Symbol^.Address);
+    WriteU64(SymbolTable,Symbol^.Size);
    end;
 
   end;
@@ -351,20 +362,21 @@ begin
   // Again the shift by one for the reserved null section. Pointing this at the
   // wrong section makes every consumer read the symbol names out of whatever
   // happens to sit at that index.
-  fSections[SymbolTableIndex].Link:=TpvUInt32(StringTableIndex+1);
+  Section:=@fSections[SymbolTableIndex];
+  Section^.Link:=TpvUInt32(StringTableIndex+1);
   // Every symbol here is global, so the first one already is the first global.
-  fSections[SymbolTableIndex].Info:=1;
+  Section^.Info:=1;
   // A symbol entry is a structure of words rather than a run of bytes, and a
   // consumer which maps the file and reads it as one expects it to sit where
   // its widest field wants it. Byte granularity is what everything else here
   // is, and what binutils copes with because it reads bytes, but stating the
   // real thing costs one field and one round up in the layout below.
   if fBits=32 then begin
-   fSections[SymbolTableIndex].EntrySize:=SymbolSize32;
-   fSections[SymbolTableIndex].Alignment:=4;
+   Section^.EntrySize:=SymbolSize32;
+   Section^.Alignment:=4;
   end else begin
-   fSections[SymbolTableIndex].EntrySize:=SymbolSize64;
-   fSections[SymbolTableIndex].Alignment:=8;
+   Section^.EntrySize:=SymbolSize64;
+   Section^.Alignment:=8;
   end;
 
   SectionNameIndex:=AddSection('.shstrtab',SHT_STRTAB,0,SectionNames,false);
@@ -373,7 +385,8 @@ begin
   // its own, and index zero has to be the empty name of the null section.
   SectionNames.WriteBuffer(Zero,1);
   for Index:=0 to length(fSections)-1 do begin
-   fSections[Index].NameOffset:=AppendString(SectionNames,fSections[Index].Name);
+   Section:=@fSections[Index];
+   Section^.NameOffset:=AppendString(SectionNames,Section^.Name);
   end;
 
   // Lay the file out: header, then the contents, then the section headers.
@@ -386,14 +399,15 @@ begin
   end;
   Offset:=HeaderSize;
   for Index:=0 to length(fSections)-1 do begin
+   Section:=@fSections[Index];
    // Rounded up to what the section says it needs, so that what the header
    // states and where the bytes actually are agree.
-   if (fSections[Index].Alignment>1) and ((Offset mod fSections[Index].Alignment)<>0) then begin
-    inc(Offset,fSections[Index].Alignment-(Offset mod fSections[Index].Alignment));
+   if (Section^.Alignment>1) and ((Offset mod Section^.Alignment)<>0) then begin
+    inc(Offset,Section^.Alignment-(Offset mod Section^.Alignment));
    end;
-   fSections[Index].FileOffset:=Offset;
-   if (fSections[Index].SectionType<>SHT_NOBITS) and assigned(fSections[Index].Data) then begin
-    inc(Offset,TpvUInt64(fSections[Index].Data.Size));
+   Section^.FileOffset:=Offset;
+   if (Section^.SectionType<>SHT_NOBITS) and assigned(Section^.Data) then begin
+    inc(Offset,TpvUInt64(Section^.Data.Size));
    end;
   end;
   SectionHeaderOffset:=Offset;
@@ -444,12 +458,13 @@ begin
    // rounded up has a few bytes of nothing in front of it.
    Value8:=0;
    for Index:=0 to length(fSections)-1 do begin
-    while TpvUInt64(Stream.Position)<fSections[Index].FileOffset do begin
+    Section:=@fSections[Index];
+    while TpvUInt64(Stream.Position)<Section^.FileOffset do begin
      Stream.WriteBuffer(Value8,1);
     end;
-    if (fSections[Index].SectionType<>SHT_NOBITS) and assigned(fSections[Index].Data) then begin
-     fSections[Index].Data.Position:=0;
-     Stream.CopyFrom(fSections[Index].Data,fSections[Index].Data.Size);
+    if (Section^.SectionType<>SHT_NOBITS) and assigned(Section^.Data) then begin
+     Section^.Data.Position:=0;
+     Stream.CopyFrom(Section^.Data,Section^.Data.Size);
     end;
    end;
 
@@ -461,10 +476,12 @@ begin
 
    for Index:=0 to length(fSections)-1 do begin
 
-    if fSections[Index].SectionType=SHT_NOBITS then begin
+    Section:=@fSections[Index];
+
+    if Section^.SectionType=SHT_NOBITS then begin
      Value64:=fTextSize;
-    end else if assigned(fSections[Index].Data) then begin
-     Value64:=TpvUInt64(fSections[Index].Data.Size);
+    end else if assigned(Section^.Data) then begin
+     Value64:=TpvUInt64(Section^.Data.Size);
     end else begin
      Value64:=0;
     end;
@@ -472,27 +489,27 @@ begin
     if fBits=32 then begin
      // Every field of a thirty two bit section header is four bytes, in the
      // same order as the wider one.
-     WriteU32(Stream,fSections[Index].NameOffset);
-     WriteU32(Stream,fSections[Index].SectionType);
-     WriteU32(Stream,TpvUInt32(fSections[Index].Flags));
-     WriteU32(Stream,TpvUInt32(fSections[Index].Address));
-     WriteU32(Stream,TpvUInt32(fSections[Index].FileOffset));
+     WriteU32(Stream,Section^.NameOffset);
+     WriteU32(Stream,Section^.SectionType);
+     WriteU32(Stream,TpvUInt32(Section^.Flags));
+     WriteU32(Stream,TpvUInt32(Section^.Address));
+     WriteU32(Stream,TpvUInt32(Section^.FileOffset));
      WriteU32(Stream,TpvUInt32(Value64));
-     WriteU32(Stream,fSections[Index].Link);
-     WriteU32(Stream,fSections[Index].Info);
-     WriteU32(Stream,TpvUInt32(fSections[Index].Alignment));
-     WriteU32(Stream,TpvUInt32(fSections[Index].EntrySize));
+     WriteU32(Stream,Section^.Link);
+     WriteU32(Stream,Section^.Info);
+     WriteU32(Stream,TpvUInt32(Section^.Alignment));
+     WriteU32(Stream,TpvUInt32(Section^.EntrySize));
     end else begin
-     WriteU32(Stream,fSections[Index].NameOffset);
-     WriteU32(Stream,fSections[Index].SectionType);
-     WriteU64(Stream,fSections[Index].Flags);
-     WriteU64(Stream,fSections[Index].Address);
-     WriteU64(Stream,fSections[Index].FileOffset);
+     WriteU32(Stream,Section^.NameOffset);
+     WriteU32(Stream,Section^.SectionType);
+     WriteU64(Stream,Section^.Flags);
+     WriteU64(Stream,Section^.Address);
+     WriteU64(Stream,Section^.FileOffset);
      WriteU64(Stream,Value64);
-     WriteU32(Stream,fSections[Index].Link);
-     WriteU32(Stream,fSections[Index].Info);
-     WriteU64(Stream,fSections[Index].Alignment);
-     WriteU64(Stream,fSections[Index].EntrySize);
+     WriteU32(Stream,Section^.Link);
+     WriteU32(Stream,Section^.Info);
+     WriteU64(Stream,Section^.Alignment);
+     WriteU64(Stream,Section^.EntrySize);
     end;
 
    end;

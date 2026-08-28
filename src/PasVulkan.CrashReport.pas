@@ -79,6 +79,43 @@ unit PasVulkan.CrashReport;
  {$define PasVulkanCrashReportUnixThreadStacksBuilt}
 {$ifend}
 
+// Whether the state of a fault is kept the way the vectored handler keeps it on
+// Windows. Same conditions as above without the asking, since this takes no
+// signal away from anybody: the handlers installed for it hand every fault
+// straight on to whoever had the signal before, so what the runtime does with a
+// fault is what it did before.
+//
+// It is what a minidump on this platform is built out of, and it is also what
+// puts registers into the text report here, which until now only had them on
+// Windows.
+//
+// PasVulkanCrashReportWithoutUnixFaultState turns it off for a program which
+// wants nothing at all in front of the handlers of the runtime.
+{$if defined(fpc) and defined(Linux) and not defined(PasVulkanCrashReportWithoutUnixFaultState) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
+ {$define PasVulkanCrashReportUnixFaultState}
+{$ifend}
+
+// Whether the handlers above run on a stack of their own.
+//
+// Off, and asked for rather than assumed, because it is a trade and not an
+// improvement. What it buys is the one fault which cannot be reported without
+// it: a stack which has run out leaves no room to enter a handler in, so
+// without a stack set aside there is no handler and no report.
+//
+// What it costs is what the runtime does with every other fault. FreePascal
+// turns a fault into an exception from inside its own handler, and that only
+// works while the handler stands on the stack which faulted. Called on a stack
+// of its own it takes the process down instead. Measured, both ways, with a nil
+// write: without this the exception is raised and caught as always, with it the
+// process dies at that point.
+//
+// So this is for a program which handles its faults itself and does not expect
+// to catch them, and it is wrong for one which does. A stack overflow is worth
+// a report, but not at the price of every ordinary access violation.
+{$if defined(PasVulkanCrashReportUnixFaultState) and defined(PasVulkanCrashReportUnixFaultAltStack)}
+ {$define PasVulkanCrashReportUnixFaultAltStackBuilt}
+{$ifend}
+
 {$scopedenums on}
 
 interface
@@ -98,12 +135,12 @@ uses {$if defined(Windows)}
        lnfodwrf,
       {$endif}
      {$ifend}
-     {$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
-      // Only for the signal based thread stacks, which are the one thing here
-      // which has to reach into the operating system past what the runtime
-      // already offers.
+     {$if defined(PasVulkanCrashReportUnixThreadStacksBuilt) or defined(PasVulkanCrashReportUnixFaultState)}
+      // Only for the signal based thread stacks and for keeping the state of a
+      // fault, which are the two things here which have to reach into the
+      // operating system past what the runtime already offers.
       BaseUnix,
-     {$endif}
+     {$ifend}
      SysUtils,
      Classes,
      PasVulkan.Types,
@@ -189,7 +226,6 @@ type
      end;
 {$ifend}
 
-     PpvCrashReportEntry=^TpvCrashReportEntry;
      TpvCrashReportEntry=record
       // Zero while the entry is being written. Deliberately no wider than a
       // word, so that reading and writing it is a single indivisible access on
@@ -208,6 +244,7 @@ type
       TextLength:TpvInt32;
       Text:array[0..pvCrashReportEntryTextSize-1] of AnsiChar;
      end;
+     PpvCrashReportEntry=^TpvCrashReportEntry;
 
      // What an address handed to a report is: the instruction which faulted, or
      // the place a call comes back to. It decides whether the name is looked up
@@ -234,6 +271,26 @@ type
        Instruction,
        Return
       );
+
+{$ifdef PasVulkanCrashReportUnixFaultState}
+     // The state of a fault on a unix, which is what a signal handler is given
+     // and nothing more: which signal, what the kernel said about it, where it
+     // happened and what was in the registers.
+     //
+     // The registers are the general purpose ones of the machine context, in
+     // the order the operating system keeps them in, which is the order the
+     // header of the C library numbers them in. Written out as a plain array
+     // rather than as the named type this unit uses for it, because that type
+     // belongs to the part of this file which nobody outside needs to see.
+     TpvCrashReportUnixFault=record
+      Signal:TpvInt32;
+      Code:TpvInt32;
+      ThreadID:TpvInt32;
+      Address:TpvPointer;
+      Registers:array[0..22] of TpvPtrUInt;
+     end;
+     PpvCrashReportUnixFault=^TpvCrashReportUnixFault;
+{$endif}
 
 // Adds a manually formatted entry to the ring buffer. Safe to call at any time,
 // but not from inside a vectored exception handler, since it works with managed
@@ -390,6 +447,41 @@ function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:T
 function pvCrashReportLastFault(out aExceptionPointers:TpvPointer;out aExceptionCode:TpvUInt32;out aThreadID:TpvUInt64):TpvUInt32;
 {$ifend}
 
+{$ifdef PasVulkanCrashReportUnixFaultState}
+// The same thing here, and it is the same thing: the state of the most recent
+// fault, written down at the moment it happened, for anything which wants it
+// after the runtime has already turned that fault into an exception.
+//
+// The shape differs because the platform differs. There is no structure here
+// which every tool agrees on, the way an exception filter has one on Windows,
+// so what is handed out is what the handler was given, taken apart into its
+// pieces. A caller which wants to write a dump builds one from these.
+//
+// The result is the sequence number of that fault, zero when none has been seen
+// yet, and the same warning applies as on the other platform: the further this
+// is read from the moment it was written, the less of it still describes a
+// stack which is standing.
+function pvCrashReportLastFault(out aFault:TpvCrashReportUnixFault):TpvUInt32;
+
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+// Gives the calling thread a stack of its own to take a fault on.
+//
+// Only there when the program asked for that way of working, see
+// PasVulkanCrashReportUnixFaultAltStack, which is where what it buys and what
+// it costs is written down.
+//
+// The install does this for the thread it runs on, which is the one the program
+// starts on. It cannot do it for the others, because the operating system keeps
+// this per thread and a thread which does not exist yet cannot be given
+// anything. So a program whose worker threads are worth a report calls this
+// once at the top of each of them.
+//
+// A quarter of a megabyte per thread which asks, never given back, since it has
+// to still be there at the moment everything else is falling apart.
+function pvCrashReportUnixFaultStackHere:Boolean;
+{$endif}
+{$endif}
+
 procedure pvCrashReportInstall;
 
 procedure pvCrashReportUninstall;
@@ -446,7 +538,6 @@ type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
       Table:TpvSymbolTable;
      end;
 
-     PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
      // What the Delphi raise point hook hands back to the RTL. It deliberately
      // holds raw addresses only, so that the cost at the raise point stays a
      // stack walk and nothing more. Turning those into names happens in
@@ -456,6 +547,7 @@ type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
       Count:TpvInt32;
       Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
      end;
+     PpvCrashReportStackInfo=^TpvCrashReportStackInfo;
 
      PpvCrashReportNativeExceptionRecord=^TpvCrashReportNativeExceptionRecord;
      TpvCrashReportNativeExceptionRecord=record
@@ -467,11 +559,11 @@ type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
       ExceptionInformation:array[0..14] of TpvPtrUInt;
      end;
 
-     PpvCrashReportNativeExceptionPointers=^TpvCrashReportNativeExceptionPointers;
      TpvCrashReportNativeExceptionPointers=record
       ExceptionRecord:PpvCrashReportNativeExceptionRecord;
       ContextRecord:TpvPointer;
      end;
+     PpvCrashReportNativeExceptionPointers=^TpvCrashReportNativeExceptionPointers;
 
 {$if defined(Windows)}
 function RtlCaptureStackBackTrace(aFramesToSkip:TpvUInt32;aFramesToCapture:TpvUInt32;aBackTrace:PPointer;aBackTraceHash:PpvUInt32):TpvUInt16; stdcall; external 'kernel32.dll' name 'RtlCaptureStackBackTrace';
@@ -558,12 +650,12 @@ type TpvCrashReportUnwindTrace=function(aContext,aData:TpvPointer):TpvInt32; cde
      TpvCrashReportUnwindBacktrace=function(aTrace:TpvCrashReportUnwindTrace;aData:TpvPointer):TpvInt32; cdecl;
      TpvCrashReportUnwindGetIP=function(aContext:TpvPointer):TpvPtrUInt; cdecl;
 
-     PpvCrashReportUnwindWalk=^TpvCrashReportUnwindWalk;
      TpvCrashReportUnwindWalk=record
       Count:TpvInt32;
       Skip:TpvInt32;
       Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
      end;
+     PpvCrashReportUnwindWalk=^TpvCrashReportUnwindWalk;
 {$ifend}
 
 {$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
@@ -589,18 +681,25 @@ type TpvCrashReportUnixThreadSlot=record
       Low:TpvPtrUInt;
       High:TpvPtrUInt;
      end;
+     PpvCrashReportMappingRange=^TpvCrashReportMappingRange;
 
+{$endif}
+
+{$if defined(PasVulkanCrashReportUnixThreadStacksBuilt) or defined(PasVulkanCrashReportUnixFaultState)}
      // The registers inside the context a signal handler is given. Declared
      // wide enough for the largest of the two layouts, and only the few indices
      // which are actually read are ever touched.
-     PpvCrashReportGeneralRegisters=^TpvCrashReportGeneralRegisters;
+     //
+     // Here rather than with the two above, because either of the two things
+     // which reads a context can be built without the other.
+type PpvCrashReportGeneralRegisters=^TpvCrashReportGeneralRegisters;
      TpvCrashReportGeneralRegisters=array[0..22] of TpvPtrUInt;
 
 // Reaching past what the runtime offers: there is no wrapper for sending a
 // signal to one thread rather than to the process, and none for asking for the
 // own thread identifier, so both go through the system call gate directly.
 function CrashReportSysCall(aNumber:TpvPtrInt):TpvPtrInt; cdecl; varargs; external name 'syscall';
-{$endif}
+{$ifend}
 
 var CrashReportRingBuffer:array[0..pvCrashReportRingBufferSize-1] of TpvCrashReportEntry;
     CrashReportSequence:TpvInt32=0;
@@ -1141,6 +1240,7 @@ var Index,Slot:TpvInt32;
     Table:TpvSymbolTable;
     RVABase:TpvPtrUInt;
     Known:Boolean;
+    Module:PpvCrashReportModuleEntry;
 begin
 
  result:=nil;
@@ -1161,10 +1261,10 @@ begin
  CrashReportAcquireModuleLock;
  try
   for Index:=0 to CrashReportModuleCount-1 do begin
-   if (CrashReportModules[Index].Key=Key) and
-      (CrashReportModules[Index].FileName=FileName) then begin
-    result:=CrashReportModules[Index].Table;
-    aRVABase:=CrashReportModules[Index].RVABase;
+   Module:=@CrashReportModules[Index];
+   if (Module^.Key=Key) and (Module^.FileName=FileName) then begin
+    result:=Module^.Table;
+    aRVABase:=Module^.RVABase;
     Known:=true;
     break;
    end;
@@ -1224,18 +1324,19 @@ begin
  try
   Slot:=-1;
   for Index:=0 to CrashReportModuleCount-1 do begin
-   if CrashReportModules[Index].Key=Key then begin
-    if CrashReportModules[Index].FileName=FileName then begin
+   Module:=@CrashReportModules[Index];
+   if Module^.Key=Key then begin
+    if Module^.FileName=FileName then begin
      // Another thread got here first while the load above was running.
      FreeAndNil(Table);
-     result:=CrashReportModules[Index].Table;
-     aRVABase:=CrashReportModules[Index].RVABase;
+     result:=Module^.Table;
+     aRVABase:=Module^.RVABase;
      exit;
     end;
     // Same address, different file, so the module which used to be here is
     // gone. Its entry is taken over rather than left to answer for its
     // successor.
-    FreeAndNil(CrashReportModules[Index].Table);
+    FreeAndNil(Module^.Table);
     Slot:=Index;
     break;
    end;
@@ -1267,10 +1368,11 @@ begin
 {$endif}
   end;
 
-  CrashReportModules[Slot].Key:=Key;
-  CrashReportModules[Slot].FileName:=FileName;
-  CrashReportModules[Slot].RVABase:=RVABase;
-  CrashReportModules[Slot].Table:=Table;
+  Module:=@CrashReportModules[Slot];
+  Module^.Key:=Key;
+  Module^.FileName:=FileName;
+  Module^.RVABase:=RVABase;
+  Module^.Table:=Table;
   CrashReportWriteBarrier;
   result:=Table;
   aRVABase:=RVABase;
@@ -3124,6 +3226,230 @@ begin
 end;
 {$ifend}
 
+{$if defined(PasVulkanCrashReportUnixFaultState) or defined(PasVulkanCrashReportUnixThreadStacksBuilt)}
+// What both of the two things below need to know about the machine: which
+// thread is asking, and where in the context a signal handler is given the
+// registers are. Here rather than inside either of them, because either one can
+// be built without the other.
+const
+{$ifdef PasVulkanCrashReportX64}
+      cCrashReportSysGetTid=186;
+      // Offsets into the context the handler is given, which is a ucontext:
+      // eight bytes of flags, a link, a stack description of twenty four bytes,
+      // and then the registers as an array of long long.
+      cCrashReportContextGRegs=40;
+      cCrashReportRegFramePointer=10;
+      cCrashReportRegStackPointer=15;
+      cCrashReportRegInstructionPointer=16;
+{$endif}
+{$ifdef PasVulkanCrashReportX86}
+      cCrashReportSysGetTid=224;
+      cCrashReportContextGRegs=20;
+      cCrashReportRegFramePointer=6;
+      cCrashReportRegStackPointer=7;
+      cCrashReportRegInstructionPointer=14;
+{$endif}
+
+function CrashReportGetTid:TpvInt32;
+begin
+ result:=TpvInt32(CrashReportSysCall(cCrashReportSysGetTid));
+end;
+{$ifend}
+
+{$ifdef PasVulkanCrashReportUnixFaultState}
+const // The four faults of the machine. A signal which the program sent itself,
+      // an abort or a termination, is not one of these: it is a decision and
+      // not an accident, and there is no faulting instruction to write down.
+      cCrashReportFaultSignals:array[0..3] of TpvInt32=(SIGSEGV,SIGBUS,SIGFPE,SIGILL);
+
+      // Where the address of the fault sits in the structure the kernel fills
+      // in. Three ints, then padding to a pointer on a sixty four bit machine,
+      // then the first member of the part which belongs to a fault, which is
+      // that address.
+      cCrashReportSigInfoCode=8;
+      cCrashReportSigInfoAddress={$ifdef PasVulkanCrashReportX64}16{$else}12{$endif};
+
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+      // Room for the handler to run in when the stack it would otherwise use is
+      // the one which just ran out. Generous, because what may run on it is not
+      // only the recording below but whatever the program does in its own
+      // handler, up to and including writing a dump.
+      cCrashReportFaultStackSize=256*1024;
+{$endif}
+
+type TpvCrashReportSigInfoHandler=procedure(aSignal:TpvInt32;aInfo:TpvPointer;aContext:TpvPointer); cdecl;
+     TpvCrashReportPlainHandler=procedure(aSignal:TpvInt32); cdecl;
+
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+     // What sigaltstack is handed. Written out here rather than taken from a
+     // unit, since not every version of the runtime this has to build with
+     // offers it.
+     TpvCrashReportAltStack=record
+      Pointer_:TpvPointer;
+      Flags:TpvInt32;
+      Size:TpvSizeUInt;
+     end;
+
+function CrashReportSigAltStack(const aNew,aOld:TpvPointer):TpvInt32; cdecl; external name 'sigaltstack';
+{$endif}
+
+var CrashReportUnixFault:TpvCrashReportUnixFault;
+    // Zero while it is being written and zero while none has been seen, the
+    // same rule the ring buffer entries follow.
+    CrashReportUnixFaultSequence:TpvUInt32=0;
+    CrashReportUnixFaultBusy:TpvInt32=0;
+    CrashReportOldFaultActions:array[0..high(cCrashReportFaultSignals)] of SigActionRec;
+    CrashReportFaultSignalsInstalled:Boolean=false;
+
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+// Puts the calling thread on a stack of its own for the four signals above.
+//
+// It is set per thread by the operating system, so the install below can only
+// do it for the thread which installs, and a program which wants its worker
+// threads covered as well calls pvCrashReportUnixFaultStackHere on each of
+// them.
+//
+// The memory is never given back. It is one allocation per thread which asked
+// for it, it has to outlive everything which might fault, and a crash reporter
+// which frees the ground it stands on has misunderstood its job.
+function CrashReportInstallFaultStack:Boolean;
+var Stack:TpvCrashReportAltStack;
+    Memory:TpvPointer;
+begin
+ result:=false;
+ Memory:=GetMem(cCrashReportFaultStackSize);
+ if not assigned(Memory) then begin
+  exit;
+ end;
+ FillChar(Memory^,cCrashReportFaultStackSize,#0);
+ Stack.Pointer_:=Memory;
+ Stack.Flags:=0;
+ Stack.Size:=cCrashReportFaultStackSize;
+ if CrashReportSigAltStack(@Stack,nil)=0 then begin
+  result:=true;
+ end else begin
+  FreeMem(Memory);
+ end;
+end;
+{$endif}
+
+// Runs on the thread which faulted, before the runtime hears about it.
+//
+// Two jobs, in this order. First the state is copied aside, which is the whole
+// reason this exists and which is nothing but stores. Then the fault is handed
+// on to whoever had the signal before, unchanged, so that what the runtime made
+// of a fault before this unit was in the way is what it makes of it now.
+procedure CrashReportFaultSignalHandler(aSignal:TpvInt32;aInfo:TpvPointer;aContext:TpvPointer); cdecl;
+var Index:TpvInt32;
+    Old:PSigActionRec;
+    OldHandler:TpvPointer;
+begin
+
+ // The second thread to fault at the same moment steps aside rather than write
+ // a mixture of the two. Same reasoning as on the other platform, and the same
+ // consolation: its ring buffer entry is made either way.
+ if InterLockedExchange(CrashReportUnixFaultBusy,1)=0 then begin
+  CrashReportUnixFaultSequence:=0;
+  CrashReportWriteBarrier;
+  CrashReportUnixFault.Signal:=aSignal;
+  CrashReportUnixFault.Code:=0;
+  CrashReportUnixFault.Address:=nil;
+  if assigned(aInfo) then begin
+   // By offset and not through a record of the runtime, because the shape of
+   // that record has changed between versions and the offsets have not.
+   CrashReportUnixFault.Code:=PpvInt32(TpvPointer(TpvPtrUInt(TpvPtrUInt(aInfo)+cCrashReportSigInfoCode)))^;
+   CrashReportUnixFault.Address:=PpvPointer(TpvPointer(TpvPtrUInt(TpvPtrUInt(aInfo)+cCrashReportSigInfoAddress)))^;
+  end;
+  CrashReportUnixFault.ThreadID:=CrashReportGetTid;
+  if assigned(aContext) then begin
+   Move(TpvPointer(TpvPtrUInt(TpvPtrUInt(aContext)+cCrashReportContextGRegs))^,
+        CrashReportUnixFault.Registers,
+        SizeOf(TpvCrashReportGeneralRegisters));
+  end else begin
+   FillChar(CrashReportUnixFault.Registers,SizeOf(TpvCrashReportGeneralRegisters),#0);
+  end;
+  CrashReportWriteBarrier;
+  CrashReportUnixFaultSequence:=CrashReportNextSequence;
+  CrashReportWriteBarrier;
+  CrashReportUnixFaultBusy:=0;
+ end;
+
+ // And on it goes. Which of the two shapes to call it in is decided by the
+ // flags it was installed with and not by what it probably is, since calling a
+ // handler which wants one argument with three is a fault of its own.
+ for Index:=low(cCrashReportFaultSignals) to high(cCrashReportFaultSignals) do begin
+  if cCrashReportFaultSignals[Index]=aSignal then begin
+   Old:=@CrashReportOldFaultActions[Index];
+   // The address operator and not a dereference through it, see the uninstall
+   // of the thread signal for what that mistake costs.
+   OldHandler:=TpvPointer(@Old^.sa_handler);
+   if TpvPtrUInt(OldHandler)=TpvPtrUInt(SIG_IGN) then begin
+    // Was being ignored, so it still is.
+    exit;
+   end;
+   if TpvPtrUInt(OldHandler)=TpvPtrUInt(SIG_DFL) then begin
+    // Nobody wanted it, which for these four means the process ends. Putting
+    // the default back and returning lets the faulting instruction run into it
+    // again, and this time nothing is in the way.
+    FpSigAction(aSignal,Old,nil);
+    exit;
+   end;
+   if (Old^.sa_flags and SA_SIGINFO)<>0 then begin
+    TpvCrashReportSigInfoHandler(OldHandler)(aSignal,aInfo,aContext);
+   end else begin
+    TpvCrashReportPlainHandler(OldHandler)(aSignal);
+   end;
+   exit;
+  end;
+ end;
+
+end;
+
+procedure CrashReportInstallFaultSignalHandlers;
+var Index:TpvInt32;
+    Action:SigActionRec;
+    Taken:TpvInt32;
+begin
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+ CrashReportInstallFaultStack;
+{$endif}
+ Taken:=0;
+ for Index:=low(cCrashReportFaultSignals) to high(cCrashReportFaultSignals) do begin
+  FillChar(Action,SizeOf(SigActionRec),#0);
+  Action.sa_handler:=SigActionHandler(TpvPointer(@CrashReportFaultSignalHandler));
+  FpSigEmptySet(Action.sa_mask);
+  // The state of the machine, and interrupted system calls resumed rather than
+  // failed. The third flag, the one which asks for the stack set aside above,
+  // only when the program asked for that trade, see
+  // PasVulkanCrashReportUnixFaultAltStack.
+  Action.sa_flags:=SA_SIGINFO or SA_RESTART{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt} or SA_ONSTACK{$endif};
+  FillChar(CrashReportOldFaultActions[Index],SizeOf(SigActionRec),#0);
+  if FpSigAction(cCrashReportFaultSignals[Index],@Action,@CrashReportOldFaultActions[Index])=0 then begin
+   inc(Taken);
+  end;
+ end;
+ CrashReportFaultSignalsInstalled:=Taken>0;
+end;
+
+procedure CrashReportUninstallFaultSignalHandlers;
+var Index:TpvInt32;
+    Current:SigActionRec;
+begin
+ if CrashReportFaultSignalsInstalled then begin
+  for Index:=low(cCrashReportFaultSignals) to high(cCrashReportFaultSignals) do begin
+   // Only put back where this is still the one in place, so that somebody who
+   // installed after this one is not left without their handler.
+   FillChar(Current,SizeOf(SigActionRec),#0);
+   if (FpSigAction(cCrashReportFaultSignals[Index],nil,@Current)=0) and
+      (TpvPointer(@Current.sa_handler)=TpvPointer(@CrashReportFaultSignalHandler)) then begin
+    FpSigAction(cCrashReportFaultSignals[Index],@CrashReportOldFaultActions[Index],nil);
+   end;
+  end;
+  CrashReportFaultSignalsInstalled:=false;
+ end;
+end;
+{$endif}
+
 {$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
 // Reading the stack of another thread on a unix means stopping it first, and
 // there is no equivalent of suspending it from the outside. What there is, is
@@ -3143,31 +3469,13 @@ const // The first real time signal on glibc, where the two below it belong to
       cCrashReportThreadSignal=34;
 {$ifdef PasVulkanCrashReportX64}
       cCrashReportSysTgkill=234;
-      cCrashReportSysGetTid=186;
-      // Offsets into the context the handler is given, which is a ucontext:
-      // eight bytes of flags, a link, a stack description of twenty four bytes,
-      // and then the registers as an array of long long.
-      cCrashReportContextGRegs=40;
-      cCrashReportRegFramePointer=10;
-      cCrashReportRegStackPointer=15;
-      cCrashReportRegInstructionPointer=16;
 {$endif}
 {$ifdef PasVulkanCrashReportX86}
       cCrashReportSysTgkill=270;
-      cCrashReportSysGetTid=224;
-      cCrashReportContextGRegs=20;
-      cCrashReportRegFramePointer=6;
-      cCrashReportRegStackPointer=7;
-      cCrashReportRegInstructionPointer=14;
 {$endif}
 
       // How far above the stack pointer a frame is still believed to be one.
       cCrashReportMaximalStackSpan=TpvPtrUInt(16) shl 20;
-
-function CrashReportGetTid:TpvInt32;
-begin
- result:=TpvInt32(CrashReportSysCall(cCrashReportSysGetTid));
-end;
 
 // Whether the whole of the given range is inside one mapping which the process
 // may read. The list is taken from the process map before any thread is asked,
@@ -3180,6 +3488,7 @@ end;
 // handler and takes the process down at the one moment it is meant to survive.
 function CrashReportMappedForReading(const aAddress:TpvPtrUInt;const aSize:TpvPtrUInt):Boolean;
 var Low,High,Middle:TpvInt32;
+    Range:PpvCrashReportMappingRange;
 begin
  // Binary, since the process map comes out sorted by address and a process can
  // easily have more than a thousand entries, which the walk would otherwise
@@ -3189,14 +3498,15 @@ begin
  High:=CrashReportMappingCount-1;
  while Low<=High do begin
   Middle:=(Low+High) shr 1;
-  if aAddress<CrashReportMappings[Middle].Low then begin
+  Range:=@CrashReportMappings[Middle];
+  if aAddress<Range^.Low then begin
    High:=Middle-1;
-  end else if aAddress>=CrashReportMappings[Middle].High then begin
+  end else if aAddress>=Range^.High then begin
    Low:=Middle+1;
   end else begin
    // The whole of the range has to be inside the same mapping, not only where
    // it starts.
-   result:=(aAddress+aSize)<=CrashReportMappings[Middle].High;
+   result:=(aAddress+aSize)<=Range^.High;
    exit;
   end;
  end;
@@ -3282,6 +3592,7 @@ end;
 procedure CrashReportLoadMappings;
 var Maps,Line:TpvRawByteString;
     Start,Stop,Position,DashPosition,SpacePosition:TpvSizeInt;
+    Range:PpvCrashReportMappingRange;
 
  function ParseHex(const aFrom,aTo:TpvSizeInt;out aValue:TpvPtrUInt):Boolean;
  var Index:TpvSizeInt;
@@ -3347,8 +3658,9 @@ begin
    if CrashReportMappingCount>=length(CrashReportMappings) then begin
     SetLength(CrashReportMappings,(CrashReportMappingCount+1)*2);
    end;
-   CrashReportMappings[CrashReportMappingCount].Low:=Low;
-   CrashReportMappings[CrashReportMappingCount].High:=High;
+   Range:=@CrashReportMappings[CrashReportMappingCount];
+   Range^.Low:=Low;
+   Range^.High:=High;
    inc(CrashReportMappingCount);
   end;
 
@@ -3740,6 +4052,39 @@ begin
 end;
 {$ifend}
 
+{$ifdef PasVulkanCrashReportUnixFaultState}
+function pvCrashReportLastFault(out aFault:TpvCrashReportUnixFault):TpvUInt32;
+begin
+ FillChar(aFault,SizeOf(TpvCrashReportUnixFault),#0);
+ result:=CrashReportUnixFaultSequence;
+ // Zero covers both of the cases in which there is nothing to hand out: no
+ // fault has been seen yet, and one is being written down right now.
+ if result=0 then begin
+  exit;
+ end;
+ CrashReportReadBarrier;
+ // A copy and not a pointer, unlike on the other platform, because there is
+ // nothing here which anybody is going to hand straight to somebody else. What
+ // is wanted is the numbers, and a copy of those cannot go stale underneath a
+ // reader while a second fault is being written down.
+ aFault:=CrashReportUnixFault;
+ CrashReportReadBarrier;
+ if CrashReportUnixFaultSequence<>result then begin
+  // It changed while it was being read, so what is in hand is a mixture of two
+  // faults and is worth nothing.
+  FillChar(aFault,SizeOf(TpvCrashReportUnixFault),#0);
+  result:=0;
+ end;
+end;
+
+{$ifdef PasVulkanCrashReportUnixFaultAltStackBuilt}
+function pvCrashReportUnixFaultStackHere:Boolean;
+begin
+ result:=CrashReportInstallFaultStack;
+end;
+{$endif}
+{$endif}
+
 procedure pvCrashReportInstall;
 begin
  if CrashReportInstalled then begin
@@ -3791,6 +4136,16 @@ begin
 {$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
  FillChar(CrashReportUnixThreadSlot,SizeOf(TpvCrashReportUnixThreadSlot),#0);
  CrashReportInstallThreadSignalHandler;
+{$endif}
+{$ifdef PasVulkanCrashReportUnixFaultState}
+ // In front of the handlers of the runtime rather than instead of them, see
+ // CrashReportFaultSignalHandler. This unit initializes after the runtime, so
+ // by the time this runs the handlers to hand a fault on to are the ones which
+ // are actually there.
+ FillChar(CrashReportUnixFault,SizeOf(TpvCrashReportUnixFault),#0);
+ CrashReportUnixFaultSequence:=0;
+ CrashReportUnixFaultBusy:=0;
+ CrashReportInstallFaultSignalHandlers;
 {$endif}
  // Plain assignment on the left hand side, since what is wanted is the value the
  // variable holds and naming it on the right hand side would call it instead.
@@ -3858,6 +4213,9 @@ begin
 {$ifend}
 {$ifdef PasVulkanCrashReportUnixThreadStacksBuilt}
  CrashReportUninstallThreadSignalHandler;
+{$endif}
+{$ifdef PasVulkanCrashReportUnixFaultState}
+ CrashReportUninstallFaultSignalHandlers;
 {$endif}
  // The symbol tables are deliberately not given back here.
  //
