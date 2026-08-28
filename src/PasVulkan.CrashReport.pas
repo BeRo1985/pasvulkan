@@ -1800,11 +1800,19 @@ var Fingerprint:String;
     // there can the same address turn up twice for no reason, and only there is
     // one of the two thrown away.
     AtBoundary:Boolean;
-    // The kind of the address which was handed in, worked out once here and
-    // handed on as a fact, so that the line printed from it and the identifier
-    // built from it cannot end up describing it differently.
-    AddressIsReturnAddress:Boolean;
-    ResolvedKind:TpvCrashReportAddressKind;
+    // Which address this report is about, decided once here and then used both
+    // for the line which is printed from it and for the identifier which is
+    // built from it: whatever the caller said, or the exception state of the
+    // runtime, or what the thread wrote down when it crashed, in that order.
+    //
+    // Once, because each of those can answer twice. The ring is written into
+    // while a report is being written, so asking it here and again down in the
+    // identifier can find two different crashes of the same thread, and then
+    // the stack above and the identifier below are about different things while
+    // the line between them says they cannot be.
+    EffectiveAddress:TpvPointer;
+    EffectiveIsReturnAddress:Boolean;
+    EffectiveKind:TpvCrashReportAddressKind;
     // Whether the exception state of the runtime belongs to this report, see
     // the same question in pvCrashReportFingerprint.
     UseLocalExceptState:Boolean;
@@ -1818,10 +1826,6 @@ var Fingerprint:String;
     // number, so the two could end up describing different frames after all.
     PreviousIsReturnAddress:Boolean;
     Have:Boolean;
-    // The crash address of the thread being reported on, where that thread is
-    // not the one asking and nothing was handed in.
-    RecordedAddress:TpvPointer;
-    RecordedIsReturnAddress:Boolean;
     // The text of that last line, for the one place where the thing which
     // follows is not a list of addresses but a block of text somebody else
     // formatted.
@@ -1869,29 +1873,36 @@ begin
  AtBoundary:=false;
  LastLine:='';
  UseLocalExceptState:=(aThreadID=0) or (aThreadID=CrashReportCurrentThreadID);
- // Where the report is about another thread and nothing was handed in, the one
- // thing which is known about that thread is what it recorded when it crashed.
- // Without this the stack of such a report is empty, or worse, the stack of the
- // thread which is writing it.
- RecordedAddress:=nil;
- RecordedIsReturnAddress:=false;
- if (not assigned(aAddress)) and not UseLocalExceptState then begin
-  CrashReportNewestRecordedAddress(aThreadID,RecordedAddress,RecordedIsReturnAddress);
- end;
- // Once, and then handed on as a decided fact rather than as the question
- // again. The ring is written into while a report is being written, so asking
- // the same question twice can get two answers, and the line above and the
- // identifier below would be about the same address in two different ways.
- if assigned(aAddress) then begin
-  AddressIsReturnAddress:=CrashReportAddressKindIsReturn(aAddress,aAddressKind,aThreadID);
-  if AddressIsReturnAddress then begin
-   ResolvedKind:=TpvCrashReportAddressKind.Return;
-  end else begin
-   ResolvedKind:=TpvCrashReportAddressKind.Instruction;
-  end;
+ // The one address this whole report is about, in the order in which the three
+ // sources are worth trusting.
+ EffectiveAddress:=aAddress;
+ EffectiveIsReturnAddress:=false;
+ if assigned(EffectiveAddress) then begin
+  EffectiveIsReturnAddress:=CrashReportAddressKindIsReturn(EffectiveAddress,aAddressKind,aThreadID);
  end else begin
-  AddressIsReturnAddress:=false;
-  ResolvedKind:=aAddressKind;
+{$ifdef fpc}
+  if UseLocalExceptState and assigned(ExceptAddr) then begin
+   // The address of the raise statement itself on this compiler, not the one
+   // behind it.
+   EffectiveAddress:=ExceptAddr;
+   EffectiveIsReturnAddress:=false;
+  end;
+{$endif}
+  if not assigned(EffectiveAddress) then begin
+   // What the thread wrote down when it crashed. Asked for every report and not
+   // only for one about another thread: under Delphi there is no ExceptAddr, so
+   // this is the only place the crash site comes from, and the identifier has
+   // been built from it all along. Leaving the printed stack without it meant a
+   // report which named the crash underneath and not above.
+   CrashReportNewestRecordedAddress(aThreadID,EffectiveAddress,EffectiveIsReturnAddress);
+  end;
+ end;
+ if not assigned(EffectiveAddress) then begin
+  EffectiveKind:=TpvCrashReportAddressKind.Unknown;
+ end else if EffectiveIsReturnAddress then begin
+  EffectiveKind:=TpvCrashReportAddressKind.Return;
+ end else begin
+  EffectiveKind:=TpvCrashReportAddressKind.Instruction;
  end;
 {$ifdef fpc}
  // Through the same formatter as everything else in here, rather than through
@@ -1902,14 +1913,8 @@ begin
  // instead and therefore the one part which came out as bare addresses.
  //
  // The runtime is still asked where the table has nothing, inside the fallback.
- if assigned(aAddress) then begin
-  AddAddress(aAddress,AddressIsReturnAddress);
- end else if UseLocalExceptState and assigned(ExceptAddr) then begin
-  // The address of the raise statement itself on this compiler, not the one
-  // behind it.
-  AddAddress(ExceptAddr,false);
- end else if assigned(RecordedAddress) then begin
-  AddAddress(RecordedAddress,RecordedIsReturnAddress);
+ if assigned(EffectiveAddress) then begin
+  AddAddress(EffectiveAddress,EffectiveIsReturnAddress);
  end;
  // What follows is the list, so the one place where a repeat can be an artifact
  // is the step into it.
@@ -1943,12 +1948,8 @@ begin
  // exactly as the identifier below reads it. An address does not replace the
  // captured stack, it stands in front of it; frames do replace it, since they
  // are another answer to the same question.
- if assigned(aAddress) then begin
-  AddAddress(aAddress,AddressIsReturnAddress);
- end else if assigned(RecordedAddress) then begin
-  // The crash of the thread this report is about, for a report which was
-  // written by another thread and given nothing else to go on.
-  AddAddress(RecordedAddress,RecordedIsReturnAddress);
+ if assigned(EffectiveAddress) then begin
+  AddAddress(EffectiveAddress,EffectiveIsReturnAddress);
  end;
  AtBoundary:=true;
  if assigned(aFrames) and (aFrameCount>0) then begin
@@ -2009,7 +2010,7 @@ begin
    if StackTrace[length(StackTrace)]<>#10 then begin
     result:=result+LineEnding;
    end;
-  end else if (not assigned(aAddress)) and (not assigned(RecordedAddress)) and UseLocalExceptState then begin
+  end else if (not assigned(EffectiveAddress)) and UseLocalExceptState then begin
    // No stack was captured at the raise point, so this is the stack of the
    // handler rather than of the raise. Say so, instead of quietly pretending
    // otherwise.
@@ -2029,10 +2030,13 @@ begin
  // describe different frames. It takes them from the crash site onwards, which
  // is the one difference, and it is there on purpose: see the note at its
  // declaration.
- // With the kind as it was decided above rather than as it was asked, so that
- // the identifier cannot get a second, different answer to a question which has
- // already been answered for the line printed from the same address.
- Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress,ResolvedKind,aThreadID);
+ // With the address and the kind as they were decided above rather than as they
+ // were asked for, so that the identifier cannot get a second, different answer
+ // to a question which has already been answered for the stack printed above.
+ // Which is what happened where nothing was handed in: both sides went to the
+ // ring on their own, and between the two visits the thread may have crashed
+ // again.
+ Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,EffectiveAddress,EffectiveKind,aThreadID);
  if length(Fingerprint)>0 then begin
   result:=result+'Crash fingerprint: '+Fingerprint+LineEnding;
  end;
