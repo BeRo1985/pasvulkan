@@ -37,6 +37,16 @@ uses SysUtils,
      // file and is not worth having twice.
      UnitImageFile;
 
+// Works the checksum in the optional header out again over the file as it now
+// stands, but only where there was one to begin with. A zero stays zero: the
+// linker chose not to state one, and putting one there would describe the file
+// more confidently than it was described before.
+//
+// Done at the very end rather than while the sections are being written,
+// because the checksum covers the whole file and the whole file includes
+// whatever is appended behind the sections afterwards.
+function UpdateImageCheckSum(const aFileName:String):Boolean;
+
 type TPEInjectorSection=record
       Name:String;
       Data:TMemoryStream;
@@ -179,6 +189,93 @@ begin
  end;
 end;
 
+// The checksum a PE optional header carries. A sum of the whole file taken
+// sixteen bits at a time with the carries folded back in, and the size of the
+// file added at the end. The field itself counts as zero, so the caller clears
+// it before asking.
+function ImageCheckSum(const aStream:TStream):TpvUInt32;
+var Buffer:array[0..65535] of TpvUInt8;
+    Position,Total:TpvInt64;
+    Read,Index:TpvInt32;
+    Sum,Value:TpvUInt32;
+begin
+ Sum:=0;
+ Total:=aStream.Size;
+ aStream.Seek(0,soBeginning);
+ Position:=0;
+ repeat
+  Read:=aStream.Read(Buffer,SizeOf(Buffer));
+  if Read<=0 then begin
+   break;
+  end;
+  // An odd tail is padded with a zero byte, which is what makes the last half
+  // word of a file of odd length well defined.
+  if ((Position+Read)>=Total) and (((Position+Read) and 1)<>0) and (Read<TpvInt32(SizeOf(Buffer))) then begin
+   Buffer[Read]:=0;
+   inc(Read);
+  end;
+  Index:=0;
+  while (Index+1)<Read do begin
+   Value:=TpvUInt32(Buffer[Index]) or (TpvUInt32(Buffer[Index+1]) shl 8);
+   inc(Sum,Value);
+   Sum:=(Sum and $ffff)+(Sum shr 16);
+   inc(Index,2);
+  end;
+  inc(Position,Read);
+ until false;
+ Sum:=(Sum and $ffff)+(Sum shr 16);
+ Sum:=Sum+(Sum shr 16);
+ Sum:=Sum and $ffff;
+ result:=Sum+TpvUInt32(Total);
+end;
+
+function UpdateImageCheckSum(const aFileName:String):Boolean;
+var Stream:TFileStream;
+    NewHeaderOffset:TpvUInt32;
+    Signature:array[0..3] of AnsiChar;
+    FieldOffset:TpvInt64;
+    Value32:TpvUInt32;
+begin
+ result:=false;
+ if not FileExists(aFileName) then begin
+  exit;
+ end;
+ Stream:=TFileStream.Create(aFileName,fmOpenReadWrite or fmShareExclusive);
+ try
+  if Stream.Size<64 then begin
+   exit;
+  end;
+  Stream.Seek(TpvInt64($3c),soBeginning);
+  Stream.ReadBuffer(NewHeaderOffset,SizeOf(TpvUInt32));
+  if (TpvInt64(NewHeaderOffset)+24+68)>Stream.Size then begin
+   exit;
+  end;
+  Stream.Seek(TpvInt64(NewHeaderOffset),soBeginning);
+  Stream.ReadBuffer(Signature,4);
+  if (Signature[0]<>'P') or (Signature[1]<>'E') or (Signature[2]<>#0) or (Signature[3]<>#0) then begin
+   exit;
+  end;
+  // The field sits at the same place in both shapes of the optional header,
+  // since everything in front of it is the same size in each.
+  FieldOffset:=TpvInt64(NewHeaderOffset)+24+64;
+  Stream.Seek(FieldOffset,soBeginning);
+  Stream.ReadBuffer(Value32,SizeOf(TpvUInt32));
+  if Value32=0 then begin
+   result:=true;
+   exit;
+  end;
+  Value32:=0;
+  Stream.Seek(FieldOffset,soBeginning);
+  Stream.WriteBuffer(Value32,SizeOf(TpvUInt32));
+  Value32:=ImageCheckSum(Stream);
+  Stream.Seek(FieldOffset,soBeginning);
+  Stream.WriteBuffer(Value32,SizeOf(TpvUInt32));
+  result:=true;
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
 function AlignUp(const aValue,aAlignment:TpvUInt64):TpvUInt64;
 begin
  if aAlignment<=1 then begin
@@ -310,7 +407,14 @@ begin
   // on disk under the name in the message, which is worth more than a message
   // which does not say where it went.
   if not RenameFile(BackupName,fFileName) then begin
-   fMessage:='Could not replace '+fFileName+', and it is now at '+BackupName+'.';
+   // Neither name is free any more, and both files are worth keeping: the one
+   // which was there and the finished one which was already read back and found
+   // good. Emptying the name here is what stops the destructor from throwing
+   // the second one away, on the one path where whoever has to sort this out
+   // needs everything they can get.
+   fMessage:='Could not replace '+fFileName+'. The original is at '+BackupName+
+             ' and the finished new file is at '+fTargetName+'.';
+   fTargetName:='';
    exit;
   end;
   DeleteFile(fTargetName);
@@ -378,14 +482,14 @@ var Source,Target:TFileStream;
     ExistingDebugEntries:TExistingDebugEntries;
     ExistingDebugCount,LostDebugCount:TpvSizeInt;
     HaveCodeView:Boolean;
-    FooterMagic:array[0..7] of AnsiChar;
+    FooterMagic,HeaderMagic:array[0..7] of AnsiChar;
     FooterOffset:TpvUInt64;
     DebugEntryCount:TpvSizeInt;
     EntryOffset:TpvInt64;
     MergedDirectory:TMemoryStream;
     Corrupted:String;
     CorruptedFound:Boolean;
-    Remaining:TpvInt64;
+    Swapped:TpvInt64;
     Scratch:array[0..4095] of TpvUInt8;
     SuffixStarts,SuffixEnds:array of TpvInt64;
     SuffixCount:TpvSizeInt;
@@ -710,7 +814,15 @@ begin
     Source.ReadBuffer(FooterOffset,SizeOf(TpvUInt64));
     if (FooterMagic=AppendedTableMagic) and (TpvInt64(FooterOffset)>=BodyEnd) and
        (TpvInt64(FooterOffset)<Source.Size) then begin
-     AddSuffix(TpvInt64(FooterOffset),Source.Size-TpvInt64(FooterOffset));
+     // The footer alone is eight bytes which something else could end with by
+     // accident, so what it points at is looked at too: the block it names has
+     // to begin with the same magic. Two of them agreeing is enough to treat
+     // the bytes as this tool's own and write them again.
+     Source.Seek(TpvInt64(FooterOffset),soBeginning);
+     Source.ReadBuffer(HeaderMagic,8);
+     if HeaderMagic=AppendedTableMagic then begin
+      AddSuffix(TpvInt64(FooterOffset),Source.Size-TpvInt64(FooterOffset));
+     end;
     end;
    end;
 
@@ -718,12 +830,12 @@ begin
    for Index:=1 to SuffixCount-1 do begin
     NewIndex:=Index;
     while (NewIndex>0) and (SuffixStarts[NewIndex-1]>SuffixStarts[NewIndex]) do begin
-     Remaining:=SuffixStarts[NewIndex-1];
+     Swapped:=SuffixStarts[NewIndex-1];
      SuffixStarts[NewIndex-1]:=SuffixStarts[NewIndex];
-     SuffixStarts[NewIndex]:=Remaining;
-     Remaining:=SuffixEnds[NewIndex-1];
+     SuffixStarts[NewIndex]:=Swapped;
+     Swapped:=SuffixEnds[NewIndex-1];
      SuffixEnds[NewIndex-1]:=SuffixEnds[NewIndex];
-     SuffixEnds[NewIndex]:=Remaining;
+     SuffixEnds[NewIndex]:=Swapped;
      dec(NewIndex);
     end;
    end;
@@ -1099,6 +1211,30 @@ begin
     Target.Seek(SizeOfImageOffset,soBeginning);
     Value32:=TpvUInt32(NextRVA);
     Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+
+    // The optional header states how much initialized data the image holds, and
+    // the sections added here are exactly that. Summed again out of the section
+    // table which was just written rather than adjusted by hand, so that it is
+    // right whatever was added, replaced or dropped along the way. Nothing
+    // loads by this field, but a header which says one thing while the section
+    // table says another is a header somebody eventually reads.
+    Value32:=0;
+    for Index:=0 to (TpvSizeInt(KeptCount)+fSectionCount)-1 do begin
+     Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+16,soBeginning);
+     Target.ReadBuffer(RawPointer,SizeOf(TpvUInt32));
+     Target.Seek(SectionHeaderTableOffset+(TpvInt64(Index)*SectionHeaderSize)+36,soBeginning);
+     Target.ReadBuffer(VirtualSize,SizeOf(TpvUInt32));
+     if (VirtualSize and IMAGE_SCN_CNT_INITIALIZED_DATA)<>0 then begin
+      inc(Value32,RawPointer);
+     end;
+    end;
+    Target.Seek(TpvInt64(NewHeaderOffset)+24+8,soBeginning);
+    Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+
+    // The checksum in the optional header is not touched here. It is over the
+    // whole file, and the whole file is not finished: the symbol table is
+    // appended behind all of this afterwards, so anything worked out now would
+    // be wrong again a moment later. UpdateImageCheckSum does it at the end.
 
     // Everything which was added here is read back by the caller. What is not
     // is everything which was already there, and this run moved all of it: each

@@ -829,6 +829,20 @@ begin
      inc(aResolved);
     end;
    end;
+   // And the byte past its end, which must not be this unit any more. Together
+   // with the one before it that pins the size from both sides: too short and
+   // the last byte is not answered for, too long and the first byte behind it
+   // is. Only where the next range does not begin there, since a unit reaching
+   // exactly up to the next one is the ordinary case and the answer is then
+   // rightly the next unit rather than nothing.
+   if (fUnits[Index].Size>0) and
+      (((Index+1)>=fUnitCount) or ((fUnits[Index].StartRVA+fUnits[Index].Size)<fUnits[Index+1].StartRVA)) then begin
+    inc(aProbes);
+    if (not SymbolTable.Resolve(fUnits[Index].StartRVA+fUnits[Index].Size,Location)) or
+       (String(Location.UnitName)<>fUnits[Index].Name) then begin
+     inc(aResolved);
+    end;
+   end;
   end;
 
   // Every address a routine starts at. That is the question a crash actually

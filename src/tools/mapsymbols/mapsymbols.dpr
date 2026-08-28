@@ -707,8 +707,8 @@ end;
 // file, or to nothing at all, when a compile unit names the wrong range or
 // points at another unit's program. Neither the symbol table nor the line rows
 // say anything about that, which is why it is looked at separately.
-procedure CheckCompileUnits(const aBuilder:TSymbolBuilder;const aCheck:TImageFile;const aLineSection:TMemoryStream;
-                            const aExpectedAddressSize:TpvUInt8);
+function CheckCompileUnits(const aBuilder:TSymbolBuilder;const aCheck:TImageFile;const aLineSection:TMemoryStream;
+                           const aExpectedAddressSize:TpvUInt8):Boolean;
 var InfoSection,AbbrevSection:TMemoryStream;
     Reader:TDWARFInfoReader;
     ProgramCollector:TDWARFProgramCollector;
@@ -730,6 +730,8 @@ var InfoSection,AbbrevSection:TMemoryStream;
     Bytes:PpvUInt8Array;
 begin
 
+ result:=false;
+
  InfoSection:=nil;
  AbbrevSection:=nil;
  Reader:=nil;
@@ -745,7 +747,6 @@ begin
   AbbrevSection:=aCheck.ReadSection('.debug_abbrev');
   if (not assigned(InfoSection)) or (not assigned(AbbrevSection)) then begin
    WriteLn('Debug file check FAILED: the file which was just written has no readable compilation units.');
-   ExitCode:=1;
    exit;
   end;
 
@@ -753,7 +754,6 @@ begin
   Reader.BigEndian:=aCheck.BigEndian;
   if not Reader.Parse then begin
    WriteLn('Debug file check FAILED: the compilation units cannot be read back, ',Reader.Message,'.');
-   ExitCode:=1;
    exit;
   end;
 
@@ -1038,10 +1038,10 @@ begin
 
   if Complaints>0 then begin
    WriteLn('Debug file check FAILED: ',Complaints,' complaints about the ',Reader.UnitCount,' compilation units.');
-   ExitCode:=1;
   end else begin
    WriteLn('Debug file check: ',Reader.UnitCount,' compilation units name the ranges and files they were built from, point at their own line programs, and describe ',
            SubprogramsSeen,' routines which were collected.');
+   result:=true;
   end;
 
  finally
@@ -1061,14 +1061,16 @@ end;
 // out from the file check below because the same sections go into two different
 // containers, the standalone debug file and the executable itself, and both of
 // them are worth reading back.
-procedure CheckDWARFSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;
-                             const aCheck:TImageFile;const aExpectedAddressSize:TpvUInt8);
+function CheckDWARFSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;
+                            const aCheck:TImageFile;const aExpectedAddressSize:TpvUInt8):Boolean;
 var LineSection:TMemoryStream;
     LineReader:TDWARFLineReader;
     LineCollector:TDWARFCheckCollector;
     LineRecord:TSymbolBuilder.TLineRecord;
     Expected,Index:TpvSizeInt;
 begin
+
+ result:=false;
 
  LineSection:=nil;
  LineReader:=nil;
@@ -1097,13 +1099,13 @@ begin
   // the checks below rather than into this.
   if (Expected=0) and (aDWARFWriter.LineRowCount=0) then begin
    WriteLn('Debug file check: no line numbers were collected, so there are no line programs to read back.');
+   result:=true;
    exit;
   end;
 
   LineSection:=aCheck.ReadSection('.debug_line');
   if not assigned(LineSection) then begin
    WriteLn('Debug file check FAILED: the file which was just written has no readable line programs.');
-   ExitCode:=1;
    exit;
   end;
 
@@ -1113,19 +1115,26 @@ begin
   LineCollector.ImageBase:=aBuilder.ImageBase;
   LineReader.Parse(LineCollector.OnRow,nil);
 
+  result:=true;
+
   if (LineCollector.Rows<>Expected) or (LineCollector.Mismatched>0) then begin
    WriteLn('Debug file check FAILED: ',LineCollector.Rows,' of ',Expected,' line rows came back, ',LineCollector.Mismatched,' with the wrong line number.');
-   ExitCode:=1;
+   result:=false;
   end else begin
    WriteLn('Debug file check: ',LineCollector.Rows,' line rows came back with the line numbers they went in with.');
   end;
 
   if aDWARFWriter.LineRowCount<>Expected then begin
    WriteLn('Debug file check FAILED: the writer put down ',aDWARFWriter.LineRowCount,' line rows where the collected records come to ',Expected,'.');
-   ExitCode:=1;
+   result:=false;
   end;
 
-  CheckCompileUnits(aBuilder,aCheck,LineSection,aExpectedAddressSize);
+  // Every part is asked, and one which failed does not stop the next: a run
+  // which is going to be turned down anyway is worth as much detail as it can
+  // give about why.
+  if not CheckCompileUnits(aBuilder,aCheck,LineSection,aExpectedAddressSize) then begin
+   result:=false;
+  end;
 
  finally
   FreeAndNil(LineReader);
@@ -1151,11 +1160,13 @@ end;
 // sit. All of those can be wrong while every symbol still comes back perfectly,
 // so the line programs are read back too, with the reader this same tool uses
 // on somebody else's DWARF.
-procedure CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String);
+function CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String):Boolean;
 var Check:TImageFile;
     Collector:TCheckCollector;
     Expected:TpvSizeInt;
 begin
+
+ result:=false;
 
  Collector:=TCheckCollector.Create;
  Check:=TImageFile.Create;
@@ -1163,7 +1174,6 @@ begin
 
   if not Check.Open(aFileName) then begin
    WriteLn('Debug file check failed: the file which was just written cannot be read back.');
-   ExitCode:=1;
    exit;
   end;
 
@@ -1180,7 +1190,6 @@ begin
      ((aImage.ELFMachine<>0) and
       ((Check.ELFMachine<>aImage.ELFMachine) or (Check.ELFFlags<>aImage.ELFFlags))) then begin
    WriteLn('Debug file check failed: it describes a different machine than the image does.');
-   ExitCode:=1;
    exit;
   end;
 
@@ -1188,17 +1197,20 @@ begin
   Collector.ImageBase:=aBuilder.ImageBase;
   Check.EnumerateSymbols(Collector.OnSymbol);
 
+  result:=true;
+
   // Every symbol which went in has to come back, at the address it went in at.
   Expected:=aBuilder.SymbolCount;
   if (Collector.Seen<>Expected) or (Collector.Mismatched>0) then begin
    WriteLn('Debug file check FAILED: ',Collector.Seen,' of ',Expected,' symbols came back, ',Collector.Mismatched,' at the wrong address.');
-   ExitCode:=1;
+   result:=false;
   end else begin
    WriteLn('Debug file check: ',Collector.Seen,' symbols came back at the addresses they went in at.');
   end;
 
-  if assigned(aDWARFWriter) then begin
-   CheckDWARFSections(aBuilder,aDWARFWriter,Check,ImageAddressSize(aImage));
+  if assigned(aDWARFWriter) and
+     not CheckDWARFSections(aBuilder,aDWARFWriter,Check,ImageAddressSize(aImage)) then begin
+   result:=false;
   end;
 
  finally
@@ -1217,23 +1229,22 @@ end;
 // executable leads there: a wrong identity and the debugger refuses the pdb it
 // just found, a wrong name and it never finds it at all, and in both cases the
 // symbols are perfect and unreachable.
-procedure CheckCodeViewEntry(const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String);
+function CheckCodeViewEntry(const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String):Boolean;
 var Check:TImageFile;
     Info:TImageCodeViewInfo;
     Written:PpvUInt8Array;
     Index:TpvSizeInt;
     Same:Boolean;
 begin
+ result:=false;
  Check:=TImageFile.Create;
  try
   if not Check.Open(aFileName) then begin
    WriteLn('Debug directory check FAILED: the executable cannot be read back.');
-   ExitCode:=1;
    exit;
   end;
   if not Check.CodeViewInfo(Info) then begin
    WriteLn('Debug directory check FAILED: the executable does not name a pdb at all.');
-   ExitCode:=1;
    exit;
   end;
   Written:=PpvUInt8Array(aPDBWriter.GUIDPointer);
@@ -1246,12 +1257,11 @@ begin
   end;
   if (not Same) or (Info.Age<>aPDBWriter.Age) then begin
    WriteLn('Debug directory check FAILED: the identity in the executable is not the one the pdb was written with.');
-   ExitCode:=1;
   end else if Info.FileName<>aPDBFileName then begin
    WriteLn('Debug directory check FAILED: the executable names ',Info.FileName,' where the pdb was written as ',aPDBFileName,'.');
-   ExitCode:=1;
   end else begin
    WriteLn('Debug directory check: the executable names ',Info.FileName,' with the identity it was written with.');
+   result:=true;
   end;
  finally
   FreeAndNil(Check);
@@ -1267,18 +1277,18 @@ end;
 //
 // The symbols are not looked at. They belong to the executable and have nothing
 // to do with what was collected here.
-procedure CheckInjectedDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;
-                                     const aImage:TImageFile;const aFileName:String);
+function CheckInjectedDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;
+                                    const aImage:TImageFile;const aFileName:String):Boolean;
 var Check:TImageFile;
 begin
+ result:=false;
  Check:=TImageFile.Create;
  try
   if not Check.Open(aFileName) then begin
    WriteLn('Injected sections check FAILED: the executable cannot be read back.');
-   ExitCode:=1;
    exit;
   end;
-  CheckDWARFSections(aBuilder,aDWARFWriter,Check,ImageAddressSize(aImage));
+  result:=CheckDWARFSections(aBuilder,aDWARFWriter,Check,ImageAddressSize(aImage));
  finally
   FreeAndNil(Check);
  end;
@@ -1293,6 +1303,9 @@ var ELFWriter:TELFWriter;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     ImageBase,Low,High,SymbolSize,SymbolEnd:TpvUInt64;
     RangeIndex,NextIndex:TpvSizeInt;
+{$ifdef PasVulkanMapSymbolsLinearLookups}
+    ScanIndex:TpvSizeInt;
+{$endif}
     Have:Boolean;
 begin
 
@@ -1382,26 +1395,26 @@ begin
    // with itself, finding it no larger, and leaving the size at zero for the
    // first of every such pair while its twin got the real one.
    SymbolSize:=0;
-   NextIndex:=Index+1;
-   while (NextIndex<aBuilder.SymbolCount) and
-         (aBuilder.GetSymbol(NextIndex).RVA=SymbolRecord.RVA) do begin
-    inc(NextIndex);
-   end;
-   if NextIndex<aBuilder.SymbolCount then begin
-    NextSymbol:=aBuilder.GetSymbol(NextIndex);
-    if NextSymbol.RVA>SymbolRecord.RVA then begin
-     SymbolEnd:=NextSymbol.RVA;
+
+   // Where the routine ends. The end of the range it sits in to begin with, cut
+   // back to the next routine when there is one in front of that. Built this
+   // way round rather than out of the next routine alone, because the last
+   // routine of the whole table has no next one and was left at a size of
+   // nothing although the range it is in says perfectly well where it stops.
+   // That is also how the dwarf and the pdb work it out, so all three now
+   // describe the same thing.
+   SymbolEnd:=SymbolRecord.RVA;
 {$ifdef PasVulkanMapSymbolsLinearLookups}
-     for RangeIndex:=0 to aBuilder.UnitCount-1 do begin
-      UnitRecord:=aBuilder.GetUnit(RangeIndex);
-      if (SymbolRecord.RVA>=UnitRecord.StartRVA) and
-         (SymbolRecord.RVA<(UnitRecord.StartRVA+UnitRecord.Size)) then begin
-       if SymbolEnd>(UnitRecord.StartRVA+UnitRecord.Size) then begin
-        SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
-       end;
-       break;
-      end;
-     end;
+   RangeIndex:=-1;
+   for ScanIndex:=0 to aBuilder.UnitCount-1 do begin
+    UnitRecord:=aBuilder.GetUnit(ScanIndex);
+    if (SymbolRecord.RVA>=UnitRecord.StartRVA) and
+       (SymbolRecord.RVA<(UnitRecord.StartRVA+UnitRecord.Size)) then begin
+     RangeIndex:=ScanIndex;
+     SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
+     break;
+    end;
+   end;
 {$else}
      // The ranges are sorted by start and do not overlap, which is checked
      // before anything is written, so the one this symbol is in can be found
@@ -1409,18 +1422,35 @@ begin
      // symbol, and this runs on every build which writes a debug file: with a
      // hundred thousand symbols and a few thousand ranges that is hundreds of
      // millions of iterations, each copying a record which carries two strings.
-     RangeIndex:=FindUnitRange(aBuilder,SymbolRecord.RVA);
-     if RangeIndex>=0 then begin
-      UnitRecord:=aBuilder.GetUnit(RangeIndex);
-      if SymbolEnd>(UnitRecord.StartRVA+UnitRecord.Size) then begin
-       SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
-      end;
-     end;
+   RangeIndex:=FindUnitRange(aBuilder,SymbolRecord.RVA);
+   if RangeIndex>=0 then begin
+    UnitRecord:=aBuilder.GetUnit(RangeIndex);
+    SymbolEnd:=UnitRecord.StartRVA+UnitRecord.Size;
+   end;
 {$endif}
-     if SymbolEnd>SymbolRecord.RVA then begin
-      SymbolSize:=SymbolEnd-SymbolRecord.RVA;
-     end;
+
+   // And the next routine at a different address, which is where this one stops
+   // when it comes before the end of the range. Two names at one address are
+   // aliases of each other and cover the same ground.
+   NextIndex:=Index+1;
+   while (NextIndex<aBuilder.SymbolCount) and
+         (aBuilder.GetSymbol(NextIndex).RVA=SymbolRecord.RVA) do begin
+    inc(NextIndex);
+   end;
+   if NextIndex<aBuilder.SymbolCount then begin
+    NextSymbol:=aBuilder.GetSymbol(NextIndex);
+    // Where no range covers this at all, which is what a routine outside every
+    // compilation unit is, the distance to the next one is the only answer
+    // there is, and it is the one this gave before. Where a range does cover
+    // it, the next routine only shortens what the range already said.
+    if (NextSymbol.RVA>SymbolRecord.RVA) and
+       ((RangeIndex<0) or (NextSymbol.RVA<SymbolEnd)) then begin
+     SymbolEnd:=NextSymbol.RVA;
     end;
+   end;
+
+   if SymbolEnd>SymbolRecord.RVA then begin
+    SymbolSize:=SymbolEnd-SymbolRecord.RVA;
    end;
 
    ELFWriter.AddSymbol(SymbolRecord.Name,ImageBase+SymbolRecord.RVA,SymbolSize);
@@ -1439,7 +1469,9 @@ begin
   // built are exactly the ones which are quietly broken half a year later. A
   // swapped pair of fields in a symbol entry gives a file of the right length
   // full of nonsense, and this is what notices.
-  CheckDebugFile(aBuilder,aDWARFWriter,aImage,aFileName);
+  if not CheckDebugFile(aBuilder,aDWARFWriter,aImage,aFileName) then begin
+   ExitCode:=1;
+  end;
 
   WriteLn('Wrote ',aFileName,' with ',aDWARFWriter.DebugLine.Size,' bytes of line programs and ',
           aDWARFWriter.DebugInfo.Size,' bytes of compile units.');
@@ -1456,7 +1488,6 @@ end;
 function InjectDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aPDBWriter:TPDBWriter;
                             const aImage:TImageFile;const aPDBFileName,aFileName:String):Boolean;
 var Injector:TPEInjector;
-    SavedExitCode:TpvSizeInt;
 begin
  Injector:=TPEInjector.Create;
  try
@@ -1475,38 +1506,28 @@ begin
   // had looked at until the executable had already been replaced. A failure now
   // leaves the file exactly as it was rather than leaving a finished executable
   // with an error code beside it.
+  //
+  // Nothing is said about having injected anything until it has happened. The
+  // message the injector has at this point describes a file which is sitting
+  // beside the original and may still be thrown away.
   result:=Injector.Prepare(aFileName);
-  WriteLn(Injector.Message);
   if not result then begin
+   WriteLn(Injector.Message);
    exit;
   end;
 
-  // The checks report by setting the exit code, which is what they are for
-  // everywhere else. Here their answer is needed as an answer, so the code is
-  // put aside around them and only what they add to it is kept.
-  SavedExitCode:=ExitCode;
-  ExitCode:=0;
-  try
-   if assigned(aDWARFWriter) then begin
-    CheckInjectedDebugSections(aBuilder,aDWARFWriter,aImage,Injector.TemporaryFileName);
-   end;
-   if assigned(aPDBWriter) then begin
-    CheckCodeViewEntry(aPDBWriter,aPDBFileName,Injector.TemporaryFileName);
-   end;
-   result:=ExitCode=0;
-  finally
-   if not result then begin
-    ExitCode:=1;
-   end else begin
-    ExitCode:=SavedExitCode;
-   end;
+  if assigned(aDWARFWriter) and
+     not CheckInjectedDebugSections(aBuilder,aDWARFWriter,aImage,Injector.TemporaryFileName) then begin
+   result:=false;
+  end;
+  if assigned(aPDBWriter) and
+     not CheckCodeViewEntry(aPDBWriter,aPDBFileName,Injector.TemporaryFileName) then begin
+   result:=false;
   end;
 
   if result then begin
    result:=Injector.Commit;
-   if not result then begin
-    WriteLn(Injector.Message);
-   end;
+   WriteLn(Injector.Message);
   end else begin
    Injector.Discard;
    WriteLn('The sections which were written did not read back correctly, so the executable was left alone.');
@@ -1993,6 +2014,12 @@ begin
    end;
 
    Builder.AppendToFile(ExecutableFileName);
+
+   // The file is finished now, so a checksum which the linker put into it can
+   // be worked out again over what it actually is. This has to come last: the
+   // checksum covers the whole file, and everything before this was still
+   // adding to it.
+   UpdateImageCheckSum(ExecutableFileName);
 
    if Builder.PackedTo>0 then begin
     WriteLn('Packed ',Builder.PackedFrom,' bytes of contents down to ',Builder.PackedTo,'.');
