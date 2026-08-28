@@ -1614,6 +1614,33 @@ begin
   FreeMem(aInfo);
  end;
 end;
+
+// Whether the block behind an exception is one of ours, which is to say whether
+// the hook which makes those blocks is still the one installed here.
+//
+// The flag on its own does not answer that. It says the hooks were free when
+// this unit installed itself, which is a statement about that moment and not
+// about now: this unit installs from its own initialization, and anything which
+// installs later, from a unit further down the uses clause or at any point
+// while the program runs, simply assigns over it. The flag then still says yes
+// while every exception carries somebody else's block, and reading that block
+// through the layout here means following whatever their first field happens to
+// be as a count and an array of addresses.
+//
+// Which is worse than it sounds, because the one place this is asked is while a
+// crash is being described. A crash reporter which faults on the way to naming
+// the fault takes the report with it.
+//
+// The address operator does the reading here, since these are plain procedure
+// variables and naming one in an expression would call it instead. What it
+// yields is what the variable holds, not where the variable is, so there is
+// nothing left to dereference: doing so anyway reads the first bytes of the
+// routine as if they were a pointer, which compares equal to nothing.
+function CrashReportStackInfoProcsAreOurs:Boolean;
+begin
+ result:=CrashReportOwnsStackInfoProcs and
+         (TpvPointer(@Exception.GetExceptionStackInfoProc)=TpvPointer(@CrashReportGetExceptionStackInfoProc));
+end;
 {$endif}
 
 {$if defined(Windows)}
@@ -1920,15 +1947,27 @@ end;
 
 function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddress:TpvPointer):String;
 var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
+    // Whether each of them sits behind its call rather than on it, which decides
+    // where the name is looked up. It used to be worked out from the position:
+    // the first is the raise point and everything after it is a return address.
+    // That stops being true as soon as one of them comes out of the ring buffer,
+    // where which of the two it is was decided at the moment it was recorded and
+    // written down alongside it.
+    ReturnAddresses:array[0..cMaximalStackFrames-1] of Boolean;
     Count,Index,Named:TpvInt32;
     Hash:TpvUInt64;
     Name:String;
-{$ifdef fpc}
     Frames:PPointer;
     FrameCount:TpvInt32;
-{$else}
+{$ifndef fpc}
     StackInfo:PpvCrashReportStackInfo;
 {$endif}
+    Snapshot:TpvCrashReportEntry;
+    Entry:PpvCrashReportEntry;
+    Newest,Wanted:TpvUInt32;
+    OwnThreadID:TpvUInt64;
+    Scan,ScanCount:TpvInt32;
+    Found:Boolean;
 
  procedure Feed(const aValue:String);
  var Position:TpvSizeInt;
@@ -1947,40 +1986,53 @@ begin
  result:='';
  Count:=0;
  FillChar(Addresses,SizeOf(Addresses),#0);
+ FillChar(ReturnAddresses,SizeOf(ReturnAddresses),#0);
 
-{$ifdef fpc}
  // The raise point first, then the frames behind it. The ones which were handed
  // in win, so that this and the printed stack are about the same frames.
+ //
+ // Asked of both compilers now. The arguments are there on both, and
+ // pvCrashReportDumpException hands the same ones to both, but this used to
+ // read them only under FreePascal and to go straight to the stack info block
+ // under Delphi. A caller which knew the address and the frames and said so was
+ // therefore describing one stack in the report and a different one in the
+ // fingerprint of that same report.
  if assigned(aAddress) then begin
   Addresses[Count]:=aAddress;
   inc(Count);
- end else if assigned(ExceptAddr) then begin
+ end;
+ Frames:=aFrames;
+ FrameCount:=aFrameCount;
+{$ifdef fpc}
+ if (Count=0) and assigned(ExceptAddr) then begin
   Addresses[Count]:=ExceptAddr;
   inc(Count);
  end;
- if assigned(aFrames) and (aFrameCount>0) then begin
-  Frames:=aFrames;
-  FrameCount:=aFrameCount;
- end else begin
+ if not (assigned(Frames) and (FrameCount>0)) then begin
   Frames:=ExceptFrames;
   FrameCount:=ExceptFrameCount;
  end;
- if assigned(Frames) then begin
+{$endif}
+ if assigned(Frames) and (FrameCount>0) then begin
   for Index:=0 to FrameCount-1 do begin
    if Count>=cMaximalStackFrames then begin
     break;
    end;
    Addresses[Count]:=Frames^;
+   // Everything in a frame list is where a call goes back to.
+   ReturnAddresses[Count]:=true;
    inc(Count);
    inc(Frames);
   end;
  end;
-{$else}
- // Only reachable when the stack info hooks are the ones installed here, since
- // the block behind them is what holds the raw addresses. Where somebody else
- // owns them their block has a layout of its own, and reading it would be a
- // guess.
- if assigned(aException) and CrashReportOwnsStackInfoProcs then begin
+{$ifndef fpc}
+ // The stack info block, which only says anything when the hooks in front of it
+ // are the ones installed here: where somebody else owns them their block has a
+ // layout of its own and reading it would be a guess.
+ //
+ // Only when nothing was handed in, the same way the frames of the exception
+ // are only used under FreePascal when nothing was handed in.
+ if (Count=0) and assigned(aException) and CrashReportStackInfoProcsAreOurs then begin
   StackInfo:=PpvCrashReportStackInfo(aException.StackInfo);
   if assigned(StackInfo) then begin
    for Index:=0 to StackInfo^.Count-1 do begin
@@ -1988,11 +2040,61 @@ begin
      break;
     end;
     Addresses[Count]:=StackInfo^.Addresses[Index];
+    // The block is filled by CrashReportCaptureFrames, whose entries are return
+    // addresses throughout, the first one included: it is where the raise went
+    // back to, not the raise itself.
+    ReturnAddresses[Count]:=true;
     inc(Count);
    end;
   end;
  end;
 {$endif}
+
+ // And the last resort: the newest raise or fault this thread recorded.
+ //
+ // Under Delphi with madExcept or anything else owning the stack info hooks
+ // there was nothing at all up to here, and the fingerprint came out empty,
+ // which is the one output of this unit which then said less than the log next
+ // to it. The vectored handler and the raise hook write into the ring buffer
+ // whoever owns those hooks, so the address of the crash is known even when the
+ // frames behind it are somebody else's business.
+ //
+ // One address makes a coarse fingerprint. It is still the difference between
+ // grouping crashes by where they happened and not grouping them at all.
+ if (Count=0) and (TpvUInt32(CrashReportSequence)<>0) then begin
+  Newest:=TpvUInt32(CrashReportSequence);
+  ScanCount:=pvCrashReportRingBufferSize;
+  if TpvUInt32(ScanCount)>Newest then begin
+   ScanCount:=TpvInt32(Newest);
+  end;
+  OwnThreadID:=CrashReportCurrentThreadID;
+  Found:=false;
+  // Taken as a copy and rechecked afterwards, since the slot can be taken over
+  // while it is being read. The same dance as everywhere else in here.
+  for Scan:=0 to ScanCount-1 do begin
+   Wanted:=Newest-TpvUInt32(Scan);
+   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
+   if Entry^.Sequence<>Wanted then begin
+    continue;
+   end;
+   CrashReportReadBarrier;
+   Snapshot:=Entry^;
+   CrashReportReadBarrier;
+   if (Entry^.Sequence=Wanted) and
+      (Snapshot.ThreadID=OwnThreadID) and
+      assigned(Snapshot.Address) and
+      ((Snapshot.Kind=pvCrashReportKindRaise) or (Snapshot.Kind=pvCrashReportKindFault)) then begin
+    Found:=true;
+    break;
+   end;
+  end;
+  if Found then begin
+   Addresses[Count]:=Snapshot.Address;
+   // Written down when it was recorded, because only there was it known.
+   ReturnAddresses[Count]:=(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0;
+   inc(Count);
+  end;
+ end;
 
  Hash:=TpvUInt64($cbf29ce484222325);
 
@@ -2005,9 +2107,9 @@ begin
   if Named>=aMaximalNames then begin
    break;
   end;
-  // Everything but the raise point itself is a return address, so it points
-  // behind its call rather than at it.
-  if CrashReportSymbolNameOf(Addresses[Index],Index>0,Name) then begin
+  // Whether it points behind its call or at it was decided where it was
+  // collected, since that is the only place which knows.
+  if CrashReportSymbolNameOf(Addresses[Index],ReturnAddresses[Index],Name) then begin
    Feed(Name);
    inc(Named);
   end;
@@ -2866,15 +2968,23 @@ begin
  // else may have installed themselves in the meantime, and clearing their
  // hooks would leave them without the ones they rely on.
  if CrashReportOwnsStackInfoProcs then begin
-  // Each one on its own, and compared through a pointer, since these are plain
-  // procedure variables and reading one in an expression would call it.
-  if PPointer(@Exception.GetExceptionStackInfoProc)^=TpvPointer(@CrashReportGetExceptionStackInfoProc) then begin
+  // Each one on its own, and read with the address operator, since these are
+  // plain procedure variables and naming one in an expression would call it.
+  //
+  // Without the dereference which used to be here. The address operator already
+  // yields what the variable holds rather than where it is, so reading through
+  // it once more took the first bytes of the routine for a pointer and compared
+  // those against its address. That never matched, which means none of these
+  // three was ever put back and an uninstall left the hooks pointing here. In a
+  // library which is then unloaded, the runtime calls into the space where this
+  // code used to be at the next exception.
+  if TpvPointer(@Exception.GetExceptionStackInfoProc)=TpvPointer(@CrashReportGetExceptionStackInfoProc) then begin
    Exception.GetExceptionStackInfoProc:=nil;
   end;
-  if PPointer(@Exception.GetStackInfoStringProc)^=TpvPointer(@CrashReportGetStackInfoStringProc) then begin
+  if TpvPointer(@Exception.GetStackInfoStringProc)=TpvPointer(@CrashReportGetStackInfoStringProc) then begin
    Exception.GetStackInfoStringProc:=nil;
   end;
-  if PPointer(@Exception.CleanUpStackInfoProc)^=TpvPointer(@CrashReportCleanUpStackInfoProc) then begin
+  if TpvPointer(@Exception.CleanUpStackInfoProc)=TpvPointer(@CrashReportCleanUpStackInfoProc) then begin
    Exception.CleanUpStackInfoProc:=nil;
   end;
   CrashReportOwnsStackInfoProcs:=false;

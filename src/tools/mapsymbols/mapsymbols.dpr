@@ -590,6 +590,24 @@ begin
 end;
 {$endif}
 
+{$ifdef Windows}
+// Declared here rather than taken from the windows unit, which brings its own
+// DeleteFile and FileExists along and would take the place of the ones every
+// other line in this file means.
+const FILE_ATTRIBUTE_REPARSE_POINT_FLAG=TpvUInt32($00000400);
+      INVALID_FILE_ATTRIBUTES_VALUE=TpvUInt32($ffffffff);
+      FILE_READ_ATTRIBUTES_ACCESS=TpvUInt32($00000080);
+      FILE_SHARE_ALL=TpvUInt32($00000007);
+      OPEN_EXISTING_FILE=TpvUInt32(3);
+      FILE_FLAG_BACKUP_SEMANTICS_FLAG=TpvUInt32($02000000);
+      INVALID_FILE_HANDLE=THandle(-1);
+      VOLUME_NAME_DOS_FORM=TpvUInt32(0);
+function GetFileAttributesW(aFileName:PWideChar):TpvUInt32; stdcall; external 'kernel32.dll' name 'GetFileAttributesW';
+function CreateFileW(aFileName:PWideChar;aAccess,aShareMode:TpvUInt32;aSecurity:TpvPointer;aDisposition,aFlags:TpvUInt32;aTemplate:THandle):THandle; stdcall; external 'kernel32.dll' name 'CreateFileW';
+function CloseHandle(aHandle:THandle):LongBool; stdcall; external 'kernel32.dll' name 'CloseHandle';
+function GetFinalPathNameByHandleW(aFile:THandle;aFilePath:PWideChar;aLength,aFlags:TpvUInt32):TpvUInt32; stdcall; external 'kernel32.dll' name 'GetFinalPathNameByHandleW';
+{$endif}
+
 // Follows a symbolic link to the file it really names.
 //
 // It matters because of how the executable is replaced at the end: what was
@@ -603,25 +621,43 @@ end;
 // Refusing links outright would be the other defensible answer. Following them
 // is the one which keeps working for whoever set the link up, and it is said
 // out loud rather than done quietly.
-function ResolveSymbolicLink(const aFileName:String;out aResolvedFileName:String):Boolean;
+//
+// Both sides, since both have them. Windows has had file links since Vista and
+// junctions for longer than that, mklink is exactly what somebody reaches for
+// to keep a game.exe pointing at the build of the day, and the damage there is
+// the same one. That this was written for unix first says something about where
+// links are common, not about where they do harm.
+//
+// aFailure is set instead when the name cannot be followed to anything, which
+// in practice means a link which points at itself. A run which then went ahead
+// would work on the link.
+function ResolveSymbolicLink(const aFileName:String;out aResolvedFileName,aFailure:String):Boolean;
 {$ifdef Unix}
 var Information:stat;
     Target,Directory:String;
     Steps:TpvSizeInt;
 {$endif}
+{$ifdef Windows}
+var Attributes:TpvUInt32;
+    Handle:THandle;
+    Buffer:array[0..32767] of WideChar;
+    Length32:TpvUInt32;
+    Final:String;
+{$endif}
 begin
  aResolvedFileName:=aFileName;
+ aFailure:='';
  result:=false;
 {$ifdef Unix}
  Steps:=0;
  // A link may point at a link. Bounded, because it may also point at itself.
  while Steps<32 do begin
   if (FpLStat(aResolvedFileName,Information)<>0) or not FpS_ISLNK(Information.st_mode) then begin
-   break;
+   exit;
   end;
   Target:=FpReadLink(aResolvedFileName);
   if length(Target)=0 then begin
-   break;
+   exit;
   end;
   // A link may name its target relative to the directory the link sits in,
   // which is not necessarily the directory this run was started in.
@@ -634,6 +670,54 @@ begin
   aResolvedFileName:=Target;
   result:=true;
   inc(Steps);
+ end;
+ // Still a link after all of those, so it is a ring rather than a chain.
+ aFailure:=aFileName+' is a symbolic link which does not lead to a file.';
+ aResolvedFileName:=aFileName;
+ result:=false;
+{$endif}
+{$ifdef Windows}
+ // Asked first, so that an ordinary file is not put through the rest of this
+ // only to come back under a spelling of its own name. What comes out of
+ // GetFinalPathNameByHandleW is the canonical one, which differs from what was
+ // typed for reasons which have nothing to do with links.
+ Attributes:=GetFileAttributesW(PWideChar(WideString(aFileName)));
+ if (Attributes=INVALID_FILE_ATTRIBUTES_VALUE) or
+    ((Attributes and FILE_ATTRIBUTE_REPARSE_POINT_FLAG)=0) then begin
+  exit;
+ end;
+ // Opened only to be asked about. The backup semantics flag is what lets this
+ // work for a directory junction as well, and asking for attributes alone means
+ // a file somebody else is writing can still be asked about.
+ Handle:=CreateFileW(PWideChar(WideString(aFileName)),FILE_READ_ATTRIBUTES_ACCESS,FILE_SHARE_ALL,nil,
+                     OPEN_EXISTING_FILE,FILE_FLAG_BACKUP_SEMANTICS_FLAG,0);
+ if Handle=INVALID_FILE_HANDLE then begin
+  aFailure:=aFileName+' is a link of some kind which could not be followed.';
+  exit;
+ end;
+ try
+  // One call, and it follows the whole chain including junctions.
+  Length32:=GetFinalPathNameByHandleW(Handle,@Buffer[0],length(Buffer)-1,VOLUME_NAME_DOS_FORM);
+  if (Length32=0) or (Length32>=TpvUInt32(length(Buffer))) then begin
+   aFailure:=aFileName+' is a link of some kind which could not be followed.';
+   exit;
+  end;
+  Buffer[Length32]:=#0;
+  Final:=String(WideString(PWideChar(@Buffer[0])));
+ finally
+  CloseHandle(Handle);
+ end;
+ // It comes back in the form which is not subject to the ordinary path rules,
+ // which most of the rest of the world does not take. A network path wears that
+ // form too and has to be turned back into the one with the two slashes.
+ if copy(Final,1,8)='\\?\UNC\' then begin
+  Final:='\\'+copy(Final,9,length(Final)-8);
+ end else if copy(Final,1,4)='\\?\' then begin
+  Final:=copy(Final,5,length(Final)-4);
+ end;
+ if (length(Final)>0) and not SameFileName(Final,aFileName) then begin
+  aResolvedFileName:=Final;
+  result:=true;
  end;
 {$endif}
 end;
@@ -1662,7 +1746,7 @@ begin
 end;
 
 var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:String;
-    WorkFileName,ReplaceMessage,ResolvedFileName:String;
+    WorkFileName,ReplaceMessage,ResolvedFileName,ResolveFailure:String;
     // The pdb cannot wait for the end the way the executable does, because the
     // reader which checks it finds it by the name the executable gives. So it
     // goes under that name straight away and whatever was there is kept, until
@@ -1674,7 +1758,7 @@ var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:Stri
     // as it has been read back.
     DebugWorkFileName,DebugBackupFileName:String;
     PDBStaged:Boolean;
-    OutputOk,BothRemain:Boolean;
+    OutputOk,BothRemain,StageBothRemain:Boolean;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
     DebugOutputFileName:String;
@@ -1785,6 +1869,13 @@ begin
   WriteLn('                 header table and says so when there is none');
   WriteLn;
   WriteLn('Running it again on the same executable replaces the previous table.');
+  WriteLn;
+  WriteLn('It belongs before the steps which describe the finished file rather than after');
+  WriteLn('them. Everything here is written into the executable, so a signature taken over');
+  WriteLn('it stops matching, and the file which ends up under the name is a new one, so');
+  WriteLn('what setcap, an acl or an extended attribute put on the old one is not on it.');
+  WriteLn('The access rights and the attributes are carried over, and nothing else can be');
+  WriteLn('by a tool which is not root.');
   ExitCode:=1;
   exit;
  end;
@@ -1808,10 +1899,67 @@ begin
 
   // Before anything is read, and long before anything is written, since what is
   // written at the end takes the name this run was given.
-  if ResolveSymbolicLink(ExecutableFileName,ResolvedFileName) then begin
-   WriteLn(ExecutableFileName,' is a symbolic link to ',ResolvedFileName,'.');
+  if ResolveSymbolicLink(ExecutableFileName,ResolvedFileName,ResolveFailure) then begin
+   WriteLn(ExecutableFileName,' is a link to ',ResolvedFileName,'.');
    WriteLn('That file is the one which is worked on, so the link stays a link and keeps pointing where it did.');
    ExecutableFileName:=ResolvedFileName;
+  end else if length(ResolveFailure)>0 then begin
+   WriteLn('Error: ',ResolveFailure);
+   ExitCode:=1;
+   exit;
+  end;
+
+  // The same for what is going to be written, for the same reason. A pdb or a
+  // debug file under a name which is a link is put in place the same way the
+  // executable is, by the old file being renamed aside and the new one taking
+  // the name, and done to a link that is the link gone.
+  //
+  // Only when the name is already taken by a link. A name which is not there
+  // yet is a name, and resolving it is a question about nothing.
+  if length(PDBOutputFileName)>0 then begin
+   if ResolveSymbolicLink(PDBOutputFileName,ResolvedFileName,ResolveFailure) then begin
+    WriteLn(PDBOutputFileName,' is a link to ',ResolvedFileName,', which is where the pdb is written.');
+    PDBOutputFileName:=ResolvedFileName;
+   end else if length(ResolveFailure)>0 then begin
+    WriteLn('Error: ',ResolveFailure);
+    ExitCode:=1;
+    exit;
+   end;
+  end;
+  if length(DebugOutputFileName)>0 then begin
+   if ResolveSymbolicLink(DebugOutputFileName,ResolvedFileName,ResolveFailure) then begin
+    WriteLn(DebugOutputFileName,' is a link to ',ResolvedFileName,', which is where the debug file is written.');
+    DebugOutputFileName:=ResolvedFileName;
+   end else if length(ResolveFailure)>0 then begin
+    WriteLn('Error: ',ResolveFailure);
+    ExitCode:=1;
+    exit;
+   end;
+  end;
+
+  // Two names for one file among what this run was told to write is a mistake
+  // which costs the file. Everything written here is built beside its name and
+  // then put under it, and those names are worked out from the names given, so
+  // two of them which mean the same file means one piece of work being built on
+  // top of another and then put in place as if it were the other.
+  //
+  // Saying --gdb game.exe used to end with the debug file under the name of the
+  // program and the program gone: the copy which was going to become the
+  // executable and the file the debug information was written to were the same
+  // name, so the debug file was put where the program was, and the copy of the
+  // program which could have put it back was thrown away as part of that.
+  //
+  // Asked before anything is opened, and every pair of them, since any two of
+  // these overwriting each other is the same kind of loss.
+  if SameFileName(PDBOutputFileName,ExecutableFileName) or
+     SameFileName(DebugOutputFileName,ExecutableFileName) or
+     SameFileName(PDBOutputFileName,DebugOutputFileName) or
+     SameFileName(PDBOutputFileName,MapFileName) or
+     SameFileName(DebugOutputFileName,MapFileName) then begin
+   WriteLn('Error: two of the files this run was given are the same file.');
+   WriteLn('The executable, the map file, the pdb and the debug file each have to be a file of their own, since what is written into one would otherwise take the place of another.');
+   ExitCode:=1;
+   exit;
   end;
 
   Image:=TImageFile.Create;
@@ -2096,13 +2244,19 @@ begin
   //
   // Now nothing is changed until everything holds. What is left behind on a
   // failure is a copy which is deleted, and the executable is the file it was.
-  // The extension is kept, so the copy is still an .exe while it is being
-  // worked on. Not cosmetic: dbghelp is handed this file, and a reader which
-  // decides what a file is by its name has to keep deciding the same thing.
-  // Everything else about the run would carry on as if nothing had happened,
-  // with one line saying the check was skipped.
-  WorkFileName:=ChangeFileExt(ExecutableFileName,'.mapsymbols-work'+ExtractFileExt(ExecutableFileName));
-  DeleteFile(WorkFileName);
+  // A free name, taken by being created. The extension is kept, so the copy is
+  // still an .exe while it is being worked on: dbghelp is handed this file, and
+  // a reader which decides what a file is by its name has to keep deciding the
+  // same thing.
+  //
+  // The name used to be worked out and whatever was there deleted, which made
+  // every file called so beside an executable this tool's to throw away.
+  if not AcquireTemporaryName(ExecutableFileName,'mapsymbols-work',WorkFileName,StageMessage) then begin
+   WriteLn('Error: ',StageMessage);
+   ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
+   ExitCode:=1;
+   exit;
+  end;
   if not CopyFileTo(ExecutableFileName,WorkFileName) then begin
    WriteLn('Error: ',ExecutableFileName,' could not be copied to work on.');
    ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
@@ -2141,11 +2295,21 @@ begin
    // would otherwise leave behind is an executable naming an identity which the
    // pdb next to it no longer has.
    if length(PDBOutputFileName)>0 then begin
-    PDBWorkFileName:=ChangeFileExt(PDBOutputFileName,'.mapsymbols-work'+ExtractFileExt(PDBOutputFileName));
-    DeleteFile(PDBWorkFileName);
-    PDBWriter:=WritePDBFile(Builder,Image,PDBWorkFileName);
-    if not StageFileOver(PDBOutputFileName,PDBWorkFileName,PDBBackupFileName,StageMessage) then begin
+    if not AcquireTemporaryName(PDBOutputFileName,'mapsymbols-work',PDBWorkFileName,StageMessage) then begin
      WriteLn('Error: ',StageMessage);
+     ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
+     ExitCode:=1;
+     exit;
+    end;
+    PDBWriter:=WritePDBFile(Builder,Image,PDBWorkFileName);
+    if not StageFileOver(PDBOutputFileName,PDBWorkFileName,PDBBackupFileName,StageMessage,StageBothRemain) then begin
+     WriteLn('Error: ',StageMessage);
+     if StageBothRemain then begin
+      // Neither name holds what it should and both files are where the message
+      // says. Nothing here throws either of them away.
+      PDBWorkFileName:='';
+      PDBBackupFileName:='';
+     end;
      ReportUnchanged(ExecutableFileName,PDBOutputFileName,false);
      ExitCode:=1;
      exit;
@@ -2244,10 +2408,11 @@ begin
    // everywhere else here: nothing takes the place of anything before it has
    // been looked at.
    if length(DebugOutputFileName)>0 then begin
-    DebugWorkFileName:=ChangeFileExt(DebugOutputFileName,'.mapsymbols-work'+ExtractFileExt(DebugOutputFileName));
-    DeleteFile(DebugWorkFileName);
-    if WriteDebugFile(Builder,DWARFWriter,Image,DebugWorkFileName) then begin
-     if StageFileOver(DebugOutputFileName,DebugWorkFileName,DebugBackupFileName,StageMessage) then begin
+    if not AcquireTemporaryName(DebugOutputFileName,'mapsymbols-work',DebugWorkFileName,StageMessage) then begin
+     WriteLn('Error: ',StageMessage);
+     ExitCode:=1;
+    end else if WriteDebugFile(Builder,DWARFWriter,Image,DebugWorkFileName) then begin
+     if StageFileOver(DebugOutputFileName,DebugWorkFileName,DebugBackupFileName,StageMessage,StageBothRemain) then begin
       CommitStagedFile(DebugBackupFileName);
       DebugBackupFileName:='';
       DebugWorkFileName:='';
@@ -2255,6 +2420,10 @@ begin
               DWARFWriter.DebugInfo.Size,' bytes of compile units.');
      end else begin
       WriteLn('Error: ',StageMessage);
+      if StageBothRemain then begin
+       DebugWorkFileName:='';
+       DebugBackupFileName:='';
+      end;
       ExitCode:=1;
      end;
     end else begin
@@ -2316,7 +2485,24 @@ begin
   if OutputOk then begin
    if not ReplaceFileWith(ExecutableFileName,WorkFileName,ReplaceMessage,BothRemain) then begin
     WriteLn('Error: ',ReplaceMessage);
-    if not BothRemain then begin
+    if BothRemain then begin
+     // Neither name holds what it should. Both files are on disk and somebody
+     // is going to finish this by hand, so the pdb which goes with the finished
+     // file stays where it is rather than being put back: the run which was
+     // taken over is the one which was going to keep it, and a finished
+     // executable whose pdb has just been deleted is worth nothing.
+     //
+     // Both pdbs are left, and which goes with which is said, since that is the
+     // whole question at this point.
+     if PDBStaged then begin
+      WriteLn('The pdb which was written is left at ',PDBOutputFileName,', which is the one the finished new file names.');
+      if length(PDBBackupFileName)>0 then begin
+       WriteLn('The pdb which was there before is at ',PDBBackupFileName,', which is the one the original names.');
+      end;
+      PDBStaged:=false;
+      PDBBackupFileName:='';
+     end;
+    end else begin
      DeleteFile(WorkFileName);
     end;
     WorkFileName:='';

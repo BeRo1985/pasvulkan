@@ -33,7 +33,8 @@ interface
 uses SysUtils,
 {$ifdef Unix}
      // For the access rights of a file, which nothing in the portable part of
-     // the library gives out in a form which can be put onto another file.
+     // the library gives out in a form which can be put onto another file, and
+     // for making a file only if nobody else has that name yet.
      BaseUnix,
 {$endif}
      Classes,
@@ -75,6 +76,38 @@ function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean
 // what it is about to do to the signature.
 function ImageIsSigned(const aFileName:String):Boolean;
 
+// A name beside a file for something which is being built there, which nothing
+// else holds and which this run takes for itself by creating it.
+//
+// The names used to be worked out and then deleted if something was already
+// there, which made every file called foo.mapsymbols-work.exe or
+// foo.exe.mapsymbols-old the property of this tool, whoever put it there and
+// whatever was in it. A .mapsymbols-old in particular is what an earlier run
+// which could not put things back left behind, which makes it the single most
+// valuable file in that directory and the last one to delete unasked.
+//
+// The first free name is taken, so the ordinary case still gives the ordinary
+// name and only a directory which already holds one gets a numbered one.
+//
+// aTag goes in front of the extension rather than behind the whole name, so
+// that a copy of an executable is still an executable while it is being worked
+// on. There are readers which decide what a file is by its name.
+function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
+
+// The same for what is being set aside, which differs in that it is not created
+// here: it comes into being by something being renamed onto it, and a file
+// which is already there cannot be renamed onto.
+function FindFreeBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+
+// Whether two names lead to the same file, as far as that can be told without
+// opening them. Both are made absolute, and on windows the comparison ignores
+// case, since the file system does.
+//
+// It does not follow links, and it does not know that two different names on
+// two different network paths can be one file. It is a check against the
+// ordinary mistake, not against every way two names can meet.
+function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
+
 // Puts the access rights of one file onto another.
 //
 // A file which is built beside another and then takes its name is a new file,
@@ -82,6 +115,12 @@ function ImageIsSigned(const aFileName:String):Boolean;
 // with what the file it replaces had. On unix that loses the execute bits,
 // which turns an executable into a file the shell refuses to start; on windows
 // it loses the attributes, a read only build artifact being the ordinary case.
+//
+// The mode bits and the attributes are what this carries. Owner and group, acls,
+// extended attributes and the capabilities which setcap writes into them are
+// not, and cannot be by a tool which is not root. A build which uses any of
+// those has to run this before the step which sets them, the same as it has to
+// run it before signing.
 function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
 
 // Puts a new file under a name which may already be taken, keeping whatever was
@@ -95,7 +134,13 @@ function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
 // somewhere else can put back the pair which was there before it started.
 //
 // aBackupFileName is empty when there was nothing under that name to keep.
-function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String):Boolean;
+//
+// aBothRemain says the same thing it says next door: neither name ended up
+// holding what it should, both files are still on disk under the names the
+// message gives, and the caller must not tidy either of them away. The backup
+// name is kept in that case rather than cleared, because it is where the file
+// which was there actually is.
+function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String;out aBothRemain:Boolean):Boolean;
 
 // Throws away what StageFileOver kept, which is what a run does when it has
 // decided to keep the new file.
@@ -587,6 +632,124 @@ begin
 
 end;
 
+{$ifdef Windows}
+// Declared here rather than taken from the windows unit, which brings a
+// DeleteFile of its own along and would quietly take the place of the one every
+// line in this file means.
+const GENERIC_WRITE_ACCESS=TpvUInt32($40000000);
+      CREATE_NEW_FILE=TpvUInt32(1);
+      FILE_ATTRIBUTE_NORMAL_FLAG=TpvUInt32($00000080);
+      INVALID_FILE_HANDLE=THandle(-1);
+function CreateFileW(aFileName:PWideChar;aAccess,aShareMode:TpvUInt32;aSecurity:TpvPointer;aDisposition,aFlags:TpvUInt32;aTemplate:THandle):THandle; stdcall; external 'kernel32.dll' name 'CreateFileW';
+function CloseHandle(aHandle:THandle):LongBool; stdcall; external 'kernel32.dll' name 'CloseHandle';
+{$endif}
+
+// Makes a file only if that name is free, and says whether it got it. The
+// question and the making are one step, so that two of these cannot both be
+// told that the same name is free.
+function CreateFileExclusively(const aFileName:String):Boolean;
+{$ifdef Unix}
+var Handle:TpvInt32;
+{$endif}
+{$ifdef Windows}
+var Handle:THandle;
+{$endif}
+{$if not (defined(Unix) or defined(Windows))}
+var Handle:TpvInt32;
+{$ifend}
+begin
+{$ifdef Unix}
+ // 438 is 0666, which the umask then takes what it takes from. Whatever comes
+ // of it is replaced by the rights of the file this one is going to stand in
+ // for, at the moment it does.
+ Handle:=FpOpen(aFileName,O_CREAT or O_EXCL or O_WRONLY,438);
+ result:=Handle>=0;
+ if result then begin
+  FpClose(Handle);
+ end;
+{$else}
+{$ifdef Windows}
+ // CREATE_NEW, which is the one which fails when the name is taken.
+ Handle:=CreateFileW(PWideChar(WideString(aFileName)),GENERIC_WRITE_ACCESS,0,nil,CREATE_NEW_FILE,FILE_ATTRIBUTE_NORMAL_FLAG,0);
+ result:=Handle<>INVALID_FILE_HANDLE;
+ if result then begin
+  CloseHandle(Handle);
+ end;
+{$else}
+ // Nowhere else to ask, so the question is asked and then answered, which is
+ // two steps and therefore not quite the same promise.
+ result:=not FileExists(aFileName);
+ if result then begin
+  Handle:=FileCreate(aFileName);
+  result:=Handle>=0;
+  if result then begin
+   FileClose(Handle);
+  end;
+ end;
+{$endif}
+{$endif}
+end;
+
+function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
+const cMaximalAttempts=1000;
+var Attempt:TpvSizeInt;
+    Extension,Candidate:String;
+begin
+ result:=false;
+ aFileName:='';
+ aMessage:='';
+ Extension:=ExtractFileExt(aBaseFileName);
+ for Attempt:=0 to cMaximalAttempts-1 do begin
+  if Attempt=0 then begin
+   Candidate:=ChangeFileExt(aBaseFileName,'.'+aTag+Extension);
+  end else begin
+   Candidate:=ChangeFileExt(aBaseFileName,'.'+aTag+'-'+IntToStr(Attempt+1)+Extension);
+  end;
+  if CreateFileExclusively(Candidate) then begin
+   aFileName:=Candidate;
+   result:=true;
+   exit;
+  end;
+ end;
+ aMessage:='There is no free name beside '+aBaseFileName+' to build anything in.';
+end;
+
+function FindFreeBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+const cMaximalAttempts=1000;
+var Attempt:TpvSizeInt;
+    Candidate:String;
+begin
+ result:=false;
+ aFileName:='';
+ aMessage:='';
+ for Attempt:=0 to cMaximalAttempts-1 do begin
+  if Attempt=0 then begin
+   Candidate:=aBaseFileName+'.mapsymbols-old';
+  end else begin
+   Candidate:=aBaseFileName+'.mapsymbols-old-'+IntToStr(Attempt+1);
+  end;
+  if not FileExists(Candidate) then begin
+   aFileName:=Candidate;
+   result:=true;
+   exit;
+  end;
+ end;
+ aMessage:='There is no free name beside '+aBaseFileName+' to set it aside under.';
+end;
+
+function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
+begin
+ if (length(aLeftFileName)=0) or (length(aRightFileName)=0) then begin
+  result:=false;
+ end else begin
+{$ifdef Windows}
+  result:=SameText(ExpandFileName(aLeftFileName),ExpandFileName(aRightFileName));
+{$else}
+  result:=ExpandFileName(aLeftFileName)=ExpandFileName(aRightFileName);
+{$endif}
+ end;
+end;
+
 function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
 {$ifdef Unix}
 var Info:stat;
@@ -607,9 +770,18 @@ begin
  if FpStat(aFromFileName,Info)<>0 then begin
   exit;
  end;
- // The set user and set group bits go along with the rest. They are part of how
- // the file was installed, and a run which is only supposed to add symbols to a
- // program has no business deciding that it should no longer have them.
+ // The set user and set group bits go along with the rest, which is a decision
+ // against what the system itself does at the same place: a kernel clears both
+ // whenever anybody writes into a file, precisely because a file whose contents
+ // have changed is no longer the one the rights were granted for.
+ //
+ // The case here is not that one. Nobody wrote into the file; a file was built
+ // beside it out of the same bytes plus a description of them, and put in its
+ // place. What ran with those rights before still runs, and a build tool which
+ // silently turned a program with them into one without would break an
+ // installation in a way nobody would look for here. If that is not wanted, the
+ // bits are one chmod away, while getting them back after a run which dropped
+ // them means finding out that they were ever there.
  result:=FpChmod(aToFileName,Info.st_mode and $0fff)=0;
 {$else}
  Attributes:=FileGetAttr(aFromFileName);
@@ -629,7 +801,7 @@ end;
 // somewhere else. Every way out of here leaves either the untouched original or
 // the finished new file under that name.
 function ReplaceFileWith(const aFileName,aReplacementFileName:String;out aMessage:String;out aBothRemain:Boolean):Boolean;
-var BackupName:String;
+var BackupName,Reason:String;
 begin
  result:=false;
  aMessage:='';
@@ -638,23 +810,30 @@ begin
  // change places. This is the one place where a file takes the name of another,
  // so it is also the one place where that has to happen.
  //
- // Failing at it is not a reason to stop. What the caller wants is the new
- // contents under that name, and a program which is there but has to be made
- // executable again is worth more than no new program at all. It is said, and
- // that is as far as it goes.
+ // Failing at it stops the swap. It used to be a note and the swap went ahead,
+ // on the grounds that a program which is there and has to be made executable
+ // again beats no new program at all, but that is the argument this whole
+ // arrangement was built to stop making: what goes under that name is either
+ // the finished thing or the file which was already there, and a program which
+ // will not start is not the finished thing. The original is untouched at this
+ // point, so refusing here costs nothing but the run.
+{$ifndef PasVulkanMapSymbolsIgnoreFileRights}
  if not CopyFileRights(aFileName,aReplacementFileName) then begin
-  WriteLn('Note: the access rights of ',aFileName,' could not be carried over, so ',
-          aFileName,' now has the ones a newly written file gets.');
+  aMessage:='The access rights of '+aFileName+' could not be carried over, so it was left alone.';
+  exit;
  end;
- BackupName:=aFileName+'.mapsymbols-old';
- // A file which is only there to be thrown away may still be one nothing is
- // allowed to delete, which on windows is what a read only attribute means.
- // Carried over from the original a moment ago, so this is the ordinary case
- // rather than a strange one.
- if FileExists(BackupName) then begin
-  FileSetAttr(BackupName,faArchive);
+{$else}
+ // What this did before, for a file system which has no rights to carry over
+ // and answers every such question with no.
+ CopyFileRights(aFileName,aReplacementFileName);
+{$endif}
+ // A free name, rather than a fixed one which is cleared out first. What sits
+ // under the fixed one may be the last copy of an earlier run which could not
+ // put things back, and that is the file to delete last, not first.
+ if not FindFreeBackupName(aFileName,BackupName,Reason) then begin
+  aMessage:=Reason;
+  exit;
  end;
- DeleteFile(BackupName);
  if not RenameFile(aFileName,BackupName) then begin
   aMessage:='Could not set '+aFileName+' aside, so it was left alone.';
   exit;
@@ -689,22 +868,31 @@ end;
 // ReplaceFileWith is this pair done in one go, and it stays that way rather
 // than being written in terms of these, because it is the path every run takes
 // and it has been proven where it stands.
-function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String):Boolean;
+function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String;out aBothRemain:Boolean):Boolean;
+var Reason:String;
 begin
  result:=false;
  aBackupFileName:='';
  aMessage:='';
+ aBothRemain:=false;
  if not FileExists(aNewFileName) then begin
   aMessage:=aNewFileName+' is not there to be put in place.';
   exit;
  end;
  if FileExists(aFinalFileName) then begin
-  CopyFileRights(aFinalFileName,aNewFileName);
-  aBackupFileName:=aFinalFileName+'.mapsymbols-old';
-  if FileExists(aBackupFileName) then begin
-   FileSetAttr(aBackupFileName,faArchive);
+{$ifndef PasVulkanMapSymbolsIgnoreFileRights}
+  if not CopyFileRights(aFinalFileName,aNewFileName) then begin
+   aMessage:='The access rights of '+aFinalFileName+' could not be carried over, so it was left alone.';
+   exit;
   end;
-  DeleteFile(aBackupFileName);
+{$else}
+  CopyFileRights(aFinalFileName,aNewFileName);
+{$endif}
+  if not FindFreeBackupName(aFinalFileName,aBackupFileName,Reason) then begin
+   aBackupFileName:='';
+   aMessage:=Reason;
+   exit;
+  end;
   if not RenameFile(aFinalFileName,aBackupFileName) then begin
    aBackupFileName:='';
    aMessage:='Could not set '+aFinalFileName+' aside, so it was left alone.';
@@ -713,7 +901,17 @@ begin
  end;
  if not RenameFile(aNewFileName,aFinalFileName) then begin
   if length(aBackupFileName)>0 then begin
-   RenameFile(aBackupFileName,aFinalFileName);
+   // Put back what was there, and if that does not work either, say where both
+   // files are and keep the name of the one which was set aside. Clearing it
+   // here, which is what this did, told the caller that there was nothing to
+   // put back while the file which was there sat under a name only this
+   // function had ever seen.
+   if not RenameFile(aBackupFileName,aFinalFileName) then begin
+    aMessage:='Could not put '+aNewFileName+' under the name '+aFinalFileName+
+              '. What was there is at '+aBackupFileName+' and the new file is at '+aNewFileName+'.';
+    aBothRemain:=true;
+    exit;
+   end;
    aBackupFileName:='';
   end;
   aMessage:='Could not put '+aNewFileName+' under the name '+aFinalFileName+'.';
@@ -1352,7 +1550,12 @@ begin
 
    // Everything is written into a new file rather than in place, because the
    // header area may have to grow, which shifts every section behind it.
-   TargetName:=aFileName+'.mapsymbols-tmp';
+   //
+   // Under a name which was free and is now taken by this run, rather than under
+   // a fixed one which whatever was there had to make way for.
+   if not AcquireTemporaryName(aFileName,'mapsymbols-tmp',TargetName,fMessage) then begin
+    exit;
+   end;
    Target:=TFileStream.Create(TargetName,fmCreate);
    try
 
