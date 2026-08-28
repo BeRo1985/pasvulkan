@@ -673,6 +673,10 @@ end;
 const GENERIC_WRITE_ACCESS=TpvUInt32($40000000);
       CREATE_NEW_FILE=TpvUInt32(1);
       OPEN_EXISTING_FILE=TpvUInt32(3);
+      // These two are the same number by coincidence and not by kinship: one is
+      // an attribute of a file, the other a right to ask about one. Written out
+      // separately for that reason, so that nobody later takes one of them for
+      // a copy of the other and removes it.
       FILE_ATTRIBUTE_NORMAL_FLAG=TpvUInt32($00000080);
       FILE_READ_ATTRIBUTES_ACCESS=TpvUInt32($00000080);
       FILE_SHARE_ALL=TpvUInt32($00000007);
@@ -760,11 +764,23 @@ begin
  end;
 end;
 
+// Whether a name is one of the ones this run was told to write.
+function IsWantedFileName(const aFileName:String):Boolean;
+var Index:TpvSizeInt;
+begin
+ result:=false;
+ for Index:=0 to length(FileNamesToKeepClear)-1 do begin
+  if SameFileName(aFileName,FileNamesToKeepClear[Index]) then begin
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
 function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
 const cMaximalAttempts=1000;
-var Attempt,Index:TpvSizeInt;
+var Attempt:TpvSizeInt;
     Extension,Candidate:String;
-    Wanted:Boolean;
 begin
  result:=false;
  aFileName:='';
@@ -778,14 +794,7 @@ begin
   end;
   // A name which somebody asked this run to write is not free, however free it
   // looks: it is not there yet because it is going to be written later.
-  Wanted:=false;
-  for Index:=0 to length(FileNamesToKeepClear)-1 do begin
-   if SameFileName(Candidate,FileNamesToKeepClear[Index]) then begin
-    Wanted:=true;
-    break;
-   end;
-  end;
-  if Wanted then begin
+  if IsWantedFileName(Candidate) then begin
    continue;
   end;
   if CreateFileExclusively(Candidate) then begin
@@ -810,6 +819,15 @@ begin
    Candidate:=aBaseFileName+'.mapsymbols-old';
   end else begin
    Candidate:=aBaseFileName+'.mapsymbols-old-'+IntToStr(Attempt+1);
+  end;
+  // The same rule as next door: a name this run is going to write is not a name
+  // this run may set something aside under, however free it looks. Reachable
+  // only for somebody who asks for an output called .mapsymbols-old, which is
+  // not going to happen, but the promise is that every name this unit hands out
+  // respects the list, and a promise which one of two functions keeps is not a
+  // promise.
+  if IsWantedFileName(Candidate) then begin
+   continue;
   end;
   // Created rather than only asked about. Asking and then using the answer
   // leaves a gap in which a second run asks the same question and gets the same
@@ -885,6 +903,7 @@ end;
 
 function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
 var Answered:Boolean;
+    LeftDirectory,RightDirectory,LeftName,RightName:String;
 begin
  if (length(aLeftFileName)=0) or (length(aRightFileName)=0) then begin
   result:=false;
@@ -895,6 +914,33 @@ begin
  result:=SameExistingFile(aLeftFileName,aRightFileName,Answered);
  if Answered then begin
   exit;
+ end;
+ // At least one of them is not there yet, which is the ordinary case for
+ // something about to be written. But the directory it is going to be written
+ // into is there, and the same question can be asked about that: two names for
+ // one directory plus the same last part is two names for one file, and a
+ // directory which is reached through a link is the ordinary way for that to
+ // happen. /var/log/app.dbg and /var/log-link/app.dbg are one file the moment
+ // either of them is created.
+ LeftDirectory:=ExtractFilePath(ExpandFileName(aLeftFileName));
+ RightDirectory:=ExtractFilePath(ExpandFileName(aRightFileName));
+ LeftName:=ExtractFileName(aLeftFileName);
+ RightName:=ExtractFileName(aRightFileName);
+ if (length(LeftDirectory)>0) and (length(RightDirectory)>0) and
+    (length(LeftName)>0) and (length(RightName)>0) then begin
+  result:=SameExistingFile(ExcludeTrailingPathDelimiter(LeftDirectory),
+                           ExcludeTrailingPathDelimiter(RightDirectory),Answered);
+  if Answered then begin
+   if not result then begin
+    exit;
+   end;
+{$ifdef Windows}
+   result:=SameText(LeftName,RightName);
+{$else}
+   result:=LeftName=RightName;
+{$endif}
+   exit;
+  end;
  end;
 {$ifdef Windows}
  result:=SameText(ExpandFileName(aLeftFileName),ExpandFileName(aRightFileName));

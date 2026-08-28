@@ -271,6 +271,16 @@ function pvCrashReportDumpException(const aException:Exception;const aAddress:Tp
 // nothing. Only frames handed in replace captured frames, since those are two
 // answers to the same question.
 //
+// Whatever comes together that way, the identifier is then made of the frames
+// from the crash site onwards. A stack captured at a raise begins above the
+// raise, inside the machinery which is the same for every exception a program
+// ever has, and whether those frames are in front or behind the crash site
+// depends on how much the caller handed in. Cutting back to the crash site is
+// what makes the same crash give the same identifier wherever in the program it
+// was reported from, which is the one thing an identifier for grouping has to
+// do. The printed stack keeps those frames, since a reader may want to see
+// them.
+//
 // aAddressIsReturnAddress, as in pvCrashReportDumpException, says which kind of
 // address aAddress is, because that decides whether the name is looked up one
 // byte earlier.
@@ -1246,19 +1256,51 @@ begin
 end;
 {$ifend}
 
-function CrashReportFormatAddressFallback(const aAddress:TpvPointer):String;
+function CrashReportFormatAddressFallback(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
 {$ifdef fpc}
+var Answer:String;
+    Position:TpvSizeInt;
 begin
  // With the lnfodwrf unit linked in, this resolves to unit, file and line,
  // otherwise it degrades to a bare address. BackTraceStrFunc indents its result
  // for direct printing, which would collide with the indentation the callers
  // here apply themselves.
- result:=Trim(String(BackTraceStrFunc(aAddress)));
+ if not aReturnAddress then begin
+  result:=Trim(String(BackTraceStrFunc(aAddress)));
+  exit;
+ end;
+ // A return address points behind the call it came from, so the line which
+ // belongs to it is the one of the byte before. The runtime's formatter looks
+ // up whatever it is asked about and prints that same thing, and it offers no
+ // way to separate the two, which is why its own backtraces name the statement
+ // after the call. So it is asked about the byte before, and the address it
+ // printed is replaced by the real one.
+ //
+ // Which is what the resolver above does as well, so that both paths answer the
+ // same question and only differ in who they ask.
+ Answer:=Trim(String(BackTraceStrFunc(TpvPointer(TpvPtrUInt(aAddress)-1))));
+ result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
+ // Everything the runtime said apart from the address it opened with, which is
+ // the first run of non blank characters.
+ Position:=1;
+ while (Position<=length(Answer)) and (Answer[Position]<>' ') do begin
+  inc(Position);
+ end;
+ while (Position<=length(Answer)) and (Answer[Position]=' ') do begin
+  inc(Position);
+ end;
+ if Position<=length(Answer) then begin
+  result:=result+'  '+copy(Answer,Position,(length(Answer)-Position)+1);
+ end;
 end;
 {$else}
 var MemoryInformation:TMemoryBasicInformation;
     ModuleFileName:array[0..MAX_PATH] of Char;
 begin
+ // Nothing here looks anything up, so which kind of address it is makes no
+ // difference: a module and an offset into it are the same either way. The
+ // argument is still taken, so that the one thing every caller has to say is
+ // said everywhere and not only where somebody can currently use it.
  result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
  FillChar(MemoryInformation,SizeOf(TMemoryBasicInformation),#0);
  if (VirtualQuery(aAddress,MemoryInformation,SizeOf(TMemoryBasicInformation))<>0) and
@@ -1341,7 +1383,7 @@ begin
   exit;
  end;
 {$ifend}
- result:=CrashReportFormatAddressFallback(aAddress);
+ result:=CrashReportFormatAddressFallback(aAddress,aReturnAddress);
 end;
 
 function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32):String;
@@ -1493,22 +1535,62 @@ function pvCrashReportDumpException(const aException:Exception;const aAddress:Tp
 var Fingerprint:String;
     Index:TpvInt32;
     Frames:PPointer;
+    // The last address which was put into the text, so that the same one does
+    // not go in twice in a row. Nothing is printed twice for the ordinary
+    // reason that nothing crashed twice at one address in a row.
+    Previous:TpvPointer;
+    Have:Boolean;
+    // The text of that last line, for the one place where the thing which
+    // follows is not a list of addresses but a block of text somebody else
+    // formatted.
+    LastLine:String;
 {$ifdef fpc}
     FrameCount:TpvInt32;
 {$else}
-    StackTrace:String;
+    StackTrace,FirstLine:String;
+    Position:TpvSizeInt;
 {$endif}
+
+ // One line per address, and the same address twice in a row is one line.
+ //
+ // A caller who knows the crash site and says so hands over an address which
+ // the captured stack usually starts with as well, and that used to come out as
+ // the same line printed twice, one above the other.
+ procedure AddAddress(const aValue:TpvPointer;const aValueIsReturnAddress:Boolean);
+ begin
+  if Have and (Previous=aValue) then begin
+   exit;
+  end;
+  LastLine:='  '+pvCrashReportFormatAddress(aValue,aValueIsReturnAddress);
+  result:=result+LastLine+LineEnding;
+  Previous:=aValue;
+  Have:=true;
+ end;
+
 begin
  result:='Program exception!'+LineEnding+'Stack trace:'+LineEnding+LineEnding;
  if assigned(aException) then begin
   result:=result+'Exception class: '+aException.ClassName+LineEnding+
                  'Message: '+aException.Message+LineEnding;
  end;
+ Previous:=nil;
+ Have:=false;
+ LastLine:='';
 {$ifdef fpc}
+ // Through the same formatter as everything else in here, rather than through
+ // the runtime's own. That formatter asks the appended symbol table first, which
+ // is the whole point of appending one: a build which ships without its debug
+ // file has nothing else to answer with, and this is the most prominent stack in
+ // the report. It used to be the one part of a report which went to the runtime
+ // instead and therefore the one part which came out as bare addresses.
+ //
+ // The runtime is still asked where the table has nothing, inside the fallback.
  if assigned(aAddress) then begin
-  result:=result+String(BackTraceStrFunc(aAddress))+LineEnding;
- end else begin
-  result:=result+String(BackTraceStrFunc(ExceptAddr))+LineEnding;
+  AddAddress(aAddress,aAddressIsReturnAddress);
+ end else if assigned(ExceptAddr) then begin
+  // The address of the raise statement itself on this compiler, not the one
+  // behind it.
+  AddAddress(ExceptAddr,false);
  end;
  if assigned(aFrames) and (aFrameCount>0) then begin
   Frames:=aFrames;
@@ -1522,7 +1604,9 @@ begin
    // The frame value itself must be dereferenced here. Passing the slot pointer
    // instead, as the previous copies of this routine did, formats the address of
    // the frame array element rather than the return address it holds.
-   result:=result+String(BackTraceStrFunc(Frames^))+LineEnding;
+   //
+   // Everything in a frame list is where a call goes back to.
+   AddAddress(Frames^,true);
    inc(Frames);
   end;
  end;
@@ -1532,13 +1616,13 @@ begin
  // captured stack, it stands in front of it; frames do replace it, since they
  // are another answer to the same question.
  if assigned(aAddress) then begin
-  result:=result+'  '+pvCrashReportFormatAddress(aAddress,aAddressIsReturnAddress)+LineEnding;
+  AddAddress(aAddress,aAddressIsReturnAddress);
  end;
  if assigned(aFrames) and (aFrameCount>0) then begin
   Frames:=aFrames;
   for Index:=0 to aFrameCount-1 do begin
    // The value in the slot, not the slot.
-   result:=result+'  '+pvCrashReportFormatAddress(Frames^)+LineEnding;
+   AddAddress(Frames^,true);
    inc(Frames);
   end;
  end else begin
@@ -1553,6 +1637,31 @@ begin
    // from. Where they belong to another tool, this is that tool's text and the
    // identifier falls back to the recorded raise address, which is then the
    // only thing both sides can agree on.
+   //
+   // And where it opens with the line which was just written, that line is not
+   // written a second time. A captured stack under Delphi begins at the raise,
+   // which is the very address a caller who knows it hands over, so the two met
+   // here and said the same thing twice.
+   if Have then begin
+    Position:=Pos(#10,StackTrace);
+    if Position>0 then begin
+     FirstLine:=copy(StackTrace,1,Position-1);
+    end else begin
+     FirstLine:=StackTrace;
+    end;
+    while (length(FirstLine)>0) and (FirstLine[length(FirstLine)]=#13) do begin
+     Delete(FirstLine,length(FirstLine),1);
+    end;
+    if FirstLine=LastLine then begin
+     if Position>0 then begin
+      Delete(StackTrace,1,Position);
+     end else begin
+      StackTrace:='';
+     end;
+    end;
+   end;
+  end;
+  if length(StackTrace)>0 then begin
    result:=result+StackTrace;
    if StackTrace[length(StackTrace)]<>#10 then begin
     result:=result+LineEnding;
@@ -1567,7 +1676,9 @@ begin
  end;
 {$endif}
  // The same addresses the stack above was printed from, so that the two cannot
- // describe different frames.
+ // describe different frames. It takes them from the crash site onwards, which
+ // is the one difference, and it is there on purpose: see the note at its
+ // declaration.
  Fingerprint:=pvCrashReportFingerprint(aException,5,aFrameCount,aFrames,aAddress,aAddressIsReturnAddress);
  if length(Fingerprint)>0 then begin
   result:=result+'Crash fingerprint: '+Fingerprint+LineEnding;
@@ -2008,12 +2119,9 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
 {$ifndef fpc}
     StackInfo:PpvCrashReportStackInfo;
 {$endif}
-    Snapshot:TpvCrashReportEntry;
-    Entry:PpvCrashReportEntry;
-    Newest,Wanted:TpvUInt32;
-    OwnThreadID:TpvUInt64;
-    Scan,ScanCount:TpvInt32;
     Found:Boolean;
+    RaiseAddress:TpvPointer;
+    RaiseIsReturnAddress:Boolean;
 
  procedure Feed(const aValue:String);
  var Position:TpvSizeInt;
@@ -2025,6 +2133,116 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
   // A separator between the names, so that two different splits of the same
   // letters cannot come out the same.
   Hash:=Hash xor (Hash shr 29);
+ end;
+
+ // Adds one address, and the same address twice in a row only once.
+ //
+ // Without that, what comes out depends on how much the caller said rather than
+ // on where the crash was. Under Delphi the captured block begins with the
+ // return address of the raise, which is exactly the address a caller who knows
+ // the crash site hands over, so it went in twice, the name was fed twice, and
+ // the same crash reported from two places in the program got two different
+ // identifiers. For a thing whose only purpose is to put the same crash in one
+ // pile, that is the one property which has to hold.
+ procedure AddAddress(const aValue:TpvPointer;const aValueIsReturnAddress:Boolean);
+ begin
+  if Count>=cMaximalStackFrames then begin
+   exit;
+  end;
+  if (Count>0) and (Addresses[Count-1]=aValue) then begin
+   exit;
+  end;
+  Addresses[Count]:=aValue;
+  ReturnAddresses[Count]:=aValueIsReturnAddress;
+  inc(Count);
+ end;
+
+ // The newest raise or fault this thread recorded, which is where the crash
+ // was. Written down by the vectored handler and by the raise hook, whoever
+ // owns the hooks of the runtime.
+ function NewestRecordedAddress(out aRecorded:TpvPointer;out aRecordedIsReturnAddress:Boolean):Boolean;
+ var Snapshot:TpvCrashReportEntry;
+     Entry:PpvCrashReportEntry;
+     Newest,Wanted:TpvUInt32;
+     OwnThreadID:TpvUInt64;
+     Scan,ScanCount:TpvInt32;
+ begin
+  result:=false;
+  aRecorded:=nil;
+  aRecordedIsReturnAddress:=false;
+  if TpvUInt32(CrashReportSequence)=0 then begin
+   exit;
+  end;
+  Newest:=TpvUInt32(CrashReportSequence);
+  ScanCount:=pvCrashReportRingBufferSize;
+  if TpvUInt32(ScanCount)>Newest then begin
+   ScanCount:=TpvInt32(Newest);
+  end;
+  OwnThreadID:=CrashReportCurrentThreadID;
+  // Taken as a copy and rechecked afterwards, since the slot can be taken over
+  // while it is being read. The same dance as everywhere else in here.
+  for Scan:=0 to ScanCount-1 do begin
+   Wanted:=Newest-TpvUInt32(Scan);
+   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
+   if Entry^.Sequence<>Wanted then begin
+    continue;
+   end;
+   CrashReportReadBarrier;
+   Snapshot:=Entry^;
+   CrashReportReadBarrier;
+   if (Entry^.Sequence=Wanted) and
+      (Snapshot.ThreadID=OwnThreadID) and
+      assigned(Snapshot.Address) and
+      ((Snapshot.Kind=pvCrashReportKindRaise) or (Snapshot.Kind=pvCrashReportKindFault)) then begin
+    aRecorded:=Snapshot.Address;
+    // Which kind of address it is was written down when it was recorded,
+    // because only there was it known.
+    aRecordedIsReturnAddress:=(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0;
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+
+ // Throws away what stands between the report and the crash.
+ //
+ // A stack captured at a raise does not begin at the raise. Under Delphi it
+ // begins three frames above it, inside the runtime's own raise machinery,
+ // which is the same three frames for every exception a program ever has: they
+ // say nothing about which crash this is, they take three of the five names
+ // this identifier is made of, and whether they are there at all depends on who
+ // asked. A caller which knows the crash site and hands it over puts it in
+ // front of them, one which does not lets them stand first, and the same crash
+ // then gets two identifiers depending on where in the program it was reported.
+ //
+ // So the list is cut back to the crash site wherever the crash site is in it.
+ // Both of those callers then describe the same thing, which is what an
+ // identifier whose whole purpose is grouping has to do.
+ //
+ // Only looked for near the top, since the frames being cut away are the few of
+ // the raise itself. A routine which recursed onto its own raise address deeper
+ // down keeps its frames.
+ procedure BeginAtRaiseAddress(const aRaiseAddress:TpvPointer);
+ const cMaximalRaiseMachineryFrames=8;
+ var Position,Source,Target:TpvInt32;
+ begin
+  if not assigned(aRaiseAddress) then begin
+   exit;
+  end;
+  Position:=1;
+  while (Position<Count) and (Position<=cMaximalRaiseMachineryFrames) do begin
+   if Addresses[Position]=aRaiseAddress then begin
+    Target:=0;
+    for Source:=Position to Count-1 do begin
+     Addresses[Target]:=Addresses[Source];
+     ReturnAddresses[Target]:=ReturnAddresses[Source];
+     inc(Target);
+    end;
+    Count:=Target;
+    exit;
+   end;
+   inc(Position);
+  end;
  end;
 
 begin
@@ -2044,22 +2262,18 @@ begin
  // therefore describing one stack in the report and a different one in the
  // fingerprint of that same report.
  if assigned(aAddress) then begin
-  Addresses[Count]:=aAddress;
-  // Said by the caller, because only the caller knows. A raise address from
-  // Delphi is the one behind the raise, the one FreePascal reports and the one
-  // a hardware fault reports are the instruction itself, and both kinds turn up
-  // on both compilers.
-  ReturnAddresses[Count]:=aAddressIsReturnAddress;
-  inc(Count);
+  // The kind is said by the caller, because only the caller knows. A raise
+  // address from Delphi is the one behind the raise, the one FreePascal reports
+  // and the one a hardware fault reports are the instruction itself, and both
+  // kinds turn up on both compilers.
+  AddAddress(aAddress,aAddressIsReturnAddress);
  end;
  Frames:=aFrames;
  FrameCount:=aFrameCount;
 {$ifdef fpc}
  if (Count=0) and assigned(ExceptAddr) then begin
-  Addresses[Count]:=ExceptAddr;
   // The address of the raise statement itself on this compiler.
-  ReturnAddresses[Count]:=false;
-  inc(Count);
+  AddAddress(ExceptAddr,false);
  end;
  if not (assigned(Frames) and (FrameCount>0)) then begin
   Frames:=ExceptFrames;
@@ -2071,10 +2285,8 @@ begin
    if Count>=cMaximalStackFrames then begin
     break;
    end;
-   Addresses[Count]:=Frames^;
    // Everything in a frame list is where a call goes back to.
-   ReturnAddresses[Count]:=true;
-   inc(Count);
+   AddAddress(Frames^,true);
    inc(Frames);
   end;
  end;
@@ -2097,18 +2309,38 @@ begin
     if Count>=cMaximalStackFrames then begin
      break;
     end;
-    Addresses[Count]:=StackInfo^.Addresses[Index];
     // The block is filled by CrashReportCaptureFrames, whose entries are return
     // addresses throughout, the first one included: it is where the raise went
-    // back to, not the raise itself.
-    ReturnAddresses[Count]:=true;
-    inc(Count);
+    // back to, not the raise itself. Which is why the first of them is usually
+    // the address a caller hands over, and why adding it here would otherwise
+    // be adding it twice.
+    AddAddress(StackInfo^.Addresses[Index],true);
    end;
   end;
  end;
 {$endif}
 
- // And the last resort: the newest raise or fault this thread recorded.
+ // Where the crash was, which decides where this identifier begins.
+ //
+ // What the caller said, if it said anything; under FreePascal otherwise the
+ // raise address of the exception being handled; and otherwise what was
+ // recorded, which is the only one of the three which is there when somebody
+ // else owns the hooks of the runtime.
+ RaiseAddress:=aAddress;
+ RaiseIsReturnAddress:=aAddressIsReturnAddress;
+{$ifdef fpc}
+ if not assigned(RaiseAddress) then begin
+  RaiseAddress:=ExceptAddr;
+  RaiseIsReturnAddress:=false;
+ end;
+{$endif}
+ Found:=false;
+ if not assigned(RaiseAddress) then begin
+  Found:=NewestRecordedAddress(RaiseAddress,RaiseIsReturnAddress);
+ end;
+
+ // The last resort, for a list which is still empty: the recorded address on
+ // its own.
  //
  // Under Delphi with madExcept or anything else owning the stack info hooks
  // there was nothing at all up to here, and the fingerprint came out empty,
@@ -2119,40 +2351,12 @@ begin
  //
  // One address makes a coarse fingerprint. It is still the difference between
  // grouping crashes by where they happened and not grouping them at all.
- if (Count=0) and (TpvUInt32(CrashReportSequence)<>0) then begin
-  Newest:=TpvUInt32(CrashReportSequence);
-  ScanCount:=pvCrashReportRingBufferSize;
-  if TpvUInt32(ScanCount)>Newest then begin
-   ScanCount:=TpvInt32(Newest);
-  end;
-  OwnThreadID:=CrashReportCurrentThreadID;
-  Found:=false;
-  // Taken as a copy and rechecked afterwards, since the slot can be taken over
-  // while it is being read. The same dance as everywhere else in here.
-  for Scan:=0 to ScanCount-1 do begin
-   Wanted:=Newest-TpvUInt32(Scan);
-   Entry:=@CrashReportRingBuffer[(Wanted-1) and (pvCrashReportRingBufferSize-1)];
-   if Entry^.Sequence<>Wanted then begin
-    continue;
-   end;
-   CrashReportReadBarrier;
-   Snapshot:=Entry^;
-   CrashReportReadBarrier;
-   if (Entry^.Sequence=Wanted) and
-      (Snapshot.ThreadID=OwnThreadID) and
-      assigned(Snapshot.Address) and
-      ((Snapshot.Kind=pvCrashReportKindRaise) or (Snapshot.Kind=pvCrashReportKindFault)) then begin
-    Found:=true;
-    break;
-   end;
-  end;
-  if Found then begin
-   Addresses[Count]:=Snapshot.Address;
-   // Written down when it was recorded, because only there was it known.
-   ReturnAddresses[Count]:=(Snapshot.Flags and pvCrashReportFlagReturnAddress)<>0;
-   inc(Count);
-  end;
+ if (Count=0) and Found then begin
+  AddAddress(RaiseAddress,RaiseIsReturnAddress);
  end;
+
+ // And now the list starts where the crash is.
+ BeginAtRaiseAddress(RaiseAddress);
 
  Hash:=TpvUInt64($cbf29ce484222325);
 
@@ -3014,8 +3218,13 @@ begin
  FillChar(CrashReportUnixThreadSlot,SizeOf(TpvCrashReportUnixThreadSlot),#0);
  CrashReportInstallThreadSignalHandler;
 {$endif}
- // Plain assignment, not Addr, since RaiseProc is a procedural variable and Addr
- // would yield the address of the variable itself rather than its value.
+ // Plain assignment on the left hand side, since what is wanted is the value the
+ // variable holds and naming it on the right hand side would call it instead.
+ //
+ // The address operator would do just as well here, which is what the uninstall
+ // uses to read the same variable: on a procedural variable it yields the value
+ // and not the place. This comment used to say the opposite, and the code which
+ // believed that read one indirection too far and never matched.
  CrashReportOldRaiseProc:=System.RaiseProc;
  System.RaiseProc:=@CrashReportRaiseProc;
 {$ifend}

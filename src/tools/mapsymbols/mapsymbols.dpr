@@ -1827,6 +1827,10 @@ var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:Stri
     DbgHelpResolved,DbgHelpProbes:TpvSizeInt;
     DbgHelpAvailable,DbgHelpRefused:Boolean;
     UsedDWARF:Boolean;
+    // Whether the map file and the debug file were not only named or found but
+    // actually read, which is what decides whether writing over them would cost
+    // anything.
+    MapFileWasRead,DebugFileWasRead:Boolean;
     OwnDWARF:Boolean;
     ForeignDWARFInExecutable:Boolean;
 
@@ -1851,6 +1855,8 @@ begin
  DebugWorkFileName:='';
  DebugBackupFileName:='';
  PDBStaged:=false;
+ MapFileWasRead:=false;
+ DebugFileWasRead:=false;
  OutputOk:=false;
 
  ParameterIndex:=1;
@@ -1915,8 +1921,9 @@ begin
   WriteLn('  --any-rights   go ahead even when the access rights of the executable');
   WriteLn('                 cannot be given to the file which replaces it. Without');
   WriteLn('                 this such a run stops and leaves the executable alone,');
-  WriteLn('                 since a program which will not start is not a result. For');
-  WriteLn('                 a volume which has no such rights to begin with');
+  WriteLn('                 since a program which will not start is not a result.');
+  WriteLn('                 Meant for a volume which has no such rights to begin');
+  WriteLn('                 with, where the question can only ever be answered no');
   WriteLn('  --pe-debug     put those DWARF sections into the executable itself, so');
   WriteLn('                 that no separate file is needed. Needs room in the section');
   WriteLn('                 header table and says so when there is none');
@@ -2094,6 +2101,9 @@ begin
      DebugImage:=TImageFile.Create;
      if DebugImage.Open(DebugFileName) and DebugImage.FindSection('.debug_line',Section) then begin
       SymbolImage:=DebugImage;
+      // Noted, because what may not be written over is what was read, and a
+      // debug file which was found but turned out to hold nothing was not.
+      DebugFileWasRead:=true;
      end else begin
       FreeAndNil(DebugImage);
      end;
@@ -2185,6 +2195,7 @@ begin
 
    MapReader:=TMapFileReader.Create(Builder,Image.ImageBase,WantSymbols,WantLines);
    MapReader.Parse(MapFileName);
+   MapFileWasRead:=true;
 
   end;
 
@@ -2293,6 +2304,18 @@ begin
   //
   // The names are resolved through links first, since two names for one file is
   // the question being asked and a link is one way for that to happen.
+  //
+  // Only the ones which were really read go in. A map file named on the command
+  // line while the DWARF of the executable was used in the end was not read,
+  // and a debug link which led to a file without line information was followed
+  // and dropped. Turning those down would be turning down a run which is
+  // perfectly safe, and a refusal nobody can explain is worse than no refusal.
+  if not MapFileWasRead then begin
+   MapFileName:='';
+  end;
+  if not DebugFileWasRead then begin
+   DebugFileName:='';
+  end;
   if length(MapFileName)>0 then begin
    if ResolveSymbolicLink(MapFileName,ResolvedFileName,ResolveFailure) then begin
     MapFileName:=ResolvedFileName;
