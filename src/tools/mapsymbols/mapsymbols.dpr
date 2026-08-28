@@ -717,7 +717,7 @@ var InfoSection,AbbrevSection:TMemoryStream;
     Subprogram:TDWARFInfoSubprogram;
     UnitRecord:TSymbolBuilder.TUnitRecord;
     Index,RangeIndex,Complaints,WithLines:TpvSizeInt;
-    SubprogramIndex,SubprogramComplaints,SubprogramsSeen,SymbolIndex:TpvSizeInt;
+    SubprogramIndex,SubprogramNext,SubprogramComplaints,SubprogramsSeen,SymbolIndex:TpvSizeInt;
     ExpectedSubprograms:TpvSizeInt;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
     Directory:String;
@@ -931,6 +931,26 @@ begin
      end;
      inc(SubprogramComplaints);
      continue;
+    end;
+
+    // No routine may reach over where another one begins. Being inside the
+    // compilation unit is not enough: an end address taken from the wrong
+    // neighbour stays inside it and still swallows everything behind. Checked
+    // against the next routine at a different address, since routines which
+    // share one are aliases of each other and cover the same ground.
+    SubprogramNext:=SubprogramIndex+1;
+    while (SubprogramNext<InfoUnit.SubprogramCount) and
+          (InfoUnit.Subprograms[SubprogramNext].LowPC=Subprogram.LowPC) do begin
+     inc(SubprogramNext);
+    end;
+    if (SubprogramNext<InfoUnit.SubprogramCount) and
+       (Subprogram.HighPC>InfoUnit.Subprograms[SubprogramNext].LowPC) then begin
+     if SubprogramComplaints<8 then begin
+      WriteLn('  ',Subprogram.Name,' reaches to $',IntToHex(Subprogram.HighPC,8),
+              ', past $',IntToHex(InfoUnit.Subprograms[SubprogramNext].LowPC,8),' where ',
+              InfoUnit.Subprograms[SubprogramNext].Name,' begins.');
+     end;
+     inc(SubprogramComplaints);
     end;
 
     // And it has to be a routine which was collected, at the address it was

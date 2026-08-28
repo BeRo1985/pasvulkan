@@ -312,31 +312,36 @@ var Index:TpvSizeInt;
  // Eight bytes at a time. A table of a million symbols would otherwise mean
  // tens of millions of rounds through the mixer for the names alone.
  //
- // Every byte of a character, not just its lowest. Where this is built a
- // character is one byte and the two are the same thing, but a Delphi build has
- // two, and masking one away would make two names which differ only above the
- // low byte feed exactly the same thing in. That is not a collision of the kind
- // a digest of this width always has: it is information thrown away before the
- // mixer ever sees it, so those two names could not come out different however
- // wide the digest were.
+ // The name as utf-8 bytes, eight at a time.
+ //
+ // Every byte of it, not just the lowest of each character: masking the rest
+ // away would make two names which differ only above the low byte feed exactly
+ // the same thing in, which is not a collision of the kind a digest of this
+ // width always has but information thrown away before the mixer ever sees it.
+ //
+ // And utf-8 rather than whatever a character happens to be here, because this
+ // digest is the identity of a pdb. A character is one byte under FreePascal
+ // and two under Delphi, so the same table built by the same tool compiled two
+ // ways would otherwise get two identities. For a name of plain ascii, which is
+ // what a symbol name is, the bytes are the same either way, so this is also
+ // the encoding which leaves existing identities where they are.
  procedure FeedString(const aValue:String);
- var Position,Count,ByteIndex,ByteShift:TpvSizeInt;
-     Block,Current:TpvUInt64;
+ var Position,Count,ByteIndex:TpvSizeInt;
+     Block:TpvUInt64;
+     Raw:TpvRawByteString;
  begin
-  Count:=length(aValue);
+  Raw:=TpvRawByteString(UTF8Encode(aValue));
+  Count:=length(Raw);
   Feed(TpvUInt64(Count));
   Block:=0;
   ByteIndex:=0;
   for Position:=1 to Count do begin
-   Current:=TpvUInt64(Ord(aValue[Position]));
-   for ByteShift:=0 to TpvSizeInt(SizeOf(Char))-1 do begin
-    Block:=(Block shl 8) or ((Current shr (ByteShift shl 3)) and $ff);
-    inc(ByteIndex);
-    if ByteIndex=8 then begin
-     Feed(Block);
-     Block:=0;
-     ByteIndex:=0;
-    end;
+   Block:=(Block shl 8) or (TpvUInt64(TpvUInt8(Raw[Position])) and $ff);
+   inc(ByteIndex);
+   if ByteIndex=8 then begin
+    Feed(Block);
+    Block:=0;
+    ByteIndex:=0;
    end;
   end;
   if ByteIndex>0 then begin
@@ -786,6 +791,8 @@ function TSymbolBuilder.SelfCheck(const aFileName:String;out aResolved,aProbes:T
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
     Index,Last,Scan:TpvSizeInt;
+    LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
+    Middle,UnitEnd:TpvUInt64;
     Found:Boolean;
 begin
  aResolved:=0;
@@ -796,6 +803,19 @@ begin
 
   if not SymbolTable.LoadFromFile(aFileName) then begin
    exit;
+  end;
+
+  // Every unit range, at the address it begins. This is the third thing the
+  // table holds and the only one which needs neither a symbol nor a line, so it
+  // is also what a run which asked for neither still produces. Without it such
+  // a run had nothing to probe and passed by having asked nothing.
+  for Index:=0 to fUnitCount-1 do begin
+   inc(aProbes);
+   if SymbolTable.Resolve(fUnits[Index].StartRVA,Location) and
+      (String(Location.UnitName)=fUnits[Index].Name) and
+      (String(Location.FileName)=PreparePath(fUnits[Index].FileName)) then begin
+    inc(aResolved);
+   end;
   end;
 
   // Every address a routine starts at. That is the question a crash actually
@@ -819,6 +839,43 @@ begin
      if Location.SymbolName=fSymbols[Scan].Name then begin
       inc(aResolved);
       break;
+     end;
+    end;
+   end;
+   // And once inside the routine rather than at its door. A crash address is
+   // almost never the first byte of anything, and the way there is a different
+   // one: an exact hit is found outright, while an address in the middle has to
+   // be walked back to the nearest routine in front of it. That path was not
+   // being taken by any of these probes.
+   if (Last+1)<fSymbolCount then begin
+    Middle:=fSymbols[Index].RVA+((fSymbols[Last+1].RVA-fSymbols[Index].RVA) shr 1);
+    // Only where the middle is still inside the same unit as the routine.
+    // Where the next routine belongs to the next unit, the space between them
+    // does not belong to this one, and a resolver which says so is right: the
+    // last routine of one unit must not be carried over into the next.
+    UnitEnd:=0;
+    LowIndex:=0;
+    HighIndex:=fUnitCount-1;
+    while LowIndex<=HighIndex do begin
+     MiddleIndex:=LowIndex+((HighIndex-LowIndex) shr 1);
+     if fSymbols[Index].RVA<fUnits[MiddleIndex].StartRVA then begin
+      HighIndex:=MiddleIndex-1;
+     end else if fSymbols[Index].RVA>=(fUnits[MiddleIndex].StartRVA+fUnits[MiddleIndex].Size) then begin
+      LowIndex:=MiddleIndex+1;
+     end else begin
+      UnitEnd:=fUnits[MiddleIndex].StartRVA+fUnits[MiddleIndex].Size;
+      break;
+     end;
+    end;
+    if (Middle>fSymbols[Index].RVA) and (UnitEnd>0) and (Middle<UnitEnd) then begin
+     inc(aProbes);
+     if SymbolTable.Resolve(Middle,Location) then begin
+      for Scan:=Index to Last do begin
+       if Location.SymbolName=fSymbols[Scan].Name then begin
+        inc(aResolved);
+        break;
+       end;
+      end;
      end;
     end;
    end;

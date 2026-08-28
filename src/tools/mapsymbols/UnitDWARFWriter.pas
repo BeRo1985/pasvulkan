@@ -420,7 +420,7 @@ procedure TDWARFWriter.BuildCompileUnit(const aUnitIndex:TpvSizeInt;const aState
 var UnitRecord:TSymbolBuilder.TUnitRecord;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
     StartPosition,LengthPosition,EndPosition:TpvInt64;
-    Index:TpvSizeInt;
+    Index,NextIndex:TpvSizeInt;
 {$ifndef PasVulkanMapSymbolsLinearLookups}
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
 {$endif}
@@ -486,9 +486,22 @@ begin
    break;
   end;
 {$endif}
+  // Where this routine stops is where the next one starts, and the next one is
+  // the next at a different address rather than simply the next in the list.
+  // Two names at one address are ordinary, main and PASCALMAIN, SYSTEM.MOVE and
+  // FPC_MOVE, and taking the one right behind meant comparing an address with
+  // itself, finding it no larger, and falling back on the end of the whole
+  // compilation unit. The first of the two then claimed everything to the end
+  // of the unit while its twin claimed the few bytes which really belong to
+  // both, and a debugger which goes by these ranges answers accordingly.
   SymbolHigh:=UnitHigh;
-  if (Index+1)<fBuilder.SymbolCount then begin
-   NextSymbol:=fBuilder.GetSymbol(Index+1);
+  NextIndex:=Index+1;
+  while (NextIndex<fBuilder.SymbolCount) and
+        (fBuilder.GetSymbol(NextIndex).RVA=SymbolRecord.RVA) do begin
+   inc(NextIndex);
+  end;
+  if NextIndex<fBuilder.SymbolCount then begin
+   NextSymbol:=fBuilder.GetSymbol(NextIndex);
    if ((ImageBase+NextSymbol.RVA)>(ImageBase+SymbolRecord.RVA)) and
       ((ImageBase+NextSymbol.RVA)<SymbolHigh) then begin
     SymbolHigh:=ImageBase+NextSymbol.RVA;

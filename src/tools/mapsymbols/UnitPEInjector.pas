@@ -134,6 +134,49 @@ begin
  end;
 end;
 
+// The ordinary reflected CRC32 over a stretch of a stream. Used to hold the
+// bytes of a section against themselves across the rewrite.
+function StreamCRC32(const aStream:TStream;const aOffset,aSize:TpvInt64):TpvUInt32;
+const Polynomial=TpvUInt32($edb88320);
+var Table:array[0..255] of TpvUInt32;
+    Index,Bit:TpvInt32;
+    Value:TpvUInt32;
+    Buffer:array[0..65535] of TpvUInt8;
+    Remaining:TpvInt64;
+    Chunk,Position:TpvInt32;
+begin
+ for Index:=0 to 255 do begin
+  Value:=TpvUInt32(Index);
+  for Bit:=0 to 7 do begin
+   if (Value and 1)<>0 then begin
+    Value:=(Value shr 1) xor Polynomial;
+   end else begin
+    Value:=Value shr 1;
+   end;
+  end;
+  Table[Index]:=Value;
+ end;
+ Value:=TpvUInt32($ffffffff);
+ aStream.Seek(aOffset,soBeginning);
+ Remaining:=aSize;
+ while Remaining>0 do begin
+  if Remaining>TpvInt64(SizeOf(Buffer)) then begin
+   Chunk:=SizeOf(Buffer);
+  end else begin
+   Chunk:=TpvInt32(Remaining);
+  end;
+  Chunk:=aStream.Read(Buffer,Chunk);
+  if Chunk<=0 then begin
+   break;
+  end;
+  for Position:=0 to Chunk-1 do begin
+   Value:=(Value shr 8) xor Table[(Value xor TpvUInt32(Buffer[Position])) and $ff];
+  end;
+  dec(Remaining,Chunk);
+ end;
+ result:=Value xor TpvUInt32($ffffffff);
+end;
+
 function AlignUp(const aValue,aAlignment:TpvUInt64):TpvUInt64;
 begin
  if aAlignment<=1 then begin
@@ -242,7 +285,7 @@ var Source,Target:TFileStream;
     SymbolTablePointer,SymbolCount:TpvUInt32;
     SectionAlignment,FileAlignment,SizeOfImage,SizeOfHeaders:TpvUInt32;
     CertificateAddress,CertificateSize:TpvUInt32;
-    SectionHeaderTableOffset,SectionHeaderTableEnd:TpvInt64;
+    SectionHeaderTableOffset:TpvInt64;
     NewSizeOfHeaders,Delta:TpvUInt32;
     Index:TpvSizeInt;
     VirtualAddress,VirtualSize,RawPointer:TpvUInt32;
@@ -262,7 +305,7 @@ var Source,Target:TFileStream;
     OldStringTable:TMemoryStream;
     OldStringTableSize:TpvUInt32;
     BodyEnd,KnownEnd:TpvInt64;
-    NeedStringTable:Boolean;
+    NeedStringTable,KeepOldStringTable:Boolean;
     NewSectionHeaderTableEnd:TpvInt64;
     DebugDirectoryAddress,DebugDirectorySize:TpvUInt32;
     ExistingDebugEntries:TExistingDebugEntries;
@@ -273,6 +316,7 @@ var Source,Target:TFileStream;
     DebugEntryCount:TpvSizeInt;
     EntryOffset:TpvInt64;
     MergedDirectory:TMemoryStream;
+    Corrupted:String;
 
  // Where an address relative to the image base lands in the source file, going
  // by the sections as they were before anything moved.
@@ -598,7 +642,17 @@ begin
     end;
    end;
 
-   SectionHeaderTableEnd:=SectionHeaderTableOffset+(TpvInt64(NumberOfSections)*SectionHeaderSize);
+   // An entry whose payload is going away can only be left out where the whole
+   // directory is written again, which is what adding one of our own does.
+   // Without that the directory stays where it is and is only nudged along, so
+   // the entry would remain in it, still counted by its size, pointing at a
+   // section which no longer exists. Saying it was dropped would then be untrue
+   // twice over, so this stops instead of half doing it.
+   if (LostDebugCount>0) and not HaveCodeView then begin
+    fMessage:='The debug directory of the executable points into a section which would be replaced, and there is no way to rewrite it here.';
+    exit;
+   end;
+
    NewSectionHeaderTableEnd:=SectionHeaderTableOffset+(TpvInt64(KeptCount)*SectionHeaderSize);
 
    // Grow the header area when the new section headers do not fit. Delphi
@@ -631,7 +685,27 @@ begin
    // which nothing else here should have to pay for: adding only the entry
    // which names a pdb leaves an ordinary executable with no string table at
    // all, and one which can therefore be built over again without trouble.
-   NeedStringTable:=false;
+   //
+   // But a section which stays and whose name is already in the old table needs
+   // that table to go on existing, and to go on saying the same thing at the
+   // same offsets. Its header is written back as it stands, slash and decimal
+   // offset included, so dropping the table would leave that name pointing at
+   // nothing, and building a fresh one would leave it pointing at whichever
+   // name happened to land on that offset instead. Neither is a section this
+   // run was asked to touch.
+   KeepOldStringTable:=false;
+   for Index:=0 to NumberOfSections-1 do begin
+    if (not ExistingSections[Index].Dropped) and (ExistingSections[Index].Raw[0]=TpvUInt8(Ord('/'))) then begin
+     KeepOldStringTable:=true;
+     break;
+    end;
+   end;
+   if KeepOldStringTable and not assigned(OldStringTable) then begin
+    fMessage:='A section of the executable names itself through a string table which is not there.';
+    exit;
+   end;
+
+   NeedStringTable:=KeepOldStringTable;
    for Index:=0 to fSectionCount-1 do begin
     if length(fSections[Index].Name)>8 then begin
      NeedStringTable:=true;
@@ -640,28 +714,33 @@ begin
    end;
 
    SetLength(NameOffsets,fSectionCount);
+   for Index:=0 to fSectionCount-1 do begin
+    NameOffsets[Index]:=0;
+   end;
    if NeedStringTable then begin
-    // The string table starts with its own size, and offsets are counted from
-    // its beginning, so the first name sits at four.
-    Value32:=0;
-    StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    if KeepOldStringTable then begin
+     // The old one first and unchanged, so every offset already written into a
+     // header still lands on the name it landed on before. The new names go
+     // behind it.
+     OldStringTable.Position:=0;
+     StringTable.CopyFrom(OldStringTable,OldStringTable.Size);
+    end else begin
+     // The table starts with its own size, and offsets are counted from its
+     // beginning, so the first name sits at four.
+     Value32:=0;
+     StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
+    end;
     for Index:=0 to fSectionCount-1 do begin
      if length(fSections[Index].Name)>8 then begin
       NameOffsets[Index]:=TpvUInt32(StringTable.Position);
       NameText:=TpvRawByteString(fSections[Index].Name);
       StringTable.WriteBuffer(NameText[1],length(NameText));
       StringTable.WriteBuffer(Zero,1);
-     end else begin
-      NameOffsets[Index]:=0;
      end;
     end;
     Value32:=TpvUInt32(StringTable.Size);
     StringTable.Position:=0;
     StringTable.WriteBuffer(Value32,SizeOf(TpvUInt32));
-   end else begin
-    for Index:=0 to fSectionCount-1 do begin
-     NameOffsets[Index]:=0;
-    end;
    end;
 
    // Everything is written into a new file rather than in place, because the
@@ -867,6 +946,49 @@ begin
     Target.Seek(SizeOfImageOffset,soBeginning);
     Value32:=TpvUInt32(NextRVA);
     Target.WriteBuffer(Value32,SizeOf(TpvUInt32));
+
+    // Everything which was added here is read back by the caller. What is not
+    // is everything which was already there, and this run moved all of it: each
+    // section has been shifted by whatever the header area gained, its header
+    // written again from its own bytes with a corrected file offset, and the
+    // body copied only as far as the last section which stays. An error in any
+    // of that gives an executable which does not start, and none of the checks
+    // afterwards look at code, so the run would report success three times over
+    // a program nobody can run any more.
+    //
+    // So every section which stays is held against itself, byte for byte,
+    // before the original is replaced rather than after. A file which fails
+    // here is thrown away and the original never moves.
+    Corrupted:='';
+    NewIndex:=0;
+    for Index:=0 to NumberOfSections-1 do begin
+     if ExistingSections[Index].Dropped then begin
+      continue;
+     end;
+     if (ExistingSections[Index].RawPointer<>0) and (ExistingSections[Index].RawSize<>0) and
+        ((TpvInt64(ExistingSections[Index].RawPointer)+TpvInt64(ExistingSections[Index].RawSize))<=Source.Size) then begin
+      // Read where the header which was just written says the bytes are, rather
+      // than where this expects them to be. An offset corrected wrongly moves
+      // the answer and not the bytes, so comparing the bytes at the place they
+      // were put would agree with itself and miss it entirely. What has to hold
+      // is that a reader following the new header finds the old contents.
+      Target.Seek(SectionHeaderTableOffset+(TpvInt64(NewIndex)*SectionHeaderSize)+20,soBeginning);
+      Target.ReadBuffer(RawPointer,SizeOf(TpvUInt32));
+      Value32:=StreamCRC32(Source,TpvInt64(ExistingSections[Index].RawPointer),TpvInt64(ExistingSections[Index].RawSize));
+      if ((TpvInt64(RawPointer)+TpvInt64(ExistingSections[Index].RawSize))>Target.Size) or
+         (StreamCRC32(Target,TpvInt64(RawPointer),TpvInt64(ExistingSections[Index].RawSize))<>Value32) then begin
+       Corrupted:=ExistingSections[Index].Name;
+       break;
+      end;
+     end;
+     inc(NewIndex);
+    end;
+    if length(Corrupted)>0 then begin
+     fMessage:='The contents of '+Corrupted+' did not survive being moved, so the executable was left alone.';
+     FreeAndNil(Target);
+     DeleteFile(TargetName);
+     exit;
+    end;
 
    finally
     FreeAndNil(Target);

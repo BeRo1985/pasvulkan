@@ -94,7 +94,11 @@ begin
  aAvailable:=false;
  result:=false;
 
- if aBuilder.LineCount=0 then begin
+ // Not turned away for having no line numbers. The lookup by name below tests
+ // the publics hash of the pdb, which has nothing to do with line information,
+ // and a run which asked for symbols only used to skip the one check a foreign
+ // reader performs on what it wrote.
+ if (aBuilder.LineCount=0) and (aBuilder.SymbolCount=0) then begin
   exit;
  end;
 
@@ -170,7 +174,8 @@ begin
    end;
   end;
 
-  result:=aResolved=aProbes;
+  // Nothing asked is not a pass, the same as everywhere else here.
+  result:=(aProbes>0) and (aResolved=aProbes);
 
  finally
   SymCleanup(Process);
