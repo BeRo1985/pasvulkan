@@ -4,27 +4,31 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 // Volumetric scattering, step three: the half-resolution result goes back onto the full-resolution
-// picture, ADDED rather than mixed in - scattered light is light that arrives on top of what is already
-// there, not a veil drawn over it.
+// picture.
 //
-// The obvious shape for this is a fourth pass doing a 2x2 gather, and the obvious thing to leave out of
-// that gather is the depth weighting, which turns it into a plain average. That is where a half-resolution
-// effect goes wrong: across a depth edge, four samples belonging to two different distances get mixed, and
-// a bright shaft crawls out over the silhouette of whatever is in front of it - the very halo the
-// bilateral blur one step earlier went to the trouble of avoiding.
+//   picture = inscattering + (extinction * picture)
 //
-// So the weighting is done here, and it is the same idea as the blur's: each of the four samples counts
-// by how well its own depth agrees with the depth of the pixel being written. The march left that depth
-// in the alpha channel for exactly this. What it does NOT need is a pass of its own - the upsample is
-// four texel fetches, taken in the same dispatch that does the adding.
+// and not picture + inscattering. The same air that adds light also takes light away, and adding only the
+// one half gives a veil laid over the world instead of air standing between the eye and it. Distance then
+// never dims anything, however much haze is piled on top.
+//
+// The upsample is depth-aware, and that is where a half-resolution effect goes wrong if it is not: across
+// a depth edge four samples belonging to two different distances get mixed, and a bright shaft crawls out
+// over the silhouette of whatever is in front of it - the very halo the bilateral blur one step earlier
+// went to the trouble of avoiding.
+//
+// Two ways of doing it, and which one runs is decided per pixel: where the four coarse depths all agree
+// with the fine one there is nothing to weigh and a single sample is taken, and only at the edges - a few
+// per cent of the picture - are the four gathered and weighted. The cheap path is the common one.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2DArray uTextureSource;      // the picture so far, full size
-layout(set = 0, binding = 1) uniform sampler2DArray uTextureScattering;  // the march, half size
-layout(set = 0, binding = 2) uniform sampler2DArray uTextureDepth;       // the resolved opaque depth
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureSource;       // the picture so far, full size
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureInscattering; // the march, half size
+layout(set = 0, binding = 2) uniform sampler2DArray uTextureExtinction;   // and what it takes away
+layout(set = 0, binding = 3) uniform sampler2DArray uTextureDepth;        // the resolved opaque depth
 
-layout(set = 0, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationTexture;
+layout(set = 0, binding = 4, rgba16f) writeonly uniform image2DArray uDestinationTexture;
 
 layout(push_constant) uniform PushConstants {
   vec4 strengthZNearDepthWeightSpare; // x = strength, y = how depth becomes a distance, z = depth weight
@@ -33,22 +37,26 @@ layout(push_constant) uniform PushConstants {
   // Flag bit 0 - VolumetricScatteringComposeFlagShowScatteringOnly - dims the picture almost to nothing
   // and leaves the scattering at full weight. A measurement rather than a look: anything odd in a finished
   // frame could belong to this effect or to something else entirely, and there is no telling the two apart
-  // once both are added at equal weight. What is left of the scene is enough to fly the camera by and too
-  // little to mistake for the effect.
+  // once both are added at equal weight.
+  //
   // Flag bit 1 - VolumetricScatteringComposeFlagEnabled - whether the effect does anything at all this
   // frame. Clear hands the picture through untouched. This pass cannot simply be skipped the way the three
   // before it can: it owns the resource the rest of the chain reads, so it has to write something whatever
   // happens. And it must not merely multiply the scattering by nothing either - with the march skipped,
-  // the buffer holds whatever was left in it, and a stray infinity times zero is still not zero.
+  // the buffers hold whatever was left in them, and a stray infinity times zero is still not zero.
   uvec4 flagsSpare;
 } pushConstants;
 
 const uint VolumetricScatteringComposeFlagShowScatteringOnly = 1u << 0;
 const uint VolumetricScatteringComposeFlagEnabled = 1u << 1;
 
-// How much of the picture is left standing in that mode - enough to see where one is, not enough to
+// How much of the picture is left standing in that first mode - enough to see where one is, not enough to
 // confuse with what is being looked at.
 const float ShowScatteringOnlySceneWeight = 0.03;
+
+// How far apart two linear depths may be before the cheap single-sample path is given up. In the units the
+// march wrote, so metres here.
+const float UpsampleDepthAgreement = 1.0;
 
 // A pixel's depth as a distance that grows away from the camera, the same way the march computed the one
 // it stored - the two have to be the same quantity or comparing them means nothing.
@@ -74,42 +82,84 @@ void main(){
 
   float depthHere = linearDepth(texelFetch(uTextureDepth, at, 0).x);
 
-  // The four half-resolution texels around this pixel. Taken by index rather than by a linear sample,
-  // because each one has to be weighed separately and a linear sample has already blended them.
-  // Through the ratio of the two sizes rather than a fixed half: half of an odd width is not half, and a
-  // coordinate built in one resolution and used in another is the mistake this effect has already been
-  // caught by once.
-  ivec3 scatteringSize = textureSize(uTextureScattering, 0);
-  ivec2 scatteringBase = ivec2(floor(((vec2(at.xy) + vec2(0.5)) * (vec2(scatteringSize.xy) / vec2(destinationSize.xy))) - vec2(0.5)));
+  // The four half-resolution texels around this pixel. Through the ratio of the two sizes rather than a
+  // fixed half: half of an odd width is not half, and a coordinate built in one resolution and used in
+  // another is the mistake this effect has already been caught by once.
+  ivec3 scatteringSize = textureSize(uTextureInscattering, 0);
+  vec2 scatteringCoord = ((vec2(at.xy) + vec2(0.5)) * (vec2(scatteringSize.xy) / vec2(destinationSize.xy))) - vec2(0.5);
+  ivec2 scatteringBase = ivec2(floor(scatteringCoord));
+  vec2 scatteringFraction = scatteringCoord - vec2(scatteringBase);
 
-  vec3 sum = vec3(0.0);
-  float weight = 0.0;
+  vec4 taps[4];
+  vec3 tapExtinctions[4];
+  float depthDifferences[4];
 
   for(int y = 0; y < 2; y++){
     for(int x = 0; x < 2; x++){
-
+      int index = (y * 2) + x;
       ivec2 tapXY = clamp(scatteringBase + ivec2(x, y), ivec2(0), scatteringSize.xy - ivec2(1));
-      vec4 tap = texelFetch(uTextureScattering, ivec3(tapXY, at.z), 0);
-
-      // How far apart the two are along the view, turned into a weight that is one where they agree and
-      // falls away as they part. Never quite zero, so that a pixel whose whole neighbourhood disagrees
-      // still gets an answer rather than nothing.
-      float tapWeight = 1.0 / (1.0 + (abs(tap.w - depthHere) * pushConstants.strengthZNearDepthWeightSpare.z));
-
-      sum += tap.xyz * tapWeight;
-      weight += tapWeight;
-
+      taps[index] = texelFetch(uTextureInscattering, ivec3(tapXY, at.z), 0);
+      tapExtinctions[index] = texelFetch(uTextureExtinction, ivec3(tapXY, at.z), 0).xyz;
+      depthDifferences[index] = abs(taps[index].w - depthHere);
     }
   }
 
-  vec3 scattering = sum / max(weight, 1e-8);
+  vec3 inscattering;
+  vec3 extinction;
+
+  if(((depthDifferences[0] < UpsampleDepthAgreement) && (depthDifferences[1] < UpsampleDepthAgreement)) &&
+     ((depthDifferences[2] < UpsampleDepthAgreement) && (depthDifferences[3] < UpsampleDepthAgreement))){
+
+    // All four belong to the same distance, so there is nothing to weigh against depth and the four are
+    // simply blended by where this pixel falls between them - a plain bilinear read, done by hand because
+    // the other branch needs the four taps separately and one fetch has to serve both. This is the path
+    // almost every pixel takes.
+    //
+    // Blended and not just picked: taking one of the four would shift the whole effect by up to a coarse
+    // texel against the picture it is laid over, which reads as the light shafts sitting beside what casts
+    // them.
+    vec4 bilinear = vec4((1.0 - scatteringFraction.x) * (1.0 - scatteringFraction.y),
+                         scatteringFraction.x * (1.0 - scatteringFraction.y),
+                         (1.0 - scatteringFraction.x) * scatteringFraction.y,
+                         scatteringFraction.x * scatteringFraction.y);
+    inscattering = ((taps[0].xyz * bilinear.x) + (taps[1].xyz * bilinear.y)) +
+                   ((taps[2].xyz * bilinear.z) + (taps[3].xyz * bilinear.w));
+    extinction = ((tapExtinctions[0] * bilinear.x) + (tapExtinctions[1] * bilinear.y)) +
+                 ((tapExtinctions[2] * bilinear.z) + (tapExtinctions[3] * bilinear.w));
+
+  }else{
+
+    // An edge. Each tap counts by how well its own depth agrees with this pixel's, so that what belongs to
+    // the far side of the silhouette contributes almost nothing.
+    float weights[4];
+    float sum = 0.0;
+    for(int index = 0; index < 4; index++){
+      weights[index] = 1.0 / (1.0 + (depthDifferences[index] * pushConstants.strengthZNearDepthWeightSpare.z));
+      sum += weights[index];
+    }
+
+    inscattering = vec3(0.0);
+    extinction = vec3(0.0);
+    for(int index = 0; index < 4; index++){
+      float weight = weights[index] / max(sum, 1e-8);
+      inscattering += taps[index].xyz * weight;
+      extinction += tapExtinctions[index] * weight;
+    }
+
+  }
 
   float sceneWeight = ((pushConstants.flagsSpare.x & VolumetricScatteringComposeFlagShowScatteringOnly) != 0u) ?
                         ShowScatteringOnlySceneWeight :
                         1.0;
 
+  // The strength dials the effect as a whole: it scales what was gathered, and pulls the extinction back
+  // toward one by the same amount, so that turning it down thins the air rather than leaving it thick and
+  // unlit.
+  float strength = pushConstants.strengthZNearDepthWeightSpare.x;
+  vec3 appliedExtinction = mix(vec3(1.0), extinction, clamp(strength, 0.0, 1.0));
+
   imageStore(uDestinationTexture,
              at,
-             vec4((here.xyz * sceneWeight) + (scattering * pushConstants.strengthZNearDepthWeightSpare.x), here.w));
+             vec4(((here.xyz * sceneWeight) * appliedExtinction) + (inscattering * strength), here.w));
 
 }

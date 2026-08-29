@@ -1101,6 +1101,11 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringMinimumStepCount:TpvInt32;
        fVolumetricScatteringMaximumStepCount:TpvInt32;
        fVolumetricScatteringRayLengthSegments:Boolean;
+       fVolumetricScatteringNoiseDensity:Boolean;
+       fVolumetricScatteringNoiseScattering:TpvFloat;
+       fVolumetricScatteringNoiseExtinction:TpvFloat;
+       fVolumetricScatteringNoiseScale:TpvFloat;
+       fVolumetricScatteringNoiseTime:TpvDouble;
        fVolumetricScatteringShowScatteringOnly:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
@@ -1493,9 +1498,10 @@ type { TpvScene3DRendererInstance }
        property VolumetricScatteringFactor:TpvFloat read fVolumetricScatteringFactor write fVolumetricScatteringFactor;
        // The strength of the light being scattered, as opposed to how much of the result is taken. The
        // two are separate on purpose: this one belongs to the scene - a brighter sun scatters more - while
-       // the factor above is the taste knob. Twenty is the 2014 value, and it is not decoration: the
-       // scattering coefficients are per metre at sea level, so at one the effect is arithmetically
-       // correct and invisible.
+       // the factor above is the taste knob, and the two live in different passes for that reason: this
+       // one in the march, the other in the compose, so that neither is counted twice. Twenty is not
+       // decoration - the scattering coefficients are per metre at sea level, so at one the effect is
+       // arithmetically correct and invisible.
        property VolumetricScatteringSunIntensity:TpvFloat read fVolumetricScatteringSunIntensity write fVolumetricScatteringSunIntensity;
        // How many samples a ray is walked in, fewest and most: the march scales between the two with the
        // length of the ray, the way the atmosphere's own does. It is the one knob that attacks the cause
@@ -1510,6 +1516,34 @@ type { TpvScene3DRendererInstance }
        // the effect carry; true takes the ray's own length, which is physically consistent and much
        // fainter. A run-time switch so the two can be held against each other on one frame.
        property VolumetricScatteringRayLengthSegments:Boolean read fVolumetricScatteringRayLengthSegments write fVolumetricScatteringRayLengthSegments;
+       // Which of the two density models fills the air, and this is the substantive choice of the whole
+       // effect.
+       //
+       // TRUE is a drifting noise field: one grey density, a single sharp Mie lobe, and banks of mist that
+       // move. It gives what a scale height cannot - haze that is thicker in one place than another at the
+       // same altitude, and shadows that crawl as it drifts.
+       //
+       // FALSE is the physical model: Rayleigh and Mie side by side, each with its own coefficient and its
+       // own phase, and extinction that is COLOURED rather than grey, so the blue is taken out of what lies
+       // behind faster than the red. That is what makes a distance blue and a low sun red, and it is kept
+       // rather than replaced - the noise model cannot do it, having only one density and no colour.
+       //
+       // The planet shell shapes both: it is what makes the air thin with height, and it is asked for
+       // nothing else, so neither model needs an atmosphere to exist.
+       property VolumetricScatteringNoiseDensity:Boolean read fVolumetricScatteringNoiseDensity write fVolumetricScatteringNoiseDensity;
+       // What the noise model scatters and what it swallows, per unit of density. Only that model reads
+       // them - the physical one has its own coefficients, which are physical constants and not knobs. The
+       // ten-to-one between the two is what keeps the mist bright: it gathers far more light than it takes
+       // away, which is how thin fog behaves and thick fog does not.
+       property VolumetricScatteringNoiseScattering:TpvFloat read fVolumetricScatteringNoiseScattering write fVolumetricScatteringNoiseScattering;
+       property VolumetricScatteringNoiseExtinction:TpvFloat read fVolumetricScatteringNoiseExtinction write fVolumetricScatteringNoiseExtinction;
+       // How coarse the noise field is, as a factor on world position: smaller makes the banks larger. A
+       // tenth means the pattern turns over about every ten metres before the octaves are added.
+       property VolumetricScatteringNoiseScale:TpvFloat read fVolumetricScatteringNoiseScale write fVolumetricScatteringNoiseScale;
+       // The time the noise field drifts with, advanced by whoever owns the frame - the same arrangement as
+       // LensRainPostEffectTime, and for the same reason: the renderer has no clock of its own, and a clock
+       // it cannot be paused by would go on drifting through a paused game.
+       property VolumetricScatteringNoiseTime:TpvDouble read fVolumetricScatteringNoiseTime write fVolumetricScatteringNoiseTime;
        // Shows the scattering over a picture dimmed almost to nothing. A measurement rather than a look:
        // anything odd in a finished frame could belong to this effect or to something else entirely, and
        // there is no telling the two apart once both are added at equal weight.
@@ -2551,6 +2585,14 @@ begin
  fVolumetricScatteringMinimumStepCount:=64;
  fVolumetricScatteringMaximumStepCount:=128;
  fVolumetricScatteringRayLengthSegments:=false;
+ // The noise model on by default, and the physical one a property away. Its three numbers are the ones
+ // the effect was tuned with where it came from, against segments taken from the ray's own length - which
+ // is what VolumetricScatteringRayLengthSegments has to be set to for them to mean what they meant there.
+ fVolumetricScatteringNoiseDensity:=true;
+ fVolumetricScatteringNoiseScattering:=0.0025;
+ fVolumetricScatteringNoiseExtinction:=0.00025;
+ fVolumetricScatteringNoiseScale:=0.1;
+ fVolumetricScatteringNoiseTime:=0.0;
  fVolumetricScatteringShowScatteringOnly:=false;
 
  if assigned(fVirtualReality) then begin
@@ -5357,10 +5399,14 @@ begin
                                   );
  end;
 
- // The volumetric scattering's own two. The scattering buffer is half sized and carries the march and both
- // blur steps: rgb the scattered light, alpha the linear view depth the bilateral blur weights by, which
- // is why it is a four-channel float format and not a three-channel one. The compose target is full sized
- // and joins the visible chain, so it has the shape of the antialiasing / radial blur targets around it.
+ // The volumetric scattering's own two. The half-sized type carries the march and both blur steps, and SIX
+ // resources are cut from it rather than one: what the air adds and what it takes away, each at the three
+ // stages, since a compute pass cannot read and write the same image. Of those six the inscattering ones
+ // carry the linear view depth in their alpha - it is what the bilateral blur weights by and what the
+ // compose weighs its taps against - which is why this is a four-channel float format and not a three-
+ // channel one; the extinction is three channels of use in a four-channel image, and shares the type
+ // because the frame graph only aliases within one. The compose target is full sized and joins the visible
+ // chain, so it has the shape of the antialiasing / radial blur targets around it.
  if Renderer.VolumetricScatteringActive then begin
   fFrameGraph.AddImageResourceType('resourcetype_volumetric_scattering',
                                    false,

@@ -6,87 +6,96 @@
 // Volumetric scattering, step two: the separable bilateral blur over the half-resolution march, run twice
 // - once across, once down - by the direction in the push constants.
 //
-// It is not a nicety. Eight steps along a ray cannot give a smooth result on their own, so the march
-// scatters the error with a per-pixel jitter instead of leaving it as banding - and that jitter is what
-// this pass is here to take back out. Without it the dither shows as a regular grid over the whole effect.
+// It is not a nicety. A handful of steps along a ray cannot give a smooth result on their own, so the
+// march scatters the error with a per-pixel jitter instead of leaving it as banding - and that jitter is
+// what this pass is here to take back out. Without it the dither shows as a regular grid over the effect.
+//
+// BOTH buffers go through it together, inscattering and extinction, weighted identically. They describe
+// the same air and are put together again by the compose; smoothing one and not the other would leave
+// light arriving through air that was never thinned for it.
 //
 // "Bilateral" is the other half of the point. A plain gaussian would drag a bright shaft across the
-// silhouette of whatever is casting it, which reads as a halo around every edge. The weight therefore
-// falls off with the difference in the depth the march left in the alpha channel, so two samples that
-// belong to things at different distances barely mix.
-//
-// Compute rather than fragment: nothing here reads a shadow map, so none of the reasons that shaped the
-// march apply, and a separable blur is what compute is for.
+// silhouette of whatever is casting it, which reads as a halo around every edge. The gaussian and the
+// depth term sit in ONE exponent rather than being multiplied together - a sample that is both far along
+// the kernel and at a different distance falls away once, sharply, instead of twice and gently.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2DArray uTextureSource;
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureSourceInscattering;
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureSourceExtinction;
 
-layout(set = 0, binding = 1, rgba16f) writeonly uniform image2DArray uDestinationTexture;
+layout(set = 0, binding = 2, rgba16f) writeonly uniform image2DArray uDestinationInscatteringTexture;
+layout(set = 0, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationExtinctionTexture;
 
 layout(push_constant) uniform PushConstants {
   ivec4 directionSpare; // xy = the step from one tap to the next, in texels; zw unused
 } pushConstants;
 
-// How far the blur reaches, and the gaussian over that reach at a standard deviation of three. Thirteen
-// taps across and thirteen down, which for a half-resolution buffer covers the sixteen screen pixels the
-// jitter pattern repeats over.
-const int R = 6;
+// How far the blur reaches, and the gaussian falloff over that reach. Four rather than a wider one because
+// the march behind it now leaves far less to hide: a kernel wider than the noise it is smoothing turns a
+// fine grain into blotches its own size, which read worse than the grain did.
+const float KernelRadius = 4.0;
+const float BlurSigma = (KernelRadius + 1.0) * 0.5;
+const float BlurFallOff = 1.0 / ((2.0 * BlurSigma) * BlurSigma);
 
-const float gaussian[R + 1] = float[](0.111220, 0.107798, 0.098151, 0.083953, 0.067458, 0.050920, 0.036108);
-
-// The floor under every tap's weight, and how hard a difference in depth pulls that weight down. The floor
-// matters: without it a lone sample whose neighbourhood all disagrees with it keeps its own value and the
-// dither survives exactly where the blur is needed most. The falloff is per unit of linear depth, so at a
-// hundred metres apart two samples no longer mix at all.
-const float BaseWeight = 0.3;
-const float DepthFalloff = 0.01;
+// How hard a difference in depth pulls a tap out of the sum. Per unit of linear depth, inside the same
+// exponent as the distance along the kernel.
+const float DepthFallOff = 0.01;
 
 void main(){
 
-  ivec3 destinationSize = imageSize(uDestinationTexture);
+  ivec3 destinationSize = imageSize(uDestinationInscatteringTexture);
   ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
 
   if(any(greaterThanEqual(at, destinationSize))){
     return;
   }
 
-  ivec2 maximumTexCoord = ivec2(textureSize(uTextureSource, 0).xy) - ivec2(1);
+  ivec2 maximumTexCoord = ivec2(textureSize(uTextureSourceInscattering, 0).xy) - ivec2(1);
 
-  vec4 center = texelFetch(uTextureSource, at, 0);
-  float centerDepth = center.w;
+  vec4 centerInscattering = texelFetch(uTextureSourceInscattering, at, 0);
+  vec4 centerExtinction = texelFetch(uTextureSourceExtinction, at, 0);
 
-  vec3 sum = center.xyz * gaussian[0];
-  float weight = gaussian[0];
+  // The depth the march left in the alpha of the inscattering. The centre needs no weight of its own - it
+  // cannot disagree with itself - so it goes in at one.
+  float centerDepth = centerInscattering.w;
 
-  for(int r = -R; r <= R; r++){
+  vec3 sumInscattering = centerInscattering.xyz;
+  vec3 sumExtinction = centerExtinction.xyz;
+  float sum = 1.0;
 
-    // The centre is already in, with its own weight and no depth term - it cannot disagree with itself.
-    if(r == 0){
-      continue;
+  for(int r = 1; r <= int(KernelRadius); r++){
+
+    for(int side = 0; side < 2; side++){
+
+      int offset = (side == 0) ? r : -r;
+
+      ivec2 tapXY = at.xy + (pushConstants.directionSpare.xy * offset);
+
+      // Off the edge is left out rather than clamped: clamping would count the edge texel several times
+      // over and pull the result toward it.
+      if(((tapXY.x < 0) || (tapXY.x > maximumTexCoord.x)) || ((tapXY.y < 0) || (tapXY.y > maximumTexCoord.y))){
+        continue;
+      }
+
+      vec4 tapInscattering = texelFetch(uTextureSourceInscattering, ivec3(tapXY, at.z), 0);
+      vec4 tapExtinction = texelFetch(uTextureSourceExtinction, ivec3(tapXY, at.z), 0);
+
+      float dz = (tapInscattering.w - centerDepth) * DepthFallOff;
+      float weight = exp2((-(float(offset * offset) * BlurFallOff)) - (dz * dz));
+
+      sumInscattering += tapInscattering.xyz * weight;
+      sumExtinction += tapExtinction.xyz * weight;
+      sum += weight;
+
     }
-
-    ivec2 tapXY = at.xy + (pushConstants.directionSpare.xy * r);
-
-    // Off the edge is left out rather than clamped: clamping would count the edge texel several times over
-    // and pull the result toward it.
-    if(((tapXY.x < 0) || (tapXY.x > maximumTexCoord.x)) || ((tapXY.y < 0) || (tapXY.y > maximumTexCoord.y))){
-      continue;
-    }
-
-    vec4 tap = texelFetch(uTextureSource, ivec3(tapXY, at.z), 0);
-
-    float tapWeight = (BaseWeight + gaussian[abs(r)]) *
-                      max(0.0, 1.0 - (DepthFalloff * abs(tap.w - centerDepth)));
-
-    sum += tap.xyz * tapWeight;
-    weight += tapWeight;
 
   }
 
   // The depth is handed on untouched: the second of the two runs reads it as its own edge, and the compose
   // behind them weighs its upsample against it. Blurring the thing the blur is steered by would flatten
   // exactly the edges it exists to keep.
-  imageStore(uDestinationTexture, at, vec4(sum / max(weight, 1e-4), center.w));
+  imageStore(uDestinationInscatteringTexture, at, vec4(sumInscattering / max(sum, 1e-4), centerDepth));
+  imageStore(uDestinationExtinctionTexture, at, vec4(sumExtinction / max(sum, 1e-4), 1.0));
 
 }

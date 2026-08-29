@@ -79,15 +79,19 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
      // The last of the three, and the only one of them that stands in the visible chain: it takes the
-     // picture as it is, adds the scattered light on top of it, and hands the result on as the new
-     // LastOutputResource. The upsample from half size happens in the same dispatch - see
-     // volumetric_scattering_compose.comp for why that does not want a pass of its own.
+     // picture as it is, thins it by what the air swallowed and adds what the air scattered in, and hands
+     // the result on as the new LastOutputResource. The upsample from half size happens in the same
+     // dispatch - see volumetric_scattering_compose.comp for why that does not want a pass of its own, and
+     // for why both halves of the air have to be applied and not just the one that adds light.
      TpvScene3DRendererPassesVolumetricScatteringComposeComputePass=class(TpvFrameGraph.TComputePass)
       public
        const // How hard the upsample separates two depths: the weight of a tap is 1/(1+(difference*this)),
              // so a bigger number keeps the four taps more strictly apart and a smaller one lets them
-             // blend. Set, not measured - it wants a picture with a real shaft in it to be judged on.
-             VolumetricScatteringUpsampleDepthWeight=1.0;
+             // blend. A thousand is very nearly a hard choice rather than a blend - half a metre of
+             // disagreement already puts a tap at a five-hundredth of the weight of one that agrees. That
+             // is deliberate: this branch is only reached at a depth edge in the first place, and blending
+             // gently across one is the halo the whole arrangement exists to avoid.
+             VolumetricScatteringUpsampleDepthWeight=1000.0;
       public
        const // Bit zero of the flag word: the scattering over a picture dimmed almost to nothing, for
              // telling this effect apart from everything else in a finished frame.
@@ -108,10 +112,12 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
        fInstance:TpvScene3DRendererInstance;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceScattering:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceExtinction:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fPushConstants:TPushConstants;
        fInputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fScatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -152,6 +158,12 @@ begin
 
  fResourceScattering:=AddImageInput('resourcetype_volumetric_scattering',
                                     'resource_volumetric_scattering_blurred_xy',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    []
+                                   );
+
+ fResourceExtinction:=AddImageInput('resourcetype_volumetric_scattering',
+                                    'resource_volumetric_scattering_extinction_blurred_xy',
                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                     []
                                    );
@@ -207,7 +219,7 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*3);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*4);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
@@ -228,6 +240,11 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(3,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(4,
                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -279,6 +296,21 @@ begin
                                                                        CountViews
                                                                       );
 
+  fExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                       fResourceExtinction.VulkanImages[InFlightFrameIndex],
+                                                                       TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                       TpvFrameGraph.TImageResourceType(fResourceExtinction.ResourceType).Format,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                       0,
+                                                                       1,
+                                                                       0,
+                                                                       CountViews
+                                                                      );
+
   fOutputImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                    fResourceOutput.VulkanImages[InFlightFrameIndex],
                                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
@@ -308,22 +340,34 @@ begin
                                                                  [],
                                                                  false
                                                                 );
-  // The scattering is not: it is half sized and read between its texels, which is the whole of the
-  // upsample, so this one wants the linear sampler.
+  // The two half-sized buffers the blur left behind: the light the air adds, and what it takes away. Both
+  // by texel and therefore nearest - the upsample picks and weighs its four taps itself, precisely so that
+  // it can leave out the ones belonging to a different distance, which a linear fetch could not.
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
                                                                                                 fScatteringImageViews[InFlightFrameIndex].Handle,
                                                                                                 fResourceScattering.ResourceTransition.Layout)],
                                                                  [],
                                                                  [],
                                                                  false
                                                                 );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                fExtinctionImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceExtinction.ResourceTransition.Layout)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
   // The resolved opaque depth, which is what the upsample weighs its four taps against. The ARRAY view of
   // it, for the same reason as everywhere else here.
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -334,7 +378,7 @@ begin
                                                                  [],
                                                                  false
                                                                 );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -360,6 +404,7 @@ begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fInputImageViews[InFlightFrameIndex]);
   FreeAndNil(fScatteringImageViews[InFlightFrameIndex]);
+  FreeAndNil(fExtinctionImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
