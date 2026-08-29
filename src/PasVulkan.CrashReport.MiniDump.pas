@@ -289,6 +289,27 @@ function pvCrashReportWriteMiniDump(const aFileName:String;
                                     const aComment:String='';
                                     const aKind:TpvCrashReportMiniDumpKind=TpvCrashReportMiniDumpKind.Normal):Boolean;
 
+// The writer built into this unit, reached directly rather than through the one
+// above, so that it runs even when a writer of somebody else's has been put in.
+//
+// This is here for the one case the writer hook alone cannot express: a program
+// which wants both, the file where it has always been and the service as well.
+// Such a writer calls this first and then does its own part, which is why the
+// file comes first and the service second, and not the other way around.
+//
+// The arguments are the ones the writer hook is handed, and not the ones the
+// caller of the function above passed in. The difference is that those have
+// already been filled in from the state kept aside at the fault, which is work
+// this does not repeat: handing it a nil pointer and a zero code here means a
+// dump of a thread which is not faulting, which is a thing worth being able to
+// ask for but not a thing to arrive at by accident.
+function pvCrashReportWriteMiniDumpFile(const aFileName:String;
+                                        const aExceptionPointers:TpvPointer;
+                                        const aExceptionCode:TpvUInt32;
+                                        const aThreadID:TpvUInt64;
+                                        const aComment:String;
+                                        const aKind:TpvCrashReportMiniDumpKind):Boolean;
+
 implementation
 
 // What one place hands the place which does the writing.
@@ -1895,7 +1916,6 @@ var Pointers:TpvPointer;
     ThreadID:TpvUInt64;
     Sequence,KeptCode:TpvUInt32;
     KeptThreadID:TpvUInt64;
-    Request:TpvCrashReportMiniDumpRequest;
 begin
  result:=false;
  if length(aFileName)=0 then begin
@@ -1928,7 +1948,8 @@ begin
 
  // A writer of somebody else's takes over the whole job from here, file name
  // and all, since the service behind such a writer usually has an opinion about
- // where a dump goes and this unit has no business overruling it.
+ // where a dump goes and this unit has no business overruling it. One which
+ // wants the file as well asks for it itself, see pvCrashReportWriteMiniDumpFile.
  if assigned(pvCrashReportMiniDumpWriter) then begin
   try
    result:=pvCrashReportMiniDumpWriter(aFileName,Pointers,Code,ThreadID,aComment,aKind,pvCrashReportMiniDumpWriterUserData);
@@ -1938,6 +1959,37 @@ begin
    // report about the reporting, which is the one exchange never worth making.
    result:=false;
   end;
+  exit;
+ end;
+
+ result:=pvCrashReportWriteMiniDumpFile(aFileName,Pointers,Code,ThreadID,aComment,aKind);
+end;
+{$else}
+begin
+ result:=false;
+ if assigned(pvCrashReportMiniDumpWriter) then begin
+  try
+   result:=pvCrashReportMiniDumpWriter(aFileName,aExceptionPointers,aExceptionCode,aThreadID,aComment,aKind,pvCrashReportMiniDumpWriterUserData);
+  except
+   result:=false;
+  end;
+  exit;
+ end;
+ result:=pvCrashReportWriteMiniDumpFile(aFileName,aExceptionPointers,aExceptionCode,aThreadID,aComment,aKind);
+end;
+{$ifend}
+
+function pvCrashReportWriteMiniDumpFile(const aFileName:String;
+                                        const aExceptionPointers:TpvPointer;
+                                        const aExceptionCode:TpvUInt32;
+                                        const aThreadID:TpvUInt64;
+                                        const aComment:String;
+                                        const aKind:TpvCrashReportMiniDumpKind):Boolean;
+{$if defined(Windows)}
+var Request:TpvCrashReportMiniDumpRequest;
+begin
+ result:=false;
+ if length(aFileName)=0 then begin
   exit;
  end;
 
@@ -1956,12 +2008,12 @@ begin
   // if there is not or if it did not answer. The right to write is held here
   // and not taken again over there, which is what keeps the two from waiting
   // for one another.
-  if not CrashReportMiniDumpHandOver(@aFileName,@aComment,Pointers,Code,ThreadID,aKind,result) then begin
+  if not CrashReportMiniDumpHandOver(@aFileName,@aComment,aExceptionPointers,aExceptionCode,aThreadID,aKind,result) then begin
    Request.FileName:=@aFileName;
    Request.Comment:=@aComment;
-   Request.Pointers:=Pointers;
-   Request.Code:=Code;
-   Request.ThreadID:=ThreadID;
+   Request.Pointers:=aExceptionPointers;
+   Request.Code:=aExceptionCode;
+   Request.ThreadID:=aThreadID;
    Request.Kind:=aKind;
    Request.Answer:=false;
    result:=CrashReportMiniDumpWriteHere(@Request);
@@ -1977,14 +2029,6 @@ var Request:TpvCrashReportMiniDumpRequest;
 {$endif}
 begin
  result:=false;
- if assigned(pvCrashReportMiniDumpWriter) then begin
-  try
-   result:=pvCrashReportMiniDumpWriter(aFileName,aExceptionPointers,aExceptionCode,aThreadID,aComment,aKind,pvCrashReportMiniDumpWriterUserData);
-  except
-   result:=false;
-  end;
-  exit;
- end;
 {$ifdef PasVulkanCrashReportMiniDumpUnix}
  if length(aFileName)=0 then begin
   exit;
