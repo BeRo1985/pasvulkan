@@ -71,6 +71,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
+     PasVulkan.Raytracing,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
@@ -121,6 +122,9 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
             end;
       private
        fInstance:TpvScene3DRendererInstance;
+       // Whether this pass traces its shadows rather than looking them up in the cascaded shadow maps.
+       // Decided once, when the shader is chosen, because the descriptor set has to match it.
+       fRaytracing:Boolean;
        fPushConstants:TPushConstants;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
@@ -186,7 +190,20 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_comp.spv');
+ // Which shadow the march asks for is decided here, once, and the descriptor set below follows it: with
+ // raytracing the samples are traced against the acceleration structure, without it they are looked up in
+ // the cascaded shadow maps. Traced shadows in a volume are the better answer - no cascade seams and no
+ // bias to get wrong for points that have no surface - but they exist only where the hardware and the
+ // scene both offer them.
+ fRaytracing:=fInstance.Renderer.Scene3D.RaytracingActive and
+              assigned(fInstance.Renderer.Scene3D.Raytracing) and
+              assigned(fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure);
+
+ if fRaytracing then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_raytracing_comp.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_comp.spv');
+ end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -218,6 +235,9 @@ begin
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames*2);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
+ if fRaytracing then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,fInstance.Renderer.CountInFlightFrames);
+ end;
  fVulkanDescriptorPool.Initialize;
 
  // Everything in the one set: the shadow readers elsewhere use set 3 because they share a pipeline layout
@@ -248,6 +268,13 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
+ if fRaytracing then begin
+  fVulkanDescriptorSetLayout.AddBinding(5,
+                                        VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -346,6 +373,21 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+
+  // The acceleration structure, only where the shader was built to ask it anything. One structure for all
+  // in-flight frames: it is the scene's, not this pass's, and it is rebuilt in place as the scene moves.
+  if fRaytracing then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
+                                                                  [],
+                                                                  [],
+                                                                  [],
+                                                                  [fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure.AccelerationStructure],
+                                                                  false
+                                                                 );
+  end;
 
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 

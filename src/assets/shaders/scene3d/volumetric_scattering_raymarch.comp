@@ -1,8 +1,20 @@
-#version 450 core
+// 460 rather than the 450 the rest of these shaders use, and not for taste: rayQueryEXT and the ray flags
+// do not exist below it, however many extensions are enabled. The raytracing build needs one more thing
+// besides - "--target-env spirv1.4" on the command line, without which the extension itself is refused -
+// and the two together are easy to mistake for a missing extension or a compiler that cannot do it.
+#version 460 core
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+
+// Up here rather than beside the ray query that uses them, because an extension directive only counts
+// before any code - declared further down it is quietly ignored and the ray flags come back undeclared.
+#ifdef RAYTRACING
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_flags_primitive_culling : enable
+#endif
 
 // Volumetric scattering, the first of its three steps: the ray march. It walks the ray from the eye to
 // whatever the depth buffer says is in the way and sums up the light scattered into that ray along it -
@@ -119,6 +131,29 @@ vec3 inWorldSpacePosition, workNormal, lightDirection;
 
 #include "shadows.glsl"
 
+#ifdef RAYTRACING
+
+// The acceleration structure, declared here rather than taken from globaldescriptorset.glsl, and the ray
+// query written out rather than calling raytracing.glsl's getRaytracedFastHardShadow.
+//
+// Both for the same reason: that file puts the structure at set 0 binding 8, which is where this pass has
+// its own bindings, and including it would drag in the whole global descriptor set - the instance data,
+// the mesh buffers, the octahedral maps - for a function that is five lines long. This pass is standalone
+// and stays that way.
+//
+// The offset along a surface normal that the engine's version applies is left out too, and not by
+// oversight: it exists to keep a surface from shadowing itself, and a point in mid-air has no surface to
+// be lifted off.
+//
+// The two extension directives this needs are at the top of the file, where they have to be.
+layout(set = 0, binding = 5) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
+
+// The same cull mask the rest of the engine casts shadow rays with, so this sees exactly what the shadow
+// maps see.
+#define CULLMASK_SHADOWS 0x01
+
+#endif // RAYTRACING
+
 // Mean cosine of the Mie phase, and the scattering coefficients at sea level. Left in the units they are
 // defined in, because the world here is in metres too - the track's own sample spacing says so - so
 // nothing about them needs converting.
@@ -182,8 +217,24 @@ float sampleShadow(const in vec3 aWorldPosition, const in float aMaximumDistance
 
 #if defined(RAYTRACING)
 
-  float rayOffset = 0.0;
-  return getRaytracedFastHardShadow(aWorldPosition, workNormal, normalize(-lightDirection), rayOffset, aMaximumDistance);
+  // Opaque triangles only, stopping at the first one: whether anything at all stands between this point
+  // and the light is the whole question, and nothing about which thing it was matters here.
+  const uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
+
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery,
+                        uRaytracingTopLevelAccelerationStructure,
+                        rayFlags,
+                        CULLMASK_SHADOWS,
+                        aWorldPosition,
+                        0.0,
+                        normalize(-lightDirection),
+                        aMaximumDistance);
+  rayQueryProceedEXT(rayQuery);
+  float raytracedShadow = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0;
+  rayQueryTerminateEXT(rayQuery);
+
+  return raytracedShadow;
 
 #else
 

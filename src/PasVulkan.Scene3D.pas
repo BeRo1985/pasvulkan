@@ -5508,6 +5508,10 @@ type EpvScene3D=class(Exception);
        property TotalActiveMeshletCount:TPasMPInt64 read fTotalActiveMeshletCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
+       // The raytracing side itself, so that a pass can reach the top level acceleration structure without
+       // having to take the whole global descriptor set with it. Nil while raytracing is not in use, so
+       // RaytracingActive is the thing to ask first.
+       property Raytracing:TpvRaytracing read fRaytracing;
        property UsePerInFlightFrameResources:Boolean read fUsePerInFlightFrameResources write fUsePerInFlightFrameResources;
        property PlanetSingleBuffers:Boolean read fPlanetSingleBuffers write fPlanetSingleBuffers;
        property FrameProcessingMode:TpvScene3DFrameProcessingMode read fFrameProcessingMode write fFrameProcessingMode;

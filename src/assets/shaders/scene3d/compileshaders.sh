@@ -523,6 +523,7 @@ compileshaderarguments=(
   "-V motionblur.comp -o ${tempPath}/motionblur_comp.spv"
 
   "-V volumetric_scattering_raymarch.comp -o ${tempPath}/volumetric_scattering_raymarch_comp.spv"
+  "-V volumetric_scattering_raymarch.comp --target-env spirv1.4 -DRAYTRACING -o ${tempPath}/volumetric_scattering_raymarch_raytracing_comp.spv" # ray query needs SPIR-V 1.4 and GLSL 460, see the shader's own first lines
   "-V volumetric_scattering_blur.comp -o ${tempPath}/volumetric_scattering_blur_comp.spv"
   "-V volumetric_scattering_compose.comp -o ${tempPath}/volumetric_scattering_compose_comp.spv"
 
