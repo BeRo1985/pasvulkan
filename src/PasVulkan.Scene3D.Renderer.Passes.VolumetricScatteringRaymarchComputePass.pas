@@ -129,6 +129,12 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
        fPushConstants:TPushConstants;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       // Which acceleration structure this pass's descriptor set currently points at, per in-flight frame.
+       // Kept because the scene rebuilds its top level structure as it changes, and a descriptor written
+       // once at setup goes on pointing at whatever was there then - every ray misses and nothing casts a
+       // shadow at all. Its own bookkeeping and not the scene's, whose slots belong to the global set.
+       fBoundAccelerationStructures:array[0..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
+       fBoundAccelerationStructureGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fOutputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -196,9 +202,11 @@ begin
  // the cascaded shadow maps. Traced shadows in a volume are the better answer - no cascade seams and no
  // bias to get wrong for points that have no surface - but they exist only where the hardware and the
  // scene both offer them.
+ // Only on whether raytracing is in use at all, NOT on the top level structure already existing: it is
+ // built as the scene comes up and may well not be there yet at this point, and choosing by it would
+ // silently fall back to the cascades for the whole run.
  fRaytracing:=fInstance.Renderer.Scene3D.RaytracingActive and
-              assigned(fInstance.Renderer.Scene3D.Raytracing) and
-              assigned(fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure);
+              assigned(fInstance.Renderer.Scene3D.Raytracing);
 
  if fRaytracing then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_raytracing_comp.spv');
@@ -375,20 +383,10 @@ begin
                                                                  false
                                                                 );
 
-  // The acceleration structure, only where the shader was built to ask it anything. One structure for all
-  // in-flight frames: it is the scene's, not this pass's, and it is rebuilt in place as the scene moves.
-  if fRaytracing then begin
-   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                  0,
-                                                                  1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
-                                                                  [],
-                                                                  [],
-                                                                  [],
-                                                                  [fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure.AccelerationStructure],
-                                                                  false
-                                                                 );
-  end;
+  // The acceleration structure is NOT written here. It is written in Execute, and rewritten whenever the
+  // scene has rebuilt it - see the note at fBoundAccelerationStructures.
+  fBoundAccelerationStructures[InFlightFrameIndex]:=VK_NULL_HANDLE;
+  fBoundAccelerationStructureGenerations[InFlightFrameIndex]:=0;
 
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
@@ -422,6 +420,7 @@ var CountViews:TpvInt32;
     ShellBottomRadius,ShellTopRadius:TpvFloat;
     Atmospheres:TpvScene3DAtmospheres;
     AtmosphereParameters:TpvScene3DAtmosphere.PAtmosphereParameters;
+    TopLevelAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -430,6 +429,30 @@ begin
  CountViews:=fInstance.CountSurfaceViews;
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
+
+ // The acceleration structure, re-pointed whenever the scene has built a new one. The scene does exactly
+ // this for its own global set, and for the same reason: the handle changes as the world changes, and a
+ // descriptor left pointing at the old one traces against nothing. Both the handle and its generation are
+ // compared, because a structure can be rebuilt in place and keep its handle.
+ if fRaytracing then begin
+  TopLevelAccelerationStructure:=fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure;
+  if assigned(TopLevelAccelerationStructure) and
+     ((fBoundAccelerationStructures[aInFlightFrameIndex]<>TopLevelAccelerationStructure.AccelerationStructure) or
+      (fBoundAccelerationStructureGenerations[aInFlightFrameIndex]<>TopLevelAccelerationStructure.Generation)) then begin
+   fBoundAccelerationStructures[aInFlightFrameIndex]:=TopLevelAccelerationStructure.AccelerationStructure;
+   fBoundAccelerationStructureGenerations[aInFlightFrameIndex]:=TopLevelAccelerationStructure.Generation;
+   fVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
+                                                                   [],
+                                                                   [],
+                                                                   [],
+                                                                   [TopLevelAccelerationStructure.AccelerationStructure],
+                                                                   true
+                                                                  );
+  end;
+ end;
 
  // The frame graph hands the output in as SHADER_READ_ONLY_OPTIMAL, which is the one layout a storage
  // image may not be written in, so the pass lays it over itself.
