@@ -139,6 +139,7 @@ type TpvScene3DRenderer=class;
        fVelocityBufferNeeded:Boolean;
        fFinalResolvedDepthNeeded:Boolean;
        fMotionBlurActive:Boolean;
+       fVolumetricScatteringActive:Boolean;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
@@ -250,6 +251,11 @@ type TpvScene3DRenderer=class;
        // temporal antialiasing modes asked for. A renderer that turns this on therefore pays for one more
        // render target in the forward pass, and one more resolve of it when multisampling.
        property MotionBlurActive:Boolean read fMotionBlurActive write fMotionBlurActive;
+       // Shadow-sampled in-scattering - light shafts - as three passes of its own over the finished
+       // picture. It stands apart from the atmosphere on purpose and works with or without it, because a
+       // track may just as well be lit by a stylised skybox; what the atmosphere being there changes is
+       // only that the march is then bounded by its shell instead of running globally.
+       property VolumetricScatteringActive:Boolean read fVolumetricScatteringActive write fVolumetricScatteringActive;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
@@ -456,6 +462,8 @@ begin
  fWetnessMapActive:=false;
 
  fMotionBlurActive:=false;
+
+ fVolumetricScatteringActive:=false;
 
  fScreenSpaceAmbientOcclusion:=true;
 
@@ -910,6 +918,13 @@ begin
 
  if fMotionBlurActive then begin
   fVelocityBufferNeeded:=true;
+  fFinalResolvedDepthNeeded:=true;
+ end;
+
+ // The volumetric scattering wants the same resolved opaque depth, and for the same reason: it has to
+ // know where the ray it walks ends. It has no use for the velocity buffer, though, so that stays with
+ // the two who do.
+ if fVolumetricScatteringActive then begin
   fFinalResolvedDepthNeeded:=true;
  end;
 

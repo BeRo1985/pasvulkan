@@ -7,7 +7,16 @@
 #define UseReceiverPlaneDepthBias
 #endif
 
-#undef UseReceiverPlaneDepthBias // because it seems to crash Intel iGPUs   
+#undef UseReceiverPlaneDepthBias // because it seems to crash Intel iGPUs
+
+// Where on the screen the shading is happening. It is used for one thing only: to decorrelate the PCSS
+// rotation from one neighbour to the next. gl_FragCoord is the obvious answer and the only one a fragment
+// shader needs, but it does not exist in a compute shader - and DoDPCF_PCSS below has to COMPILE even
+// where it can never be called, because which of the four modes runs is decided at run time and not at
+// compile time. So the includer may say where it is instead, and a compute one hands over its invocation.
+#ifndef SHADOWS_SCREEN_POSITION
+#define SHADOWS_SCREEN_POSITION gl_FragCoord.xy
+#endif
 
 #ifdef UseReceiverPlaneDepthBias
 vec4 cascadedShadowMapPositions[NUM_SHADOW_CASCADES];
@@ -254,9 +263,9 @@ float DoDPCF_PCSS(const in sampler2DArray shadowMapArray,
   {
     const uint k = 1103515245u;
 #if defined(NOTEXCOORDS)
-    uvec3 v = uvec3(floatBitsToUint(inWorldSpacePosition.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(gl_FragCoord.xy)); 
-#else    
-    uvec3 v = uvec3(floatBitsToUint(inTexCoord0.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(gl_FragCoord.xy)); 
+    uvec3 v = uvec3(floatBitsToUint(inWorldSpacePosition.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(SHADOWS_SCREEN_POSITION));
+#else
+    uvec3 v = uvec3(floatBitsToUint(inTexCoord0.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(SHADOWS_SCREEN_POSITION));
 #endif
     v = ((v >> 8u) ^ v.yzx) * k;
     v = ((v >> 8u) ^ v.yzx) * k;

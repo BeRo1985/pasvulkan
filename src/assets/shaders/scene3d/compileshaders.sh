@@ -522,6 +522,10 @@ compileshaderarguments=(
   "-V motionblur_neighbourmax.comp -o ${tempPath}/motionblur_neighbourmax_comp.spv"
   "-V motionblur.comp -o ${tempPath}/motionblur_comp.spv"
 
+  "-V volumetric_scattering_raymarch.comp -o ${tempPath}/volumetric_scattering_raymarch_comp.spv"
+  "-V volumetric_scattering_blur.comp -o ${tempPath}/volumetric_scattering_blur_comp.spv"
+  "-V volumetric_scattering_compose.comp -o ${tempPath}/volumetric_scattering_compose_comp.spv"
+
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"
 

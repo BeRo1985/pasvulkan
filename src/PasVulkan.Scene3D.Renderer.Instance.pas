@@ -111,6 +111,10 @@ type { TpvScene3DRendererInstance }
              // tile's neighbourhood, and that summary is one texel per tile. Sixteen because it divides
              // every sensible resolution and keeps the two tile buffers small.
              MotionBlurTileSize=16;
+             // The volumetric scattering marches and blurs at half the surface size. The result is smooth
+             // by its nature and gets blurred again afterwards, so the resolution buys nothing that the
+             // upsample does not give back - and the march is the expensive part of the whole effect.
+             VolumetricScatteringSizeDivisor=2;
              CountCascadedShadowMapCascades=4;
              CountOrderIndependentTransparencyLayers=8;
              CountGlobalIlluminationRadiantHintCascades=4;
@@ -1091,6 +1095,13 @@ type { TpvScene3DRendererInstance }
        fRadialBlurSquaredFallOffFactor:TpvFloat;
        fMotionBlurFactor:TpvFloat;
        fMotionBlurSoftZExtent:TpvFloat;
+       fVolumetricScatteringEnabled:Boolean;
+       fVolumetricScatteringFactor:TpvFloat;
+       fVolumetricScatteringSunIntensity:TpvFloat;
+       fVolumetricScatteringMinimumStepCount:TpvInt32;
+       fVolumetricScatteringMaximumStepCount:TpvInt32;
+       fVolumetricScatteringRayLengthSegments:Boolean;
+       fVolumetricScatteringShowScatteringOnly:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1467,6 +1478,42 @@ type { TpvScene3DRendererInstance }
        // Over how many units of linear depth the "which one is in front" test fades from one answer to the
        // other. A hard comparison shows every depth edge as a seam.
        property MotionBlurSoftZExtent:TpvFloat read fMotionBlurSoftZExtent write fMotionBlurSoftZExtent;
+       // How much of the scattered light is added onto the picture. Zero adds nothing and leaves the three
+       // passes running as a measurable no-op; whether they exist at all is
+       // TpvScene3DRenderer.VolumetricScatteringActive.
+       // Whether the effect does anything this frame. This is the CHEAP off and the one to use from frame
+       // to frame: the passes stay in the frame graph, but the march and the two blurs skip their
+       // dispatches outright and the compose hands the picture through untouched, so the cost falls to
+       // three barriers and nothing else. Turning it back on is free and needs no rebuild of anything.
+       //
+       // The other off is TpvScene3DRenderer.VolumetricScatteringActive, which decides whether the passes
+       // are built at all. That one also drops the resolved opaque depth the march reads, so it saves more
+       // - but changing it rebuilds the whole graph, and that cannot be done between two frames.
+       property VolumetricScatteringEnabled:Boolean read fVolumetricScatteringEnabled write fVolumetricScatteringEnabled;
+       property VolumetricScatteringFactor:TpvFloat read fVolumetricScatteringFactor write fVolumetricScatteringFactor;
+       // The strength of the light being scattered, as opposed to how much of the result is taken. The
+       // two are separate on purpose: this one belongs to the scene - a brighter sun scatters more - while
+       // the factor above is the taste knob. Twenty is the 2014 value, and it is not decoration: the
+       // scattering coefficients are per metre at sea level, so at one the effect is arithmetically
+       // correct and invisible.
+       property VolumetricScatteringSunIntensity:TpvFloat read fVolumetricScatteringSunIntensity write fVolumetricScatteringSunIntensity;
+       // How many samples a ray is walked in, fewest and most: the march scales between the two with the
+       // length of the ray, the way the atmosphere's own does. It is the one knob that attacks the cause
+       // of the dither rather than its symptom - too few leave so much error per ray that the jitter has
+       // to scatter a great deal of it, and the blur behind cannot remove that, it only moves it down in
+       // frequency, from a fine grain into blotches the size of its own kernel. Linear in cost, and here
+       // each step also costs a shadow lookup, which the atmosphere's march does not do.
+       property VolumetricScatteringMinimumStepCount:TpvInt32 read fVolumetricScatteringMinimumStepCount write fVolumetricScatteringMinimumStepCount;
+       property VolumetricScatteringMaximumStepCount:TpvInt32 read fVolumetricScatteringMaximumStepCount write fVolumetricScatteringMaximumStepCount;
+       // Which of the two step lengths the march uses. False takes it from the distance out of the
+       // atmosphere while the positions walk the view ray - two scales in one formula, which is what makes
+       // the effect carry; true takes the ray's own length, which is physically consistent and much
+       // fainter. A run-time switch so the two can be held against each other on one frame.
+       property VolumetricScatteringRayLengthSegments:Boolean read fVolumetricScatteringRayLengthSegments write fVolumetricScatteringRayLengthSegments;
+       // Shows the scattering over a picture dimmed almost to nothing. A measurement rather than a look:
+       // anything odd in a finished frame could belong to this effect or to something else entirely, and
+       // there is no telling the two apart once both are added at equal weight.
+       property VolumetricScatteringShowScatteringOnly:Boolean read fVolumetricScatteringShowScatteringOnly write fVolumetricScatteringShowScatteringOnly;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1671,6 +1718,9 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.MotionBlurTileMaxComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MotionBlurNeighbourMaxComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MotionBlurComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringRaymarchComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringBlurComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringComposeComputePass,
      PasVulkan.Scene3D.Renderer.Passes.RadialBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
@@ -1822,6 +1872,10 @@ type TpvScene3DRendererInstancePasses=class
        fMotionBlurTileMaxComputePass:TpvScene3DRendererPassesMotionBlurTileMaxComputePass;
        fMotionBlurNeighbourMaxComputePass:TpvScene3DRendererPassesMotionBlurNeighbourMaxComputePass;
        fMotionBlurComputePass:TpvScene3DRendererPassesMotionBlurComputePass;
+       fVolumetricScatteringRaymarchComputePass:TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass;
+       fVolumetricScatteringBlurHorizontalComputePass:TpvScene3DRendererPassesVolumetricScatteringBlurComputePass;
+       fVolumetricScatteringBlurVerticalComputePass:TpvScene3DRendererPassesVolumetricScatteringBlurComputePass;
+       fVolumetricScatteringComposeComputePass:TpvScene3DRendererPassesVolumetricScatteringComposeComputePass;
        fRadialBlurRenderPass:TpvScene3DRendererPassesRadialBlurRenderPass;
        fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
@@ -2490,6 +2544,14 @@ begin
 
  fMotionBlurFactor:=0.0;
  fMotionBlurSoftZExtent:=10.0;
+
+ fVolumetricScatteringEnabled:=true;
+ fVolumetricScatteringFactor:=1.0;
+ fVolumetricScatteringSunIntensity:=20.0;
+ fVolumetricScatteringMinimumStepCount:=64;
+ fVolumetricScatteringMaximumStepCount:=128;
+ fVolumetricScatteringRayLengthSegments:=false;
+ fVolumetricScatteringShowScatteringOnly:=false;
 
  if assigned(fVirtualReality) then begin
 
@@ -5295,6 +5357,35 @@ begin
                                   );
  end;
 
+ // The volumetric scattering's own two. The scattering buffer is half sized and carries the march and both
+ // blur steps: rgb the scattered light, alpha the linear view depth the bilateral blur weights by, which
+ // is why it is a four-channel float format and not a three-channel one. The compose target is full sized
+ // and joins the visible chain, so it has the shape of the antialiasing / radial blur targets around it.
+ if Renderer.VolumetricScatteringActive then begin
+  fFrameGraph.AddImageResourceType('resourcetype_volumetric_scattering',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                                                   fSizeFactor/TpvScene3DRendererInstance.VolumetricScatteringSizeDivisor,
+                                                                   fSizeFactor/TpvScene3DRendererInstance.VolumetricScatteringSizeDivisor,
+                                                                   1.0,
+                                                                   fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+  fFrameGraph.AddImageResourceType('resourcetype_color_volumetric_scattering',
+                                   false,
+                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+ end;
+
  // What the radial blur pass writes into. Same shape and format as the antialiasing target above, because
  // it sits in the same chain and simply hands the picture on; it needs its own type only because a pass
  // may not read and write one and the same resource.
@@ -6527,6 +6618,33 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=nil;
+ end;
+
+ // The volumetric scattering, right behind the fog and still before the luminance / tone mapping chain:
+ // scattered light is light, so it belongs in the HDR picture and wants to be exposed and tone mapped
+ // along with everything else. Added after the tone map it would be a flat wash over displayable colours
+ // instead, and a bright shaft would have nowhere left to go.
+ //
+ // The march and the two blur steps stand outside the visible chain and are wired by resource name; only
+ // the compose reads LastOutputResource and hands it on. Explicit dependencies throughout: the march
+ // needs the resolved depth, and a pass whose output nothing else reads is otherwise free to be placed
+ // anywhere the graph likes.
+ if Renderer.VolumetricScatteringActive then begin
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Create(fFrameGraph,self);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  end;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,true);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,false);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=nil;
  end;
 
  AntialiasingFirstPass:=nil;

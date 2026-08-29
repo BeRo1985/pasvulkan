@@ -1,0 +1,92 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// Volumetric scattering, step two: the separable bilateral blur over the half-resolution march, run twice
+// - once across, once down - by the direction in the push constants.
+//
+// It is not a nicety. Eight steps along a ray cannot give a smooth result on their own, so the march
+// scatters the error with a per-pixel jitter instead of leaving it as banding - and that jitter is what
+// this pass is here to take back out. Without it the dither shows as a regular grid over the whole effect.
+//
+// "Bilateral" is the other half of the point. A plain gaussian would drag a bright shaft across the
+// silhouette of whatever is casting it, which reads as a halo around every edge. The weight therefore
+// falls off with the difference in the depth the march left in the alpha channel, so two samples that
+// belong to things at different distances barely mix.
+//
+// Compute rather than fragment: nothing here reads a shadow map, so none of the reasons that shaped the
+// march apply, and a separable blur is what compute is for.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureSource;
+
+layout(set = 0, binding = 1, rgba16f) writeonly uniform image2DArray uDestinationTexture;
+
+layout(push_constant) uniform PushConstants {
+  ivec4 directionSpare; // xy = the step from one tap to the next, in texels; zw unused
+} pushConstants;
+
+// How far the blur reaches, and the gaussian over that reach at a standard deviation of three. Thirteen
+// taps across and thirteen down, which for a half-resolution buffer covers the sixteen screen pixels the
+// jitter pattern repeats over.
+const int R = 6;
+
+const float gaussian[R + 1] = float[](0.111220, 0.107798, 0.098151, 0.083953, 0.067458, 0.050920, 0.036108);
+
+// The floor under every tap's weight, and how hard a difference in depth pulls that weight down. The floor
+// matters: without it a lone sample whose neighbourhood all disagrees with it keeps its own value and the
+// dither survives exactly where the blur is needed most. The falloff is per unit of linear depth, so at a
+// hundred metres apart two samples no longer mix at all.
+const float BaseWeight = 0.3;
+const float DepthFalloff = 0.01;
+
+void main(){
+
+  ivec3 destinationSize = imageSize(uDestinationTexture);
+  ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
+
+  if(any(greaterThanEqual(at, destinationSize))){
+    return;
+  }
+
+  ivec2 maximumTexCoord = ivec2(textureSize(uTextureSource, 0).xy) - ivec2(1);
+
+  vec4 center = texelFetch(uTextureSource, at, 0);
+  float centerDepth = center.w;
+
+  vec3 sum = center.xyz * gaussian[0];
+  float weight = gaussian[0];
+
+  for(int r = -R; r <= R; r++){
+
+    // The centre is already in, with its own weight and no depth term - it cannot disagree with itself.
+    if(r == 0){
+      continue;
+    }
+
+    ivec2 tapXY = at.xy + (pushConstants.directionSpare.xy * r);
+
+    // Off the edge is left out rather than clamped: clamping would count the edge texel several times over
+    // and pull the result toward it.
+    if(((tapXY.x < 0) || (tapXY.x > maximumTexCoord.x)) || ((tapXY.y < 0) || (tapXY.y > maximumTexCoord.y))){
+      continue;
+    }
+
+    vec4 tap = texelFetch(uTextureSource, ivec3(tapXY, at.z), 0);
+
+    float tapWeight = (BaseWeight + gaussian[abs(r)]) *
+                      max(0.0, 1.0 - (DepthFalloff * abs(tap.w - centerDepth)));
+
+    sum += tap.xyz * tapWeight;
+    weight += tapWeight;
+
+  }
+
+  // The depth is handed on untouched: the second of the two runs reads it as its own edge, and the compose
+  // behind them weighs its upsample against it. Blurring the thing the blur is steered by would flatten
+  // exactly the edges it exists to keep.
+  imageStore(uDestinationTexture, at, vec4(sum / max(weight, 1e-4), center.w));
+
+}
