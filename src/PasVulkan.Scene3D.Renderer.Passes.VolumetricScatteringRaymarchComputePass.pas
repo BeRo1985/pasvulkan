@@ -73,6 +73,7 @@ uses SysUtils,
      PasVulkan.FrameGraph,
      PasVulkan.Raytracing,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
@@ -417,7 +418,10 @@ end;
 procedure TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var CountViews:TpvInt32;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    SunDirection:TpvVector3;
+    SunDirection,ShellCentre:TpvVector3;
+    ShellBottomRadius,ShellTopRadius:TpvFloat;
+    Atmospheres:TpvScene3DAtmospheres;
+    AtmosphereParameters:TpvScene3DAtmosphere.PAtmosphereParameters;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
@@ -480,14 +484,48 @@ begin
                                                                                     fInstance.VolumetricScatteringSunIntensity,
                                                                                     0.0);
 
-  // The global shell: its centre one bottom radius below the origin, so that what the density comes out as
-  // near the ground is a plain falloff with height and nothing here has to know about an atmosphere.
-  fPushConstants.CentreBottomRadiusTop:=TpvVector4.InlineableCreate(0.0,
-                                                                    -VolumetricScatteringBottomRadius,
-                                                                    0.0,
-                                                                    VolumetricScatteringBottomRadius);
+  // The shell the density is measured against, and the one place where having an atmosphere changes what
+  // this effect does.
+  //
+  // WITHOUT one - the global case, and the one that works with a stylised skybox - the centre sits one
+  // bottom radius below the origin, so that near the ground the density comes out as a plain falloff with
+  // height and nothing here has to know about an atmosphere at all.
+  ShellCentre:=TpvVector3.InlineableCreate(0.0,-VolumetricScatteringBottomRadius,0.0);
+  ShellBottomRadius:=VolumetricScatteringBottomRadius;
+  ShellTopRadius:=VolumetricScatteringTopRadius;
 
-  fPushConstants.TopRadiusHeightsSpare:=TpvVector4.InlineableCreate(VolumetricScatteringTopRadius,
+  // WITH one, the march is bounded by its placing and its size instead. Only the shell is taken; the
+  // scale heights below stay this effect's own, because what is wanted here is light shafts and not a
+  // second atmosphere beside the one already being rendered.
+  //
+  // UNVERIFIED, and it cannot be verified from this project - hoverrace1 creates no atmosphere at all, so
+  // this branch never runs here. Two things to check on a project that does have one:
+  //
+  //  - THE UNITS. TAtmosphereParameters.InitializeEarthAtmosphere sets a bottom radius of 6360 and scale
+  //    heights of 8.0 and 1.2, so the atmosphere counts in KILOMETRES, while the constants above are the
+  //    same figures in metres. Whichever the world itself is in, the two have to agree, and the fallback
+  //    above is the one that would then need changing.
+  //  - THE CENTRE. Taken here as the translation of the transform plus the Center field. The atmosphere's
+  //    own shaders work in a planet-centred space and never read either directly, so this reading comes
+  //    from the field names and not from seeing it used.
+  Atmospheres:=TpvScene3DAtmospheres(fInstance.Renderer.Scene3D.Atmospheres);
+  if assigned(Atmospheres) and (Atmospheres.Count>0) and assigned(Atmospheres.Items[0]) then begin
+   AtmosphereParameters:=Atmospheres.Items[0].AtmosphereParameters;
+   if assigned(AtmosphereParameters) then begin
+    ShellCentre:=TpvVector3.InlineableCreate(AtmosphereParameters^.Transform.Translation.x+AtmosphereParameters^.Center.x,
+                                             AtmosphereParameters^.Transform.Translation.y+AtmosphereParameters^.Center.y,
+                                             AtmosphereParameters^.Transform.Translation.z+AtmosphereParameters^.Center.z);
+    ShellBottomRadius:=AtmosphereParameters^.BottomRadius;
+    ShellTopRadius:=AtmosphereParameters^.TopRadius;
+   end;
+  end;
+
+  fPushConstants.CentreBottomRadiusTop:=TpvVector4.InlineableCreate(ShellCentre.x,
+                                                                    ShellCentre.y,
+                                                                    ShellCentre.z,
+                                                                    ShellBottomRadius);
+
+  fPushConstants.TopRadiusHeightsSpare:=TpvVector4.InlineableCreate(ShellTopRadius,
                                                                     VolumetricScatteringRayleighScaleHeight,
                                                                     VolumetricScatteringMieScaleHeight,
                                                                     0.0);
