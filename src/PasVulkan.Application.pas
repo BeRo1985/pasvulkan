@@ -2784,7 +2784,26 @@ function GetCrashLogFileName:TpvUTF8String;
 // because a dump is a file and not a line: two of them cannot share one.
 function GetCrashDumpFileName:TpvUTF8String;
 
-var // Whether LogCrash writes anything at all, and whether it writes a minidump
+type // Whatever the program itself wants to rescue from a crash, which for a game
+     // is the state of the session which is about to be lost. Called by LogCrash
+     // once the report and the dump are already on the disk, see there for why
+     // that order and not another one.
+     //
+     // aHardCrash says how much the program may still dare. False where the
+     // exception was caught by the frame loop or by the update thread, so the
+     // process is still whole and only on its way out; true where the fault was
+     // never handled at all or arrived on a worker thread, and every additional
+     // step is one which may not come back.
+     //
+     // Whatever this does, it does under the same rule as everything else on
+     // this path: it must not raise, and it must not take forever.
+     TpvCrashSaveHook=procedure(const aReport:TpvUTF8String;const aHardCrash:Boolean);
+
+var // Unassigned means nothing is attempted, which is what a program which never
+    // asked for it gets, see the type above.
+    pvOnCrashSave:TpvCrashSaveHook=nil;
+
+    // Whether LogCrash writes anything at all, and whether it writes a minidump
     // beside the text.
     //
     // Settings and not defines, so that the same executable can be asked for a
@@ -2806,7 +2825,10 @@ var // Whether LogCrash writes anything at all, and whether it writes a minidump
     // with a Vulkan renderer that is gigabytes.
     pvCrashDumpKind:TpvCrashReportMiniDumpKind=TpvCrashReportMiniDumpKind.Normal;
 
-procedure LogCrash(const aExceptionString:TpvUTF8String);
+// aHardCrash is handed to pvOnCrashSave and means what it means there. It
+// defaults to the more careful answer, so that a caller which says nothing is
+// treated as the worst case rather than as the best one.
+procedure LogCrash(const aExceptionString:TpvUTF8String;const aHardCrash:Boolean=true);
 
 implementation
 
@@ -3327,7 +3349,7 @@ begin
  result:=pvCrashReportMiniDumpFileName(ExtractFilePath(GetCrashLogFileName));
 end;
 
-procedure LogCrash(const aExceptionString:TpvUTF8String);
+procedure LogCrash(const aExceptionString:TpvUTF8String;const aHardCrash:Boolean);
 // Outside the condition below, since the dump underneath wants it as well and
 // either of the two can be asked for without the other.
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
@@ -3411,6 +3433,22 @@ begin
    // Deliberately silent, see above.
   end;
  end;
+
+ // And last of all, whatever the program wants to save of itself before it goes,
+ // which for a game is the session which is about to be lost.
+ //
+ // Last on purpose. This is the slow and the least certain of the three: it
+ // walks structures which the crash may have damaged, where the two above only
+ // format what was already written down. Anything it breaks, it breaks after the
+ // report and the dump are safely on the disk.
+ if assigned(pvOnCrashSave) then begin
+  try
+   pvOnCrashSave(aExceptionString,aHardCrash);
+  except
+   // Deliberately silent, see above.
+  end;
+ end;
+
 end;
 
 {$if defined(Linux)}
@@ -9906,7 +9944,11 @@ begin
    __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
    TpvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.Execute',ExceptionString);
-   LogCrash(ExceptionString);
+   // Caught, so the process is still whole here, and this is the update thread
+   // itself rather than some worker which merely noticed. The rescue below may
+   // therefore do more than it dares from an unhandled fault. It happens before
+   // the re-raise, so it runs from here and not from the handler of last resort.
+   LogCrash(ExceptionString,false);
    raise;
   end;
  end;
@@ -18627,7 +18669,9 @@ begin
            __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
            TpvApplication.Log(LOG_ERROR,'TpvApplication.Run',ExceptionString);
-           LogCrash(ExceptionString);
+           // Caught by the frame loop, so the process is still whole and only on
+           // its way out, see the same argument at the update thread above.
+           LogCrash(ExceptionString,false);
            //raise;
            if fVulkanDevice.UseNVIDIADeviceDiagnostics then begin
             // Device lost notification is asynchronous to the NVIDIA display
