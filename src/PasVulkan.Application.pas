@@ -2775,14 +2775,14 @@ function DumpExceptionCallStack(e:Exception):string;
 
 // Resolves the file LogCrash writes to. See the implementation for the order in
 // which the candidates are tried.
-function GetCrashLogFileName:String;
+function GetCrashLogFileName:TpvUTF8String;
 
 // And the file the minidump of the same crash goes to, which is beside the
 // crash log and carries the time and the process number in its name.
 //
 // A name of its own for every crash rather than one which is appended to,
 // because a dump is a file and not a line: two of them cannot share one.
-function GetCrashDumpFileName:String;
+function GetCrashDumpFileName:TpvUTF8String;
 
 var // Whether LogCrash writes anything at all, and whether it writes a minidump
     // beside the text.
@@ -2806,7 +2806,7 @@ var // Whether LogCrash writes anything at all, and whether it writes a minidump
     // with a Vulkan renderer that is gigabytes.
     pvCrashDumpKind:TpvCrashReportMiniDumpKind=TpvCrashReportMiniDumpKind.Normal;
 
-procedure LogCrash(const aExceptionString:String);
+procedure LogCrash(const aExceptionString:TpvUTF8String);
 
 implementation
 
@@ -3264,9 +3264,9 @@ begin
 end;
 {$ifend}
 
-function GetCrashLogFileName:String;
+function GetCrashLogFileName:TpvUTF8String;
 var Index,Count:TpvInt32;
-    Parameter,BaseName,Path:String;
+    Parameter,BaseName,Path:TpvUTF8String;
 begin
 
  // An explicit override on the command line always wins.
@@ -3320,19 +3320,19 @@ begin
 
 end;
 
-function GetCrashDumpFileName:String;
+function GetCrashDumpFileName:TpvUTF8String;
 begin
  // Wherever the crash log goes, since that is where somebody will look, and
  // both halves of one report belong next to each other.
  result:=pvCrashReportMiniDumpFileName(ExtractFilePath(GetCrashLogFileName));
 end;
 
-procedure LogCrash(const aExceptionString:String);
+procedure LogCrash(const aExceptionString:TpvUTF8String);
 // Outside the condition below, since the dump underneath wants it as well and
 // either of the two can be asked for without the other.
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
-var FileName:String;
-    Text:String;
+var FileName:TpvUTF8String;
+    Text:TpvUTF8String;
     RawText:TpvRawByteString;
     FileHandle:THandle;
 begin

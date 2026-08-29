@@ -142,7 +142,7 @@ function pvCrashReportSteamAvailable:Boolean;
 // crash.
 function pvCrashReportSteamWriteMiniDump(const aExceptionPointers:TpvPointer=nil;
                                          const aExceptionCode:TpvUInt32=0;
-                                         const aComment:String=''):Boolean;
+                                         const aComment:TpvUTF8String=''):Boolean;
 
 // Puts the above into pvCrashReportMiniDumpWriter, so that every dump the
 // framework asks for goes to the service, and, for as long as
@@ -178,9 +178,9 @@ function pvCrashReportSteamSetBreakpadAppID(const aAppID:TpvUInt32):Boolean;
 // so it is off unless somebody has a reason.
 //
 // False where the binding has no such routine.
-function pvCrashReportSteamUseBreakpadCrashHandler(const aVersion:String;
-                                                   const aDate:String;
-                                                   const aTime:String;
+function pvCrashReportSteamUseBreakpadCrashHandler(const aVersion:TpvUTF8String;
+                                                   const aDate:TpvUTF8String;
+                                                   const aTime:TpvUTF8String;
                                                    const aFullMemoryDumps:Boolean=false):Boolean;
 
 implementation
@@ -225,49 +225,50 @@ end;
 // Cutting a report short is better than sending none, but cutting it in the
 // middle of a character would leave the service with something which is not
 // text any more, and cutting it in the middle of a line would leave whoever
-// reads it wondering whether the frame at the end is a whole one. So the cut
-// goes back to the last line ending, and falls back to a character boundary
-// only when the piece which fits holds no line ending at all.
-function CrashReportSteamFillComment(const aComment:String):TpvSizeInt;
-var Text:TpvUTF8String;
-    Count,Index:TpvSizeInt;
+// reads it wondering whether the frame at the end is a whole one.
+// Nothing is converted on the way in, which is the point of the report being a
+// TpvUTF8String in the first place: what the service is handed is the bytes
+// which were already there, and no copy of them is made on a path where making
+// one is worst.
+function CrashReportSteamFillComment(const aComment:TpvUTF8String):TpvSizeInt;
+var Count,Index:TpvSizeInt;
 begin
 
  result:=0;
  CrashReportSteamComment[0]:=#0;
 
- if length(aComment)=0 then begin
+ Count:=length(aComment);
+ if Count=0 then begin
   exit;
  end;
-
- Text:=TpvUTF8String(aComment);
- Count:=length(Text);
 
  if Count>cCommentSize then begin
 
   Count:=cCommentSize;
 
-  // Back to the last line ending inside what fits.
-  Index:=Count;
-  while (Index>0) and (Text[Index]<>#10) do begin
-   dec(Index);
+  // A character boundary first, since that one is not negotiable. A byte which
+  // continues a character has its two top bits set to one and no other byte
+  // does, which is the whole of what has to be known here.
+  while (Count>0) and ((ord(aComment[Count+1]) and $C0)=$80) do begin
+   dec(Count);
   end;
 
-  if Index>0 then begin
+  // And back to the last line ending on top of that, but only while that line
+  // ending is near enough to the cut to be worth going back to. A report which
+  // happens to hold one very long line would otherwise arrive as the handful of
+  // bytes before it, which is the one outcome worse than a ragged last line.
+  Index:=Count;
+  while (Index>0) and (aComment[Index]<>#10) do begin
+   dec(Index);
+  end;
+  if (Index*4)>=(Count*3) then begin
    Count:=Index;
-  end else begin
-   // No line ending to go back to, so a character boundary has to do. A byte
-   // which continues a character has its two top bits set to one and no other
-   // byte does, which is the whole of what has to be known here.
-   while (Count>0) and ((ord(Text[Count+1]) and $C0)=$80) do begin
-    dec(Count);
-   end;
   end;
 
  end;
 
  if Count>0 then begin
-  Move(Text[1],CrashReportSteamComment[0],Count);
+  Move(aComment[1],CrashReportSteamComment[0],Count);
  end;
  CrashReportSteamComment[Count]:=#0;
  result:=Count;
@@ -276,10 +277,13 @@ end;
 
 function pvCrashReportSteamWriteMiniDump(const aExceptionPointers:TpvPointer;
                                          const aExceptionCode:TpvUInt32;
-                                         const aComment:String):Boolean;
+                                         const aComment:TpvUTF8String):Boolean;
 var Pointers:TpvPointer;
-    Code,Sequence,KeptCode:TpvUInt32;
+    Code:TpvUInt32;
+{$if defined(Windows)}
+    Sequence,KeptCode:TpvUInt32;
     KeptThreadID:TpvUInt64;
+{$ifend}
 begin
 
  result:=false;
@@ -290,15 +294,23 @@ begin
 
  Pointers:=aExceptionPointers;
  Code:=aExceptionCode;
+{$if defined(Windows)}
  if not assigned(Pointers) then begin
   // The same fallback the sibling unit makes, and for the same reason: the
   // place which writes a report is often not the place which faulted, and the
   // state kept aside at the fault is the only thing left which describes it.
+  //
+  // Only here. What the routine below wants is a pointer to the two records an
+  // exception filter is handed, and away from Windows there is no such thing to
+  // hand it, whatever the library may still export under that name. The state
+  // the sibling unit keeps on those platforms describes a signal instead, which
+  // is not the same shape and would be read as the wrong one.
   Sequence:=pvCrashReportLastFault(Pointers,KeptCode,KeptThreadID);
   if (Sequence<>0) and (Code=0) then begin
    Code:=KeptCode;
   end;
  end;
+{$ifend}
 
  try
 
@@ -322,11 +334,11 @@ begin
 
 end;
 
-function CrashReportSteamWriter(const aFileName:String;
+function CrashReportSteamWriter(const aFileName:TpvUTF8String;
                                 const aExceptionPointers:TpvPointer;
                                 const aExceptionCode:TpvUInt32;
                                 const aThreadID:TpvUInt64;
-                                const aComment:String;
+                                const aComment:TpvUTF8String;
                                 const aKind:TpvCrashReportMiniDumpKind;
                                 const aUserData:TpvPointer):Boolean;
 var FileWritten,HandedOver:Boolean;
@@ -401,16 +413,16 @@ begin
  end;
 end;
 
-function pvCrashReportSteamUseBreakpadCrashHandler(const aVersion:String;
-                                                   const aDate:String;
-                                                   const aTime:String;
+function pvCrashReportSteamUseBreakpadCrashHandler(const aVersion:TpvUTF8String;
+                                                   const aDate:TpvUTF8String;
+                                                   const aTime:TpvUTF8String;
                                                    const aFullMemoryDumps:Boolean):Boolean;
 begin
  result:=assigned(SteamworksLibraryHandle) and assigned(SteamAPI_UseBreakpadCrashHandler);
  if result then begin
-  CrashReportSteamBreakpadVersion:=TpvUTF8String(aVersion);
-  CrashReportSteamBreakpadDate:=TpvUTF8String(aDate);
-  CrashReportSteamBreakpadTime:=TpvUTF8String(aTime);
+  CrashReportSteamBreakpadVersion:=aVersion;
+  CrashReportSteamBreakpadDate:=aDate;
+  CrashReportSteamBreakpadTime:=aTime;
   try
    SteamAPI_UseBreakpadCrashHandler(PSteamChar(CrashReportSteamBreakpadVersion),
                                     PSteamChar(CrashReportSteamBreakpadDate),

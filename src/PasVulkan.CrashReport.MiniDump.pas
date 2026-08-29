@@ -165,11 +165,11 @@ type // How much of the process goes into the file.
      // Returning false means the dump was not written, and the caller of
      // pvCrashReportWriteMiniDump is told so. It does not fall back to the
      // built in writer, since a program which put a writer here meant it.
-     TpvCrashReportMiniDumpWriter=function(const aFileName:String;
+     TpvCrashReportMiniDumpWriter=function(const aFileName:TpvUTF8String;
                                            const aExceptionPointers:TpvPointer;
                                            const aExceptionCode:TpvUInt32;
                                            const aThreadID:TpvUInt64;
-                                           const aComment:String;
+                                           const aComment:TpvUTF8String;
                                            const aKind:TpvCrashReportMiniDumpKind;
                                            const aUserData:TpvPointer):Boolean;
 
@@ -256,7 +256,7 @@ function pvCrashReportMiniDumpAvailable:Boolean;
 // Built from the name of the executable, the current time and the process
 // identifier, so that a program which crashes twice keeps both files and two
 // processes of the same program do not write over each other.
-function pvCrashReportMiniDumpFileName(const aDirectory:String=''):String;
+function pvCrashReportMiniDumpFileName(const aDirectory:TpvUTF8String=''):TpvUTF8String;
 
 // Writes one, and reports whether it got there.
 //
@@ -282,11 +282,11 @@ function pvCrashReportMiniDumpFileName(const aDirectory:String=''):String;
 // The file is written beside its final name and moved into place only once it
 // is complete, so an interrupted attempt, which in a crash is a real
 // possibility, leaves no file which looks like a dump and is not one.
-function pvCrashReportWriteMiniDump(const aFileName:String;
+function pvCrashReportWriteMiniDump(const aFileName:TpvUTF8String;
                                     const aExceptionPointers:TpvPointer=nil;
                                     const aExceptionCode:TpvUInt32=0;
                                     const aThreadID:TpvUInt64=0;
-                                    const aComment:String='';
+                                    const aComment:TpvUTF8String='';
                                     const aKind:TpvCrashReportMiniDumpKind=TpvCrashReportMiniDumpKind.Normal):Boolean;
 
 // The writer built into this unit, reached directly rather than through the one
@@ -303,11 +303,11 @@ function pvCrashReportWriteMiniDump(const aFileName:String;
 // this does not repeat: handing it a nil pointer and a zero code here means a
 // dump of a thread which is not faulting, which is a thing worth being able to
 // ask for but not a thing to arrive at by accident.
-function pvCrashReportWriteMiniDumpFile(const aFileName:String;
+function pvCrashReportWriteMiniDumpFile(const aFileName:TpvUTF8String;
                                         const aExceptionPointers:TpvPointer;
                                         const aExceptionCode:TpvUInt32;
                                         const aThreadID:TpvUInt64;
-                                        const aComment:String;
+                                        const aComment:TpvUTF8String;
                                         const aKind:TpvCrashReportMiniDumpKind):Boolean;
 
 implementation
@@ -321,7 +321,7 @@ implementation
 //
 // Here rather than beside the rest of the machinery of either platform, since
 // both of them write dumps and both of them describe one this way.
-type PpvCrashReportMiniDumpString=^String;
+type PpvCrashReportMiniDumpString=^TpvUTF8String;
 
      TpvCrashReportMiniDumpRequest=record
       FileName:PpvCrashReportMiniDumpString;
@@ -599,9 +599,9 @@ end;
 // Note what this does not do: it never looks at how old the file is or how big.
 // The only thing it goes by is whether anyone still has it open, which is the
 // one thing about it which cannot be wrong.
-function CrashReportMiniDumpAcquireTemporaryFile(const aFileName:String;out aTemporaryName:String):THandle;
+function CrashReportMiniDumpAcquireTemporaryFile(const aFileName:TpvUTF8String;out aTemporaryName:TpvUTF8String):THandle;
 var Index:TpvInt32;
-    Candidate:String;
+    Candidate:TpvUTF8String;
     Stale:THandle;
 begin
  result:=INVALID_HANDLE_VALUE;
@@ -646,7 +646,7 @@ var Attempt:TpvInt32;
     UserStreamParameter:PpvCrashReportMiniDumpUserStreamInformation;
     CommentText:UnicodeString;
     Handle:THandle;
-    TemporaryName:String;
+    TemporaryName:TpvUTF8String;
     Written:Boolean;
 begin
  result:=false;
@@ -987,7 +987,7 @@ end;
 // A string the way this format keeps one: a length in bytes and then the
 // characters, sixteen bits each, with a terminator which the length does not
 // count.
-function CrashReportMiniDumpAppendString(var aBuffer:TpvCrashReportMiniDumpBuffer;const aValue:String):TpvUInt32;
+function CrashReportMiniDumpAppendString(var aBuffer:TpvCrashReportMiniDumpBuffer;const aValue:TpvUTF8String):TpvUInt32;
 var Wide:UnicodeString;
     Bytes:TpvUInt32;
 begin
@@ -1002,7 +1002,7 @@ end;
 
 // Reads one of the files the kernel makes up on the spot. They report no size,
 // so this reads until it stops giving anything.
-function CrashReportMiniDumpReadProcFile(const aFileName:String):TpvRawByteString;
+function CrashReportMiniDumpReadProcFile(const aFileName:TpvUTF8String):TpvRawByteString;
 var Handle:THandle;
     Got:TpvSizeInt;
     Chunk:array[0..8191] of AnsiChar;
@@ -1457,7 +1457,7 @@ var Buffer:TpvCrashReportMiniDumpBuffer;
     NameRVAs:array of TpvUInt32;
     CVRVAs,CVSizes:array of TpvUInt32;
     Handle:THandle;
-    TemporaryName:String;
+    TemporaryName:TpvUTF8String;
     CommentText:UnicodeString;
     Module:PpvCrashReportMiniDumpModule;
     Entry:PpvCrashReportMiniDumpDirectoryEntry;
@@ -1871,8 +1871,8 @@ begin
 {$ifend}
 end;
 
-function pvCrashReportMiniDumpFileName(const aDirectory:String):String;
-var Directory,BaseName:String;
+function pvCrashReportMiniDumpFileName(const aDirectory:TpvUTF8String):TpvUTF8String;
+var Directory,BaseName:TpvUTF8String;
 begin
  Directory:=aDirectory;
  if length(Directory)=0 then begin
@@ -1899,11 +1899,11 @@ begin
          '.dmp';
 end;
 
-function pvCrashReportWriteMiniDump(const aFileName:String;
+function pvCrashReportWriteMiniDump(const aFileName:TpvUTF8String;
                                     const aExceptionPointers:TpvPointer;
                                     const aExceptionCode:TpvUInt32;
                                     const aThreadID:TpvUInt64;
-                                    const aComment:String;
+                                    const aComment:TpvUTF8String;
                                     const aKind:TpvCrashReportMiniDumpKind):Boolean;
 {$if defined(Windows)}
 // Deliberately few of these, and none of them large. This is the frame which
@@ -1979,11 +1979,11 @@ begin
 end;
 {$ifend}
 
-function pvCrashReportWriteMiniDumpFile(const aFileName:String;
+function pvCrashReportWriteMiniDumpFile(const aFileName:TpvUTF8String;
                                         const aExceptionPointers:TpvPointer;
                                         const aExceptionCode:TpvUInt32;
                                         const aThreadID:TpvUInt64;
-                                        const aComment:String;
+                                        const aComment:TpvUTF8String;
                                         const aKind:TpvCrashReportMiniDumpKind):Boolean;
 {$if defined(Windows)}
 var Request:TpvCrashReportMiniDumpRequest;

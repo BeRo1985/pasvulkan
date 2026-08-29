@@ -328,7 +328,7 @@ type
 // Adds a manually formatted entry to the ring buffer. Safe to call at any time,
 // but not from inside a vectored exception handler, since it works with managed
 // strings.
-procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String;const aReturnAddress:Boolean=false);
+procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:TpvUTF8String;const aReturnAddress:Boolean=false);
 
 // Formats a single code address as readable as the current build allows.
 //
@@ -338,13 +338,13 @@ procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointe
 // byte earlier to land on the line which actually made the call. Pass false for
 // an address which is the faulting instruction itself, as reported for a
 // hardware fault.
-function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean=true):String;
+function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean=true):TpvUTF8String;
 
 // Captures the stack of the calling thread, skipping the given number of frames.
-function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32=1):String;
+function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32=1):TpvUTF8String;
 
 // Formats the recorded first chance history, oldest entry first.
-function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBufferSize):String;
+function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBufferSize):TpvUTF8String;
 
 // The single implementation behind every DumpExceptionCallStack in PasVulkan.
 //
@@ -367,7 +367,7 @@ function pvCrashReportHistory(const aMaximalCount:TpvInt32=pvCrashReportRingBuff
 // pvCrashReportRegisters takes one: a logger thread writing the report of
 // another thread would otherwise have the ring buffer looked up for itself.
 // Zero is the calling thread.
-function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown;const aThreadID:TpvUInt64=0):String;
+function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown;const aThreadID:TpvUInt64=0):TpvUTF8String;
 
 // A short identifier for where a crash happened, so that two reports of the
 // same fault can be recognized as one thing seen twice rather than read one by
@@ -405,7 +405,7 @@ function pvCrashReportDumpException(const aException:Exception;const aAddress:Tp
 // them.
 //
 // aAddressKind and aThreadID mean what they mean in pvCrashReportDumpException.
-function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddress:TpvPointer=nil;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown;const aThreadID:TpvUInt64=0):String;
+function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalNames:TpvInt32=5;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aAddress:TpvPointer=nil;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown;const aThreadID:TpvUInt64=0):TpvUTF8String;
 
 // Formats the processor state of the last fault of a thread. Empty when that
 // thread had none, and empty on a platform which does not hand one over.
@@ -414,11 +414,11 @@ function pvCrashReportFingerprint(const aException:Exception=nil;const aMaximalN
 // crashed writes its own report. An application which hands its crash logs to a
 // logger thread of its own has to say whose state it wants, otherwise the
 // logger asks about itself and gets nothing.
-function pvCrashReportRegisters(const aThreadID:TpvUInt64=0):String;
+function pvCrashReportRegisters(const aThreadID:TpvUInt64=0):TpvUTF8String;
 
 // Lists the modules of the process with the address each was loaded at, so that
 // an address which nothing could name can still be placed.
-function pvCrashReportModules:String;
+function pvCrashReportModules:TpvUTF8String;
 
 // Formats the call stack of every other thread of the process. When a job
 // system is involved the thread which crashed is often only the one which
@@ -426,7 +426,7 @@ function pvCrashReportModules:String;
 // what this is for.
 //
 // Currently answers on Windows only, see the implementation for why.
-function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32=32):String;
+function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32=32):TpvUTF8String;
 
 // Everything around the exception itself: what led up to it, what was in the
 // registers, what the other threads were doing, and what was loaded, in the
@@ -439,7 +439,7 @@ function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32=32):String;
 // has to be reachable from here and from the full report as well, otherwise the
 // one function which is meant to be the only one to call is the one which
 // cannot answer it.
-function pvCrashReportContext(const aThreadID:TpvUInt64=0):String;
+function pvCrashReportContext(const aThreadID:TpvUInt64=0):TpvUTF8String;
 
 // The exception and all of the above, in one piece.
 //
@@ -447,7 +447,7 @@ function pvCrashReportContext(const aThreadID:TpvUInt64=0):String;
 // but a shipping path which has to remember four of them is a shipping path
 // which will be missing one of them, and it is the report from a player which
 // then turns out to be missing it.
-function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown):String;
+function pvCrashReportFullReport(const aException:Exception=nil;const aAddress:TpvPointer=nil;const aFrameCount:TpvInt32=0;const aFrames:PPointer=nil;const aThreadID:TpvUInt64=0;const aAddressKind:TpvCrashReportAddressKind=TpvCrashReportAddressKind.Unknown):TpvUTF8String;
 
 {$if defined(Windows)}
 // Hands out the operating system state of the most recent fault, in the shape
@@ -598,7 +598,7 @@ type PpvCrashReportModuleEntry=^TpvCrashReportModuleEntry;
       // a module over the life of a process: a library can be unloaded and a
       // different one can then land on exactly the same address, and the old
       // entry would name routines out of a library which is no longer there.
-      FileName:String;
+      FileName:TpvUTF8String;
       // What has to be taken off a runtime address to get the image relative
       // one the table is keyed by, which is where the module begins in memory.
       RVABase:TpvPtrUInt;
@@ -1091,7 +1091,7 @@ begin
  CrashReportEntryAppendChars(aEntry,@Buffer[0],Digits);
 end;
 
-procedure CrashReportEntryAppendString(const aEntry:PpvCrashReportEntry;const aValue:String);
+procedure CrashReportEntryAppendString(const aEntry:PpvCrashReportEntry;const aValue:TpvUTF8String);
 {$ifdef fpc}
 begin
  // Under FreePascal a String is an AnsiString which already holds UTF-8 bytes,
@@ -1129,7 +1129,7 @@ begin
 end;
 {$endif}
 
-procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:String;const aReturnAddress:Boolean);
+procedure pvCrashReportNote(const aKind,aCode:TpvUInt32;const aAddress:TpvPointer;const aText:TpvUTF8String;const aReturnAddress:Boolean);
 var Entry:PpvCrashReportEntry;
     Sequence:TpvUInt32;
     Flags:TpvUInt32;
@@ -1157,7 +1157,7 @@ end;
 // Reads the whole of a proc file. It cannot be read through a stream, because
 // proc reports a size of zero for its files, so anything which trusts that size
 // ends up with nothing.
-function CrashReportReadProcFile(const aFileName:String):TpvRawByteString;
+function CrashReportReadProcFile(const aFileName:TpvUTF8String):TpvRawByteString;
 var Handle:THandle;
     Buffer:array[0..4095] of AnsiChar;
     Chunk:TpvRawByteString;
@@ -1257,7 +1257,7 @@ end;
 // project, in every run, for nothing.
 // Names the module an address belongs to, and where it was loaded. This is what
 // makes a frame inside a shared library resolvable rather than a bare address.
-function CrashReportModuleForAddress(const aAddress:TpvPointer;out aKey:TpvPtrUInt;out aFileName:String):Boolean;
+function CrashReportModuleForAddress(const aAddress:TpvPointer;out aKey:TpvPtrUInt;out aFileName:TpvUTF8String):Boolean;
 {$if defined(Windows)}
 const GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT=TpvUInt32($00000002);
       GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS=TpvUInt32($00000004);
@@ -1309,7 +1309,7 @@ end;
 function CrashReportTableForAddress(const aAddress:TpvPointer;out aRVABase:TpvPtrUInt):TpvSymbolTable;
 var Index,Slot:TpvInt32;
     Key:TpvPtrUInt;
-    FileName:String;
+    FileName:TpvUTF8String;
     Table:TpvSymbolTable;
     RVABase:TpvPtrUInt;
     Known:Boolean;
@@ -1462,7 +1462,7 @@ end;
 // built from names rather than from formatted lines, so that neither the
 // address nor the line number, both of which move for reasons which have
 // nothing to do with the defect, end up in it.
-function CrashReportSymbolNameOf(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aName:String):Boolean;
+function CrashReportSymbolNameOf(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aName:TpvUTF8String):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
     LookupAddress,RVABase:TpvPtrUInt;
@@ -1499,7 +1499,7 @@ begin
 
 end;
 
-function CrashReportResolveAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aText:String):Boolean;
+function CrashReportResolveAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean;out aText:TpvUTF8String):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
     LookupAddress,RVABase:TpvPtrUInt;
@@ -1569,7 +1569,7 @@ end;
 // BackTraceStrFunc is a variable and anybody may put their own formatter there,
 // and one which writes a name first would lose that name to the cut below. So
 // the cut only happens where there is really an address to cut.
-function CrashReportStartsWithAddress(const aText:String):Boolean;
+function CrashReportStartsWithAddress(const aText:TpvUTF8String):Boolean;
 var Position:TpvSizeInt;
 begin
  result:=false;
@@ -1587,9 +1587,9 @@ begin
 end;
 {$endif}
 
-function CrashReportFormatAddressFallback(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
+function CrashReportFormatAddressFallback(const aAddress:TpvPointer;const aReturnAddress:Boolean):TpvUTF8String;
 {$ifdef fpc}
-var Answer:String;
+var Answer:TpvUTF8String;
     Position:TpvSizeInt;
 begin
  // With the lnfodwrf unit linked in, this resolves to unit, file and line,
@@ -1728,7 +1728,7 @@ begin
 end;
 {$ifend}
 
-function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
+function pvCrashReportFormatAddress(const aAddress:TpvPointer;const aReturnAddress:Boolean):TpvUTF8String;
 begin
  // Nothing to name, and in particular nothing to look up one byte before, which
  // for a nil handed in by somebody would be the last address of the address
@@ -1756,7 +1756,7 @@ end;
 // frame from being printed twice. That comparison holds because both come from
 // here; two places building the line the same way by hand would hold until one
 // of them changed.
-function CrashReportStackLine(const aAddress:TpvPointer;const aReturnAddress:Boolean):String;
+function CrashReportStackLine(const aAddress:TpvPointer;const aReturnAddress:Boolean):TpvUTF8String;
 begin
  result:='  '+pvCrashReportFormatAddress(aAddress,aReturnAddress);
 end;
@@ -1904,7 +1904,7 @@ begin
  end;
 end;
 
-function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32):String;
+function pvCrashReportCaptureStackTrace(const aFramesToSkip:TpvInt32):TpvUTF8String;
 {$if defined(Windows)}
 var Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
     Count,Index:TpvInt32;
@@ -1979,7 +1979,7 @@ begin
 end;
 {$ifend}
 
-function CrashReportKindToString(const aKind:TpvUInt32):String;
+function CrashReportKindToString(const aKind:TpvUInt32):TpvUTF8String;
 begin
  case aKind of
   pvCrashReportKindRaise:begin
@@ -1994,7 +1994,7 @@ begin
  end;
 end;
 
-function pvCrashReportHistory(const aMaximalCount:TpvInt32):String;
+function pvCrashReportHistory(const aMaximalCount:TpvInt32):TpvUTF8String;
 var Index,Count:TpvInt32;
     Newest,Wanted:TpvUInt32;
     Entry:PpvCrashReportEntry;
@@ -2053,8 +2053,8 @@ begin
  end;
 end;
 
-function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddressKind:TpvCrashReportAddressKind;const aThreadID:TpvUInt64):String;
-var Fingerprint:String;
+function pvCrashReportDumpException(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddressKind:TpvCrashReportAddressKind;const aThreadID:TpvUInt64):TpvUTF8String;
+var Fingerprint:TpvUTF8String;
     Index:TpvInt32;
     Frames:PPointer;
     // True while the next address to be added is the first of the list which
@@ -2091,11 +2091,11 @@ var Fingerprint:String;
     // The text of that last line, for the one place where the thing which
     // follows is not a list of addresses but a block of text somebody else
     // formatted.
-    LastLine:String;
+    LastLine:TpvUTF8String;
 {$ifdef fpc}
     FrameCount:TpvInt32;
 {$else}
-    StackTrace,FirstLine:String;
+    StackTrace,FirstLine:TpvUTF8String;
     Position:TpvSizeInt;
 {$endif}
 
@@ -2307,7 +2307,7 @@ end;
 {$ifndef fpc}
 procedure CrashReportNoteNativeExceptionRecord(const aExceptionRecord:PpvCrashReportNativeExceptionRecord);
 var ExceptionObject:TObject;
-    Text:String;
+    Text:TpvUTF8String;
 begin
  if not assigned(aExceptionRecord) then begin
   exit;
@@ -2369,6 +2369,11 @@ begin
  end;
 end;
 
+// The one place in this unit which still says String, and it has to. This is
+// handed to Exception.GetStackInfoStringProc, whose type the runtime declares,
+// and the runtime declares it returning its own string. Everything this builds
+// it from is a TpvUTF8String and is converted here, at the boundary, which is
+// where a conversion belongs.
 function CrashReportGetStackInfoStringProc(aInfo:Pointer):String;
 var StackInfo:PpvCrashReportStackInfo;
     Index:TpvInt32;
@@ -2786,7 +2791,7 @@ end;
 {$endif}
 {$ifend}
 
-function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddress:TpvPointer;const aAddressKind:TpvCrashReportAddressKind;const aThreadID:TpvUInt64):String;
+function pvCrashReportFingerprint(const aException:Exception;const aMaximalNames:TpvInt32;const aFrameCount:TpvInt32;const aFrames:PPointer;const aAddress:TpvPointer;const aAddressKind:TpvCrashReportAddressKind;const aThreadID:TpvUInt64):TpvUTF8String;
 var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
     // Whether each of them sits behind its call rather than on it, which decides
     // where the name is looked up. It used to be worked out from the position:
@@ -2797,7 +2802,7 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
     ReturnAddresses:array[0..cMaximalStackFrames-1] of Boolean;
     Count,Index,Named:TpvInt32;
     Hash:TpvUInt64;
-    Name:String;
+    Name:TpvUTF8String;
     Frames:PPointer;
     FrameCount:TpvInt32;
 {$ifndef fpc}
@@ -2814,7 +2819,7 @@ var Addresses:array[0..cMaximalStackFrames-1] of TpvPointer;
     // behind it can hold the same address twice for no reason.
     AtBoundary:Boolean;
 
- procedure Feed(const aValue:String);
+ procedure Feed(const aValue:TpvUTF8String);
  var Position:TpvSizeInt;
  begin
   for Position:=1 to length(aValue) do begin
@@ -3115,9 +3120,9 @@ end;
 // The registers themselves, once, for whichever of the two ways of getting hold
 // of them the platform offers. One place which knows how a machine is written
 // down, rather than one per way in.
-function CrashReportFormatRegisters(const aRegisters:TpvCrashReportFaultRegisters):String;
+function CrashReportFormatRegisters(const aRegisters:TpvCrashReportFaultRegisters):TpvUTF8String;
 
- function Reg(const aName:String;const aValue:TpvUInt64):String;
+ function Reg(const aName:TpvUTF8String;const aValue:TpvUInt64):TpvUTF8String;
  begin
   result:=aName+'='+IntToHex(aValue,SizeOf(TpvPointer) shl 1)+' ';
  end;
@@ -3162,7 +3167,7 @@ begin
 end;
 {$endif}
 
-function pvCrashReportRegisters(const aThreadID:TpvUInt64):String;
+function pvCrashReportRegisters(const aThreadID:TpvUInt64):TpvUTF8String;
 // Two ways in and one way out. On Windows the vectored handler wrote the state
 // into the ring buffer entry of that fault, so the newest entry of the asking
 // thread which carries one is the answer. On a unix the fault handler put it
@@ -3176,7 +3181,7 @@ var Snapshot:TpvCrashReportEntry;
     Index,Count:TpvInt32;
     Found:Boolean;
 
- function Reg(const aName:String;const aValue:TpvUInt64):String;
+ function Reg(const aName:TpvUTF8String;const aValue:TpvUInt64):TpvUTF8String;
  begin
   result:=aName+'='+IntToHex(aValue,SizeOf(TpvPointer) shl 1)+' ';
  end;
@@ -3266,7 +3271,7 @@ begin
 end;
 {$ifend}
 
-function pvCrashReportModules:String;
+function pvCrashReportModules:TpvUTF8String;
 {$if defined(Windows)}
 const TH32CS_SNAPMODULE=TpvUInt32($00000008);
       TH32CS_SNAPMODULE32=TpvUInt32($00000010);
@@ -4065,7 +4070,7 @@ begin
  CrashReportUnixThreadSlot.State:=0;
 end;
 
-function CrashReportUnixThreadStacks(const aMaximalThreads:TpvInt32):String;
+function CrashReportUnixThreadStacks(const aMaximalThreads:TpvInt32):TpvUTF8String;
 const cWaitRounds=20000;
 var SearchRec:TSearchRec;
     ThreadID,OwnThreadID,ProcessID:TpvInt32;
@@ -4177,7 +4182,7 @@ begin
  CrashReportThreadStacksBusy:=0;
 end;
 
-function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32):String;
+function pvCrashReportThreadStacks(const aMaximalThreads:TpvInt32):TpvUTF8String;
 {$if defined(Windows) and (defined(PasVulkanCrashReportX64) or defined(PasVulkanCrashReportX86))}
 const TH32CS_SNAPTHREAD=TpvUInt32($00000004);
       THREAD_GET_CONTEXT=TpvUInt32($0008);
@@ -4196,7 +4201,7 @@ var Snapshot,Thread:THandle;
     Frames:array[0..cMaximalStackFrames-1] of TpvPointer;
     Count,Index,Handled:TpvInt32;
     ProcessID,CurrentID:TpvUInt32;
-    Text:String;
+    Text:TpvUTF8String;
 begin
 
  result:='';
@@ -4327,8 +4332,8 @@ begin
 end;
 {$ifend}
 
-function pvCrashReportContext(const aThreadID:TpvUInt64):String;
-var Part:String;
+function pvCrashReportContext(const aThreadID:TpvUInt64):TpvUTF8String;
+var Part:TpvUTF8String;
 begin
 
  result:=pvCrashReportHistory+LineEnding;
@@ -4358,7 +4363,7 @@ begin
 
 end;
 
-function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aThreadID:TpvUInt64;const aAddressKind:TpvCrashReportAddressKind):String;
+function pvCrashReportFullReport(const aException:Exception;const aAddress:TpvPointer;const aFrameCount:TpvInt32;const aFrames:PPointer;const aThreadID:TpvUInt64;const aAddressKind:TpvCrashReportAddressKind):TpvUTF8String;
 begin
  result:=pvCrashReportDumpException(aException,aAddress,aFrameCount,aFrames,aAddressKind,aThreadID)+LineEnding+
          pvCrashReportContext(aThreadID);
