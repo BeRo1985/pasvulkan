@@ -31552,6 +31552,23 @@ begin
     // A new base light node became visible; make every render instance pick it up via UpdateLights.
     TPasMPInterlocked.Increment(fLightMatricesGeneration);
    end;
+  end else if assigned(InstanceNode.fLight) then begin
+   // A node which stopped being visible has to take its light with it, or else a hidden node keeps
+   // lighting the scene from where it no longer is. Same teardown as the one used when the whole
+   // instance goes inactive. Nilling the light is also what TRenderInstance.UpdateLights watches
+   // for, so render instances switch their own copies off by themselves afterwards.
+{$ifdef DeferredLightAABBTreeUpdates}
+   AddDeferredLightOperation(TDeferredLightOperationType.Destroy_,InstanceNode.fLight);
+   InstanceNode.fLight:=nil;
+{$else}
+   fGroup.fSceneInstance.fLightDataLock.Acquire;
+   try
+    FreeAndNil(InstanceNode.fLight);
+   finally
+    fGroup.fSceneInstance.fLightDataLock.Release;
+   end;
+{$endif}
+   TPasMPInterlocked.Increment(fLightMatricesGeneration);
   end;
  end;
  if Dirty and (InstanceNode.fCacheVerticesDirtyCounter<fGroup.fSceneInstance.fCountInFlightFrames) then begin
