@@ -42,15 +42,15 @@ type TMapFileReader=class
        fBuilder:TSymbolBuilder;
        fWantSymbols:Boolean;
        fWantLines:Boolean;
-       function ParseSegmentedAddress(const aToken:String;out aVirtualAddress:TpvUInt64):Boolean;
+       function ParseSegmentedAddress(const aToken:TpvUTF8String;out aVirtualAddress:TpvUInt64):Boolean;
       public
        constructor Create(const aBuilder:TSymbolBuilder;const aImageBase:TpvUInt64;const aWantSymbols,aWantLines:Boolean);
-       procedure Parse(const aFileName:String);
+       procedure Parse(const aFileName:TpvUTF8String);
      end;
 
 implementation
 
-function ParseHex(const aValue:String):TpvUInt64;
+function ParseHex(const aValue:TpvUTF8String):TpvUInt64;
 var Index:TpvSizeInt;
     Digit:TpvUInt32;
 begin
@@ -74,7 +74,10 @@ begin
  end;
 end;
 
-procedure Tokenize(const aLine:String;const aTokens:TStringList);
+// The token list stays a TStringList, which is a list of the compiler's own
+// string type, so the two touch points below convert. Everything this unit owns
+// is utf-8; the container in between is the runtime's and is left as it is.
+procedure Tokenize(const aLine:TpvUTF8String;const aTokens:TStringList);
 var Index,Start:TpvSizeInt;
 begin
  aTokens.Clear;
@@ -104,7 +107,7 @@ begin
  fSegments:=nil;
 end;
 
-function TMapFileReader.ParseSegmentedAddress(const aToken:String;out aVirtualAddress:TpvUInt64):Boolean;
+function TMapFileReader.ParseSegmentedAddress(const aToken:TpvUTF8String;out aVirtualAddress:TpvUInt64):Boolean;
 var ColonPosition:TpvSizeInt;
     SegmentIndex:TpvUInt32;
     Offset:TpvUInt64;
@@ -129,16 +132,16 @@ begin
  end;
 end;
 
-procedure TMapFileReader.Parse(const aFileName:String);
+procedure TMapFileReader.Parse(const aFileName:TpvUTF8String);
 type TSection=(scNone,scSegments,scDetailed,scPublicsByValue,scLineNumbers);
 var Lines,Tokens:TStringList;
     LineIndex,TokenIndex,Index,MarkerPosition,ClosingPosition:TpvSizeInt;
-    Line,Trimmed,UnitName,SourceFileName,Name:String;
+    Line,Trimmed,UnitName,SourceFileName,Name:TpvUTF8String;
     Section:TSection;
     VirtualAddress,Size:TpvUInt64;
     Segment:TSegment;
     LineNumber:TpvUInt32;
-    CurrentLineUnit:String;
+    CurrentLineUnit:TpvUTF8String;
 begin
 
  Section:=scNone;

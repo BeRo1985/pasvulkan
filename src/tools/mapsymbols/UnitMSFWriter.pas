@@ -52,7 +52,7 @@ type TMSFWriter=class
        // caller.
        function AddExistingStream(const aData:TMemoryStream):TpvSizeInt;
        function GetStream(const aIndex:TpvSizeInt):TMemoryStream;
-       procedure SaveToFile(const aFileName:String);
+       procedure SaveToFile(const aFileName:TpvUTF8String);
        property StreamCount:TpvSizeInt read fStreamCount;
      end;
 
@@ -113,7 +113,7 @@ begin
  result:=fStreams[aIndex].Data;
 end;
 
-procedure TMSFWriter.SaveToFile(const aFileName:String);
+procedure TMSFWriter.SaveToFile(const aFileName:TpvUTF8String);
 var Stream:TFileStream;
     Directory:TMemoryStream;
     StreamBlocks:array of array of TpvUInt32;

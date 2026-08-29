@@ -28,7 +28,7 @@ const EM_386=TpvUInt16(3);
       EM_AARCH64=TpvUInt16(183);
 
 type TELFWriterSymbol=record
-      Name:String;
+      Name:TpvUTF8String;
       Address:TpvUInt64;
       Size:TpvUInt64;
      end;
@@ -39,7 +39,7 @@ type TELFWriterSymbol=record
      TELFWriter=class
       private
        type TSectionRecord=record
-             Name:String;
+             Name:TpvUTF8String;
              SectionType:TpvUInt32;
              Flags:TpvUInt64;
              Address:TpvUInt64;
@@ -74,12 +74,12 @@ type TELFWriterSymbol=record
        procedure WriteU16(const aStream:TStream;const aValue:TpvUInt16);
        procedure WriteU32(const aStream:TStream;const aValue:TpvUInt32);
        procedure WriteU64(const aStream:TStream;const aValue:TpvUInt64);
-       function AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
+       function AddSection(const aName:TpvUTF8String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure AddDebugSection(const aName:String;const aData:TMemoryStream);
-       procedure AddSymbol(const aName:String;const aAddress,aSize:TpvUInt64);
+       procedure AddDebugSection(const aName:TpvUTF8String;const aData:TMemoryStream);
+       procedure AddSymbol(const aName:TpvUTF8String;const aAddress,aSize:TpvUInt64);
        // Describes the code range of the original image, so that the written
        // file carries a matching, contentless text section. Without it a
        // consumer has no idea which addresses this file is about.
@@ -103,7 +103,7 @@ type TELFWriterSymbol=record
        // claims none of that while the image it belongs to does is a file two
        // readers can disagree about.
        property Flags:TpvUInt32 read fFlags write fFlags;
-       procedure SaveToFile(const aFileName:String);
+       procedure SaveToFile(const aFileName:TpvUTF8String);
      end;
 
 implementation
@@ -194,7 +194,7 @@ begin
  inherited Destroy;
 end;
 
-function TELFWriter.AddSection(const aName:String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
+function TELFWriter.AddSection(const aName:TpvUTF8String;const aSectionType:TpvUInt32;const aFlags:TpvUInt64;const aData:TMemoryStream;const aOwnsData:Boolean):TpvSizeInt;
 var Section:PSectionRecord;
 begin
  result:=length(fSections);
@@ -216,14 +216,14 @@ begin
  Section^.NameOffset:=0;
 end;
 
-procedure TELFWriter.AddDebugSection(const aName:String;const aData:TMemoryStream);
+procedure TELFWriter.AddDebugSection(const aName:TpvUTF8String;const aData:TMemoryStream);
 begin
  if assigned(aData) and (aData.Size>0) then begin
   AddSection(aName,SHT_PROGBITS,0,aData,false);
  end;
 end;
 
-procedure TELFWriter.AddSymbol(const aName:String;const aAddress,aSize:TpvUInt64);
+procedure TELFWriter.AddSymbol(const aName:TpvUTF8String;const aAddress,aSize:TpvUInt64);
 var Symbol:PELFWriterSymbol;
 begin
  if fSymbolCount>=length(fSymbols) then begin
@@ -242,7 +242,7 @@ begin
  fTextSize:=aSize;
 end;
 
-procedure TELFWriter.SaveToFile(const aFileName:String);
+procedure TELFWriter.SaveToFile(const aFileName:TpvUTF8String);
 var Stream:TFileStream;
     StringTable,SymbolTable,SectionNames:TMemoryStream;
     Index,TextIndex,SymbolTableIndex,StringTableIndex,SectionNameIndex:TpvSizeInt;
@@ -258,7 +258,7 @@ var Stream:TFileStream;
     Section:PSectionRecord;
     Symbol:PELFWriterSymbol;
 
- function AppendString(const aStream:TMemoryStream;const aValue:String):TpvUInt32;
+ function AppendString(const aStream:TMemoryStream;const aValue:TpvUTF8String):TpvUInt32;
  var Bytes:TpvRawByteString;
      Terminator:AnsiChar;
  begin

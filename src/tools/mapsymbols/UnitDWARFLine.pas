@@ -36,7 +36,7 @@ type // A line number of zero marks the end of a sequence. Such a row has no
      // sequences keep addresses near zero. Letting the consumer bound the unit
      // over the rows it accepted keeps one stray row from poisoning the range
      // of an entire unit.
-     TDWARFLineUnitEvent=procedure(const aFileName:String) of object;
+     TDWARFLineUnitEvent=procedure(const aFileName:TpvUTF8String) of object;
 
      // The content types and forms which describe one version 5 table entry.
      TDWARFLineFormArray=array of TpvUInt64;
@@ -61,17 +61,17 @@ type // A line number of zero marks the end of a sequence. Such a row has no
        function ReadUInt64:TpvUInt64;
        function ReadULEB128:TpvUInt64;
        function ReadSLEB128:TpvInt64;
-       function ReadString:String;
-       function StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):String;
+       function ReadString:TpvUTF8String;
+       function StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):TpvUTF8String;
        // Reads or steps over one value of the given form. Version 5 describes
        // its tables through forms, so both are needed to get at the entries.
        // Returns false for a form this does not know, which makes the unit
        // unusable, since the position in the stream is then lost.
        function SkipForm(const aForm:TpvUInt64;const aIs64Bit:Boolean):Boolean;
-       function ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:String):Boolean;
+       function ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:TpvUTF8String):Boolean;
        function ReadFormUnsigned(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:TpvUInt64):Boolean;
        function ReadEntryFormat(out aTypes,aForms:TDWARFLineFormArray):Boolean;
-       function ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:String;out aDirectoryIndex:TpvInt64):Boolean;
+       function ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:TpvUTF8String;out aDirectoryIndex:TpvInt64):Boolean;
       public
        constructor Create(const aData:TpvPointer;const aSize:TpvSizeInt);
        // Hands over the sections version 5 keeps its path strings in. Without
@@ -158,7 +158,7 @@ begin
 end;
 
 // Reads a zero terminated string out of one of the string sections.
-function TDWARFLineReader.StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):String;
+function TDWARFLineReader.StringAt(const aData:PpvUInt8;const aSize:TpvSizeInt;const aOffset:TpvUInt64):TpvUTF8String;
 var Position,Start:TpvSizeInt;
     Raw:TpvRawByteString;
 begin
@@ -240,7 +240,7 @@ begin
  end;
 end;
 
-function TDWARFLineReader.ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:String):Boolean;
+function TDWARFLineReader.ReadFormString(const aForm:TpvUInt64;const aIs64Bit:Boolean;out aValue:TpvUTF8String):Boolean;
 var Offset:TpvUInt64;
 begin
  result:=true;
@@ -390,7 +390,7 @@ begin
  end;
 end;
 
-function TDWARFLineReader.ReadString:String;
+function TDWARFLineReader.ReadString:TpvUTF8String;
 var Start,Count:TpvSizeInt;
 begin
  Start:=fPosition;
@@ -426,7 +426,7 @@ end;
 
 // Reads one entry of such a table, keeping the path and the directory it
 // belongs to and stepping over everything else.
-function TDWARFLineReader.ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:String;out aDirectoryIndex:TpvInt64):Boolean;
+function TDWARFLineReader.ReadEntry(const aTypes,aForms:TDWARFLineFormArray;const aIs64Bit:Boolean;out aName:TpvUTF8String;out aDirectoryIndex:TpvInt64):Boolean;
 var Index:TpvSizeInt;
     Value:TpvUInt64;
 begin
@@ -470,7 +470,7 @@ var UnitLength:TpvUInt64;
     Directories:TStringList;
     FileNames:TStringList;
     FileDirectories:array of TpvInt32;
-    Name,PrimaryFileName,Directory:String;
+    Name,PrimaryFileName,Directory:TpvUTF8String;
     DirectoryIndex:TpvInt64;
     EntryTypes,EntryForms:TDWARFLineFormArray;
     EntryCount:TpvUInt64;

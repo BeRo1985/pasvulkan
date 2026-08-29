@@ -72,8 +72,8 @@ type
        ImageBase:TpvUInt64;
        Seen:TpvSizeInt;
        Mismatched:TpvSizeInt;
-       function FindByName(const aAddress:TpvUInt64;const aName:String):Boolean;
-       procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
+       function FindByName(const aAddress:TpvUInt64;const aName:TpvUTF8String):Boolean;
+       procedure OnSymbol(const aAddress:TpvUInt64;const aName:TpvUTF8String);
      end;
 
      // The same for the line rows of a written debug file: how many came back
@@ -123,13 +123,13 @@ type
        procedure MergeRanges;
 {$endif}
        procedure OnLineRow(const aAddress:TpvUInt64;const aLineNumber:TpvUInt32);
-       procedure OnLineUnit(const aFileName:String);
-       procedure OnSymbol(const aAddress:TpvUInt64;const aName:String);
+       procedure OnLineUnit(const aFileName:TpvUTF8String);
+       procedure OnSymbol(const aAddress:TpvUInt64;const aName:TpvUTF8String);
      end;
 
 // The answer which does not need the order to be anything in particular: every
 // symbol of that name is tried, and one of them being at this address is enough.
-function TCheckCollector.FindByName(const aAddress:TpvUInt64;const aName:String):Boolean;
+function TCheckCollector.FindByName(const aAddress:TpvUInt64;const aName:TpvUTF8String):Boolean;
 var Index:TpvSizeInt;
     SymbolRecord:TSymbolBuilder.TSymbolRecord;
 begin
@@ -145,7 +145,7 @@ begin
  end;
 end;
 
-procedure TCheckCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
+procedure TCheckCollector.OnSymbol(const aAddress:TpvUInt64;const aName:TpvUTF8String);
 var Found:Boolean;
 {$ifndef PasVulkanMapSymbolsLinearLookups}
     SymbolRecord:TSymbolBuilder.TSymbolRecord;
@@ -282,9 +282,9 @@ end;
 //
 // A name which does not carry the FreePascal unit marker is passed through, so
 // that Delphi names and plain C symbols stay untouched.
-function DemangleName(const aName:String):String;
+function DemangleName(const aName:TpvUTF8String):TpvUTF8String;
 var MarkerPosition,DollarPosition,Index:TpvSizeInt;
-    UnitPart,RestPart:String;
+    UnitPart,RestPart:TpvUTF8String;
 begin
 
  result:=aName;
@@ -512,8 +512,8 @@ begin
 end;
 {$endif}
 
-procedure TCollector.OnLineUnit(const aFileName:String);
-var Name:String;
+procedure TCollector.OnLineUnit(const aFileName:TpvUTF8String);
+var Name:TpvUTF8String;
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
     Index:TpvSizeInt;
     Range:PCollectorRange;
@@ -553,7 +553,7 @@ begin
 
 end;
 
-procedure TCollector.OnSymbol(const aAddress:TpvUInt64;const aName:String);
+procedure TCollector.OnSymbol(const aAddress:TpvUInt64;const aName:TpvUTF8String);
 begin
  if not WantSymbols then begin
   exit;
@@ -639,10 +639,10 @@ function GetFinalPathNameByHandleW(aFile:THandle;aFilePath:PWideChar;aLength,aFl
 // aFailure is set instead when the name cannot be followed to anything, which
 // in practice means a link which points at itself. A run which then went ahead
 // would work on the link.
-function ResolveSymbolicLink(const aFileName:String;out aResolvedFileName,aFailure:String):Boolean;
+function ResolveSymbolicLink(const aFileName:TpvUTF8String;out aResolvedFileName,aFailure:TpvUTF8String):Boolean;
 {$ifdef Unix}
 var Information:stat;
-    Target,Directory:String;
+    Target,Directory:TpvUTF8String;
     Steps:TpvSizeInt;
 {$endif}
 {$ifdef Windows}
@@ -650,7 +650,7 @@ var Attributes:TpvUInt32;
     Handle:THandle;
     Buffer:array[0..32767] of WideChar;
     Length32:TpvUInt32;
-    Final:String;
+    Final:TpvUTF8String;
 {$endif}
 begin
  aResolvedFileName:=aFileName;
@@ -754,7 +754,7 @@ end;
 //
 // aLabels says what each name is for, so that the message names the two things
 // which collided rather than only stating that two of them did.
-function FilesCollide(const aFileNames,aLabels:array of String;out aMessage:String):Boolean;
+function FilesCollide(const aFileNames,aLabels:array of TpvUTF8String;out aMessage:TpvUTF8String):Boolean;
 var Left,Right:TpvSizeInt;
 begin
  result:=false;
@@ -778,7 +778,7 @@ end;
 
 // A copy of a file, which is where everything is written before any of it takes
 // the place of what was there.
-function CopyFileTo(const aFromFileName,aToFileName:String):Boolean;
+function CopyFileTo(const aFromFileName,aToFileName:TpvUTF8String):Boolean;
 var Source,Target:TFileStream;
 begin
  result:=false;
@@ -813,7 +813,7 @@ end;
 // with whatever was there kept beside it, and a run which ends this way puts
 // that back, so the claim holds again. Still mentioned, because a file which is
 // written and then unwritten is worth a word.
-procedure ReportUnchanged(const aExecutableFileName,aPDBFileName:String;const aPDBWritten:Boolean);
+procedure ReportUnchanged(const aExecutableFileName,aPDBFileName:TpvUTF8String;const aPDBWritten:Boolean);
 begin
  if aPDBWritten and (length(aPDBFileName)>0) then begin
   WriteLn('Nothing was changed. ',aPDBFileName,' was written and is being put back the way it was.');
@@ -944,7 +944,7 @@ var InfoSection,AbbrevSection:TMemoryStream;
     SubprogramIndex,SubprogramNext,SubprogramComplaints,SubprogramsSeen,SymbolIndex:TpvSizeInt;
     ExpectedSubprograms:TpvSizeInt;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
-    Directory:String;
+    Directory:TpvUTF8String;
     Offset,ProgramLength:TpvUInt64;
     ImageBase,Expected:TpvUInt64;
     Used:array of Boolean;
@@ -1384,7 +1384,7 @@ end;
 // sit. All of those can be wrong while every symbol still comes back perfectly,
 // so the line programs are read back too, with the reader this same tool uses
 // on somebody else's DWARF.
-function CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String):Boolean;
+function CheckDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:TpvUTF8String):Boolean;
 var Check:TImageFile;
     Collector:TCheckCollector;
     Expected:TpvSizeInt;
@@ -1453,7 +1453,7 @@ end;
 // executable leads there: a wrong identity and the debugger refuses the pdb it
 // just found, a wrong name and it never finds it at all, and in both cases the
 // symbols are perfect and unreachable.
-function CheckCodeViewEntry(const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:String):Boolean;
+function CheckCodeViewEntry(const aPDBWriter:TPDBWriter;const aPDBFileName,aFileName:TpvUTF8String):Boolean;
 var Check:TImageFile;
     Info:TImageCodeViewInfo;
     Written:PpvUInt8Array;
@@ -1502,7 +1502,7 @@ end;
 // The symbols are not looked at. They belong to the executable and have nothing
 // to do with what was collected here.
 function CheckInjectedDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;
-                                    const aImage:TImageFile;const aFileName:String):Boolean;
+                                    const aImage:TImageFile;const aFileName:TpvUTF8String):Boolean;
 var Check:TImageFile;
 begin
  result:=false;
@@ -1524,7 +1524,7 @@ end;
 // Writes the file it is given and reads it back. Whether that file then takes
 // the name the run asked for is the caller's question, and it asks it by
 // looking at what this returns.
-function WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:String):Boolean;
+function WriteDebugFile(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aImage:TImageFile;const aFileName:TpvUTF8String):Boolean;
 var ELFWriter:TELFWriter;
     Index:TpvSizeInt;
     SymbolRecord,NextSymbol:TSymbolBuilder.TSymbolRecord;
@@ -1714,7 +1714,7 @@ end;
 // file is needed at all. Has to happen before the symbol table is appended,
 // since that has to stay at the very end of the file.
 function InjectDebugSections(const aBuilder:TSymbolBuilder;const aDWARFWriter:TDWARFWriter;const aPDBWriter:TPDBWriter;
-                            const aImage:TImageFile;const aPDBFileName,aFileName:String):Boolean;
+                            const aImage:TImageFile;const aPDBFileName,aFileName:TpvUTF8String):Boolean;
 var Injector:TPEInjector;
 begin
  Injector:=TPEInjector.Create;
@@ -1767,7 +1767,7 @@ begin
 end;
 
 // Emits the same information a third time, as a PDB.
-function WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:String):TPDBWriter;
+function WritePDBFile(const aBuilder:TSymbolBuilder;const aImage:TImageFile;const aFileName:TpvUTF8String):TPDBWriter;
 var PDBWriter:TPDBWriter;
     Index:TpvSizeInt;
     Digest:TSymbolBuilder.TDigest;
@@ -1801,25 +1801,25 @@ begin
  end;
 end;
 
-var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:String;
-    WorkFileName,ReplaceMessage,ResolvedFileName,ResolveFailure:String;
+var ExecutableFileName,MapFileName,DebugFileName,DebugLinkMessage,Parameter:TpvUTF8String;
+    WorkFileName,ReplaceMessage,ResolvedFileName,ResolveFailure:TpvUTF8String;
     // The pdb cannot wait for the end the way the executable does, because the
     // reader which checks it finds it by the name the executable gives. So it
     // goes under that name straight away and whatever was there is kept, until
     // the run knows whether it wants the new one or the old one back.
-    PDBWorkFileName,PDBBackupFileName,StageMessage,CheckSumMessage,CollisionMessage:String;
+    PDBWorkFileName,PDBBackupFileName,StageMessage,CheckSumMessage,CollisionMessage:TpvUTF8String;
     // The same for the separate debug file, which is decided on its own rather
     // than together with the executable: it describes the executable but
     // nothing about the executable points at it, so it is put in place as soon
     // as it has been read back.
-    DebugWorkFileName,DebugBackupFileName:String;
+    DebugWorkFileName,DebugBackupFileName:TpvUTF8String;
     PDBStaged:Boolean;
     OutputOk,BothRemain,StageBothRemain:Boolean;
     ParameterIndex:TpvSizeInt;
     WantSymbols,WantLines,ForceMap,ForceDWARF,StripPaths,Compress:Boolean;
-    DebugOutputFileName:String;
+    DebugOutputFileName:TpvUTF8String;
     InjectIntoExecutable:Boolean;
-    PDBOutputFileName:String;
+    PDBOutputFileName:TpvUTF8String;
     DWARFWriter:TDWARFWriter;
     PDBWriter:TPDBWriter;
     Image,DebugImage,SymbolImage:TImageFile;

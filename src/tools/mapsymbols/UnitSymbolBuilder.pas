@@ -34,8 +34,8 @@ uses SysUtils,
 type TSymbolBuilder=class
       public
        type TUnitRecord=record
-             Name:String;
-             FileName:String;
+             Name:TpvUTF8String;
+             FileName:TpvUTF8String;
              StartRVA:TpvUInt64;
              Size:TpvUInt64;
              NameOffset:TpvUInt32;
@@ -45,7 +45,7 @@ type TSymbolBuilder=class
             TUnitRecords=array of TUnitRecord;
             TSymbolRecord=record
              RVA:TpvUInt64;
-             Name:String;
+             Name:TpvUTF8String;
              NameOffset:TpvUInt32;
             end;
             PSymbolRecord=^TSymbolRecord;
@@ -75,7 +75,7 @@ type TSymbolBuilder=class
        fPackedFrom:TpvUInt64;
        fPackedTo:TpvUInt64;
        fTrimmedUnitCount:TpvSizeInt;
-       function PreparePath(const aFileName:String):String;
+       function PreparePath(const aFileName:TpvUTF8String):TpvUTF8String;
 {$ifndef PasVulkanMapSymbolsNoOverlapTrimming}
        function TrimOverlappingUnits:TpvSizeInt;
 {$endif}
@@ -85,24 +85,24 @@ type TSymbolBuilder=class
        procedure SortLines(const aLeft,aRight:TpvSizeInt);
        procedure DropRedundantEndMarkers;
        procedure AssignLinesToUnits;
-       function AddString(const aValue:String;const aUnique:Boolean):TpvUInt32;
+       function AddString(const aValue:TpvUTF8String;const aUnique:Boolean):TpvUInt32;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure AddUnit(const aName,aFileName:String;const aStartRVA,aSize:TpvUInt64);
-       procedure AddSymbol(const aRVA:TpvUInt64;const aName:String);
+       procedure AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64);
+       procedure AddSymbol(const aRVA:TpvUInt64;const aName:TpvUTF8String);
        procedure AddLine(const aRVA:TpvUInt64;const aLineNumber:TpvUInt32);
        // Fills in the source file of a unit which was added without one, which
        // is what the Delphi .map frontend needs, since its segment map names
        // only the unit and the file shows up later in the line number section.
-       procedure SetUnitFileName(const aUnitName,aFileName:String);
+       procedure SetUnitFileName(const aUnitName,aFileName:TpvUTF8String);
        // Sorts everything and ties the line records to their units. Must be
        // called once after the last Add and before writing.
        procedure Finish;
-       procedure AppendToFile(const aFileName:String);
+       procedure AppendToFile(const aFileName:TpvUTF8String);
        // Reads the written table back through the public reader and checks that
        // a spread of line records resolves to the line it was built from.
-       function SelfCheck(const aFileName:String;out aResolved,aProbes:TpvSizeInt):Boolean;
+       function SelfCheck(const aFileName:TpvUTF8String;out aResolved,aProbes:TpvSizeInt):Boolean;
        // Digests the collected content, see the implementation for why a
        // counter would not do.
        procedure ComputeDigest(out aDigest:TDigest);
@@ -209,7 +209,7 @@ end;
 // one which must not carry the build tree. The pdb and the standalone debug
 // file stay behind and live off the full paths, since a debugger uses them to
 // find the source, so shortening those would only break them.
-function TSymbolBuilder.PreparePath(const aFileName:String):String;
+function TSymbolBuilder.PreparePath(const aFileName:TpvUTF8String):TpvUTF8String;
 begin
  if fStripPaths then begin
   result:=ExtractFileName(aFileName);
@@ -228,7 +228,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TSymbolBuilder.AddUnit(const aName,aFileName:String;const aStartRVA,aSize:TpvUInt64);
+procedure TSymbolBuilder.AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64);
 var UnitRecord:PUnitRecord;
 begin
  if fUnitCount>=length(fUnits) then begin
@@ -244,7 +244,7 @@ begin
  inc(fUnitCount);
 end;
 
-procedure TSymbolBuilder.AddSymbol(const aRVA:TpvUInt64;const aName:String);
+procedure TSymbolBuilder.AddSymbol(const aRVA:TpvUInt64;const aName:TpvUTF8String);
 var SymbolRecord:PSymbolRecord;
 begin
  // A symbol without a name names nothing, so it has nothing to contribute to a
@@ -279,7 +279,7 @@ begin
  inc(fLineCount);
 end;
 
-procedure TSymbolBuilder.SetUnitFileName(const aUnitName,aFileName:String);
+procedure TSymbolBuilder.SetUnitFileName(const aUnitName,aFileName:TpvUTF8String);
 var Index:TpvSizeInt;
     UnitRecord:PUnitRecord;
 begin
@@ -320,7 +320,14 @@ var Index:TpvSizeInt;
  // One character at a time, which is how this was first written. Kept because
  // the two do not produce the same digest, so a build which has to keep giving
  // the identity an older version of this tool gave it needs this one.
- procedure FeedString(const aValue:String);
+ //
+ // A character here is a byte of the utf-8, on both compilers, because that is
+ // what the type says now. It used to be a byte under FreePascal and a utf-16
+ // unit under Delphi, so the two disagreed for any name which is not plain
+ // ascii; a symbol name is plain ascii, which is why nobody ever saw it. What
+ // this branch is for is reproducing what the FreePascal built tool gave, and
+ // that is what both give now.
+ procedure FeedString(const aValue:TpvUTF8String);
  var Position:TpvSizeInt;
  begin
   Feed(TpvUInt64(length(aValue)));
@@ -345,7 +352,7 @@ var Index:TpvSizeInt;
  // ways would otherwise get two identities. For a name of plain ascii, which is
  // what a symbol name is, the bytes are the same either way, so this is also
  // the encoding which leaves existing identities where they are.
- procedure FeedString(const aValue:String);
+ procedure FeedString(const aValue:TpvUTF8String);
  var Position,Count,ByteIndex:TpvSizeInt;
      Block:TpvUInt64;
      Raw:TpvRawByteString;
@@ -658,7 +665,7 @@ end;
 
 // Unit and file names repeat a lot, so those go through a lookup. Symbol names
 // are unique per address, so they are simply appended.
-function TSymbolBuilder.AddString(const aValue:String;const aUnique:Boolean):TpvUInt32;
+function TSymbolBuilder.AddString(const aValue:TpvUTF8String;const aUnique:Boolean):TpvUInt32;
 var Raw:TpvRawByteString;
     Index:TpvSizeInt;
     Zero:AnsiChar;
@@ -686,7 +693,7 @@ begin
  end;
 end;
 
-procedure TSymbolBuilder.AppendToFile(const aFileName:String);
+procedure TSymbolBuilder.AppendToFile(const aFileName:TpvUTF8String);
 var Stream:TFileStream;
     Header:TpvSymbolTableHeader;
     Footer,ExistingFooter:TpvSymbolTableFooter;
@@ -823,7 +830,7 @@ end;
 // Everything is asked now, in both directions the resolver is used in. The
 // lookups are binary searches over data which is already in memory, so this
 // costs a fraction of what packing the same table costs.
-function TSymbolBuilder.SelfCheck(const aFileName:String;out aResolved,aProbes:TpvSizeInt):Boolean;
+function TSymbolBuilder.SelfCheck(const aFileName:TpvUTF8String;out aResolved,aProbes:TpvSizeInt):Boolean;
 var SymbolTable:TpvSymbolTable;
     Location:TpvSymbolTableLocation;
     Index,Last,Scan:TpvSizeInt;

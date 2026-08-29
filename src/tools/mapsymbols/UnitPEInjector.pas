@@ -55,7 +55,7 @@ uses SysUtils,
 // False means there was a checksum and it could not be worked out again, which
 // is a file going out with a stated checksum which does not describe it. That
 // is the one thing this exists to prevent, so the caller has to look.
-function UpdateImageCheckSum(const aFileName:String):Boolean;
+function UpdateImageCheckSum(const aFileName:TpvUTF8String):Boolean;
 
 // Reads the checksum out of a finished file and works out what it should be,
 // which is the same question a loader asks and a different one than the one the
@@ -64,7 +64,7 @@ function UpdateImageCheckSum(const aFileName:String):Boolean;
 //
 // A file which states no checksum states nothing which could be wrong, so that
 // passes.
-function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean;
+function VerifyImageCheckSum(const aFileName:TpvUTF8String;out aMessage:TpvUTF8String):Boolean;
 
 // Whether the image carries an authenticode signature, which is to say whether
 // its certificate data directory names anything.
@@ -74,7 +74,7 @@ function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean
 // matching. The injector refuses such an image outright, but a run which only
 // appends the symbol table never reaches the injector, and that run has to say
 // what it is about to do to the signature.
-function ImageIsSigned(const aFileName:String):Boolean;
+function ImageIsSigned(const aFileName:TpvUTF8String):Boolean;
 
 // The files this run was told to write. A name which is free on disk can still
 // be one of those, since those are not there yet precisely because they are
@@ -85,7 +85,7 @@ function ImageIsSigned(const aFileName:String):Boolean;
 // one run rather than of any particular call, and every name this unit hands
 // out has to respect it, including the one the injector takes for itself, which
 // nobody outside it ever sees.
-procedure KeepFileNamesClear(const aFileNames:array of String);
+procedure KeepFileNamesClear(const aFileNames:array of TpvUTF8String);
 
 // A name beside a file for something which is being built there, which nothing
 // else holds and which this run takes for itself by creating it.
@@ -103,18 +103,18 @@ procedure KeepFileNamesClear(const aFileNames:array of String);
 // aTag goes in front of the extension rather than behind the whole name, so
 // that a copy of an executable is still an executable while it is being worked
 // on. There are readers which decide what a file is by its name.
-function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
+function AcquireTemporaryName(const aBaseFileName,aTag:TpvUTF8String;out aFileName,aMessage:TpvUTF8String):Boolean;
 
 // The same for what is being set aside. Taken by being created, like the one
 // above, so that two runs cannot pick the same one; what is renamed onto it
 // therefore has to be allowed to replace it, which is what RenameFileOver is
 // for.
-function AcquireBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+function AcquireBackupName(const aBaseFileName:TpvUTF8String;out aFileName,aMessage:TpvUTF8String):Boolean;
 
 // A rename which is allowed to take a name which is already held. Needed for
 // the one above and for nothing else: everywhere else a name which is taken is
 // a reason to stop rather than to overwrite.
-function RenameFileOver(const aFromFileName,aToFileName:String):Boolean;
+function RenameFileOver(const aFromFileName,aToFileName:TpvUTF8String):Boolean;
 
 // Whether two names lead to the same file.
 //
@@ -127,7 +127,7 @@ function RenameFileOver(const aFromFileName,aToFileName:String):Boolean;
 // something about to be written, the names are compared instead: both made
 // absolute, and on windows without regard to case, since the file system is
 // without regard to it.
-function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
+function SameFileName(const aLeftFileName,aRightFileName:TpvUTF8String):Boolean;
 
 // Puts the access rights of one file onto another.
 //
@@ -142,7 +142,7 @@ function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
 // not, and cannot be by a tool which is not root. A build which uses any of
 // those has to run this before the step which sets them, the same as it has to
 // run it before signing.
-function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
+function CopyFileRights(const aFromFileName,aToFileName:TpvUTF8String):Boolean;
 
 // Whether a file which cannot be given the rights of the one it replaces may
 // take its place anyway.
@@ -174,14 +174,14 @@ var FileRightsAreOptional:Boolean={$ifdef PasVulkanMapSymbolsIgnoreFileRights}tr
 // message gives, and the caller must not tidy either of them away. The backup
 // name is kept in that case rather than cleared, because it is where the file
 // which was there actually is.
-function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String;out aBothRemain:Boolean):Boolean;
+function StageFileOver(const aFinalFileName,aNewFileName:TpvUTF8String;out aBackupFileName,aMessage:TpvUTF8String;out aBothRemain:Boolean):Boolean;
 
 // Throws away what StageFileOver kept, which is what a run does when it has
 // decided to keep the new file.
-procedure CommitStagedFile(const aBackupFileName:String);
+procedure CommitStagedFile(const aBackupFileName:TpvUTF8String);
 
 // And the other way: the new file goes and what was there before comes back.
-function RollbackStagedFile(const aFinalFileName,aBackupFileName:String):Boolean;
+function RollbackStagedFile(const aFinalFileName,aBackupFileName:TpvUTF8String):Boolean;
 
 // Puts one file in the place of another without there being a moment in which
 // neither of them exists.
@@ -196,10 +196,10 @@ function RollbackStagedFile(const aFinalFileName,aBackupFileName:String):Boolean
 // that neither name ended up holding what it should and both files are still on
 // disk under the names the message gives. The replacement must not be thrown
 // away in that case.
-function ReplaceFileWith(const aFileName,aReplacementFileName:String;out aMessage:String;out aBothRemain:Boolean):Boolean;
+function ReplaceFileWith(const aFileName,aReplacementFileName:TpvUTF8String;out aMessage:TpvUTF8String;out aBothRemain:Boolean):Boolean;
 
 type TPEInjectorSection=record
-      Name:String;
+      Name:TpvUTF8String;
       Data:TMemoryStream;
       // A debug directory section is placed like any other, but afterwards the
       // addresses inside it and the data directory of the image have to be made
@@ -214,32 +214,32 @@ type TPEInjectorSection=record
       private
        fSections:TPEInjectorSections;
        fSectionCount:TpvSizeInt;
-       fMessage:String;
+       fMessage:TpvUTF8String;
        // What Prepare built and where it is meant to go, kept for Commit.
-       fTargetName:String;
-       fFileName:String;
+       fTargetName:TpvUTF8String;
+       fFileName:TpvUTF8String;
       public
        constructor Create;
        destructor Destroy; override;
-       procedure AddSection(const aName:String;const aData:TMemoryStream);
+       procedure AddSection(const aName:TpvUTF8String;const aData:TMemoryStream);
        // Adds the debug directory which names an accompanying PDB. Without it a
        // debugger has no way to tell that the PDB belongs to this image, and
        // will not load it. Delphi emits none of its own.
-       procedure AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:String;const aTimeStamp:TpvUInt32);
+       procedure AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:TpvUTF8String;const aTimeStamp:TpvUInt32);
        // Returns false and leaves the file untouched when the image is one this
        // must not touch. The reason is then in Message.
-       function InjectInto(const aFileName:String):Boolean;
+       function InjectInto(const aFileName:TpvUTF8String):Boolean;
        // The same in two steps, for a caller which wants to look at the result
        // before it takes the place of anything. Prepare builds the replacement
        // beside the original and leaves the original alone; the file it built is
        // named by TemporaryFileName. Commit puts it in place, Discard throws it
        // away. Between the two the original is still exactly as it was, which is
        // what makes a check which fails cost nothing.
-       function Prepare(const aFileName:String):Boolean;
+       function Prepare(const aFileName:TpvUTF8String):Boolean;
        function Commit:Boolean;
        procedure Discard;
-       property TemporaryFileName:String read fTargetName;
-       property Message:String read fMessage;
+       property TemporaryFileName:TpvUTF8String read fTargetName;
+       property Message:TpvUTF8String read fMessage;
      end;
 
 implementation
@@ -258,7 +258,7 @@ const IMAGE_SCN_CNT_INITIALIZED_DATA=TpvUInt32($00000040);
       AppendedTableMagic='PVSYMTAB';
 
 type TExistingSection=record
-      Name:String;
+      Name:TpvUTF8String;
       // The forty bytes of the header as they stand, so that a section which is
       // kept is written back exactly as it was apart from its file offset.
       Raw:array[0..SectionHeaderSize-1] of TpvUInt8;
@@ -292,7 +292,7 @@ type TExistingSection=record
 // The name of a section as it stands in its header, following the slash and
 // decimal offset into the string table where the name did not fit into the
 // eight bytes of the header itself.
-function SectionName(const aRaw:array of TpvUInt8;const aStringTable:TMemoryStream):String;
+function SectionName(const aRaw:array of TpvUInt8;const aStringTable:TMemoryStream):TpvUTF8String;
 var Length_,Offset,Terminator:TpvSizeInt;
     Bytes:PpvUInt8Array;
 begin
@@ -317,7 +317,7 @@ end;
 // Where a name already sits in a string table, or zero when it is not in it.
 // Zero cannot be a real answer, since the first four bytes of the table are its
 // own size and no name can begin there.
-function FindInStringTable(const aStringTable:TMemoryStream;const aName:String):TpvUInt32;
+function FindInStringTable(const aStringTable:TMemoryStream;const aName:TpvUTF8String):TpvUInt32;
 var Bytes:PpvUInt8Array;
     Wanted:TpvRawByteString;
     Position,Start,Length_:TpvSizeInt;
@@ -434,7 +434,7 @@ begin
  result:=true;
 end;
 
-function VerifyImageCheckSum(const aFileName:String;out aMessage:String):Boolean;
+function VerifyImageCheckSum(const aFileName:TpvUTF8String;out aMessage:TpvUTF8String):Boolean;
 var Stream:TFileStream;
     FieldOffset:TpvInt64;
     Stated,Wanted:TpvUInt32;
@@ -470,7 +470,7 @@ begin
  end;
 end;
 
-function ImageIsSigned(const aFileName:String):Boolean;
+function ImageIsSigned(const aFileName:TpvUTF8String):Boolean;
 var Stream:TFileStream;
     NewHeaderOffset:TpvUInt32;
     Magic:array[0..1] of AnsiChar;
@@ -531,7 +531,7 @@ begin
  end;
 end;
 
-function UpdateImageCheckSum(const aFileName:String):Boolean;
+function UpdateImageCheckSum(const aFileName:TpvUTF8String):Boolean;
 var Stream:TFileStream;
     FieldOffset:TpvInt64;
     Value32:TpvUInt32;
@@ -605,7 +605,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TPEInjector.AddSection(const aName:String;const aData:TMemoryStream);
+procedure TPEInjector.AddSection(const aName:TpvUTF8String;const aData:TMemoryStream);
 var Section:PPEInjectorSection;
 begin
  if assigned(aData) and (aData.Size>0) then begin
@@ -620,7 +620,7 @@ begin
  end;
 end;
 
-procedure TPEInjector.AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:String;const aTimeStamp:TpvUInt32);
+procedure TPEInjector.AddCodeViewDirectory(const aGUID:TpvPointer;const aAge:TpvUInt32;const aPDBFileName:TpvUTF8String;const aTimeStamp:TpvUInt32);
 const IMAGE_DEBUG_TYPE_CODEVIEW=TpvUInt32(2);
 var Data:TMemoryStream;
     Value32:TpvUInt32;
@@ -719,7 +719,7 @@ function MoveFileExW(aFromFileName,aToFileName:PWideChar;aFlags:TpvUInt32):LongB
 // Makes a file only if that name is free, and says whether it got it. The
 // question and the making are one step, so that two of these cannot both be
 // told that the same name is free.
-function CreateFileExclusively(const aFileName:String):Boolean;
+function CreateFileExclusively(const aFileName:TpvUTF8String):Boolean;
 {$ifdef Unix}
 var Handle:TpvInt32;
 {$endif}
@@ -762,9 +762,9 @@ begin
 {$endif}
 end;
 
-var FileNamesToKeepClear:array of String=nil;
+var FileNamesToKeepClear:array of TpvUTF8String=nil;
 
-procedure KeepFileNamesClear(const aFileNames:array of String);
+procedure KeepFileNamesClear(const aFileNames:array of TpvUTF8String);
 var Index:TpvSizeInt;
 begin
  SetLength(FileNamesToKeepClear,length(aFileNames));
@@ -774,7 +774,7 @@ begin
 end;
 
 // Whether a name is one of the ones this run was told to write.
-function IsWantedFileName(const aFileName:String):Boolean;
+function IsWantedFileName(const aFileName:TpvUTF8String):Boolean;
 var Index:TpvSizeInt;
 begin
  result:=false;
@@ -786,10 +786,10 @@ begin
  end;
 end;
 
-function AcquireTemporaryName(const aBaseFileName,aTag:String;out aFileName,aMessage:String):Boolean;
+function AcquireTemporaryName(const aBaseFileName,aTag:TpvUTF8String;out aFileName,aMessage:TpvUTF8String):Boolean;
 const cMaximalAttempts=1000;
 var Attempt:TpvSizeInt;
-    Extension,Candidate:String;
+    Extension,Candidate:TpvUTF8String;
 begin
  result:=false;
  aFileName:='';
@@ -815,10 +815,10 @@ begin
  aMessage:='There is no free name beside '+aBaseFileName+' to build anything in.';
 end;
 
-function AcquireBackupName(const aBaseFileName:String;out aFileName,aMessage:String):Boolean;
+function AcquireBackupName(const aBaseFileName:TpvUTF8String;out aFileName,aMessage:TpvUTF8String):Boolean;
 const cMaximalAttempts=1000;
 var Attempt:TpvSizeInt;
-    Candidate:String;
+    Candidate:TpvUTF8String;
 begin
  result:=false;
  aFileName:='';
@@ -850,7 +850,7 @@ begin
  aMessage:='There is no free name beside '+aBaseFileName+' to set it aside under.';
 end;
 
-function RenameFileOver(const aFromFileName,aToFileName:String):Boolean;
+function RenameFileOver(const aFromFileName,aToFileName:TpvUTF8String):Boolean;
 begin
 {$ifdef Windows}
  result:=MoveFileExW(PWideChar(WideString(aFromFileName)),PWideChar(WideString(aToFileName)),MOVEFILE_REPLACE_EXISTING_FLAG);
@@ -863,7 +863,7 @@ end;
 
 // Whether two names which both lead to a file lead to the same one, asked of the
 // file system rather than of the names.
-function SameExistingFile(const aLeftFileName,aRightFileName:String;out aAnswered:Boolean):Boolean;
+function SameExistingFile(const aLeftFileName,aRightFileName:TpvUTF8String;out aAnswered:Boolean):Boolean;
 {$ifdef Unix}
 var Left,Right:stat;
 {$endif}
@@ -910,9 +910,9 @@ begin
 {$endif}
 end;
 
-function SameFileName(const aLeftFileName,aRightFileName:String):Boolean;
+function SameFileName(const aLeftFileName,aRightFileName:TpvUTF8String):Boolean;
 var Answered:Boolean;
-    LeftDirectory,RightDirectory,LeftName,RightName:String;
+    LeftDirectory,RightDirectory,LeftName,RightName:TpvUTF8String;
 begin
  if (length(aLeftFileName)=0) or (length(aRightFileName)=0) then begin
   result:=false;
@@ -958,7 +958,7 @@ begin
 {$endif}
 end;
 
-function CopyFileRights(const aFromFileName,aToFileName:String):Boolean;
+function CopyFileRights(const aFromFileName,aToFileName:TpvUTF8String):Boolean;
 {$ifdef Unix}
 var Info:stat;
 {$else}
@@ -1008,8 +1008,8 @@ end;
 // holding the name for a moment, a full volume, a target which turns out to be
 // somewhere else. Every way out of here leaves either the untouched original or
 // the finished new file under that name.
-function ReplaceFileWith(const aFileName,aReplacementFileName:String;out aMessage:String;out aBothRemain:Boolean):Boolean;
-var BackupName,Reason:String;
+function ReplaceFileWith(const aFileName,aReplacementFileName:TpvUTF8String;out aMessage:TpvUTF8String;out aBothRemain:Boolean):Boolean;
+var BackupName,Reason:TpvUTF8String;
 begin
  result:=false;
  aMessage:='';
@@ -1078,8 +1078,8 @@ end;
 // ReplaceFileWith is this pair done in one go, and it stays that way rather
 // than being written in terms of these, because it is the path every run takes
 // and it has been proven where it stands.
-function StageFileOver(const aFinalFileName,aNewFileName:String;out aBackupFileName,aMessage:String;out aBothRemain:Boolean):Boolean;
-var Reason:String;
+function StageFileOver(const aFinalFileName,aNewFileName:TpvUTF8String;out aBackupFileName,aMessage:TpvUTF8String;out aBothRemain:Boolean):Boolean;
+var Reason:TpvUTF8String;
 begin
  result:=false;
  aBackupFileName:='';
@@ -1128,7 +1128,7 @@ begin
  result:=true;
 end;
 
-procedure CommitStagedFile(const aBackupFileName:String);
+procedure CommitStagedFile(const aBackupFileName:TpvUTF8String);
 begin
  if length(aBackupFileName)>0 then begin
   FileSetAttr(aBackupFileName,faArchive);
@@ -1136,7 +1136,7 @@ begin
  end;
 end;
 
-function RollbackStagedFile(const aFinalFileName,aBackupFileName:String):Boolean;
+function RollbackStagedFile(const aFinalFileName,aBackupFileName:TpvUTF8String):Boolean;
 begin
  // No backup means there was nothing under that name before this run, so
  // putting things back means there is nothing under it again.
@@ -1151,7 +1151,7 @@ begin
 end;
 
 function TPEInjector.Commit:Boolean;
-var Reason:String;
+var Reason:TpvUTF8String;
     BothRemain:Boolean;
 begin
  result:=false;
@@ -1179,7 +1179,7 @@ begin
  end;
 end;
 
-function TPEInjector.InjectInto(const aFileName:String):Boolean;
+function TPEInjector.InjectInto(const aFileName:TpvUTF8String):Boolean;
 begin
  result:=Prepare(aFileName) and Commit;
  if not result then begin
@@ -1187,9 +1187,9 @@ begin
  end;
 end;
 
-function TPEInjector.Prepare(const aFileName:String):Boolean;
+function TPEInjector.Prepare(const aFileName:TpvUTF8String):Boolean;
 var Source,Target:TFileStream;
-    TargetName:String;
+    TargetName:TpvUTF8String;
     NewHeaderOffset:TpvUInt32;
     Signature:array[0..3] of AnsiChar;
     NumberOfSections:TpvUInt16;
@@ -1235,7 +1235,7 @@ var Source,Target:TFileStream;
     DebugEntryCount:TpvSizeInt;
     EntryOffset:TpvInt64;
     MergedDirectory:TMemoryStream;
-    Corrupted:String;
+    Corrupted:TpvUTF8String;
     CorruptedFound:Boolean;
     Swapped:TpvInt64;
     Scratch:array[0..4095] of TpvUInt8;

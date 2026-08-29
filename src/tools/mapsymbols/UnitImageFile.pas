@@ -50,11 +50,11 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
      TImageCodeViewInfo=record
       GUID:array[0..15] of TpvUInt8;
       Age:TpvUInt32;
-      FileName:String;
+      FileName:TpvUTF8String;
      end;
 
      TImageSection=record
-      Name:String;
+      Name:TpvUTF8String;
       VirtualAddress:TpvUInt64;
       VirtualSize:TpvUInt64;
       FileOffset:TpvUInt64;
@@ -69,12 +69,12 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
 
      TImageSections=array of TImageSection;
 
-     TImageSymbolEvent=procedure(const aRVA:TpvUInt64;const aName:String) of object;
+     TImageSymbolEvent=procedure(const aRVA:TpvUInt64;const aName:TpvUTF8String) of object;
 
      TImageFile=class
       private
        fStream:TFileStream;
-       fFileName:String;
+       fFileName:TpvUTF8String;
        fFormat:TImageFileFormat;
        fImageBase:TpvUInt64;
        fCodeLow:TpvUInt64;
@@ -98,9 +98,9 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        function ReadImageUInt32:TpvUInt32;
        function ReadImageUInt64:TpvUInt64;
        function StringTableOffset:TpvInt64;
-       function ReadStringTableEntry(const aOffset:TpvInt64):String;
-       function ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
-       function ReadLongSectionName(const aOffset:TpvInt64):String;
+       function ReadStringTableEntry(const aOffset:TpvInt64):TpvUTF8String;
+       function ReadStringAt(const aAbsoluteOffset:TpvInt64):TpvUTF8String;
+       function ReadLongSectionName(const aOffset:TpvInt64):TpvUTF8String;
        // Where an address relative to the image base lands in the file, or zero
        // when it lands in no section which has bytes there.
        function RVAToFileOffset(const aRVA:TpvUInt32):TpvInt64;
@@ -112,13 +112,13 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
       public
        constructor Create;
        destructor Destroy; override;
-       function Open(const aFileName:String):Boolean;
+       function Open(const aFileName:TpvUTF8String):Boolean;
        // Releases the file handle while keeping everything already read. The
        // caller has to do this before the image itself is written to.
        procedure Close;
-       function FindSection(const aName:String;out aSection:TImageSection):Boolean;
+       function FindSection(const aName:TpvUTF8String;out aSection:TImageSection):Boolean;
        // Reads a whole section into memory. The caller owns the returned stream.
-       function ReadSection(const aName:String):TMemoryStream;
+       function ReadSection(const aName:TpvUTF8String):TMemoryStream;
        // Returns the file named by a .gnu_debuglink section, already resolved
        // against the directory of this image, or an empty string when there is
        // none, the named file does not exist, or it is not the file this image
@@ -136,7 +136,7 @@ type TImageFileFormat=(iffUnknown,iffPE,iffELF);
        // aMessage says what happened whenever the answer is not simply the
        // file, so that a caller can pass the reason on rather than only the
        // outcome.
-       function DebugLinkFileName(out aMessage:String):String;
+       function DebugLinkFileName(out aMessage:TpvUTF8String):TpvUTF8String;
        // Walks the symbol table and reports every symbol which lives in a
        // section, translated into a link time virtual address.
        procedure EnumerateSymbols(const aEvent:TImageSymbolEvent);
@@ -278,7 +278,7 @@ begin
  end;
 end;
 
-function TImageFile.Open(const aFileName:String):Boolean;
+function TImageFile.Open(const aFileName:TpvUTF8String):Boolean;
 var Signature:array[0..3] of AnsiChar;
 begin
  result:=false;
@@ -375,7 +375,7 @@ begin
  end;
 end;
 
-function TImageFile.ReadStringAt(const aAbsoluteOffset:TpvInt64):String;
+function TImageFile.ReadStringAt(const aAbsoluteOffset:TpvInt64):TpvUTF8String;
 var Available:TpvInt64;
     Buffer:array[0..1023] of AnsiChar;
 begin
@@ -393,7 +393,7 @@ begin
  result:=String(PAnsiChar(@Buffer[0]));
 end;
 
-function TImageFile.ReadStringTableEntry(const aOffset:TpvInt64):String;
+function TImageFile.ReadStringTableEntry(const aOffset:TpvInt64):TpvUTF8String;
 var Base:TpvInt64;
 begin
  Base:=StringTableOffset;
@@ -404,7 +404,7 @@ begin
  end;
 end;
 
-function TImageFile.ReadLongSectionName(const aOffset:TpvInt64):String;
+function TImageFile.ReadLongSectionName(const aOffset:TpvInt64):TpvUTF8String;
 var Position:TpvInt64;
 begin
  result:='';
@@ -718,7 +718,7 @@ begin
 
 end;
 
-function TImageFile.FindSection(const aName:String;out aSection:TImageSection):Boolean;
+function TImageFile.FindSection(const aName:TpvUTF8String;out aSection:TImageSection):Boolean;
 var Index:TpvInt32;
 begin
  result:=false;
@@ -731,7 +731,7 @@ begin
  end;
 end;
 
-function TImageFile.ReadSection(const aName:String):TMemoryStream;
+function TImageFile.ReadSection(const aName:TpvUTF8String):TMemoryStream;
 var Section:TImageSection;
     Size:TpvInt64;
 begin
@@ -804,7 +804,7 @@ end;
 
 // The checksum a .gnu_debuglink section carries, over the whole of the named
 // file.
-function FileCRC32(const aFileName:String;out aCRC:TpvUInt32):Boolean;
+function FileCRC32(const aFileName:TpvUTF8String;out aCRC:TpvUInt32):Boolean;
 var Stream:TFileStream;
 begin
  result:=false;
@@ -822,9 +822,9 @@ begin
  end;
 end;
 
-function TImageFile.DebugLinkFileName(out aMessage:String):String;
+function TImageFile.DebugLinkFileName(out aMessage:TpvUTF8String):TpvUTF8String;
 var Data:TMemoryStream;
-    Name,Directory,Candidate:String;
+    Name,Directory,Candidate:TpvUTF8String;
     Bytes:PpvUInt8Array;
     NameLength,CRCOffset:TpvSizeInt;
     StoredCRC,ActualCRC:TpvUInt32;
@@ -1021,7 +1021,7 @@ var Index:TpvUInt32;
     StorageClass,AuxiliaryCount:TpvUInt8;
     TypeValue:TpvUInt16;
     Zeroes,NameOffset:TpvUInt32;
-    Name:String;
+    Name:TpvUTF8String;
     NameLength:TpvInt32;
 begin
 
@@ -1083,7 +1083,7 @@ var Index:TpvUInt32;
     Value,Size:TpvUInt64;
     Value32:TpvUInt32;
     SymbolRecordSize:TpvInt32;
-    Name:String;
+    Name:TpvUTF8String;
     Section:TImageSection;
 begin
 

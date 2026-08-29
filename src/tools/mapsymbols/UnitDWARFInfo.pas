@@ -29,7 +29,7 @@ uses SysUtils,
      PasVulkan.Types;
 
 type TDWARFInfoSubprogram=record
-      Name:String;
+      Name:TpvUTF8String;
       LowPC:TpvUInt64;
       HighPC:TpvUInt64;
      end;
@@ -37,8 +37,8 @@ type TDWARFInfoSubprogram=record
      TDWARFInfoSubprograms=array of TDWARFInfoSubprogram;
 
      TDWARFInfoUnit=record
-      Name:String;
-      Directory:String;
+      Name:TpvUTF8String;
+      Directory:TpvUTF8String;
       LowPC:TpvUInt64;
       HighPC:TpvUInt64;
       // Offset of the line program of this unit into .debug_line, which is what
@@ -83,18 +83,18 @@ type TDWARFInfoSubprogram=record
        fAbbreviationCount:TpvSizeInt;
        fUnits:TDWARFInfoUnits;
        fUnitCount:TpvSizeInt;
-       fMessage:String;
+       fMessage:TpvUTF8String;
        function ReadUInt8:TpvUInt8;
        function ReadUInt16:TpvUInt16;
        function ReadUInt32:TpvUInt32;
        function ReadUInt64:TpvUInt64;
        function ReadULEB128:TpvUInt64;
        function ReadSLEB128:TpvInt64;
-       function ReadString:String;
+       function ReadString:TpvUTF8String;
        function ReadAbbreviations(const aOffset:TpvUInt64):Boolean;
        function FindAbbreviation(const aCode:TpvUInt64;out aIndex:TpvSizeInt):Boolean;
        function ReadValue(const aForm:TpvUInt64;const aAddressSize:TpvUInt8;
-                          out aUnsigned:TpvUInt64;out aString:String):Boolean;
+                          out aUnsigned:TpvUInt64;out aString:TpvUTF8String):Boolean;
       public
        constructor Create(const aInfoData:TpvPointer;const aInfoSize:TpvSizeInt;
                           const aAbbrevData:TpvPointer;const aAbbrevSize:TpvSizeInt);
@@ -105,7 +105,7 @@ type TDWARFInfoSubprogram=record
        property UnitCount:TpvSizeInt read fUnitCount;
        // Why Parse said no, for a caller which wants to say more than that it
        // did.
-       property Message:String read fMessage;
+       property Message:TpvUTF8String read fMessage;
      end;
 
 implementation
@@ -251,7 +251,7 @@ begin
  end;
 end;
 
-function TDWARFInfoReader.ReadString:String;
+function TDWARFInfoReader.ReadString:TpvUTF8String;
 var Start:TpvSizeInt;
     Length_:TpvSizeInt;
 begin
@@ -371,7 +371,7 @@ end;
 // built on this would then fail for a reason which has nothing to do with what
 // it is checking.
 function TDWARFInfoReader.ReadValue(const aForm:TpvUInt64;const aAddressSize:TpvUInt8;
-                                    out aUnsigned:TpvUInt64;out aString:String):Boolean;
+                                    out aUnsigned:TpvUInt64;out aString:TpvUTF8String):Boolean;
 var Length_:TpvUInt64;
 begin
 
@@ -438,7 +438,7 @@ var UnitLength,AbbrevOffset,Code,Value:TpvUInt64;
     Version:TpvUInt16;
     AddressSize:TpvUInt8;
     AbbreviationIndex,AttributeIndex,UnitIndex,Depth:TpvSizeInt;
-    Text:String;
+    Text:TpvUTF8String;
     Subprogram:TDWARFInfoSubprogram;
     HaveSubprogram,IsCompileUnit:Boolean;
     InfoUnit:PDWARFInfoUnit;

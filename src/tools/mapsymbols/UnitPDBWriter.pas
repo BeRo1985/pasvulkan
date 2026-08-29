@@ -34,7 +34,7 @@ uses SysUtils,
      UnitMSFWriter;
 
 type TPDBSection=record
-      Name:String;
+      Name:TpvUTF8String;
       RVA:TpvUInt32;
       VirtualSize:TpvUInt32;
       RawSize:TpvUInt32;
@@ -97,13 +97,13 @@ type TPDBSection=record
        destructor Destroy; override;
        // The sections of the image, needed because a PDB addresses code as a
        // section and an offset rather than as an address.
-       procedure AddSection(const aName:String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
+       procedure AddSection(const aName:TpvUTF8String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
        // The guid and age end up in the executable as well, so that the two can
        // be recognized as belonging together. The guid is the digest of the
        // collected content, which is what makes one build distinguishable from
        // the next.
        procedure SetIdentity(const aDigest:TSymbolBuilder.TDigest;const aAge:TpvUInt32);
-       procedure SaveToFile(const aFileName:String);
+       procedure SaveToFile(const aFileName:TpvUTF8String);
        property Age:TpvUInt32 read fAge;
        property Signature:TpvUInt32 read fSignature;
        // The identity the executable has to repeat in its debug directory.
@@ -156,7 +156,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TPDBWriter.AddSection(const aName:String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
+procedure TPDBWriter.AddSection(const aName:TpvUTF8String;const aRVA,aVirtualSize,aRawSize,aCharacteristics:TpvUInt32);
 var Section:PPDBSection;
 begin
  if fSectionCount>=length(fSections) then begin
@@ -990,7 +990,7 @@ var ModuleInfo,SectionContribution,SectionMap,SourceInfo,OptionalHeader,SourceNa
   WriteUInt32(aTarget,0); // checksum of the relocations, not computed
  end;
 
- procedure WriteZeroTerminated(const aTarget:TMemoryStream;const aValue:String);
+ procedure WriteZeroTerminated(const aTarget:TMemoryStream;const aValue:TpvUTF8String);
  begin
   NameText:=TpvRawByteString(aValue);
   if length(NameText)>0 then begin
@@ -1170,7 +1170,7 @@ begin
 
 end;
 
-procedure TPDBWriter.SaveToFile(const aFileName:String);
+procedure TPDBWriter.SaveToFile(const aFileName:TpvUTF8String);
 var DebugInformation,Information,PublicsStream,SymbolRecordStream:TMemoryStream;
     SectionHeadersStreamIndex,FirstModuleStreamIndex,StringTableStreamIndex:TpvSizeInt;
     GlobalsStreamIndex,PublicsStreamIndex,SymbolRecordStreamIndex:TpvSizeInt;

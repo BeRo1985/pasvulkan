@@ -56,7 +56,7 @@ type TDWARFWriter=class
        procedure WriteAddress(const aStream:TMemoryStream;const aValue:TpvUInt64);
        procedure WriteULEB128(const aStream:TMemoryStream;const aValue:TpvUInt64);
        procedure WriteSLEB128(const aStream:TMemoryStream;const aValue:TpvInt64);
-       procedure WriteZeroTerminated(const aStream:TMemoryStream;const aValue:String);
+       procedure WriteZeroTerminated(const aStream:TMemoryStream;const aValue:TpvUTF8String);
        procedure BuildAbbrev;
        function BuildLineProgram(const aUnitIndex:TpvSizeInt;const aFirstLine,aLastLine:TpvSizeInt):TpvUInt32;
        procedure BuildCompileUnit(const aUnitIndex:TpvSizeInt;const aStatementListOffset:TpvUInt32);
@@ -226,7 +226,7 @@ begin
  end;
 end;
 
-procedure TDWARFWriter.WriteZeroTerminated(const aStream:TMemoryStream;const aValue:String);
+procedure TDWARFWriter.WriteZeroTerminated(const aStream:TMemoryStream;const aValue:TpvUTF8String);
 var Raw:TpvRawByteString;
     Zero:AnsiChar;
 begin
@@ -425,7 +425,7 @@ var UnitRecord:TSymbolBuilder.TUnitRecord;
     LowIndex,HighIndex,MiddleIndex:TpvSizeInt;
 {$endif}
     ImageBase,UnitLow,UnitHigh,SymbolHigh:TpvUInt64;
-    Directory:String;
+    Directory:TpvUTF8String;
 begin
 
  UnitRecord:=fBuilder.GetUnit(aUnitIndex);

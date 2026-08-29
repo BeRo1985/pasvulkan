@@ -35,7 +35,7 @@ uses SysUtils,
 // away, which is this run handing it something it does not accept. The second
 // one is the check silently not happening, and a check which silently does not
 // happen is worse than one which fails, since a failure is at least read.
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:TpvUTF8String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 
 implementation
 
@@ -82,7 +82,7 @@ function SymFromAddr(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointe
 function SymGetLineFromAddr64(aProcess:THandle;aAddress:TpvUInt64;aDisplacement:TpvPointer;aLine:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymGetLineFromAddr64';
 function SymFromName(aProcess:THandle;aName:PAnsiChar;aSymbol:TpvPointer):LongBool; stdcall; external 'dbghelp.dll' name 'SymFromName';
 
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:TpvUTF8String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 const PreferredBase=TpvUInt64($400000);
 var Process:THandle;
     Base:TpvUInt64;
@@ -270,7 +270,7 @@ end;
 
 {$else}
 
-function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
+function CheckPDBWithDbgHelp(const aBuilder:TSymbolBuilder;const aExecutable:TpvUTF8String;out aResolved,aProbes:TpvSizeInt;out aAvailable,aRefused:Boolean):Boolean;
 begin
  aResolved:=0;
  aProbes:=0;
