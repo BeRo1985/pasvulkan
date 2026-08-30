@@ -40575,6 +40575,11 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize{$ifdef Flat
     Update_VirtualInstanceManagerGroups_Data:TpvScene3D_Update_VirtualInstanceManagerGroups_Data;
 begin
 
+ // Tagged the same way TGame.Update already tags itself, in an own $2xxxxx range so the two cannot be
+ // confused. The game only sees this whole method as a single step, and a freeze inside it would
+ // otherwise be reported as nothing more precise than "somewhere in the scene update".
+ TpvApplicationUpdateThread.UpdateThreadTag:=$200000;
+
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 
  TotalCPUTime:=0;
@@ -40643,8 +40648,12 @@ begin
   TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
  end;
 
+ TpvApplicationUpdateThread.UpdateThreadTag:=$210000;
+
  fGroupListLock.Acquire;
  try
+
+  TpvApplicationUpdateThread.UpdateThreadTag:=$220000;
 
   // Update virtual instances
   fVirtualInstanceManagerGroupListLock.Acquire;
@@ -40683,8 +40692,12 @@ begin
    fVirtualInstanceManagerGroupListLock.Release;
   end;
 
+  TpvApplicationUpdateThread.UpdateThreadTag:=$230000;
+
   fGroupInstanceListLock.Acquire;
   try
+
+   TpvApplicationUpdateThread.UpdateThreadTag:=$240000;
 
    // Initialize profiling accumulators
    fInstanceTimeResetTicks:=0;
@@ -40733,14 +40746,21 @@ begin
    fGlobalRenderInstanceInstanceCount:=0;
 {$endif}
 
+   TpvApplicationUpdateThread.UpdateThreadTag:=$250000;
+
    fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].AcquireRead;
    try
+
+    // The instance updates themselves, including ProcessNode with its node lights, run in here.
+    TpvApplicationUpdateThread.UpdateThreadTag:=$260000;
 
     PartStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     ProcessDirectedAcyclicGraph(aInFlightFrameIndex);
     PartEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     PartCPUTime:=PartEndCPUTime-PartStartCPUTime;
     fTimeProcessDirectedAcyclicGraph:=pvApplication.HighResolutionTimer.ToFloatSeconds(PartCPUTime)*1000.0; // in ms
+
+    TpvApplicationUpdateThread.UpdateThreadTag:=$270000;
 
 {$ifdef FlatParallelRenderInstanceUpdates}
     // Option D: Global parallel RenderInstance processing (Phase 1 + Phase 2)
@@ -40749,6 +40769,8 @@ begin
     fTimeProcessGlobalRenderInstances:=0.0;
 {$endif}
 
+    TpvApplicationUpdateThread.UpdateThreadTag:=$280000;
+
 {$ifdef DeferredLightAABBTreeUpdates}
     ProcessDeferredLightOperations;
 {$endif}
@@ -40756,6 +40778,8 @@ begin
    finally
     fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].ReleaseRead;
    end;
+
+   TpvApplicationUpdateThread.UpdateThreadTag:=$290000;
 
 {$ifdef UpdateProfilingTimes}
    // Convert the thread-safe tick accumulators into the millisecond sums, single-threadedly after the parallel DAG update
@@ -40791,6 +40815,8 @@ begin
  finally
   fGroupListLock.Release;
  end;
+
+ TpvApplicationUpdateThread.UpdateThreadTag:=$2a0000;
 
  if fNeedBoundingBox then begin
 
@@ -40837,11 +40863,15 @@ begin
 
  end;
 
+ TpvApplicationUpdateThread.UpdateThreadTag:=$2b0000;
+
  if (aInFlightFrameIndex>=0) and fUpdatedOriginTransform then begin
   for Index:=0 to fManualLights.Count-1 do begin
    fManualLights[Index].Update(aInFlightFrameIndex);
   end;
  end;
+
+ TpvApplicationUpdateThread.UpdateThreadTag:=$2f0000;
 
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 
