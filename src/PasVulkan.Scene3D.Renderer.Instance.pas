@@ -1133,6 +1133,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringSkyTapSearch:Boolean;
        fVolumetricScatteringCoverageWeighting:Boolean;
        fVolumetricScatteringDualOutput:Boolean;
+       fVolumetricScatteringRelativeDepthAgreement:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1771,6 +1772,24 @@ type { TpvScene3DRendererInstance }
        // is no coverage mix to get wrong - the rim the second output exists against cannot arise. The
        // march would be walked twice and the answer thrown away.
        property VolumetricScatteringDualOutputActive:Boolean read GetVolumetricScatteringDualOutputActive;
+       // Whether two upsample taps count as the same surface by a FRACTION of the distance rather than by
+       // a fixed metre.
+       //
+       // The fixed metre is only meaningful up close. Two half-resolution texels on the same flat road
+       // four kilometres away differ by several metres through perspective alone, with no edge anywhere
+       // near them - and the upsample then abandons its smooth bilinear path for the weighted one, which
+       // at a weight of a thousand is very nearly a hard choice. Which taps survive changes abruptly as
+       // the camera moves, and that is what aliases.
+       //
+       // It is the size divisor that makes it visible, and that is the tell: at two the coarse texels sit
+       // twice as far apart, the depth between them differs about twice as much, and the metre tears where
+       // at one it still held. Same scene, same camera - only the sampling distance changed.
+       //
+       // A per cent of the distance, with the metre kept as the floor for what is close. The depth weight
+       // scales in the same measure, or the tolerance would widen while the falloff stayed where it was.
+       // Never widened for a sky pixel: its depth is the sentinel, and a per cent of that would accept
+       // every tap in the buffer.
+       property VolumetricScatteringRelativeDepthAgreement:Boolean read fVolumetricScatteringRelativeDepthAgreement write fVolumetricScatteringRelativeDepthAgreement;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2834,6 +2853,7 @@ begin
  fVolumetricScatteringSkyTapSearch:=false;
  fVolumetricScatteringCoverageWeighting:=false;
  fVolumetricScatteringDualOutput:=false;
+ fVolumetricScatteringRelativeDepthAgreement:=false;
 
  if assigned(fVirtualReality) then begin
 

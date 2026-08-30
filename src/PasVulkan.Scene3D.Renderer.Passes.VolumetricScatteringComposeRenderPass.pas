@@ -708,6 +708,16 @@ begin
  if fInstance.VolumetricScatteringSkyTapSearch then begin
   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.VolumetricScatteringComposeFlagSkyTapSearch;
  end;
+ // Passed on although this variant never reads it - the coverage weighting answers a question that only
+ // exists after a resolve, and here every sample carries its own colour. It is set all the same, for the
+ // same reason the sample count is: one flag word shared between the two variants, and a bit that means
+ // something in one and is quietly absent in the other is how they start to drift apart.
+ if fInstance.VolumetricScatteringCoverageWeighting then begin
+  fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.VolumetricScatteringComposeFlagCoverageWeighting;
+ end;
+ if fInstance.VolumetricScatteringRelativeDepthAgreement then begin
+  fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.VolumetricScatteringComposeFlagRelativeDepthAgreement;
+ end;
  // How many samples the raw depth carries. This variant reads one of them per invocation rather than all
  // of them at once, so it never needs the count - it is filled in all the same, because the push constant
  // block is shared with the compute variant and a lane that means one thing in one of them and nothing in

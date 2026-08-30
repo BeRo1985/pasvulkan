@@ -122,6 +122,12 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
              // anything to do with this, and it is why that path aliases - it flattens the coverage
              // gradient MSAA produced, putting a hard scattering edge over a smooth colour edge.
              VolumetricScatteringComposeFlagCoverageWeighting=TpvUInt32(1) shl 5;
+             // And bit six: judge two taps as belonging to the same surface by a fraction of the distance
+             // rather than by a fixed metre. The fixed one tears at range - two half-resolution texels on
+             // the same flat road four kilometres off differ by metres through perspective alone - and
+             // dropping to the near-hard weighted path there is what aliases, the more so the coarser the
+             // march runs.
+             VolumetricScatteringComposeFlagRelativeDepthAgreement=TpvUInt32(1) shl 6;
       public
        type TPushConstants=packed record
              // x = strength, y = how depth becomes a distance, z = how hard the upsample separates two
@@ -764,6 +770,9 @@ begin
   end;
   if fInstance.VolumetricScatteringCoverageWeighting then begin
    fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagCoverageWeighting;
+  end;
+  if fInstance.VolumetricScatteringRelativeDepthAgreement then begin
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagRelativeDepthAgreement;
   end;
   // How many samples the raw depth carries. Only the MSAA variant reads it, and only it is given a raw
   // depth to read; one everywhere else, so a stray read could not divide by nothing.

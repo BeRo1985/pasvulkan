@@ -104,6 +104,24 @@ const uint VolumetricScatteringComposeFlagSkyTapSearch = 1u << 4;
 // off geometry taps, and weighing a wrong value in by its coverage only spreads it more politely.
 const uint VolumetricScatteringComposeFlagCoverageWeighting = 1u << 5;
 
+// Bit six: judge whether two taps belong to the same surface by a fraction of the distance rather than by
+// a fixed number of metres.
+//
+// The threshold below is absolute - one metre - and that is only meaningful up close. Two half-resolution
+// texels sitting on the same flat road four kilometres away differ by several metres through perspective
+// alone, with no edge anywhere near them; the fixed metre calls that a depth discontinuity and drops the
+// smooth bilinear path for the weighted one. And that path is very nearly a hard choice at a weight of a
+// thousand: half a metre of disagreement already puts a tap at a five-hundredth. Which taps survive then
+// changes abruptly as the camera moves, and abrupt is what aliasing is made of.
+//
+// It shows up with the size divisor, which is what points at it: at two the coarse texels sit twice as far
+// apart, so the depth between them differs about twice as much, and the metre tears where at one it still
+// held. Same geometry, same camera - only the sampling distance changed.
+//
+// A per cent of the distance, with the metre kept as the floor for what is close by. The weight scales in
+// the same measure, or the threshold would widen while the falloff stayed put and nothing would be gained.
+const uint VolumetricScatteringComposeFlagRelativeDepthAgreement = 1u << 6;
+
 // How much of the picture is left standing in that first mode - enough to see where one is, not enough to
 // confuse with what is being looked at.
 const float ShowScatteringOnlySceneWeight = 0.03;
@@ -111,6 +129,12 @@ const float ShowScatteringOnlySceneWeight = 0.03;
 // How far apart two linear depths may be before the cheap single-sample path is given up. In the units the
 // march wrote, so metres here.
 const float UpsampleDepthAgreement = 1.0;
+
+// And as a fraction of the distance, for the flag above. A per cent: forty metres of tolerance at four
+// kilometres, back down to the metre floor inside a hundred. Chosen to sit above what perspective alone
+// puts between two neighbouring texels on a surface seen at a glancing angle, and below the depth of any
+// silhouette worth keeping apart.
+const float UpsampleDepthAgreementRelative = 0.01;
 
 // How far that search may reach, in coarse texels beyond the 2x2 footprint. A silhouette pixel lies ON the
 // boundary, so the nearest texel of the other kind is almost always in the very first ring; the bound is
@@ -313,9 +337,25 @@ void resolveScattering(const in ivec3 at,
     return;
   }
 
+  // How far two taps may disagree and still count as the same surface, and how sharply a tap that misses
+  // it is dropped. The two belong together: widening the one without stretching the other would move the
+  // boundary while leaving the falloff at its old scale, and the hard choice would simply happen further
+  // out. Scaled by the ratio, so that a tap at the edge of the tolerance always lands on the same weight
+  // whatever the tolerance is.
+  //
+  // Never widened for a sky pixel. Its depth is the sentinel, a number in the millions, and a per cent of
+  // that would accept every tap in the buffer - the one distinction the upsample must not lose.
+  float depthAgreement = UpsampleDepthAgreement;
+  float depthWeightScale = pushConstants.strengthZNearDepthWeightSkyDepth.z;
+  if((!wantSky) &&
+     ((pushConstants.flagsSampleCountSpare.x & VolumetricScatteringComposeFlagRelativeDepthAgreement) != 0u)){
+    depthAgreement = max(UpsampleDepthAgreement, depthHere * UpsampleDepthAgreementRelative);
+    depthWeightScale *= UpsampleDepthAgreement / depthAgreement;
+  }
+
   if((!legacyLook) &&
-     ((depthDifferences[0] < UpsampleDepthAgreement) && (depthDifferences[1] < UpsampleDepthAgreement)) &&
-     ((depthDifferences[2] < UpsampleDepthAgreement) && (depthDifferences[3] < UpsampleDepthAgreement))){
+     ((depthDifferences[0] < depthAgreement) && (depthDifferences[1] < depthAgreement)) &&
+     ((depthDifferences[2] < depthAgreement) && (depthDifferences[3] < depthAgreement))){
 
     // All four belong to the same distance, so there is nothing to weigh against depth and the four are
     // simply blended by where this pixel falls between them - a plain bilinear read, done by hand because
@@ -344,7 +384,7 @@ void resolveScattering(const in ivec3 at,
     float weights[4];
     float sum = 0.0;
     for(int index = 0; index < 4; index++){
-      weights[index] = 1.0 / (1.0 + (depthDifferences[index] * pushConstants.strengthZNearDepthWeightSkyDepth.z));
+      weights[index] = 1.0 / (1.0 + (depthDifferences[index] * depthWeightScale));
       sum += weights[index];
     }
 
