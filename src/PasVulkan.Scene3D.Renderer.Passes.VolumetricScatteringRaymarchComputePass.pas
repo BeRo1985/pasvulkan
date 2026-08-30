@@ -209,7 +209,7 @@ begin
 
  fInstance:=aInstance;
 
- fDualOutput:=fInstance.VolumetricScatteringDualOutput;
+ fDualOutput:=fInstance.VolumetricScatteringDualOutputActive;
 
  Name:='VolumetricScatteringRaymarchComputePass';
 

@@ -152,7 +152,7 @@ begin
 
  fHorizontal:=aHorizontal;
 
- fDualOutput:=fInstance.VolumetricScatteringDualOutput;
+ fDualOutput:=fInstance.VolumetricScatteringDualOutputActive;
 
  if fHorizontal then begin
 

@@ -197,7 +197,7 @@ begin
 
  fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
- fDualOutput:=fInstance.VolumetricScatteringDualOutput;
+ fDualOutput:=fInstance.VolumetricScatteringDualOutputActive;
 
  Name:='VolumetricScatteringComposeComputePass';
 

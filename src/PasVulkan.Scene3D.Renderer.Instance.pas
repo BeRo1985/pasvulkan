@@ -1162,6 +1162,8 @@ type { TpvScene3DRendererInstance }
        function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4D; inline;
        procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4D); inline;
       private
+       function GetVolumetricScatteringDualOutputActive:Boolean;
+      private
        // The fog and the volumetric scattering, as one block, called from Prepare. One block because the
        // two are applied to the same picture and must therefore stand at the same point of the chain -
        // separating them would fog a colour the scattering never saw, or the other way round.
@@ -1759,6 +1761,16 @@ type { TpvScene3DRendererInstance }
        // exchange for a far one only silhouettes need. So a pixel with geometry in front of it now marches
        // twice: its own distance, and the rest of the way to the sky.
        property VolumetricScatteringDualOutput:Boolean read fVolumetricScatteringDualOutput write fVolumetricScatteringDualOutput;
+       // Whether it is actually in force, which is the property above AND a multisampled surface. Read by
+       // all four passes that the second output runs through, and read from HERE rather than each of them
+       // working it out for itself: march, blur and the two compose variants have to agree to the letter,
+       // or one writes images nobody reads or reads images nobody wrote, and the frame graph is left
+       // holding a resource that does not exist.
+       //
+       // Without MSAA there is one sample per pixel, so the resolved depth IS that pixel's own and there
+       // is no coverage mix to get wrong - the rim the second output exists against cannot arise. The
+       // march would be walked twice and the answer thrown away.
+       property VolumetricScatteringDualOutputActive:Boolean read GetVolumetricScatteringDualOutputActive;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -4250,6 +4262,15 @@ begin
   end;
  end;
 
+end;
+
+function TpvScene3DRendererInstance.GetVolumetricScatteringDualOutputActive:Boolean;
+begin
+ // Asked of the surface's sample count rather than of the antialiasing mode: SMAA on top of MSAA is still
+ // MSAA underneath, and SMAA on its own leaves one sample per pixel. The sample count answers both
+ // arrangements at once, and answers them for whatever mode is added next as well.
+ result:=fVolumetricScatteringDualOutput and
+         (Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 end;
 
 procedure TpvScene3DRendererInstance.CreateAtmosphericCompositingPasses;
