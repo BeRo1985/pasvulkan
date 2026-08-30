@@ -153,7 +153,13 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
              // mean free path of the air in metres, w = the depth the sky is given
              NoiseTimeAerialWeightMeanFreePathSkyDepth:TpvVector4;
              // x = the first view of this pass, y = the frame counter the shadow noise is decorrelated by
-             ViewBaseIndexFrameIndexSpare:TpvUInt32Vector4;
+             // x = the first view of this pass, y = frame counter, zw = the tint, four halves in two words.
+             //
+             // Packed rather than given a vector of its own: this block already stands at exactly 128
+             // bytes, the smallest maxPushConstantsSize Vulkan guarantees and the figure AMD drivers
+             // commonly report, so a ninth vector would be refused there. Half precision is ample for a
+             // multiplier around one.
+             ViewBaseIndexFrameIndexTint:TpvUInt32Vector4;
              // Everything that is a whole number or a switch, in a word of its own rather than squeezed
              // into the spare lanes of the float vectors: x = flags, y = the fewest steps a ray is walked
              // in, z = the most.
@@ -826,10 +832,16 @@ begin
                                                                                         fInstance.VolumetricScatteringMeanFreePath,
                                                                                         VolumetricScatteringSkyDepth);
 
-  fPushConstants.ViewBaseIndexFrameIndexSpare.x:=InFlightFrameState^.FinalViewIndex;
-  fPushConstants.ViewBaseIndexFrameIndexSpare.y:=TpvUInt32(aFrameIndex);
-  fPushConstants.ViewBaseIndexFrameIndexSpare.z:=0;
-  fPushConstants.ViewBaseIndexFrameIndexSpare.w:=0;
+  fPushConstants.ViewBaseIndexFrameIndexTint.x:=InFlightFrameState^.FinalViewIndex;
+  fPushConstants.ViewBaseIndexFrameIndexTint.y:=TpvUInt32(aFrameIndex);
+
+  // The tint, two halves to a word, in the order the shader's unpackHalf2x16 reads them: the low sixteen
+  // bits come out as x. Clamped at zero because a negative multiplier would take light out of the picture
+  // rather than colour it, and left open at the top - a tint above one is a legitimate way to ask for more
+  // of one wavelength, and the buffers behind this are half floats that can carry it.
+  fPushConstants.ViewBaseIndexFrameIndexTint.z:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.x,0.0)).Value) or
+                                                (TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.y,0.0)).Value) shl 16);
+  fPushConstants.ViewBaseIndexFrameIndexTint.w:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.z,0.0)).Value);
 
   fPushConstants.FlagsStepCountsSpare.x:=0;
   if fInstance.VolumetricScatteringNoiseDensity then begin

@@ -143,7 +143,13 @@ layout(push_constant) uniform PushConstants {
   // beyond any geometry on a track, so the sky ends up with a depth of its own that nothing real collides
   // with. The compose bounds its own reading by the same number.
   vec4 noiseTimeAerialWeightMeanFreePathSkyDepth;
-  uvec4 viewBaseIndexFrameIndexSpare; // x = the first view of this pass, y = frame counter, zw unused
+  // x = the first view of this pass, y = frame counter, zw = the tint, as four halves in two words.
+  //
+  // Packed rather than given a vec4 of its own, and the reason is a hard limit: this block already stands
+  // at exactly 128 bytes, which is the smallest maxPushConstantsSize Vulkan guarantees and the figure AMD
+  // drivers commonly report. A ninth vec4 would take it to 144 and be refused there. Half precision is
+  // ample for what this is - an artist's multiplier around one, not a measured quantity.
+  uvec4 viewBaseIndexFrameIndexTint;
   // Everything that is a whole number or a switch, kept out of the float vectors above rather than
   // squeezed into their spare lanes: x = flags, y = the fewest steps a ray is walked in, z = the most.
   uvec4 flagsStepCountsSpare;
@@ -168,7 +174,7 @@ const uint VolumetricScatteringFlagLegacyLook = 1u << 2;
 #define SHADOWS
 #define NOTEXCOORDS
 #define NUM_SHADOW_CASCADES 4
-#define inFrameIndex pushConstants.viewBaseIndexFrameIndexSpare.y
+#define inFrameIndex pushConstants.viewBaseIndexFrameIndexTint.y
 #define SHADOWS_SCREEN_POSITION vec2(gl_GlobalInvocationID.xy)
 
 const uint SHADOWMAP_MODE_NONE = 1;
@@ -407,7 +413,7 @@ void main(){
     return;
   }
 
-  uint viewIndex = pushConstants.viewBaseIndexFrameIndexSpare.x + uint(at.z);
+  uint viewIndex = pushConstants.viewBaseIndexFrameIndexTint.x + uint(at.z);
   mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
   mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
   mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
@@ -559,7 +565,7 @@ void main(){
     // The jitter, rotated by the frame counter rather than standing still. A pattern that is the same in
     // every frame cannot average out over time however long one looks at it; rotated, whatever accumulates
     // over frames takes a share of the work off the blur behind this.
-    float offset = gJitterOffsets[(((at.x & 7) | ((at.y & 7) << 3)) + int(pushConstants.viewBaseIndexFrameIndexSpare.y)) & 63];
+    float offset = gJitterOffsets[(((at.x & 7) | ((at.y & 7) << 3)) + int(pushConstants.viewBaseIndexFrameIndexTint.y)) & 63];
 
     // How long one segment counts as: the ray's own length over the steps. One length, for what a segment
     // gathers and for what it blocks alike, because they are the same piece of air.
@@ -820,6 +826,21 @@ void main(){
     }
 
   }
+
+  // The tint, and it goes here rather than beside the shaft gain on purpose: at this point everything the
+  // pass gathered is in, the march and the aerial term alike. Folded in earlier it would colour what the
+  // ray picked up and leave the distance haze grey beside it, which is the kind of half-applied setting one
+  // spends an evening not finding.
+  //
+  // What it does NOT touch is the extinction. Tinting what the air gives is a look; tinting what it takes
+  // away is a different statement about the medium, and the two do not belong on one dial. This is the
+  // coloured sibling of the shaft gain above - an admitted cheat, in the same place, on the same half.
+  vec3 tint = vec3(unpackHalf2x16(pushConstants.viewBaseIndexFrameIndexTint.z),
+                   unpackHalf2x16(pushConstants.viewBaseIndexFrameIndexTint.w).x);
+  inscattering *= tint;
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+  farInscattering *= tint;
+#endif
 
   // The last net. Everything above is guarded, but these buffers are read by two more passes and put onto
   // the picture, so one NaN that slipped through would not stay where it was made - it would spread

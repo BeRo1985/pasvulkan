@@ -1134,6 +1134,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringCoverageWeighting:Boolean;
        fVolumetricScatteringDualOutput:Boolean;
        fVolumetricScatteringRelativeDepthAgreement:Boolean;
+       fVolumetricScatteringTint:TpvVector3;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1790,6 +1791,27 @@ type { TpvScene3DRendererInstance }
        // Never widened for a sky pixel: its depth is the sentinel, and a per cent of that would accept
        // every tap in the buffer.
        property VolumetricScatteringRelativeDepthAgreement:Boolean read fVolumetricScatteringRelativeDepthAgreement write fVolumetricScatteringRelativeDepthAgreement;
+       // A colour the gathered light is multiplied by, white by default and therefore doing nothing until
+       // it is asked to. The coloured sibling of VolumetricScatteringShaftGain - the same admitted cheat,
+       // on the same half of the medium, with three channels instead of one.
+       //
+       // It multiplies what the air GIVES and not what it takes away. Tinting the extinction as well would
+       // be a different statement - that the medium absorbs one wavelength faster than another, which the
+       // Rayleigh model already says for itself - and mixing the two onto one dial would leave neither
+       // meaning anything. So: a look, applied where a look belongs.
+       //
+       // Applied at the very end of the march, after the aerial term rather than beside the shaft gain, so
+       // that everything the pass produces carries it. Folded in earlier it would colour what the ray
+       // picked up and leave the distance haze grey beside it.
+       //
+       // Values above one are allowed. A tint is a fair way to ask for more of one wavelength, and the
+       // buffers behind this are half floats with the range to carry it. Below zero is clamped away, since
+       // that would take light out of the picture rather than colour it.
+       //
+       // Half precision on the way to the shader, which is ample for a multiplier around one: the push
+       // constant block is already at the 128 bytes Vulkan guarantees, so this rides in two spare words
+       // rather than costing a vector that some drivers would refuse.
+       property VolumetricScatteringTint:TpvVector3 read fVolumetricScatteringTint write fVolumetricScatteringTint;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2854,6 +2876,7 @@ begin
  fVolumetricScatteringCoverageWeighting:=false;
  fVolumetricScatteringDualOutput:=false;
  fVolumetricScatteringRelativeDepthAgreement:=false;
+ fVolumetricScatteringTint:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
  if assigned(fVirtualReality) then begin
 
