@@ -111,6 +111,12 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
              // And bit three: the upsample the old compose did - all four taps weighted every time and a
              // depth weight soft enough that agreeing depths come out as a plain 2x2 average.
              VolumetricScatteringComposeFlagLegacyLook=TpvUInt32(1) shl 3;
+             // And bit four: where not one of the four taps is of the pixel's own kind - sky against
+             // geometry - look outwards for one that is, rather than weigh four wrong answers against
+             // each other. That is the rim along every silhouette against the sky, and it cannot be
+             // fixed by compositing per sample: the air itself was only ever computed once per texel,
+             // at the resolved depth, which at a silhouette is the geometry's.
+             VolumetricScatteringComposeFlagSkyTapSearch=TpvUInt32(1) shl 4;
       public
        type TPushConstants=packed record
              // x = strength, y = how depth becomes a distance, z = how hard the upsample separates two
@@ -624,6 +630,9 @@ begin
   end;
   if fInstance.VolumetricScatteringEnabled then begin
    fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagEnabled;
+  end;
+  if fInstance.VolumetricScatteringSkyTapSearch then begin
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagSkyTapSearch;
   end;
   // How many samples the raw depth carries. Only the MSAA variant reads it, and only it is given a raw
   // depth to read; one everywhere else, so a stray read could not divide by nothing.

@@ -300,6 +300,11 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
+  // The scene colour while it is still multisampled, for anything that wants to work on it before the
+  // samples are averaged away. Only "last" until something else says so: the order-independent
+  // transparency resolves write a combined multisampled colour of their own and take it over there.
+  fInstance.LastMSAAOutputResource:=fResourceColor;
+
 { fResourceColor:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                         'resource_forwardrendering_color',
                                         'resource_forwardrendering_msaa_color',

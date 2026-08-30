@@ -133,8 +133,12 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceInput:=AddImageInput('resourcetype_msaa_color_optimized_non_alpha',
-                               'resource_forwardrendering_msaa_color',
+ // Whatever holds the multisampled scene colour at this point, rather than the forward pass's own by
+ // name. Normally the two are the same thing; they part company when the atmospheric compositing has been
+ // put before the resolve, because then fog and volumetric scattering have written a new multisampled
+ // image in between and THAT is what wants resolving.
+ fResourceInput:=AddImageInput(fInstance.LastMSAAOutputResource.ResourceType.Name,
+                               fInstance.LastMSAAOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                               );

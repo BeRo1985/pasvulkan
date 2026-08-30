@@ -251,6 +251,8 @@ compileshaderarguments=(
   "-V fog.frag -DFOG_SAMPLE_ENVIRONMENT -o ${tempPath}/fog_environment_frag.spv"
   "-V fog.frag -DFOG_MSAA -o ${tempPath}/fog_msaa_frag.spv"
   "-V fog.frag -DFOG_MSAA -DFOG_SAMPLE_ENVIRONMENT -o ${tempPath}/fog_environment_msaa_frag.spv"
+  "-V fog.frag -DMSAA_PER_SAMPLE -o ${tempPath}/fog_per_sample_frag.spv" # runs before the resolve, one invocation per sample
+  "-V fog.frag -DMSAA_PER_SAMPLE -DFOG_SAMPLE_ENVIRONMENT -o ${tempPath}/fog_environment_per_sample_frag.spv"
   "-V dof_prefilter.frag -o ${tempPath}/dof_prefilter_frag.spv"
   "-V dof_blur.frag -o ${tempPath}/dof_blur_frag.spv"
   "-V dof_bruteforce.frag -o ${tempPath}/dof_bruteforce_frag.spv"
@@ -527,6 +529,7 @@ compileshaderarguments=(
   "-V volumetric_scattering_blur.comp -o ${tempPath}/volumetric_scattering_blur_comp.spv"
   "-V volumetric_scattering_compose.comp -o ${tempPath}/volumetric_scattering_compose_comp.spv"
   "-V volumetric_scattering_compose.comp -DVOLUMETRIC_SCATTERING_MSAA -o ${tempPath}/volumetric_scattering_compose_msaa_comp.spv" # per-sample against the raw depth, like fog's own MSAA variant
+  "-V volumetric_scattering_compose.frag -o ${tempPath}/volumetric_scattering_compose_per_sample_frag.spv" # the same, but before the resolve and at sample rate, so no averaging is needed at all
 
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"

@@ -204,6 +204,10 @@ begin
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
+  // Opaque and transparency combined, and still multisampled - so this, and no longer what the forward
+  // pass wrote, is the scene colour anything working before the resolve should be looking at.
+  fInstance.LastMSAAOutputResource:=fResourceSurface;
+
 { fResourceSurface:=AddImageResolveOutput('resourcetype_color_optimized_non_alpha',
                                           'resource_combinedopaquetransparency_final_color',
                                           'resource_combinedopaquetransparency_final_msaa_color',

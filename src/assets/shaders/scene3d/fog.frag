@@ -16,6 +16,15 @@
 // pixel - whose resolved colour is a coverage mix of several surfaces - gets the matching
 // fractional fog; a single reduced depth would either fog the sky fraction or leave the
 // geometry fraction unfogged, a visible rim line along silhouettes.
+//
+// MSAA_PER_SAMPLE is the exact form of the same idea, for the case where the pass runs on the
+// still-multisampled colour BEFORE the resolve: with per-sample shading the fragment shader is
+// invoked once per sample, so every sample is fogged by its OWN depth and the resolve afterwards
+// averages finished results. That removes the averaging above, which can only ever be an
+// approximation - it applies one shared factor to a colour that is already a coverage mix, and
+// mix(avg(C), F, avg(a)) equals avg(mix(C, F, a)) only where the samples agree, which at a
+// silhouette is exactly where they do not. The price is running the whole pass at sample rate,
+// hence a separate variant rather than the default.
 
 layout(location = 0) in vec2 inTexCoord;
 
@@ -39,9 +48,15 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
+#ifdef MSAA_PER_SAMPLE
+// A multisampled input attachment, because the colour this variant reads has not been resolved yet.
+// It must be loaded per sample as well - subpassLoad without a sample index is not defined for one.
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInputMS uSubpassColor;
+#else
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassColor;
+#endif
 
-#ifdef FOG_MSAA
+#if defined(FOG_MSAA) || defined(MSAA_PER_SAMPLE)
 layout(set = 0, binding = 1) uniform sampler2DMSArray uTextureDepth;
 #else
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
@@ -96,7 +111,11 @@ bool computeFogAmount(const in float rawDepth,
 
 void main(){
 
+#ifdef MSAA_PER_SAMPLE
+  vec4 color = subpassLoad(uSubpassColor, gl_SampleID);
+#else
   vec4 color = subpassLoad(uSubpassColor);
+#endif
   color.xyz = clamp(color.xyz, vec3(0.0), vec3(65504.0));
 
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
@@ -108,7 +127,18 @@ void main(){
   // robust to the engine's reversed-Z infinite-far setup.
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
 
-#ifdef FOG_MSAA
+#if defined(MSAA_PER_SAMPLE)
+  // One sample, this invocation's own: no averaging, no coverage reasoning, because the colour being
+  // written is this sample's colour and nobody else's. A sky sample stays untouched exactly as in the
+  // single-sample path - and here that is literally true rather than an approximation of it.
+  float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), gl_SampleID).x;
+  float fogAmount;
+  vec3 fogViewPosition;
+  if(!computeFogAmount(rawDepth, reversedZ, inverseProjectionMatrix, inverseViewMatrix, fogAmount, fogViewPosition)){
+    outFragColor = color;
+    return;
+  }
+#elif defined(FOG_MSAA)
   // Per-sample fog factors, averaged over the GEOMETRY samples only: a silhouette pixel's
   // resolved colour is a coverage mix of geometry and sky, and since the sky already renders as
   // (essentially) the fog colour, fogging the sky fraction is a no-op - so applying the geometry

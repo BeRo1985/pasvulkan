@@ -106,6 +106,11 @@ type { TpvScene3DRendererPassesFogRenderPass }
        // the FOG_MSAA shader variants) instead of the reduced depth pyramid, whose single depth per
        // pixel mismatches the resolved colour's coverage mix at silhouettes (a visible rim line).
        fMSAA:Boolean;
+       // AtmosphericCompositingBeforeResolve: the pass is placed before the multisample resolve and
+       // runs at sample rate, so that each sample is fogged by its own depth and the resolve
+       // afterwards averages finished results. That makes the averaging above unnecessary - it is
+       // exact rather than an approximation - at the cost of shading every sample.
+       fPerSample:Boolean;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceMSAADepth:TpvFrameGraph.TPass.TUsedImageResource;
@@ -148,6 +153,13 @@ begin
 
  fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
+ // Only where there is something multisampled left to run on, and only where the instance asked for it.
+ // The tracker has to hold something too - it is set by whichever pass last wrote a multisampled colour,
+ // and if that never happened there is no such picture to composite onto.
+ fPerSample:=fMSAA and
+             fInstance.AtmosphericCompositingBeforeResolve and
+             assigned(fInstance.LastMSAAOutputResource);
+
  Name:='FogRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
@@ -160,10 +172,20 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
-                               fInstance.LastOutputResource.Resource.Name,
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+ // Before the resolve the colour to read is the multisampled one, which is not what the chain's
+ // LastOutputResource points at - that is the single-sample picture the resolve will eventually produce
+ // and which does not exist yet at this point of the graph.
+ if fPerSample then begin
+  fResourceColor:=AddImageInput(fInstance.LastMSAAOutputResource.ResourceType.Name,
+                                fInstance.LastMSAAOutputResource.Resource.Name,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+ end else begin
+  fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                                fInstance.LastOutputResource.Resource.Name,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]);
+ end;
 
  // Under MSAA the raw multisampled depth is read directly (see fMSAA above); without MSAA the
  // depth comes from the reduced depth pyramid, which needs no frame-graph input here (it is bound
@@ -178,15 +200,34 @@ begin
   fResourceMSAADepth:=nil;
  end;
 
- fResourceOutput:=AddImageOutput('resourcetype_color',
-                                 'resource_fog_color',
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
-                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
+ // The output takes the input's resource type when running before the resolve, so that it carries the
+ // same sample count by construction rather than by a name chosen here having to agree with one chosen
+ // elsewhere - the multisampled colour is called two different things depending on which pass last wrote
+ // it, and both of them have to work.
+ if fPerSample then begin
+  fResourceOutput:=AddImageOutput(fInstance.LastMSAAOutputResource.ResourceType.Name,
+                                  'resource_fog_msaa_color',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+ end else begin
+  fResourceOutput:=AddImageOutput('resourcetype_color',
+                                  'resource_fog_color',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+ end;
 
  // Continue the post-process chain: everything downstream now reads the fogged colour.
  fInstance.LastOutputResource:=fResourceOutput;
+
+ // And before the resolve, the multisampled picture is this one now - the resolve that follows has to be
+ // told, or it would resolve the colour this pass was handed instead of the one it produced.
+ if fPerSample then begin
+  fInstance.LastMSAAOutputResource:=fResourceOutput;
+ end;
 
 end;
 
@@ -208,7 +249,13 @@ begin
   Stream.Free;
  end;
 
- if fMSAA then begin
+ if fPerSample then begin
+  if fSampleEnvironment then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_environment_per_sample_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_per_sample_frag.spv');
+  end;
+ end else if fMSAA then begin
   if fSampleEnvironment then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fog_environment_msaa_frag.spv');
   end else begin
@@ -418,9 +465,18 @@ begin
  fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
  fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
- fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
- fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
- fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ // Per sample, and every one of them: MinSampleShading below one lets the driver shade fewer invocations
+ // than there are samples and hand the same result to several of them, which is precisely the averaging
+ // this variant exists to avoid.
+ if fPerSample then begin
+  fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+  fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=true;
+  fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=1.0;
+ end else begin
+  fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+  fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+  fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ end;
  fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
  fVulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
  fVulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;

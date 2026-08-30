@@ -981,6 +981,13 @@ type { TpvScene3DRendererInstance }
        fPasses:TObject;
       private
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
+       // The same idea one step earlier in the chain: the scene colour while it is still MULTISAMPLED.
+       // Nil where there is no such thing - without MSAA nothing ever writes one.
+       //
+       // It exists so that a pass wanting to work on the picture BEFORE the samples are averaged away does
+       // not have to know which transparency mode is running and therefore which resource happens to hold
+       // the colour at that moment. Every mode produces one; only the name differs.
+       fLastMSAAOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
       private
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
       private
@@ -1109,6 +1116,11 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringMaximumStepCount:TpvInt32;
        fVolumetricScatteringMeanFreePath:TpvFloat;
        fVolumetricScatteringSizeDivisor:TpvInt32;
+       fAtmosphericCompositingBeforeResolve:Boolean;
+       // Whether the fog and volumetric passes have already been placed this build. They are created at
+       // one of two points depending on the option above, and the two points are far apart in Prepare -
+       // this is what keeps them from being created twice or not at all.
+       fAtmosphericCompositingPassesCreated:Boolean;
        fVolumetricScatteringNoiseDensity:Boolean;
        fVolumetricScatteringNoiseScattering:TpvFloat;
        fVolumetricScatteringNoiseExtinction:TpvFloat;
@@ -1118,6 +1130,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringLegacyLook:Boolean;
        fVolumetricScatteringShowScatteringOnly:Boolean;
        fVolumetricScatteringShowExtinctionOnly:Boolean;
+       fVolumetricScatteringSkyTapSearch:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1146,6 +1159,11 @@ type { TpvScene3DRendererInstance }
       private
        function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4D; inline;
        procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4D); inline;
+      private
+       // The fog and the volumetric scattering, as one block, called from Prepare. One block because the
+       // two are applied to the same picture and must therefore stand at the same point of the chain -
+       // separating them would fog a colour the scattering never saw, or the other way round.
+       procedure CreateAtmosphericCompositingPasses;
       private
        procedure PrepareDrawRenderInstanceFillTasksParallelForJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
@@ -1398,6 +1416,9 @@ type { TpvScene3DRendererInstance }
        property TAAHistoryVelocityImages:TArray2DImages read fTAAHistoryVelocityImages;
       public
        property LastOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastOutputResource write fLastOutputResource;
+       // The scene colour while it is still multisampled, or nil where there is none. Set by whichever
+       // pass last wrote it, exactly as LastOutputResource is for the resolved one.
+       property LastMSAAOutputResource:TpvFrameGraph.TPass.TUsedImageResource read fLastMSAAOutputResource write fLastMSAAOutputResource;
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
        property HUDCustomPassClass:THUDCustomPassClass read fHUDCustomPassClass write fHUDCustomPassClass;
        property HUDCustomPassParent:TObject read fHUDCustomPassParent write fHUDCustomPassParent;
@@ -1576,6 +1597,42 @@ type { TpvScene3DRendererInstance }
        // So it is both an option and a measurement: if a rim survives at one, the fault is not the
        // upsample and looking there further is wasted effort.
        property VolumetricScatteringSizeDivisor:TpvInt32 read fVolumetricScatteringSizeDivisor write fVolumetricScatteringSizeDivisor;
+       // Whether the atmospheric compositing - the fog and the volumetric scattering - is applied BEFORE
+       // the multisample resolve rather than after it. READ AT CREATION: it decides which passes are built
+       // and where they sit in the chain.
+       //
+       // What it buys is exactness at silhouettes, and only there. A pixel on an outline is a coverage mix
+       // of two surfaces, but after the resolve there is one colour and one depth for it, and the depth
+       // resolve has already chosen the NEAREST sample. Composited after the resolve, that pixel gets the
+       // air of whichever surface won, over its whole area:
+       //
+       //   the nearest sample's air over all of it   - a bright rim, and the outline reads as aliased
+       //                                               again because the overlay is a hard binary choice
+       //                                               laid over an edge MSAA had smoothed
+       //   the coverage average of the coefficients  - keeps the softness, but multiplies the AVERAGE
+       //                                               transmittance by the ALREADY MIXED colour, which is
+       //                                               not the average of the products: a dark rim
+       //
+       // Both were built and both were measured; neither can be right, because the quantity they need -
+       // the colour of each SAMPLE - no longer exists at that point. Before the resolve it does, and then
+       // each sample is composited against its own colour and the result is simply correct.
+       //
+       // The cost is per-sample shading: the fog and the compose then run once per sample rather than once
+       // per pixel, so eight times over at eight samples. That is why this is a switch and not the default.
+       //
+       // Without MSAA it does nothing at all, and correctly so - one sample per pixel means the resolved
+       // colour and depth ARE that sample's, and the ordinary path is already exact.
+       //
+       // Where the two passes land depends on the transparency mode, because "just before the resolve" is
+       // not one place. WBOIT, MBOIT and the two DFAOIT modes combine opaque and transparency into a
+       // multisampled colour and resolve it at the very end; there the passes go after everything, and
+       // nothing about the picture changes except that the rim is gone. The remaining modes resolve the
+       // OPAQUE colour first and draw their transparency onto the resolved picture, so the last moment at
+       // which anything is multisampled is before that first resolve - and the transparency drawn
+       // afterwards then receives neither fog nor scattering. What it received before was the air
+       // belonging to the opaque surface BEHIND it, transparent surfaces writing no depth, so neither
+       // arrangement is right; this one at least does not contradict itself.
+       property AtmosphericCompositingBeforeResolve:Boolean read fAtmosphericCompositingBeforeResolve write fAtmosphericCompositingBeforeResolve;
        // Which of the two density models fills the air, and this is the substantive choice of the whole
        // effect.
        //
@@ -1629,6 +1686,31 @@ type { TpvScene3DRendererInstance }
        // behind it stopping down because something else got bright? White = the air takes nothing away,
        // mid grey = about half, black = the world is being multiplied by nothing.
        property VolumetricScatteringShowExtinctionOnly:Boolean read fVolumetricScatteringShowExtinctionOnly write fVolumetricScatteringShowExtinctionOnly;
+       // Against the rim along every silhouette that stands against the sky.
+       //
+       // The march computes one answer per texel, from the resolved depth - and the depth resolve keeps
+       // the NEAREST sample, deliberately, because "is any part of this pixel in front" is the right
+       // question for an occlusion test. So at a silhouette the march walked to the geometry, and the air
+       // over the sky's distance at that pixel was never computed by anybody. The upsample then hands the
+       // sky its four geometry taps and the sky wears the mountain's air.
+       //
+       // Compositing per sample does not reach this. It gives every sample its own colour and its own
+       // depth, which removes the cross term on the colour - but all samples of a pixel still read the
+       // same marched air, because the march runs per texel and not per sample. Measured: the rim
+       // survives both per-sample compositing and a size divisor of one.
+       //
+       // With this set, a pixel that finds no tap of its own kind looks outwards for one, ring by ring,
+       // and averages the first ring that has any. Borrowed rather than computed, and legitimate here
+       // because these buffers are half resolution and bilaterally blurred - low-frequency by
+       // construction, so a tap two coarse texels away is a fair estimate. The same trick on the sky's
+       // COLOUR is not legitimate, and was tried: sun, stars and clouds are anything but low-frequency,
+       // and it gave a black outline.
+       //
+       // What it costs is a small search on the few per cent of pixels that sit on a silhouette. What it
+       // does not do is make the borrowed value exact - it is displaced by up to a few pixels, which a
+       // blurred field hides. The exact answer needs the march to record its result twice, once where it
+       // passes the geometry and once at the far end, and that makes every pixel as dear as a sky pixel.
+       property VolumetricScatteringSkyTapSearch:Boolean read fVolumetricScatteringSkyTapSearch write fVolumetricScatteringSkyTapSearch;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -1836,6 +1918,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringRaymarchComputePass,
      PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringBlurComputePass,
      PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringComposeComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringComposeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.RadialBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CanvasRenderPass,
@@ -1991,6 +2074,9 @@ type TpvScene3DRendererInstancePasses=class
        fVolumetricScatteringBlurHorizontalComputePass:TpvScene3DRendererPassesVolumetricScatteringBlurComputePass;
        fVolumetricScatteringBlurVerticalComputePass:TpvScene3DRendererPassesVolumetricScatteringBlurComputePass;
        fVolumetricScatteringComposeComputePass:TpvScene3DRendererPassesVolumetricScatteringComposeComputePass;
+       // The same step as a fragment pass at sample rate, used instead of the compute one when the
+       // atmospheric compositing is placed before the multisample resolve. Exactly one of the two exists.
+       fVolumetricScatteringComposeRenderPass:TpvScene3DRendererPassesVolumetricScatteringComposeRenderPass;
        fRadialBlurRenderPass:TpvScene3DRendererPassesRadialBlurRenderPass;
        fCanvasComputePass:TpvScene3DRendererPassesCanvasComputePass;
        fCanvasRenderPass:TpvScene3DRendererPassesCanvasRenderPass;
@@ -2671,6 +2757,9 @@ begin
  // replaced ever was.
  fVolumetricScatteringMeanFreePath:=1200.0;
  fVolumetricScatteringSizeDivisor:=TpvScene3DRendererInstance.VolumetricScatteringDefaultSizeDivisor;
+ // Off by default: it is the exact path, but it pays for that with per-sample shading on two fullscreen
+ // passes, and the ordinary path is what has been looked at for everything else.
+ fAtmosphericCompositingBeforeResolve:=false;
  // The noise model on by default, and the physical one a property away. Its three numbers are authored in
  // per-metre terms and are therefore independent of the mean free path above.
  fVolumetricScatteringNoiseDensity:=true;
@@ -2682,6 +2771,7 @@ begin
  fVolumetricScatteringLegacyLook:=false;
  fVolumetricScatteringShowScatteringOnly:=false;
  fVolumetricScatteringShowExtinctionOnly:=false;
+ fVolumetricScatteringSkyTapSearch:=false;
 
  if assigned(fVirtualReality) then begin
 
@@ -4112,6 +4202,100 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.CreateAtmosphericCompositingPasses;
+var PerSample:Boolean;
+    ColourConsumer:TpvFrameGraph.TPass;
+begin
+
+ // Guarded rather than merely called at the right place, because there are two right places and which one
+ // it is depends on the option and on the transparency mode. Called twice, this would build the whole
+ // block twice over.
+ if fAtmosphericCompositingPassesCreated then begin
+  exit;
+ end;
+ fAtmosphericCompositingPassesCreated:=true;
+
+ // Whether this is the placement before the multisample resolve. It needs all three: the option, an actual
+ // multisampled surface, and a multisampled colour left in the chain for the passes to work on.
+ PerSample:=fAtmosphericCompositingBeforeResolve and
+            (Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) and
+            assigned(LastMSAAOutputResource);
+
+ // Atmosphere-independent distance fog, at the very start of the HDR post-process chain: it fogs
+ // the composited opaque+transparent scene colour before luminance/DoF/bloom/tonemap. Only created
+ // when enabled (FogMode <> None), so it is a no-op for projects that never opt in. It reads the raw
+ // depth mip pyramid directly, so it must run after the depth mip-map pass.
+ if fFogMode<>TpvScene3DRendererInstance.TFogMode.None then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=TpvScene3DRendererPassesFogRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=nil;
+ end;
+
+ // The volumetric scattering, right behind the fog and still before the luminance / tone mapping chain:
+ // scattered light is light, so it belongs in the HDR picture and wants to be exposed and tone mapped
+ // along with everything else. Added after the tone map it would be a flat wash over displayable colours
+ // instead, and a bright shaft would have nowhere left to go.
+ //
+ // The march and the two blur steps stand outside the visible chain and are wired by resource name; only
+ // the compose reads LastOutputResource and hands it on. Explicit dependencies throughout: the march
+ // needs the resolved depth, and a pass whose output nothing else reads is otherwise free to be placed
+ // anywhere the graph likes.
+ if Renderer.VolumetricScatteringActive then begin
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Create(fFrameGraph,self);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  end;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,true);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,false);
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass);
+  // Exactly one of the two compose variants, never both: they write the same picture, one on the resolved
+  // colour and one at sample rate on the unresolved one.
+  if PerSample then begin
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=nil;
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeRenderPass:=TpvScene3DRendererPassesVolumetricScatteringComposeRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass);
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeRenderPass:=nil;
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass);
+  end;
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeRenderPass:=nil;
+ end;
+
+ // Whichever of the two is the first to touch the scene colour. Placed before the resolve, this block sits
+ // among the passes that draw INTO that colour - the sky, the clouds, the rain - rather than safely after
+ // all of them, and it must not be ordered in among them. The graph would work that out from the resource
+ // transitions alone, but the resolve that used to stand here says so explicitly, and a placement this
+ // easy to get wrong is not the place to start relying on the implicit answer.
+ // Only for that placement: at the old one this block stands after everything anyway, and an ordering
+ // constraint that is already satisfied is still a change to a path that is meant to be untouched.
+ if PerSample then begin
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass) then begin
+   ColourConsumer:=TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass;
+  end else begin
+   ColourConsumer:=TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeRenderPass;
+  end;
+ end else begin
+  ColourConsumer:=nil;
+ end;
+ if assigned(ColourConsumer) then begin
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass) then begin
+   ColourConsumer.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass);
+  end;
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass) then begin
+   ColourConsumer.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRainRenderPass);
+  end;
+ end;
+
+end;
+
 procedure TpvScene3DRendererInstance.Prepare;
 var PerInFlightFrameBufferIndex:TpvSizeInt;
     AntialiasingFirstPass:TpvFrameGraph.TPass;
@@ -4134,6 +4318,10 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     DUGIClearColorValue:TVkClearColorValue;
     DUGIClearImageRange:TVkImageSubresourceRange;
 begin
+
+ // Nothing placed yet this build. Reset rather than merely initialised, because Prepare runs again on
+ // every rebuild of the graph and a flag left standing from the last one would skip the whole block.
+ fAtmosphericCompositingPassesCreated:=false;
 
  // If AI upscaling is enabled, enforce the size factor from the upscale mode.
  case Renderer.AIUpscaleMode of
@@ -6547,6 +6735,26 @@ begin
  end;
 
  if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+
+  // The other of the two placements for the per-sample atmospheric compositing, and the one that applies
+  // where the transparency never produces a multisampled picture of its own: three of the modes below
+  // combine opaque and transparency into a multisampled colour that is resolved at the very end, and for
+  // those the right place is down there, after everything. The rest resolve the opaque colour HERE and
+  // then draw their transparency onto the resolved picture, so there is no later moment at which anything
+  // is still multisampled - this is the last one.
+  //
+  // The consequence is worth naming: in those modes the transparency is drawn after the fog and the
+  // scattering and therefore receives neither. What it received before was the air belonging to the
+  // OPAQUE surface behind it - transparent surfaces write no depth, so that is the only distance the fog
+  // ever had for them - so neither arrangement is right, and this one at least never contradicts itself.
+  if fAtmosphericCompositingBeforeResolve and
+     not (Renderer.TransparencyMode in [TpvScene3DRendererTransparencyMode.WBOIT,
+                                        TpvScene3DRendererTransparencyMode.MBOIT,
+                                        TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
+                                        TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT]) then begin
+   CreateAtmosphericCompositingPasses;
+  end;
+
   TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass:=TpvScene3DRendererPassesForwardResolveRenderPass.Create(fFrameGraph,self);
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAtmosphereRenderPass);
@@ -6767,48 +6975,28 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   LastPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass);
  end;
 
+ // Whether the chain is still standing on a multisampled colour and therefore needs resolving. Asked as
+ // "is what we have the multisampled one" rather than by comparing the resource's NAME against the one
+ // the transparency resolves happen to give it - a name test answers the question only for as long as
+ // nothing is ever inserted in between, and the atmospheric compositing before the resolve does exactly
+ // that.
  if assigned(LastOutputResource) and
-    (LastOutputResource.Resource.Name='resource_combinedopaquetransparency_final_msaa_color') then begin
-  TpvScene3DRendererInstancePasses(fPasses).fOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
- end;
+    assigned(LastMSAAOutputResource) and
+    (LastOutputResource=LastMSAAOutputResource) then begin
 
- // Atmosphere-independent distance fog, at the very start of the HDR post-process chain: it fogs
- // the composited opaque+transparent scene colour before luminance/DoF/bloom/tonemap. Only created
- // when enabled (FogMode <> None), so it is a no-op for projects that never opt in. It reads the raw
- // depth mip pyramid directly, so it must run after the depth mip-map pass.
- if fFogMode<>TpvScene3DRendererInstance.TFogMode.None then begin
-  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=TpvScene3DRendererPassesFogRenderPass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
- end else begin
-  TpvScene3DRendererInstancePasses(fPasses).fFogRenderPass:=nil;
- end;
-
- // The volumetric scattering, right behind the fog and still before the luminance / tone mapping chain:
- // scattered light is light, so it belongs in the HDR picture and wants to be exposed and tone mapped
- // along with everything else. Added after the tone map it would be a flat wash over displayable colours
- // instead, and a bright shaft would have nowhere left to go.
- //
- // The march and the two blur steps stand outside the visible chain and are wired by resource name; only
- // the compose reads LastOutputResource and hands it on. Explicit dependencies throughout: the march
- // needs the resolved depth, and a pass whose output nothing else reads is otherwise free to be placed
- // anywhere the graph likes.
- if Renderer.VolumetricScatteringActive then begin
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Create(fFrameGraph,self);
-  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  // The last point at which opaque and transparency exist together and are still multisampled, so this is
+  // where the atmospheric compositing goes when it is to run per sample. Nothing is lost by it here: the
+  // picture is complete, and only the resolve is still to come.
+  if fAtmosphericCompositingBeforeResolve then begin
+   CreateAtmosphericCompositingPasses;
   end;
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,true);
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass);
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Create(fFrameGraph,self,false);
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass);
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass);
- end else begin
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringRaymarchComputePass:=nil;
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurHorizontalComputePass:=nil;
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringBlurVerticalComputePass:=nil;
-  TpvScene3DRendererInstancePasses(fPasses).fVolumetricScatteringComposeComputePass:=nil;
+
+  TpvScene3DRendererInstancePasses(fPasses).fOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+
  end;
+
+ // And here, where they have always been, if they have not already been placed before the resolve.
+ CreateAtmosphericCompositingPasses;
 
  AntialiasingFirstPass:=nil;
  AntialiasingLastPass:=nil;
