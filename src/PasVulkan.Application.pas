@@ -2819,6 +2819,14 @@ var // Unassigned means nothing is attempted, which is what a program which neve
 
     pvCrashDumps:Boolean=false;
 
+    // Counts the crashes of one run, so that each one gets its own numbered log
+    // instead of all of them landing in a single growing file. A crash which
+    // happens while the first one is being cleaned up is the usual case, and in
+    // one file the report of the second buries the report of the first - which
+    // is the one that says what actually went wrong. The first crash of a run
+    // is therefore always in <name>-1.crashlog.
+    pvCrashLogCounter:TPasMPInt32=0;
+
     // How much of the process goes into it, see the same named type in
     // PasVulkan.CrashReport.MiniDump. Normal is a few hundred kilobytes and
     // answers most questions; Full is the whole address space and for a program
@@ -3369,8 +3377,17 @@ begin
  // since its buffer allocation is exactly what fails in a heap corruption crash.
  try
 
+  // Numbered per crash of this run, see pvCrashLogCounter. Appended and not
+  // overwritten when it already exists, so that a second run of the program
+  // adds to its predecessor rather than destroying it - the numbering separates
+  // the crashes of one run, the timestamp written into each block separates the
+  // runs.
   FileName:=GetCrashLogFileName;
   if length(FileName)>0 then begin
+
+   FileName:=ChangeFileExt(FileName,'')+'-'+
+             TpvUTF8String(IntToStr(TPasMPInterlocked.Increment(pvCrashLogCounter)))+
+             ExtractFileExt(FileName);
 
    Text:=LineEnding+
          '-----------------------------------------'+LineEnding+
@@ -18121,7 +18138,9 @@ begin
  // Now that the storage paths are known, the crash log lands at its final
  // location, so say where that is instead of leaving it to be guessed.
  if pvCrashLog then begin
-  Log(LOG_INFO,'PasVulkanApplication','Crash log file: '+TpvUTF8String(GetCrashLogFileName));
+  // Named with the number of the crash, so say the pattern rather than a name
+  // which will not exist under exactly that spelling.
+  Log(LOG_INFO,'PasVulkanApplication','Crash log files: '+TpvUTF8String(ChangeFileExt(GetCrashLogFileName,''))+'-<n>'+TpvUTF8String(ExtractFileExt(GetCrashLogFileName))+' (n counts the crashes of this run, the first one is the interesting one)');
  end else begin
   Log(LOG_INFO,'PasVulkanApplication','Crash log: off, see --crashlogging');
  end;
