@@ -526,6 +526,7 @@ compileshaderarguments=(
   "-V volumetric_scattering_raymarch.comp --target-env spirv1.4 -DRAYTRACING -o ${tempPath}/volumetric_scattering_raymarch_raytracing_comp.spv" # ray query needs SPIR-V 1.4 and GLSL 460, see the shader's own first lines
   "-V volumetric_scattering_blur.comp -o ${tempPath}/volumetric_scattering_blur_comp.spv"
   "-V volumetric_scattering_compose.comp -o ${tempPath}/volumetric_scattering_compose_comp.spv"
+  "-V volumetric_scattering_compose.comp -DVOLUMETRIC_SCATTERING_MSAA -o ${tempPath}/volumetric_scattering_compose_msaa_comp.spv" # per-sample against the raw depth, like fog's own MSAA variant
 
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"

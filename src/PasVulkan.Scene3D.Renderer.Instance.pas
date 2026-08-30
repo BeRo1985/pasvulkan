@@ -111,10 +111,17 @@ type { TpvScene3DRendererInstance }
              // tile's neighbourhood, and that summary is one texel per tile. Sixteen because it divides
              // every sensible resolution and keeps the two tile buffers small.
              MotionBlurTileSize=16;
-             // The volumetric scattering marches and blurs at half the surface size. The result is smooth
-             // by its nature and gets blurred again afterwards, so the resolution buys nothing that the
-             // upsample does not give back - and the march is the expensive part of the whole effect.
-             VolumetricScatteringSizeDivisor=2;
+             // What the volumetric scattering marches and blurs at, as a divisor of the surface size, when
+             // nothing says otherwise. The result is smooth by its nature and gets blurred again
+             // afterwards, so the resolution buys little that the upsample does not give back - and the
+             // march is the expensive part of the whole effect.
+             //
+             // Little, but not nothing. Where a silhouette is thinner than the coarse grid, none of the
+             // four coarse texels under a pixel carries that pixel's depth, and then there is nothing for
+             // the upsample to weigh: all four are equally wrong, the weighting normalises them into an
+             // average across the edge, and a rim appears along the outline. No depth weighting can mend
+             // that, because the value simply was never computed. See the property below.
+             VolumetricScatteringDefaultSizeDivisor=2;
              CountCascadedShadowMapCascades=4;
              CountOrderIndependentTransparencyLayers=8;
              CountGlobalIlluminationRadiantHintCascades=4;
@@ -1097,16 +1104,20 @@ type { TpvScene3DRendererInstance }
        fMotionBlurSoftZExtent:TpvFloat;
        fVolumetricScatteringEnabled:Boolean;
        fVolumetricScatteringFactor:TpvFloat;
-       fVolumetricScatteringSunIntensity:TpvFloat;
+       fVolumetricScatteringShaftGain:TpvFloat;
        fVolumetricScatteringMinimumStepCount:TpvInt32;
        fVolumetricScatteringMaximumStepCount:TpvInt32;
-       fVolumetricScatteringRayLengthSegments:Boolean;
+       fVolumetricScatteringMeanFreePath:TpvFloat;
+       fVolumetricScatteringSizeDivisor:TpvInt32;
        fVolumetricScatteringNoiseDensity:Boolean;
        fVolumetricScatteringNoiseScattering:TpvFloat;
        fVolumetricScatteringNoiseExtinction:TpvFloat;
        fVolumetricScatteringNoiseScale:TpvFloat;
        fVolumetricScatteringNoiseTime:TpvDouble;
+       fVolumetricScatteringAerialFactor:TpvFloat;
+       fVolumetricScatteringLegacyLook:Boolean;
        fVolumetricScatteringShowScatteringOnly:Boolean;
+       fVolumetricScatteringShowExtinctionOnly:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1496,13 +1507,30 @@ type { TpvScene3DRendererInstance }
        // - but changing it rebuilds the whole graph, and that cannot be done between two frames.
        property VolumetricScatteringEnabled:Boolean read fVolumetricScatteringEnabled write fVolumetricScatteringEnabled;
        property VolumetricScatteringFactor:TpvFloat read fVolumetricScatteringFactor write fVolumetricScatteringFactor;
-       // The strength of the light being scattered, as opposed to how much of the result is taken. The
-       // two are separate on purpose: this one belongs to the scene - a brighter sun scatters more - while
-       // the factor above is the taste knob, and the two live in different passes for that reason: this
-       // one in the march, the other in the compose, so that neither is counted twice. Twenty is not
-       // decoration - the scattering coefficients are per metre at sea level, so at one the effect is
-       // arithmetically correct and invisible.
-       property VolumetricScatteringSunIntensity:TpvFloat read fVolumetricScatteringSunIntensity write fVolumetricScatteringSunIntensity;
+       // How brightly the light scatters in the air - and this one is a CHEAT, deliberately, which is
+       // worth saying plainly because the name does not.
+       //
+       // It is not the sun's radiance: the sun that lights the surfaces is never consulted, and turning
+       // this up makes nothing else in the world brighter. It scales the gathered light alone, which no
+       // medium can do - for a scattering medium, more light sent toward the eye means more taken from
+       // what lies behind, and that half is the mean free path's business.
+       //
+       // It is kept because it is what the industry does under other names: Unreal's per-light Volumetric
+       // Scattering Intensity, Unity HDRP's Volumetric Multiplier, CryEngine's In-scattering beside its own
+       // separate Extinction. Epic's advice for strong shafts is exactly this - keep the density low and
+       // raise the light's volumetric response. The honest alternative is to drop it and let the mean free
+       // path be the only dial; then the effect is as strong as the air is thick, and air thick enough to
+       // show over a track closes the horizon. This property is the decision not to take that trade.
+       //
+       // It lives in the march while VolumetricScatteringFactor lives in the compose, so that neither is
+       // counted twice.
+       //
+       // One consequence worth knowing: what this adds enters the picture before the luminance histogram,
+       // so raising it moves the auto exposure and the rest of the scene darkens in response. That is not
+       // a fault in the chain - every engine composites volumetrics before exposure, and CryEngine's own
+       // documentation describes this very symptom - but it does make this a contrast knob rather than a
+       // brightness one, and it stops paying past a point.
+       property VolumetricScatteringShaftGain:TpvFloat read fVolumetricScatteringShaftGain write fVolumetricScatteringShaftGain;
        // How many samples a ray is walked in, fewest and most: the march scales between the two with the
        // length of the ray, the way the atmosphere's own does. It is the one knob that attacks the cause
        // of the dither rather than its symptom - too few leave so much error per ray that the jitter has
@@ -1511,11 +1539,43 @@ type { TpvScene3DRendererInstance }
        // each step also costs a shadow lookup, which the atmosphere's march does not do.
        property VolumetricScatteringMinimumStepCount:TpvInt32 read fVolumetricScatteringMinimumStepCount write fVolumetricScatteringMinimumStepCount;
        property VolumetricScatteringMaximumStepCount:TpvInt32 read fVolumetricScatteringMaximumStepCount write fVolumetricScatteringMaximumStepCount;
-       // Which of the two step lengths the march uses. False takes it from the distance out of the
-       // atmosphere while the positions walk the view ray - two scales in one formula, which is what makes
-       // the effect carry; true takes the ray's own length, which is physically consistent and much
-       // fainter. A run-time switch so the two can be held against each other on one frame.
-       property VolumetricScatteringRayLengthSegments:Boolean read fVolumetricScatteringRayLengthSegments write fVolumetricScatteringRayLengthSegments;
+       // How thick the air is, given as the distance light travels through it on average before being
+       // scattered or absorbed - in metres, so it can be held against the track rather than guessed at.
+       // Koschmieder turns it into a visibility one can picture: V = 3.912 * MeanFreePath.
+       //
+       // It scales the PHYSICAL model only. The noise model authors its own coefficients in per-metre
+       // terms already, and asking it for a mean free path as well would be specifying the same thing
+       // twice.
+       //
+       // What the numbers do, measured against a three-hundred-metre view down a track:
+       //
+       //     29 km  Earth's own air        T = 0.99   gathers nothing, invisible
+       //      2 km                         T = 0.86
+       //    1.4 km                         T = 0.81   a visible effect with the world intact
+       //    800 m                          T = 0.69
+       //    400 m  Unity HDRP's default    T = 0.47
+       //      8 m  the old exaggeration    T = 0.00   saturated: a flat veil, no world behind it
+       //
+       // The last of those was one of the two states this used to switch between, and it is worth knowing
+       // why it could not work. Past an optical depth of a few, the inscattering reaches its equilibrium
+       // and stops depending on distance or density at all - three hundred metres and four kilometres
+       // return the very same value. What comes out is a constant, and a constant carries no shape.
+       //
+       // Nothing here is free: a homogeneous medium attenuates with distance, so T(4096) = T(300)^13.6.
+       // Air thick enough to show over a track is air that closes the horizon. That is what haze is.
+       property VolumetricScatteringMeanFreePath:TpvFloat read fVolumetricScatteringMeanFreePath write fVolumetricScatteringMeanFreePath;
+       // What the march and the blur run at, as a divisor of the surface size. READ AT CREATION - it sizes
+       // the buffers, so changing it later does nothing until the graph is rebuilt.
+       //
+       // Two is the sensible cost. One turns the upsample off altogether, and that is what it is here for:
+       // the outline artefact along silhouettes cannot be fixed by weighting, because at a coarse texel
+       // that no pixel's depth matches the value was never computed in the first place. At one there is
+       // nothing to upsample and nothing to be missing - at four times the cost of the march, which is the
+       // expensive part.
+       //
+       // So it is both an option and a measurement: if a rim survives at one, the fault is not the
+       // upsample and looking there further is wasted effort.
+       property VolumetricScatteringSizeDivisor:TpvInt32 read fVolumetricScatteringSizeDivisor write fVolumetricScatteringSizeDivisor;
        // Which of the two density models fills the air, and this is the substantive choice of the whole
        // effect.
        //
@@ -1544,10 +1604,31 @@ type { TpvScene3DRendererInstance }
        // LensRainPostEffectTime, and for the same reason: the renderer has no clock of its own, and a clock
        // it cannot be paused by would go on drifting through a paused game.
        property VolumetricScatteringNoiseTime:TpvDouble read fVolumetricScatteringNoiseTime write fVolumetricScatteringNoiseTime;
+       // How much the aerial term at the very end weighs - the blue the distance itself adds, over and
+       // above anything the march gathered. Zero switches it off, and that is worth considering rather than
+       // being a fallback: on a scene that already runs a fog pass this is a second haze laid over a first,
+       // and the two do not know about each other. Where it stays on it is the cheapest way to get depth
+       // into a distance the march alone leaves thin.
+       property VolumetricScatteringAerialFactor:TpvFloat read fVolumetricScatteringAerialFactor write fVolumetricScatteringAerialFactor;
+       // The look this effect had before it grew a second buffer, in one switch: the gathered light faded
+       // in with the square of the distance and then CAPPED AT A QUARTER however bright it came out, no
+       // aerial term, and no extinction written - so the compose adds and takes nothing away.
+       //
+       // The cap is the substance of it, and it is why the two model properties above are not enough on
+       // their own to get the old picture back. Without it the march puts around 1.8 onto an HDR frame
+       // where the old one put at most 0.27, and a factor of seven laid flat over everything is the
+       // difference between light shafts and a sheet of haze with the world faintly behind it.
+       property VolumetricScatteringLegacyLook:Boolean read fVolumetricScatteringLegacyLook write fVolumetricScatteringLegacyLook;
        // Shows the scattering over a picture dimmed almost to nothing. A measurement rather than a look:
        // anything odd in a finished frame could belong to this effect or to something else entirely, and
        // there is no telling the two apart once both are added at equal weight.
        property VolumetricScatteringShowScatteringOnly:Boolean read fVolumetricScatteringShowScatteringOnly write fVolumetricScatteringShowScatteringOnly;
+       // And the extinction alone, as a colour - the buffer that multiplies the whole picture, and the one
+       // of the three that could not be looked at at all until it was given this. It answers the question a
+       // finished frame cannot: when the world comes out dark, is it this buffer doing it, or the exposure
+       // behind it stopping down because something else got bright? White = the air takes nothing away,
+       // mid grey = about half, black = the world is being multiplied by nothing.
+       property VolumetricScatteringShowExtinctionOnly:Boolean read fVolumetricScatteringShowExtinctionOnly write fVolumetricScatteringShowExtinctionOnly;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2581,19 +2662,26 @@ begin
 
  fVolumetricScatteringEnabled:=true;
  fVolumetricScatteringFactor:=1.0;
- fVolumetricScatteringSunIntensity:=20.0;
+ fVolumetricScatteringShaftGain:=20.0;
  fVolumetricScatteringMinimumStepCount:=64;
  fVolumetricScatteringMaximumStepCount:=128;
- fVolumetricScatteringRayLengthSegments:=false;
- // The noise model on by default, and the physical one a property away. Its three numbers are the ones
- // the effect was tuned with where it came from, against segments taken from the ray's own length - which
- // is what VolumetricScatteringRayLengthSegments has to be set to for them to mean what they meant there.
+ // Thick enough to be seen down a track, thin enough to leave the track visible: about four fifths of the
+ // picture still standing at three hundred metres. A starting point to be judged on a frame, not a
+ // measurement - but a starting point inside the usable range, which neither of the two states this
+ // replaced ever was.
+ fVolumetricScatteringMeanFreePath:=1200.0;
+ fVolumetricScatteringSizeDivisor:=TpvScene3DRendererInstance.VolumetricScatteringDefaultSizeDivisor;
+ // The noise model on by default, and the physical one a property away. Its three numbers are authored in
+ // per-metre terms and are therefore independent of the mean free path above.
  fVolumetricScatteringNoiseDensity:=true;
  fVolumetricScatteringNoiseScattering:=0.0025;
  fVolumetricScatteringNoiseExtinction:=0.00025;
  fVolumetricScatteringNoiseScale:=0.1;
  fVolumetricScatteringNoiseTime:=0.0;
+ fVolumetricScatteringAerialFactor:=0.68;
+ fVolumetricScatteringLegacyLook:=false;
  fVolumetricScatteringShowScatteringOnly:=false;
+ fVolumetricScatteringShowExtinctionOnly:=false;
 
  if assigned(fVirtualReality) then begin
 
@@ -4032,6 +4120,9 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     LastPass:TpvFrameGraph.TPass;
     InFlightFrameIndex,CascadeIndex,ImageIndex,Index:TpvSizeInt;
     Format:TVkFormat;
+    // The surface fraction the volumetric buffers are made at, from the divisor property. Worked out once
+    // here because it settles the size of every one of them and must not differ between them.
+    VolumetricScatteringSizeFactor:TpvFloat;
     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
@@ -5408,14 +5499,40 @@ begin
  // because the frame graph only aliases within one. The compose target is full sized and joins the visible
  // chain, so it has the shape of the antialiasing / radial blur targets around it.
  if Renderer.VolumetricScatteringActive then begin
+  // Read here and nowhere else, which is why the property says it is read at creation: this is where the
+  // buffers get their size, and after that the number is settled until the graph is built again. Guarded
+  // against zero because a divisor of zero would ask for an infinitely large image.
+  VolumetricScatteringSizeFactor:=fSizeFactor/Max(1,fVolumetricScatteringSizeDivisor);
   fFrameGraph.AddImageResourceType('resourcetype_volumetric_scattering',
                                    false,
                                    VK_FORMAT_R16G16B16A16_SFLOAT,
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                                                   fSizeFactor/TpvScene3DRendererInstance.VolumetricScatteringSizeDivisor,
-                                                                   fSizeFactor/TpvScene3DRendererInstance.VolumetricScatteringSizeDivisor,
+                                                                   VolumetricScatteringSizeFactor,
+                                                                   VolumetricScatteringSizeFactor,
+                                                                   1.0,
+                                                                   fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+  // The depth the march measured, in its own single-channel FULL-float image rather than packed into the
+  // alpha of the buffers above.
+  //
+  // Two reasons, and the second is the one that mattered. It is written once by the march and read by both
+  // blur steps and the compose, so it no longer has to be carried through every stage - three fewer places
+  // where the stages could come to disagree about it. And a half float carries ten mantissa bits, about
+  // five hundredths of a per cent: at four kilometres that is two-metre steps, against an upsample that
+  // treats a metre of disagreement as an edge and weights it at a thousand to one. Distant surfaces could
+  // not satisfy that test even where they were genuinely flat.
+  fFrameGraph.AddImageResourceType('resourcetype_volumetric_scattering_depth',
+                                   false,
+                                   VK_FORMAT_R32_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                                                   VolumetricScatteringSizeFactor,
+                                                                   VolumetricScatteringSizeFactor,
                                                                    1.0,
                                                                    fCountSurfaceViews),
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),

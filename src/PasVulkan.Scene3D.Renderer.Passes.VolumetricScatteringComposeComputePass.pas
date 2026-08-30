@@ -92,6 +92,11 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
              // is deliberate: this branch is only reached at a depth edge in the first place, and blending
              // gently across one is the halo the whole arrangement exists to avoid.
              VolumetricScatteringUpsampleDepthWeight=1000.0;
+             // And what the old compose used, which is a thousand times softer: at that weight a metre of
+             // disagreement still leaves a tap at half, so where the depths agree at all the four come out
+             // as a plain average. That averaging IS the old look, so the legacy switch needs the old
+             // number and not only the old code path.
+             VolumetricScatteringUpsampleDepthWeightLegacy=1.0;
       public
        const // Bit zero of the flag word: the scattering over a picture dimmed almost to nothing, for
              // telling this effect apart from everything else in a finished frame.
@@ -100,24 +105,42 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
              // through untouched, which is what this pass does in place of the skipping the three passes
              // before it can afford - it owns the resource the rest of the chain reads.
              VolumetricScatteringComposeFlagEnabled=TpvUInt32(1) shl 1;
+             // And bit two: the extinction alone, as a colour. White = the air takes nothing away, black =
+             // the world is being multiplied by nothing.
+             VolumetricScatteringComposeFlagShowExtinctionOnly=TpvUInt32(1) shl 2;
+             // And bit three: the upsample the old compose did - all four taps weighted every time and a
+             // depth weight soft enough that agreeing depths come out as a plain 2x2 average.
+             VolumetricScatteringComposeFlagLegacyLook=TpvUInt32(1) shl 3;
       public
        type TPushConstants=packed record
              // x = strength, y = how depth becomes a distance, z = how hard the upsample separates two
-             // depths, w unused for now
-             StrengthZNearDepthWeightSpare:TpvVector4;
-             // Switches, in a word of their own rather than squeezed into a spare float lane.
-             FlagsSpare:TpvUInt32Vector4;
+             // depths, w = the depth the sky is given, which this pass has to hand back for a sky pixel
+             // itself if the two are to be one quantity
+             StrengthZNearDepthWeightSkyDepth:TpvVector4;
+             // x = switches, in a word of their own rather than squeezed into a spare float lane.
+             // y = how many samples the raw depth has, which only the MSAA variant reads.
+             FlagsSampleCountSpare:TpvUInt32Vector4;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceScattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceExtinction:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceScatteringDepth:TpvFrameGraph.TPass.TUsedImageResource;
+       // Under MSAA this pass reads the RAW multisampled depth and answers once per sample, because the
+       // resolved depth has already thrown away what it needs: the resolve keeps the nearest sample, so a
+       // silhouette pixel whose colour is nine tenths sky reports the sliver of geometry in front and then
+       // takes that geometry's scattering over its whole area. The fog pass beside us does the same thing
+       // for the same reason - see the note at the top of fog.frag.
+       fMSAA:Boolean;
+       fResourceMSAADepth:TpvFrameGraph.TPass.TUsedImageResource;
+       fMSAADepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fPushConstants:TPushConstants;
        fInputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fScatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fScatteringDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -139,6 +162,12 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
 
 implementation
 
+// In the implementation rather than the interface, and for one constant only: the distance the march caps
+// its stored depth at. This pass has to cap its own reading at the same value or the two are not the same
+// quantity, and taking the number from the march itself is what keeps them from drifting apart. The other
+// direction does not exist - the march knows nothing of the compose - so there is no cycle here.
+uses PasVulkan.Scene3D.Renderer.Passes.VolumetricScatteringRaymarchComputePass;
+
 { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
 
 constructor TpvScene3DRendererPassesVolumetricScatteringComposeComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
@@ -147,6 +176,8 @@ begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
+
+ fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
  Name:='VolumetricScatteringComposeComputePass';
 
@@ -167,6 +198,28 @@ begin
                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                     []
                                    );
+
+ // The depth the march measured, straight from the march - not from the blurred buffers, which no longer
+ // carry it. It is the same image the two blur steps read, so what this pass weighs its taps against is
+ // what they smoothed by, exactly.
+ fResourceScatteringDepth:=AddImageInput('resourcetype_volumetric_scattering_depth',
+                                         'resource_volumetric_scattering_depth',
+                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                         []
+                                        );
+
+ // And under MSAA the raw multisampled depth as well, which is the only place the per-sample coverage of
+ // a silhouette pixel still exists. The resolved depth this pass otherwise reads has already been reduced
+ // to the nearest sample.
+ if fMSAA then begin
+  fResourceMSAADepth:=AddImageInput('resourcetype_msaa_depth',
+                                    'resource_msaa_depth_data',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+ end else begin
+  fResourceMSAADepth:=nil;
+ end;
 
  fResourceOutput:=AddImageOutput('resourcetype_color_volumetric_scattering',
                                  'resource_volumetric_scattering_color',
@@ -190,7 +243,13 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_comp.spv');
+ // Two variants, and which one is chosen is settled here rather than per frame: the MSAA one declares a
+ // sampler2DMSArray and a binding the other does not have, so the descriptor set layout differs with it.
+ if fMSAA then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_msaa_comp.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_comp.spv');
+ end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -219,7 +278,7 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*4);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
@@ -249,6 +308,18 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
+ fVulkanDescriptorSetLayout.AddBinding(5,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
+ if fMSAA then begin
+  fVulkanDescriptorSetLayout.AddBinding(6,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -295,6 +366,21 @@ begin
                                                                        0,
                                                                        CountViews
                                                                       );
+
+  fScatteringDepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                            fResourceScatteringDepth.VulkanImages[InFlightFrameIndex],
+                                                                            TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                            TpvFrameGraph.TImageResourceType(fResourceScatteringDepth.ResourceType).Format,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                            0,
+                                                                            1,
+                                                                            0,
+                                                                            CountViews
+                                                                           );
 
   fExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                        fResourceExtinction.VulkanImages[InFlightFrameIndex],
@@ -389,6 +475,54 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  // The half-resolution depth the march measured. Not to be confused with binding 2 above, which is the
+  // full-resolution opaque depth of the pixel being shaded - the upsample is the comparison of the two.
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                fScatteringDepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceScatteringDepth.ResourceTransition.Layout)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
+
+  if fMSAA then begin
+
+   // The raw multisampled depth needs a depth-aspect array view of its own - the frame graph's default
+   // view is a depth/stencil attachment view - exactly as the fog pass builds one. The shader reads it
+   // with texelFetch per sample, so the sampler attached to it never comes into play.
+   fMSAADepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                       fResourceMSAADepth.VulkanImages[InFlightFrameIndex],
+                                                                       TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                       TpvFrameGraph.TImageResourceType(fResourceMSAADepth.ResourceType).Format,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                       TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                       0,
+                                                                       1,
+                                                                       0,
+                                                                       CountViews
+                                                                      );
+
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                 fMSAADepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceMSAADepth.ResourceTransition.Layout)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+
+  end;
+
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;
@@ -405,6 +539,8 @@ begin
   FreeAndNil(fInputImageViews[InFlightFrameIndex]);
   FreeAndNil(fScatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fExtinctionImageViews[InFlightFrameIndex]);
+  FreeAndNil(fScatteringDepthImageViews[InFlightFrameIndex]);
+  FreeAndNil(fMSAADepthImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
@@ -459,21 +595,41 @@ begin
   // was meant for.
   // ZNear turns the stored depth back into a distance, exactly as the march did when it wrote it - the
   // two have to be the same quantity or the upsample would be comparing nothing with nothing.
-  fPushConstants.StrengthZNearDepthWeightSpare:=TpvVector4.InlineableCreate(fInstance.VolumetricScatteringFactor,
-                                                                            fInstance.ZNear,
-                                                                            VolumetricScatteringUpsampleDepthWeight,
-                                                                            0.0);
+  // The depth weight goes with the code path, not beside it: the legacy upsample is the old one only if it
+  // also gets the old, thousand-times-softer number.
+  // The sky's depth is the march's own number, taken from the march's own constant. It is a sentinel, not
+  // a distance: a sky pixel gets it on both sides rather than each side clamping the same division and
+  // hoping to land on the same result.
+  if fInstance.VolumetricScatteringLegacyLook then begin
+   fPushConstants.StrengthZNearDepthWeightSkyDepth:=TpvVector4.InlineableCreate(fInstance.VolumetricScatteringFactor,
+                                                                                fInstance.ZNear,
+                                                                                VolumetricScatteringUpsampleDepthWeightLegacy,
+                                                                                TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.VolumetricScatteringSkyDepth);
+  end else begin
+   fPushConstants.StrengthZNearDepthWeightSkyDepth:=TpvVector4.InlineableCreate(fInstance.VolumetricScatteringFactor,
+                                                                                fInstance.ZNear,
+                                                                                VolumetricScatteringUpsampleDepthWeight,
+                                                                                TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.VolumetricScatteringSkyDepth);
+  end;
 
-  fPushConstants.FlagsSpare.x:=0;
+  fPushConstants.FlagsSampleCountSpare.x:=0;
+  if fInstance.VolumetricScatteringLegacyLook then begin
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagLegacyLook;
+  end;
   if fInstance.VolumetricScatteringShowScatteringOnly then begin
-   fPushConstants.FlagsSpare.x:=fPushConstants.FlagsSpare.x or VolumetricScatteringComposeFlagShowScatteringOnly;
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagShowScatteringOnly;
+  end;
+  if fInstance.VolumetricScatteringShowExtinctionOnly then begin
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagShowExtinctionOnly;
   end;
   if fInstance.VolumetricScatteringEnabled then begin
-   fPushConstants.FlagsSpare.x:=fPushConstants.FlagsSpare.x or VolumetricScatteringComposeFlagEnabled;
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagEnabled;
   end;
-  fPushConstants.FlagsSpare.y:=0;
-  fPushConstants.FlagsSpare.z:=0;
-  fPushConstants.FlagsSpare.w:=0;
+  // How many samples the raw depth carries. Only the MSAA variant reads it, and only it is given a raw
+  // depth to read; one everywhere else, so a stray read could not divide by nothing.
+  fPushConstants.FlagsSampleCountSpare.y:=TpvUInt32(Max(1,fInstance.Renderer.CountSurfaceMSAASamples));
+  fPushConstants.FlagsSampleCountSpare.z:=0;
+  fPushConstants.FlagsSampleCountSpare.w:=0;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

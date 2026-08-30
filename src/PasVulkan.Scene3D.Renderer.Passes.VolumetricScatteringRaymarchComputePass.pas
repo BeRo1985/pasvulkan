@@ -92,7 +92,26 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
        const // How far a ray is allowed to reach when nothing stops it. The projection is an infinite
              // one, so a sky ray has no far plane to march to and needs a length of its own; the same
              // 4096 metres is what the result is faded in over, so the two agree by construction.
+             //
+             // This is the MARCH's reach and nothing else. It is not a far plane and must never be used as
+             // one: geometry routinely stands further away than this, and clamping a stored depth to it
+             // makes every distant thing read as being exactly as far as the sky.
              VolumetricScatteringMaximumDistance=4096.0;
+             // The depth the sky is given. Not a distance and not a bound - a SENTINEL, because under a
+             // reversed infinite projection a sky pixel's raw depth is exactly zero and the distance it
+             // stands for has no finite value to compute. Both this pass and the compose hand back this
+             // very number for such a pixel, so the two agree by definition rather than by both happening
+             // to clamp the same division the same way.
+             //
+             // Two to the twenty-fourth: exact in a 32-bit float, so it survives the depth image and comes
+             // back bit for bit, and far beyond anything that will stand on a track. Geometry is held to
+             // half of it (see below), which keeps the two apart by eight million metres - no real
+             // distance can wander into the sky's value and be mistaken for it.
+             VolumetricScatteringSkyDepth=16777216.0;
+             // And what a geometry distance is held to, which is that sentinel halved. The distance itself
+             // is abs(zNear)/rawDepth and therefore open at the top: a raw depth close enough to zero
+             // yields something absurd, and absurd is exactly what must not collide with the sky's value.
+             VolumetricScatteringMaximumGeometryDepth=8388608.0;
              // The shell the density is measured against: earth values, with the centre one earth radius
              // below the origin, so that near the ground it comes out as a plain falloff with height.
              // That is the GLOBAL case, and it is the one that works with a stylised skybox because it
@@ -103,28 +122,36 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
              VolumetricScatteringRayleighScaleHeight=8000.0;
              VolumetricScatteringMieScaleHeight=1800.0;
       public
-       const // Bit zero of the flag word: which step length the march uses. See the property of the same
-             // name on the instance for what the two mean.
-             VolumetricScatteringFlagRayLengthSegments=TpvUInt32(1) shl 0;
-             // And bit one: which of the two density models the march works with. Clear is the physical
+       const // Bit zero of the flag word is free. It used to pick between two segment lengths, which was
+             // really a statement about how thick the air is; that is now the mean free path below.
+             // Bit one: which of the two density models the march works with. Clear is the physical
              // one - Rayleigh and Mie against the shell, with coloured extinction, which is what makes a
              // sky blue and a sunset red. Set is a drifting noise field instead, single-phase and grey,
              // which gives moving cloud shadows and banks of mist that no scale height can produce. The
              // shell's height falloff shapes both; they differ in what fills it.
              VolumetricScatteringFlagNoiseDensity=TpvUInt32(1) shl 1;
+             // And bit two: the look this effect had before it grew a second buffer - the old distance
+             // fade with its cap at a quarter, no aerial term, and no extinction written at all.
+             VolumetricScatteringFlagLegacyLook=TpvUInt32(1) shl 2;
       public
        type TPushConstants=packed record
-             // xyz = the way the light travels, w = how bright the sun is. NOT the dial the game turns the
-             // effect down by, which belongs to the compose alone - it has to pull the extinction back by
-             // the same amount, and applied in both places it would count twice.
+             // xyz = the way the light travels, w = the shaft gain. NOT the dial the game turns the effect
+             // down by, which belongs to the compose alone - it has to pull the extinction back by the
+             // same amount, and applied in both places it would count twice.
              SunDirectionStrength:TpvVector4;
+             // xyz = what the primary directional light emits, colour times intensity, in the units the
+             // surface shading uses. The gain above is a gain ON this, which is what makes the shafts
+             // follow the scene's own light rather than a number of their own.
+             SunRadianceSpare:TpvVector4;
              // x = how depth becomes a distance, y = how far a ray without geometry reaches, z = how much
              // the noise model scatters, w = how much it takes away
              ZNearMaximumDistanceScatteringExtinction:TpvVector4;
              CentreBottomRadiusTop:TpvVector4;  // xyz = the shell's centre, w = its bottom radius
              // x = top radius, y = Rayleigh height, z = Mie height, w = how coarse the noise field is
              TopRadiusHeightsNoiseScale:TpvVector4;
-             NoiseTimeSpare:TpvVector4;         // x = the time the noise field drifts with, yzw unused
+             // x = the time the noise field drifts with, y = how much the aerial term weighs, z = the
+             // mean free path of the air in metres, w = the depth the sky is given
+             NoiseTimeAerialWeightMeanFreePathSkyDepth:TpvVector4;
              // x = the first view of this pass, y = the frame counter the shadow noise is decorrelated by
              ViewBaseIndexFrameIndexSpare:TpvUInt32Vector4;
              // Everything that is a whole number or a switch, in a word of its own rather than squeezed
@@ -140,15 +167,11 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
        fPushConstants:TPushConstants;
        fResourceOutputInscattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutputExtinction:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOutputDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
-       // Which acceleration structure this pass's descriptor set currently points at, per in-flight frame.
-       // Kept because the scene rebuilds its top level structure as it changes, and a descriptor written
-       // once at setup goes on pointing at whatever was there then - every ray misses and nothing casts a
-       // shadow at all. Its own bookkeeping and not the scene's, whose slots belong to the global set.
-       fBoundAccelerationStructures:array[0..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
-       fBoundAccelerationStructureGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fOutputInscatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fOutputDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -207,6 +230,16 @@ begin
                                            TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
                                            []
                                           );
+
+ // And the depth, written here once and read by all three passes behind this one. It is not carried along
+ // with the other two and never rewritten, so the four stages cannot come to hold different ideas of how
+ // far away a texel is - which is the failure the alpha-packed version invited at every stage boundary.
+ fResourceOutputDepth:=AddImageOutput('resourcetype_volumetric_scattering_depth',
+                                      'resource_volumetric_scattering_depth',
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
+                                      []
+                                     );
 
 end;
 
@@ -267,14 +300,12 @@ begin
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames*2);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2);
- if fRaytracing then begin
-  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,fInstance.Renderer.CountInFlightFrames);
- end;
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*3);
  fVulkanDescriptorPool.Initialize;
 
- // Everything in the one set: the shadow readers elsewhere use set 3 because they share a pipeline layout
- // with the atmosphere, and this pass has one of its own. See the note in the shader.
+ // This pass's own resources, as SET ONE. Set zero is the scene's global descriptor set, taken as it
+ // stands, and it is where the acceleration structure comes from - see the note in the shader for why a
+ // copy of that binding kept here was wrong. Every other raytracing consumer in the engine does the same.
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanDescriptorSetLayout.AddBinding(0,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -306,17 +337,22 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
- if fRaytracing then begin
-  fVulkanDescriptorSetLayout.AddBinding(6,
-                                        VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-                                        1,
-                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                        []);
- end;
+ // Six rather than four: the acceleration structure used to sit at six of this set, and moving it out to
+ // the scene's global set left the slot free for the depth image.
+ fVulkanDescriptorSetLayout.AddBinding(6,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.TPushConstants));
+ // Set 0 = the scene's global set, which carries the acceleration structure at binding 8 among much else.
+ // Declared whether or not this build traces, so that there is one layout and one binding call rather than
+ // two of each; the shader simply does not name it when it has no rays to cast.
+ fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
+ // Set 1 = this pass's own.
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -344,6 +380,21 @@ begin
                                                                                0,
                                                                                CountViews
                                                                               );
+
+  fOutputDepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                        fResourceOutputDepth.VulkanImages[InFlightFrameIndex],
+                                                                        TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                        TpvFrameGraph.TImageResourceType(fResourceOutputDepth.ResourceType).Format,
+                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                        TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                        0,
+                                                                        1,
+                                                                        0,
+                                                                        CountViews
+                                                                       );
 
   fOutputExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                              fResourceOutputExtinction.VulkanImages[InFlightFrameIndex],
@@ -414,6 +465,18 @@ begin
                                                                  false
                                                                 );
 
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                fOutputDepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                VK_IMAGE_LAYOUT_GENERAL)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
+
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                  0,
                                                                  1,
@@ -439,11 +502,8 @@ begin
                                                                  false
                                                                 );
 
-  // The acceleration structure is NOT written here. It is written in Execute, and rewritten whenever the
-  // scene has rebuilt it - see the note at fBoundAccelerationStructures.
-  fBoundAccelerationStructures[InFlightFrameIndex]:=VK_NULL_HANDLE;
-  fBoundAccelerationStructureGenerations[InFlightFrameIndex]:=0;
-
+  // The acceleration structure is not among these. It lives in the scene's global set, which this pass
+  // binds beside its own and does not write to.
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;
@@ -459,6 +519,7 @@ begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fOutputInscatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputExtinctionImageViews[InFlightFrameIndex]);
+  FreeAndNil(fOutputDepthImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
@@ -473,12 +534,12 @@ end;
 procedure TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var CountViews,Index:TpvInt32;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    SunDirection,ShellCentre:TpvVector3;
+    SunDirection,SunRadiance,ShellCentre:TpvVector3;
     ShellBottomRadius,ShellTopRadius:TpvFloat;
     Atmospheres:TpvScene3DAtmospheres;
     AtmosphereParameters:TpvScene3DAtmosphere.PAtmosphereParameters;
-    TopLevelAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure;
-    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
+    ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -487,35 +548,11 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
- // The acceleration structure, re-pointed whenever the scene has built a new one. The scene does exactly
- // this for its own global set, and for the same reason: the handle changes as the world changes, and a
- // descriptor left pointing at the old one traces against nothing. Both the handle and its generation are
- // compared, because a structure can be rebuilt in place and keep its handle.
- if fRaytracing then begin
-  TopLevelAccelerationStructure:=fInstance.Renderer.Scene3D.Raytracing.TopLevelAccelerationStructure;
-  if assigned(TopLevelAccelerationStructure) and
-     ((fBoundAccelerationStructures[aInFlightFrameIndex]<>TopLevelAccelerationStructure.AccelerationStructure) or
-      (fBoundAccelerationStructureGenerations[aInFlightFrameIndex]<>TopLevelAccelerationStructure.Generation)) then begin
-   fBoundAccelerationStructures[aInFlightFrameIndex]:=TopLevelAccelerationStructure.AccelerationStructure;
-   fBoundAccelerationStructureGenerations[aInFlightFrameIndex]:=TopLevelAccelerationStructure.Generation;
-   fVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(6,
-                                                                   0,
-                                                                   1,
-                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
-                                                                   [],
-                                                                   [],
-                                                                   [],
-                                                                   [TopLevelAccelerationStructure.AccelerationStructure],
-                                                                   true
-                                                                  );
-  end;
- end;
-
  // The frame graph hands the outputs in as SHADER_READ_ONLY_OPTIMAL, which is the one layout a storage
  // image may not be written in, so the pass lays them over themselves.
  begin
   FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
-  for Index:=0 to 1 do begin
+  for Index:=0 to 2 do begin
    ImageMemoryBarriers[Index].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
    ImageMemoryBarriers[Index].srcAccessMask:=0;
    ImageMemoryBarriers[Index].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -523,10 +560,16 @@ begin
    ImageMemoryBarriers[Index].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
    ImageMemoryBarriers[Index].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
    ImageMemoryBarriers[Index].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-   if Index=0 then begin
-    ImageMemoryBarriers[Index].image:=fResourceOutputInscattering.VulkanImages[aInFlightFrameIndex].Handle;
-   end else begin
-    ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
+   case Index of
+    0:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputInscattering.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    1:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    else begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputDepth.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
    end;
    ImageMemoryBarriers[Index].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
    ImageMemoryBarriers[Index].subresourceRange.baseMipLevel:=0;
@@ -539,7 +582,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    2,@ImageMemoryBarriers[0]);
+                                    3,@ImageMemoryBarriers[0]);
  end;
 
  // Switched off for this frame: the barriers above and below still run, so the image ends in the layout
@@ -563,7 +606,21 @@ begin
   fPushConstants.SunDirectionStrength:=TpvVector4.InlineableCreate(SunDirection.x,
                                                                    SunDirection.y,
                                                                    SunDirection.z,
-                                                                   fInstance.VolumetricScatteringSunIntensity);
+                                                                   fInstance.VolumetricScatteringShaftGain);
+
+  // And what that light actually emits, so the shafts belong to the same sun as the ground they fall on.
+  // The scene records it beside the direction, from the light it recognised as the primary one.
+  //
+  // A scene that has no primary directional light leaves this black, and then the march gathers nothing -
+  // which is the honest answer. Inventing a radiance here would mean shafts cast by a sun that is not in
+  // the scene, and the old arrangement did exactly that: the gain alone WAS the brightness, so the shafts
+  // stayed as bright and as white however the light changed.
+  SunRadiance:=fInstance.Renderer.Scene3D.PrimaryShadowMapLightColorIntensity;
+
+  fPushConstants.SunRadianceSpare:=TpvVector4.InlineableCreate(SunRadiance.x,
+                                                               SunRadiance.y,
+                                                               SunRadiance.z,
+                                                               0.0);
 
   fPushConstants.ZNearMaximumDistanceScatteringExtinction:=TpvVector4.InlineableCreate(fInstance.ZNear,
                                                                                        VolumetricScatteringMaximumDistance,
@@ -619,10 +676,10 @@ begin
   // Wrapped rather than handed over as it stands: the noise is fetched at position plus time, and a float
   // that has been counting seconds since the game started loses the low bits the pattern is made of. The
   // wrap is at a power of two so that it does not show as a jump.
-  fPushConstants.NoiseTimeSpare:=TpvVector4.InlineableCreate(Modulo(fInstance.VolumetricScatteringNoiseTime,4096.0),
-                                                              0.0,
-                                                              0.0,
-                                                              0.0);
+  fPushConstants.NoiseTimeAerialWeightMeanFreePathSkyDepth:=TpvVector4.InlineableCreate(Modulo(fInstance.VolumetricScatteringNoiseTime,4096.0),
+                                                                                        fInstance.VolumetricScatteringAerialFactor,
+                                                                                        fInstance.VolumetricScatteringMeanFreePath,
+                                                                                        VolumetricScatteringSkyDepth);
 
   fPushConstants.ViewBaseIndexFrameIndexSpare.x:=InFlightFrameState^.FinalViewIndex;
   fPushConstants.ViewBaseIndexFrameIndexSpare.y:=TpvUInt32(aFrameIndex);
@@ -630,11 +687,11 @@ begin
   fPushConstants.ViewBaseIndexFrameIndexSpare.w:=0;
 
   fPushConstants.FlagsStepCountsSpare.x:=0;
-  if fInstance.VolumetricScatteringRayLengthSegments then begin
-   fPushConstants.FlagsStepCountsSpare.x:=fPushConstants.FlagsStepCountsSpare.x or VolumetricScatteringFlagRayLengthSegments;
-  end;
   if fInstance.VolumetricScatteringNoiseDensity then begin
    fPushConstants.FlagsStepCountsSpare.x:=fPushConstants.FlagsStepCountsSpare.x or VolumetricScatteringFlagNoiseDensity;
+  end;
+  if fInstance.VolumetricScatteringLegacyLook then begin
+   fPushConstants.FlagsStepCountsSpare.x:=fPushConstants.FlagsStepCountsSpare.x or VolumetricScatteringFlagLegacyLook;
   end;
   // At least one step, or the march divides by nothing and hands back infinities, and the most never below
   // the fewest, or the interpolation between them runs backwards.
@@ -649,11 +706,16 @@ begin
                                   SizeOf(TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.TPushConstants),
                                   @fPushConstants);
 
+  // Set 0 the scene's, set 1 this pass's own. The first is where the acceleration structure comes from,
+  // maintained by the scene for this very in-flight frame.
+  DescriptorSets[0]:=fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+  DescriptorSets[1]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                        fPipelineLayout.Handle,
                                        0,
-                                       1,
-                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                       2,
+                                       @DescriptorSets[0],
                                        0,
                                        nil);
 
@@ -675,7 +737,7 @@ begin
  // And back, which is at the same time the barrier that makes the writes visible to the blur behind them.
  begin
   FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
-  for Index:=0 to 1 do begin
+  for Index:=0 to 2 do begin
    ImageMemoryBarriers[Index].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
    ImageMemoryBarriers[Index].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
    ImageMemoryBarriers[Index].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
@@ -683,10 +745,16 @@ begin
    ImageMemoryBarriers[Index].newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    ImageMemoryBarriers[Index].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
    ImageMemoryBarriers[Index].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-   if Index=0 then begin
-    ImageMemoryBarriers[Index].image:=fResourceOutputInscattering.VulkanImages[aInFlightFrameIndex].Handle;
-   end else begin
-    ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
+   case Index of
+    0:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputInscattering.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    1:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    else begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputDepth.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
    end;
    ImageMemoryBarriers[Index].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
    ImageMemoryBarriers[Index].subresourceRange.baseMipLevel:=0;
@@ -699,7 +767,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    2,@ImageMemoryBarriers[0]);
+                                    3,@ImageMemoryBarriers[0]);
  end;
 
 end;

@@ -24,6 +24,11 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform sampler2DArray uTextureSourceInscattering;
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureSourceExtinction;
 
+// What the march measured, in its own full-float image. The same one for both blur steps and for the
+// compose behind them: it is never rewritten, so it cannot drift between stages, and it is not squeezed
+// into an alpha where a half float's two-metre steps at four kilometres would look like edges.
+layout(set = 0, binding = 4) uniform sampler2DArray uTextureSourceDepth;
+
 layout(set = 0, binding = 2, rgba16f) writeonly uniform image2DArray uDestinationInscatteringTexture;
 layout(set = 0, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationExtinctionTexture;
 
@@ -56,9 +61,8 @@ void main(){
   vec4 centerInscattering = texelFetch(uTextureSourceInscattering, at, 0);
   vec4 centerExtinction = texelFetch(uTextureSourceExtinction, at, 0);
 
-  // The depth the march left in the alpha of the inscattering. The centre needs no weight of its own - it
-  // cannot disagree with itself - so it goes in at one.
-  float centerDepth = centerInscattering.w;
+  // The centre needs no weight of its own - it cannot disagree with itself - so it goes in at one.
+  float centerDepth = texelFetch(uTextureSourceDepth, at, 0).x;
 
   vec3 sumInscattering = centerInscattering.xyz;
   vec3 sumExtinction = centerExtinction.xyz;
@@ -80,8 +84,9 @@ void main(){
 
       vec4 tapInscattering = texelFetch(uTextureSourceInscattering, ivec3(tapXY, at.z), 0);
       vec4 tapExtinction = texelFetch(uTextureSourceExtinction, ivec3(tapXY, at.z), 0);
+      float tapDepth = texelFetch(uTextureSourceDepth, ivec3(tapXY, at.z), 0).x;
 
-      float dz = (tapInscattering.w - centerDepth) * DepthFallOff;
+      float dz = (tapDepth - centerDepth) * DepthFallOff;
       float weight = exp2((-(float(offset * offset) * BlurFallOff)) - (dz * dz));
 
       sumInscattering += tapInscattering.xyz * weight;
@@ -92,10 +97,11 @@ void main(){
 
   }
 
-  // The depth is handed on untouched: the second of the two runs reads it as its own edge, and the compose
-  // behind them weighs its upsample against it. Blurring the thing the blur is steered by would flatten
-  // exactly the edges it exists to keep.
-  imageStore(uDestinationInscatteringTexture, at, vec4(sumInscattering / max(sum, 1e-4), centerDepth));
+  // Nothing to hand the depth on with any more, and nothing to be careful about: it lives in an image of
+  // its own that this pass only reads. The second run and the compose read that same image, so the thing
+  // the blur is steered by is the same for all of them by construction rather than by being copied
+  // correctly at each step.
+  imageStore(uDestinationInscatteringTexture, at, vec4(sumInscattering / max(sum, 1e-4), 1.0));
   imageStore(uDestinationExtinctionTexture, at, vec4(sumExtinction / max(sum, 1e-4), 1.0));
 
 }

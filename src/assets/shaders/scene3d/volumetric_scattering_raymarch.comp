@@ -50,46 +50,96 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform sampler2DArray uTextureDepth;
+// SET ONE, and everything of this pass's own with it. Set zero is the scene's global descriptor set, taken
+// as it stands, because that is where the acceleration structure lives and where the engine keeps it right
+// - see the note at the ray query far below for what went wrong while this pass held a copy of its own.
+//
+// It costs nothing where there are no rays to cast: the layout is declared either way, and a shader that
+// never names a binding of set zero simply does not read one.
+layout(set = 1, binding = 0) uniform sampler2DArray uTextureDepth;
 
-layout(std140, set = 0, binding = 1) uniform uboViews {
+layout(std140, set = 1, binding = 1) uniform uboViews {
   View views[256];
 } uView;
 
 // rgb = the light scattered into this ray, a = linear view depth for the two steps behind this one.
-layout(set = 0, binding = 2, rgba16f) writeonly uniform image2DArray uDestinationInscatteringTexture;
+layout(set = 1, binding = 2, rgba16f) writeonly uniform image2DArray uDestinationInscatteringTexture;
 
 // rgb = what is left of the light coming from behind this ray. Coloured rather than grey, because under
 // the Rayleigh/Mie model the air takes the three wavelengths away at different rates - that IS the model.
-layout(set = 0, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationExtinctionTexture;
+layout(set = 1, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationExtinctionTexture;
+
+// How far away what this ray ended on is - in its own single-channel FULL-float image, not packed into an
+// alpha above. Written here once and read by both blur steps and the compose, so it is never carried from
+// stage to stage and the four cannot come to disagree about it.
+//
+// Full float and not half, because the number is compared against a one-metre threshold. A half float
+// holds about five hundredths of a per cent, which at four kilometres is two-metre steps - so two texels
+// on the same flat distant surface could differ by more than the threshold allows and be treated as an
+// edge between them.
+layout(set = 1, binding = 6, r32f) writeonly uniform image2DArray uDestinationDepthTexture;
 
 layout(push_constant) uniform PushConstants {
-  // xyz = direction the sunlight travels, w = how bright the sun is. NOT the dial the game turns the
-  // effect down by - that one belongs to the compose alone, which has to pull the extinction back toward
-  // one by the same amount and cannot do that from here. Applied in both places, as it once was, it would
-  // count twice and a half would come out a quarter.
-  vec4 sunDirectionStrength;
+  // xyz = the direction the sunlight travels, w = the shaft gain.
+  //
+  // That w is a CHEAT and the name says so. It scales the gathered light alone, which no medium can do:
+  // for a scattering medium, more light sent toward the eye means more taken from what lies behind, and
+  // that half belongs to the mean free path. Unreal, Unity and CryEngine all carry the same dial under
+  // their own names.
+  //
+  // What it is a gain ON is the radiance below, which is the real thing. That distinction is the whole
+  // difference between this and what it was: a gain that multiplies nothing is not a gain, it is the only
+  // brightness there is, and the shafts then stay exactly as bright while the sun sets.
+  //
+  // It is NOT the factor the game turns the whole effect down by - that one belongs to the compose alone,
+  // which has to pull the extinction back toward one by the same amount and cannot do that from here.
+  // Applied in both places, as it once was, it would count twice and a half would come out a quarter.
+  vec4 sunDirectionShaftGain;
+  // xyz = what the primary directional light actually emits, colour times intensity, in the same units the
+  // surface shading is given. w unused.
+  //
+  // Kept apart from the gain rather than folded into it on the way here, so that a capture shows the two
+  // separately: one is the scene, the other is the lie told about it.
+  vec4 sunRadianceSpare;
   // x = how depth becomes a distance, y = how far a ray without geometry reaches and the distance the
   // aerial term fades in over, z = how much the noise model scatters, w = how much it takes away
   vec4 zNearMaximumDistanceScatteringExtinction;
   vec4 centreBottomRadiusTop;     // xyz = the shell's centre, w = its bottom radius
   // x = top radius, y = Rayleigh scale height, z = Mie scale height, w = how coarse the noise field is
   vec4 topRadiusHeightsNoiseScale;
-  vec4 noiseTimeSpare;            // x = the time the noise field drifts with, yzw unused
+  // x = the time the noise field drifts with, y = how much the aerial term weighs, z = the mean free path
+  // of the air in metres, w = the largest depth that may be stored.
+  //
+  // The mean free path is how the density of the physical model is asked for, rather than a multiplier on
+  // the coefficients: it is a distance, so it can be judged against the track. It is also the unit Unity
+  // HDRP asks its artists for, and Koschmieder turns it into a visibility - V = 3.912/sigma_t - so a number
+  // here can be checked against what one expects to see.
+  //
+  // That last lane is a bound of the buffer FORMAT and not of the scene, which under a reversed infinite
+  // projection is the only kind of bound available: a sky pixel's raw depth is exactly zero, so the
+  // distance it linearises to is unbounded, and a half-float alpha would take it as infinity. It sits far
+  // beyond any geometry on a track, so the sky ends up with a depth of its own that nothing real collides
+  // with. The compose bounds its own reading by the same number.
+  vec4 noiseTimeAerialWeightMeanFreePathSkyDepth;
   uvec4 viewBaseIndexFrameIndexSpare; // x = the first view of this pass, y = frame counter, zw unused
   // Everything that is a whole number or a switch, kept out of the float vectors above rather than
   // squeezed into their spare lanes: x = flags, y = the fewest steps a ray is walked in, z = the most.
   uvec4 flagsStepCountsSpare;
 } pushConstants;
 
-// Which step length the march uses. Clear takes it from the distance out of the atmosphere while the
-// positions walk the view ray - two different scales in one formula, which is what makes the Rayleigh/Mie
-// model carry; set takes the ray's own length, which is the consistent reading and much fainter, and is
-// what the noise model is tuned for.
-const uint VolumetricScatteringFlagRayLengthSegments = 1u << 0;
+// Bit zero is free. It used to pick between two segment lengths - the ray's own and the distance out of
+// the atmosphere - which turned out to be a statement about how thick the air is, written as a length. It
+// is now the mean free path in the push constants, where it can be read as the distance it always was.
 
 // Which density model. Clear is Rayleigh/Mie over the shell, set is the noise field.
 const uint VolumetricScatteringFlagNoiseDensity = 1u << 1;
+
+// The look this effect had before it grew a second buffer: the gathered light faded in with the square of
+// the distance and then capped at a quarter however bright it came out, no aerial term, and nothing taken
+// away from the picture at all. The cap is the substance of it - without it the march adds around 1.8 to
+// an HDR picture where the old one added at most 0.27, which is the difference between light shafts and a
+// sheet of haze with the world faintly behind it.
+const uint VolumetricScatteringFlagLegacyLook = 1u << 2;
 
 #include "math.glsl"
 
@@ -105,17 +155,17 @@ const uint SHADOWMAP_MODE_DPCF = 3;
 const uint SHADOWMAP_MODE_PCSS = 4;
 const uint SHADOWMAP_MODE_MSM = 5;
 
-// All of this lives in set 0 rather than in the set 3 the other shadow readers use: those share a pipeline
-// layout with the atmosphere, and this pass has one of its own. Putting them anywhere but set 0 would mean
-// declaring empty layouts for the sets in between, which Vulkan requires and which would buy nothing.
-layout(set = 0, binding = 4, std140) uniform uboCascadedShadowMaps {
+// In set 1 with the rest of this pass's own, rather than in the set 3 the other shadow readers use: those
+// share a pipeline layout with the atmosphere, and this pass has one of its own - the scene's global set
+// followed by this one, with nothing in between to declare.
+layout(set = 1, binding = 4, std140) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
   vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
   uvec4 metaData; // x = type
 } uCascadedShadowMaps;
 
-layout(set = 0, binding = 5) uniform sampler2DArray uCascadedShadowMapTexture;
+layout(set = 1, binding = 5) uniform sampler2DArray uCascadedShadowMapTexture;
 
 // Both views of the one binding, always - not behind a define as elsewhere. Which of the four modes runs
 // is a run-time switch, so shadows.glsl compiles the PCF case whatever the mode is, and that case names
@@ -123,7 +173,7 @@ layout(set = 0, binding = 5) uniform sampler2DArray uCascadedShadowMapTexture;
 // costs nothing where the mode never reaches them.
 //
 // Yay! Binding Aliasing! :-)
-layout(set = 0, binding = 5) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
+layout(set = 1, binding = 5) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
 
 // What shadows.glsl reads out of its includer. lightDirection is the direction the light TRAVELS, which is
 // what the functions in there expect to be handed the negation of.
@@ -133,20 +183,32 @@ vec3 inWorldSpacePosition, workNormal, lightDirection;
 
 #ifdef RAYTRACING
 
-// The acceleration structure, declared here rather than taken from globaldescriptorset.glsl, and the ray
-// query written out rather than calling raytracing.glsl's getRaytracedFastHardShadow.
+// The acceleration structure, at the place the ENGINE keeps it: set 0, binding 8 of the scene's global
+// descriptor set, which is why this pass's own bindings were moved out to set 1.
 //
-// Both for the same reason: that file puts the structure at set 0 binding 8, which is where this pass has
-// its own bindings, and including it would drag in the whole global descriptor set - the instance data,
-// the mesh buffers, the octahedral maps - for a function that is five lines long. This pass is standalone
-// and stays that way.
+// It used to be declared as a binding of this pass's own, with the pass writing it into its own descriptor
+// set whenever the handle or the generation changed. That looked equivalent and was not. The structure is
+// per-in-flight-frame state and double-buffered besides:
 //
-// The offset along a surface normal that the engine's version applies is left out too, and not by
-// oversight: it exists to keep a surface from shadowing itself, and a point in mid-air has no surface to
-// be lifted off.
+//   TDoubleBufferedTopLevelAccelerationStructures = array[0..1] of ...
+//   TTopLevelAccelerationStructures = array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR
+//
+// and the scene builds this frame's one in UpdateRaytracing before writing it to the global set. A copy
+// kept elsewhere reads whichever structure happens to be current when the pass records, which is not
+// necessarily the one belonging to this frame. Rays then miss everything, every sample reads as lit, and
+// the march fills the volume with an even haze - barely noticeable under open sky, and inside a tunnel it
+// swallows the whole picture.
+//
+// Every other raytracing consumer in this engine reads it from the global set. This one does now too, and
+// the whole class of fault goes with it.
+//
+// The ray query is still written out rather than calling raytracing.glsl's getRaytracedFastHardShadow -
+// that would pull in the instance data, the mesh buffers and the octahedral maps for five lines. The flags
+// and the cull mask below are that function's, exactly. What is deliberately left out is its offset along
+// a surface normal: that keeps a surface from shadowing itself, and a point in mid-air has no surface.
 //
 // The two extension directives this needs are at the top of the file, where they have to be.
-layout(set = 0, binding = 6) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
+layout(set = 0, binding = 8) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
 
 // The same cull mask the rest of the engine casts shadow rays with, so this sees exactly what the shadow
 // maps see.
@@ -163,9 +225,10 @@ const vec3 bM = vec3(21e-6);
 const vec3 bR = vec3(5.8e-6, 13.5e-6, 33.1e-6);
 
 // The aerial term at the very end: what the distance itself adds, over and above anything the march
-// gathered. Its colour and weight are a look rather than a measurement.
+// gathered. Its colour is a look rather than a measurement; its weight is a push constant, because on a
+// scene that already has a fog pass of its own this is a second haze on top of a first, and whether that
+// is wanted is not something this shader can know. Zero switches it off outright.
 const vec3 aerialColour = vec3(0.4, 0.65, 1.0);
-const float aerialWeight = 0.68;
 
 // (x:5,y:5)-offseted bayer's optimum 8x8 index matrix (1973). Every pixel starts its walk at a slightly
 // different point between two steps, so that the samples read as a smear rather than as bands.
@@ -253,6 +316,20 @@ float sampleShadow(const in vec3 aWorldPosition, const in float aMaximumDistance
   // and the light is the whole question, and nothing about which thing it was matters here.
   const uint rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
 
+  // How far the ray looks for something in the way - and NOT aMaximumDistance, which is the length of the
+  // VIEW ray this sample sits on. The two have nothing to do with each other: how far the camera happens to
+  // see past this point says nothing about how far away the thing shading it is.
+  //
+  // Passing the view length was the fault, and it hid well because the cascade branch below ignores the
+  // parameter entirely - so the two shadow paths disagreed only here. A sample deep inside a tunnel, where
+  // the view ray is a few tens of metres, got a shadow ray that gave up before reaching anything, came back
+  // unshadowed, and the march then filled the tunnel with evenly lit haze. Under open sky the same fault
+  // costs almost nothing, and at Earth density it is invisible - which is why it only ever showed with the
+  // atmosphere-distance segments, the mode that is some two hundred times brighter.
+  //
+  // The effect's own maximum distance instead: the same reach the march itself is given.
+  float shadowRayReach = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery,
                         uRaytracingTopLevelAccelerationStructure,
@@ -261,7 +338,7 @@ float sampleShadow(const in vec3 aWorldPosition, const in float aMaximumDistance
                         aWorldPosition,
                         0.0,
                         normalize(-lightDirection),
-                        aMaximumDistance);
+                        shadowRayReach);
   rayQueryProceedEXT(rayQuery);
   float raytracedShadow = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0;
   rayQueryTerminateEXT(rayQuery);
@@ -348,8 +425,9 @@ void main(){
   vec3 rayDirection = startPosition - eyePosition;
   float rayDirectionLength = length(rayDirection);
   if(rayDirectionLength < 1e-8){
-    imageStore(uDestinationInscatteringTexture, at, vec4(vec3(0.0), pushConstants.zNearMaximumDistanceScatteringExtinction.y));
+    imageStore(uDestinationInscatteringTexture, at, vec4(0.0));
     imageStore(uDestinationExtinctionTexture, at, vec4(1.0));
+    imageStore(uDestinationDepthTexture, at, vec4(pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w));
     return;
   }
   rayDirection /= rayDirectionLength;
@@ -366,7 +444,14 @@ void main(){
   // over a ten kilometre ray are steps a kilometre apart, which is not a march. The cap costs the far end
   // of such a ray and keeps the near end worth having.
   float rayLength = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
-  float linearViewDepth = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+
+  // The sky's depth is the STORE CAP, not the march's reach - those are two different numbers and confusing
+  // them is what put a seam along every silhouette. The march reaches 4096 metres; the depth written here
+  // has to be a value no real distance can collide with, because the compose has to be able to tell "this
+  // pixel is sky" from "this pixel is a mountain twelve kilometres away". Under a reversed infinite
+  // projection there is no far plane to borrow such a value from, so it comes from the buffer format
+  // instead - see the note on the cap in the push constants.
+  float linearViewDepth = pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w;
 
   // Sky is NOT skipped here, unlike in the fog: a light shaft is at its most visible against it, and a ray
   // with nothing in its way is exactly the one that should be allowed to gather light for its whole
@@ -380,24 +465,43 @@ void main(){
     if(!(any(isinf(farViewPosition)) || any(isnan(farViewPosition)))){
       vec3 endPosition = (inverseViewMatrix * vec4(farViewPosition, 1.0)).xyz;
       rayLength = min(length(endPosition - startPosition), pushConstants.zNearMaximumDistanceScatteringExtinction.y);
-      linearViewDepth = pushConstants.zNearMaximumDistanceScatteringExtinction.x / max(rawDepth, 1e-7);
+      // The true distance, bounded only by the store cap. Not by the march's reach: geometry stands
+      // further away than 4096 metres all the time, and clamping there would file every distant thing
+      // under the same depth as the sky - which is precisely what the upsample must be able to tell apart
+      // at a skyline.
+      //
+      // The near distance goes in as a MAGNITUDE. In this engine a reversed infinite projection is marked
+      // by a negative near plane and an infinite negative far, so zNear arrives as something like -0.01 -
+      // and dividing by it hands back negative distances, which then compare against the positive value
+      // the sky is given as though they were the same kind of number. This is the same trap the compose
+      // fell into, and both sides have to take the magnitude or neither reading means anything.
+      //
+      // Held to half the sky's value: the division is open at the top, and a raw depth close enough to
+      // zero would otherwise produce something that collides with the sky's own number - which is the one
+      // thing this depth exists to be distinguishable from.
+      //
+      // The sky never reaches this line at all: it keeps the value it was initialised with, because
+      // hasGeometry is false for a raw depth of zero.
+      linearViewDepth = min(abs(pushConstants.zNearMaximumDistanceScatteringExtinction.x) / max(rawDepth, 1e-7),
+                            pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w * 0.5);
     }
   }
 
-  lightDirection = pushConstants.sunDirectionStrength.xyz;
+  lightDirection = pushConstants.sunDirectionShaftGain.xyz;
 
   bool noiseDensity = (pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagNoiseDensity) != 0u;
+  bool legacyLook = (pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagLegacyLook) != 0u;
 
   vec3 inscattering = vec3(0.0);
   vec3 transmittance = vec3(1.0);
 
   // Only while the sun is above the horizon: below it there is nothing to scatter.
-  if((rayLength > 1e-4) && (dot(pushConstants.sunDirectionStrength.xyz, vec3(0.0, -1.0, 0.0)) > 0.0)){
+  if((rayLength > 1e-4) && (dot(pushConstants.sunDirectionShaftGain.xyz, vec3(0.0, -1.0, 0.0)) > 0.0)){
 
     // How much of what passes through is turned toward the eye, by the angle between the ray and the
     // light. The noise model has one Mie lobe and a sharp one; the atmosphere model has the even Rayleigh
     // term beside a gentler Mie one, which is why its sun gets a halo and its sky does not.
-    vec3 toLight = -pushConstants.sunDirectionStrength.xyz;
+    vec3 toLight = -pushConstants.sunDirectionShaftGain.xyz;
     float mu = dot(rayDirection, toLight);
     float onePlusMuSquared = 1.0 + (mu * mu);
 
@@ -426,16 +530,31 @@ void main(){
     // over frames takes a share of the work off the blur behind this.
     float offset = gJitterOffsets[(((at.x & 7) | ((at.y & 7) << 3)) + int(pushConstants.viewBaseIndexFrameIndexSpare.y)) & 63];
 
-    // How long one segment counts as. The ray's own length is the true answer and what the noise model is
-    // tuned for; the distance out of the atmosphere is the exaggeration the Rayleigh/Mie model was tuned
-    // with, and it is what makes that one carry at all.
-    float segmentLength;
-    if((pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagRayLengthSegments) != 0u){
-      segmentLength = rayLength * timeStep;
-    }else{
-      segmentLength = computeEscapeLength(startPosition, rayDirection, pushConstants.topRadiusHeightsNoiseScale.x) * timeStep;
-    }
-    segmentLength = max(segmentLength, 0.0);
+    // How long one segment counts as: the ray's own length over the steps. One length, for what a segment
+    // gathers and for what it blocks alike, because they are the same piece of air.
+    float segmentLength = max(rayLength * timeStep, 0.0);
+
+    // And how thick that air is - the one dial the physical model has, asked for as a distance.
+    //
+    // The coefficients below are Earth's at sea level, and their sum in green is 34.5e-6 per metre: a mean
+    // free path of twenty-nine kilometres. Over a few hundred metres of track that gathers essentially
+    // nothing, which is not a fault in the model but what clear air does. Asking for a shorter mean free
+    // path scales the medium to whatever thickness is wanted, and BOTH scattering and extinction with it -
+    // they are the same event seen from two sides and cannot be separated for a scattering medium.
+    //
+    // This replaced a switch between two fixed states, and the numbers say why. One was Earth's air, mean
+    // free path twenty-nine kilometres, transmittance 0.99 over three hundred metres: invisible. The other
+    // took the distance out of the atmosphere over the ray's own length, which sounds like a statement
+    // about geometry but works out as a mean free path of EIGHT METRES - denser than Unity's default for a
+    // small box of local fog, laid over the whole world. There the march saturates: at three hundred metres
+    // and at four kilometres it returns the very same value, because past an optical depth of a few the
+    // inscattering has reached its equilibrium and no longer depends on distance or density at all. A flat,
+    // structureless veil over a world multiplied by zero.
+    //
+    // Everything usable lies between those two, and neither end could reach it. Around 800 to 2000 metres
+    // leaves 0.69 to 0.86 of the picture standing over three hundred metres while gathering enough to see.
+    float baseExtinction = bR.g + bM.g;
+    float mediumScale = 1.0 / (max(pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.z, 1.0) * baseExtinction);
 
     float marchTime = offset * timeStep;
 
@@ -453,17 +572,30 @@ void main(){
       if(noiseDensity){
         // One density from the noise field, thinned by the shell so that height still matters, and drifting
         // with the time so that standing still does not mean standing in a fixed pattern.
-        vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeSpare.x * vec3(0.01, 0.13, 0.07))) *
+        vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
                              pushConstants.topRadiusHeightsNoiseScale.w;
         float density = shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+
+        // No mediumScale here, and that is deliberate: these two coefficients ARE the density, authored
+        // directly in per-metre terms. Scaling them by a mean free path as well would be asking for the
+        // same thing twice. The physical model needs it because its coefficients are Earth's and fixed.
         scatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.z) * phaseNoise;
         extinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.w);
+
       }else{
+
         // Rayleigh and Mie side by side, each with its own coefficient and its own phase. The extinction
         // is coloured here rather than grey, which is the whole point of the model: the blue is taken out
         // of what is behind faster than the red.
-        scatteringCoefficient = ((bR * shellRayleigh) * phaseRayleigh) + ((bM * shellMie) * phaseMie);
-        extinctionCoefficient = (bR * shellRayleigh) + (bM * shellMie);
+        //
+        // The thickness scales BOTH by the same factor, which is not a simplification to be improved on
+        // later. For a scattering medium the two are one event seen from two sides - light is not
+        // destroyed, it leaves in another direction - so air that scatters more toward the eye necessarily
+        // takes more from what is behind. Albedo stays at or below one; no engine that was looked at breaks
+        // that, and scaling the one without the other is where light would come from nowhere.
+        scatteringCoefficient = (((bR * shellRayleigh) * phaseRayleigh) + ((bM * shellMie) * phaseMie)) * mediumScale;
+        extinctionCoefficient = ((bR * shellRayleigh) + (bM * shellMie)) * mediumScale;
+
       }
 
       // Whether this sample is lit at all. This is the line the whole effect is for: a ray through a
@@ -471,29 +603,83 @@ void main(){
       // shaft.
       float shadowLit = sampleShadow(particlePosition, rayLength);
 
-      if(shadowLit > 0.0){
-        inscattering += ((scatteringCoefficient * shadowLit) * segmentIntegral(extinctionCoefficient, segmentLength)) * transmittance;
+      // How much this segment contributes: the analytic integral over its whole length, which conserves
+      // energy however coarsely the ray is walked - except under the legacy look, which takes the plain
+      // length as the old march did.
+      //
+      // The two are not close where the segments are long. The integral is (1-exp(-sL))/s against a plain
+      // L, so it falls short by sL/2: at the old segment length that is eleven per cent in red and twenty
+      // in blue. Being wavelength-dependent it shifts the colour as well as the brightness, which is why
+      // the legacy switch has to have the old form and not merely a factor.
+      vec3 segmentWeight = legacyLook ? vec3(segmentLength)
+                                      : segmentIntegral(extinctionCoefficient, segmentLength);
+
+      vec3 segmentTransmittance = exp(-(extinctionCoefficient * segmentLength));
+
+      // WHEN the sample is attenuated, which turns out to matter far more than it looks.
+      //
+      // The old march added the segment's own optical depth to the running total BEFORE it read the
+      // transmittance, so every sample was already dimmed by the segment it sits in. The newer form reads
+      // first and dims after, which is the usual way and is what the analytic integral above is derived
+      // for.
+      //
+      // One segment of difference on every sample - and one segment here is not small. Measured against
+      // the old code at the old segment length it comes out as exp(sL): 1.27 in red and 1.61 in blue, so
+      // brighter AND bluer, not a tint one could dial away. With the order restored the two agree to
+      // 1.000 in all three channels.
+      if(legacyLook){
+        transmittance *= segmentTransmittance;
       }
 
-      transmittance *= exp(-(extinctionCoefficient * segmentLength));
+      if(shadowLit > 0.0){
+        inscattering += ((scatteringCoefficient * shadowLit) * segmentWeight) * transmittance;
+      }
+
+      if(!legacyLook){
+        transmittance *= segmentTransmittance;
+      }
 
       marchTime += timeStep;
 
     }
 
-    // How bright the sun is. Not decoration: the physical coefficients are per metre at sea level and the
-    // blue one is 5.8e-6, so at a sun of one the march is arithmetically right and invisible.
-    inscattering *= pushConstants.sunDirectionStrength.w;
+    // The light itself, and then the gain on top of it. Two things, in that order, and coloured because
+    // the light is: a low sun reddens what it lights, and the shafts belong to the same light as the
+    // ground under them. Where this used to be the gain alone, the shafts stayed just as bright and just
+    // as white while the sun set - they were lit by a number rather than by the scene.
+    inscattering *= pushConstants.sunRadianceSpare.xyz * pushConstants.sunDirectionShaftGain.w;
 
   }
 
-  // What the distance itself adds over and above the march, and takes away with it. Weighted toward the
-  // horizon on a ray that hit nothing, so that the sky overhead stays clear while the distance closes in.
-  {
-    float f = clamp(1.0 - exp(-pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceScatteringExtinction.y, 0.0, 1.0), 1.5)), 0.0, 1.0) *
-              (hasGeometry ? 1.0 : pow(1.0 - clamp(rayDirection.y, 0.0, 1.0), 16.0));
-    inscattering += ((aerialWeight * aerialColour) * f) * transmittance;
-    transmittance *= 1.0 - f;
+  if((pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagLegacyLook) != 0u){
+
+    // The old ending, whole: faded in with the square of the distance so that what is right in front of
+    // the eye does not get a wash of haze over it, and capped at a quarter however bright it came out.
+    // Applied outside the sun guard above, as it was, so a ray that gathered nothing still ends at zero.
+    //
+    // And the transmittance goes out at one. That is not an oversight to be tidied away later - the old
+    // arrangement wrote no extinction at all and the compose only ever added, so leaving a real one here
+    // would mean this switch gave the old brightness over a picture the old code never dimmed.
+    float fade = clamp(mix(0.078125,
+                           1.0,
+                           pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceScatteringExtinction.y, 0.0, 1.0), 2.0)),
+                       0.0,
+                       0.25);
+    inscattering *= fade;
+    transmittance = vec3(1.0);
+
+  }else{
+
+    // What the distance itself adds over and above the march, and takes away with it. Weighted toward the
+    // horizon on a ray that hit nothing, so that the sky overhead stays clear while the distance closes in.
+    float aerialWeight = pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.y;
+    if(aerialWeight > 0.0){
+      float f = clamp(1.0 - exp(-pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceScatteringExtinction.y, 0.0, 1.0), 1.5)), 0.0, 1.0) *
+                (hasGeometry ? 1.0 : pow(1.0 - clamp(rayDirection.y, 0.0, 1.0), 16.0));
+      inscattering += ((aerialWeight * aerialColour) * f) * transmittance;
+      transmittance *= 1.0 - f;
+    }
+
   }
 
   // The last net. Everything above is guarded, but these buffers are read by two more passes and put onto
@@ -506,7 +692,10 @@ void main(){
     transmittance = vec3(1.0);
   }
 
-  imageStore(uDestinationInscatteringTexture, at, vec4(max(inscattering, vec3(0.0)), linearViewDepth));
+  // The alpha of the first two carries nothing now - the depth has an image of its own, which is what
+  // lets it be full float and lets it be written once instead of copied along.
+  imageStore(uDestinationInscatteringTexture, at, vec4(max(inscattering, vec3(0.0)), 1.0));
   imageStore(uDestinationExtinctionTexture, at, vec4(clamp(transmittance, vec3(0.0), vec3(1.0)), 1.0));
+  imageStore(uDestinationDepthTexture, at, vec4(linearViewDepth));
 
 }

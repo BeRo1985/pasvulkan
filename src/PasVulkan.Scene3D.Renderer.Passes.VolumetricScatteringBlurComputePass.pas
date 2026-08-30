@@ -101,6 +101,7 @@ type { TpvScene3DRendererPassesVolumetricScatteringBlurComputePass }
        fHorizontal:Boolean;
        fResourceInputInscattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceInputExtinction:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceInputDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutputInscattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutputExtinction:TpvFrameGraph.TPass.TUsedImageResource;
        fPushConstants:TPushConstants;
@@ -109,6 +110,7 @@ type { TpvScene3DRendererPassesVolumetricScatteringBlurComputePass }
        fComputeShaderModule:TpvVulkanShaderModule;
        fInscatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -201,6 +203,15 @@ begin
 
  end;
 
+ // Outside the two branches, because it is the SAME image either way: the march writes the depth once and
+ // both runs read it. Nothing here rewrites it, so the horizontal and the vertical step cannot end up
+ // steering by different numbers - which is what carrying it along in an alpha invited.
+ fResourceInputDepth:=AddImageInput('resourcetype_volumetric_scattering_depth',
+                                    'resource_volumetric_scattering_depth',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    []
+                                   );
+
 end;
 
 destructor TpvScene3DRendererPassesVolumetricScatteringBlurComputePass.Destroy;
@@ -245,7 +256,7 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*3);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*2);
  fVulkanDescriptorPool.Initialize;
 
@@ -267,6 +278,11 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(3,
                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(4,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
@@ -304,6 +320,21 @@ begin
                                                                          0,
                                                                          CountViews
                                                                         );
+
+  fDepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                  fResourceInputDepth.VulkanImages[InFlightFrameIndex],
+                                                                  TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                  TpvFrameGraph.TImageResourceType(fResourceInputDepth.ResourceType).Format,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                  0,
+                                                                  1,
+                                                                  0,
+                                                                  CountViews
+                                                                 );
 
   fExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
                                                                        fResourceInputExtinction.VulkanImages[InFlightFrameIndex],
@@ -396,6 +427,19 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  // The depth the march measured, which is what makes this blur bilateral rather than a plain gaussian.
+  // Read only, and the same image for both runs.
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                fDepthImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceInputDepth.ResourceTransition.Layout)],
+                                                                 [],
+                                                                 [],
+                                                                 false
+                                                                );
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
 
  end;
@@ -411,6 +455,7 @@ begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fInscatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fExtinctionImageViews[InFlightFrameIndex]);
+  FreeAndNil(fDepthImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputInscatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputExtinctionImageViews[InFlightFrameIndex]);
  end;

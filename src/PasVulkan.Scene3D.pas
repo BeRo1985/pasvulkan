@@ -4754,6 +4754,10 @@ type EpvScene3D=class(Exception);
        fPrimaryLightDirections:TInFlightFrameVector3s;
        fPrimaryShadowMapLightDirection:TpvVector3;
        fPrimaryShadowMapLightDirections:TInFlightFrameVector3s;
+       // What that same light actually emits - colour times intensity, the radiance the surfaces are lit
+       // with. Recorded beside the direction and from the same place, so that a pass wanting to light
+       // something by the primary light has both halves rather than only the half that says where it is.
+       fPrimaryShadowMapLightColorIntensity:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fParticles:TParticles;
@@ -5286,6 +5290,9 @@ type EpvScene3D=class(Exception);
        property PrimaryLightDirections:TInFlightFrameVector3s read fPrimaryLightDirections;
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
        property PrimaryShadowMapLightDirections:TInFlightFrameVector3s read fPrimaryShadowMapLightDirections;
+       // Colour times intensity of that light: what it emits, in the same units the surface shading uses.
+       // Black while no primary directional light has been seen yet.
+       property PrimaryShadowMapLightColorIntensity:TpvVector3 read fPrimaryShadowMapLightColorIntensity write fPrimaryShadowMapLightColorIntensity;
        property GlobalVulkanMatrixPairBuffers:TGlobalVulkanMatrixPairBuffers read fGlobalVulkanMatrixPairBuffers;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DecalBuffers:TpvScene3D.TDecalBuffers read fDecalBuffers;
@@ -12220,6 +12227,7 @@ begin
   fRadius:=Radius;
   if Data^.Type_=TpvScene3D.TLightData.TLightType.PrimaryDirectional then begin
    fSceneInstance.fPrimaryShadowMapLightDirection:=Direction;
+   fSceneInstance.fPrimaryShadowMapLightColorIntensity:=Data^.Color*Data^.Intensity;
   end;
   case Data^.Type_ of
    TpvScene3D.TLightData.TLightType.Directional,
@@ -35446,6 +35454,9 @@ begin
   fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.5,-1.0,-1.0).Normalize;
 
   fPrimaryShadowMapLightDirection:=TpvVector3.InlineableCreate(0.5,-1.0,-1.0).Normalize;
+  // Black until a primary directional light has actually been seen, so that anything reading this before
+  // then gets nothing rather than a plausible-looking invention.
+  fPrimaryShadowMapLightColorIntensity:=TpvVector3.Null;
 
  //fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.333333333333,-0.666666666666,-0.666666666666).Normalize;
 
