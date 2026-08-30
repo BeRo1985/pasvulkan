@@ -117,6 +117,11 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
              // fixed by compositing per sample: the air itself was only ever computed once per texel,
              // at the resolved depth, which at a silhouette is the geometry's.
              VolumetricScatteringComposeFlagSkyTapSearch=TpvUInt32(1) shl 4;
+             // And bit five: weigh the geometry's air against the sky's by how much of the pixel each
+             // covers, rather than give the whole pixel the geometry's. Only the resolved MSAA path has
+             // anything to do with this, and it is why that path aliases - it flattens the coverage
+             // gradient MSAA produced, putting a hard scattering edge over a smooth colour edge.
+             VolumetricScatteringComposeFlagCoverageWeighting=TpvUInt32(1) shl 5;
       public
        type TPushConstants=packed record
              // x = strength, y = how depth becomes a distance, z = how hard the upsample separates two
@@ -633,6 +638,9 @@ begin
   end;
   if fInstance.VolumetricScatteringSkyTapSearch then begin
    fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagSkyTapSearch;
+  end;
+  if fInstance.VolumetricScatteringCoverageWeighting then begin
+   fPushConstants.FlagsSampleCountSpare.x:=fPushConstants.FlagsSampleCountSpare.x or VolumetricScatteringComposeFlagCoverageWeighting;
   end;
   // How many samples the raw depth carries. Only the MSAA variant reads it, and only it is given a raw
   // depth to read; one everywhere else, so a stray read could not divide by nothing.

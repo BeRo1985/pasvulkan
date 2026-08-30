@@ -1131,6 +1131,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringShowScatteringOnly:Boolean;
        fVolumetricScatteringShowExtinctionOnly:Boolean;
        fVolumetricScatteringSkyTapSearch:Boolean;
+       fVolumetricScatteringCoverageWeighting:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1711,6 +1712,28 @@ type { TpvScene3DRendererInstance }
        // blurred field hides. The exact answer needs the march to record its result twice, once where it
        // passes the geometry and once at the far end, and that makes every pixel as dear as a sky pixel.
        property VolumetricScatteringSkyTapSearch:Boolean read fVolumetricScatteringSkyTapSearch write fVolumetricScatteringSkyTapSearch;
+       // Against the aliasing that the resolved MSAA path shows along those same silhouettes - the other
+       // half of the same problem, and the half that appears once the rim is gone.
+       //
+       // That path walks the samples, skips the sky ones and applies the average of the rest to the WHOLE
+       // pixel. There is no rim, because the value stays continuous towards the geometry - but a pixel
+       // that is nine tenths sky wears the tower's air over its full area, and the coverage gradient MSAA
+       // produced is flattened. A hard scattering edge then sits over a smooth colour edge, which is what
+       // the aliasing is.
+       //
+       // The pixel's coverage is known - it is how many samples were geometry - and the sky's answer is
+       // already computed for a pixel that is nothing but sky. With this set, the two are weighed against
+       // each other instead of one being thrown away. Blending the terms is exact rather than approximate:
+       // the composite is affine in them for a fixed colour, so one composite over blended terms equals
+       // two composites blended.
+       //
+       // It wants VolumetricScatteringSkyTapSearch on beside it. Without that, the sky's answer at a
+       // silhouette is read off geometry taps, and weighing a wrong value in by its coverage only spreads
+       // it more politely.
+       //
+       // Does nothing on the per-sample path, and rightly so: there every sample carries its own colour,
+       // so there is no coverage mix left to weigh.
+       property VolumetricScatteringCoverageWeighting:Boolean read fVolumetricScatteringCoverageWeighting write fVolumetricScatteringCoverageWeighting;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2772,6 +2795,7 @@ begin
  fVolumetricScatteringShowScatteringOnly:=false;
  fVolumetricScatteringShowExtinctionOnly:=false;
  fVolumetricScatteringSkyTapSearch:=false;
+ fVolumetricScatteringCoverageWeighting:=false;
 
  if assigned(fVirtualReality) then begin
 

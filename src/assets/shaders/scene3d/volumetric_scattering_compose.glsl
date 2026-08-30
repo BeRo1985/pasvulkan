@@ -74,6 +74,28 @@ const uint VolumetricScatteringComposeFlagLegacyLook = 1u << 3;
 // that - sun, stars, clouds - and estimating it from neighbours was tried and gave a black outline.
 const uint VolumetricScatteringComposeFlagSkyTapSearch = 1u << 4;
 
+// Bit five: weigh the geometry's air against the sky's by how much of the pixel each of them actually
+// covers, instead of giving the whole pixel the geometry's.
+//
+// Only the resolved MSAA path has anything to do with this, and it is the reason that path aliases. It
+// walks the samples, skips the sky ones, and applies the average of the rest to the WHOLE pixel - so a
+// pixel that is nine tenths sky wears the tower's air over its full area. No rim, because the value stays
+// continuous towards the geometry; but the coverage gradient that MSAA went to the trouble of producing is
+// flattened, and a hard scattering edge sits over a smooth colour edge.
+//
+// The pixel's coverage is already known - it is how many samples were geometry - and the sky's answer is
+// already computed, in the branch for a pixel that is nothing but sky. The two were simply never weighed
+// against each other. Blending the TERMS by coverage is the same thing as compositing twice and blending
+// the results, because the composite is affine in them for a fixed colour:
+//
+//   c*(C*Eg + Ig) + (1-c)*(C*Es + Is)  =  C*(c*Eg + (1-c)*Es) + (c*Ig + (1-c)*Is)
+//
+// so one composite over blended terms is exact here, not an approximation of two.
+//
+// This wants the sky-tap search above to be on as well: without it the sky's answer at a silhouette is read
+// off geometry taps, and weighing a wrong value in by its coverage only spreads it more politely.
+const uint VolumetricScatteringComposeFlagCoverageWeighting = 1u << 5;
+
 // How much of the picture is left standing in that first mode - enough to see where one is, not enough to
 // confuse with what is being looked at.
 const float ShowScatteringOnlySceneWeight = 0.03;

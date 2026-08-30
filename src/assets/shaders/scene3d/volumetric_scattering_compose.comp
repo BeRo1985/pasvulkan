@@ -120,17 +120,35 @@ void main(){
     float sampleWeight = 1.0 / float(countGeometrySamples);
     inscattering *= sampleWeight;
     extinction *= sampleWeight;
-  }else{
-    // Every sample is sky, so there is no geometry to take the answer from - the pixel gets the sky's own,
-    // which is what the resolved path would have given it anyway.
+  }
+
+  // The sky's share of the pixel, and what the air does over it. Wanted whenever any sample at all is sky:
+  // for a pixel that is nothing but sky this IS the answer, and for a mixed one it is the half that the
+  // loop above threw away - see the note at the flag for why weighing the two terms by coverage is exact
+  // rather than approximate. Without the flag only the all-sky case takes it, which is what this path did
+  // before and leaves the mixed pixels wearing the geometry's air over their whole area.
+  bool coverageWeighting = (pushConstants.flagsSampleCountSpare.x & VolumetricScatteringComposeFlagCoverageWeighting) != 0u;
+
+  if((countGeometrySamples == 0) ||
+     (coverageWeighting && (countGeometrySamples < countSamples))){
+
+    vec3 skyInscattering;
+    vec3 skyExtinction;
     resolveScattering(at,
                       scatteringSize,
                       scatteringBase,
                       scatteringFraction,
                       pushConstants.strengthZNearDepthWeightSkyDepth.w,
                       legacyLook,
-                      inscattering,
-                      extinction);
+                      skyInscattering,
+                      skyExtinction);
+
+    // A pixel that is nothing but sky comes out of this as the sky's answer exactly, the coverage being
+    // zero - so the all-sky case needs no branch of its own and cannot drift away from the mixed one.
+    float coverage = float(countGeometrySamples) / float(countSamples);
+    inscattering = mix(skyInscattering, inscattering, coverage);
+    extinction = mix(skyExtinction, extinction, coverage);
+
   }
 
 #else
