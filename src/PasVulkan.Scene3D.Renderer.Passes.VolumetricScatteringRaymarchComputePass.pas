@@ -169,9 +169,17 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
        fResourceOutputExtinction:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutputDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       // Whether the march records its result twice along the one ray - once where it passes the geometry,
+       // once out at the sky. Decided in the constructor, because two more outputs and two more bindings
+       // hang on it, and the descriptor set has to match the shader that was chosen.
+       fDualOutput:Boolean;
+       fResourceOutputFarInscattering:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOutputFarExtinction:TpvFrameGraph.TPass.TUsedImageResource;
        fOutputInscatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fOutputFarInscatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fOutputFarExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -200,6 +208,8 @@ begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
+
+ fDualOutput:=fInstance.VolumetricScatteringDualOutput;
 
  Name:='VolumetricScatteringRaymarchComputePass';
 
@@ -241,6 +251,32 @@ begin
                                       []
                                      );
 
+ // And the same two quantities again for the ray carried past the geometry, where the option asks for it.
+ // No depth image of its own goes with them: the far pair describes one distance - the sky's - for every
+ // texel alike, so there would be nothing in such an image but the same number repeated.
+ if fDualOutput then begin
+
+  fResourceOutputFarInscattering:=AddImageOutput('resourcetype_volumetric_scattering',
+                                                 'resource_volumetric_scattering_far',
+                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
+                                                 []
+                                                );
+
+  fResourceOutputFarExtinction:=AddImageOutput('resourcetype_volumetric_scattering',
+                                               'resource_volumetric_scattering_far_extinction',
+                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                               TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare),
+                                               []
+                                              );
+
+ end else begin
+
+  fResourceOutputFarInscattering:=nil;
+  fResourceOutputFarExtinction:=nil;
+
+ end;
+
 end;
 
 destructor TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass.Destroy;
@@ -266,9 +302,17 @@ begin
               assigned(fInstance.Renderer.Scene3D.Raytracing);
 
  if fRaytracing then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_raytracing_comp.spv');
+  if fDualOutput then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_raytracing_dual_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_raytracing_comp.spv');
+  end;
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_comp.spv');
+  if fDualOutput then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_dual_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_raymarch_comp.spv');
+  end;
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -300,7 +344,13 @@ begin
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames*2);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*3);
+ // Three storage images normally - the two the air is written to and the depth - and five where the far
+ // pair joins them.
+ if fDualOutput then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*5);
+ end else begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*3);
+ end;
  fVulkanDescriptorPool.Initialize;
 
  // This pass's own resources, as SET ONE. Set zero is the scene's global descriptor set, taken as it
@@ -344,6 +394,18 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
+ if fDualOutput then begin
+  fVulkanDescriptorSetLayout.AddBinding(7,
+                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+  fVulkanDescriptorSetLayout.AddBinding(8,
+                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -410,6 +472,45 @@ begin
                                                                              0,
                                                                              CountViews
                                                                             );
+
+  if fDualOutput then begin
+
+   fOutputFarInscatteringImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                                    fResourceOutputFarInscattering.VulkanImages[InFlightFrameIndex],
+                                                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                                    TpvFrameGraph.TImageResourceType(fResourceOutputFarInscattering.ResourceType).Format,
+                                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                    0,
+                                                                                    1,
+                                                                                    0,
+                                                                                    CountViews
+                                                                                   );
+
+   fOutputFarExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                                  fResourceOutputFarExtinction.VulkanImages[InFlightFrameIndex],
+                                                                                  TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                                  TpvFrameGraph.TImageResourceType(fResourceOutputFarExtinction.ResourceType).Format,
+                                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                                  TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  CountViews
+                                                                                 );
+
+  end else begin
+
+   fOutputFarInscatteringImageViews[InFlightFrameIndex]:=nil;
+   fOutputFarExtinctionImageViews[InFlightFrameIndex]:=nil;
+
+  end;
 
   fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                            fVulkanDescriptorSetLayout);
@@ -502,6 +603,34 @@ begin
                                                                  false
                                                                 );
 
+  if fDualOutput then begin
+
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                 fOutputFarInscatteringImageViews[InFlightFrameIndex].Handle,
+                                                                                                 VK_IMAGE_LAYOUT_GENERAL)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                 fOutputFarExtinctionImageViews[InFlightFrameIndex].Handle,
+                                                                                                 VK_IMAGE_LAYOUT_GENERAL)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+
+  end;
+
   // The acceleration structure is not among these. It lives in the scene's global set, which this pass
   // binds beside its own and does not write to.
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
@@ -520,6 +649,8 @@ begin
   FreeAndNil(fOutputInscatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputExtinctionImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputDepthImageViews[InFlightFrameIndex]);
+  FreeAndNil(fOutputFarInscatteringImageViews[InFlightFrameIndex]);
+  FreeAndNil(fOutputFarExtinctionImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
@@ -539,12 +670,20 @@ var CountViews,Index:TpvInt32;
     Atmospheres:TpvScene3DAtmospheres;
     AtmosphereParameters:TpvScene3DAtmosphere.PAtmosphereParameters;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
-    ImageMemoryBarriers:array[0..2] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
+    CountImageMemoryBarriers:TpvInt32;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  CountViews:=fInstance.CountSurfaceViews;
+
+ // Three images to lay over, or five where the far pair is written as well.
+ if fDualOutput then begin
+  CountImageMemoryBarriers:=5;
+ end else begin
+  CountImageMemoryBarriers:=3;
+ end;
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
@@ -552,7 +691,7 @@ begin
  // image may not be written in, so the pass lays them over themselves.
  begin
   FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
-  for Index:=0 to 2 do begin
+  for Index:=0 to CountImageMemoryBarriers-1 do begin
    ImageMemoryBarriers[Index].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
    ImageMemoryBarriers[Index].srcAccessMask:=0;
    ImageMemoryBarriers[Index].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -567,8 +706,14 @@ begin
     1:begin
      ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
     end;
-    else begin
+    2:begin
      ImageMemoryBarriers[Index].image:=fResourceOutputDepth.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    3:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputFarInscattering.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    else begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputFarExtinction.VulkanImages[aInFlightFrameIndex].Handle;
     end;
    end;
    ImageMemoryBarriers[Index].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -582,7 +727,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    3,@ImageMemoryBarriers[0]);
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
  end;
 
  // Switched off for this frame: the barriers above and below still run, so the image ends in the layout
@@ -737,7 +882,7 @@ begin
  // And back, which is at the same time the barrier that makes the writes visible to the blur behind them.
  begin
   FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
-  for Index:=0 to 2 do begin
+  for Index:=0 to CountImageMemoryBarriers-1 do begin
    ImageMemoryBarriers[Index].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
    ImageMemoryBarriers[Index].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
    ImageMemoryBarriers[Index].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
@@ -752,8 +897,14 @@ begin
     1:begin
      ImageMemoryBarriers[Index].image:=fResourceOutputExtinction.VulkanImages[aInFlightFrameIndex].Handle;
     end;
-    else begin
+    2:begin
      ImageMemoryBarriers[Index].image:=fResourceOutputDepth.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    3:begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputFarInscattering.VulkanImages[aInFlightFrameIndex].Handle;
+    end;
+    else begin
+     ImageMemoryBarriers[Index].image:=fResourceOutputFarExtinction.VulkanImages[aInFlightFrameIndex].Handle;
     end;
    end;
    ImageMemoryBarriers[Index].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -767,7 +918,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    3,@ImageMemoryBarriers[0]);
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
  end;
 
 end;

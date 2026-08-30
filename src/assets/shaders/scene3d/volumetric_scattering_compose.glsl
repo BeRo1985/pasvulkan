@@ -16,6 +16,14 @@ layout(set = 0, binding = 2) uniform sampler2DArray uTextureExtinction;   // and
 // file binds for itself - the whole upsample is the comparison between those two.
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureScatteringDepth;
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+// What the air does over the SKY's distance at each texel - the same ray as the pair above, carried past
+// the geometry instead of stopping at it. With this bound there is nothing left to borrow and nothing left
+// to guess: a sample that looks at the sky reads the sky's air at its own pixel.
+layout(set = 0, binding = 7) uniform sampler2DArray uTextureFarInscattering;
+layout(set = 0, binding = 8) uniform sampler2DArray uTextureFarExtinction;
+#endif
+
 layout(push_constant) uniform PushConstants {
   // x = strength, y = how depth becomes a distance, z = depth weight, w = the largest depth the march may
   // store. That last one is a bound of the half-float buffer and not of the scene, which is the only kind
@@ -247,6 +255,42 @@ void resolveScattering(const in ivec3 at,
   // fetched, because the search below only has to run when the two disagree entirely.
   bool wantSky = isSkyDepth(depthHere);
   bool anyKindred = false;
+
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+
+  // Looking at the sky, and the march has computed what the air does over the sky's distance at every
+  // texel. So there is nothing to search for and nothing to weigh: EVERY tap holds the right kind of
+  // answer, and a plain bilinear read is not a compromise here but the exact thing wanted.
+  //
+  // This is why the depth weighting is skipped rather than merely satisfied. The depth image says where
+  // each ray met geometry, which is what the near pair is indexed by; the far pair is that same ray carried
+  // on to the sky, so all four of its texels describe the same distance - the sky's - however different
+  // their geometry depths are. Weighing them against a depth they are not indexed by would throw away three
+  // of the four taps at exactly the silhouettes this exists for.
+  if(wantSky){
+
+    vec4 bilinear = vec4((1.0 - scatteringFraction.x) * (1.0 - scatteringFraction.y),
+                         scatteringFraction.x * (1.0 - scatteringFraction.y),
+                         (1.0 - scatteringFraction.x) * scatteringFraction.y,
+                         scatteringFraction.x * scatteringFraction.y);
+
+    inscattering = vec3(0.0);
+    extinction = vec3(0.0);
+
+    for(int y = 0; y < 2; y++){
+      for(int x = 0; x < 2; x++){
+        ivec2 tapXY = clamp(scatteringBase + ivec2(x, y), ivec2(0), scatteringSize.xy - ivec2(1));
+        float weight = bilinear[(y * 2) + x];
+        inscattering += texelFetch(uTextureFarInscattering, ivec3(tapXY, at.z), 0).xyz * weight;
+        extinction += texelFetch(uTextureFarExtinction, ivec3(tapXY, at.z), 0).xyz * weight;
+      }
+    }
+
+    return;
+
+  }
+
+#endif
 
   for(int y = 0; y < 2; y++){
     for(int x = 0; x < 2; x++){

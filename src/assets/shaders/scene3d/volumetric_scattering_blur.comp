@@ -32,6 +32,20 @@ layout(set = 0, binding = 4) uniform sampler2DArray uTextureSourceDepth;
 layout(set = 0, binding = 2, rgba16f) writeonly uniform image2DArray uDestinationInscatteringTexture;
 layout(set = 0, binding = 3, rgba16f) writeonly uniform image2DArray uDestinationExtinctionTexture;
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+// The far pair goes through the same blur, in the same dispatch, under the same weights. The weights come
+// out of the depth, and the depth is one image serving both pairs - so carrying the second along costs
+// fetches and stores and not a line of arithmetic more.
+//
+// Blurred and not left raw, although it only ever serves sky pixels: the march jitters its samples, and
+// these two steps are what turns that jitter into smoothness. An unblurred far pair would lay visibly
+// noisier shafts on the sky than on everything beside it.
+layout(set = 0, binding = 5) uniform sampler2DArray uTextureSourceFarInscattering;
+layout(set = 0, binding = 6) uniform sampler2DArray uTextureSourceFarExtinction;
+layout(set = 0, binding = 7, rgba16f) writeonly uniform image2DArray uDestinationFarInscatteringTexture;
+layout(set = 0, binding = 8, rgba16f) writeonly uniform image2DArray uDestinationFarExtinctionTexture;
+#endif
+
 layout(push_constant) uniform PushConstants {
   ivec4 directionSpare; // xy = the step from one tap to the next, in texels; zw unused
 } pushConstants;
@@ -68,6 +82,11 @@ void main(){
   vec3 sumExtinction = centerExtinction.xyz;
   float sum = 1.0;
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+  vec3 sumFarInscattering = texelFetch(uTextureSourceFarInscattering, at, 0).xyz;
+  vec3 sumFarExtinction = texelFetch(uTextureSourceFarExtinction, at, 0).xyz;
+#endif
+
   for(int r = 1; r <= int(KernelRadius); r++){
 
     for(int side = 0; side < 2; side++){
@@ -93,6 +112,14 @@ void main(){
       sumExtinction += tapExtinction.xyz * weight;
       sum += weight;
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+      // The same weight, deliberately reused rather than recomputed from the far pair's own depths - there
+      // are none. Both pairs belong to the same texel and the same ray, and the depth image describes where
+      // that ray ended; the far pair is the same ray carried on, not a different one.
+      sumFarInscattering += texelFetch(uTextureSourceFarInscattering, ivec3(tapXY, at.z), 0).xyz * weight;
+      sumFarExtinction += texelFetch(uTextureSourceFarExtinction, ivec3(tapXY, at.z), 0).xyz * weight;
+#endif
+
     }
 
   }
@@ -103,5 +130,13 @@ void main(){
   // correctly at each step.
   imageStore(uDestinationInscatteringTexture, at, vec4(sumInscattering / max(sum, 1e-4), 1.0));
   imageStore(uDestinationExtinctionTexture, at, vec4(sumExtinction / max(sum, 1e-4), 1.0));
+
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+  // Normalised by the very same sum, which is what makes the two pairs comparable at the other end: the
+  // compose picks one of them per sample, and a pair normalised differently would show that choice as a
+  // step in brightness rather than as the difference between near air and far air.
+  imageStore(uDestinationFarInscatteringTexture, at, vec4(sumFarInscattering / max(sum, 1e-4), 1.0));
+  imageStore(uDestinationFarExtinctionTexture, at, vec4(sumFarExtinction / max(sum, 1e-4), 1.0));
+#endif
 
 }

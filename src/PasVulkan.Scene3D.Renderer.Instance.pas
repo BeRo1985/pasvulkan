@@ -1132,6 +1132,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringShowExtinctionOnly:Boolean;
        fVolumetricScatteringSkyTapSearch:Boolean;
        fVolumetricScatteringCoverageWeighting:Boolean;
+       fVolumetricScatteringDualOutput:Boolean;
       private
        fGPUBatchRanges:TpvScene3D.TGPUBatchRanges;
        fExpandRangeInfos:TpvScene3D.TGPUExpandRangeInfos;
@@ -1734,6 +1735,30 @@ type { TpvScene3DRendererInstance }
        // Does nothing on the per-sample path, and rightly so: there every sample carries its own colour,
        // so there is no coverage mix left to weigh.
        property VolumetricScatteringCoverageWeighting:Boolean read fVolumetricScatteringCoverageWeighting write fVolumetricScatteringCoverageWeighting;
+       // The march records its result TWICE along the one ray - where it passes the geometry, and again out
+       // at the sky - so that a sample looking past a silhouette reads the sky's own air instead of
+       // borrowing anybody's. This is the exact answer to the rim, and the only one of the three that
+       // computes the missing quantity rather than estimating it.
+       //
+       // The problem it solves, stated once: the resolved depth names the nearest sample, so at a
+       // silhouette the march walks to the geometry and the air over the sky behind it is computed by
+       // nobody. Per-sample compositing does not reach that - every sample gets its own colour and its own
+       // depth, but they all read the same marched air. Both were measured: the rim survives per-sample
+       // compositing, and it survives a size divisor of one. Borrowing from a neighbouring sky texel
+       // (VolumetricScatteringSkyTapSearch) removes the rim but jumps as the camera moves, because WHICH
+       // neighbour is nearest changes; switching that search off put the rim back and took the flicker
+       // with it, which is what settled the matter.
+       //
+       // Read when the frame graph is built: it adds two half-resolution images to the march and carries
+       // them through both blur steps, so it cannot be switched at run time. With it on, the sky-tap
+       // search has nothing left to do.
+       //
+       // What it costs is not memory but marching. The continuation gets a step budget of its OWN rather
+       // than stretching the one ray - otherwise the step count, which is derived from the ray's length,
+       // would leave a twentieth of the samples in front of the geometry and make the NEAR answer worse in
+       // exchange for a far one only silhouettes need. So a pixel with geometry in front of it now marches
+       // twice: its own distance, and the rest of the way to the sky.
+       property VolumetricScatteringDualOutput:Boolean read fVolumetricScatteringDualOutput write fVolumetricScatteringDualOutput;
       public
        property PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays read fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays write fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays;
        property PerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandSizeValues read fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes;
@@ -2796,6 +2821,7 @@ begin
  fVolumetricScatteringShowExtinctionOnly:=false;
  fVolumetricScatteringSkyTapSearch:=false;
  fVolumetricScatteringCoverageWeighting:=false;
+ fVolumetricScatteringDualOutput:=false;
 
  if assigned(fVirtualReality) then begin
 

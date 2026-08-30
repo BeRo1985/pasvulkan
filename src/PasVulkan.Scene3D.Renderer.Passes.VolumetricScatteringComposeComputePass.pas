@@ -138,6 +138,13 @@ type { TpvScene3DRendererPassesVolumetricScatteringComposeComputePass }
        fResourceScattering:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceExtinction:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceScatteringDepth:TpvFrameGraph.TPass.TUsedImageResource;
+       // Whether the march produced a second answer for the sky's distance, in which case a sample looking
+       // past a silhouette reads that instead of weighing four taps that all belong to the geometry.
+       fDualOutput:Boolean;
+       fResourceFarScattering:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceFarExtinction:TpvFrameGraph.TPass.TUsedImageResource;
+       fFarScatteringImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fFarExtinctionImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        // Under MSAA this pass reads the RAW multisampled depth and answers once per sample, because the
        // resolved depth has already thrown away what it needs: the resolve keeps the nearest sample, so a
        // silhouette pixel whose colour is nine tenths sky reports the sliver of geometry in front and then
@@ -190,6 +197,8 @@ begin
 
  fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
+ fDualOutput:=fInstance.VolumetricScatteringDualOutput;
+
  Name:='VolumetricScatteringComposeComputePass';
 
  fResourceInput:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
@@ -218,6 +227,30 @@ begin
                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                          []
                                         );
+
+ // What the air does over the SKY's distance, blurred by the same two steps as the pair above. With these
+ // bound there is nothing to borrow and nothing to estimate: a sample that looks at the sky reads the
+ // sky's own air, at its own pixel.
+ if fDualOutput then begin
+
+  fResourceFarScattering:=AddImageInput('resourcetype_volumetric_scattering',
+                                        'resource_volumetric_scattering_far_blurred_xy',
+                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        []
+                                       );
+
+  fResourceFarExtinction:=AddImageInput('resourcetype_volumetric_scattering',
+                                        'resource_volumetric_scattering_far_extinction_blurred_xy',
+                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        []
+                                       );
+
+ end else begin
+
+  fResourceFarScattering:=nil;
+  fResourceFarExtinction:=nil;
+
+ end;
 
  // And under MSAA the raw multisampled depth as well, which is the only place the per-sample coverage of
  // a silhouette pixel still exists. The resolved depth this pass otherwise reads has already been reduced
@@ -257,9 +290,17 @@ begin
  // Two variants, and which one is chosen is settled here rather than per frame: the MSAA one declares a
  // sampler2DMSArray and a binding the other does not have, so the descriptor set layout differs with it.
  if fMSAA then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_msaa_comp.spv');
+  if fDualOutput then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_msaa_dual_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_msaa_comp.spv');
+  end;
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_comp.spv');
+  if fDualOutput then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_dual_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('volumetric_scattering_compose_comp.spv');
+  end;
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -289,7 +330,12 @@ begin
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
+ // Six sampled images normally, eight with the far pair among them.
+ if fDualOutput then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*8);
+ end else begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
+ end;
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
@@ -326,6 +372,18 @@ begin
                                        []);
  if fMSAA then begin
   fVulkanDescriptorSetLayout.AddBinding(6,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+ end;
+ if fDualOutput then begin
+  fVulkanDescriptorSetLayout.AddBinding(7,
+                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        []);
+  fVulkanDescriptorSetLayout.AddBinding(8,
                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                         1,
                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -500,6 +558,69 @@ begin
                                                                  false
                                                                 );
 
+  if fDualOutput then begin
+
+   fFarScatteringImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                            fResourceFarScattering.VulkanImages[InFlightFrameIndex],
+                                                                            TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                            TpvFrameGraph.TImageResourceType(fResourceFarScattering.ResourceType).Format,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                            0,
+                                                                            1,
+                                                                            0,
+                                                                            CountViews
+                                                                           );
+
+   fFarExtinctionImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                            fResourceFarExtinction.VulkanImages[InFlightFrameIndex],
+                                                                            TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
+                                                                            TpvFrameGraph.TImageResourceType(fResourceFarExtinction.ResourceType).Format,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                            TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                            0,
+                                                                            1,
+                                                                            0,
+                                                                            CountViews
+                                                                           );
+
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                 fFarScatteringImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceFarScattering.ResourceTransition.Layout)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                 fFarExtinctionImageViews[InFlightFrameIndex].Handle,
+                                                                                                 fResourceFarExtinction.ResourceTransition.Layout)],
+                                                                  [],
+                                                                  [],
+                                                                  false
+                                                                 );
+
+  end else begin
+
+   fFarScatteringImageViews[InFlightFrameIndex]:=nil;
+   fFarExtinctionImageViews[InFlightFrameIndex]:=nil;
+
+  end;
+
   if fMSAA then begin
 
    // The raw multisampled depth needs a depth-aspect array view of its own - the frame graph's default
@@ -551,6 +672,8 @@ begin
   FreeAndNil(fScatteringImageViews[InFlightFrameIndex]);
   FreeAndNil(fExtinctionImageViews[InFlightFrameIndex]);
   FreeAndNil(fScatteringDepthImageViews[InFlightFrameIndex]);
+  FreeAndNil(fFarScatteringImageViews[InFlightFrameIndex]);
+  FreeAndNil(fFarExtinctionImageViews[InFlightFrameIndex]);
   FreeAndNil(fMSAADepthImageViews[InFlightFrameIndex]);
   FreeAndNil(fOutputImageViews[InFlightFrameIndex]);
  end;

@@ -531,6 +531,15 @@ compileshaderarguments=(
   "-V volumetric_scattering_compose.comp -DVOLUMETRIC_SCATTERING_MSAA -o ${tempPath}/volumetric_scattering_compose_msaa_comp.spv" # per-sample against the raw depth, like fog's own MSAA variant
   "-V volumetric_scattering_compose.frag -o ${tempPath}/volumetric_scattering_compose_per_sample_frag.spv" # the same, but before the resolve and at sample rate, so no averaging is needed at all
 
+  # The dual-output family: the march records the air twice along one ray, at the geometry and at the sky,
+  # so a sample looking past a silhouette reads the sky's own air instead of borrowing anybody's.
+  "-V volumetric_scattering_raymarch.comp -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_raymarch_dual_comp.spv"
+  "-V volumetric_scattering_raymarch.comp --target-env spirv1.4 -DRAYTRACING -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_raymarch_raytracing_dual_comp.spv"
+  "-V volumetric_scattering_blur.comp -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_blur_dual_comp.spv"
+  "-V volumetric_scattering_compose.comp -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_compose_dual_comp.spv"
+  "-V volumetric_scattering_compose.comp -DVOLUMETRIC_SCATTERING_MSAA -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_compose_msaa_dual_comp.spv"
+  "-V volumetric_scattering_compose.frag -DVOLUMETRIC_SCATTERING_DUAL_OUTPUT -o ${tempPath}/volumetric_scattering_compose_per_sample_dual_frag.spv"
+
   "-V antialiasing_smaa_temporal_resolve.vert -o ${tempPath}/antialiasing_smaa_temporal_resolve_vert.spv"
   "-V antialiasing_smaa_temporal_resolve.frag -o ${tempPath}/antialiasing_smaa_temporal_resolve_frag.spv"
 

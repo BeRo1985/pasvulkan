@@ -79,6 +79,28 @@ layout(set = 1, binding = 3, rgba16f) writeonly uniform image2DArray uDestinatio
 // edge between them.
 layout(set = 1, binding = 6, r32f) writeonly uniform image2DArray uDestinationDepthTexture;
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+// The same two quantities again, for a ray that does NOT stop at the geometry: what the air does over the
+// sky's distance at this pixel.
+//
+// Why a second answer is needed at all. At a silhouette the resolved depth names the nearest sample - it
+// has to, "is any part of this pixel in front" being the right question for an occlusion test - so the
+// march walks to the geometry, and the air over the sky standing behind it is computed by nobody. The
+// compose then hands that sky the geometry's air, and that is the rim along every outline. Compositing per
+// sample does not reach it: each sample gets its own colour and its own depth, but they all read the same
+// marched air. Measured, both ways - the rim survives per-sample compositing, and it survives a size
+// divisor of one.
+//
+// Borrowing the value from a neighbouring sky texel was built and measured too, and it is the honest
+// second best: it does remove the rim, but WHICH neighbour is nearest changes as the camera moves and the
+// answer jumps with it. Switching that search off put the rim back and took the flicker with it, which is
+// what settled the question.
+//
+// So it is computed rather than borrowed: one march, two results, read off at two points of the same ray.
+layout(set = 1, binding = 7, rgba16f) writeonly uniform image2DArray uDestinationFarInscatteringTexture;
+layout(set = 1, binding = 8, rgba16f) writeonly uniform image2DArray uDestinationFarExtinctionTexture;
+#endif
+
 layout(push_constant) uniform PushConstants {
   // xyz = the direction the sunlight travels, w = the shaft gain.
   //
@@ -495,6 +517,15 @@ void main(){
   vec3 inscattering = vec3(0.0);
   vec3 transmittance = vec3(1.0);
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+  // Declared out here rather than beside the continuation, because the tail below has to see them - and
+  // initialised to the empty answer, so that a ray which never enters the march at all (the sun below the
+  // horizon, or a degenerate length) leaves them at "no light gathered, nothing taken away" rather than at
+  // whatever was on the stack.
+  vec3 farInscattering = vec3(0.0);
+  vec3 farTransmittance = vec3(1.0);
+#endif
+
   // Only while the sun is above the horizon: below it there is nothing to scatter.
   if((rayLength > 1e-4) && (dot(pushConstants.sunDirectionShaftGain.xyz, vec3(0.0, -1.0, 0.0)) > 0.0)){
 
@@ -643,6 +674,94 @@ void main(){
 
     }
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+
+    // The ray carried on past the geometry, to where the sky is. Everything gathered so far is exactly what
+    // the near answer is, so the far one starts from it - inscattering is a prefix integral along the ray,
+    // which is the whole reason two answers come out of one march instead of two.
+    farInscattering = inscattering;
+    farTransmittance = transmittance;
+
+    // A budget of its OWN, and this is the point of doing it as a second loop rather than simply marching
+    // further. Step count and segment length are derived from the ray's length, so stretching the one ray
+    // to the far end would spread the same steps over twenty times the distance and leave five per cent of
+    // them in front of the geometry. The near answer - the one almost every pixel actually uses - would get
+    // worse in exchange for a far answer only silhouettes need. So the near march keeps precisely the
+    // sampling it has today, and the continuation brings its own.
+    float farRayLength = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+    float continuationLength = farRayLength - rayLength;
+
+    if(continuationLength > 1e-4){
+
+      int continuationStepCount = int(clamp(mix(float(pushConstants.flagsStepCountsSpare.y),
+                                                float(pushConstants.flagsStepCountsSpare.z),
+                                                clamp(continuationLength * 0.01, 0.0, 1.0)),
+                                            1.0,
+                                            256.0));
+      float continuationTimeStep = 1.0 / float(continuationStepCount);
+      float continuationSegmentLength = max(continuationLength * continuationTimeStep, 0.0);
+      float continuationMarchTime = offset * continuationTimeStep;
+
+      for(int stepIndex = 0; stepIndex < continuationStepCount; stepIndex++){
+
+        // Measured from where the near march stopped, so the two halves meet without a gap and without
+        // counting the same piece of air twice.
+        vec3 particlePosition = startPosition +
+                                (rayDirection * (rayLength + clamp(continuationMarchTime * continuationLength,
+                                                                   0.0,
+                                                                   continuationLength)));
+
+        float shellRayleigh, shellMie;
+        computeShellDensities(particlePosition, shellRayleigh, shellMie);
+
+        vec3 scatteringCoefficient;
+        vec3 extinctionCoefficient;
+
+        if(noiseDensity){
+          vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
+                               pushConstants.topRadiusHeightsNoiseScale.w;
+          float density = shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+          scatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.z) * phaseNoise;
+          extinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.w);
+        }else{
+          scatteringCoefficient = (((bR * shellRayleigh) * phaseRayleigh) + ((bM * shellMie) * phaseMie)) * mediumScale;
+          extinctionCoefficient = ((bR * shellRayleigh) + (bM * shellMie)) * mediumScale;
+        }
+
+        // The shadow ray's reach is the FAR length here, not the near one: a sample out at three kilometres
+        // needs to be able to ask about occluders that far away, and handing it the near ray's length would
+        // cap the query short of itself.
+        float shadowLit = sampleShadow(particlePosition, farRayLength);
+
+        vec3 segmentWeight = legacyLook ? vec3(continuationSegmentLength)
+                                        : segmentIntegral(extinctionCoefficient, continuationSegmentLength);
+
+        vec3 segmentTransmittance = exp(-(extinctionCoefficient * continuationSegmentLength));
+
+        // The same order as the near march, deliberately, including which side of the attenuation the
+        // sample is read on - the two halves are one ray and must not be integrated by two different rules.
+        if(legacyLook){
+          farTransmittance *= segmentTransmittance;
+        }
+
+        if(shadowLit > 0.0){
+          farInscattering += ((scatteringCoefficient * shadowLit) * segmentWeight) * farTransmittance;
+        }
+
+        if(!legacyLook){
+          farTransmittance *= segmentTransmittance;
+        }
+
+        continuationMarchTime += continuationTimeStep;
+
+      }
+
+    }
+
+    farInscattering *= pushConstants.sunRadianceSpare.xyz * pushConstants.sunDirectionShaftGain.w;
+
+#endif
+
     // The light itself, and then the gain on top of it. Two things, in that order, and coloured because
     // the light is: a low sun reddens what it lights, and the shafts belong to the same light as the
     // ground under them. Where this used to be the gain alone, the shafts stayed just as bright and just
@@ -668,6 +787,14 @@ void main(){
     inscattering *= fade;
     transmittance = vec3(1.0);
 
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+    // Under the old look the far answer is simply the near one. That mode exists to reproduce a picture
+    // which had no such distinction in it, so inventing one here would make the switch stop doing the one
+    // thing it is for.
+    farInscattering = inscattering;
+    farTransmittance = transmittance;
+#endif
+
   }else{
 
     // What the distance itself adds over and above the march, and takes away with it. Weighted toward the
@@ -678,6 +805,18 @@ void main(){
                 (hasGeometry ? 1.0 : pow(1.0 - clamp(rayDirection.y, 0.0, 1.0), 16.0));
       inscattering += ((aerialWeight * aerialColour) * f) * transmittance;
       transmittance *= 1.0 - f;
+
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+      // The same term for the far answer, but computed as what it is: a ray that reaches the sky. It gets
+      // the full distance instead of the geometry's, and the horizon weighting that a ray hitting nothing
+      // gets - because that is what this second answer describes. Taking the near ray's numbers here would
+      // hand the sky the aerial perspective of the tower standing in front of it, which is the very
+      // confusion this whole second output exists to end.
+      float farF = clamp(1.0 - exp(-1.0), 0.0, 1.0) * pow(1.0 - clamp(rayDirection.y, 0.0, 1.0), 16.0);
+      farInscattering += ((aerialWeight * aerialColour) * farF) * farTransmittance;
+      farTransmittance *= 1.0 - farF;
+#endif
+
     }
 
   }
@@ -697,5 +836,18 @@ void main(){
   imageStore(uDestinationInscatteringTexture, at, vec4(max(inscattering, vec3(0.0)), 1.0));
   imageStore(uDestinationExtinctionTexture, at, vec4(clamp(transmittance, vec3(0.0), vec3(1.0)), 1.0));
   imageStore(uDestinationDepthTexture, at, vec4(linearViewDepth));
+
+#ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
+  // The same net as above, and for the same reason: these two go through the blur and onto the picture as
+  // well, so one infinity here would not stay where it was made.
+  if(any(isnan(farInscattering)) || any(isinf(farInscattering))){
+    farInscattering = vec3(0.0);
+  }
+  if(any(isnan(farTransmittance)) || any(isinf(farTransmittance))){
+    farTransmittance = vec3(1.0);
+  }
+  imageStore(uDestinationFarInscatteringTexture, at, vec4(max(farInscattering, vec3(0.0)), 1.0));
+  imageStore(uDestinationFarExtinctionTexture, at, vec4(clamp(farTransmittance, vec3(0.0), vec3(1.0)), 1.0));
+#endif
 
 }
