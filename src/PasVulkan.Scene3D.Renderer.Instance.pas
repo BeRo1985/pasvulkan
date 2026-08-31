@@ -412,8 +412,31 @@ type { TpvScene3DRendererInstance }
              MaxLuminance:TpvFloat;
              ManualLMax:TpvFloat;
              CountPixels:TpvUInt32;
+             // Appended, so that everything above keeps its offset in luminance_average.comp.
+             TimeCoefficientBrighter:TpvFloat; // per-frame adaptation weight while the scene gets brighter
+             TimeCoefficientDarker:TpvFloat;   // ... and while it gets darker
+             Flags:TpvUInt32;                  // bit 0 = FLAG_LOGARITHMIC_ADAPTATION (log2 smoothing with the two weights above)
             end;
             PLuminancePushConstants=^TLuminancePushConstants;
+            // The histogram compute shader has a block of its own, WITHOUT the leading vec4, and it always
+            // had one: luminance_histogram.comp starts at offset 0 with minLogLuminance. Both passes used
+            // to push TLuminancePushConstants, so the histogram read its four used fields off the wrong
+            // offsets - minLogLuminance got MinimumLuminance, inverseLogLuminanceRange got LuminanceFactor,
+            // and the per-pixel clamp got the two log2 bounds as if they were linear luminances. The
+            // resulting window was ~1.0 .. 1.19 wide instead of the configured one, which made the metric
+            // little more than "how much of the picture is brighter than 1", and that is what made the
+            // exposure lurch on sudden brightness changes. Filled from the same values as before unless
+            // LuminanceHistogramConfiguredWindow says otherwise, so nothing changes for anybody by default.
+            TLuminanceHistogramPushConstants=packed record
+             MinLogLuminance:TpvFloat;
+             LogLuminanceRange:TpvFloat;      // not read by the shader, present to match its block
+             InverseLogLuminanceRange:TpvFloat;
+             TimeCoefficient:TpvFloat;        // not read by the shader either
+             MinLuminance:TpvFloat;
+             MaxLuminance:TpvFloat;
+             CountPixels:TpvUInt32;           // nor this one
+            end;
+            PLuminanceHistogramPushConstants=^TLuminanceHistogramPushConstants;
             TIntVector4=record
              x,y,z,w:TpvInt32;
             end;
@@ -941,8 +964,13 @@ type { TpvScene3DRendererInstance }
        fMaximumLuminance:TpvScalar;
        fLuminanceFactor:TpvScalar;
        fLuminanceExponent:TpvScalar;
+       fLuminanceAdaptationLogarithmic:Boolean;   // false = the old linear smoothing with one speed for both directions
+       fLuminanceAdaptationSpeedBrighter:TpvScalar; // 1/s, only used when the above is true
+       fLuminanceAdaptationSpeedDarker:TpvScalar;   // 1/s, dito
+       fLuminanceHistogramConfiguredWindow:Boolean; // false = the old, wrongly fed histogram window (see TLuminanceHistogramPushConstants)
       public
        fLuminancePushConstants:TLuminancePushConstants;
+       fLuminanceHistogramPushConstants:TLuminanceHistogramPushConstants;
        fLuminanceEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fLuminanceEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
@@ -1384,10 +1412,33 @@ type { TpvScene3DRendererInstance }
       public
        property LuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceHistogramVulkanBuffers;
        property LuminanceVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceVulkanBuffers;
+       // The frame the automatic exposure may move in: the smallest and the largest factor the picture is
+       // ever scaled by before tone mapping, i.e. the darkest and the brightest it can be driven. Wide open
+       // by default (0 .. 16777216), which no scene reaches, so the automatic has the full range of the
+       // histogram window unless a game narrows it here. Runtime-writable.
        property MinimumLuminance:TpvScalar read fMinimumLuminance write fMinimumLuminance;
        property MaximumLuminance:TpvScalar read fMaximumLuminance write fMaximumLuminance;
        property LuminanceFactor:TpvScalar read fLuminanceFactor write fLuminanceFactor;
        property LuminanceExponent:TpvScalar read fLuminanceExponent write fLuminanceExponent;
+       // How the measured luminance is smoothed over time. False (the default) keeps the old behaviour:
+       // one linear interpolation with a single speed of 2*Pi per second. That is not a constant speed in
+       // stops - a step into the light covers most of it in the first frame while the same step back takes
+       // the better part of a second - which is why the exposure could feel as if it snapped. True smooths
+       // in log2 space with a speed per direction, so a frame is the same fraction of the remaining stops
+       // either way. Runtime-toggleable (A/B).
+       property LuminanceAdaptationLogarithmic:Boolean read fLuminanceAdaptationLogarithmic write fLuminanceAdaptationLogarithmic;
+       // The two speeds, in 1/s, as the exponential rate of 1-exp(-speed*dt) - the same unit the fixed
+       // 2*Pi was. Brighter = the scene got brighter and the picture stops down (the eye is fast here),
+       // darker = the other way round (the eye is slow). Both default to 2*Pi, so switching only the flag
+       // above changes the shape of the response and not its speed.
+       property LuminanceAdaptationSpeedBrighter:TpvScalar read fLuminanceAdaptationSpeedBrighter write fLuminanceAdaptationSpeedBrighter;
+       property LuminanceAdaptationSpeedDarker:TpvScalar read fLuminanceAdaptationSpeedDarker write fLuminanceAdaptationSpeedDarker;
+       // Whether the histogram bins the configured MinLogLuminance..MaxLogLuminance window (true) or keeps
+       // being fed the values it was fed while its push constant block was read off the wrong offsets
+       // (false, the default - see TLuminanceHistogramPushConstants). Everything tuned against the old
+       // behaviour keeps it; a game that switches this on measures the window it actually asked for and
+       // will want to check its LuminanceFactor afterwards.
+       property LuminanceHistogramConfiguredWindow:Boolean read fLuminanceHistogramConfiguredWindow write fLuminanceHistogramConfiguredWindow;
       public
        property LensFactor:TpvScalar read fLensFactor write fLensFactor;
        property BloomFactor:TpvScalar read fBloomFactor write fBloomFactor;
@@ -3074,10 +3125,18 @@ begin
 
  fPointerToInFlightFrameStates:=@fInFlightFrameStates;
 
- fMinimumLuminance:=0.0;
- fMaximumLuminance:=16777216.0;
+ fMinimumLuminance:=0.0;        // no frame at all: neither bound is reachable, the automatic has the whole
+ fMaximumLuminance:=16777216.0; // histogram window. A game that wants a frame narrows these two.
  fLuminanceFactor:=1.0;
  fLuminanceExponent:=1.0;
+
+ // All three default to what the exposure did before they existed: linear smoothing at 2*Pi per second in
+ // both directions, and the histogram fed as it was fed while its push constants were read off the wrong
+ // offsets. Nothing that was tuned against that changes unless it asks for the new behaviour.
+ fLuminanceAdaptationLogarithmic:=false;
+ fLuminanceAdaptationSpeedBrighter:=TwoPI;
+ fLuminanceAdaptationSpeedDarker:=TwoPI;
+ fLuminanceHistogramConfiguredWindow:=false;
 
  fLensFactor:=0.4;
  fBloomFactor:=0.9;
@@ -13162,6 +13221,37 @@ begin
   end;
  end;
  fLuminancePushConstants.CountPixels:=fScaledWidth*fScaledHeight*fCountSurfaceViews;
+
+ // The two directional weights, in the same shape as the single one above. They are computed even when the
+ // logarithmic adaptation is off, because they cost nothing and a runtime toggle then takes effect at once.
+ fLuminancePushConstants.TimeCoefficientBrighter:=Clamp(1.0-exp(t*(-fLuminanceAdaptationSpeedBrighter)),0.0,1.0);
+ fLuminancePushConstants.TimeCoefficientDarker:=Clamp(1.0-exp(t*(-fLuminanceAdaptationSpeedDarker)),0.0,1.0);
+ if fLuminanceAdaptationLogarithmic then begin
+  fLuminancePushConstants.Flags:=1; // FLAG_LOGARITHMIC_ADAPTATION in luminance_average.comp
+ end else begin
+  fLuminancePushConstants.Flags:=0;
+ end;
+
+ // And the histogram's own block. Its fields carry the same values as before unless the configured window
+ // is asked for: the shader reads its four used fields from offsets 0/8/16/20, which - while both passes
+ // pushed the block above - landed on MinimumLuminance, LuminanceFactor and the two log2 bounds taken as
+ // linear luminances. Reproduced here on purpose rather than quietly corrected, so that everything already
+ // tuned against it keeps the exposure it has.
+ if fLuminanceHistogramConfiguredWindow then begin
+  fLuminanceHistogramPushConstants.MinLogLuminance:=CameraPreset.MinLogLuminance;
+  fLuminanceHistogramPushConstants.LogLuminanceRange:=fLuminancePushConstants.LogLuminanceRange;
+  fLuminanceHistogramPushConstants.InverseLogLuminanceRange:=fLuminancePushConstants.InverseLogLuminanceRange;
+  fLuminanceHistogramPushConstants.MinLuminance:=fLuminancePushConstants.MinLuminance;
+  fLuminanceHistogramPushConstants.MaxLuminance:=fLuminancePushConstants.MaxLuminance;
+ end else begin
+  fLuminanceHistogramPushConstants.MinLogLuminance:=fMinimumLuminance;
+  fLuminanceHistogramPushConstants.LogLuminanceRange:=fMaximumLuminance;
+  fLuminanceHistogramPushConstants.InverseLogLuminanceRange:=fLuminanceFactor;
+  fLuminanceHistogramPushConstants.MinLuminance:=CameraPreset.MinLogLuminance;
+  fLuminanceHistogramPushConstants.MaxLuminance:=fLuminancePushConstants.LogLuminanceRange;
+ end;
+ fLuminanceHistogramPushConstants.TimeCoefficient:=fLuminancePushConstants.TimeCoefficient; // both unread by the
+ fLuminanceHistogramPushConstants.CountPixels:=fLuminancePushConstants.CountPixels;         // histogram shader
 
  case Renderer.GlobalIlluminationMode of
 

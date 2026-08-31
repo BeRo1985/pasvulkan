@@ -41,7 +41,12 @@ shared uint sharedHistogram[16 * 16];
 void main() {
 
   sharedHistogram[gl_LocalInvocationIndex] = 0;
-  groupMemoryBarrier();
+
+  // barrier() and not groupMemoryBarrier(): the latter orders memory accesses but does NOT synchronize
+  // execution, so an invocation could reach its atomicAdd below while another one has not zeroed its own
+  // slot yet - that count would then be wiped. Every invocation clears one bin and afterwards adds into an
+  // arbitrary one, so the clearing of ALL of them has to have happened before ANY of the adds.
+  barrier();
 
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
   ivec2 uv = invocationPosition.xy;
@@ -68,7 +73,9 @@ void main() {
     }
   }
 
-  groupMemoryBarrier();
+  // And the same on the way out: the shared bin may only be read once every invocation of this workgroup
+  // has contributed its pixel to it.
+  barrier();
 
   atomicAdd(histogramBuffer[gl_LocalInvocationIndex], sharedHistogram[gl_LocalInvocationIndex]);
 

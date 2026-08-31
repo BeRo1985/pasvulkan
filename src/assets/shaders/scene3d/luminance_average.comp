@@ -36,11 +36,21 @@ layout(push_constant, std140) uniform PushConstants {
   float timeCoefficient;
   
   float minLuminance;
-  float maxLuminance; 
-  float manualLMax;  
+  float maxLuminance;
+  float manualLMax;
   uint countPixels;
 
+  // Appended AFTER countPixels on purpose: every field above keeps the offset it had, so a caller that
+  // fills only the old ones gets exactly the old behaviour (flags = 0).
+  float timeCoefficientBrighter; // per-frame adaptation weight while the scene gets brighter (stopping down)
+  float timeCoefficientDarker;   // ... and while it gets darker (opening up)
+  uint flags;                    // see FLAG_* below
+
 } pushConstants;
+
+// Smooth in log2 space with the two speeds above instead of linearly with timeCoefficient. Off = the old
+// behaviour, bit for bit.
+#define FLAG_LOGARITHMIC_ADAPTATION 1u
 
 /* clang-format on */
 
@@ -141,7 +151,29 @@ void main() {
     newHistogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
 
     // Interpolate between the last and the new histogram luminance over time for smooth transitions
-    newHistogramLuminance = mix(lastHistogramLuminanceBuffer.histogramLuminance, newHistogramLuminance, pushConstants.timeCoefficient);
+    float lastHistogramLuminance = lastHistogramLuminanceBuffer.histogramLuminance;
+
+    if((pushConstants.flags & FLAG_LOGARITHMIC_ADAPTATION) != 0u){
+
+      // In log2 space, and with a speed per direction. Linear interpolation of a luminance is not a
+      // constant speed in stops, which is what the eye and the tone mapper actually see: a step from 0.1
+      // to 10 covers more than half of its 6.6 stops in the very first frame at a weight of 0.1, while the
+      // same step downwards moves 0.15 of them. That is why the exposure used to snap when the view opened
+      // into the light and to crawl the other way round. Here one frame is the same fraction of the
+      // remaining stops in both directions, and how many that is per direction is the caller's choice -
+      // brightening (the picture stopping down) is normally the faster one, as it is in the eye.
+      float lastLogLuminance = log2(max(lastHistogramLuminance, 1e-8));
+      float targetLogLuminance = log2(max(newHistogramLuminance, 1e-8));
+
+      float timeCoefficient = (targetLogLuminance > lastLogLuminance) ? pushConstants.timeCoefficientBrighter : pushConstants.timeCoefficientDarker;
+
+      newHistogramLuminance = exp2(mix(lastLogLuminance, targetLogLuminance, timeCoefficient));
+
+    }else{
+
+      newHistogramLuminance = mix(lastHistogramLuminance, newHistogramLuminance, pushConstants.timeCoefficient);
+
+    }
 
     // again to avoid Infinities and NaNs just for safety                                       
     float histogramLuminance = histogramLuminanceBuffer.histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
@@ -156,9 +188,14 @@ void main() {
     float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
 #endif
 
+    // .x / .y are the frame the automatic exposure may move in - the darkest and the brightest the picture
+    // is ever allowed to be scaled by, i.e. the minimum and the maximum exposure. The engine ships them
+    // wide open (0 .. 16777216, which no scene reaches), so a game that wants a frame has to say so; see
+    // TpvScene3DRendererInstance.MinimumLuminance / MaximumLuminance. It bounds the OUTPUT, while the
+    // smoothed luminance itself stays inside the histogram window, so there is no integrator to wind up.
     histogramLuminanceBuffer.luminanceFactor = clamp(
-      pow(1.0 / max(1e-6, (pushConstants.manualLMax < 0.0) ? Lmax : pushConstants.manualLMax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z, 
-      pushConstants.minMaxLuminanceFactorExponent.x, 
+      pow(1.0 / max(1e-6, (pushConstants.manualLMax < 0.0) ? Lmax : pushConstants.manualLMax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z,
+      pushConstants.minMaxLuminanceFactorExponent.x,
       pushConstants.minMaxLuminanceFactorExponent.y
     );
 

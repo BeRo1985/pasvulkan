@@ -184,7 +184,9 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererInstance.TLuminancePushConstants));
+ // The histogram shader's own block, which is not the one of the average pass: it has no leading vec4, so
+ // its fields sit at other offsets. See TpvScene3DRendererInstance.TLuminanceHistogramPushConstants.
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererInstance.TLuminanceHistogramPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -340,8 +342,8 @@ begin
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererInstance.TLuminancePushConstants),
-                                 @fInstance.fLuminancePushConstants);
+                                 SizeOf(TpvScene3DRendererInstance.TLuminanceHistogramPushConstants),
+                                 @fInstance.fLuminanceHistogramPushConstants);
 
  if assigned(fInstance.Renderer.VulkanDevice.BreadcrumbBuffer) then begin
   fInstance.Renderer.VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'LuminanceHistogramComputePass');
