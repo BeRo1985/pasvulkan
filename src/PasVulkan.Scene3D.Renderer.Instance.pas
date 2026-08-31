@@ -416,6 +416,7 @@ type { TpvScene3DRendererInstance }
              TimeCoefficientBrighter:TpvFloat; // per-frame adaptation weight while the scene gets brighter
              TimeCoefficientDarker:TpvFloat;   // ... and while it gets darker
              Flags:TpvUInt32;                  // bit 0 = FLAG_LOGARITHMIC_ADAPTATION (log2 smoothing with the two weights above)
+             BrightnessFactor:TpvFloat;        // base brightness, multiplied in after the automatic exposure and its frame
             end;
             PLuminancePushConstants=^TLuminancePushConstants;
             // The histogram compute shader has a block of its own, WITHOUT the leading vec4, and it always
@@ -968,6 +969,7 @@ type { TpvScene3DRendererInstance }
        fLuminanceAdaptationSpeedBrighter:TpvScalar; // 1/s, only used when the above is true
        fLuminanceAdaptationSpeedDarker:TpvScalar;   // 1/s, dito
        fLuminanceHistogramConfiguredWindow:Boolean; // false = the old, wrongly fed histogram window (see TLuminanceHistogramPushConstants)
+       fBrightnessFactor:TpvScalar;                 // base brightness on top of the automatic exposure, 1.0 = untouched
       public
        fLuminancePushConstants:TLuminancePushConstants;
        fLuminanceHistogramPushConstants:TLuminanceHistogramPushConstants;
@@ -1439,6 +1441,12 @@ type { TpvScene3DRendererInstance }
        // behaviour keeps it; a game that switches this on measures the window it actually asked for and
        // will want to check its LuminanceFactor afterwards.
        property LuminanceHistogramConfiguredWindow:Boolean read fLuminanceHistogramConfiguredWindow write fLuminanceHistogramConfiguredWindow;
+       // How bright the finished picture is meant to be, as a plain factor on the exposure - one stop is a
+       // factor of two. It is applied after the automatic exposure AND after its frame, because it is not
+       // something the automatic chose: the frame bounds where the automatic may settle, this says what the
+       // game wants on top of that, and neither has to be moved when the other changes. 1.0 (the default)
+       // changes nothing. Runtime-writable, and it works in the manual and camera exposure modes as well.
+       property BrightnessFactor:TpvScalar read fBrightnessFactor write fBrightnessFactor;
       public
        property LensFactor:TpvScalar read fLensFactor write fLensFactor;
        property BloomFactor:TpvScalar read fBloomFactor write fBloomFactor;
@@ -3137,6 +3145,8 @@ begin
  fLuminanceAdaptationSpeedBrighter:=TwoPI;
  fLuminanceAdaptationSpeedDarker:=TwoPI;
  fLuminanceHistogramConfiguredWindow:=false;
+
+ fBrightnessFactor:=1.0; // no base brightness of its own, the automatic exposure is the whole of it
 
  fLensFactor:=0.4;
  fBloomFactor:=0.9;
@@ -13231,6 +13241,8 @@ begin
  end else begin
   fLuminancePushConstants.Flags:=0;
  end;
+
+ fLuminancePushConstants.BrightnessFactor:=fBrightnessFactor;
 
  // And the histogram's own block. Its fields carry the same values as before unless the configured window
  // is asked for: the shader reads its four used fields from offsets 0/8/16/20, which - while both passes

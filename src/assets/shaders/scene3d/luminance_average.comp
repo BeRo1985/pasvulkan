@@ -45,6 +45,7 @@ layout(push_constant, std140) uniform PushConstants {
   float timeCoefficientBrighter; // per-frame adaptation weight while the scene gets brighter (stopping down)
   float timeCoefficientDarker;   // ... and while it gets darker (opening up)
   uint flags;                    // see FLAG_* below
+  float brightnessFactor;        // base brightness, applied after the automatic exposure and its frame
 
 } pushConstants;
 
@@ -188,16 +189,20 @@ void main() {
     float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
 #endif
 
-    // .x / .y are the frame the automatic exposure may move in - the darkest and the brightest the picture
-    // is ever allowed to be scaled by, i.e. the minimum and the maximum exposure. The engine ships them
-    // wide open (0 .. 16777216, which no scene reaches), so a game that wants a frame has to say so; see
-    // TpvScene3DRendererInstance.MinimumLuminance / MaximumLuminance. It bounds the OUTPUT, while the
-    // smoothed luminance itself stays inside the histogram window, so there is no integrator to wind up.
+    // .x / .y are the frame the AUTOMATIC may move in - the darkest and the brightest exposure it is
+    // allowed to settle on. The engine ships them wide open (0 .. 16777216, which no scene reaches), so a
+    // game that wants a frame has to say so; see TpvScene3DRendererInstance.MinimumLuminance /
+    // MaximumLuminance. The smoothed luminance itself stays inside the histogram window, so there is no
+    // integrator to wind up behind the clamp.
+    //
+    // The base brightness comes AFTER that clamp on purpose: it is not something the automatic chose, it is
+    // what the game wants the finished picture to be, so the frame has no business bounding it and does not
+    // have to be moved along whenever it changes. 1.0 (the default) leaves everything exactly as it was.
     histogramLuminanceBuffer.luminanceFactor = clamp(
       pow(1.0 / max(1e-6, (pushConstants.manualLMax < 0.0) ? Lmax : pushConstants.manualLMax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z,
       pushConstants.minMaxLuminanceFactorExponent.x,
       pushConstants.minMaxLuminanceFactorExponent.y
-    );
+    ) * pushConstants.brightnessFactor;
 
   }
 
