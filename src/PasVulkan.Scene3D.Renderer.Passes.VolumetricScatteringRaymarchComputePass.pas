@@ -129,45 +129,62 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
              // sky blue and a sunset red. Set is a drifting noise field instead, single-phase and grey,
              // which gives moving cloud shadows and banks of mist that no scale height can produce. The
              // shell's height falloff shapes both; they differ in what fills it.
-             VolumetricScatteringFlagNoiseDensity=TpvUInt32(1) shl 1;
+             // Bit one is free again. It used to pick between the two density models, one or the other -
+             // and they are now both computed and added, each with a weight of its own, so the question
+             // it answered no longer has two answers: the noise field alone is (1,0), Rayleigh/Mie alone
+             // is (0,1), and everything between is a real mixture rather than a choice.
+             VolumetricScatteringFlagUnusedWasNoiseDensity=TpvUInt32(1) shl 1;
              // And bit two: the look this effect had before it grew a second buffer - the old distance
              // fade with its cap at a quarter, no aerial term, and no extinction written at all.
              VolumetricScatteringFlagLegacyLook=TpvUInt32(1) shl 2;
       public
        type TPushConstants=packed record
-             // xyz = the way the light travels, w = the shaft gain. NOT the dial the game turns the effect
-             // down by, which belongs to the compose alone - it has to pull the extinction back by the
-             // same amount, and applied in both places it would count twice.
-             SunDirectionStrength:TpvVector4;
-             // xyz = what the primary directional light emits, colour times intensity, in the units the
-             // surface shading uses. The gain above is a gain ON this, which is what makes the shafts
-             // follow the scene's own light rather than a number of their own.
-             // w = how thick the noise field is made, one dial over the whole of it. It multiplies the
-             // DENSITY, from which both of that model's coefficients are then derived, so the ratio
-             // between what the air gives and what it takes cannot move. Turning those two by hand is how
-             // a medium ends up handing out more light than falls into it.
-             SunRadianceNoiseDensityFactor:TpvVector4;
-             // x = how depth becomes a distance, y = how far a ray without geometry reaches, z = how much
-             // the noise model scatters, w = how much it takes away
-             ZNearMaximumDistanceScatteringExtinction:TpvVector4;
-             CentreBottomRadiusTop:TpvVector4;  // xyz = the shell's centre, w = its bottom radius
-             // x = top radius, y = Rayleigh height, z = Mie height, w = how coarse the noise field is
-             TopRadiusHeightsNoiseScale:TpvVector4;
-             // x = the time the noise field drifts with, y = how much the aerial term weighs, z = the
-             // mean free path of the air in metres, w = the depth the sky is given
-             NoiseTimeAerialWeightMeanFreePathSkyDepth:TpvVector4;
-             // x = the first view of this pass, y = the frame counter the shadow noise is decorrelated by
-             // x = the first view of this pass, y = frame counter, zw = the tint, four halves in two words.
+             // One hundred and twenty-eight bytes exactly, and that is the whole budget rather than a
+             // coincidence: it is the smallest maxPushConstantsSize Vulkan guarantees and the figure AMD
+             // drivers commonly report, so a ninth vector would be refused on hardware this must run on.
              //
-             // Packed rather than given a vector of its own: this block already stands at exactly 128
-             // bytes, the smallest maxPushConstantsSize Vulkan guarantees and the figure AMD drivers
-             // commonly report, so a ninth vector would be refused there. Half precision is ample for a
-             // multiplier around one.
-             ViewBaseIndexFrameIndexTint:TpvUInt32Vector4;
-             // Everything that is a whole number or a switch, in a word of its own rather than squeezed
-             // into the spare lanes of the float vectors: x = flags, y = the fewest steps a ray is walked
-             // in, z = the most.
-             FlagsStepCountsSpare:TpvUInt32Vector4;
+             // Mirrors volumetric_scattering_raymarch.comp field for field. Floats grouped by what they
+             // describe, and everything too small for a lane of its own gathered into ONE word at the end
+             // instead of hiding in the spare corner of whatever vector happened to have room.
+
+             // xyz = the direction the sunlight travels, w = the shaft gain, which is an admitted cheat on
+             // the gathered light alone. See the shader for why that is not the same as the compose's
+             // strength and must not be applied twice.
+             SunDirectionShaftGain:TpvVector4;
+
+             // xyz = what the primary light emits, colour times intensity, in the units the surface
+             // shading uses. w = the physical model's mean free path in metres, its one density dial.
+             SunRadianceMeanFreePath:TpvVector4;
+
+             // x = the near distance (NEGATIVE here, which marks the reversed infinite projection),
+             // y = how far a ray without geometry is marched, zw = what the noise model scatters and what
+             // it swallows per unit of its density.
+             ZNearMaximumDistanceNoiseCoefficients:TpvVector4;
+
+             // xyz = the centre of the density shell, w = its bottom radius. Together they turn a position
+             // into a height. The top radius is deliberately absent - nothing ever read it.
+             ShellCentreBottomRadius:TpvVector4;
+
+             // x = Rayleigh scale height, y = Mie scale height, z = how coarse the noise field is,
+             // w = the time it drifts with.
+             ScaleHeightsNoiseScaleTime:TpvVector4;
+
+             // x = how much the aerial term weighs, y = the depth the sky is given (a sentinel, not a
+             // distance), z = how thick the noise field is made - its own dial and NOT its share of the
+             // mixture, w = spare, the only whole float left in the block.
+             AerialWeightSkyDepthNoiseDensitySpare:TpvVector4;
+
+             // x = the first view of this pass, y = the frame counter, z = the switches, w = the step
+             // counts with the fewest in the low sixteen bits and the most in the high sixteen.
+             ViewBaseIndexFrameIndexFlagsStepCounts:TpvUInt32Vector4;
+
+             // Everything too small to be worth a lane, in one place: x = the tint's red and green,
+             // y = its blue in the low half with the high half spare, z = the two models' shares with
+             // Rayleigh/Mie low and the noise field high, w = the dust with Mie low and Rayleigh high.
+             // Half precision throughout, which is ample for multipliers around one and shares between
+             // nought and one.
+             PackedTintSharesDust:TpvUInt32Vector4;
+
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -758,10 +775,10 @@ begin
   // horizon for the guard in the shader, which skipped the whole march and returned exactly zero.
   SunDirection:=fInstance.Renderer.Scene3D.PrimaryShadowMapLightDirection.Normalize;
 
-  fPushConstants.SunDirectionStrength:=TpvVector4.InlineableCreate(SunDirection.x,
-                                                                   SunDirection.y,
-                                                                   SunDirection.z,
-                                                                   fInstance.VolumetricScatteringShaftGain);
+  fPushConstants.SunDirectionShaftGain:=TpvVector4.InlineableCreate(SunDirection.x,
+                                                                    SunDirection.y,
+                                                                    SunDirection.z,
+                                                                    fInstance.VolumetricScatteringShaftGain);
 
   // And what that light actually emits, so the shafts belong to the same sun as the ground they fall on.
   // The scene records it beside the direction, from the light it recognised as the primary one.
@@ -772,18 +789,15 @@ begin
   // stayed as bright and as white however the light changed.
   SunRadiance:=fInstance.Renderer.Scene3D.PrimaryShadowMapLightColorIntensity;
 
-  // Clamped at zero rather than passed through: a negative density is not thin air, it is a medium that
-  // gains energy along the ray, and the exponential behind it turns that into an overflow within a few
-  // steps. Left open at the top, where it only means thicker.
-  fPushConstants.SunRadianceNoiseDensityFactor:=TpvVector4.InlineableCreate(SunRadiance.x,
-                                                                            SunRadiance.y,
-                                                                            SunRadiance.z,
-                                                                            Max(fInstance.VolumetricScatteringNoiseDensityFactor,0.0));
+  fPushConstants.SunRadianceMeanFreePath:=TpvVector4.InlineableCreate(SunRadiance.x,
+                                                                      SunRadiance.y,
+                                                                      SunRadiance.z,
+                                                                      fInstance.VolumetricScatteringMeanFreePath);
 
-  fPushConstants.ZNearMaximumDistanceScatteringExtinction:=TpvVector4.InlineableCreate(fInstance.ZNear,
-                                                                                       VolumetricScatteringMaximumDistance,
-                                                                                       fInstance.VolumetricScatteringNoiseScattering,
-                                                                                       fInstance.VolumetricScatteringNoiseExtinction);
+  fPushConstants.ZNearMaximumDistanceNoiseCoefficients:=TpvVector4.InlineableCreate(fInstance.ZNear,
+                                                                                    VolumetricScatteringMaximumDistance,
+                                                                                    fInstance.VolumetricScatteringNoiseScattering,
+                                                                                    fInstance.VolumetricScatteringNoiseExtinction);
 
   // The shell the density is measured against, and the one place where having an atmosphere changes what
   // this effect does.
@@ -821,48 +835,68 @@ begin
    end;
   end;
 
-  fPushConstants.CentreBottomRadiusTop:=TpvVector4.InlineableCreate(ShellCentre.x,
-                                                                    ShellCentre.y,
-                                                                    ShellCentre.z,
-                                                                    ShellBottomRadius);
+  fPushConstants.ShellCentreBottomRadius:=TpvVector4.InlineableCreate(ShellCentre.x,
+                                                                      ShellCentre.y,
+                                                                      ShellCentre.z,
+                                                                      ShellBottomRadius);
 
-  fPushConstants.TopRadiusHeightsNoiseScale:=TpvVector4.InlineableCreate(ShellTopRadius,
-                                                                         VolumetricScatteringRayleighScaleHeight,
+  // ShellTopRadius is worked out above and deliberately not passed: the shader never read it. Left as a
+  // local because the atmosphere it comes from may want it again, and recomputing it costs nothing here.
+  //
+  // The noise time is WRAPPED rather than handed over as it stands: the field is fetched at position plus
+  // time, and a float that has been counting seconds since the game started loses the low bits the pattern
+  // is made of. The wrap is at a power of two so that it does not show as a jump.
+  fPushConstants.ScaleHeightsNoiseScaleTime:=TpvVector4.InlineableCreate(VolumetricScatteringRayleighScaleHeight,
                                                                          VolumetricScatteringMieScaleHeight,
-                                                                         fInstance.VolumetricScatteringNoiseScale);
+                                                                         fInstance.VolumetricScatteringNoiseScale,
+                                                                         Modulo(fInstance.VolumetricScatteringNoiseTime,4096.0));
 
-  // Wrapped rather than handed over as it stands: the noise is fetched at position plus time, and a float
-  // that has been counting seconds since the game started loses the low bits the pattern is made of. The
-  // wrap is at a power of two so that it does not show as a jump.
-  fPushConstants.NoiseTimeAerialWeightMeanFreePathSkyDepth:=TpvVector4.InlineableCreate(Modulo(fInstance.VolumetricScatteringNoiseTime,4096.0),
-                                                                                        fInstance.VolumetricScatteringAerialFactor,
-                                                                                        fInstance.VolumetricScatteringMeanFreePath,
-                                                                                        VolumetricScatteringSkyDepth);
+  // The noise field's thickness is clamped at zero rather than passed through: a negative density is not
+  // thin air, it is a medium that gains energy along the ray, and the exponential behind it turns that
+  // into an overflow within a few steps. Left open at the top, where it only means thicker.
+  fPushConstants.AerialWeightSkyDepthNoiseDensitySpare:=TpvVector4.InlineableCreate(fInstance.VolumetricScatteringAerialFactor,
+                                                                                    VolumetricScatteringSkyDepth,
+                                                                                    Max(fInstance.VolumetricScatteringNoiseDensityFactor,0.0),
+                                                                                    0.0);
 
-  fPushConstants.ViewBaseIndexFrameIndexTint.x:=InFlightFrameState^.FinalViewIndex;
-  fPushConstants.ViewBaseIndexFrameIndexTint.y:=TpvUInt32(aFrameIndex);
+  fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.x:=InFlightFrameState^.FinalViewIndex;
+  fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.y:=TpvUInt32(aFrameIndex);
 
-  // The tint, two halves to a word, in the order the shader's unpackHalf2x16 reads them: the low sixteen
-  // bits come out as x. Clamped at zero because a negative multiplier would take light out of the picture
-  // rather than colour it, and left open at the top - a tint above one is a legitimate way to ask for more
-  // of one wavelength, and the buffers behind this are half floats that can carry it.
-  fPushConstants.ViewBaseIndexFrameIndexTint.z:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.x,0.0)).Value) or
-                                                (TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.y,0.0)).Value) shl 16);
-  fPushConstants.ViewBaseIndexFrameIndexTint.w:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.z,0.0)).Value);
-
-  fPushConstants.FlagsStepCountsSpare.x:=0;
-  if fInstance.VolumetricScatteringNoiseDensity then begin
-   fPushConstants.FlagsStepCountsSpare.x:=fPushConstants.FlagsStepCountsSpare.x or VolumetricScatteringFlagNoiseDensity;
-  end;
+  // The model bit is gone with the switch it stood for: both media are computed and added now, each with
+  // its own share, so there is nothing left to select between.
+  fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.z:=0;
   if fInstance.VolumetricScatteringLegacyLook then begin
-   fPushConstants.FlagsStepCountsSpare.x:=fPushConstants.FlagsStepCountsSpare.x or VolumetricScatteringFlagLegacyLook;
+   fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.z:=fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.z or VolumetricScatteringFlagLegacyLook;
   end;
-  // At least one step, or the march divides by nothing and hands back infinities, and the most never below
-  // the fewest, or the interpolation between them runs backwards.
-  fPushConstants.FlagsStepCountsSpare.y:=TpvUInt32(Max(1,fInstance.VolumetricScatteringMinimumStepCount));
-  fPushConstants.FlagsStepCountsSpare.z:=TpvUInt32(Max(Max(1,fInstance.VolumetricScatteringMinimumStepCount),
-                                                      fInstance.VolumetricScatteringMaximumStepCount));
-  fPushConstants.FlagsStepCountsSpare.w:=0;
+
+  // The step counts, fewest in the low sixteen bits and most in the high sixteen. At least one, or the
+  // march divides by nothing and hands back infinities, and the most never below the fewest, or the
+  // interpolation between them runs backwards. Both are held to what sixteen bits carry, which is far
+  // above the 256 the shader caps at anyway.
+  fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.w:=TpvUInt32(Min(Max(1,fInstance.VolumetricScatteringMinimumStepCount),65535)) or
+                                                            (TpvUInt32(Min(Max(Max(1,fInstance.VolumetricScatteringMinimumStepCount),
+                                                                               fInstance.VolumetricScatteringMaximumStepCount),65535)) shl 16);
+
+  // Everything half sized, in the order the shader's unpackHalf2x16 reads it: the low sixteen bits come
+  // out as x.
+  //
+  // The tint is clamped at zero because a negative multiplier would take light out of the picture rather
+  // than colour it, and left open at the top - above one is a legitimate way to ask for more of one
+  // wavelength, and the buffers behind this are half floats that can carry it.
+  //
+  // The two shares are read only against each other; the shader divides them by their sum, so what is
+  // written here is a ratio and not an amount. How thick each model is sits elsewhere, deliberately.
+  //
+  // The dust's x is the MIE shell - the one dust actually is. Above one is left open there too: a
+  // variation wider than the density itself simply means the field reaches down to empty air in the
+  // troughs, and the max() in the shader catches the rest.
+  fPushConstants.PackedTintSharesDust.x:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.x,0.0)).Value) or
+                                          (TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.y,0.0)).Value) shl 16);
+  fPushConstants.PackedTintSharesDust.y:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringTint.z,0.0)).Value);
+  fPushConstants.PackedTintSharesDust.z:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringRayleighMieFactor,0.0)).Value) or
+                                          (TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringNoiseFieldFactor,0.0)).Value) shl 16);
+  fPushConstants.PackedTintSharesDust.w:=TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringNoiseModulationMie,0.0)).Value) or
+                                          (TpvUInt32(TpvHalfFloat.FromFloat(Max(fInstance.VolumetricScatteringNoiseModulationRayleigh,0.0)).Value) shl 16);
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

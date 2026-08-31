@@ -1121,11 +1121,14 @@ type { TpvScene3DRendererInstance }
        // one of two points depending on the option above, and the two points are far apart in Prepare -
        // this is what keeps them from being created twice or not at all.
        fAtmosphericCompositingPassesCreated:Boolean;
-       fVolumetricScatteringNoiseDensity:Boolean;
+       fVolumetricScatteringRayleighMieFactor:TpvFloat;
+       fVolumetricScatteringNoiseFieldFactor:TpvFloat;
        fVolumetricScatteringNoiseScattering:TpvFloat;
        fVolumetricScatteringNoiseExtinction:TpvFloat;
        fVolumetricScatteringNoiseScale:TpvFloat;
        fVolumetricScatteringNoiseDensityFactor:TpvFloat;
+       fVolumetricScatteringNoiseModulationMie:TpvFloat;
+       fVolumetricScatteringNoiseModulationRayleigh:TpvFloat;
        fVolumetricScatteringNoiseTime:TpvDouble;
        fVolumetricScatteringAerialFactor:TpvFloat;
        fVolumetricScatteringLegacyLook:Boolean;
@@ -1640,21 +1643,42 @@ type { TpvScene3DRendererInstance }
        // belonging to the opaque surface BEHIND it, transparent surfaces writing no depth, so neither
        // arrangement is right; this one at least does not contradict itself.
        property AtmosphericCompositingBeforeResolve:Boolean read fAtmosphericCompositingBeforeResolve write fAtmosphericCompositingBeforeResolve;
-       // Which of the two density models fills the air, and this is the substantive choice of the whole
-       // effect.
+       // How much of the PHYSICAL model is in the air, as its weight beside the noise field's. Together
+       // with VolumetricScatteringNoiseDensityFactor these two replaced the boolean that used to pick one
+       // model or the other: both are now computed and ADDED, which is what two species of particle in one
+       // volume actually do to a ray - each contributes its own scattering and its own extinction, with its
+       // own phase function already folded in.
        //
-       // TRUE is a drifting noise field: one grey density, a single sharp Mie lobe, and banks of mist that
-       // move. It gives what a scale height cannot - haze that is thicker in one place than another at the
-       // same altitude, and shadows that crawl as it drifts.
+       // Every arrangement is therefore a matter of numbers rather than of a switch:
        //
-       // FALSE is the physical model: Rayleigh and Mie side by side, each with its own coefficient and its
-       // own phase, and extinction that is COLOURED rather than grey, so the blue is taken out of what lies
-       // behind faster than the red. That is what makes a distance blue and a low sun red, and it is kept
-       // rather than replaced - the noise model cannot do it, having only one density and no colour.
+       //   (0, 1) noise field alone - one grey density, a single sharp Mie lobe, banks of mist that drift.
+       //          It gives what a scale height cannot: haze thicker in one place than another at the same
+       //          altitude, and shadows that crawl.
+       //   (1, 0) the physical model alone - Rayleigh and Mie side by side, each with its own coefficient
+       //          and its own phase, and extinction that is COLOURED rather than grey, so blue is taken
+       //          out of what lies behind faster than red. That is what makes a distance blue and a low
+       //          sun red, and the noise model cannot do it, having one density and no colour.
+       //   both   a genuine mixture, which is the point of the pair.
+       //
+       // The two are divided by their SUM, so the weights always come to one and the total amount of
+       // medium holds however they are set against each other - half and half is half of each. The pair
+       // says what the air is MADE of; how much of it there is stays with the mean free path, which is the
+       // point of keeping those two questions on separate dials.
+       //
+       // Both are shares and nothing else, so only their ratio is read: (1, 1) and (4, 4) weigh the models
+       // the same way. How THICK each of them is stays on a dial of its own - VolumetricScatteringMeanFreePath
+       // for this one, VolumetricScatteringNoiseDensityFactor for the noise field - and keeping those two
+       // questions apart is the point of the arrangement. A share is normalised and therefore carries no
+       // amount; a thickness folded into it would vanish the moment its model stood alone, which is exactly
+       // when one reaches for it.
        //
        // The planet shell shapes both: it is what makes the air thin with height, and it is asked for
        // nothing else, so neither model needs an atmosphere to exist.
-       property VolumetricScatteringNoiseDensity:Boolean read fVolumetricScatteringNoiseDensity write fVolumetricScatteringNoiseDensity;
+       property VolumetricScatteringRayleighMieFactor:TpvFloat read fVolumetricScatteringRayleighMieFactor write fVolumetricScatteringRayleighMieFactor;
+       // And the noise field's share of the same mixture, the other half of that pair. Its thickness is a
+       // separate number - VolumetricScatteringNoiseDensityFactor - for the reason given above: a share is
+       // normalised, so an amount put here would be discarded exactly when that model runs on its own.
+       property VolumetricScatteringNoiseFieldFactor:TpvFloat read fVolumetricScatteringNoiseFieldFactor write fVolumetricScatteringNoiseFieldFactor;
        // What the noise model scatters and what it swallows, per unit of density. Only that model reads
        // them - the physical one has its own coefficients, which are physical constants and not knobs. The
        // ten-to-one between the two is what keeps the mist bright: it gathers far more light than it takes
@@ -1664,8 +1688,11 @@ type { TpvScene3DRendererInstance }
        // How coarse the noise field is, as a factor on world position: smaller makes the banks larger. A
        // tenth means the pattern turns over about every ten metres before the octaves are added.
        property VolumetricScatteringNoiseScale:TpvFloat read fVolumetricScatteringNoiseScale write fVolumetricScatteringNoiseScale;
-       // How thick the noise field is made, as one dial over the whole of it. One leaves it exactly as
-       // authored; a half thins it, a two doubles it.
+       // How THICK the noise field is made, as one dial over the whole of it. One leaves it as authored, a
+       // half thins it, a two doubles it. Its SHARE of the mixture is a different number entirely -
+       // VolumetricScatteringNoiseFieldFactor - and the two are kept apart on purpose: the share is
+       // normalised against the physical model's and therefore carries no amount, so a thickness put there
+       // would be discarded the moment the noise field ran on its own.
        //
        // The noise model had nothing of the kind while the physical one did. Its density comes out of two
        // coefficients authored in per-metre terms - VolumetricScatteringNoiseScattering and
@@ -1685,6 +1712,32 @@ type { TpvScene3DRendererInstance }
        // Below zero is clamped away. A negative density is not thin air but a medium that gains energy
        // along the ray, and the exponential behind it overflows within a few steps.
        property VolumetricScatteringNoiseDensityFactor:TpvFloat read fVolumetricScatteringNoiseDensityFactor write fVolumetricScatteringNoiseDensityFactor;
+       // Dust in the Rayleigh/Mie model: how hard the noise field varies its densities. Zero on both
+       // leaves that model exactly as it was, which is why this needed no third mode - and why all three
+       // arrangements stay reachable. Rayleigh/Mie alone is both factors at zero; the noise field alone is
+       // the two weights above; anything between is these two.
+       //
+       // TWO of them because dust is Mie and not Rayleigh. Large particles gather into banks and throw
+       // light forward, which is what gives a dusty shaft its halo; molecular air does neither, and a sky
+       // whose blue comes and goes in patches looks wrong rather than dusty. So the Mie factor is the one
+       // to reach for, and the Rayleigh one is there for when the whole haze should breathe - a coarser
+       // look, but occasionally the wanted one.
+       //
+       // It varies the shell DENSITIES and nothing else. Not the coefficients: those are the model itself,
+       // the statement that blue is taken away faster than red, and multiplying noise onto them would
+       // smear two ideas together. Varying how much medium sits at a point IS what dust is, and it leaves
+       // the model saying what that medium does to light.
+       //
+       // Written as a variation about one rather than a multiply, so the mean density holds: the field's
+       // own average is about a half, and multiplying by it straight would quietly thin the air as the
+       // factor came up - and then the mean free path would need moving to compensate, which is exactly
+       // the coupling of two dials this family of knobs exists to avoid. The factor therefore means "how
+       // much does it vary" and nothing else. At one the density swings between nothing and twice itself.
+       //
+       // Costs an fbm sample per march step while either is above zero, and nothing at all while both are
+       // zero - the branch is on the sum of the two.
+       property VolumetricScatteringNoiseModulationMie:TpvFloat read fVolumetricScatteringNoiseModulationMie write fVolumetricScatteringNoiseModulationMie;
+       property VolumetricScatteringNoiseModulationRayleigh:TpvFloat read fVolumetricScatteringNoiseModulationRayleigh write fVolumetricScatteringNoiseModulationRayleigh;
        // The time the noise field drifts with, advanced by whoever owns the frame - the same arrangement as
        // LensRainPostEffectTime, and for the same reason: the renderer has no clock of its own, and a clock
        // it cannot be paused by would go on drifting through a paused game.
@@ -2885,11 +2938,17 @@ begin
  fAtmosphericCompositingBeforeResolve:=false;
  // The noise model on by default, and the physical one a property away. Its three numbers are authored in
  // per-metre terms and are therefore independent of the mean free path above.
- fVolumetricScatteringNoiseDensity:=true;
+ // The physical model on its own by default, the noise field at nothing: (0, 1). That is a change of
+ // default from the boolean this pair replaced, which stood on the noise field - the coloured extinction
+ // of Rayleigh/Mie is the better thing to hand somebody who has not chosen yet.
+ fVolumetricScatteringRayleighMieFactor:=1.0;
  fVolumetricScatteringNoiseScattering:=0.0025;
  fVolumetricScatteringNoiseExtinction:=0.00025;
  fVolumetricScatteringNoiseScale:=0.1;
+ fVolumetricScatteringNoiseFieldFactor:=0.0;
  fVolumetricScatteringNoiseDensityFactor:=1.0;
+ fVolumetricScatteringNoiseModulationMie:=0.0;
+ fVolumetricScatteringNoiseModulationRayleigh:=0.0;
  fVolumetricScatteringNoiseTime:=0.0;
  fVolumetricScatteringAerialFactor:=0.68;
  fVolumetricScatteringLegacyLook:=false;

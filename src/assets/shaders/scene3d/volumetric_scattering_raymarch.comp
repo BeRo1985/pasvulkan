@@ -38,13 +38,20 @@
 // which conserves energy however coarsely the ray is walked, and is most of why this needs far fewer
 // steps than a plain sum to look the same.
 //
-// TWO density models, chosen by a flag and both kept:
+// TWO density models, both computed and ADDED, each with a weight of its own:
 //
 //   RAYLEIGH/MIE - two coefficients and two phase functions over a shell, the model of an atmosphere.
 //   NOISE        - one density from an animated noise field with a single Mie phase, which is what suits
 //                  a track under a stylised skybox, where there is no atmosphere to be true to.
 //
-// Both measure their density against the same shell, so height still thins the air in either.
+// Added rather than chosen between, because that is what two species of particle in one volume do to a
+// ray: each contributes its own scattering and its own extinction, with its own phase already folded in.
+// It also makes every arrangement a matter of numbers rather than of a switch - (1,0) is the noise field
+// alone, (0,1) the physical model alone, and anything else a genuine mixture.
+//
+// Both measure their density against the same shell, so height still thins the air in either. And the
+// noise field can additionally VARY the physical model's densities without contributing a medium of its
+// own - the dust dial - which is a third thing again: not another medium, but the same air in banks.
 
 #include "view.glsl"
 
@@ -102,6 +109,16 @@ layout(set = 1, binding = 8, rgba16f) writeonly uniform image2DArray uDestinatio
 #endif
 
 layout(push_constant) uniform PushConstants {
+
+  // ONE hundred and twenty-eight bytes, exactly, and that is not a coincidence to be spent: it is the
+  // smallest maxPushConstantsSize Vulkan guarantees and the figure AMD drivers commonly report. Eight
+  // vectors is therefore the whole budget - a ninth would be refused on hardware this has to run on.
+  //
+  // Laid out so that the floats are grouped by what they describe and everything that had to be squeezed
+  // sits together in ONE word at the end, rather than hiding in the spare lane of whatever vector happened
+  // to have room. A field named for one thing that quietly carries another is how this block became hard
+  // to read in the first place.
+
   // xyz = the direction the sunlight travels, w = the shaft gain.
   //
   // That w is a CHEAT and the name says so. It scales the gathered light alone, which no medium can do:
@@ -117,60 +134,84 @@ layout(push_constant) uniform PushConstants {
   // which has to pull the extinction back toward one by the same amount and cannot do that from here.
   // Applied in both places, as it once was, it would count twice and a half would come out a quarter.
   vec4 sunDirectionShaftGain;
+
   // xyz = what the primary directional light actually emits, colour times intensity, in the same units the
-  // surface shading is given.
+  // surface shading is given. Kept apart from the gain above rather than folded into it on the way here,
+  // so that a capture shows the two separately: one is the scene, the other is the lie told about it.
   //
-  // Kept apart from the gain rather than folded into it on the way here, so that a capture shows the two
-  // separately: one is the scene, the other is the lie told about it.
+  // w = the mean free path of the PHYSICAL model, in metres: how far light travels in this air before it
+  // is scattered once. The one dial that model has, and the artist-facing form of a density - Unity's HDRP
+  // asks for the same quantity by the same name.
+  vec4 sunRadianceMeanFreePath;
+
+  // x = the near distance, which turns a raw depth back into metres. NEGATIVE in this engine, which marks
+  // a reversed infinite projection, so every reader has to take its magnitude - a trap both this pass and
+  // the compose fell into once.
   //
-  // w = how thick the noise field is made, one dial over the whole of it.
+  // y = how far a ray with nothing in its way is marched, and the distance the result is faded in over.
+  // The MARCH's reach and not a far plane: geometry stands further away than this all the time.
   //
-  // The noise model had no such thing while the physical one did. Its two coefficients are authored in
-  // per-metre terms and both describe the same density, so thinning the air meant editing two numbers in
-  // step and hoping - and getting the step wrong does not thin the air, it changes what the air IS: more
-  // scattering against less extinction is a medium that gives out more light than reaches it. This
-  // multiplies the density itself, before the two are derived from it, so the ratio between them cannot
-  // move. It is the counterpart of the mean free path on the other model, and it is unitless: one leaves
-  // the field exactly as authored.
-  vec4 sunRadianceNoiseDensityFactor;
-  // x = how depth becomes a distance, y = how far a ray without geometry reaches and the distance the
-  // aerial term fades in over, z = how much the noise model scatters, w = how much it takes away
-  vec4 zNearMaximumDistanceScatteringExtinction;
-  vec4 centreBottomRadiusTop;     // xyz = the shell's centre, w = its bottom radius
-  // x = top radius, y = Rayleigh scale height, z = Mie scale height, w = how coarse the noise field is
-  vec4 topRadiusHeightsNoiseScale;
-  // x = the time the noise field drifts with, y = how much the aerial term weighs, z = the mean free path
-  // of the air in metres, w = the largest depth that may be stored.
+  // zw = what the noise model scatters and what it swallows, per unit of its density. Only that model
+  // reads them; the physical one has Earth's own coefficients, which are constants and not knobs.
+  vec4 zNearMaximumDistanceNoiseCoefficients;
+
+  // xyz = the centre of the shell the density is measured against, w = its bottom radius. Between them
+  // they turn a world position into a height, which is what makes the air thin as one climbs - and it is
+  // all either model asks of the shell, so neither needs an atmosphere to exist.
   //
-  // The mean free path is how the density of the physical model is asked for, rather than a multiplier on
-  // the coefficients: it is a distance, so it can be judged against the track. It is also the unit Unity
-  // HDRP asks its artists for, and Koschmieder turns it into a visibility - V = 3.912/sigma_t - so a number
-  // here can be checked against what one expects to see.
+  // The shell's TOP radius is deliberately not here. Nothing ever read it.
+  vec4 shellCentreBottomRadius;
+
+  // x = the Rayleigh scale height, y = the Mie one: how fast each of the two thins with altitude.
+  // z = how coarse the noise field is, w = the time it drifts with, so that standing still does not mean
+  // standing in a fixed pattern.
+  vec4 scaleHeightsNoiseScaleTime;
+
+  // x = how much the aerial term weighs - what the distance adds over and above the march, and takes away
+  // with it.
   //
-  // That last lane is a bound of the buffer FORMAT and not of the scene, which under a reversed infinite
-  // projection is the only kind of bound available: a sky pixel's raw depth is exactly zero, so the
-  // distance it linearises to is unbounded, and a half-float alpha would take it as infinity. It sits far
-  // beyond any geometry on a track, so the sky ends up with a depth of its own that nothing real collides
-  // with. The compose bounds its own reading by the same number.
-  vec4 noiseTimeAerialWeightMeanFreePathSkyDepth;
-  // x = the first view of this pass, y = frame counter, zw = the tint, as four halves in two words.
+  // y = the depth the sky is given. A SENTINEL and not a distance: under a reversed infinite projection a
+  // sky pixel has no finite distance to compute, so this pass and the compose agree on one number instead
+  // of both clamping the same division and hoping to land on the same result.
   //
-  // Packed rather than given a vec4 of its own, and the reason is a hard limit: this block already stands
-  // at exactly 128 bytes, which is the smallest maxPushConstantsSize Vulkan guarantees and the figure AMD
-  // drivers commonly report. A ninth vec4 would take it to 144 and be refused there. Half precision is
-  // ample for what this is - an artist's multiplier around one, not a measured quantity.
-  uvec4 viewBaseIndexFrameIndexTint;
-  // Everything that is a whole number or a switch, kept out of the float vectors above rather than
-  // squeezed into their spare lanes: x = flags, y = the fewest steps a ray is walked in, z = the most.
-  uvec4 flagsStepCountsSpare;
+  // z = how thick the noise field is made. Its own dial, and NOT its share of the mixture - that is a
+  // separate number below, because a normalised share keeps only a ratio and would discard an amount
+  // folded into it exactly when that model runs alone.
+  //
+  // w = spare. The only whole float left in the block.
+  vec4 aerialWeightSkyDepthNoiseDensitySpare;
+
+  // x = the first view this pass renders, y = the frame counter the jitter is rotated by.
+  //
+  // z = the switches, in a word of their own rather than squeezed into a float's spare lane.
+  //
+  // w = the step counts, fewest in the low sixteen bits and most in the high sixteen. They are small
+  // whole numbers - the march is capped at 256 steps - so a word holds both with room over.
+  uvec4 viewBaseIndexFrameIndexFlagsStepCounts;
+
+  // Everything too small to be worth a lane of its own, in one place so that it can be found:
+  //
+  //   x = the tint's red and green, two halves
+  //   y = the tint's blue in the low half; the high half is spare
+  //   z = the two models' SHARES of the mixture - Rayleigh/Mie low, noise field high
+  //   w = how hard the noise field varies the physical model's densities - the dust - Mie low, Rayleigh
+  //       high. Two of them because dust is Mie and not Rayleigh: large particles clump and throw light
+  //       forward, molecular air does neither.
+  //
+  // Half precision throughout, which is ample for what these are: multipliers around one and shares
+  // between nought and one, none of them a measured quantity.
+  uvec4 packedTintSharesDust;
+
 } pushConstants;
 
 // Bit zero is free. It used to pick between two segment lengths - the ray's own and the distance out of
 // the atmosphere - which turned out to be a statement about how thick the air is, written as a length. It
 // is now the mean free path in the push constants, where it can be read as the distance it always was.
 
-// Which density model. Clear is Rayleigh/Mie over the shell, set is the noise field.
-const uint VolumetricScatteringFlagNoiseDensity = 1u << 1;
+// Bit one is free as well. It used to pick between the two density models, one or the other. They are now
+// both computed and added, each with a weight of its own, so the question it answered no longer has two
+// answers: the noise field alone is (1,0), Rayleigh/Mie alone is (0,1), and everything between is a real
+// mixture rather than a choice.
 
 // The look this effect had before it grew a second buffer: the gathered light faded in with the square of
 // the distance and then capped at a quarter however bright it came out, no aerial term, and nothing taken
@@ -184,7 +225,7 @@ const uint VolumetricScatteringFlagLegacyLook = 1u << 2;
 #define SHADOWS
 #define NOTEXCOORDS
 #define NUM_SHADOW_CASCADES 4
-#define inFrameIndex pushConstants.viewBaseIndexFrameIndexTint.y
+#define inFrameIndex pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.y
 #define SHADOWS_SCREEN_POSITION vec2(gl_GlobalInvocationID.xy)
 
 const uint SHADOWMAP_MODE_NONE = 1;
@@ -315,14 +356,14 @@ vec3 fbm33(vec3 p){
 // its Rayleigh and Mie densities, the other as what the noise field is multiplied by, so that height
 // thins the fog whichever is chosen.
 void computeShellDensities(const in vec3 aPosition, out float aRayleigh, out float aMie){
-  float height = length(aPosition - pushConstants.centreBottomRadiusTop.xyz) - pushConstants.centreBottomRadiusTop.w;
-  aRayleigh = exp(-(max(height, 0.0) / pushConstants.topRadiusHeightsNoiseScale.y));
-  aMie = exp(-(max(height, 0.0) / pushConstants.topRadiusHeightsNoiseScale.z));
+  float height = length(aPosition - pushConstants.shellCentreBottomRadius.xyz) - pushConstants.shellCentreBottomRadius.w;
+  aRayleigh = exp(-(max(height, 0.0) / pushConstants.scaleHeightsNoiseScaleTime.x));
+  aMie = exp(-(max(height, 0.0) / pushConstants.scaleHeightsNoiseScaleTime.y));
 }
 
 // How far this ray runs before it leaves a sphere of the given radius about the shell's centre.
 float computeEscapeLength(const in vec3 aPosition, const in vec3 aDirection, const in float aRadius){
-  vec3 v = aPosition - pushConstants.centreBottomRadiusTop.xyz;
+  vec3 v = aPosition - pushConstants.shellCentreBottomRadius.xyz;
   float b = dot(v, aDirection);
   float c = dot(v, v) - (aRadius * aRadius);
   float det = (b * b) - c;
@@ -366,7 +407,7 @@ float sampleShadow(const in vec3 aWorldPosition, const in float aMaximumDistance
   // atmosphere-distance segments, the mode that is some two hundred times brighter.
   //
   // The effect's own maximum distance instead: the same reach the march itself is given.
-  float shadowRayReach = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+  float shadowRayReach = pushConstants.zNearMaximumDistanceNoiseCoefficients.y;
 
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery,
@@ -423,7 +464,7 @@ void main(){
     return;
   }
 
-  uint viewIndex = pushConstants.viewBaseIndexFrameIndexTint.x + uint(at.z);
+  uint viewIndex = pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.x + uint(at.z);
   mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
   mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
   mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
@@ -465,7 +506,7 @@ void main(){
   if(rayDirectionLength < 1e-8){
     imageStore(uDestinationInscatteringTexture, at, vec4(0.0));
     imageStore(uDestinationExtinctionTexture, at, vec4(1.0));
-    imageStore(uDestinationDepthTexture, at, vec4(pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w));
+    imageStore(uDestinationDepthTexture, at, vec4(pushConstants.aerialWeightSkyDepthNoiseDensitySpare.y));
     return;
   }
   rayDirection /= rayDirectionLength;
@@ -481,7 +522,7 @@ void main(){
   // And the length is capped at the same far end even where there IS geometry: a handful of steps spread
   // over a ten kilometre ray are steps a kilometre apart, which is not a march. The cap costs the far end
   // of such a ray and keeps the near end worth having.
-  float rayLength = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+  float rayLength = pushConstants.zNearMaximumDistanceNoiseCoefficients.y;
 
   // The sky's depth is the STORE CAP, not the march's reach - those are two different numbers and confusing
   // them is what put a seam along every silhouette. The march reaches 4096 metres; the depth written here
@@ -489,7 +530,7 @@ void main(){
   // pixel is sky" from "this pixel is a mountain twelve kilometres away". Under a reversed infinite
   // projection there is no far plane to borrow such a value from, so it comes from the buffer format
   // instead - see the note on the cap in the push constants.
-  float linearViewDepth = pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w;
+  float linearViewDepth = pushConstants.aerialWeightSkyDepthNoiseDensitySpare.y;
 
   // Sky is NOT skipped here, unlike in the fog: a light shaft is at its most visible against it, and a ray
   // with nothing in its way is exactly the one that should be allowed to gather light for its whole
@@ -502,7 +543,7 @@ void main(){
     vec3 farViewPosition = farView.xyz / farView.w;
     if(!(any(isinf(farViewPosition)) || any(isnan(farViewPosition)))){
       vec3 endPosition = (inverseViewMatrix * vec4(farViewPosition, 1.0)).xyz;
-      rayLength = min(length(endPosition - startPosition), pushConstants.zNearMaximumDistanceScatteringExtinction.y);
+      rayLength = min(length(endPosition - startPosition), pushConstants.zNearMaximumDistanceNoiseCoefficients.y);
       // The true distance, bounded only by the store cap. Not by the march's reach: geometry stands
       // further away than 4096 metres all the time, and clamping there would file every distant thing
       // under the same depth as the sky - which is precisely what the upsample must be able to tell apart
@@ -520,15 +561,55 @@ void main(){
       //
       // The sky never reaches this line at all: it keeps the value it was initialised with, because
       // hasGeometry is false for a raw depth of zero.
-      linearViewDepth = min(abs(pushConstants.zNearMaximumDistanceScatteringExtinction.x) / max(rawDepth, 1e-7),
-                            pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.w * 0.5);
+      linearViewDepth = min(abs(pushConstants.zNearMaximumDistanceNoiseCoefficients.x) / max(rawDepth, 1e-7),
+                            pushConstants.aerialWeightSkyDepthNoiseDensitySpare.y * 0.5);
     }
   }
 
   lightDirection = pushConstants.sunDirectionShaftGain.xyz;
 
-  bool noiseDensity = (pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagNoiseDensity) != 0u;
-  bool legacyLook = (pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagLegacyLook) != 0u;
+  bool legacyLook = (pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.z & VolumetricScatteringFlagLegacyLook) != 0u;
+
+  // How hard the noise field varies the Rayleigh/Mie densities. Unpacked once out here rather than per
+  // step: it is the same for the whole ray, and the physical branch is walked a couple of hundred times.
+  //
+  // The Mie one first, because that is the dust: large particles gather into banks and throw light
+  // forward. Rayleigh is molecular air and does neither, so its factor is normally left at zero and the
+  // sky stays as evenly blue as the model says it should be.
+  vec2 noiseModulation = unpackHalf2x16(pushConstants.packedTintSharesDust.w);
+  bool noiseModulated = (noiseModulation.x + noiseModulation.y) > 0.0;
+
+  // How much of each medium is in the air. Both models are computed and ADDED rather than one of them
+  // chosen, which is what two species of particle in one volume actually do to a ray - and it is what
+  // makes every arrangement reachable by numbers instead of by a switch: (1,0) is the noise field alone,
+  // (0,1) the physical model alone, anything else a mixture.
+  //
+  // Divided by their SUM, so the two weights always come to one and the total amount of medium holds
+  // however they are set against each other. Half and half is half of each - the pair says what the air is
+  // MADE of, and the mean free path stays the one dial that says how much of it there is.
+  //
+  // An L2 normalize would put the midpoint at about 1.41 times a single medium, so moving the mixture
+  // would quietly move the density with it and the two dials would be coupled again - which is the very
+  // thing this family of knobs was built to avoid.
+  //
+  // Guarded, because dividing by a zero sum hands back NaN - and that would not stay in these coefficients
+  // but spread through the blur and land on the screen as blocks of nothing. Both factors at zero means no
+  // medium at all, so the weights may as well be zero too.
+  // The noise field's SHARE, which is a different number from its thickness below and deliberately so:
+  // a normalised weight keeps only the ratio, so a thickness folded into it would vanish the moment that
+  // model stands alone. It rides in the upper half of the word the tint's blue occupies - three halves in
+  // two words left one half spare, and the block is at the 128 bytes Vulkan guarantees.
+  vec2 modelShares = unpackHalf2x16(pushConstants.packedTintSharesDust.z);
+  float rayleighMieFactor = max(modelShares.x, 0.0);
+  float noiseFieldFactor = max(modelShares.y, 0.0);
+  float sumFactors = noiseFieldFactor + rayleighMieFactor;
+  vec2 modelWeights = vec2(0.0);
+  if(sumFactors > 1e-6){
+    modelWeights = vec2(noiseFieldFactor, rayleighMieFactor) / sumFactors;
+  }
+
+  // And how thick that field is made, on its own dial and read only where the density is built.
+  float noiseDensityFactor = max(pushConstants.aerialWeightSkyDepthNoiseDensitySpare.z, 0.0);
 
   vec3 inscattering = vec3(0.0);
   vec3 transmittance = vec3(1.0);
@@ -565,8 +646,8 @@ void main(){
     // need the same number of samples as one that runs for kilometres, and a fixed count spends them in
     // the wrong place at both ends. The hundredth is the atmosphere's own factor, so anything past a
     // hundred metres gets the full count.
-    int stepCount = int(clamp(mix(float(pushConstants.flagsStepCountsSpare.y),
-                                  float(pushConstants.flagsStepCountsSpare.z),
+    int stepCount = int(clamp(mix(float(pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.w & 0xffffu),
+                                  float(pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.w >> 16u),
                                   clamp(rayLength * 0.01, 0.0, 1.0)),
                               1.0,
                               256.0));
@@ -575,7 +656,7 @@ void main(){
     // The jitter, rotated by the frame counter rather than standing still. A pattern that is the same in
     // every frame cannot average out over time however long one looks at it; rotated, whatever accumulates
     // over frames takes a share of the work off the blur behind this.
-    float offset = gJitterOffsets[(((at.x & 7) | ((at.y & 7) << 3)) + int(pushConstants.viewBaseIndexFrameIndexTint.y)) & 63];
+    float offset = gJitterOffsets[(((at.x & 7) | ((at.y & 7) << 3)) + int(pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.y)) & 63];
 
     // How long one segment counts as: the ray's own length over the steps. One length, for what a segment
     // gathers and for what it blocks alike, because they are the same piece of air.
@@ -601,7 +682,7 @@ void main(){
     // Everything usable lies between those two, and neither end could reach it. Around 800 to 2000 metres
     // leaves 0.69 to 0.86 of the picture standing over three hundred metres while gathering enough to see.
     float baseExtinction = bR.g + bM.g;
-    float mediumScale = 1.0 / (max(pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.z, 1.0) * baseExtinction);
+    float mediumScale = 1.0 / (max(pushConstants.sunRadianceMeanFreePath.w, 1.0) * baseExtinction);
 
     float marchTime = offset * timeStep;
 
@@ -616,26 +697,43 @@ void main(){
       vec3 scatteringCoefficient;
       vec3 extinctionCoefficient;
 
-      if(noiseDensity){
-        // One density from the noise field, thinned by the shell so that height still matters, and drifting
-        // with the time so that standing still does not mean standing in a fixed pattern.
-        vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
-                             pushConstants.topRadiusHeightsNoiseScale.w;
-        // The field's own thickness dial, applied to the DENSITY and not to the two coefficients below.
-        // That is the whole point of it being here: both are derived from this one number afterwards, so
-        // whatever it does it does to them in the same measure, and the ratio between what the air gives
-        // and what it takes cannot drift. Turning the two coefficients by hand instead is how a medium
-        // ends up handing out more light than falls into it.
-        float density = (shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x)) *
-                        pushConstants.sunRadianceNoiseDensityFactor.w;
+      // The field, sampled ONCE for whoever needs it: the noise model uses it as its density, and the
+      // Rayleigh/Mie model as the dust that varies its own. Two samples of the same fbm at the same point
+      // would be the same number bought twice, and fbm is the expensive line in this loop.
+      //
+      // Skipped where neither wants it, which is the common case: the physical model on its own, with no
+      // dust asked for, never touches it.
+      float noiseField = 0.0;
+      if((noiseFieldFactor > 0.0) || (noiseModulated && (rayleighMieFactor > 0.0))){
+        // Thinned by the shell so that height still matters, and drifting with the time so that standing
+        // still does not mean standing in a fixed pattern.
+        vec3 noisePosition = (particlePosition + (pushConstants.scaleHeightsNoiseScaleTime.w * vec3(0.01, 0.13, 0.07))) *
+                             pushConstants.scaleHeightsNoiseScaleTime.z;
+        noiseField = smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+      }
+
+      vec3 noiseScatteringCoefficient = vec3(0.0);
+      vec3 noiseExtinctionCoefficient = vec3(0.0);
+      if(noiseFieldFactor > 0.0){
 
         // No mediumScale here, and that is deliberate: these two coefficients ARE the density, authored
         // directly in per-metre terms. Scaling them by a mean free path as well would be asking for the
         // same thing twice. The physical model needs it because its coefficients are Earth's and fixed.
-        scatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.z) * phaseNoise;
-        extinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.w);
+        //
+        // The thickness dial DOES belong here, and it cannot be left to the weight below. A normalised
+        // weight keeps only the ratio - (2,0) and (1,0) both come out as (1,0) - so a factor applied there
+        // and nowhere else would vanish the moment this model stands alone, which is exactly when one
+        // wants to reach for it. Here it survives, and there is no double count: below it is a share, here
+        // it is an amount.
+        float density = (shellMie * noiseField) * noiseDensityFactor;
+        noiseScatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceNoiseCoefficients.z) * phaseNoise;
+        noiseExtinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceNoiseCoefficients.w);
 
-      }else{
+      }
+
+      vec3 rayleighMieScatteringCoefficient = vec3(0.0);
+      vec3 rayleighMieExtinctionCoefficient = vec3(0.0);
+      if(rayleighMieFactor > 0.0){
 
         // Rayleigh and Mie side by side, each with its own coefficient and its own phase. The extinction
         // is coloured here rather than grey, which is the whole point of the model: the blue is taken out
@@ -646,10 +744,36 @@ void main(){
         // destroyed, it leaves in another direction - so air that scatters more toward the eye necessarily
         // takes more from what is behind. Albedo stays at or below one; no engine that was looked at breaks
         // that, and scaling the one without the other is where light would come from nowhere.
-        scatteringCoefficient = (((bR * shellRayleigh) * phaseRayleigh) + ((bM * shellMie) * phaseMie)) * mediumScale;
-        extinctionCoefficient = ((bR * shellRayleigh) + (bM * shellMie)) * mediumScale;
+        //
+        // The dust, where it is asked for: the noise field varies the two shell DENSITIES and nothing else.
+        // Not the coefficients below - bR and bM are the model itself, the statement that blue is taken
+        // away faster than red, and multiplying noise onto that would smear the two ideas together. Varying
+        // how MUCH medium is at a point is exactly what dust is, and it leaves the model saying what that
+        // medium does to light.
+        //
+        // Around one and not toward zero. The field's own mean is about a half, so multiplying by it
+        // straight would quietly halve the average density as the factor comes up - and then the mean free
+        // path would have to be moved to compensate, which is the coupling of two dials that this whole
+        // family of knobs exists to avoid. Written as a variation about one, the average holds and the
+        // factor means only "how much does it vary".
+        float shellRayleighModulated = shellRayleigh;
+        float shellMieModulated = shellMie;
+        if(noiseModulated){
+          float dustVariation = (noiseField - 0.5) * 2.0;
+          shellMieModulated *= max(1.0 + (dustVariation * noiseModulation.x), 0.0);
+          shellRayleighModulated *= max(1.0 + (dustVariation * noiseModulation.y), 0.0);
+        }
+
+        rayleighMieScatteringCoefficient = (((bR * shellRayleighModulated) * phaseRayleigh) + ((bM * shellMieModulated) * phaseMie)) * mediumScale;
+        rayleighMieExtinctionCoefficient = ((bR * shellRayleighModulated) + (bM * shellMieModulated)) * mediumScale;
 
       }
+
+      // The two media in one volume, added rather than chosen between. That is what two species of
+      // particle actually do to a ray: each contributes its own scattering and its own extinction, with
+      // its own phase function already folded in above.
+      scatteringCoefficient = (noiseScatteringCoefficient * modelWeights.x) + (rayleighMieScatteringCoefficient * modelWeights.y);
+      extinctionCoefficient = (noiseExtinctionCoefficient * modelWeights.x) + (rayleighMieExtinctionCoefficient * modelWeights.y);
 
       // Whether this sample is lit at all. This is the line the whole effect is for: a ray through a
       // shadow gathers nothing, one beside it gathers all of it, and the boundary between the two is the
@@ -710,13 +834,13 @@ void main(){
     // them in front of the geometry. The near answer - the one almost every pixel actually uses - would get
     // worse in exchange for a far answer only silhouettes need. So the near march keeps precisely the
     // sampling it has today, and the continuation brings its own.
-    float farRayLength = pushConstants.zNearMaximumDistanceScatteringExtinction.y;
+    float farRayLength = pushConstants.zNearMaximumDistanceNoiseCoefficients.y;
     float continuationLength = farRayLength - rayLength;
 
     if(continuationLength > 1e-4){
 
-      int continuationStepCount = int(clamp(mix(float(pushConstants.flagsStepCountsSpare.y),
-                                                float(pushConstants.flagsStepCountsSpare.z),
+      int continuationStepCount = int(clamp(mix(float(pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.w & 0xffffu),
+                                                float(pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.w >> 16u),
                                                 clamp(continuationLength * 0.01, 0.0, 1.0)),
                                             1.0,
                                             256.0));
@@ -739,19 +863,41 @@ void main(){
         vec3 scatteringCoefficient;
         vec3 extinctionCoefficient;
 
-        if(noiseDensity){
-          vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
-                               pushConstants.topRadiusHeightsNoiseScale.w;
-          // The same thickness dial as the near march, and it has to be: the two halves are one ray, and
-          // air that changes density where the geometry happened to stand is not air.
-          float density = (shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x)) *
-                          pushConstants.sunRadianceNoiseDensityFactor.w;
-          scatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.z) * phaseNoise;
-          extinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.w);
-        }else{
-          scatteringCoefficient = (((bR * shellRayleigh) * phaseRayleigh) + ((bM * shellMie) * phaseMie)) * mediumScale;
-          extinctionCoefficient = ((bR * shellRayleigh) + (bM * shellMie)) * mediumScale;
+        // The same two media as the near march, weighed the same way. They have to be: the two halves are
+        // one ray, and air whose composition changes where the geometry happened to stand is not air.
+        float noiseField = 0.0;
+        if((noiseFieldFactor > 0.0) || (noiseModulated && (rayleighMieFactor > 0.0))){
+          vec3 noisePosition = (particlePosition + (pushConstants.scaleHeightsNoiseScaleTime.w * vec3(0.01, 0.13, 0.07))) *
+                               pushConstants.scaleHeightsNoiseScaleTime.z;
+          noiseField = smoothstep(0.0, 1.0, fbm33(noisePosition).x);
         }
+
+        vec3 noiseScatteringCoefficient = vec3(0.0);
+        vec3 noiseExtinctionCoefficient = vec3(0.0);
+        if(noiseFieldFactor > 0.0){
+          // The thickness dial here as in the near march - a normalised weight carries only the ratio, so
+          // the amount has to be applied where the density is made.
+          float density = (shellMie * noiseField) * noiseDensityFactor;
+          noiseScatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceNoiseCoefficients.z) * phaseNoise;
+          noiseExtinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceNoiseCoefficients.w);
+        }
+
+        vec3 rayleighMieScatteringCoefficient = vec3(0.0);
+        vec3 rayleighMieExtinctionCoefficient = vec3(0.0);
+        if(rayleighMieFactor > 0.0){
+          float shellRayleighModulated = shellRayleigh;
+          float shellMieModulated = shellMie;
+          if(noiseModulated){
+            float dustVariation = (noiseField - 0.5) * 2.0;
+            shellMieModulated *= max(1.0 + (dustVariation * noiseModulation.x), 0.0);
+            shellRayleighModulated *= max(1.0 + (dustVariation * noiseModulation.y), 0.0);
+          }
+          rayleighMieScatteringCoefficient = (((bR * shellRayleighModulated) * phaseRayleigh) + ((bM * shellMieModulated) * phaseMie)) * mediumScale;
+          rayleighMieExtinctionCoefficient = ((bR * shellRayleighModulated) + (bM * shellMieModulated)) * mediumScale;
+        }
+
+        scatteringCoefficient = (noiseScatteringCoefficient * modelWeights.x) + (rayleighMieScatteringCoefficient * modelWeights.y);
+        extinctionCoefficient = (noiseExtinctionCoefficient * modelWeights.x) + (rayleighMieExtinctionCoefficient * modelWeights.y);
 
         // The shadow ray's reach is the FAR length here, not the near one: a sample out at three kilometres
         // needs to be able to ask about occluders that far away, and handing it the near ray's length would
@@ -783,7 +929,7 @@ void main(){
 
     }
 
-    farInscattering *= pushConstants.sunRadianceNoiseDensityFactor.xyz * pushConstants.sunDirectionShaftGain.w;
+    farInscattering *= pushConstants.sunRadianceMeanFreePath.xyz * pushConstants.sunDirectionShaftGain.w;
 
 #endif
 
@@ -791,11 +937,11 @@ void main(){
     // the light is: a low sun reddens what it lights, and the shafts belong to the same light as the
     // ground under them. Where this used to be the gain alone, the shafts stayed just as bright and just
     // as white while the sun set - they were lit by a number rather than by the scene.
-    inscattering *= pushConstants.sunRadianceNoiseDensityFactor.xyz * pushConstants.sunDirectionShaftGain.w;
+    inscattering *= pushConstants.sunRadianceMeanFreePath.xyz * pushConstants.sunDirectionShaftGain.w;
 
   }
 
-  if((pushConstants.flagsStepCountsSpare.x & VolumetricScatteringFlagLegacyLook) != 0u){
+  if((pushConstants.viewBaseIndexFrameIndexFlagsStepCounts.z & VolumetricScatteringFlagLegacyLook) != 0u){
 
     // The old ending, whole: faded in with the square of the distance so that what is right in front of
     // the eye does not get a wash of haze over it, and capped at a quarter however bright it came out.
@@ -806,7 +952,7 @@ void main(){
     // would mean this switch gave the old brightness over a picture the old code never dimmed.
     float fade = clamp(mix(0.078125,
                            1.0,
-                           pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceScatteringExtinction.y, 0.0, 1.0), 2.0)),
+                           pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceNoiseCoefficients.y, 0.0, 1.0), 2.0)),
                        0.0,
                        0.25);
     inscattering *= fade;
@@ -824,9 +970,9 @@ void main(){
 
     // What the distance itself adds over and above the march, and takes away with it. Weighted toward the
     // horizon on a ray that hit nothing, so that the sky overhead stays clear while the distance closes in.
-    float aerialWeight = pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.y;
+    float aerialWeight = pushConstants.aerialWeightSkyDepthNoiseDensitySpare.x;
     if(aerialWeight > 0.0){
-      float f = clamp(1.0 - exp(-pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceScatteringExtinction.y, 0.0, 1.0), 1.5)), 0.0, 1.0) *
+      float f = clamp(1.0 - exp(-pow(clamp(linearViewDepth / pushConstants.zNearMaximumDistanceNoiseCoefficients.y, 0.0, 1.0), 1.5)), 0.0, 1.0) *
                 (hasGeometry ? 1.0 : pow(1.0 - clamp(rayDirection.y, 0.0, 1.0), 16.0));
       inscattering += ((aerialWeight * aerialColour) * f) * transmittance;
       transmittance *= 1.0 - f;
@@ -854,8 +1000,8 @@ void main(){
   // What it does NOT touch is the extinction. Tinting what the air gives is a look; tinting what it takes
   // away is a different statement about the medium, and the two do not belong on one dial. This is the
   // coloured sibling of the shaft gain above - an admitted cheat, in the same place, on the same half.
-  vec3 tint = vec3(unpackHalf2x16(pushConstants.viewBaseIndexFrameIndexTint.z),
-                   unpackHalf2x16(pushConstants.viewBaseIndexFrameIndexTint.w).x);
+  vec3 tint = vec3(unpackHalf2x16(pushConstants.packedTintSharesDust.x),
+                   unpackHalf2x16(pushConstants.packedTintSharesDust.y).x);
   inscattering *= tint;
 #ifdef VOLUMETRIC_SCATTERING_DUAL_OUTPUT
   farInscattering *= tint;
