@@ -142,7 +142,11 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
              // xyz = what the primary directional light emits, colour times intensity, in the units the
              // surface shading uses. The gain above is a gain ON this, which is what makes the shafts
              // follow the scene's own light rather than a number of their own.
-             SunRadianceSpare:TpvVector4;
+             // w = how thick the noise field is made, one dial over the whole of it. It multiplies the
+             // DENSITY, from which both of that model's coefficients are then derived, so the ratio
+             // between what the air gives and what it takes cannot move. Turning those two by hand is how
+             // a medium ends up handing out more light than falls into it.
+             SunRadianceNoiseDensityFactor:TpvVector4;
              // x = how depth becomes a distance, y = how far a ray without geometry reaches, z = how much
              // the noise model scatters, w = how much it takes away
              ZNearMaximumDistanceScatteringExtinction:TpvVector4;
@@ -768,10 +772,13 @@ begin
   // stayed as bright and as white however the light changed.
   SunRadiance:=fInstance.Renderer.Scene3D.PrimaryShadowMapLightColorIntensity;
 
-  fPushConstants.SunRadianceSpare:=TpvVector4.InlineableCreate(SunRadiance.x,
-                                                               SunRadiance.y,
-                                                               SunRadiance.z,
-                                                               0.0);
+  // Clamped at zero rather than passed through: a negative density is not thin air, it is a medium that
+  // gains energy along the ray, and the exponential behind it turns that into an overflow within a few
+  // steps. Left open at the top, where it only means thicker.
+  fPushConstants.SunRadianceNoiseDensityFactor:=TpvVector4.InlineableCreate(SunRadiance.x,
+                                                                            SunRadiance.y,
+                                                                            SunRadiance.z,
+                                                                            Max(fInstance.VolumetricScatteringNoiseDensityFactor,0.0));
 
   fPushConstants.ZNearMaximumDistanceScatteringExtinction:=TpvVector4.InlineableCreate(fInstance.ZNear,
                                                                                        VolumetricScatteringMaximumDistance,

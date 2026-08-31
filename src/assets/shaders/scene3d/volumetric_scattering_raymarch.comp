@@ -118,11 +118,21 @@ layout(push_constant) uniform PushConstants {
   // Applied in both places, as it once was, it would count twice and a half would come out a quarter.
   vec4 sunDirectionShaftGain;
   // xyz = what the primary directional light actually emits, colour times intensity, in the same units the
-  // surface shading is given. w unused.
+  // surface shading is given.
   //
   // Kept apart from the gain rather than folded into it on the way here, so that a capture shows the two
   // separately: one is the scene, the other is the lie told about it.
-  vec4 sunRadianceSpare;
+  //
+  // w = how thick the noise field is made, one dial over the whole of it.
+  //
+  // The noise model had no such thing while the physical one did. Its two coefficients are authored in
+  // per-metre terms and both describe the same density, so thinning the air meant editing two numbers in
+  // step and hoping - and getting the step wrong does not thin the air, it changes what the air IS: more
+  // scattering against less extinction is a medium that gives out more light than reaches it. This
+  // multiplies the density itself, before the two are derived from it, so the ratio between them cannot
+  // move. It is the counterpart of the mean free path on the other model, and it is unitless: one leaves
+  // the field exactly as authored.
+  vec4 sunRadianceNoiseDensityFactor;
   // x = how depth becomes a distance, y = how far a ray without geometry reaches and the distance the
   // aerial term fades in over, z = how much the noise model scatters, w = how much it takes away
   vec4 zNearMaximumDistanceScatteringExtinction;
@@ -611,7 +621,13 @@ void main(){
         // with the time so that standing still does not mean standing in a fixed pattern.
         vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
                              pushConstants.topRadiusHeightsNoiseScale.w;
-        float density = shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+        // The field's own thickness dial, applied to the DENSITY and not to the two coefficients below.
+        // That is the whole point of it being here: both are derived from this one number afterwards, so
+        // whatever it does it does to them in the same measure, and the ratio between what the air gives
+        // and what it takes cannot drift. Turning the two coefficients by hand instead is how a medium
+        // ends up handing out more light than falls into it.
+        float density = (shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x)) *
+                        pushConstants.sunRadianceNoiseDensityFactor.w;
 
         // No mediumScale here, and that is deliberate: these two coefficients ARE the density, authored
         // directly in per-metre terms. Scaling them by a mean free path as well would be asking for the
@@ -726,7 +742,10 @@ void main(){
         if(noiseDensity){
           vec3 noisePosition = (particlePosition + (pushConstants.noiseTimeAerialWeightMeanFreePathSkyDepth.x * vec3(0.01, 0.13, 0.07))) *
                                pushConstants.topRadiusHeightsNoiseScale.w;
-          float density = shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+          // The same thickness dial as the near march, and it has to be: the two halves are one ray, and
+          // air that changes density where the geometry happened to stand is not air.
+          float density = (shellMie * smoothstep(0.0, 1.0, fbm33(noisePosition).x)) *
+                          pushConstants.sunRadianceNoiseDensityFactor.w;
           scatteringCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.z) * phaseNoise;
           extinctionCoefficient = vec3(density * pushConstants.zNearMaximumDistanceScatteringExtinction.w);
         }else{
@@ -764,7 +783,7 @@ void main(){
 
     }
 
-    farInscattering *= pushConstants.sunRadianceSpare.xyz * pushConstants.sunDirectionShaftGain.w;
+    farInscattering *= pushConstants.sunRadianceNoiseDensityFactor.xyz * pushConstants.sunDirectionShaftGain.w;
 
 #endif
 
@@ -772,7 +791,7 @@ void main(){
     // the light is: a low sun reddens what it lights, and the shafts belong to the same light as the
     // ground under them. Where this used to be the gain alone, the shafts stayed just as bright and just
     // as white while the sun set - they were lit by a number rather than by the scene.
-    inscattering *= pushConstants.sunRadianceSpare.xyz * pushConstants.sunDirectionShaftGain.w;
+    inscattering *= pushConstants.sunRadianceNoiseDensityFactor.xyz * pushConstants.sunDirectionShaftGain.w;
 
   }
 

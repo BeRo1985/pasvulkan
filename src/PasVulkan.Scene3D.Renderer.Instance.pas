@@ -1125,6 +1125,7 @@ type { TpvScene3DRendererInstance }
        fVolumetricScatteringNoiseScattering:TpvFloat;
        fVolumetricScatteringNoiseExtinction:TpvFloat;
        fVolumetricScatteringNoiseScale:TpvFloat;
+       fVolumetricScatteringNoiseDensityFactor:TpvFloat;
        fVolumetricScatteringNoiseTime:TpvDouble;
        fVolumetricScatteringAerialFactor:TpvFloat;
        fVolumetricScatteringLegacyLook:Boolean;
@@ -1663,6 +1664,27 @@ type { TpvScene3DRendererInstance }
        // How coarse the noise field is, as a factor on world position: smaller makes the banks larger. A
        // tenth means the pattern turns over about every ten metres before the octaves are added.
        property VolumetricScatteringNoiseScale:TpvFloat read fVolumetricScatteringNoiseScale write fVolumetricScatteringNoiseScale;
+       // How thick the noise field is made, as one dial over the whole of it. One leaves it exactly as
+       // authored; a half thins it, a two doubles it.
+       //
+       // The noise model had nothing of the kind while the physical one did. Its density comes out of two
+       // coefficients authored in per-metre terms - VolumetricScatteringNoiseScattering and
+       // ...NoiseExtinction - and thinning the air meant moving both in step by hand. Getting that step
+       // wrong does not make the air thinner, it changes what the air IS: more scattering against less
+       // extinction is a medium that gives out more light than falls into it, which is an albedo above one
+       // and cannot happen.
+       //
+       // So this multiplies the DENSITY, before the two are derived from it. Whatever it does, it does to
+       // both in the same measure and the ratio between them cannot drift. It is the counterpart of
+       // VolumetricScatteringMeanFreePath on the other model, and it does nothing at all while the noise
+       // model is off.
+       //
+       // Applied in both halves of the march, the near one and the continuation past the geometry: they
+       // are one ray, and air that changes density where the geometry happened to stand is not air.
+       //
+       // Below zero is clamped away. A negative density is not thin air but a medium that gains energy
+       // along the ray, and the exponential behind it overflows within a few steps.
+       property VolumetricScatteringNoiseDensityFactor:TpvFloat read fVolumetricScatteringNoiseDensityFactor write fVolumetricScatteringNoiseDensityFactor;
        // The time the noise field drifts with, advanced by whoever owns the frame - the same arrangement as
        // LensRainPostEffectTime, and for the same reason: the renderer has no clock of its own, and a clock
        // it cannot be paused by would go on drifting through a paused game.
@@ -2867,6 +2889,7 @@ begin
  fVolumetricScatteringNoiseScattering:=0.0025;
  fVolumetricScatteringNoiseExtinction:=0.00025;
  fVolumetricScatteringNoiseScale:=0.1;
+ fVolumetricScatteringNoiseDensityFactor:=1.0;
  fVolumetricScatteringNoiseTime:=0.0;
  fVolumetricScatteringAerialFactor:=0.68;
  fVolumetricScatteringLegacyLook:=false;
