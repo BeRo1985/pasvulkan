@@ -349,10 +349,11 @@ begin
  end;
 
  // Particle LBVH (software-traced, no hardware RT): alive count + emitter/node buffer addresses, zero when inactive.
+ // Off unless the renderer opts in via GlobalIlluminationDUGIParticles (default off).
  ParticleEmitterAddress:=0;
  ParticleNodeAddress:=0;
  ParticleCount:=0;
- if assigned(fInstance.ParticleBVH) and fInstance.ParticleBVH.Active and assigned(fInstance.ParticleBVH.NodeBuffers[aInFlightFrameIndex]) and assigned(fInstance.ParticleBVH.EmitterBuffers[aInFlightFrameIndex]) then begin
+ if fInstance.Renderer.GlobalIlluminationDUGIParticles and assigned(fInstance.ParticleBVH) and fInstance.ParticleBVH.Active and assigned(fInstance.ParticleBVH.NodeBuffers[aInFlightFrameIndex]) and assigned(fInstance.ParticleBVH.EmitterBuffers[aInFlightFrameIndex]) then begin
   ParticleEmitterAddress:=fInstance.ParticleBVH.EmitterBuffers[aInFlightFrameIndex].DeviceAddress;
   ParticleNodeAddress:=fInstance.ParticleBVH.NodeBuffers[aInFlightFrameIndex].DeviceAddress;
   ParticleCount:=Min(TpvSizeInt(fInstance.Scene3D.CountInFlightFrameParticleVertices[aInFlightFrameIndex] div 3),TpvSizeInt(TpvScene3D.MaxParticles));

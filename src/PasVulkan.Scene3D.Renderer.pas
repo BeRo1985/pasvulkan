@@ -153,6 +153,7 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode;
        fGlobalIlluminationEmissiveScale:TpvFloat;   // global master regulator: scales the per-material emissive GI contribution
        fGlobalIlluminationEmissiveMaximum:TpvFloat;  // global master regulator: absolute cap (min'd with the per-material max)
+       fGlobalIlluminationDUGIParticles:Boolean;   // DUGI: include particles (the software-traced per-frame particle LBVH) in the GI or not; default off, since building and tracing that LBVH costs even when no particle is emissive enough to matter
        fToneMappingMode:TpvScene3DRendererToneMappingMode;
        fHDRDisplayMapping:TpvScene3DRendererHDRDisplayMapping;
        fHDRPaperWhiteNits:TpvFloat;
@@ -269,6 +270,7 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property GlobalIlluminationEmissiveScale:TpvFloat read fGlobalIlluminationEmissiveScale write fGlobalIlluminationEmissiveScale;
        property GlobalIlluminationEmissiveMaximum:TpvFloat read fGlobalIlluminationEmissiveMaximum write fGlobalIlluminationEmissiveMaximum;
+       property GlobalIlluminationDUGIParticles:Boolean read fGlobalIlluminationDUGIParticles write fGlobalIlluminationDUGIParticles; // set BEFORE Prepare: it gates the particle LBVH allocation and its build pass; default false (no particles in the DUGI probe rays)
        property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
        property HDRDisplayMapping:TpvScene3DRendererHDRDisplayMapping read fHDRDisplayMapping write fHDRDisplayMapping;
        property HDRPaperWhiteNits:TpvFloat read fHDRPaperWhiteNits write fHDRPaperWhiteNits;
@@ -481,6 +483,7 @@ begin
 
  fGlobalIlluminationEmissiveScale:=1.0;        // no-op default
  fGlobalIlluminationEmissiveMaximum:=Infinity; // no-op default (unbounded)
+ fGlobalIlluminationDUGIParticles:=false;      // opt-in: no particle LBVH, no injection into the DUGI probe rays
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 

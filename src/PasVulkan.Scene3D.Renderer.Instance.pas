@@ -1148,6 +1148,7 @@ type { TpvScene3DRendererInstance }
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
        procedure SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
        function GetGlobalIlluminationDebugModeCount:TpvUInt32;
+       procedure SetGlobalIlluminationDebugMode(const aGlobalIlluminationDebugMode:TpvUInt32);
        procedure ApplyGlobalIlluminationDebugMode;
       private
        procedure CalculateSceneBounds(const aInFlightFrameIndex:TpvInt32);
@@ -1201,7 +1202,10 @@ type { TpvScene3DRendererInstance }
        function AddSolidQuad3D(const aInFlightFrameIndex:TpvSizeInt;const aPosition0,aPosition1,aPosition2,aPosition3:TpvVector3;const aColor:TpvVector4;const aPosition0Offset,aPosition1Offset,aPosition2Offset,aPosition3Offset:TpvVector2;const aLineWidth:TpvScalar=0.0):Boolean;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure CycleGlobalIlluminationDebugMode; // advances the per-GI-mode debug cycle (Ctrl+Shift+F): overlays + isolated GI/IBL/direct-light channels
-       function GlobalIlluminationDebugModeName:TpvUTF8String; // human-readable name of the current debug cycle position (for logging)
+       function GlobalIlluminationDebugModeName:TpvUTF8String; overload; // human-readable name of the current debug cycle position (for logging)
+       // The same name for a position that is not the current one, so that a caller can list the cycle
+       // instead of only stepping through it - which is what a chooser needs and a key does not.
+       function GlobalIlluminationDebugModeName(const aMode:TpvUInt32):TpvUTF8String; overload;
        procedure ResetFrame(const aInFlightFrameIndex:TpvInt32);
        function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
        function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
@@ -1471,7 +1475,12 @@ type { TpvScene3DRendererInstance }
        // Debug: draw every DUGI probe as an octahedral sphere coloured by its live-sampled directional irradiance (ForwardRenderPass).
        property DebugDUGIProbes:Boolean read fDebugDUGIProbes write fDebugDUGIProbes;
        // GI debug cycle (Ctrl+Shift+F): current cycle position and the derived per-pixel isolation channel pushed to the shaders.
-       property GlobalIlluminationDebugMode:TpvUInt32 read fGlobalIlluminationDebugMode;
+       // Writable as well as steppable, so that a chooser can land on a position directly; the setter clamps
+       // to the cycle of the ACTIVE GI technique and applies the derived channels, exactly as the step does.
+       property GlobalIlluminationDebugMode:TpvUInt32 read fGlobalIlluminationDebugMode write SetGlobalIlluminationDebugMode;
+       // How many positions that cycle has right now. It depends on the GI technique in use, so it is a
+       // question and not a constant: a chooser has to ask again whenever the technique changes.
+       property GlobalIlluminationDebugModeCount:TpvUInt32 read GetGlobalIlluminationDebugModeCount;
        property GlobalIlluminationDebugShadingMode:TpvUInt32 read fGlobalIlluminationDebugShadingMode;
        property GlobalIlluminationDebugRawOutput:Boolean read fGlobalIlluminationDebugRawOutput; // post effects bypass these raw debug channels (see ApplyGlobalIlluminationDebugMode)
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
@@ -4100,13 +4109,38 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.SetGlobalIlluminationDebugMode(const aGlobalIlluminationDebugMode:TpvUInt32);
+var Count:TpvUInt32;
+begin
+
+ // Clamped rather than trusted: the cycle is as long as the ACTIVE GI technique makes it, and a caller
+ // holding a position from a longer one - a chooser whose list has not caught up with a technique change -
+ // would otherwise land on a channel this technique does not have.
+ Count:=GetGlobalIlluminationDebugModeCount;
+ if Count=0 then begin
+  fGlobalIlluminationDebugMode:=0;
+ end else if aGlobalIlluminationDebugMode>=Count then begin
+  fGlobalIlluminationDebugMode:=Count-1;
+ end else begin
+  fGlobalIlluminationDebugMode:=aGlobalIlluminationDebugMode;
+ end;
+
+ ApplyGlobalIlluminationDebugMode;
+
+end;
+
 function TpvScene3DRendererInstance.GlobalIlluminationDebugModeName:TpvUTF8String;
+begin
+ result:=GlobalIlluminationDebugModeName(fGlobalIlluminationDebugMode);
+end;
+
+function TpvScene3DRendererInstance.GlobalIlluminationDebugModeName(const aMode:TpvUInt32):TpvUTF8String;
 begin
 
  case Renderer.GlobalIlluminationMode of
 
   TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination:begin
-   case fGlobalIlluminationDebugMode of
+   case aMode of
     1:begin
      result:='probes';
     end;
@@ -4129,7 +4163,7 @@ begin
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
-   case fGlobalIlluminationDebugMode of
+   case aMode of
     1:begin
      result:='voxels';
     end;
@@ -4152,7 +4186,7 @@ begin
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
-   case fGlobalIlluminationDebugMode of
+   case aMode of
     1:begin
      result:='direct light only';
     end;
@@ -4173,7 +4207,7 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.EnvironmentMap,
   TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
-   case fGlobalIlluminationDebugMode of
+   case aMode of
     1:begin
      result:='direct light only';
     end;

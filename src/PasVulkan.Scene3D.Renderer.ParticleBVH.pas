@@ -145,7 +145,9 @@ end;
 
 class function TpvScene3DRendererParticleBVH.MustBeCreated(const aRenderer:TpvScene3DRenderer):boolean;
 begin
- result:=aRenderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination;
+ // DUGI is the only consumer right now, and it takes particles only when explicitly asked for (GlobalIlluminationDUGIParticles,
+ // default off) — without that, nothing is allocated, no build pass is registered and no producer injects.
+ result:=(aRenderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.DynamicUnifiedGlobalIllumination) and aRenderer.GlobalIlluminationDUGIParticles;
 end;
 
 procedure TpvScene3DRendererParticleBVH.AcquireVolatileResources;
