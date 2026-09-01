@@ -3856,6 +3856,14 @@ type EpvScene3D=class(Exception);
                      // RenderInstance preallocation support
                      procedure PreallocateRenderInstances(const aCount:TpvSizeInt);
                     public
+                     // Diagnostic snapshot of what this instance currently believes about one of
+                     // its nodes: the group node's own visibility flag, the effective visibility
+                     // for the given in-flight frame, whether that frame's bounds have been
+                     // filled, and the render pass mask of the instance node. For a node that was
+                     // switched visible but does not show up, this says which of those gates is
+                     // still carrying the old answer.
+                     function GetNodeDebugState(const aInFlightFrameIndex,aNodeIndex:TpvSizeInt):TpvUTF8String;
+                    public
                      procedure StoreAnimationStates;
                      procedure InterpolateAnimationStates(const aAlpha:TpvDouble);
                     published
@@ -31495,7 +31503,12 @@ begin
  end;
  EffectiveVisible:=aParentVisible and OwnVisible;
  if aInFlightFrameIndex>=0 then begin
-  InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]:=EffectiveVisible;
+  if InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]<>EffectiveVisible then begin
+   // Node visibility changes the draw-choreography bucket membership and therefore invalidates
+   // the cached indirect draw commands.
+   TPasMPInterlocked.Increment(fGroup.fSceneInstance.fDrawDataGeneration);
+   InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]:=EffectiveVisible;
+  end;
  end;
  if aInFlightFrameIndex>=0 then begin
   if EffectiveVisible and assigned(Node.fLight) then begin
@@ -34061,6 +34074,26 @@ begin
   fActiveRenderPassesGenerations[Index]:=High(TPasMPUInt64);
  end;
  fLastUpdateInFlightFrameIndex:=-1;
+end;
+
+function TpvScene3D.TGroup.TInstance.GetNodeDebugState(const aInFlightFrameIndex,aNodeIndex:TpvSizeInt):TpvUTF8String;
+var InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    Node:TpvScene3D.TGroup.TNode;
+begin
+ if (aNodeIndex<0) or (aNodeIndex>=fNodes.Count) or (aNodeIndex>=fGroup.fNodes.Count) or
+    (aInFlightFrameIndex<0) or (aInFlightFrameIndex>=fSceneInstance.fCountInFlightFrames) then begin
+  result:='<out of range>';
+  exit;
+ end;
+ InstanceNode:=fNodes.RawItems[aNodeIndex];
+ Node:=fGroup.fNodes[aNodeIndex];
+ result:='"'+Node.fName+'" groupVisible='+BoolToString[Node.fVisible]+
+         ' effectiveVisible='+BoolToString[InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]]+
+         ' boundsFilled='+BoolToString[InstanceNode.fBoundingBoxFilled[aInFlightFrameIndex]]+
+         ' activeRenderPasses=$'+IntToHex(pvScene3DRendererRenderPassesToMask(InstanceNode.fActiveRenderPasses),8)+
+         ' instanceActive='+BoolToString[fActives[aInFlightFrameIndex]]+
+         ' dirtyCounter='+IntToStr(fDirtyCounter)+
+         ' cacheVerticesDirty='+IntToStr(InstanceNode.fCacheVerticesDirtyCounter);
 end;
 
 function TpvScene3D.TGroup.TInstance.GetOrder:TpvInt64;
