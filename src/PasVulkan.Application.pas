@@ -13228,8 +13228,9 @@ begin
                                     TpvApplicationPresentFrameLatencyMode.PresentWait,
                                     TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
       assigned(fVulkanDevice) and
-      (fVulkanDevice.PresentIDSupport or fVulkanDevice.PresentID2Support) and
-      (fVulkanDevice.PresentWaitSupport or fVulkanDevice.PresentWait2Support) and
+      assigned(fVulkanSwapChain) and
+      (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
+      (fVulkanDevice.PresentWaitSupport or fVulkanSwapChain.PresentWait2Enabled) and
       (fPresentFrameLatency<>0) and
       (fVulkanPresentLastID>fPresentFrameLatency) and
       (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
@@ -13244,7 +13245,9 @@ begin
     end else begin
      TimeOut:=1; // one nanosecond
     end;
-    if fVulkanDevice.PresentWait2Support and
+    // Asked of the swapchain, not of the device: vkWaitForPresent2KHR requires the swapchain to carry
+    // VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR, which it only does when the surface allowed it.
+    if fVulkanSwapChain.PresentWait2Enabled and
        assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR) then begin
      // VK_KHR_present_wait2 path
      FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
@@ -13294,8 +13297,9 @@ begin
       ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
                                      TpvApplicationPresentFrameLatencyMode.PresentWait]) and
        assigned(fVulkanDevice) and
-       (fVulkanDevice.PresentIDSupport or fVulkanDevice.PresentID2Support) and
-       (fVulkanDevice.PresentWaitSupport or fVulkanDevice.PresentWait2Support) and
+       assigned(fVulkanSwapChain) and
+       (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
+       (fVulkanDevice.PresentWaitSupport or fVulkanSwapChain.PresentWait2Enabled) and
        (fPresentMode=TpvApplicationPresentMode.VSync) and
        (fPresentFrameLatency>0)) then begin
 
@@ -13988,7 +13992,9 @@ begin
 
   PresentNext:=nil;
 
-  if fVulkanDevice.PresentID2Support then begin
+  // Same as for the waiting side: VkPresentId2KHR may only be chained when the swapchain was created
+  // with VK_SWAPCHAIN_CREATE_PRESENT_ID_2_BIT_KHR, so the swapchain is what decides.
+  if fVulkanSwapChain.PresentID2Enabled then begin
    // VK_KHR_present_id2 path
    FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
    PresentId2KHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;

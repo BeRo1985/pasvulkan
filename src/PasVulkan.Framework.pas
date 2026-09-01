@@ -2838,6 +2838,11 @@ type EpvVulkanException=class(Exception);
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fExclusiveFullScreen:boolean;
+       // Whether present_id2 and present_wait2 are in force for this swapchain. The device can have the
+       // extensions and still not be able to use them here, because the surface decides, so this is what
+       // the swapchain was actually created with and what callers have to go by - not the device flags.
+       fPresentID2Enabled:boolean;
+       fPresentWait2Enabled:boolean;
        function GetImage(const aImageIndex:TpvInt32):TpvVulkanImage;
        function GetPreviousImage:TpvVulkanImage;
        function GetCurrentImage:TpvVulkanImage;
@@ -2898,6 +2903,8 @@ type EpvVulkanException=class(Exception);
        property Width:TpvInt32 read fWidth;
        property Height:TpvInt32 read fHeight;
        property ExclusiveFullScreen:boolean read fExclusiveFullScreen;
+       property PresentID2Enabled:boolean read fPresentID2Enabled;
+       property PresentWait2Enabled:boolean read fPresentWait2Enabled;
      end;
 
      TpvVulkanRenderTarget=class(TpvVulkanObject)
@@ -13598,8 +13605,9 @@ end;
 // memory object. So a buffer is laid over the whole chunk for the length of one call, its address is
 // asked for, and the buffer is thrown away again; the address belongs to the memory and stays valid
 // without it. Everything can fail here and nothing may raise: a memory type which takes no buffers, a
-// driver without buffer device addresses, a chunk which was not allocated addressable. Then the chunk
-// simply has no known address and says so in the dumps.
+// driver without buffer device addresses, a chunk which was not allocated addressable, a dedicated
+// allocation which accepts no second buffer. Then the chunk simply has no known address and says so
+// in the dumps.
 procedure TpvVulkanDeviceMemoryChunk.AcquireDeviceAddress;
 var BufferCreateInfo:TVkBufferCreateInfo;
     BufferDeviceAddressInfo:TVkBufferDeviceAddressInfoKHR;
@@ -13615,6 +13623,16 @@ begin
          (fMemoryHandle<>VK_NULL_HANDLE) and
          ((fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress,
                               TpvVulkanDeviceMemoryChunkFlag.AddressableForDiagnostics])<>[])) then begin
+  exit;
+ end;
+
+ // A dedicated allocation belongs to the one buffer or image it was made for. Its
+ // VkMemoryDedicatedAllocateInfo names that object, and from then on every bind of a buffer to this
+ // memory has to name that very buffer, at offset zero. The throwaway buffer below is a different one
+ // by construction, so laying it over such a chunk is invalid usage, which the validation layers
+ // report as VUID-vkBindBufferMemory-memory-01508. A dedicated chunk therefore stays without a known
+ // address; it holds a single allocation whose own object can be named directly instead.
+ if TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation in fMemoryChunkFlags then begin
   exit;
  end;
 
@@ -23820,6 +23838,10 @@ var Index,TryIterationIndex:TpvInt32;
     FormatProperties:TVkFormatProperties;
     SwapChainCreateInfo:TVkSwapchainCreateInfoKHR;
     Found:boolean;
+    PresentSurfaceInfo2KHR:TVkPhysicalDeviceSurfaceInfo2KHR;
+    PresentSurfaceCapabilities2KHR:TVkSurfaceCapabilities2KHR;
+    SurfaceCapabilitiesPresentId2KHR:TVkSurfaceCapabilitiesPresentId2KHR;
+    SurfaceCapabilitiesPresentWait2KHR:TVkSurfaceCapabilitiesPresentWait2KHR;
 {$ifdef Windows}
     Monitor:HMONITOR;
     SurfaceFullScreenExclusiveWin32InfoEXT:TVkSurfaceFullScreenExclusiveWin32InfoEXT;
@@ -23852,6 +23874,10 @@ begin
  fWidth:=0;
 
  fHeight:=0;
+
+ fPresentID2Enabled:=false;
+
+ fPresentWait2Enabled:=false;
 
  try
 
@@ -24100,11 +24126,59 @@ begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT);
   end;
 
-  // Enable present id2/wait2 on swapchain when the extensions are active
-  if fDevice.PresentId2Support then begin
+  // Present id2 and present wait2 are enabled on the device, but whether they can be used is a property
+  // of the surface and has to be asked for it: the two swapchain flags below may only be set when the
+  // surface answers yes, and vkWaitForPresent2KHR in turn insists on the flag being set. The device
+  // feature alone says nothing here. A query which does not succeed leaves both off - the ordinary
+  // present_id/present_wait path is still there and is the better answer than a swapchain built on a
+  // promise nobody made.
+  if (fDevice.PresentID2Support or fDevice.PresentWait2Support) and
+     assigned(fDevice.Instance.Commands.Commands.GetPhysicalDeviceSurfaceCapabilities2KHR) then begin
+
+   FillChar(SurfaceCapabilitiesPresentId2KHR,SizeOf(TVkSurfaceCapabilitiesPresentId2KHR),#0);
+   SurfaceCapabilitiesPresentId2KHR.sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR;
+   SurfaceCapabilitiesPresentId2KHR.presentId2Supported:=VK_FALSE;
+
+   FillChar(SurfaceCapabilitiesPresentWait2KHR,SizeOf(TVkSurfaceCapabilitiesPresentWait2KHR),#0);
+   SurfaceCapabilitiesPresentWait2KHR.sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR;
+   SurfaceCapabilitiesPresentWait2KHR.presentWait2Supported:=VK_FALSE;
+
+   FillChar(PresentSurfaceCapabilities2KHR,SizeOf(TVkSurfaceCapabilities2KHR),#0);
+   PresentSurfaceCapabilities2KHR.sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+   PresentSurfaceCapabilities2KHR.pNext:=nil;
+
+   // Only ever chained for an extension which is actually enabled, since an unknown structure in the
+   // chain is invalid usage in its own right.
+   if fDevice.PresentID2Support then begin
+    SurfaceCapabilitiesPresentId2KHR.pNext:=PresentSurfaceCapabilities2KHR.pNext;
+    PresentSurfaceCapabilities2KHR.pNext:=@SurfaceCapabilitiesPresentId2KHR;
+   end;
+   if fDevice.PresentWait2Support then begin
+    SurfaceCapabilitiesPresentWait2KHR.pNext:=PresentSurfaceCapabilities2KHR.pNext;
+    PresentSurfaceCapabilities2KHR.pNext:=@SurfaceCapabilitiesPresentWait2KHR;
+   end;
+
+   FillChar(PresentSurfaceInfo2KHR,SizeOf(TVkPhysicalDeviceSurfaceInfo2KHR),#0);
+   PresentSurfaceInfo2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+   PresentSurfaceInfo2KHR.pNext:=nil;
+   PresentSurfaceInfo2KHR.surface:=fSurface.Handle;
+
+   if fDevice.Instance.Commands.GetPhysicalDeviceSurfaceCapabilities2KHR(fDevice.PhysicalDevice.Handle,@PresentSurfaceInfo2KHR,@PresentSurfaceCapabilities2KHR)=VK_SUCCESS then begin
+    fPresentID2Enabled:=fDevice.PresentID2Support and (SurfaceCapabilitiesPresentId2KHR.presentId2Supported<>VK_FALSE);
+    // No waiting without an id to wait for: present_wait2 waits on a present id2, so it stands and
+    // falls with it.
+    fPresentWait2Enabled:=fPresentID2Enabled and
+                          fDevice.PresentWait2Support and
+                          (SurfaceCapabilitiesPresentWait2KHR.presentWait2Supported<>VK_FALSE);
+   end;
+
+  end;
+
+  // Enable present id2/wait2 on swapchain when the surface takes them
+  if fPresentID2Enabled then begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_ID_2_BIT_KHR);
   end;
-  if fDevice.PresentWait2Support then begin
+  if fPresentWait2Enabled then begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR);
   end;
 
