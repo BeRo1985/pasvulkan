@@ -2827,6 +2827,24 @@ var // Unassigned means nothing is attempted, which is what a program which neve
     // is therefore always in <name>-1.crashlog.
     pvCrashLogCounter:TPasMPInt32=0;
 
+    // Input recording and replay. Set from the command line, see the parameter parsing.
+    //
+    // Recorded at the one place every translated input event passes through on its way to the
+    // screen, so what lands in the file is exactly what the game reacts to - including which
+    // handler consumes an event and which does not. That fidelity is the whole point: a scripted
+    // scenario can only exercise what its author already believes matters, and this one does not
+    // have to know.
+    //
+    // Events are stamped with a frame index rather than a clock, so a replay feeds them at the same
+    // simulation step even when the frames take different lengths of time. It still drifts - the
+    // delta time enters camera movement, brush strength and physics, and the job order is not
+    // deterministic - so this reproduces a course of events, not a state.
+    //
+    // A recording is only valid for the build it was made with: sets are stored as raw bit patterns.
+    pvInputRecordFileName:TpvUTF8String='';
+
+    pvInputReplayFileName:TpvUTF8String='';
+
     // How much of the process goes into it, see the same named type in
     // PasVulkan.CrashReport.MiniDump. Normal is a few hundred kilobytes and
     // answers most questions; Full is the whole address space and for a program
@@ -2837,6 +2855,20 @@ var // Unassigned means nothing is attempted, which is what a program which neve
 // defaults to the more careful answer, so that a caller which says nothing is
 // treated as the worst case rather than as the best one.
 procedure LogCrash(const aExceptionString:TpvUTF8String;const aHardCrash:Boolean=true);
+
+// Opens the recording file respectively loads the replay and starts counting frames from zero.
+// Deliberately not called at startup: the application decides when the comparable part of a run
+// begins - normally when the game itself is entered - because everything before that (menus,
+// videos, loading) takes a different number of frames every time and would shift every stamp.
+// Calling it a second time does nothing, so it can sit on a path which is taken more than once.
+procedure pvInputRecorderStart;
+
+// Closes the recording file. Called from the unit's finalization, so a normal exit needs nothing.
+procedure pvInputRecorderStop;
+
+// True once a replay has been started and every event in it has been fed. An automated run reads it
+// to tell that what it wanted to reproduce is behind it. False whenever no replay is running.
+function pvInputReplayFinished:Boolean;
 
 implementation
 
@@ -3355,6 +3387,291 @@ begin
  // Wherever the crash log goes, since that is where somebody will look, and
  // both halves of one report belong next to each other.
  result:=pvCrashReportMiniDumpFileName(ExtractFilePath(GetCrashLogFileName));
+end;
+
+type TpvApplicationInputRecordEntry=record
+      Frame:TpvInt64;
+      Kind:AnsiChar; // 'K' key, 'P' pointer, 'S' scroll
+      KeyEvent:TpvApplicationInputKeyEvent;
+      PointerEvent:TpvApplicationInputPointerEvent;
+      ScrollAmount:TpvVector2;
+     end;
+     PpvApplicationInputRecordEntry=^TpvApplicationInputRecordEntry;
+     TpvApplicationInputRecordEntries=array of TpvApplicationInputRecordEntry;
+
+var InputFrameIndex:TpvInt64=-1;
+    InputRecordHandle:THandle=THandle(-1);
+    InputReplayEntries:TpvApplicationInputRecordEntries=nil;
+    InputReplayCount:TpvSizeInt=0;
+    InputReplayCursor:TpvSizeInt=0;
+    InputReplayActive:Boolean=false;
+    // False until the application has said that the comparable part of the run has begun. Before
+    // that, events are neither written nor fed and the frame index does not move.
+    InputRecorderRunning:Boolean=false;
+    // True only while the replay itself is feeding an event, so that the three entry points can
+    // tell an injected event from one a person at the keyboard produced during the run.
+    InputReplayInjecting:Boolean=false;
+
+// Sets are written as their raw bit pattern. Enough for record and replay with the same binary,
+// which is the only combination this is meant for, and it saves enumerating every member.
+function InputSetToInt(const aSet;const aSize:TpvSizeInt):TpvUInt32;
+begin
+ result:=0;
+ Move(aSet,result,Min(aSize,SizeOf(result)));
+end;
+
+procedure InputIntToSet(const aValue:TpvUInt32;var aSet;const aSize:TpvSizeInt);
+begin
+ FillChar(aSet,aSize,#0);
+ Move(aValue,aSet,Min(aSize,SizeOf(aValue)));
+end;
+
+procedure InputRecordWriteLine(const aLine:TpvUTF8String);
+var RawText:TpvRawByteString;
+begin
+ if InputRecordHandle<>THandle(-1) then begin
+  try
+   RawText:=TpvRawByteString(aLine)+#13#10;
+   if length(RawText)>0 then begin
+    FileWrite(InputRecordHandle,RawText[1],length(RawText));
+   end;
+  except
+   // A recording which cannot be written must never disturb the run it is recording.
+  end;
+ end;
+end;
+
+// Floats travel as their raw bit pattern, not as text. Exact, and above all free of the decimal
+// separator of whatever locale the recording and the replay happen to run under - a recording made
+// on a German machine must replay on any other.
+function InputFloatToInt(const aValue:TpvFloat):TpvUInt32;
+begin
+ result:=0;
+ Move(aValue,result,SizeOf(TpvUInt32));
+end;
+
+function InputIntToFloat(const aValue:TpvUInt32):TpvFloat;
+begin
+ result:=0.0;
+ Move(aValue,result,SizeOf(TpvFloat));
+end;
+
+procedure pvInputRecordKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent);
+begin
+ if InputRecordHandle<>THandle(-1) then begin
+  InputRecordWriteLine('K '+
+                       TpvUTF8String(IntToStr(InputFrameIndex))+' '+
+                       TpvUTF8String(IntToStr(ord(aKeyEvent.KeyEventType)))+' '+
+                       TpvUTF8String(IntToStr(aKeyEvent.KeyCode))+' '+
+                       TpvUTF8String(IntToStr(aKeyEvent.ScanCode))+' '+
+                       TpvUTF8String(IntToStr(InputSetToInt(aKeyEvent.KeyModifiers,SizeOf(aKeyEvent.KeyModifiers))))+' '+
+                       TpvUTF8String(IntToStr(ord(aKeyEvent.KeyShortcut))));
+ end;
+end;
+
+procedure pvInputRecordPointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent);
+begin
+ if InputRecordHandle<>THandle(-1) then begin
+  InputRecordWriteLine('P '+
+                       TpvUTF8String(IntToStr(InputFrameIndex))+' '+
+                       TpvUTF8String(IntToStr(ord(aPointerEvent.PointerEventType)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aPointerEvent.Position.x)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aPointerEvent.Position.y)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aPointerEvent.RelativePosition.x)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aPointerEvent.RelativePosition.y)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aPointerEvent.Pressure)))+' '+
+                       TpvUTF8String(IntToStr(aPointerEvent.PointerID))+' '+
+                       TpvUTF8String(IntToStr(ord(aPointerEvent.Button)))+' '+
+                       TpvUTF8String(IntToStr(InputSetToInt(aPointerEvent.Buttons,SizeOf(aPointerEvent.Buttons))))+' '+
+                       TpvUTF8String(IntToStr(InputSetToInt(aPointerEvent.KeyModifiers,SizeOf(aPointerEvent.KeyModifiers)))));
+ end;
+end;
+
+procedure pvInputRecordScrolled(const aRelativeAmount:TpvVector2);
+begin
+ if InputRecordHandle<>THandle(-1) then begin
+  InputRecordWriteLine('S '+
+                       TpvUTF8String(IntToStr(InputFrameIndex))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aRelativeAmount.x)))+' '+
+                       TpvUTF8String(IntToStr(InputFloatToInt(aRelativeAmount.y))));
+ end;
+end;
+
+function pvInputRecorderLoadReplay(const aFileName:TpvUTF8String):Boolean;
+var Lines:TStringList;
+    Fields:TStringList;
+    LineIndex:TpvSizeInt;
+    Line:String;
+    Entry:TpvApplicationInputRecordEntry;
+ function Field(const aIndex:TpvSizeInt):TpvInt64;
+ begin
+  if (aIndex>=0) and (aIndex<Fields.Count) then begin
+   result:=StrToInt64Def(Fields[aIndex],0);
+  end else begin
+   result:=0;
+  end;
+ end;
+begin
+ result:=false;
+ if not FileExists(String(aFileName)) then begin
+  exit;
+ end;
+ Lines:=TStringList.Create;
+ try
+  Lines.LoadFromFile(String(aFileName));
+  Fields:=TStringList.Create;
+  try
+   Fields.Delimiter:=' ';
+   Fields.StrictDelimiter:=true;
+   for LineIndex:=0 to Lines.Count-1 do begin
+    Line:=Trim(Lines[LineIndex]);
+    if (length(Line)=0) or (Line[1]='#') then begin
+     continue;
+    end;
+    Fields.DelimitedText:=Line;
+    if Fields.Count=0 then begin
+     continue;
+    end;
+    FillChar(Entry,SizeOf(TpvApplicationInputRecordEntry),#0);
+    Entry.Kind:=AnsiChar(Fields[0][1]);
+    Entry.Frame:=Field(1);
+    case Entry.Kind of
+     'K':begin
+      Entry.KeyEvent.KeyEventType:=TpvApplicationInputKeyEventType(Field(2));
+      Entry.KeyEvent.KeyCode:=Field(3);
+      Entry.KeyEvent.ScanCode:=Field(4);
+      InputIntToSet(TpvUInt32(Field(5)),Entry.KeyEvent.KeyModifiers,SizeOf(Entry.KeyEvent.KeyModifiers));
+      Entry.KeyEvent.KeyShortcut:=TpvApplicationInputKeyShortcut(Field(6));
+     end;
+     'P':begin
+      Entry.PointerEvent.PointerEventType:=TpvApplicationInputPointerEventType(Field(2));
+      Entry.PointerEvent.Position.x:=InputIntToFloat(TpvUInt32(Field(3)));
+      Entry.PointerEvent.Position.y:=InputIntToFloat(TpvUInt32(Field(4)));
+      Entry.PointerEvent.RelativePosition.x:=InputIntToFloat(TpvUInt32(Field(5)));
+      Entry.PointerEvent.RelativePosition.y:=InputIntToFloat(TpvUInt32(Field(6)));
+      Entry.PointerEvent.Pressure:=InputIntToFloat(TpvUInt32(Field(7)));
+      Entry.PointerEvent.PointerID:=Field(8);
+      Entry.PointerEvent.Button:=TpvApplicationInputPointerButton(Field(9));
+      InputIntToSet(TpvUInt32(Field(10)),Entry.PointerEvent.Buttons,SizeOf(Entry.PointerEvent.Buttons));
+      InputIntToSet(TpvUInt32(Field(11)),Entry.PointerEvent.KeyModifiers,SizeOf(Entry.PointerEvent.KeyModifiers));
+     end;
+     'S':begin
+      Entry.ScrollAmount.x:=InputIntToFloat(TpvUInt32(Field(2)));
+      Entry.ScrollAmount.y:=InputIntToFloat(TpvUInt32(Field(3)));
+     end;
+     else begin
+      continue;
+     end;
+    end;
+    if length(InputReplayEntries)<=InputReplayCount then begin
+     SetLength(InputReplayEntries,(InputReplayCount+1)*2);
+    end;
+    InputReplayEntries[InputReplayCount]:=Entry;
+    inc(InputReplayCount);
+   end;
+  finally
+   FreeAndNil(Fields);
+  end;
+  result:=InputReplayCount>0;
+ finally
+  FreeAndNil(Lines);
+ end;
+end;
+
+// Called once per frame, from TpvApplication.Check, which every path through the main loop reaches.
+// Advances the frame index for both modes and, during a replay, feeds everything belonging to this
+// frame through the very same entry points a real event would take.
+procedure pvInputRecorderFrame;
+var Entry:PpvApplicationInputRecordEntry;
+begin
+
+ if not InputRecorderRunning then begin
+  exit;
+ end;
+
+ inc(InputFrameIndex);
+
+ if InputReplayActive and assigned(pvApplication) then begin
+  InputReplayInjecting:=true;
+  try
+   while (InputReplayCursor<InputReplayCount) and
+         (InputReplayEntries[InputReplayCursor].Frame<=InputFrameIndex) do begin
+    Entry:=@InputReplayEntries[InputReplayCursor];
+    inc(InputReplayCursor);
+    case Entry^.Kind of
+     'K':begin
+      pvApplication.KeyEvent(Entry^.KeyEvent);
+     end;
+     'P':begin
+      pvApplication.PointerEvent(Entry^.PointerEvent);
+     end;
+     'S':begin
+      pvApplication.Scrolled(Entry^.ScrollAmount);
+     end;
+    end;
+   end;
+  finally
+   InputReplayInjecting:=false;
+  end;
+ end;
+
+end;
+
+procedure pvInputRecorderStart;
+begin
+ if InputRecorderRunning or
+    ((length(pvInputRecordFileName)=0) and (length(pvInputReplayFileName)=0)) then begin
+  exit;
+ end;
+ // Minus one, because the first pvInputRecorderFrame of the run makes it frame zero.
+ InputFrameIndex:=-1;
+ if length(pvInputRecordFileName)>0 then begin
+  try
+   InputRecordHandle:=FileCreate(String(pvInputRecordFileName));
+   InputRecordWriteLine('# pasvulkan input recording v1');
+  except
+   InputRecordHandle:=THandle(-1);
+  end;
+  if InputRecordHandle<>THandle(-1) then begin
+   TpvApplication.Log(LOG_INFO,'PasVulkanApplication','Recording input to: '+pvInputRecordFileName);
+  end else begin
+   TpvApplication.Log(LOG_ERROR,'PasVulkanApplication','Could not write input recording to: '+pvInputRecordFileName);
+  end;
+ end;
+ if length(pvInputReplayFileName)>0 then begin
+  try
+   InputReplayEntries:=nil;
+   InputReplayCount:=0;
+   InputReplayCursor:=0;
+   InputReplayActive:=pvInputRecorderLoadReplay(pvInputReplayFileName);
+  except
+   InputReplayActive:=false;
+  end;
+  if InputReplayActive then begin
+   TpvApplication.Log(LOG_INFO,'PasVulkanApplication','Replaying '+TpvUTF8String(IntToStr(InputReplayCount))+' input events from: '+pvInputReplayFileName);
+  end else begin
+   TpvApplication.Log(LOG_ERROR,'PasVulkanApplication','Could not read input replay from: '+pvInputReplayFileName);
+  end;
+ end;
+ InputRecorderRunning:=true;
+end;
+
+function pvInputReplayFinished:Boolean;
+begin
+ result:=InputRecorderRunning and InputReplayActive and (InputReplayCursor>=InputReplayCount);
+end;
+
+procedure pvInputRecorderStop;
+begin
+ InputRecorderRunning:=false;
+ InputReplayActive:=false;
+ if InputRecordHandle<>THandle(-1) then begin
+  try
+   FileClose(InputRecordHandle);
+  finally
+   InputRecordHandle:=THandle(-1);
+  end;
+ end;
 end;
 
 procedure LogCrash(const aExceptionString:TpvUTF8String;const aHardCrash:Boolean);
@@ -10579,6 +10896,18 @@ begin
     fCrashLog:=true;
    end else if Parameter='nocrashlogging' then begin
     fCrashLog:=false;
+   end else if Parameter='recordinput' then begin
+    // Both take the file name as the next argument, handled by the same mechanism the crash log
+    // path uses for its own; see pvInputRecordFileName for what ends up in it.
+    if Index<=Count then begin
+     pvInputRecordFileName:=TpvUTF8String(ParamStr(Index));
+     inc(Index);
+    end;
+   end else if Parameter='replayinput' then begin
+    if Index<=Count then begin
+     pvInputReplayFileName:=TpvUTF8String(ParamStr(Index));
+     inc(Index);
+    end;
    end else if Parameter='crashlog' then begin
     // Naming a file to write to is asking for it to be written.
     fCrashLog:=true;
@@ -18135,6 +18464,15 @@ begin
  pvCrashDumps:=fCrashDumps;
  pvCrashDumpKind:=fCrashDumpKind;
 
+ // Only says that it is armed. The recorder itself is started by the application, at the point
+ // where the comparable part of a run begins, see pvInputRecorderStart.
+ if length(pvInputRecordFileName)>0 then begin
+  Log(LOG_INFO,'PasVulkanApplication','Input recording armed, file: '+pvInputRecordFileName);
+ end;
+ if length(pvInputReplayFileName)>0 then begin
+  Log(LOG_INFO,'PasVulkanApplication','Input replay armed, file: '+pvInputReplayFileName+' (real input is ignored while it runs)');
+ end;
+
  // Now that the storage paths are known, the crash log lands at its final
  // location, so say where that is instead of leaving it to be guessed.
  if pvCrashLog then begin
@@ -18953,6 +19291,13 @@ end;
 
 function TpvApplication.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
+ // During a replay, real input is kept out: otherwise whoever sits at the keyboard silently becomes
+ // part of the experiment, and a run which cannot be repeated is worth nothing.
+ if InputReplayActive and not InputReplayInjecting then begin
+  result:=false;
+  exit;
+ end;
+ pvInputRecordKeyEvent(aKeyEvent);
  if assigned(fScreen) then begin
   result:=fScreen.KeyEvent(aKeyEvent);
  end else begin
@@ -18962,6 +19307,11 @@ end;
 
 function TpvApplication.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
+ if InputReplayActive and not InputReplayInjecting then begin
+  result:=false;
+  exit;
+ end;
+ pvInputRecordPointerEvent(aPointerEvent);
  if assigned(fScreen) then begin
   result:=fScreen.PointerEvent(aPointerEvent);
  end else begin
@@ -18971,6 +19321,11 @@ end;
 
 function TpvApplication.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
+ if InputReplayActive and not InputReplayInjecting then begin
+  result:=false;
+  exit;
+ end;
+ pvInputRecordScrolled(aRelativeAmount);
  if assigned(fScreen) then begin
   result:=fScreen.Scrolled(aRelativeAmount);
  end else begin
@@ -18998,6 +19353,10 @@ end;
 
 procedure TpvApplication.Check(const aDeltaTime:TpvDouble);
 begin
+ // The frame beat of the input recorder. Here rather than in the loop itself, because every one of
+ // the loop's several shapes passes through this one call, and because it is ahead of the screen -
+ // a replayed event reaches the game in the same order a real one would.
+ pvInputRecorderFrame;
  if assigned(fScreen) then begin
   fScreen.Check(aDeltaTime);
  end;
@@ -20559,6 +20918,9 @@ initialization
 {$endif}
 
 finalization
+
+ // Close a still open input recording file and release the replay buffer
+ pvInputRecorderStop;
 
 {$ifdef Windows}
  // Reset timer resolution
