@@ -374,6 +374,22 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanInstanceDebugUtilsMessengerCallback=function(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32 of object;
 
+     // One report from VK_EXT_device_address_binding_report: the driver says which GPU address range it
+     // has just given to an object, or taken away from it again. Buffers and images alike, which is what
+     // makes this the answer to "which allocation does this faulting address belong to" - Vulkan hands
+     // out an address for buffers and for nothing else, so nothing else can name an image.
+     PpvVulkanDeviceAddressBinding=^TpvVulkanDeviceAddressBinding;
+     TpvVulkanDeviceAddressBinding=record
+      BaseAddress:TVkDeviceAddress;
+      Size:TVkDeviceSize;
+      ObjectHandle:TpvUInt64;
+      ObjectType:TVkObjectType;
+      Bound:boolean; // False for an unbind, so a fault on freed memory can still be named
+      Name:TpvUTF8String;
+     end;
+
+     TpvVulkanDeviceAddressBindings=array of TpvVulkanDeviceAddressBinding;
+
      TpvVulkanInstance=class(TpvVulkanObject)
       private
        fVulkan:TVulkan;
@@ -406,6 +422,15 @@ type EpvVulkanException=class(Exception);
        fDebugUtilsMessengerEXT:TVkDebugUtilsMessengerEXT;
        fOnInstanceDebugUtilsMessengerCallback:TpvVulkanInstanceDebugUtilsMessengerCallback;
        fExtDebugUtilsEnabled:boolean;
+       // Address binding reporting. The message type may only be asked for once the device extension is
+       // known to be on, and that happens after the messenger already exists - hence the separate flag
+       // and the reinstall below, instead of a check at creation time.
+       fDeviceAddressBindingMessages:boolean;
+       fDeviceAddressBindings:TpvVulkanDeviceAddressBindings;
+       fCountDeviceAddressBindings:TpvSizeInt;
+       fDeviceAddressBindingsTruncated:boolean;
+       fDeviceAddressBindingLock:TPasMPCriticalSection;
+       procedure AddDeviceAddressBinding(const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT);
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
        function GetApplicationName:TpvVulkanCharString;
        procedure SetApplicationName(const NewApplicationName:TpvVulkanCharString);
@@ -433,6 +458,11 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure InstallDebugReportCallback;
        procedure InstallDebugUtilsMessengerCallback;
+       procedure EnableDeviceAddressBindingMessages;
+       function GetCountDeviceAddressBindings:TpvSizeInt;
+       function GetDeviceAddressBinding(const aIndex:TpvSizeInt;out aBinding:TpvVulkanDeviceAddressBinding):boolean;
+       function FindDeviceAddressBinding(const aAddress:TVkDeviceAddress;out aBinding:TpvVulkanDeviceAddressBinding):boolean;
+       function DescribeDeviceAddress(const aAddress:TVkDeviceAddress):TpvUTF8String;
        function GetAPIVersionString:TpvRawByteString;
       public
        property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
@@ -458,6 +488,7 @@ type EpvVulkanException=class(Exception);
        property OnInstanceDebugReportCallback:TpvVulkanInstanceDebugReportCallback read fOnInstanceDebugReportCallback write fOnInstanceDebugReportCallback;
        property OnInstanceDebugUtilsMessengerCallback:TpvVulkanInstanceDebugUtilsMessengerCallback read fOnInstanceDebugUtilsMessengerCallback write fOnInstanceDebugUtilsMessengerCallback;
        property ExtDebugUtilsEnabled:boolean read fExtDebugUtilsEnabled;
+       property DeviceAddressBindingsTruncated:boolean read fDeviceAddressBindingsTruncated;
      end;
 
      TpvVulkanSurface=class;
@@ -8910,6 +8941,12 @@ begin
 
  fExtDebugUtilsEnabled:=false;
 
+ fDeviceAddressBindingMessages:=false;
+ fDeviceAddressBindings:=nil;
+ fCountDeviceAddressBindings:=0;
+ fDeviceAddressBindingsTruncated:=false;
+ fDeviceAddressBindingLock:=TPasMPCriticalSection.Create;
+
  fPhysicalDevices:=TpvVulkanPhysicalDeviceList.Create;
  fNeedToEnumeratePhysicalDevices:=false;
 
@@ -9054,6 +9091,8 @@ begin
  SetLength(fRawEnabledLayerNameStrings,0);
  SetLength(fEnabledExtensionNameStrings,0);
  SetLength(fRawEnabledExtensionNameStrings,0);
+ SetLength(fDeviceAddressBindings,0);
+ FreeAndNil(fDeviceAddressBindingLock);
  inherited Destroy;
 end;
 
@@ -9277,6 +9316,184 @@ begin
  end;
 end;
 
+// Called by the device once it knows VK_EXT_device_address_binding_report is on. The messenger is older
+// than the device, so it has to be built again to take the additional message type - it is one object
+// and this happens once, before the first frame.
+procedure TpvVulkanInstance.EnableDeviceAddressBindingMessages;
+begin
+ if not fDeviceAddressBindingMessages then begin
+  fDeviceAddressBindingMessages:=true;
+  if fDebugUtilsMessengerEXT<>VK_NULL_HANDLE then begin
+   fInstanceVulkan.DestroyDebugUtilsMessengerEXT(fInstanceHandle,fDebugUtilsMessengerEXT,fAllocationCallbacks);
+   fDebugUtilsMessengerEXT:=VK_NULL_HANDLE;
+   InstallDebugUtilsMessengerCallback;
+  end;
+ end;
+end;
+
+// One report, one entry. Unbinds are kept as well instead of removing the matching bind: an address which
+// faults after its object is gone is exactly the case worth naming, and a list which forgets those would
+// answer "unknown" precisely then. Capped, because this runs for every buffer and image the program ever
+// binds, and a diagnostic must not be the reason memory runs out.
+procedure TpvVulkanInstance.AddDeviceAddressBinding(const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT);
+const MaximumCountDeviceAddressBindings=262144;
+var Next:PVkBaseInStructure;
+    BindingData:PVkDeviceAddressBindingCallbackDataEXT;
+    Binding:PpvVulkanDeviceAddressBinding;
+    ObjectNameInfo:PVkDebugUtilsObjectNameInfoEXT;
+begin
+
+ if not assigned(aCallbackData) then begin
+  exit;
+ end;
+
+ BindingData:=nil;
+ Next:=PVkBaseInStructure(aCallbackData^.pNext);
+ while assigned(Next) do begin
+  if Next^.sType=VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT then begin
+   BindingData:=PVkDeviceAddressBindingCallbackDataEXT(Next);
+   break;
+  end;
+  Next:=PVkBaseInStructure(Next^.pNext);
+ end;
+
+ if not assigned(BindingData) then begin
+  exit;
+ end;
+
+ fDeviceAddressBindingLock.Acquire;
+ try
+
+  if fCountDeviceAddressBindings>=MaximumCountDeviceAddressBindings then begin
+   fDeviceAddressBindingsTruncated:=true;
+   exit;
+  end;
+
+  if length(fDeviceAddressBindings)<=fCountDeviceAddressBindings then begin
+   SetLength(fDeviceAddressBindings,(fCountDeviceAddressBindings+1)*2);
+  end;
+
+  Binding:=@fDeviceAddressBindings[fCountDeviceAddressBindings];
+  inc(fCountDeviceAddressBindings);
+
+  Binding^.BaseAddress:=BindingData^.baseAddress;
+  Binding^.Size:=BindingData^.size;
+  Binding^.Bound:=BindingData^.bindingType=VK_DEVICE_ADDRESS_BINDING_TYPE_BIND_EXT;
+  Binding^.ObjectHandle:=0;
+  Binding^.ObjectType:=VK_OBJECT_TYPE_UNKNOWN;
+  Binding^.Name:='';
+
+  // The object the range belongs to rides along in the ordinary object list of the message.
+  if (aCallbackData^.objectCount>0) and assigned(aCallbackData^.pObjects) then begin
+   ObjectNameInfo:=aCallbackData^.pObjects;
+   Binding^.ObjectHandle:=ObjectNameInfo^.objectHandle;
+   Binding^.ObjectType:=ObjectNameInfo^.objectType;
+   if assigned(ObjectNameInfo^.pObjectName) then begin
+    Binding^.Name:=TpvUTF8String(ObjectNameInfo^.pObjectName);
+   end;
+  end;
+
+ finally
+  fDeviceAddressBindingLock.Release;
+ end;
+
+end;
+
+function TpvVulkanInstance.GetCountDeviceAddressBindings:TpvSizeInt;
+begin
+ fDeviceAddressBindingLock.Acquire;
+ try
+  result:=fCountDeviceAddressBindings;
+ finally
+  fDeviceAddressBindingLock.Release;
+ end;
+end;
+
+function TpvVulkanInstance.GetDeviceAddressBinding(const aIndex:TpvSizeInt;out aBinding:TpvVulkanDeviceAddressBinding):boolean;
+begin
+ fDeviceAddressBindingLock.Acquire;
+ try
+  result:=(aIndex>=0) and (aIndex<fCountDeviceAddressBindings);
+  if result then begin
+   aBinding:=fDeviceAddressBindings[aIndex];
+  end else begin
+   aBinding.BaseAddress:=0;
+   aBinding.Size:=0;
+   aBinding.ObjectHandle:=0;
+   aBinding.ObjectType:=VK_OBJECT_TYPE_UNKNOWN;
+   aBinding.Bound:=false;
+   aBinding.Name:='';
+  end;
+ finally
+  fDeviceAddressBindingLock.Release;
+ end;
+end;
+
+// Answers the one question the whole reporting exists for: which object did this address belong to.
+// Searched from the back, because the list is a history and not a map - the same range is handed out
+// again after it was given back, so the newest entry covering the address is the one that was in force
+// when the crash happened. An unbind is a hit as well, and a wanted one: an address which faults after
+// its object is gone is exactly the case worth naming, and aBinding.Bound then says so.
+function TpvVulkanInstance.FindDeviceAddressBinding(const aAddress:TVkDeviceAddress;out aBinding:TpvVulkanDeviceAddressBinding):boolean;
+var Index:TpvSizeInt;
+    Binding:PpvVulkanDeviceAddressBinding;
+begin
+ result:=false;
+ fDeviceAddressBindingLock.Acquire;
+ try
+  for Index:=fCountDeviceAddressBindings-1 downto 0 do begin
+   Binding:=@fDeviceAddressBindings[Index];
+   // Size zero would make every address a hit, so such an entry is skipped rather than trusted.
+   if (Binding^.Size>0) and
+      (aAddress>=Binding^.BaseAddress) and
+      (aAddress<(Binding^.BaseAddress+Binding^.Size)) then begin
+    aBinding:=Binding^;
+    result:=true;
+    break;
+   end;
+  end;
+ finally
+  fDeviceAddressBindingLock.Release;
+ end;
+ if not result then begin
+  aBinding.BaseAddress:=0;
+  aBinding.Size:=0;
+  aBinding.ObjectHandle:=0;
+  aBinding.ObjectType:=VK_OBJECT_TYPE_UNKNOWN;
+  aBinding.Bound:=false;
+  aBinding.Name:='';
+ end;
+end;
+
+// The same answer as one line of text, for a crash report, a log line or a watch window. Says what the
+// object is, how far into it the address lies, and whether it was still bound - the offset is what turns
+// "somewhere in that image" into a coordinate.
+function TpvVulkanInstance.DescribeDeviceAddress(const aAddress:TVkDeviceAddress):TpvUTF8String;
+var Binding:TpvVulkanDeviceAddressBinding;
+begin
+ if FindDeviceAddressBinding(aAddress,Binding) then begin
+  result:='0x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt64(aAddress),16)))+' is +'+
+          TpvUTF8String(IntToStr(TpvUInt64(aAddress-Binding.BaseAddress)))+' into '+
+          TpvUTF8String(VulkanObjectTypeToString(Binding.ObjectType))+
+          ' 0x'+TpvUTF8String(LowerCase(IntToHex(Binding.ObjectHandle,16)));
+  if length(Binding.Name)>0 then begin
+   result:=result+' ("'+Binding.Name+'")';
+  end;
+  result:=result+', range 0x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt64(Binding.BaseAddress),16)))+
+          ' size '+TpvUTF8String(IntToStr(TpvUInt64(Binding.Size)));
+  if not Binding.Bound then begin
+   result:=result+', ALREADY UNBOUND';
+  end;
+ end else begin
+  result:='0x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt64(aAddress),16)))+' is in no reported address range';
+  if fDeviceAddressBindingsTruncated then begin
+   result:=result+' (the report list ran full, so this says less than it seems)';
+  end else if fCountDeviceAddressBindings=0 then begin
+   result:=result+' (nothing was reported at all - is VK_EXT_device_address_binding_report active?)';
+  end;
+ end;
+end;
+
 function TpvVulkanInstanceDebugUtilsMessengerCallbackFunction(aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;aUserData:pointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanInstance(aUserData).DebugUtilsMessengerCallback(aMessageSeverity,aMessageTypes,aCallbackData,aUserData);
@@ -9284,6 +9501,11 @@ end;
 
 function TpvVulkanInstance.DebugUtilsMessengerCallback(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32;
 begin
+ // Recorded before anything else sees the message, and the message itself is still passed on unchanged -
+ // address bindings are data for the dumps here, not something to log.
+ if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT))<>0 then begin
+  AddDeviceAddressBinding(aCallbackData);
+ end;
  if assigned(fOnInstanceDebugUtilsMessengerCallback) then begin
   result:=fOnInstanceDebugUtilsMessengerCallback(aMessageSeverity,aMessageTypes,aCallbackData,aUserData);
  end else begin
@@ -9303,7 +9525,10 @@ begin
   fDebugUtilsMessengerCreateInfoEXT.messageType:=TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) or
                                                  TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) or
                                                  TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
-  if fEnabledExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0 then begin
+  // Asked for by the device, not looked up here: the name in question is a device extension, while this
+  // list holds the instance ones, so the old check against it could never be true. And the messenger is
+  // built while there is no device yet, hence EnableDeviceAddressBindingMessages below.
+  if fDeviceAddressBindingMessages then begin
    fDebugUtilsMessengerCreateInfoEXT.messageType:=fDebugUtilsMessengerCreateInfoEXT.messageType or
                                                   TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT);
   end;
@@ -12096,6 +12321,9 @@ begin
   if fInstance.fExtDebugUtilsEnabled and
      (fPhysicalDevice.fAvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0) then begin
    fEnabledExtensionNames.Add(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME);
+   // Said here and not later, so that the messenger already carries the message type when the device is
+   // created and the very first bindings are reported too.
+   fInstance.EnableDeviceAddressBindingMessages;
   end;
 
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
@@ -17227,8 +17455,9 @@ end;
 procedure TpvVulkanDeviceMemoryManager.Dump(const aStringList:TStringList);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Size,Used:TpvUInt64;
-    Index:TpvSizeInt;
+    Index,CountAddressBindings:TpvSizeInt;
     s:TpvRawByteString;
+    AddressBinding:TpvVulkanDeviceAddressBinding;
 begin
 
  // Initialize
@@ -17284,6 +17513,53 @@ begin
   WriteLn(s);
  end;
 
+ // What the driver itself said about GPU address ranges, through VK_EXT_device_address_binding_report.
+ // The chunk addresses above stop at what a buffer can be laid over, this covers images as well and names
+ // the object - which is what turns a faulting address out of a GPU crash dump into something readable.
+ // Nothing is printed when the extension is not in play, so an ordinary dump does not grow a heading for
+ // an empty list.
+ CountAddressBindings:=0;
+ if assigned(fDevice) and assigned(fDevice.fInstance) then begin
+  CountAddressBindings:=fDevice.fInstance.GetCountDeviceAddressBindings;
+ end;
+
+ if CountAddressBindings>0 then begin
+
+  s:='Device address bindings: '+IntToStr(CountAddressBindings);
+  if fDevice.fInstance.DeviceAddressBindingsTruncated then begin
+   s:=s+' (truncated, the oldest are all there is)';
+  end;
+  if assigned(aStringList) then begin
+   aStringList.Add(s);
+  end else begin
+   WriteLn(s);
+  end;
+
+  for Index:=0 to CountAddressBindings-1 do begin
+   if fDevice.fInstance.GetDeviceAddressBinding(Index,AddressBinding) then begin
+    s:='  0x'+TpvRawByteString(LowerCase(IntToHex(TpvUInt64(AddressBinding.BaseAddress),16)))+
+       ' - 0x'+TpvRawByteString(LowerCase(IntToHex(TpvUInt64(AddressBinding.BaseAddress+AddressBinding.Size),16)))+
+       ' - Size '+SizeToHumanReadableString(AddressBinding.Size)+
+       ' - '+TpvRawByteString(VulkanObjectTypeToString(AddressBinding.ObjectType))+
+       ' 0x'+TpvRawByteString(LowerCase(IntToHex(AddressBinding.ObjectHandle,16)));
+    if length(AddressBinding.Name)>0 then begin
+     s:=s+' "'+TpvRawByteString(AddressBinding.Name)+'"';
+    end;
+    if AddressBinding.Bound then begin
+     s:=s+' - bound';
+    end else begin
+     s:=s+' - unbound';
+    end;
+    if assigned(aStringList) then begin
+     aStringList.Add(s);
+    end else begin
+     WriteLn(s);
+    end;
+   end;
+  end;
+
+ end;
+
 end;
 
 procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
@@ -17293,6 +17569,57 @@ procedure TpvVulkanDeviceMemoryManager.DumpJSON(const aStringList:TStringList);
    aStringList.Add(aLine);
   end else begin
    WriteLn(aLine);
+  end;
+ end;
+ // Written out by hand because JSON wants them in lower case, and BoolToStr does not mean the same thing
+ // in Delphi as it does in FPC.
+ function JSONBool(const aValue:boolean):TpvRawByteString;
+ begin
+  if aValue then begin
+   result:='true';
+  end else begin
+   result:='false';
+  end;
+ end;
+ // Object names come from whoever set them, in the last resort from the driver, so they are escaped
+ // rather than trusted - one stray quote would otherwise cost the whole file its parseability.
+ function JSONString(const aValue:TpvRawByteString):TpvRawByteString;
+ var Index:TpvSizeInt;
+     c:AnsiChar;
+ begin
+  result:='';
+  for Index:=1 to length(aValue) do begin
+   c:=aValue[Index];
+   case c of
+    '"':begin
+     result:=result+'\"';
+    end;
+    '\':begin
+     result:=result+'\\';
+    end;
+    #8:begin
+     result:=result+'\b';
+    end;
+    #9:begin
+     result:=result+'\t';
+    end;
+    #10:begin
+     result:=result+'\n';
+    end;
+    #12:begin
+     result:=result+'\f';
+    end;
+    #13:begin
+     result:=result+'\r';
+    end;
+    else begin
+     if c<#32 then begin
+      result:=result+'\u00'+TpvRawByteString(LowerCase(IntToHex(ord(c),2)));
+     end else begin
+      result:=result+c;
+     end;
+    end;
+   end;
   end;
  end;
 var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
@@ -17307,6 +17634,8 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     Flags:TpvUTF8String;
     Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     First:Boolean;
+    CountAddressBindings:TpvSizeInt;
+    AddressBinding:TpvVulkanDeviceAddressBinding;
 begin
 
  MemoryChunk:=fMemoryChunkList.First;
@@ -17741,7 +18070,36 @@ begin
     MemoryChunk:=NextMemoryChunk;
    end;
   end;
-  AddLine('  }');
+  AddLine('  },');
+
+  // What the driver itself said about GPU address ranges, through VK_EXT_device_address_binding_report.
+  // The chunk addresses above stop at what a buffer can be laid over; this covers images too and names
+  // the object, which is what turns a faulting address out of a crash dump into something readable.
+  // Empty when the extension is not in play - then the chunk list is all there is.
+  CountAddressBindings:=0;
+  if assigned(fDevice) and assigned(fDevice.fInstance) then begin
+   CountAddressBindings:=fDevice.fInstance.GetCountDeviceAddressBindings;
+  end;
+  AddLine('  "DeviceAddressBindings": [');
+  for Index:=0 to CountAddressBindings-1 do begin
+   if fDevice.fInstance.GetDeviceAddressBinding(Index,AddressBinding) then begin
+    s:='    {"Address": "0x'+TpvRawByteString(LowerCase(IntToHex(TpvUInt64(AddressBinding.BaseAddress),16)))+'"'+
+       ', "Size": '+TpvRawByteString(IntToStr(TpvUInt64(AddressBinding.Size)))+
+       ', "Bound": '+JSONBool(AddressBinding.Bound)+
+       ', "ObjectType": '+TpvRawByteString(IntToStr(TpvInt64(AddressBinding.ObjectType)))+
+       // Written out as well, so that whoever reads the file does not have to keep a table of Vulkan
+       // object type numbers next to it.
+       ', "ObjectTypeName": "'+TpvRawByteString(VulkanObjectTypeToString(AddressBinding.ObjectType))+'"'+
+       ', "ObjectHandle": "0x'+TpvRawByteString(LowerCase(IntToHex(AddressBinding.ObjectHandle,16)))+'"'+
+       ', "Name": "'+JSONString(TpvRawByteString(AddressBinding.Name))+'"}';
+    if Index<(CountAddressBindings-1) then begin
+     s:=s+',';
+    end;
+    AddLine(s);
+   end;
+  end;
+  AddLine('  ],');
+  AddLine('  "DeviceAddressBindingsTruncated": '+JSONBool(assigned(fDevice) and assigned(fDevice.fInstance) and fDevice.fInstance.DeviceAddressBindingsTruncated));
 
  end;
  AddLine('}');

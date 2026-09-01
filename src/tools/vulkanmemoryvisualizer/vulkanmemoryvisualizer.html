@@ -79,7 +79,9 @@
       <input type="text" id="search-bar" class="search-bar" placeholder="Search by block name or type...">
 
       <!-- Takes the faulting GPU virtual address out of a crash dump and says which allocation it
-           belonged to, or that it belonged to none - which is the interesting answer. -->
+           belonged to, or that it belonged to none - which is the interesting answer. When the dump
+           carries the driver's own binding report, it also names the object and says whether the range
+           was still bound. -->
       <input type="text" id="device-address-bar" class="search-bar" placeholder="Look up a GPU virtual address, e.g. 0x0000000006a0f000">
       <div id="device-address-result" class="header-box"></div>
 
@@ -166,7 +168,7 @@
       }
 
       // Enable the GPU virtual address lookup
-      function enableDeviceAddressLookup(memoryChunks) {
+      function enableDeviceAddressLookup(memoryChunks, addressBindings, addressBindingsTruncated) {
 
         const addressBar = document.getElementById('device-address-bar');
         const addressResult = document.getElementById('device-address-result');
@@ -191,26 +193,47 @@
           }
 
           const hit = lookUpDeviceAddress(memoryChunks, address);
+          const binding = lookUpAddressBinding(addressBindings, address);
 
-          if(hit === null){
+          const parts = [];
+
+          // The driver's own answer first, because it is the one that can name an object - and it is the
+          // only one that covers images at all.
+          if(binding !== null){
+            const offset = address - BigInt(binding.entry.Address);
+            const name = binding.entry.Name ? ` "${escapeHtml(binding.entry.Name)}"` : '';
+            const type = escapeHtml(binding.entry.ObjectTypeName || ('object type ' + binding.entry.ObjectType));
+            parts.push(`<strong>0x${address.toString(16)}</strong> is +${offset.toString()} (0x${offset.toString(16)}) into ` +
+                       `<strong>${type}</strong> 0x${BigInt(binding.entry.ObjectHandle).toString(16)}${name}, ` +
+                       `range ${binding.entry.Address}, size ${formatSize(binding.entry.Size)}.`);
+            if(binding.entry.Bound === false){
+              parts.push('<strong>That range was already unbound</strong> when the report ended - the object behind this address is gone.');
+            }
+          } else if(addressBindings.length > 0){
+            parts.push(`<strong>0x${address.toString(16)}</strong> is in none of the ${addressBindings.length} reported address ranges.` +
+                       (addressBindingsTruncated ? ' The report list ran full, so this says less than it seems.' : ''));
+          }
+
+          // And the chunk view underneath, which still says which allocation of the memory manager it is.
+          if(hit !== null){
+            let chunkText = `In <strong>${hit.chunkName}</strong> at offset ${hit.offset.toString()} (0x${hit.offset.toString(16)}), ` +
+                            `chunk base ${formatDeviceAddress(hit.chunk)}, chunk size ${formatSize(hit.chunk.Size)}.`;
+            if(hit.block === null){
+              chunkText += '<br>No block of this chunk covers that offset.';
+            } else {
+              chunkText += `<br>Block <strong>${hit.blockName}</strong>: offset ${hit.block.Offset}, size ${hit.block.Size}` +
+                           `, type ${hit.block.AllocationType || 'Unknown'}.`;
+            }
+            parts.push(chunkText);
+          } else if(binding === null){
             // The answer that says the most: nothing living is there. Either the memory was already
             // given back, or the address never belonged to this device memory at all.
-            addressResult.innerHTML = `<strong>0x${address.toString(16)}</strong> lies in none of the chunks - nothing living is at that address.`;
-            return;
-          }
-
-          let text2 = `<strong>0x${address.toString(16)}</strong> lies in <strong>${hit.chunkName}</strong> ` +
-                      `at offset ${hit.offset.toString()} (0x${hit.offset.toString(16)}), ` +
-                      `chunk base ${formatDeviceAddress(hit.chunk)}, chunk size ${formatSize(hit.chunk.Size)}.`;
-
-          if(hit.block === null){
-            text2 += '<br>No block of this chunk covers that offset.';
+            parts.push(`<strong>0x${address.toString(16)}</strong> lies in none of the chunks - nothing living is at that address.`);
           } else {
-            text2 += `<br>Block <strong>${hit.blockName}</strong>: offset ${hit.block.Offset}, size ${hit.block.Size}` +
-                     `, type ${hit.block.AllocationType || 'Unknown'}.`;
+            parts.push('No chunk of the memory manager covers it, which is normal for an image: those live in their own allocations.');
           }
 
-          addressResult.innerHTML = text2;
+          addressResult.innerHTML = parts.join('<br>');
 
         }, 250));
 
@@ -310,7 +333,10 @@
         renderHeapInfo(data.MemoryInfo);
         renderVisualization(data.MemoryChunks);
         enableSearch(); // Activate search bar after loading JSON
-        enableDeviceAddressLookup(data.MemoryChunks); // And the address lookup beside it
+        // And the address lookup beside it, with the driver's own binding report when the dump carries
+        // one - that is the only source which can name an image, since Vulkan hands out addresses for
+        // buffers alone.
+        enableDeviceAddressLookup(data.MemoryChunks, data.DeviceAddressBindings || [], data.DeviceAddressBindingsTruncated === true);
       }
 
       // Convert bytes to human-readable format (e.g., 64 MiB)
@@ -336,6 +362,34 @@
       // Where a GPU virtual address out of a crash dump lands: the chunk that contains it, the offset
       // into that chunk, and whichever block covers the offset. Returns null when it belongs to none
       // of them, which is the answer that matters most - it means the memory was already given back.
+      // The driver's binding report is a history, not a map: the same range is handed out again after it
+      // was given back, so it is searched from the back and the newest entry covering the address wins.
+      // An unbind counts as a hit on purpose - an address that faults after its object is gone is exactly
+      // the case worth naming, and Bound === false then says so.
+      function lookUpAddressBinding(addressBindings, address) {
+        for(let index = addressBindings.length - 1; index >= 0; index--){
+          const entry = addressBindings[index];
+          let base, size;
+          try {
+            base = BigInt(entry.Address);
+            size = BigInt(entry.Size);
+          } catch(e) {
+            continue;
+          }
+          if(size <= 0n){ // A zero-sized range would swallow every address
+            continue;
+          }
+          if((address >= base) && (address < (base + size))){
+            return {index: index, entry: entry};
+          }
+        }
+        return null;
+      }
+
+      function escapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
       function lookUpDeviceAddress(memoryChunks, address) {
         for(const chunkName of Object.keys(memoryChunks)){
           const chunk = memoryChunks[chunkName];

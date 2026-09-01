@@ -733,6 +733,7 @@ procedure RegisterNVIDIAAfterMathShaderBinary(const aData;const aDataSize:TpvSiz
 implementation
 
 uses PasVulkan.Application,
+     PasVulkan.Framework,
      PasVulkan.Collections;
 
 type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifier,TBytes>;
@@ -1295,12 +1296,20 @@ var decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;
     dumpFile:TFileStream;
 {$endif}
     jsonSize:TpvUInt32;
-    json:Pointer;    
+    json:Pointer;
     jsonDumpFileName:TSafeString;
 {$ifdef Windows}
     jsonFileHandle:THandle;
-{$else}    
+{$else}
     jsonFile:TFileStream;
+{$endif}
+    pageFaultInfo:TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo;
+    pageFaultText:TpvRawByteString;
+    pageFaultFileName:TSafeString;
+{$ifdef Windows}
+    pageFaultFileHandle:THandle;
+{$else}
+    pageFaultFile:TFileStream;
 {$endif}
 begin
 
@@ -1402,6 +1411,52 @@ begin
      end;
 {$endif}
     end; 
+
+    // Say straight away which object the faulting address belonged to, instead of leaving that to a
+    // later session with the dump and the memory visualizer. Aftermath knows the address, and
+    // VK_EXT_device_address_binding_report knows what the driver handed out under it, so putting the
+    // two together right here is what turns "faulted at 0x0492d000" into a name. Written as its own
+    // small text file next to the dump; the dump itself stays exactly as it was.
+    //
+    // Only ever a diagnostic aid: everything in here is allowed to fail quietly, because a failing
+    // aid must not be the reason a crash dump goes unwritten.
+    if assigned(GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo) then begin
+     try
+      FillChar(pageFaultInfo,SizeOf(TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo),#0);
+      if (GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo(decoder,@pageFaultInfo)=GFSDK_Aftermath_Result_Success) and
+         (pageFaultInfo.faultingGpuVA<>0) and
+         assigned(pvApplication) and
+         assigned(pvApplication.VulkanInstance) then begin
+       pageFaultText:=TpvRawByteString(pvApplication.VulkanInstance.DescribeDeviceAddress(pageFaultInfo.faultingGpuVA))+
+                      TpvRawByteString({$ifdef Unix}#10{$else}#13#10{$endif});
+       // Built from the base name rather than from the dump file name, which only exists when there was
+       // something to write.
+       pageFaultFileName:=baseFileName;
+       SafeStringAppend(pageFaultFileName,'.pagefault.txt');
+       if length(pageFaultText)>0 then begin
+{$ifdef Windows}
+        pageFaultFileHandle:=CreateFileA(SafeStringToPAnsiChar(pageFaultFileName),GENERIC_WRITE,0,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
+        if pageFaultFileHandle<>INVALID_HANDLE_VALUE then begin
+         try
+          WriteFile(pageFaultFileHandle,pageFaultText[1],length(pageFaultText),dummy,nil);
+         finally
+          CloseHandle(pageFaultFileHandle);
+         end;
+        end;
+{$else}
+        pageFaultFile:=TFileStream.Create(SafeStringToString(pageFaultFileName),fmCreate or fmShareDenyWrite);
+        try
+         pageFaultFile.Write(pageFaultText[1],length(pageFaultText));
+        finally
+         FreeAndNil(pageFaultFile);
+        end;
+{$endif}
+       end;
+      end;
+     except
+      // Nothing to do. The dump above is already on disk, which is what matters.
+     end;
+    end;
 
     // Decode the crash dump to a JSON string.
     // Step 1: Generate the JSON and get the size.
