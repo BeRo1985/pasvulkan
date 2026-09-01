@@ -728,6 +728,8 @@ procedure FreeNVIDIAAfterMath;
 procedure InitializeNVIDIAAfterMath;
 procedure FinalizeNVIDIAAfterMath;
 
+procedure RegisterNVIDIAAfterMathShaderBinary(const aData;const aDataSize:TpvSizeInt);
+
 implementation
 
 uses PasVulkan.Application,
@@ -1228,6 +1230,53 @@ begin
  if length(Data)>0 then begin
   setShaderBinary(@Data[0],length(Data));
  end;
+end;
+
+// A crash dump names the shader that faulted only if the decoder can get the SPIR-V behind the hash
+// the dump carries. It asks for that through ShaderLookupCallback above, which reads ShaderDatabase -
+// and nothing ever put anything in there, so the shader section stayed empty in every generated JSON
+// and the faulting shader had to be read out of the binary dump in Nsight instead. This is the other
+// half: every shader module registers its SPIR-V here under the very hash Aftermath will ask for.
+// Nothing here may raise or refuse: a shader the hash function does not take is one shader missing
+// from a report, while an exception out of a diagnostic aid would cost the program. Only ever called
+// when Aftermath is actually loaded and initialized, so nothing is kept when it is off.
+procedure RegisterNVIDIAAfterMathShaderBinary(const aData;const aDataSize:TpvSizeInt);
+var SpirvCode:TGFSDK_Aftermath_SpirvCode;
+    ShaderBinaryHash:TGFSDK_Aftermath_ShaderBinaryHash;
+    Bytes:TBytes;
+begin
+
+ if (aDataSize>0) and
+    assigned(GFSDK_Aftermath_GetShaderHashSpirv) and
+    assigned(GFSDK_Aftermath_CriticalSection) and
+    assigned(ShaderDatabase) then begin
+
+  GFSDK_Aftermath_CriticalSection.Acquire;
+  try
+
+   FillChar(SpirvCode,SizeOf(TGFSDK_Aftermath_SpirvCode),#0);
+   SpirvCode.pData.Ptr:=@aData;
+   SpirvCode.Size:=TpvUInt32(aDataSize);
+
+   FillChar(ShaderBinaryHash,SizeOf(TGFSDK_Aftermath_ShaderBinaryHash),#0);
+
+   // Result checked instead of AFTERMATH_CHECK_ERROR on purpose, see above.
+   if GFSDK_Aftermath_GetShaderHashSpirv(GFSDK_Aftermath_Version_API,@SpirvCode,@ShaderBinaryHash)=GFSDK_Aftermath_Result_Success then begin
+    // The same shader can be loaded more than once, and two modules with the same code share a hash.
+    if not ShaderDatabase.ExistKey(ShaderBinaryHash) then begin
+     Bytes:=nil;
+     SetLength(Bytes,aDataSize);
+     Move(aData,Bytes[0],aDataSize);
+     ShaderDatabase[ShaderBinaryHash]:=Bytes;
+    end;
+   end;
+
+  finally
+   GFSDK_Aftermath_CriticalSection.Release;
+  end;
+
+ end;
+
 end;
 
 var GPUCrashDumpCallbackCounter:TpvInt32=0;

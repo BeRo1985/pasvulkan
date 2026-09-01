@@ -18775,9 +18775,13 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               [],
                                               0);
+  // Sixteen, like everywhere else a shader includes planet_brushes.glsl. sampleBrush indexes the array
+  // by smooth level and reads two neighbouring levels, and the higher of the two is at least one for
+  // every brush other than the procedural circle - so a single descriptor here leaves the shader
+  // sampling entries which were never written.
   fModificationDescriptorSetLayout.AddBinding(1, // BrushTextures
                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                              1,
+                                              16,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                               [],
                                               0);
@@ -19020,7 +19024,7 @@ begin
                                                               TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                               2);
   fModificationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*2);
-  fModificationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1*2);
+  fModificationDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16*2); // sixteen brush textures per set
   fModificationDescriptorPool.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fModificationDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fModificationDescriptorPool');
@@ -19040,11 +19044,9 @@ begin
 
    fModificationDescriptorSets[Index].WriteToDescriptorSet(1, // Brush textures
                                                            0,
-                                                           1,
+                                                           16,
                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                           [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
-                                                                                          fPlanet.fBrushesTexture.ImageView.Handle,
-                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                           fPlanet.GetBrushesTexturesDescriptorImageInfos,
                                                            [],
                                                            [],
                                                            false);

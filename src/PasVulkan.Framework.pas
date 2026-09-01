@@ -25633,6 +25633,10 @@ begin
   ShaderModuleCreateInfo.codeSize:=fDataSize;
   ShaderModuleCreateInfo.pCode:=fData;
   VulkanCheckResult(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
+  // Handed to Aftermath so that a later crash dump can name this shader instead of only its hash. Does
+  // nothing at all unless Aftermath is loaded and initialized. All three constructors come through
+  // here, so this is the one place where every shader of the program passes by.
+  RegisterNVIDIAAfterMathShaderBinary(fData^,TpvSizeInt(fDataSize));
  end;
 end;
 
