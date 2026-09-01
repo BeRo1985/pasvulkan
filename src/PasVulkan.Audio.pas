@@ -430,6 +430,7 @@ type PpvAudioInt32=^TpvInt32;
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
        procedure PostClickRemoval(Buffer:TpvPointer;Remain:TpvInt32);
+       procedure FlushClickRemovalTail; {$ifdef caninline}inline;{$endif}
        procedure MixProcSpatializationHRTF(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure MixProcSpatializationPSEUDO(Buffer:TpvPointer;ToDo:TpvInt32);
        procedure MixProcVolumeRamping(Buffer:TpvPointer;ToDo:TpvInt32);
@@ -2365,6 +2366,14 @@ begin
  fNewLastRight:=LocalNewLastRight;
 end;
 
+procedure TpvAudioSoundSampleVoice.FlushClickRemovalTail;
+begin
+ inc(fLastLeft,fNewLastLeft);
+ inc(fLastRight,fNewLastRight);
+ fNewLastLeft:=0;
+ fNewLastRight:=0;
+end;
+
 procedure TpvAudioSoundSampleVoice.MixProcSpatializationHRTF(Buffer:TpvPointer;ToDo:TpvInt32);
 var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,hhi,hm,p,m,s,v,i:TpvInt32;
     pllh,plrh:TpvAudioSoundSampleVoiceLowPassHistory;
@@ -2765,7 +2774,7 @@ procedure TpvAudioSoundSampleVoice.UpdateTargetVolumes(aMixVolume:TpvInt32);
 var MixVolume,Pan:TpvInt32;
 begin
  MixVolume:=SARLongint(aMixVolume*fDynamicVolume,15);
- MixVolume:=SARLongint(aMixVolume*SARLongint(fVolume,1),15);
+ MixVolume:=SARLongint(MixVolume*SARLongint(fVolume,1),15);
  if fSpatializationOcclusion<1.0 then begin
   MixVolume:=round(MixVolume*fSpatializationOcclusion);
  end;
@@ -3144,6 +3153,7 @@ begin
   end;
 
   if not fActive then begin
+   FlushClickRemovalTail;
    if assigned(fVoiceIndexPointer) then begin
     InterlockedExchange(TpvInt32(fVoiceIndexPointer^),-1);
     fVoiceIndexPointer:=nil;
@@ -3881,6 +3891,7 @@ var Voice:TpvAudioSoundSampleVoice;
 begin
  if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
   Voice:=Voices[aVoiceNumber];
+  Voice.FlushClickRemovalTail;
   Voice.fActive:=false;
   if Voice.fGlobalVoiceID<>0 then begin
    AudioEngine.GlobalVoiceManager.DeallocateGlobalVoice(Voice.fGlobalVoiceID);
@@ -3902,6 +3913,7 @@ begin
   Voice:=Voices[aVoiceNumber];
   Voice.fKeyOff:=true;
   if (Loop.Mode<>SoundLoopModeNONE) or (SustainLoop.Mode=SoundLoopModeNONE) then begin
+   Voice.FlushClickRemovalTail;
    Voice.fActive:=false;
    if assigned(Voice.fVoiceIndexPointer) then begin
     TpvInt32(Voice.fVoiceIndexPointer^):=-1;
