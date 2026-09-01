@@ -204,7 +204,11 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
- for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+ // Over the same count the sets were created with in AcquireVolatileResources, not over the
+ // renderer's. The two are the same as long as the application clamps its in-flight frame count to
+ // what the frame graph accepts, but if they ever part company this loop would free past the end of
+ // the fixed array and damage whatever lies behind it.
+ for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
@@ -228,7 +232,12 @@ begin
 
  CameraPreset:=fInstance.CameraPresets[aInFlightFrameIndex];
 
- PushConstants.Size:=CameraPreset.BlurKernelSize;
+ // The tap buffer holds 4096 taps (see TpvScene3DRendererInstance.fDepthOfFieldBokenShapeTapVulkanBuffers),
+ // and a kernel of n edge length wants n*n of them, so 64 is the largest that fits. The shaders clamp
+ // themselves as well, but only this keeps an absurd value out of the dispatch size below - a kernel
+ // of a few thousand would ask for millions of work groups which all return without doing anything,
+ // and that is a hang of its own.
+ PushConstants.Size:=Min(Max(CameraPreset.BlurKernelSize,1),64);
  PushConstants.FFactor:=CameraPreset.FNumber;
  PushConstants.Ngon:=CameraPreset.Ngon;
  PushConstants.PhiShutterMax:=HalfPI;

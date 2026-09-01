@@ -37,15 +37,24 @@ vec2 getBokehTapSampleCoord(const in vec2 o, const in float f, const float n, co
 void main() {
   ivec2 invocationPosition = ivec2(gl_GlobalInvocationID.xy);
   if(all(greaterThanEqual(invocationPosition, ivec2(0))) && all(lessThan(invocationPosition, ivec2(pushConstants.size)))){
-    int countSamples = pushConstants.size * pushConstants.size;
+    // The kernel size decides how many taps this wants, the buffer decides how many there is room
+    // for. Whichever is smaller wins, on both the count that is written down and the writes below -
+    // a kernel larger than the buffer would otherwise scribble past its end and, worse, leave a
+    // count behind which sends the blur fragment shader off the end as well.
+    int countSamples = min(pushConstants.size * pushConstants.size, int(bokehShapeTaps.length()));
     int sampleIndex = (invocationPosition.y * pushConstants.size) + invocationPosition.x;
+    if(sampleIndex >= countSamples){
+      return;
+    }
     if(sampleIndex == 0){
       countBokehShapeTaps = countSamples;
     }
     vec2 offset;
     if(pushConstants.ngon < 3.0){
       // Below 3 edges a such bokeh shape doesn't exist, so take here a circle bokeh shape instead for this then.
-      offset = sin(vec2(float(sampleIndex) * 2.39996322973) + vec2(0.0, halfPI)) * (float(sampleIndex) / float(countSamples - 1));
+      // The divisor is guarded, because a kernel of edge length one leaves a single sample behind and
+      // would divide zero by zero here, which hands NaN offsets to the blur.
+      offset = sin(vec2(float(sampleIndex) * 2.39996322973) + vec2(0.0, halfPI)) * (float(sampleIndex) / float(max(countSamples - 1, 1)));
     }else{
       offset = getBokehTapSampleCoord(vec2(ivec2(invocationPosition.x, invocationPosition.y)) / float(pushConstants.size - 1), 
                                       pushConstants.fFactor, 

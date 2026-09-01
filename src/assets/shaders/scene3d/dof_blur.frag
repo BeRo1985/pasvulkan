@@ -50,7 +50,10 @@ void main(){
     vec4 farSum = vec4(0.0);
     vec4 nearSum = vec4(0.0);
 
-    int countSamples = countBokehShapeTaps;
+    // Clamped against what the buffer actually holds. The count is written by the bokeh compute pass
+    // and is therefore a value out of memory, not a constant of this shader - and an index past the
+    // end of a storage buffer is read from an address nobody mapped.
+    int countSamples = clamp(countBokehShapeTaps, 0, int(bokehShapeTaps.length()));
         
     for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){            
 
@@ -86,7 +89,10 @@ void main(){
   
     float halfMargin = 0.5 * inverseInputTextureSize.y;
 
-    int countSamples = countBokehShapeTaps;
+    // Clamped against what the buffer actually holds. The count is written by the bokeh compute pass
+    // and is therefore a value out of memory, not a constant of this shader - and an index past the
+    // end of a storage buffer is read from an address nobody mapped.
+    int countSamples = clamp(countBokehShapeTaps, 0, int(bokehShapeTaps.length()));
         
     float nearSum = 0.0;
 

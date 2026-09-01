@@ -227,7 +227,8 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
- for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+ // Same count as the creation loop in AcquireVolatileResources, see the note in the bokeh pass.
+ for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);

@@ -8535,6 +8535,7 @@ end;
 
 procedure TpvScene3DRendererInstance.AcquireVolatileResources;
 const NaNVector4:TpvVector4=(x:NaN;y:NaN;z:NaN;w:NaN);
+      ZeroVector4:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.0);
 var InFlightFrameIndex,Index,PerInFlightFrameBufferIndex:TpvSizeInt;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -8689,6 +8690,17 @@ begin
                                                  UniversalFence,
                                                  NaNVector4,
                                                  fDepthOfFieldAutoFocusVulkanBuffers[InFlightFrameIndex],
+                                                 0,
+                                                 SizeOf(TpvVector4));
+      // And the tap buffer beside it, which was the only one left uninitialized. Its first bytes hold
+      // the number of taps, and the blur fragment shader takes its loop count from there - so until
+      // the bokeh compute pass has written it once, that count is whatever the memory happened to
+      // contain. Zero means no taps and a blur which does nothing, which is the harmless answer.
+      Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.VulkanDevice.UniversalQueue,
+                                                 UniversalCommandBuffer,
+                                                 UniversalFence,
+                                                 ZeroVector4,
+                                                 fDepthOfFieldBokenShapeTapVulkanBuffers[InFlightFrameIndex],
                                                  0,
                                                  SizeOf(TpvVector4));
      end;
