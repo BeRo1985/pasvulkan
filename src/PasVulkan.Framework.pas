@@ -1143,7 +1143,13 @@ type EpvVulkanException=class(Exception);
        PersistentMappedIfPossibe,
        OwnSingleMemoryChunk,
        DedicatedAllocation,
-       BufferDeviceAddress
+       BufferDeviceAddress,
+       // Allocated addressable so that the chunk can say where it lies, without anything inside it
+       // holding an address of its own. Deliberately apart from BufferDeviceAddress above, which
+       // means that blocks in here do hold addresses and which is therefore what keeps the
+       // defragmentation pass away - moving those would invalidate the addresses, moving these
+       // would not, since the chunk's own memory object stays where it is either way.
+       AddressableForDiagnostics
       );
 
      PpvVulkanDeviceMemoryChunkFlags=^TpvVulkanDeviceMemoryChunkFlags;
@@ -13607,7 +13613,8 @@ begin
  if not (assigned(fMemoryManager) and
          assigned(fMemoryManager.fDevice) and
          (fMemoryHandle<>VK_NULL_HANDLE) and
-         (TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in fMemoryChunkFlags)) then begin
+         ((fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress,
+                              TpvVulkanDeviceMemoryChunkFlag.AddressableForDiagnostics])<>[])) then begin
   exit;
  end;
 
@@ -13683,8 +13690,10 @@ begin
 
  FillChar(aMemoryAllocateFlagsInfoKHR,SizeOf(TVkMemoryAllocateFlagsInfoKHR),#0);
 
- // BDA adds a new head instead of replacing the existing dedicated-allocation tail.
- if TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in aMemoryChunkFlags then begin
+ // BDA adds a new head instead of replacing the existing dedicated-allocation tail. Either flag asks
+ // for the same allocate bit; they differ only in what may be done with the chunk afterwards.
+ if (aMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress,
+                        TpvVulkanDeviceMemoryChunkFlag.AddressableForDiagnostics])<>[] then begin
   aMemoryAllocateFlagsInfoKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
   aMemoryAllocateFlagsInfoKHR.pNext:=aMemoryDedicatedAllocateInfo;
   aMemoryAllocateFlagsInfoKHR.flags:=TVkMemoryAllocateFlagsKHR(VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR);
@@ -16793,6 +16802,15 @@ begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress);
  end;
 
+ // And beyond that every chunk the device can make addressable, not only those whose blocks asked for
+ // it. Vulkan gives out an address for buffers alone, so a chunk without this flag can never say where
+ // it lies - and a chunk full of images is exactly the one a faulting address out of a GPU crash dump
+ // has to be looked up in. It costs address space and nothing else, and it does away with the split
+ // between addressable and non-addressable chunks, which used to keep the two from sharing.
+ if fDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE then begin
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.AddressableForDiagnostics);
+ end;
+
  if WouldUseDedicatedAllocation(aMemoryBlockFlags,
                                 aMemoryBlockSize,
                                 aMemoryAllocationType,
@@ -17619,6 +17637,12 @@ begin
         Flags:=Flags+', ';
        end;
        Flags:=Flags+'"BUFFER_DEVICE_ADDRESS"';
+      end;
+      if TpvVulkanDeviceMemoryChunkFlag.AddressableForDiagnostics in MemoryChunk.fMemoryChunkFlags then begin
+       if length(Flags)>0 then begin
+        Flags:=Flags+', ';
+       end;
+       Flags:=Flags+'"ADDRESSABLE_FOR_DIAGNOSTICS"';
       end;
       if TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation in MemoryChunk.fMemoryChunkFlags then begin
        if length(Flags)>0 then begin
