@@ -78,6 +78,11 @@
 
       <input type="text" id="search-bar" class="search-bar" placeholder="Search by block name or type...">
 
+      <!-- Takes the faulting GPU virtual address out of a crash dump and says which allocation it
+           belonged to, or that it belonged to none - which is the interesting answer. -->
+      <input type="text" id="device-address-bar" class="search-bar" placeholder="Look up a GPU virtual address, e.g. 0x0000000006a0f000">
+      <div id="device-address-result" class="header-box"></div>
+
       <div id="visualization"></div>
       <div class="tooltip" id="tooltip"></div>
     </div>
@@ -160,11 +165,62 @@
         };
       }
 
+      // Enable the GPU virtual address lookup
+      function enableDeviceAddressLookup(memoryChunks) {
+
+        const addressBar = document.getElementById('device-address-bar');
+        const addressResult = document.getElementById('device-address-result');
+
+        addressBar.style.display = 'block';
+
+        addressBar.addEventListener('input', debounce(() => {
+
+          const text = addressBar.value.trim();
+
+          if(text === ''){
+            addressResult.innerHTML = '';
+            return;
+          }
+
+          let address = null;
+          try {
+            address = BigInt((/^0[xX]/.test(text) ? text : ('0x' + text)).replace(/\s/g, ''));
+          } catch(e) {
+            addressResult.innerHTML = 'Not a number.';
+            return;
+          }
+
+          const hit = lookUpDeviceAddress(memoryChunks, address);
+
+          if(hit === null){
+            // The answer that says the most: nothing living is there. Either the memory was already
+            // given back, or the address never belonged to this device memory at all.
+            addressResult.innerHTML = `<strong>0x${address.toString(16)}</strong> lies in none of the chunks - nothing living is at that address.`;
+            return;
+          }
+
+          let text2 = `<strong>0x${address.toString(16)}</strong> lies in <strong>${hit.chunkName}</strong> ` +
+                      `at offset ${hit.offset.toString()} (0x${hit.offset.toString(16)}), ` +
+                      `chunk base ${formatDeviceAddress(hit.chunk)}, chunk size ${formatSize(hit.chunk.Size)}.`;
+
+          if(hit.block === null){
+            text2 += '<br>No block of this chunk covers that offset.';
+          } else {
+            text2 += `<br>Block <strong>${hit.blockName}</strong>: offset ${hit.block.Offset}, size ${hit.block.Size}` +
+                     `, type ${hit.block.AllocationType || 'Unknown'}.`;
+          }
+
+          addressResult.innerHTML = text2;
+
+        }, 250));
+
+      }
+
       // Enable search bar
       function enableSearch() {
 
         // Show search bar after loading JSON
-        searchBar.style.display = 'block'; 
+        searchBar.style.display = 'block';
 
         // Add search functionality for the search bar
         searchBar.addEventListener('input', debounce(() => {
@@ -254,9 +310,58 @@
         renderHeapInfo(data.MemoryInfo);
         renderVisualization(data.MemoryChunks);
         enableSearch(); // Activate search bar after loading JSON
+        enableDeviceAddressLookup(data.MemoryChunks); // And the address lookup beside it
       }
 
       // Convert bytes to human-readable format (e.g., 64 MiB)
+      // The GPU virtual address a chunk begins at. Null whenever the dump could not establish one,
+      // which is the case for memory types that take no buffers and for chunks that were not
+      // allocated addressable - Vulkan has no way of asking for the address of anything else.
+      function chunkDeviceAddress(chunk) {
+        if((chunk === undefined) || (chunk === null) || (chunk.DeviceAddress === undefined) || (chunk.DeviceAddress === null)){
+          return null;
+        }
+        try {
+          return BigInt(chunk.DeviceAddress);
+        } catch(e) {
+          return null;
+        }
+      }
+
+      function formatDeviceAddress(chunk) {
+        const address = chunkDeviceAddress(chunk);
+        return (address === null) ? '(unknown)' : ('0x' + address.toString(16));
+      }
+
+      // Where a GPU virtual address out of a crash dump lands: the chunk that contains it, the offset
+      // into that chunk, and whichever block covers the offset. Returns null when it belongs to none
+      // of them, which is the answer that matters most - it means the memory was already given back.
+      function lookUpDeviceAddress(memoryChunks, address) {
+        for(const chunkName of Object.keys(memoryChunks)){
+          const chunk = memoryChunks[chunkName];
+          const base = chunkDeviceAddress(chunk);
+          if(base === null){
+            continue;
+          }
+          const size = BigInt(chunk.Size);
+          if((address >= base) && (address < (base + size))){
+            const offset = address - base;
+            let hit = null, hitName = null;
+            Object.keys(chunk.MemoryChunkBlocks || {}).forEach(blockName => {
+              const block = chunk.MemoryChunkBlocks[blockName];
+              const blockOffset = BigInt(block.Offset);
+              const blockSize = BigInt(block.Size);
+              if((offset >= blockOffset) && (offset < (blockOffset + blockSize))){
+                hit = block;
+                hitName = blockName;
+              }
+            });
+            return {chunkName: chunkName, chunk: chunk, offset: offset, block: hit, blockName: hitName};
+          }
+        }
+        return null;
+      }
+
       function formatSize(bytes) {
         const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB'];
         let unitIndex = 0;
@@ -469,6 +574,7 @@
           <strong>Chunk Details:</strong><br>
           Heap Index: ${chunk.HeapIndex}<br>
           Type Index: ${chunk.TypeIndex}<br>
+          Device Address: ${formatDeviceAddress(chunk)}<br>
           Size: ${formatSize(chunk.Size)}<br>
           Used: ${formatSize(chunk.Used)}<br>
           NonUsed: ${formatSize(chunk.NonUsed)}<br>

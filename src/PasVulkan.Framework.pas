@@ -1311,6 +1311,13 @@ type EpvVulkanException=class(Exception);
        fAllocationGroupID:TpvUInt64;
        fDefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
        fMutationGeneration:TpvUInt64;
+       // The GPU virtual address this chunk begins at, or zero when it could not be established.
+       // Vulkan hands out an address for buffers and for nothing else, so it is asked for once at
+       // creation through a throwaway buffer bound over the whole chunk - see AcquireDeviceAddress.
+       // Every block inside then sits at fDeviceAddress+Block.Offset, which is what turns a faulting
+       // address out of a GPU crash dump back into the name of an allocation.
+       fDeviceAddress:TVkDeviceAddress;
+       procedure AcquireDeviceAddress;
        class procedure InitializeMemoryAllocateInfo(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
                                                     var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
                                                     const aSize:TVkDeviceSize;
@@ -1388,6 +1395,7 @@ type EpvVulkanException=class(Exception);
       public
        property Memory:PVkVoid read fMemory;
        property AllocationGroupID:TpvUInt64 read fAllocationGroupID;
+       property DeviceAddress:TVkDeviceAddress read fDeviceAddress;
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
@@ -13580,6 +13588,84 @@ begin
  inherited Destroy;
 end;
 
+// Vulkan gives an address for a buffer and for nothing else - neither for an image nor for a device
+// memory object. So a buffer is laid over the whole chunk for the length of one call, its address is
+// asked for, and the buffer is thrown away again; the address belongs to the memory and stays valid
+// without it. Everything can fail here and nothing may raise: a memory type which takes no buffers, a
+// driver without buffer device addresses, a chunk which was not allocated addressable. Then the chunk
+// simply has no known address and says so in the dumps.
+procedure TpvVulkanDeviceMemoryChunk.AcquireDeviceAddress;
+var BufferCreateInfo:TVkBufferCreateInfo;
+    BufferDeviceAddressInfo:TVkBufferDeviceAddressInfoKHR;
+    MemoryRequirements:TVkMemoryRequirements;
+    BufferHandle:TVkBuffer;
+    Device:TpvVulkanDevice;
+begin
+
+ fDeviceAddress:=0;
+
+ if not (assigned(fMemoryManager) and
+         assigned(fMemoryManager.fDevice) and
+         (fMemoryHandle<>VK_NULL_HANDLE) and
+         (TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress in fMemoryChunkFlags)) then begin
+  exit;
+ end;
+
+ Device:=fMemoryManager.fDevice;
+
+ if not (assigned(Device.Commands.Commands.GetBufferDeviceAddressKHR) or
+         assigned(Device.Commands.Commands.GetBufferDeviceAddress)) then begin
+  exit;
+ end;
+
+ try
+
+  FillChar(BufferCreateInfo,SizeOf(TVkBufferCreateInfo),#0);
+  BufferCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  BufferCreateInfo.size:=fSize;
+  BufferCreateInfo.usage:=TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  BufferCreateInfo.sharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+
+  BufferHandle:=VK_NULL_HANDLE;
+  if Device.Commands.CreateBuffer(Device.fDeviceHandle,@BufferCreateInfo,Device.fAllocationCallbacks,@BufferHandle)=VK_SUCCESS then begin
+   try
+
+    // Asked rather than assumed: binding to a memory type the buffer does not accept is invalid usage,
+    // and a validation error out of a diagnostic aid would be worse than a missing address.
+    FillChar(MemoryRequirements,SizeOf(TVkMemoryRequirements),#0);
+    Device.Commands.GetBufferMemoryRequirements(Device.fDeviceHandle,BufferHandle,@MemoryRequirements);
+
+    // Offset zero needs no alignment check of its own: the base of a device memory object already
+    // satisfies every alignment the implementation can ask for.
+    if ((MemoryRequirements.memoryTypeBits and (TpvUInt32(1) shl fMemoryTypeIndex))<>0) and
+       (MemoryRequirements.size<=fSize) then begin
+
+     if Device.Commands.BindBufferMemory(Device.fDeviceHandle,BufferHandle,fMemoryHandle,0)=VK_SUCCESS then begin
+      FillChar(BufferDeviceAddressInfo,SizeOf(TVkBufferDeviceAddressInfoKHR),#0);
+      BufferDeviceAddressInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+      BufferDeviceAddressInfo.pNext:=nil;
+      BufferDeviceAddressInfo.buffer:=BufferHandle;
+      if assigned(Device.Commands.Commands.GetBufferDeviceAddressKHR) then begin
+       fDeviceAddress:=Device.Commands.GetBufferDeviceAddressKHR(Device.fDeviceHandle,@BufferDeviceAddressInfo);
+      end else begin
+       fDeviceAddress:=Device.Commands.GetBufferDeviceAddress(Device.fDeviceHandle,@BufferDeviceAddressInfo);
+      end;
+     end;
+
+    end;
+
+   finally
+    Device.Commands.DestroyBuffer(Device.fDeviceHandle,BufferHandle,Device.fAllocationCallbacks);
+   end;
+  end;
+
+ except
+  // A chunk without a known address is a worse dump, never a worse program.
+  fDeviceAddress:=0;
+ end;
+
+end;
+
 class procedure TpvVulkanDeviceMemoryChunk.InitializeMemoryAllocateInfo(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
                                                                         var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
                                                                         const aSize:TVkDeviceSize;
@@ -14165,6 +14251,11 @@ begin
  finally
   BlacklistedHeaps:=nil;
  end;
+
+ // Asked once, here, while the device is healthy and the chunk is still empty. Never later on demand:
+ // whoever wants this most is a crash report, and a crash report must not create Vulkan objects on a
+ // device which may already be lost.
+ AcquireDeviceAddress;
 
  fOffsetRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
@@ -17119,6 +17210,13 @@ begin
    s:=s+'AllocationGroupID '+IntToHex(MemoryChunk.fAllocationGroupID)+' - ';
   end;
 
+  // Where this chunk begins on the GPU. A faulting address out of a GPU crash dump lies in this chunk
+  // when it falls between here and here plus Size, and the allocation it belonged to is the block
+  // whose offset covers the difference.
+  if MemoryChunk.fDeviceAddress<>0 then begin
+   s:=s+'DeviceAddress 0x'+LowerCase(IntToHex(TpvUInt64(MemoryChunk.fDeviceAddress),16))+' - ';
+  end;
+
   s:=s+'Size '+SizeToHumanReadableString(MemoryChunk.fSize)+' - '+
        'Used '+SizeToHumanReadableString(MemoryChunk.fUsed)+' - '+
        'Non-used '+SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed);
@@ -17443,6 +17541,12 @@ begin
     begin
      AddLine('      "HeapIndex": '+IntToStr(MemoryChunk.fMemoryHeapIndex)+',');
      AddLine('      "TypeIndex": '+IntToStr(MemoryChunk.fMemoryTypeIndex)+',');
+     // Null when the address could not be established, see TpvVulkanDeviceMemoryChunk.AcquireDeviceAddress.
+     if MemoryChunk.fDeviceAddress<>0 then begin
+      AddLine('      "DeviceAddress": "0x'+LowerCase(IntToHex(TpvUInt64(MemoryChunk.fDeviceAddress),16))+'",');
+     end else begin
+      AddLine('      "DeviceAddress": null,');
+     end;
      AddLine('      "Size": '+IntToStr(MemoryChunk.fSize)+',');
      AddLine('      "Used": '+IntToStr(MemoryChunk.fUsed)+',');
      AddLine('      "NonUsed": '+IntToStr(MemoryChunk.fSize-MemoryChunk.fUsed)+',');
