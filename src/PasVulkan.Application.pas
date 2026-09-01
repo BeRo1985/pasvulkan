@@ -3456,16 +3456,26 @@ begin
  Move(aValue,result,SizeOf(TpvFloat));
 end;
 
+// The key shortcut is not a value but a live object, whose address means nothing outside the run it
+// was recorded in. Only its ID goes into the recording, and only so that a recording stays readable;
+// the replay resolves the shortcut again from the key code, scan code and modifiers, see
+// pvInputRecorderFrame.
 procedure pvInputRecordKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent);
+var KeyShortcutID:TpvUInt64;
 begin
  if InputRecordHandle<>THandle(-1) then begin
+  if assigned(aKeyEvent.KeyShortcut) then begin
+   KeyShortcutID:=aKeyEvent.KeyShortcut.ID;
+  end else begin
+   KeyShortcutID:=0;
+  end;
   InputRecordWriteLine('K '+
                        TpvUTF8String(IntToStr(InputFrameIndex))+' '+
                        TpvUTF8String(IntToStr(ord(aKeyEvent.KeyEventType)))+' '+
                        TpvUTF8String(IntToStr(aKeyEvent.KeyCode))+' '+
                        TpvUTF8String(IntToStr(aKeyEvent.ScanCode))+' '+
                        TpvUTF8String(IntToStr(InputSetToInt(aKeyEvent.KeyModifiers,SizeOf(aKeyEvent.KeyModifiers))))+' '+
-                       TpvUTF8String(IntToStr(ord(aKeyEvent.KeyShortcut))));
+                       TpvUTF8String(IntToStr(KeyShortcutID)));
  end;
 end;
 
@@ -3541,7 +3551,9 @@ begin
       Entry.KeyEvent.KeyCode:=Field(3);
       Entry.KeyEvent.ScanCode:=Field(4);
       InputIntToSet(TpvUInt32(Field(5)),Entry.KeyEvent.KeyModifiers,SizeOf(Entry.KeyEvent.KeyModifiers));
-      Entry.KeyEvent.KeyShortcut:=TpvApplicationInputKeyShortcut(Field(6));
+      // Field 6 holds the ID the shortcut had while recording, which is diagnostic information only.
+      // The shortcut itself is resolved when the event is fed, in pvInputRecorderFrame.
+      Entry.KeyEvent.KeyShortcut:=nil;
      end;
      'P':begin
       Entry.PointerEvent.PointerEventType:=TpvApplicationInputPointerEventType(Field(2));
@@ -3583,6 +3595,7 @@ end;
 // frame through the very same entry points a real event would take.
 procedure pvInputRecorderFrame;
 var Entry:PpvApplicationInputRecordEntry;
+    KeyEvent:TpvApplicationInputKeyEvent;
 begin
 
  if not InputRecorderRunning then begin
@@ -3600,7 +3613,16 @@ begin
     inc(InputReplayCursor);
     case Entry^.Kind of
      'K':begin
-      pvApplication.KeyEvent(Entry^.KeyEvent);
+      // The shortcut belongs to the run, not to the recording, so it is looked up again here, from
+      // exactly the key code, scan code and modifiers which were recorded. That is the same lookup a
+      // real event goes through, so a replayed event carries the same shortcut a live one would.
+      KeyEvent:=Entry^.KeyEvent;
+      if assigned(pvApplication.Input) then begin
+       KeyEvent.KeyShortcut:=pvApplication.Input.GetKeyShortcut(KeyEvent.KeyCode,KeyEvent.ScanCode,KeyEvent.KeyModifiers);
+      end else begin
+       KeyEvent.KeyShortcut:=nil;
+      end;
+      pvApplication.KeyEvent(KeyEvent);
      end;
      'P':begin
       pvApplication.PointerEvent(Entry^.PointerEvent);
