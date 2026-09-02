@@ -769,6 +769,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure GarbageCollectDescriptors;
        function GetFrameBufferWidth:TpvInt32;
        function GetFrameBufferHeight:TpvInt32;
+       function GetCountQueueItems(const aBufferIndex:TpvInt32):TpvSizeInt;
+       function GetCountUploadBytes(const aBufferIndex:TpvInt32):TpvSizeInt;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
@@ -915,6 +917,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FontSize:TpvFloat read GetFontSize write SetFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read GetTextHorizontalAlignment write SetTextHorizontalAlignment;
        property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read GetTextVerticalAlignment write SetTextVerticalAlignment;
+      public
+       // Diagnostics for a processing buffer that was filled by a finished Start .. Stop pass, so
+       // that a caller can see how many draw calls its drawing actually produced and how many
+       // bytes ExecuteUpload has to move. Only valid until ExecuteDraw, which consumes the buffer
+       // and resets both counts to zero again.
+       property CountQueueItems[const aBufferIndex:TpvInt32]:TpvSizeInt read GetCountQueueItems;
+       property CountUploadBytes[const aBufferIndex:TpvInt32]:TpvSizeInt read GetCountUploadBytes;
       published
        property Device:TpvVulkanDevice read fDevice;
        property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass write SetVulkanRenderPass;
@@ -5163,6 +5172,28 @@ begin
   result:=fFrameBufferHeight;
  end else begin
   result:=ceil(fViewPort.y+fViewPort.height);
+ end;
+end;
+
+function TpvCanvas.GetCountQueueItems(const aBufferIndex:TpvInt32):TpvSizeInt;
+begin
+ if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
+  result:=fVulkanCanvasBuffers[aBufferIndex].fCountQueueItems;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvCanvas.GetCountUploadBytes(const aBufferIndex:TpvInt32):TpvSizeInt;
+var Index:TpvSizeInt;
+    CurrentBuffer:PpvCanvasBuffer;
+begin
+ result:=0;
+ if (aBufferIndex>=0) and (aBufferIndex<fCountBuffers) then begin
+  CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+  for Index:=0 to CurrentBuffer^.fCountUsedBuffers-1 do begin
+   inc(result,CurrentBuffer^.fVertexBufferSizes[Index]+CurrentBuffer^.fIndexBufferSizes[Index]);
+  end;
  end;
 end;
 
