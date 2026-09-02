@@ -167,7 +167,9 @@ implementation
 
 const // How often the thread looks. Also how long a shutdown waits for it to notice that it is
       // over, which is the reason it is not longer.
-      PollSeconds=0.25;
+      PollMilliseconds=250;
+
+      PollSeconds=PollMilliseconds/1000.0;
 
 type TpvHangWatchdogThread=class(TThread)
       protected
@@ -343,7 +345,7 @@ begin
   // Polled rather than waited on, since the whole thread costs one wake-up every quarter second and
   // needs neither an operating system object nor a lock at the moment where both are least
   // reliable.
-  Sleep(round(PollSeconds*1000.0));
+  Sleep(PollMilliseconds);
   if not Terminated then begin
    CheckForHang(PollSeconds);
   end;

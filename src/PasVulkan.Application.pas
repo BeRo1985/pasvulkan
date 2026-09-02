@@ -10989,13 +10989,20 @@ begin
     // the thresholds can be tried out on the machine where the freeze actually
     // happens rather than only in a build. Whole seconds, since a decimal point
     // means different things in different locales and this is not worth that.
+    // Anything which is not a number at all leaves the default where it is.
     if Index<=Count then begin
-     pvHangWatchdogSeconds:=Max(1,StrToIntDef(ParamStr(Index),round(pvHangWatchdogSeconds)));
+     Value:=StrToIntDef(ParamStr(Index),0);
+     if Value>0 then begin
+      pvHangWatchdogSeconds:=Value;
+     end;
      inc(Index);
     end;
    end else if Parameter='hangreports' then begin
     if Index<=Count then begin
-     pvHangWatchdogMaxReports:=Max(1,StrToIntDef(ParamStr(Index),pvHangWatchdogMaxReports));
+     Value:=StrToIntDef(ParamStr(Index),0);
+     if Value>0 then begin
+      pvHangWatchdogMaxReports:=Value;
+     end;
      inc(Index);
     end;
    end;
