@@ -2872,7 +2872,7 @@ function pvInputReplayFinished:Boolean;
 
 implementation
 
-uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport,PasDblStrUtils;
+uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport,PasVulkan.HangWatchdog,PasDblStrUtils;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -3387,6 +3387,40 @@ begin
  // Wherever the crash log goes, since that is where somebody will look, and
  // both halves of one report belong next to each other.
  result:=pvCrashReportMiniDumpFileName(ExtractFilePath(GetCrashLogFileName));
+end;
+
+function GetHangReportFileName:TpvUTF8String;
+begin
+ // The same argument once more: a freeze and a crash are two answers to the
+ // same question and belong in the same place.
+ result:=TpvUTF8String(ChangeFileExt(String(GetCrashLogFileName),'.hangreport'));
+end;
+
+// What the engine itself can say about a freeze, see TpvHangWatchdogDetailsHook
+// for why this does as little as it does. Both values are read without a lock
+// and are meant to be: they are numbers left behind by threads which are, by
+// the time this runs, no longer moving.
+function HangWatchdogEngineDetails:TpvUTF8String;
+begin
+ result:='';
+ if assigned(pvApplication) then begin
+  result:='frame='+TpvUTF8String(IntToStr(pvApplication.FrameCounter));
+ end;
+ // The engine tags the update thread densely on its way through a frame, and
+ // WaitForDone prints the same value when it gives up. Taking it along costs
+ // nothing and says far more precisely than anything else here how far the
+ // update thread got.
+ if length(result)>0 then begin
+  result:=result+' ';
+ end;
+ result:=result+'updateTag=$'+TpvUTF8String(IntToHex(TpvApplicationUpdateThread.UpdateThreadTag,6));
+end;
+
+procedure HangWatchdogLog(const aLine:TpvUTF8String);
+begin
+ if assigned(pvApplication) then begin
+  TpvApplication.Log(LOG_ERROR,'HangWatchdog',aLine);
+ end;
 end;
 
 type TpvApplicationInputRecordEntry=record
@@ -10942,6 +10976,28 @@ begin
    end else if Parameter='fullcrashdumps' then begin
     fCrashDumps:=true;
     fCrashDumpKind:=TpvCrashReportMiniDumpKind.Full;
+   end else if Parameter='hangwatchdog' then begin
+    pvHangWatchdogEnabled:=true;
+   end else if Parameter='nohangwatchdog' then begin
+    pvHangWatchdogEnabled:=false;
+   end else if Parameter='nohangterminate' then begin
+    // Reports as before, but leaves the frozen process standing, which is what
+    // somebody wants who is about to attach a debugger to it.
+    pvHangWatchdogTerminate:=false;
+   end else if Parameter='hangseconds' then begin
+    // Both take their number as the next argument, and both are here so that
+    // the thresholds can be tried out on the machine where the freeze actually
+    // happens rather than only in a build. Whole seconds, since a decimal point
+    // means different things in different locales and this is not worth that.
+    if Index<=Count then begin
+     pvHangWatchdogSeconds:=Max(1,StrToIntDef(ParamStr(Index),round(pvHangWatchdogSeconds)));
+     inc(Index);
+    end;
+   end else if Parameter='hangreports' then begin
+    if Index<=Count then begin
+     pvHangWatchdogMaxReports:=Max(1,StrToIntDef(ParamStr(Index),pvHangWatchdogMaxReports));
+     inc(Index);
+    end;
    end;
   end;
  end;
@@ -15703,6 +15759,10 @@ var Index,Counter,Tries:TpvInt32;
     StartTime:TpvHighResolutionTime;
 begin
 
+ // One beat per turn of the main loop, see PasVulkan.HangWatchdog. Everything
+ // below is allowed to take a while; it only has to come back.
+ pvHangWatchdogHeartbeat;
+
  if assigned(fPasMPInstance.Profiler) then begin
   fPasMPInstance.Profiler.Start(fPasMPProfilerSuppressGaps);
  end;
@@ -18522,6 +18582,28 @@ begin
   Log(LOG_INFO,'PasVulkanApplication','Crash dumps: off, see --crashdumps');
  end;
 
+ // The same for a freeze, which unlike a crash reports nothing by itself, see
+ // PasVulkan.HangWatchdog. The report goes beside the crash log, and what the
+ // engine can say about the moment is added to every line of it.
+ pvHangWatchdogReportFileName:=GetHangReportFileName;
+ pvOnHangWatchdogEngineDetails:=HangWatchdogEngineDetails;
+ pvOnHangWatchdogLog:=HangWatchdogLog;
+ if pvDebuggerPresent then begin
+  // Under a debugger a stopped main loop is the normal state of affairs and
+  // means somebody is looking at it, so the reports still get written and the
+  // process stays where it is.
+  pvHangWatchdogTerminate:=false;
+ end;
+ if pvHangWatchdogEnabled then begin
+  if pvHangWatchdogTerminate then begin
+   Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: on, report file: '+pvHangWatchdogReportFileName+', ends the process after '+TpvUTF8String(IntToStr(pvHangWatchdogMaxReports))+' reports, see --nohangterminate');
+  end else begin
+   Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: on, report file: '+pvHangWatchdogReportFileName+', reports only');
+  end;
+ end else begin
+  Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: off, see --hangwatchdog');
+ end;
+
  fVulkanPipelineCacheFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fCacheStoragePath)))+'vulkan_pipeline_cache.bin';
 
  ProcessOldPathNames;
@@ -18988,8 +19070,18 @@ begin
             end;
             try
 
-             while not fTerminated do begin
-              ProcessMessages;
+             // Watches the loop below and nothing besides: for as long as it
+             // comes back around, the program is alive, see
+             // PasVulkan.HangWatchdog.
+             pvHangWatchdogStart;
+             try
+
+              while not fTerminated do begin
+               ProcessMessages;
+              end;
+
+             finally
+              pvHangWatchdogStop;
              end;
 
             finally
