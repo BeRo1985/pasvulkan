@@ -77,6 +77,15 @@ unit PasVulkan.HangWatchdog;
 // The reports are written with plain file handling rather than through a log, because a freeze
 // which sits on a lock could just as well sit on the one a log takes, and then the report would be
 // lost at exactly the moment it is needed.
+//
+// Still open: a deadline for the way out. What is watched here is the main loop, and the watching
+// ends with it, so a shutdown which hangs afterwards - a device wait which never returns, a thread
+// which is joined and never comes back - is once more the case this unit exists for: no window, no
+// frames, and an audio thread which carries on. The shape it would take is a deadline armed where
+// the loop is left and disarmed where the process is about to end anyway, generous enough that a
+// teardown which frees gigabytes is not cut short, which is why it is not simply the same numbers
+// as above. It belongs here, at the engine level, so that every program gets it rather than the
+// one which asked.
 
 interface
 
