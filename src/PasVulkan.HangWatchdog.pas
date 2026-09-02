@@ -227,7 +227,7 @@ begin
 {$ifend}
 end;
 
-procedure WriteReportLine(const aLine:TpvUTF8String);
+procedure WriteReportFileLine(const aLine:TpvUTF8String);
 var FileName:String;
     FileLine:TpvUTF8String;
     Stream:TFileStream;
@@ -253,18 +253,23 @@ begin
   end;
  end;
 
- // And into the ordinary log as well, for whoever is watching a console. After the file, never
- // before it, for the reason in the unit comment.
+end;
+
+// And into the ordinary log as well, for whoever is watching a console. Always after the file and
+// never before it, and never at all on the way out: a log takes locks, and one of them may be the
+// lock the freeze is sitting on, in which case this never comes back - which would cost exactly the
+// termination it was written in front of.
+procedure WriteReportLogLine(const aLine:TpvUTF8String);
+begin
  try
   if assigned(pvOnHangWatchdogLog) then begin
    pvOnHangWatchdogLog(aLine);
   end;
  except
  end;
-
 end;
 
-procedure WriteHangReport(const aReportIndex:TpvInt32;const aStalledSeconds:TpvDouble);
+function BuildHangReportLine(const aReportIndex:TpvInt32;const aStalledSeconds:TpvDouble):TpvUTF8String;
 var Line,Details:TpvUTF8String;
 begin
 
@@ -293,7 +298,7 @@ begin
  except
  end;
 
- WriteReportLine(Line);
+ result:=Line;
 
 end;
 
@@ -302,6 +307,8 @@ end;
 // before the first turn of the loop does not count as a freeze.
 procedure CheckForHang(const aElapsedSeconds:TpvDouble);
 var Beat:TpvInt32;
+    Line:TpvUTF8String;
+    Last:Boolean;
 begin
 
  if (TPasMPInterlocked.Read(ArmedCounter)=0) or (TPasMPInterlocked.Read(PauseCounter)>0) then begin
@@ -324,16 +331,19 @@ begin
   StallSeconds:=StallSeconds+aElapsedSeconds;
   if (StallSeconds>=pvHangWatchdogSeconds) and (ReportCount<pvHangWatchdogMaxReports) then begin
    inc(ReportCount);
-   WriteHangReport(ReportCount,pvHangWatchdogSeconds*ReportCount);
-   StallSeconds:=0.0;
-   if (ReportCount>=pvHangWatchdogMaxReports) and pvHangWatchdogTerminate then begin
-    // The reports are written first, so that the verdict outlives the process, and the last line
-    // says why it ends rather than leaving a log which simply stops.
-    WriteReportLine(TpvUTF8String(FormatDateTime('yyyy"-"mm"-"dd" "hh":"nn":"ss',Now))+
-                    ' ending the process after '+TpvUTF8String(IntToStr(ReportCount))+
-                    ' hang reports, exit code '+TpvUTF8String(IntToStr(pvHangWatchdogExitCode)));
+   Last:=(ReportCount>=pvHangWatchdogMaxReports) and pvHangWatchdogTerminate;
+   Line:=BuildHangReportLine(ReportCount,pvHangWatchdogSeconds*ReportCount);
+   // The report is written first, so that the verdict outlives the process, and the line after it
+   // says why the process ends rather than leaving a report which simply stops.
+   WriteReportFileLine(Line);
+   if Last then begin
+    WriteReportFileLine(TpvUTF8String(FormatDateTime('yyyy"-"mm"-"dd" "hh":"nn":"ss',Now))+
+                        ' ending the process after '+TpvUTF8String(IntToStr(ReportCount))+
+                        ' hang reports, exit code '+TpvUTF8String(IntToStr(pvHangWatchdogExitCode)));
     TerminateProcessHard(pvHangWatchdogExitCode);
    end;
+   WriteReportLogLine(Line);
+   StallSeconds:=0.0;
   end;
  end;
 
