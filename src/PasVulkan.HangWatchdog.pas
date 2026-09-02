@@ -71,8 +71,8 @@ unit PasVulkan.HangWatchdog;
 // at all, and a program which is only still making noise is worse than one which is gone.
 //
 // Costs one interlocked increment per turn of the loop and nothing at all besides while everything
-// runs. Driven by TpvApplication, so every program built on it is watched without doing anything;
-// one which is not can call the three procedures below itself.
+// runs. Driven by TpvApplication, so every program built on it is watched without doing anything of
+// its own; one which is not built on it drives the handful of procedures below itself.
 //
 // The reports are written with plain file handling rather than through a log, because a freeze
 // which sits on a lock could just as well sit on the one a log takes, and then the report would be
