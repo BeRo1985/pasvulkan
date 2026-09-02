@@ -163,8 +163,14 @@ layout(push_constant) uniform PushConstants {
   vec4 shellCentreBottomRadius;
 
   // x = the Rayleigh scale height, y = the Mie one: how fast each of the two thins with altitude.
-  // z = how coarse the noise field is, w = the time it drifts with, so that standing still does not mean
-  // standing in a fixed pattern.
+  //
+  // z = how coarse the noise field is.
+  //
+  // w = the time the field moves with, so that standing still does not mean standing in a fixed pattern.
+  // Already taken modulo noiseDriftCycle by the pass, and that is a contract and not a convenience: the
+  // field's octaves each advance by a whole number of lattice periods over exactly one cycle, so a clock
+  // wrapped at the same cycle comes back around without anything moving. Hand it an unwrapped one and the
+  // pattern falls apart in the low bits instead.
   vec4 scaleHeightsNoiseScaleTime;
 
   // x = how much the aerial term weighs - what the distance adds over and above the march, and takes away
@@ -322,33 +328,102 @@ const float gJitterOffsets[64] = float[](
   0.765625, 0.203125, 0.953125, 0.031250, 0.781250, 0.218750, 0.968750, 0.015625
 );
 
+// How far the field repeats, in lattice cells, and how long the whole movement takes to come back to where
+// it started, in seconds. The two together are what let the drift below WRAP instead of jump.
+//
+// The lattice REPEATS: a whole number of periods added to a position is not a similar field, it is the
+// same field to the last bit. Every layer velocity below advances by a whole number of periods over
+// exactly one cycle, and the pass hands the clock over modulo that same cycle - so at the moment the clock
+// comes back around, every layer stands exactly where it stood and nothing on screen moves.
+//
+// Without the repetition there is nothing to wrap against and the clock has to be let run instead, which
+// is what the old arrangement did: a float counting seconds since the race started loses the low bits the
+// pattern is made of, and there is no length of time at which it can be reset without the field changing
+// under the eye. This is the same question answered from the other end.
+//
+// Both are powers of two, so neither the modulo nor the offsets lose anything to rounding.
+//
+// The PERIOD is chosen against the march and not against the eye: five hundred and twelve cells is 5120
+// metres at the default noise scale, and the march reaches 4096. The repeat therefore cannot fall inside
+// one ray however the camera is pointed, which is the only place it could have been seen at all. That
+// margin is worth insisting on, because the field a period away is not faintly similar but three quarters
+// correlated - the first octave carries half the amplitude and repeats exactly. At 256 the repeat would
+// have sat well inside the march. It costs nothing: the modulo is the same instruction either way.
+//
+// The CYCLE is then chosen against the period, to keep the quantum where it was: a thirty-second of a cell
+// per second is fine enough for the slowest layer to be slow. Four and a half hours is longer than any
+// session, and a float still resolves two thousandths of a second at the far end of it - the better part
+// of ten times finer than a frame, so the movement does not go stepwise as the cycle runs out.
+const float noiseLatticePeriod = 512.0;
+const float noiseDriftCycle = 16384.0;
+
+// What one lattice period per cycle comes to, in cells per second. Every velocity below is a whole
+// multiple of it in each of its three components, and that is the entire price of the seamless wrap.
+const float noiseDriftQuantum = noiseLatticePeriod / noiseDriftCycle;
+
+// A movement of its own for each octave, and that is the whole point of the arrangement. Moving the field
+// as one body is a slide and nothing more: the shapes stay rigid and only their position changes, which
+// from a standing craft reads as a wall of mist being pushed past rather than as air. Layers that move
+// against one another cross and uncross, so the shapes are made and unmade where they stand - the field
+// boils instead of travelling, and it goes on boiling for somebody who is not moving at all.
+//
+// They share a bias along +x so that there is still a wind in it, and differ enough beside that bias for
+// the crossing to happen at all. The finer octaves are the faster ones: small structure turns over quickly
+// and large structure does not, which is what turbulence does at every scale one cares to look at.
+//
+// In noise space and not in metres, so the rate holds whatever VolumetricScatteringNoiseScale is set to. A
+// field made finer then boils at the same speed relative to its own features instead of racing - which the
+// old world-space drift did not do, being a velocity in metres applied before the scale was.
+const vec3 noiseLayerVelocities[4] = vec3[4](vec3(2.0, 1.0,  1.0) * noiseDriftQuantum,
+                                             vec3(3.0, 3.0, -1.0) * noiseDriftQuantum,
+                                             vec3(5.0, 1.0,  4.0) * noiseDriftQuantum,
+                                             vec3(7.0, 4.0, -2.0) * noiseDriftQuantum);
+
+// Where one octave stands at a given time, folded back into a single lattice period. The fold changes
+// nothing about what is sampled - the lattice repeats, so it is the same field either way - and it keeps
+// the position handed to the noise small, which is what keeps the sub-cell precision the pattern needs.
+vec3 noiseLayerOffset(const in int aLayer, const in float aTime){
+  return mod(noiseLayerVelocities[aLayer] * aTime, noiseLatticePeriod);
+}
+
 // The noise field the second density model is built from: value noise, three octaves and a bit, over a
 // rotating basis so the octaves do not line up into a grid.
-vec3 hash33(vec3 p){
+//
+// ONE channel and not three. The density is a scalar and always was, so the three-channel form computed
+// two numbers at each of the eight lattice corners of each of the four octaves of every march step and
+// then threw them away at the call site. What comes out here is bit for bit that form's x, and the work
+// saved is what pays for the wrapping the corners now do.
+float hash13(vec3 p){
   vec3 p3 = fract(p.xyz * vec3(0.1031, 0.1030, 0.0973));
   p3 += dot(p3, p3.yxz + 19.19);
-  return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
+  return fract((p3.x + p3.y) * p3.z);
 }
 
-vec3 noise33(in vec3 p){
+// The CORNER is wrapped and not the position: the interpolation across the last cell then runs between it
+// and the first one, so the lattice closes on itself with nothing to see at the join. Wrapping the
+// position instead would fold the interpolant with it and put a hard edge there.
+float noise13(in vec3 p){
   vec3 f = fract(p);
-  p = floor(p);
+  vec3 i0 = mod(floor(p), noiseLatticePeriod);
+  vec3 i1 = mod(i0 + 1.0, noiseLatticePeriod);
   f = (f * f) * (3.0 - (2.0 * f));
-  vec2 n = vec2(0.0, 1.0);
-  return mix(mix(mix(hash33(p + n.xxx), hash33(p + n.yxx), f.x),
-                 mix(hash33(p + n.xyx), hash33(p + n.yyx), f.x), f.y),
-             mix(mix(hash33(p + n.xxy), hash33(p + n.yxy), f.x),
-                 mix(hash33(p + n.xyy), hash33(p + n.yyy), f.x), f.y), f.z);
+  return mix(mix(mix(hash13(vec3(i0.x, i0.y, i0.z)), hash13(vec3(i1.x, i0.y, i0.z)), f.x),
+                 mix(hash13(vec3(i0.x, i1.y, i0.z)), hash13(vec3(i1.x, i1.y, i0.z)), f.x), f.y),
+             mix(mix(hash13(vec3(i0.x, i0.y, i1.z)), hash13(vec3(i1.x, i0.y, i1.z)), f.x),
+                 mix(hash13(vec3(i0.x, i1.y, i1.z)), hash13(vec3(i1.x, i1.y, i1.z)), f.x), f.y), f.z);
 }
 
-vec3 fbm33(vec3 p){
+// The octave's offset is added AFTER the rotation, so it is a movement in that octave's own frame rather
+// than one shared movement seen through four different rotations - which would be a slide again, only a
+// slide whose direction the basis had turned.
+float fbm13(vec3 p, const in float aTime){
   const mat3 m = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64);
-  vec3 r = 0.5000 * noise33(p); p = (m * p) * 2.03;
-  r += 0.2500 * noise33(p); p = (m * p) * 2.02;
-  r += 0.1250 * noise33(p); p = (m * p) * 2.01;
-  r += 0.0625 * noise33(p);
+  float r = 0.5000 * noise13(p + noiseLayerOffset(0, aTime)); p = (m * p) * 2.03;
+  r += 0.2500 * noise13(p + noiseLayerOffset(1, aTime)); p = (m * p) * 2.02;
+  r += 0.1250 * noise13(p + noiseLayerOffset(2, aTime)); p = (m * p) * 2.01;
+  r += 0.0625 * noise13(p + noiseLayerOffset(3, aTime));
   return r / 0.9375;
 }
 
@@ -705,11 +780,12 @@ void main(){
       // dust asked for, never touches it.
       float noiseField = 0.0;
       if((noiseFieldFactor > 0.0) || (noiseModulated && (rayleighMieFactor > 0.0))){
-        // Thinned by the shell so that height still matters, and drifting with the time so that standing
-        // still does not mean standing in a fixed pattern.
-        vec3 noisePosition = (particlePosition + (pushConstants.scaleHeightsNoiseScaleTime.w * vec3(0.01, 0.13, 0.07))) *
-                             pushConstants.scaleHeightsNoiseScaleTime.z;
-        noiseField = smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+        // Thinned by the shell so that height still matters, and moving with the time so that standing
+        // still does not mean standing in a fixed pattern. The movement is the octaves' own and is applied
+        // inside the field, which is why nothing but the scale is done to the position here - the clock
+        // goes in beside it rather than being folded into it.
+        vec3 noisePosition = particlePosition * pushConstants.scaleHeightsNoiseScaleTime.z;
+        noiseField = smoothstep(0.0, 1.0, fbm13(noisePosition, pushConstants.scaleHeightsNoiseScaleTime.w));
       }
 
       vec3 noiseScatteringCoefficient = vec3(0.0);
@@ -867,9 +943,8 @@ void main(){
         // one ray, and air whose composition changes where the geometry happened to stand is not air.
         float noiseField = 0.0;
         if((noiseFieldFactor > 0.0) || (noiseModulated && (rayleighMieFactor > 0.0))){
-          vec3 noisePosition = (particlePosition + (pushConstants.scaleHeightsNoiseScaleTime.w * vec3(0.01, 0.13, 0.07))) *
-                               pushConstants.scaleHeightsNoiseScaleTime.z;
-          noiseField = smoothstep(0.0, 1.0, fbm33(noisePosition).x);
+          vec3 noisePosition = particlePosition * pushConstants.scaleHeightsNoiseScaleTime.z;
+          noiseField = smoothstep(0.0, 1.0, fbm13(noisePosition, pushConstants.scaleHeightsNoiseScaleTime.w));
         }
 
         vec3 noiseScatteringCoefficient = vec3(0.0);

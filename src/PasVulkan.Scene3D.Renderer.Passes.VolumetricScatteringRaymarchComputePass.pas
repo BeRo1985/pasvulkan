@@ -121,6 +121,13 @@ type { TpvScene3DRendererPassesVolumetricScatteringRaymarchComputePass }
              VolumetricScatteringTopRadius=6460000.0;
              VolumetricScatteringRayleighScaleHeight=8000.0;
              VolumetricScatteringMieScaleHeight=1800.0;
+             // How long the noise field's movement takes to come back to where it started, in seconds.
+             // The SAME number as noiseDriftCycle in the shader, and it has to be: the field repeats on a
+             // lattice, each of its octaves advances by a whole number of lattice periods over exactly one
+             // cycle, and a clock wrapped anywhere else than at that cycle therefore lands the octaves
+             // somewhere they were not - which is a jump, and the one thing the arrangement exists to
+             // avoid. Changing it here alone breaks the wrap silently.
+             VolumetricScatteringNoiseDriftCycle=16384.0;
       public
        const // Bit zero of the flag word is free. It used to pick between two segment lengths, which was
              // really a statement about how thick the air is; that is now the mean free path below.
@@ -843,13 +850,18 @@ begin
   // ShellTopRadius is worked out above and deliberately not passed: the shader never read it. Left as a
   // local because the atmosphere it comes from may want it again, and recomputing it costs nothing here.
   //
-  // The noise time is WRAPPED rather than handed over as it stands: the field is fetched at position plus
-  // time, and a float that has been counting seconds since the game started loses the low bits the pattern
-  // is made of. The wrap is at a power of two so that it does not show as a jump.
+  // The noise time is WRAPPED rather than handed over as it stands: the field moves with it, and a float
+  // that has been counting seconds since the game started loses the low bits the pattern is made of.
+  //
+  // The wrap point is the shader's own drift cycle and not just some round number. The field there repeats
+  // on a lattice and each octave crosses a whole number of lattice periods in exactly one cycle, so at this
+  // wrap every octave stands where it stood a cycle ago and the field goes on as if nothing had happened.
+  // Wrapping anywhere else would put the octaves down in the middle of a period instead, and the whole
+  // haze would reshuffle in one frame every couple of hours.
   fPushConstants.ScaleHeightsNoiseScaleTime:=TpvVector4.InlineableCreate(VolumetricScatteringRayleighScaleHeight,
                                                                          VolumetricScatteringMieScaleHeight,
                                                                          fInstance.VolumetricScatteringNoiseScale,
-                                                                         Modulo(fInstance.VolumetricScatteringNoiseTime,4096.0));
+                                                                         Modulo(fInstance.VolumetricScatteringNoiseTime,VolumetricScatteringNoiseDriftCycle));
 
   // The noise field's thickness is clamped at zero rather than passed through: a negative density is not
   // thin air, it is a medium that gains energy along the ray, and the exponential behind it turns that

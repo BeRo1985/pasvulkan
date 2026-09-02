@@ -1806,9 +1806,13 @@ type { TpvScene3DRendererInstance }
        // zero - the branch is on the sum of the two.
        property VolumetricScatteringNoiseModulationMie:TpvFloat read fVolumetricScatteringNoiseModulationMie write fVolumetricScatteringNoiseModulationMie;
        property VolumetricScatteringNoiseModulationRayleigh:TpvFloat read fVolumetricScatteringNoiseModulationRayleigh write fVolumetricScatteringNoiseModulationRayleigh;
-       // The time the noise field drifts with, advanced by whoever owns the frame - the same arrangement as
+       // The time the noise field moves with, advanced by whoever owns the frame - the same arrangement as
        // LensRainPostEffectTime, and for the same reason: the renderer has no clock of its own, and a clock
        // it cannot be paused by would go on drifting through a paused game.
+       //
+       // Its RATE is how fast the haze moves, and there is deliberately no second dial for that: the field's
+       // octaves are given velocities per second, so whoever advances this by something other than a second
+       // per second has already set the speed. Half a delta is half the movement.
        property VolumetricScatteringNoiseTime:TpvDouble read fVolumetricScatteringNoiseTime write fVolumetricScatteringNoiseTime;
        // How much the aerial term at the very end weighs - the blue the distance itself adds, over and
        // above anything the march gathered. Zero switches it off, and that is worth considering rather than
