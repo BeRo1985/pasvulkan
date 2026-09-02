@@ -124,6 +124,13 @@ var // Whether any of this happens at all. Off means the thread is not even star
     // than filling a disk with a program left frozen over lunch.
     pvHangWatchdogMaxReports:TpvInt32=5;
 
+    // And how many are allowed once a crash has been reported while the process kept running, see
+    // pvHangWatchdogNoteCrashReported. One, because at that point there is nothing left to find out:
+    // the report and the dump are already on the disk, they say what happened, and a program which
+    // has been damaged and has stopped coming back around is not going to explain itself further.
+    // Applies on top of the count above, so whichever of the two is smaller wins.
+    pvHangWatchdogMaxReportsAfterCrash:TpvInt32=1;
+
     // Whether the process is ended once the last report is written. On, because that is the whole
     // point of it - the alternative is the program hanging around forever. Turned off where
     // somebody wants to attach a debugger to the frozen process instead, which is also what
@@ -165,6 +172,18 @@ procedure pvHangWatchdogStop;
 // where frames are deliberately not drawn any more - a teardown on the way out of a screen, say.
 procedure pvHangWatchdogSetArmed(const aArmed:Boolean);
 
+// Told once a crash has been written down while the process carried on: the report is on the disk,
+// the dump beside it, and the program is still there. That happens - an exception goes through, the
+// audio thread keeps playing its loop, the picture stands still, and nothing ever exits.
+//
+// From here on the watch is impatient, see pvHangWatchdogMaxReportsAfterCrash, and it is switched on
+// whatever it was before: after a crash, frames are owed everywhere. A stretch which was explicitly
+// paused stays paused all the same, since a rescue of the session runs on exactly this path and is
+// allowed to stop the frames while it does.
+//
+// Called by TpvApplication.LogCrash, so a program on top of it has to do nothing.
+procedure pvHangWatchdogNoteCrashReported;
+
 // And on top of that a pause around everything which is allowed to take minutes without a turn of
 // the loop: loading, and above all the shader pipelines compiled inside it, which in the worst case
 // really do run that long. Nestable, and independent of the switch above, so that a load started
@@ -194,11 +213,18 @@ var WatchdogThread:TpvHangWatchdogThread=nil;
     ArmedCounter:TPasMPInt32=1;
     PauseCounter:TPasMPInt32=0;
 
+    // Set by whichever thread reported the crash, read by the watchdog, see
+    // pvHangWatchdogNoteCrashReported.
+    CrashReported:TPasMPInt32=0;
+
     // Watchdog-only, needs no protection.
     LastSeenHeartbeat:TpvInt32=0;
     HeartbeatEverSeen:Boolean=false;
     StallSeconds:TpvDouble=0.0;
     ReportCount:TpvInt32=0;
+    // That the watchdog has taken the flag above in. Sticky, and deliberately not cleared by the
+    // pause, since a program does not stop being damaged because it went through a load screen.
+    CrashSeen:Boolean=false;
 
 procedure pvHangWatchdogHeartbeat;
 begin
@@ -208,6 +234,12 @@ end;
 procedure pvHangWatchdogSetArmed(const aArmed:Boolean);
 begin
  TPasMPInterlocked.Write(ArmedCounter,TPasMPInt32(ord(aArmed) and 1));
+end;
+
+procedure pvHangWatchdogNoteCrashReported;
+begin
+ TPasMPInterlocked.Write(CrashReported,TPasMPInt32(1));
+ pvHangWatchdogSetArmed(true);
 end;
 
 procedure pvHangWatchdogBeginPause;
@@ -286,6 +318,13 @@ begin
        ' hang #'+TpvUTF8String(IntToStr(aReportIndex))+
        ' no frame for '+TpvUTF8String(FormatFloat('0.0',aStalledSeconds))+' s';
 
+ // Which of the two freezes this is, since they are not the same thing to whoever reads the file: one
+ // where the program simply stopped, and one where it had already said what went wrong and then
+ // stopped. The numbered crash log next to this one is the rest of that story.
+ if CrashSeen then begin
+  Line:=Line+' afterCrashReport';
+ end;
+
  // Both wrapped, since a hook which raises must not cost the report it was supposed to enrich.
  try
   if assigned(pvOnHangWatchdogEngineDetails) then begin
@@ -315,10 +354,19 @@ end;
 // beat moves, and only starts counting once it has moved at least once, so that whatever happens
 // before the first turn of the loop does not count as a freeze.
 procedure CheckForHang(const aElapsedSeconds:TpvDouble);
-var Beat:TpvInt32;
+var Beat,Limit:TpvInt32;
     Line:TpvUTF8String;
     Last:Boolean;
 begin
+
+ // Taken in before everything else, and only once: a crash was written down and the process carried
+ // on. What was counted up to here belongs to the program as it was before that, so the counting
+ // starts again - and from now on it is the short count, see pvHangWatchdogMaxReportsAfterCrash.
+ if (not CrashSeen) and (TPasMPInterlocked.Read(CrashReported)<>0) then begin
+  CrashSeen:=true;
+  StallSeconds:=0.0;
+  ReportCount:=0;
+ end;
 
  if (TPasMPInterlocked.Read(ArmedCounter)=0) or (TPasMPInterlocked.Read(PauseCounter)>0) then begin
   // Nobody owes a turn of the loop right now. Everything is reset rather than merely held, so that
@@ -330,6 +378,13 @@ begin
   exit;
  end;
 
+ // How many reports this freeze gets. Whichever of the two counts is the smaller one, so a crash which
+ // was survived shortens it and nothing lengthens it.
+ Limit:=pvHangWatchdogMaxReports;
+ if CrashSeen and (pvHangWatchdogMaxReportsAfterCrash<Limit) then begin
+  Limit:=pvHangWatchdogMaxReportsAfterCrash;
+ end;
+
  Beat:=TPasMPInterlocked.Read(HeartbeatCounter);
  if (not HeartbeatEverSeen) or (Beat<>LastSeenHeartbeat) then begin
   HeartbeatEverSeen:=true;
@@ -338,9 +393,9 @@ begin
   ReportCount:=0;
  end else begin
   StallSeconds:=StallSeconds+aElapsedSeconds;
-  if (StallSeconds>=pvHangWatchdogSeconds) and (ReportCount<pvHangWatchdogMaxReports) then begin
+  if (StallSeconds>=pvHangWatchdogSeconds) and (ReportCount<Limit) then begin
    inc(ReportCount);
-   Last:=(ReportCount>=pvHangWatchdogMaxReports) and pvHangWatchdogTerminate;
+   Last:=(ReportCount>=Limit) and pvHangWatchdogTerminate;
    Line:=BuildHangReportLine(ReportCount,pvHangWatchdogSeconds*ReportCount);
    // The report is written first, so that the verdict outlives the process, and the line after it
    // says why the process ends rather than leaving a report which simply stops.

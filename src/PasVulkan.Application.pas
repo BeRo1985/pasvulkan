@@ -3824,6 +3824,15 @@ begin
   end;
  end;
 
+ // The report and the dump are written and the process is still here, which is
+ // its own kind of broken and has been seen more than once: an exception goes
+ // through, the audio thread carries on with its loop, the picture stands still
+ // and nothing ever exits. From here on the hang watchdog is impatient about a
+ // loop which stops coming back around - there is nothing left to find out that
+ // the two files beside this line do not already say. Only interlocked stores,
+ // so it cannot become a second fault on this path.
+ pvHangWatchdogNoteCrashReported;
+
  // And last of all, whatever the program wants to save of itself before it goes,
  // which for a game is the session which is about to be lost.
  //
