@@ -45461,6 +45461,12 @@ begin
 
   AddLine('=================================================');
 
+  // Tells apart "the selection chain ran because something is selected" from "it ran although
+  // nothing is": the counter is the switch the whole chain hangs on, and it is documented to
+  // over-count rather than under-count, so a stuck value above zero is worth seeing here.
+  AddLine('');
+  AddLine('Selected instances: '+IntToStr(fCountSelectedInstances));
+
   AddLine('');
   s1:='Frame globals:';
   s2:='';

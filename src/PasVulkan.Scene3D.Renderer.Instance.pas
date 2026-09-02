@@ -9923,8 +9923,30 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+var SelectionActive:boolean;
 begin
+
+ // Object-selection outline: with nothing selected, the list compute pass and the mask render pass
+ // have nothing to do. Both did the work of finding that out inside their Execute and returned
+ // early, which still left the mask render pass being begun every frame - and that means its
+ // attachment load-ops, a full screen RG32UI clear plus the depth clear, for an image nobody reads.
+ // Switching the passes off instead skips them earlier: a render pass whose single subpass is
+ // disabled is not even begun (TpvFrameGraph.TPhysicalRenderPass.Execute), so the clears go away
+ // with it. The flag is double buffered and sampled here in Update, so flipping it per frame costs
+ // nothing and needs no recompilation of the frame graph.
+ // The outline build pass stays enabled on purpose: the compose pass always runs and samples the
+ // outline buffer, and it is that build pass's clear which keeps the buffer transparent while
+ // nothing is selected.
+ SelectionActive:=assigned(fScene3D) and (fScene3D.CountSelectedInstances>0);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass.Enabled:=SelectionActive;
+ end;
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass.Enabled:=SelectionActive;
+ end;
+
  fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);
+
 end;
 
 function TpvScene3DRendererInstance.GetCameraPreset(const aInFlightFrameIndex:TpvInt32):TpvScene3DRendererCameraPreset;
