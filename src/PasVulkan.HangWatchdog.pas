@@ -78,14 +78,13 @@ unit PasVulkan.HangWatchdog;
 // which sits on a lock could just as well sit on the one a log takes, and then the report would be
 // lost at exactly the moment it is needed.
 //
-// Still open: a deadline for the way out. What is watched here is the main loop, and the watching
-// ends with it, so a shutdown which hangs afterwards - a device wait which never returns, a thread
-// which is joined and never comes back - is once more the case this unit exists for: no window, no
-// frames, and an audio thread which carries on. The shape it would take is a deadline armed where
-// the loop is left and disarmed where the process is about to end anyway, generous enough that a
-// teardown which frees gigabytes is not cut short, which is why it is not simply the same numbers
-// as above. It belongs here, at the engine level, so that every program gets it rather than the
-// one which asked.
+// And the way out is watched as well, by the clock rather than by the beat. Once the main loop has
+// been left there is no beat left to watch, and a shutdown which hangs - a device wait which never
+// returns, a thread which is joined and never comes back - is exactly the same picture again: no
+// window, no frames, and an audio thread which carries on. So from that moment the thread simply
+// counts, and the process which has not finished going by the time it is done is ended where it
+// stands. That deadline is generous where the one above is not, because a teardown which frees
+// gigabytes is allowed to take its time; what it must not do is take forever.
 
 interface
 
@@ -137,6 +136,13 @@ var // Whether any of this happens at all. Off means the thread is not even star
     // TpvApplication does by itself when it is already running under one.
     pvHangWatchdogTerminate:Boolean=true;
 
+    // How long the way out gets, counted from the moment the main loop was left, see
+    // pvHangWatchdogBeginShutdown. Long, because a teardown frees what a whole run allocated, waits
+    // for a device which may still be drawing and writes a pipeline cache on the way; and finite,
+    // because a program which is going nowhere while its audio thread plays on is the thing this
+    // unit exists for. Zero turns it off and lets a hanging shutdown hang.
+    pvHangWatchdogShutdownSeconds:TpvDouble=60.0;
+
     // What the process ends with. Only reaches the caller on Windows; elsewhere this is a signal
     // death and the caller sees that instead, while the written report says the same thing either
     // way.
@@ -162,10 +168,20 @@ var // Whether any of this happens at all. Off means the thread is not even star
 // has to come back.
 procedure pvHangWatchdogHeartbeat;
 
-// Starts respectively stops the watching thread. Called by TpvApplication around its main loop;
-// starting twice or stopping something which never ran does nothing.
+// Starts respectively stops the watching thread. Started by TpvApplication before its main loop and
+// stopped in this unit's finalization, so that everything between the two - the loop and the whole
+// way out after it - is watched. Starting twice or stopping something which never ran does nothing.
 procedure pvHangWatchdogStart;
 procedure pvHangWatchdogStop;
+
+// Told once the main loop has been left and the program is on its way out. From here on the beat is
+// not watched any more - there is none - and the clock is: whatever is still to be freed, waited for
+// and written has pvHangWatchdogShutdownSeconds to do it in, and a process which is still here
+// afterwards is ended where it stands.
+//
+// The pause and the switch above say nothing about this deadline, and deliberately so: they describe
+// stretches in which no frame is owed, and what is owed here is the end of the process itself.
+procedure pvHangWatchdogBeginShutdown;
 
 // Whether the beat is expected to keep moving at the moment. On to begin with, since a main loop
 // which is running is a main loop which should be coming back around. Switched off around a stretch
@@ -217,6 +233,9 @@ var WatchdogThread:TpvHangWatchdogThread=nil;
     // pvHangWatchdogNoteCrashReported.
     CrashReported:TPasMPInt32=0;
 
+    // And the same for the way out, see pvHangWatchdogBeginShutdown.
+    ShutdownStarted:TPasMPInt32=0;
+
     // Watchdog-only, needs no protection.
     LastSeenHeartbeat:TpvInt32=0;
     HeartbeatEverSeen:Boolean=false;
@@ -225,6 +244,8 @@ var WatchdogThread:TpvHangWatchdogThread=nil;
     // That the watchdog has taken the flag above in. Sticky, and deliberately not cleared by the
     // pause, since a program does not stop being damaged because it went through a load screen.
     CrashSeen:Boolean=false;
+    // How long the way out has been going on for, counted from the poll at which it was noticed.
+    ShutdownSeconds:TpvDouble=0.0;
 
 procedure pvHangWatchdogHeartbeat;
 begin
@@ -240,6 +261,11 @@ procedure pvHangWatchdogNoteCrashReported;
 begin
  TPasMPInterlocked.Write(CrashReported,TPasMPInt32(1));
  pvHangWatchdogSetArmed(true);
+end;
+
+procedure pvHangWatchdogBeginShutdown;
+begin
+ TPasMPInterlocked.Write(ShutdownStarted,TPasMPInt32(1));
 end;
 
 procedure pvHangWatchdogBeginPause;
@@ -413,6 +439,25 @@ begin
 
 end;
 
+// The way out, watched by the clock instead of by the beat, see pvHangWatchdogBeginShutdown. Nothing
+// is asked of the program here except that it get there: every quarter second is added up, and once
+// more than the deadline has gone by, whatever is still standing is ended.
+procedure CheckShutdown(const aElapsedSeconds:TpvDouble);
+begin
+
+ ShutdownSeconds:=ShutdownSeconds+aElapsedSeconds;
+
+ if pvHangWatchdogTerminate and
+    (pvHangWatchdogShutdownSeconds>0.0) and
+    (ShutdownSeconds>=pvHangWatchdogShutdownSeconds) then begin
+  WriteReportFileLine(TpvUTF8String(FormatDateTime('yyyy"-"mm"-"dd" "hh":"nn":"ss',Now))+
+                      ' shutdown did not finish within '+TpvUTF8String(FormatFloat('0.0',ShutdownSeconds))+' s'+
+                      ', ending the process, exit code '+TpvUTF8String(IntToStr(pvHangWatchdogExitCode)));
+  TerminateProcessHard(pvHangWatchdogExitCode);
+ end;
+
+end;
+
 procedure TpvHangWatchdogThread.Execute;
 begin
  while not Terminated do begin
@@ -421,7 +466,12 @@ begin
   // reliable.
   Sleep(PollMilliseconds);
   if not Terminated then begin
-   CheckForHang(PollSeconds);
+   if TPasMPInterlocked.Read(ShutdownStarted)<>0 then begin
+    // The loop is gone, and with it the beat: from here the clock is the only thing left to watch.
+    CheckShutdown(PollSeconds);
+   end else begin
+    CheckForHang(PollSeconds);
+   end;
   end;
  end;
 end;
@@ -432,6 +482,8 @@ begin
   HeartbeatEverSeen:=false;
   StallSeconds:=0.0;
   ReportCount:=0;
+  ShutdownSeconds:=0.0;
+  TPasMPInterlocked.Write(ShutdownStarted,TPasMPInt32(0));
   WatchdogThread:=TpvHangWatchdogThread.Create(true);
   WatchdogThread.FreeOnTerminate:=false;
   WatchdogThread.Start;

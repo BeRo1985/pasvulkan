@@ -11014,6 +11014,17 @@ begin
      end;
      inc(Index);
     end;
+   end else if Parameter='hangshutdownseconds' then begin
+    // How long the way out gets before it is cut short. Zero is allowed here and
+    // means a shutdown may take as long as it likes, which is what somebody
+    // wants who is watching a teardown in a profiler.
+    if Index<=Count then begin
+     Value:=StrToIntDef(ParamStr(Index),-1);
+     if Value>=0 then begin
+      pvHangWatchdogShutdownSeconds:=Value;
+     end;
+     inc(Index);
+    end;
    end;
   end;
  end;
@@ -18612,7 +18623,7 @@ begin
  end;
  if pvHangWatchdogEnabled then begin
   if pvHangWatchdogTerminate then begin
-   Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: on, report file: '+pvHangWatchdogReportFileName+', ends the process after '+TpvUTF8String(IntToStr(pvHangWatchdogMaxReports))+' reports, see --nohangterminate');
+   Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: on, report file: '+pvHangWatchdogReportFileName+', ends the process after '+TpvUTF8String(IntToStr(pvHangWatchdogMaxReports))+' reports, and after '+TpvUTF8String(FormatFloat('0',pvHangWatchdogShutdownSeconds))+' s of shutdown, see --nohangterminate');
   end else begin
    Log(LOG_INFO,'PasVulkanApplication','Hang watchdog: on, report file: '+pvHangWatchdogReportFileName+', reports only');
   end;
@@ -19086,9 +19097,12 @@ begin
             end;
             try
 
-             // Watches the loop below and nothing besides: for as long as it
-             // comes back around, the program is alive, see
-             // PasVulkan.HangWatchdog.
+             // Watches the loop below: for as long as it comes back around, the
+             // program is alive, see PasVulkan.HangWatchdog. And once it is
+             // left, the same thread watches the way out by the clock instead,
+             // which is why it is handed over to rather than stopped here. It
+             // ends in the unit's own finalization, so everything between the
+             // two is covered.
              pvHangWatchdogStart;
              try
 
@@ -19097,7 +19111,7 @@ begin
               end;
 
              finally
-              pvHangWatchdogStop;
+              pvHangWatchdogBeginShutdown;
              end;
 
             finally
