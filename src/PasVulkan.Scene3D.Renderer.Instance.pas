@@ -1531,9 +1531,13 @@ type { TpvScene3DRendererInstance }
        // instance that does not ask for it keeps exactly the graph it has today. Like the HUD pass
        // classes above, this is read in Prepare - set it after Create and before Prepare.
        property Picking:Boolean read fPicking write fPicking;
-       // Asks for ONE pick at that position, in render target pixels, and that is the only thing
-       // that makes the pick pass draw at all - for the next frame, once. Without a request the
-       // pass and its read back are switched off, so what picking costs in normal play is nothing.
+       // Asks for ONE pick at that position, and that is the only thing that makes the pick pass
+       // draw at all - for the next frame, once. Without a request the pass and its read back are
+       // switched off, so what picking costs in normal play is nothing.
+       // The position is in pick target pixels, which is ScaledWidth x ScaledHeight - the render
+       // resolution including SizeFactor, not the surface size. A caller that has window pixels
+       // scales them by ScaledWidth/window width, and out of range positions are clamped rather
+       // than rejected.
        // The position is taken over per in-flight frame while that frame is recorded, so the result
        // read back later belongs to the position that was asked for back then.
        // Returns the generation of this request, to be compared against PickResultAnsweredGeneration.
