@@ -1028,6 +1028,7 @@ type { TpvScene3DRendererInstance }
        fHUDComputePassParent:TObject;
        fHUDRenderPassClass:THUDRenderPassClass;
        fHUDRenderPassParent:TObject;
+       fPicking:Boolean;
       private
        fSizeFactor:TpvDouble;
        fPostProcessingAtScaledResolution:Boolean;
@@ -1499,6 +1500,10 @@ type { TpvScene3DRendererInstance }
        property HUDComputePassParent:TObject read fHUDComputePassParent write fHUDComputePassParent;
        property HUDRenderPassClass:THUDRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
        property HUDRenderPassParent:TObject read fHUDRenderPassParent write fHUDRenderPassParent;
+       // Object picking: adds an id target and its pass to the frame graph. Off by default, so an
+       // instance that does not ask for it keeps exactly the graph it has today. Like the HUD pass
+       // classes above, this is read in Prepare - set it after Create and before Prepare.
+       property Picking:Boolean read fPicking write fPicking;
       public
        property ImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps read fImageBasedLightingReflectionProbeCubeMaps;
       public
@@ -2051,6 +2056,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.SelectionMaskRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineBuildRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineFXAAComposeRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.PickRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthPyramidComputePass,
@@ -2202,6 +2208,7 @@ type TpvScene3DRendererInstancePasses=class
        fSelectionMaskRenderPass:TpvScene3DRendererPassesSelectionMaskRenderPass;   // object-selection outline: rasterizes the selection list into the RG32UI mask
        fSelectionOutlineBuildRenderPass:TpvScene3DRendererPassesSelectionOutlineBuildRenderPass; // object-selection outline: builds the isolated premultiplied outline buffer from the mask
        fSelectionOutlineFXAAComposeRenderPass:TpvScene3DRendererPassesSelectionOutlineFXAAComposeRenderPass; // object-selection outline: FXAA the outline buffer + composite over the scene (under the UI)
+       fPickRenderPass:TpvScene3DRendererPassesPickRenderPass; // object picking: id target, only created when the instance asked for it (Picking)
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
        fCullDepthPyramidComputePass:TpvScene3DRendererPassesCullDepthPyramidComputePass;
@@ -3091,6 +3098,8 @@ begin
  fHUDRenderPassClass:=nil;
 
  fHUDRenderPassParent:=nil;
+
+ fPicking:=false;
 
  fSizeFactor:=1.0;
 
@@ -5494,6 +5503,33 @@ begin
                                   1
                                  );
 
+ // Object picking: the id target, single channel uint, plus its own depth so that later the frontmost
+ // surface per pixel wins. Registered only when this instance was asked for picking - every other
+ // project neither pays the memory nor gets the pass below.
+ if fPicking then begin
+
+  fFrameGraph.AddImageResourceType('resourcetype_pick_id',
+                                   false,
+                                   VK_FORMAT_R32_UINT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                   1
+                                  );
+
+  fFrameGraph.AddImageResourceType('resourcetype_pick_id_depth',
+                                   false,
+                                   VK_FORMAT_D32_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT),
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
+                                   1
+                                  );
+
+ end;
+
  // Object-selection outline: the ISOLATED premultiplied outline buffer (built from the mask, then FXAA'd + composited).
  fFrameGraph.AddImageResourceType('resourcetype_selection_outline_buffer',
                                   false,
@@ -7584,11 +7620,26 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineBuildRenderPass);
  TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
 
+ // Object picking, first step: the id target and its pass, drawing nothing yet (see the pass unit).
+ if fPicking then begin
+  TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=TpvScene3DRendererPassesPickRenderPass.Create(fFrameGraph,self);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=nil;
+ end;
+
  TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass:=TpvScene3DRendererPassesCanvasComputePass.Create(fFrameGraph,self);
 
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass:=TpvScene3DRendererPassesCanvasRenderPass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
+
+ // The graph is walked from the root pass, and only what is reachable from there ends up compiled -
+ // consuming an output is what pulls a pass in, exactly as the selection chain hangs on the mask
+ // being read. Nothing reads the id target yet, so without this the pick pass would silently never
+ // run. The canvas pass is the anchor because it exists in every configuration.
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
+ end;
 
  if assigned(fHUDCustomPassClass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass:=fHUDCustomPassClass.Create(fFrameGraph,self,fHUDCustomPassParent);
@@ -9474,6 +9525,32 @@ begin
   fViewBuffersDescriptorSets[InFlightFrameIndex].Flush;
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fViewBuffersDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fViewBuffersDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
 
+ end;
+
+ // Object picking: one host visible pixel per in-flight frame, written by the read back pass and
+ // read here a frame later. Persistently mapped, so reading it costs nothing but a dereference.
+ if fPicking then begin
+  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+   fPickReadBackBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                    SizeOf(TpvUInt32),
+                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                    VK_SHARING_MODE_EXCLUSIVE,
+                                                                    [],
+                                                                    0,
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                    0,
+                                                                    pvAllocationGroupIDScene3DStatic,
+                                                                    'TpvScene3DRendererInstance.fPickReadBackBuffers['+IntToStr(InFlightFrameIndex)+']');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPickReadBackBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPickReadBackBuffers['+IntToStr(InFlightFrameIndex)+']');
+   fPickPositionX[InFlightFrameIndex]:=0;
+   fPickPositionY[InFlightFrameIndex]:=0;
+  end;
  end;
 
  fFrameGraph.AcquireVolatileResources;
