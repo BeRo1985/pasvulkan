@@ -1819,6 +1819,15 @@ type EpvApplication=class(Exception)
 
        fVulkanValidation:boolean;
 
+       // Whether the informational and verbose debug messages are logged as well. On by default, as
+       // it always was; turning it off leaves the warnings and errors, which are always logged.
+       fVulkanVerboseDebugMessages:boolean;
+
+       // Whether the device address binding messages are logged as well. Off by default, unlike the
+       // above: they are one line per bound and unbound memory range, thousands per session, and
+       // none of them says anything is wrong. They are collected for the crash dumps either way.
+       fVulkanLogDeviceAddressBindingMessages:boolean;
+
        fVulkanNVIDIAAfterMath:boolean;
 
        // Whether RenderDoc agreed to leave the vendor extensions alone, so that Aftermath can come up while
@@ -2576,6 +2585,10 @@ type EpvApplication=class(Exception)
        property VulkanSynchronizationValidation:boolean read fVulkanSynchronizationValidation write fVulkanSynchronizationValidation;
 
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
+
+       property VulkanVerboseDebugMessages:boolean read fVulkanVerboseDebugMessages write fVulkanVerboseDebugMessages;
+
+       property VulkanLogDeviceAddressBindingMessages:boolean read fVulkanLogDeviceAddressBindingMessages write fVulkanLogDeviceAddressBindingMessages;
 
        property VulkanNVIDIAAfterMath:boolean read fVulkanNVIDIAAfterMath write fVulkanNVIDIAAfterMath;
 
@@ -10586,6 +10599,10 @@ begin
 
  fVulkanValidation:=false;
 
+ fVulkanVerboseDebugMessages:=true;
+
+ fVulkanLogDeviceAddressBindingMessages:=false;
+
  fVulkanNVIDIAAfterMath:=false;
 
  fVulkanRenderDocVendorExtensionsAllowed:=false;
@@ -10985,6 +11002,35 @@ begin
    end else if Parameter='fullcrashdumps' then begin
     fCrashDumps:=true;
     fCrashDumpKind:=TpvCrashReportMiniDumpKind.Full;
+   end else if (Parameter='forceusevalidationlayers') or (Parameter='force-use-validation-layers') then begin
+    // The validation layers themselves. Every program built on this used to parse this one for
+    // itself and then set the same three properties in its Setup, which meant nine copies of the
+    // same lines and no guarantee that a switch means the same thing in two of them.
+    fVulkanDebugging:=true;
+    fVulkanValidation:=true;
+    fVulkanShaderPrintfDebugging:=true;
+   end else if (Parameter='syncvalidation') or (Parameter='sync-validation') then begin
+    // Synchronization validation only makes sense with the layers on, so it brings them along.
+    fVulkanDebugging:=true;
+    fVulkanValidation:=true;
+    fVulkanShaderPrintfDebugging:=true;
+    fVulkanSynchronizationValidation:=true;
+   end else if (Parameter='debuglabels') or (Parameter='debug-labels') then begin
+    // Debug labels and object names for capture tools, WITHOUT the validation layers - so a capture
+    // shows readable pass names while nothing pays for the spec checking.
+    fVulkanDebugging:=true;
+   end else if (Parameter='validationverbose') or (Parameter='validation-verbose') then begin
+    // How talkative the debug messenger is allowed to be. Both spellings, because the options here
+    // are written without hyphens while a program built on this usually names its own with them,
+    // and nobody should have to remember which of the two a given switch belongs to.
+    fVulkanVerboseDebugMessages:=true;
+   end else if (Parameter='novalidationverbose') or (Parameter='no-validation-verbose') then begin
+    // Leaves warnings and errors, which are logged whatever these switches say.
+    fVulkanVerboseDebugMessages:=false;
+   end else if (Parameter='validationaddressbindings') or (Parameter='validation-address-bindings') then begin
+    fVulkanLogDeviceAddressBindingMessages:=true;
+   end else if (Parameter='novalidationaddressbindings') or (Parameter='no-validation-address-bindings') then begin
+    fVulkanLogDeviceAddressBindingMessages:=false;
    end else if Parameter='hangwatchdog' then begin
     pvHangWatchdogEnabled:=true;
    end else if Parameter='nohangwatchdog' then begin
@@ -11297,7 +11343,18 @@ begin
 
     MessageIDName:=aCallbackData^.pMessageIdName;
 
-    if (pos('Mapping an image with layout',String(Message))>0) and (pos('can result in undefined behavior if this memory is used by the device',String(Message))>0) then begin
+    if (not fVulkanLogDeviceAddressBindingMessages) and
+       ((aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT))<>0) then begin
+     // One line per bound and unbound memory range, thousands per session, and none of it says
+     // anything is wrong - it buries the warnings and errors one turned the layers on for. The
+     // message still reaches TpvVulkanInstance.AddDeviceAddressBinding, which collects exactly these
+     // for the crash dumps, so nothing but the log line is lost here.
+    end else if (not fVulkanVerboseDebugMessages) and
+                ((aMessageSeverity and (TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) or
+                                        TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)))=0) then begin
+     // Informational or verbose, and switched off separately from the address bindings above, for
+     // when even the rest is more than one wants to read. Warnings and errors always get through.
+    end else if (pos('Mapping an image with layout',String(Message))>0) and (pos('can result in undefined behavior if this memory is used by the device',String(Message))>0) then begin
      // Ignore because the AMD allocator will mix up memory types on IGP processors.
     end else if pos('Invalid SPIR-V binary version 1.3',String(Message))>0 then begin
      // Ignore because the validator is wrong here.

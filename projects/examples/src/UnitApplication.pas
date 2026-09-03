@@ -43,7 +43,6 @@ const ApplicationTag='PasVulkanExampleApplication';
 
 type TApplication=class(TpvApplication)
       private
-       fForceUseValidationLayers:boolean;
        fForceNoVSync:boolean;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
@@ -90,7 +89,6 @@ var Index:TpvInt32;
 begin
  inherited Create;
  Application:=self;
- fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
@@ -98,11 +96,8 @@ begin
 {$if not (defined(Android) or defined(iOS))}
  for Index:=1 to ParamCount do begin
   Parameter:=LowerCase(ParamStr(Index));
-  if (Parameter='--force-use-validation-layers') or
-     (Parameter='/force-use-validation-layers') then begin
-   fForceUseValidationLayers:=true;
-  end else if (Parameter='--force-no-vsync') or
-              (Parameter='/force-no-vsync') then begin
+  if (Parameter='--force-no-vsync') or
+     (Parameter='/force-no-vsync') then begin
    fForceNoVSync:=true;
   end;
  end;
@@ -117,10 +112,8 @@ end;
 
 procedure TApplication.Setup;
 begin
- if Debugging or fForceUseValidationLayers then begin
-  VulkanDebugging:=true;
-  VulkanValidation:=true;
- end;
+ // Validation layers: --force-use-validation-layers, --sync-validation, --debug-labels, all handled
+ // by TpvApplication.ParseCommandLine. Nothing is switched on here on its own any more.
  Title:='SDL Vulkan Examples Application';
  PathName:='SDLVulkanExamplesApplication';
 {$ifdef DirectDebugGUI}

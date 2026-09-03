@@ -39,7 +39,6 @@ type TApplication=class(TpvApplication)
       public
       private
        fVirtualReality:TpvVirtualReality;
-       fForceUseValidationLayers:boolean;
        fForceNoVSync:boolean;
        fMaxMSAA:TpvInt32;
        fMaxShadowMSAA:TpvInt32;
@@ -122,7 +121,6 @@ begin
  fMakeScreenshotPNG:=false;
  fMakeScreenshotQOI:=false;
  ExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Allowed;
- fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
  //WaitOnPreviousFrame:=true;
@@ -154,9 +152,6 @@ begin
   end else if (Parameter='--fakedvr') or
               (Parameter='/fakedvr') then begin
    VirtualRealityMode:=TpvVirtualReality.TMode.Faked;
-  end else if (Parameter='--force-use-validation-layers') or
-              (Parameter='/force-use-validation-layers') then begin
-   fForceUseValidationLayers:=true;
   end else if (Parameter='--force-no-vsync') or
               (Parameter='/force-no-vsync') then begin
    fForceNoVSync:=true;
@@ -385,11 +380,8 @@ end;
 
 procedure TApplication.Setup;
 begin
- if Debugging or fForceUseValidationLayers then begin
-  VulkanDebugging:=true;
-  VulkanValidation:=true;
-  VulkanShaderPrintfDebugging:=true;
- end;
+ // Validation layers: --force-use-validation-layers, --sync-validation, --debug-labels, all handled
+ // by TpvApplication.ParseCommandLine. Nothing is switched on here on its own any more.
  Title:='PasVulkan GLTF Viewer';
  PathName:='gltftest.pasvulkan';
  StartScreen:=TScreenMain;
