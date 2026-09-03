@@ -1029,6 +1029,14 @@ type { TpvScene3DRendererInstance }
        fHUDRenderPassClass:THUDRenderPassClass;
        fHUDRenderPassParent:TObject;
        fPicking:Boolean;
+       fPickReadBackBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fPickPositionX:array[0..MaxInFlightFrames-1] of TpvInt32;
+       fPickPositionY:array[0..MaxInFlightFrames-1] of TpvInt32;
+       fPickRequestX:TpvInt32;
+       fPickRequestY:TpvInt32;
+       function GetPickReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+       function GetPickPositionX(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
+       function GetPickPositionY(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
       private
        fSizeFactor:TpvDouble;
        fPostProcessingAtScaledResolution:Boolean;
@@ -1504,6 +1512,18 @@ type { TpvScene3DRendererInstance }
        // instance that does not ask for it keeps exactly the graph it has today. Like the HUD pass
        // classes above, this is read in Prepare - set it after Create and before Prepare.
        property Picking:Boolean read fPicking write fPicking;
+       // Where the next drawn frame reads its pick pixel, in render target pixels. Just stored here;
+       // the position is taken over per in-flight frame when that frame is recorded, so the result
+       // read back later belongs to the position that was asked for back then.
+       procedure RequestPick(const aX,aY:TpvInt32);
+       // The id under the cursor as of the last frame that finished, or 0 for "nothing there".
+       // Never waits: it reads the slot of a frame whose fence has passed by the time its in-flight
+       // index comes around again.
+       function PickResult:TpvUInt32;
+       // For the read back pass; not meant for anything else.
+       property PickReadBackBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickReadBackBuffer;
+       property PickPositionX[const aInFlightFrameIndex:TpvSizeInt]:TpvInt32 read GetPickPositionX;
+       property PickPositionY[const aInFlightFrameIndex:TpvSizeInt]:TpvInt32 read GetPickPositionY;
       public
        property ImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps read fImageBasedLightingReflectionProbeCubeMaps;
       public
@@ -2057,6 +2077,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineBuildRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineFXAAComposeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.PickRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.PickReadBackCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthPyramidComputePass,
@@ -2209,6 +2230,7 @@ type TpvScene3DRendererInstancePasses=class
        fSelectionOutlineBuildRenderPass:TpvScene3DRendererPassesSelectionOutlineBuildRenderPass; // object-selection outline: builds the isolated premultiplied outline buffer from the mask
        fSelectionOutlineFXAAComposeRenderPass:TpvScene3DRendererPassesSelectionOutlineFXAAComposeRenderPass; // object-selection outline: FXAA the outline buffer + composite over the scene (under the UI)
        fPickRenderPass:TpvScene3DRendererPassesPickRenderPass; // object picking: id target, only created when the instance asked for it (Picking)
+       fPickReadBackCustomPass:TpvScene3DRendererPassesPickReadBackCustomPass; // object picking: copies the pixel under the cursor into a host visible buffer
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
        fCullDepthPyramidComputePass:TpvScene3DRendererPassesCullDepthPyramidComputePass;
@@ -3100,6 +3122,16 @@ begin
  fHUDRenderPassParent:=nil;
 
  fPicking:=false;
+
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fPickReadBackBuffers[InFlightFrameIndex]:=nil;
+  fPickPositionX[InFlightFrameIndex]:=0;
+  fPickPositionY[InFlightFrameIndex]:=0;
+ end;
+
+ fPickRequestX:=0;
+
+ fPickRequestY:=0;
 
  fSizeFactor:=1.0;
 
@@ -7620,11 +7652,17 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineBuildRenderPass);
  TpvScene3DRendererInstancePasses(fPasses).fSelectionOutlineFXAAComposeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
 
- // Object picking, first step: the id target and its pass, drawing nothing yet (see the pass unit).
+ // Object picking: the id target and its pass, which draws nothing yet (see the pass unit), plus the
+ // read back that copies the pixel under the cursor into a host visible buffer. Reading the target is
+ // also what keeps the pick pass in the compiled graph - the frame graph walks from the root pass and
+ // drops whatever nobody consumes.
  if fPicking then begin
   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=TpvScene3DRendererPassesPickRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass:=TpvScene3DRendererPassesPickReadBackCustomPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass:=nil;
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass:=TpvScene3DRendererPassesCanvasComputePass.Create(fFrameGraph,self);
@@ -7633,12 +7671,11 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasComputePass);
  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
 
- // The graph is walked from the root pass, and only what is reachable from there ends up compiled -
- // consuming an output is what pulls a pass in, exactly as the selection chain hangs on the mask
- // being read. Nothing reads the id target yet, so without this the pick pass would silently never
- // run. The canvas pass is the anchor because it exists in every configuration.
- if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass) then begin
-  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
+ // Object picking: the read back reads the id target but produces nothing the rest of the graph wants,
+ // so it needs an anchor of its own to stay reachable from the root pass. The canvas pass is the one
+ // that exists in every configuration.
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass);
  end;
 
  if assigned(fHUDCustomPassClass) then begin
@@ -9534,10 +9571,11 @@ begin
    fPickReadBackBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                     SizeOf(TpvUInt32),
                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                                    VK_SHARING_MODE_EXCLUSIVE,
+                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                     [],
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT), // cached is preferred, not required: this memory is only ever read by the host
                                                                     0,
-                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                                     0,
                                                                     0,
                                                                     0,
@@ -9562,6 +9600,10 @@ var InFlightFrameIndex,PerInFlightFrameBufferIndex:TpvSizeInt;
 begin
 
  fFrameGraph.ReleaseVolatileResources;
+
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  FreeAndNil(fPickReadBackBuffers[InFlightFrameIndex]);
+ end;
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
   FreeAndNil(fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex]);
@@ -9999,9 +10041,80 @@ begin
  end;
 end;
 
+function TpvScene3DRendererInstance.GetPickReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickReadBackBuffers[aInFlightFrameIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetPickPositionX(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickPositionX[aInFlightFrameIndex];
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetPickPositionY(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickPositionY[aInFlightFrameIndex];
+ end else begin
+  result:=0;
+ end;
+end;
+
+procedure TpvScene3DRendererInstance.RequestPick(const aX,aY:TpvInt32);
+begin
+ fPickRequestX:=aX;
+ fPickRequestY:=aY;
+end;
+
+function TpvScene3DRendererInstance.PickResult:TpvUInt32;
+var InFlightFrameIndex:TpvSizeInt;
+    Buffer:TpvVulkanBuffer;
+begin
+
+ result:=0;
+
+ if not fPicking then begin
+  exit;
+ end;
+
+ // The oldest slot, which is the one about to be reused: its fence has passed, so its content is
+ // complete without anything having to be waited for here. Reading the slot just recorded would be
+ // the one thing that could actually stall the pipeline.
+ if fScene3D.CountInFlightFrames<=0 then begin
+  exit;
+ end;
+ InFlightFrameIndex:=fFrameGraph.DrawInFlightFrameIndex;
+ if InFlightFrameIndex<0 then begin
+  exit;
+ end;
+ InFlightFrameIndex:=(InFlightFrameIndex+1) mod fScene3D.CountInFlightFrames;
+
+ Buffer:=fPickReadBackBuffers[InFlightFrameIndex];
+ if assigned(Buffer) and assigned(Buffer.Memory) then begin
+  result:=PpvUInt32(Buffer.Memory)^;
+ end;
+
+end;
+
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
 var SelectionActive:boolean;
 begin
+
+ // Take over the requested pick position for this frame, so that the pixel copied out later belongs
+ // to where the cursor was when this frame was built - not to where it has moved since.
+ if fPicking and (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  fPickPositionX[aInFlightFrameIndex]:=fPickRequestX;
+  fPickPositionY[aInFlightFrameIndex]:=fPickRequestY;
+ end;
+
 
  // Object-selection outline: with nothing selected, the list compute pass and the mask render pass
  // have nothing to do. Both did the work of finding that out inside their Execute and returned
