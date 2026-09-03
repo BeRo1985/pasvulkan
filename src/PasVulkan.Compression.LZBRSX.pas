@@ -92,7 +92,7 @@ implementation
 
 // The two lookup tables and the small helpers are shared by the assembler cores and by the
 // optimized Pascal, the original variant further down keeps its own local copies untouched.
-{$if defined(cpux86_64) or defined(OptimizedVariant)}
+{$if defined(cpux86_64) or defined(cpux64) or defined(OptimizedVariant)}
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -297,7 +297,7 @@ type PBytes=^TBytes;
      TChainTable=array[0..WindowSize-1] of TpvUInt32;
 {$ifend}
 
-{$if defined(cpux86_64)}
+{$if defined(cpux86_64) or defined(cpux64)}
 {$asmmode intel}
 
 // Both cores below are the clang output of the C form of the loops, with the Win64 register
