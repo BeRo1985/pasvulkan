@@ -4623,6 +4623,11 @@ type EpvScene3D=class(Exception);
        fMeshObjectIDLock:TPasMPSlimReaderWriterLock;
        fMeshObjectIDManager:TIDManager;
        fMaxMeshObjectID:TpvUInt32;
+       // Who a mesh object id belongs to, so that an id read back from the picking target can be
+       // turned into something again. Kept under fMeshObjectIDLock together with the manager itself,
+       // and grown on demand - ids are handed out densely from one upwards, so the array stays about
+       // as large as the number of drawable nodes.
+       fMeshObjectIDOwners:array of TObject;
        fMatrixIDLock:TPasMPSlimReaderWriterLock;
        fMatrixIDManager:TIDManager;
        fMaxMatrixID:TpvUInt32;
@@ -5083,6 +5088,9 @@ type EpvScene3D=class(Exception);
        procedure ResetSurface;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
       public
+       // Object picking: remembers what a mesh object id belongs to. Called where the ids themselves
+       // are handed out and given back, with fMeshObjectIDLock already held.
+       procedure SetMeshObjectIDOwner(const aMeshObjectID:TpvUInt32;const aOwner:TObject);
        function GetPlanetGrassMeshShaderSupport:Boolean;
        function GetPlanetTerrainMeshShaderSupport:Boolean;
        function GetPlanetWaterMeshShaderSupport:Boolean;
@@ -5418,6 +5426,11 @@ type EpvScene3D=class(Exception);
       public
        property DrawDataGeneration:TPasMPUInt64 read fDrawDataGeneration write fDrawDataGeneration;
        property CountSelectedInstances:TpvInt32 read fCountSelectedInstances; // object-selection outline: >0 if anything is selected; lets the renderer skip the selection chain (list/mask/JFA) otherwise
+       // Object picking: what a mesh object id read back from the picking target belongs to - a
+       // TGroup.TInstance.TRenderInstance for instanced draws, a TGroup.TInstance otherwise. Nil for
+       // an id that is zero, out of range or has been freed again in the meantime, which is normal:
+       // the id was read from a frame that is already gone.
+       function GetMeshObjectIDOwner(const aMeshObjectID:TpvUInt32):TObject;
       public
        property VulkanFrameGraphStagingQueue:TpvVulkanQueue read fVulkanFrameGraphStagingQueue;
        property VulkanFrameGraphStagingCommandPool:TpvVulkanCommandPool read fVulkanFrameGraphStagingCommandPool;
@@ -26851,6 +26864,7 @@ begin
     if fSceneInstance.fMaxMeshObjectID<NodeMeshObjectID then begin
      fSceneInstance.fMaxMeshObjectID:=NodeMeshObjectID;
     end;
+    fSceneInstance.SetMeshObjectIDOwner(NodeMeshObjectID,self); // object picking: id -> this render instance
    end else begin
     NodeMeshObjectID:=0;
    end;
@@ -26960,6 +26974,7 @@ begin
   for Index:=0 to length(fNodeMeshObjectIDs)-1 do begin
    NodeMeshObjectID:=fNodeMeshObjectIDs[Index];
    if NodeMeshObjectID<>0 then begin
+    fSceneInstance.SetMeshObjectIDOwner(NodeMeshObjectID,nil); // object picking: forget the owner before the id can be handed out again
     fSceneInstance.fMeshObjectIDManager.FreeID(NodeMeshObjectID);
    end;
   end;
@@ -27721,6 +27736,7 @@ begin
     if fSceneInstance.fMaxMeshObjectID<InstanceNode.fMeshObjectID then begin
      fSceneInstance.fMaxMeshObjectID:=InstanceNode.fMeshObjectID;
     end;
+    fSceneInstance.SetMeshObjectIDOwner(InstanceNode.fMeshObjectID,self); // object picking: id -> this instance
    end else begin
     InstanceNode.fMeshObjectID:=0;
    end;
@@ -27929,6 +27945,7 @@ begin
     InstanceNode:=fNodes.RawItems[Index];
     if InstanceNode.fMeshObjectID>0 then begin
      try
+      fSceneInstance.SetMeshObjectIDOwner(InstanceNode.fMeshObjectID,nil); // object picking: forget the owner before the id can be handed out again
       fSceneInstance.fMeshObjectIDManager.FreeID(InstanceNode.fMeshObjectID);
      finally
       InstanceNode.fMeshObjectID:=0;
@@ -39369,6 +39386,39 @@ begin
  end;
  if assigned(fMeshletBoundsCompute) then begin
   TpvScene3DMeshletBoundsCompute(fMeshletBoundsCompute).Reset;
+ end;
+end;
+
+// Both of these are called with fMeshObjectIDLock already held, where the ids themselves are handed
+// out and given back, so that owner and id can never disagree.
+procedure TpvScene3D.SetMeshObjectIDOwner(const aMeshObjectID:TpvUInt32;const aOwner:TObject);
+var OldCount,NewCount,Index:TpvSizeInt;
+begin
+ if aMeshObjectID>0 then begin
+  OldCount:=length(fMeshObjectIDOwners);
+  if OldCount<=TpvSizeInt(aMeshObjectID) then begin
+   NewCount:=RoundUpToPowerOfTwoSizeUInt(TpvSizeInt(aMeshObjectID)+1);
+   SetLength(fMeshObjectIDOwners,NewCount);
+   for Index:=OldCount to NewCount-1 do begin
+    fMeshObjectIDOwners[Index]:=nil;
+   end;
+  end;
+  fMeshObjectIDOwners[aMeshObjectID]:=aOwner;
+ end;
+end;
+
+function TpvScene3D.GetMeshObjectIDOwner(const aMeshObjectID:TpvUInt32):TObject;
+begin
+ result:=nil;
+ if aMeshObjectID>0 then begin
+  fMeshObjectIDLock.Acquire;
+  try
+   if TpvSizeInt(aMeshObjectID)<length(fMeshObjectIDOwners) then begin
+    result:=fMeshObjectIDOwners[aMeshObjectID];
+   end;
+  finally
+   fMeshObjectIDLock.Release;
+  end;
  end;
 end;
 

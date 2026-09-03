@@ -96,6 +96,9 @@ layout(location = 15) flat out vec3 outVertex0[];
 layout(location = 16) flat out vec3 outVertex1[];
 layout(location = 17) flat out vec3 outVertex2[];
 #endif
+#ifdef PICKING
+layout(location = 18) flat out uint outPickMeshObjectID[]; // see mesh.vert for why 18
+#endif // PICKING
 
 /* clang-format off */
 
@@ -428,6 +431,9 @@ void main(){
       outModelScale[outIdx] = modelScale;
       outMaterialID[outIdx] = sv.materialID;
       outInstanceDataIndex[outIdx] = drawInfo.instanceDataIndex | (((pushConstants.drawFlags & 1u) != 0u) ? 0x80000000u : 0u);
+#ifdef PICKING
+      outPickMeshObjectID[outIdx] = meshObjectID; // see mesh.vert: its own output, the one above stays what it is
+#endif
       outAABBMin[outIdx] = aabbMin;
       outAABBMax[outIdx] = aabbMax;
       outCascadeIndex[outIdx] = cascadeIndex;
@@ -509,6 +515,9 @@ void main(){
     outModelScale[i] = modelScale;
     outMaterialID[i] = materialID;
     outInstanceDataIndex[i] = drawInfo.instanceDataIndex | (((pushConstants.drawFlags & 1u) != 0u) ? 0x80000000u : 0u);
+#ifdef PICKING
+    outPickMeshObjectID[i] = meshObjectID; // see mesh.vert: its own output, the one above stays what it is
+#endif
     outViewIndex[i] = int(viewIndex);
     outFrameIndex[i] = pushConstants.frameIndex;
 #ifdef VELOCITY

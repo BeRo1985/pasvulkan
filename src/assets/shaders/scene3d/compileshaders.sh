@@ -320,6 +320,8 @@ compileshaderarguments=(
   "-V mesh.task --target-env vulkan1.2 -DPASS=1 -DUSE_LAYER_ROUTING -o ${tempPath}/mesh_layerrouting_task_pass1.spv"
 
   "-V mesh.mesh --target-env vulkan1.2 -o ${tempPath}/mesh_mesh.spv"
+  "-V mesh.mesh --target-env vulkan1.2 -DPICKING -o ${tempPath}/mesh_picking_mesh.spv" # object picking, mesh-shader path
+  "-V mesh.mesh --target-env vulkan1.2 -DNO_TASK_SHADER -DPICKING -o ${tempPath}/mesh_picking_notask_mesh.spv" # ... and its non-task variant
   "-V mesh.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_mesh.spv"
   "-V mesh.mesh --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_mesh.spv"
   "-V mesh.mesh --target-env vulkan1.2 -DUSE_LAYER_ROUTING -o ${tempPath}/mesh_layerrouting_mesh.spv"
@@ -327,6 +329,7 @@ compileshaderarguments=(
   "-V mesh.mesh --target-env vulkan1.2 -DNO_TASK_SHADER -DVELOCITY -o ${tempPath}/mesh_velocity_notask_mesh.spv"
 
   "-V mesh.vert --target-env vulkan1.2 -o ${tempPath}/mesh_vert.spv"
+  "-V mesh.vert --target-env vulkan1.2 -DPICKING -o ${tempPath}/mesh_picking_vert.spv" # object picking: same as above, but the flat output carries the mesh object id
   "-V mesh.vert --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
@@ -1487,6 +1490,11 @@ addMeshFragmentPassTargetVariants(){
   # Object-selection outline mask: rides on DEPTHONLY (minimal vertex outputs + alpha test); the frag additionally writes the
   # uvec2 selection mask (objectID + depth). Pairs with the existing _depth mesh.vert (identical vertex<->frag interface).
   addMeshFragmentDepthOnlyVariants "${1}_selectionmask" "$2 -DDEPTHONLY -DSELECTIONMASK"
+
+  # Object picking: rides on DEPTHONLY for the same reasons as the selection mask above, and writes a
+  # single uint - the mesh object id of whatever is frontmost at that pixel. Needs its own mesh.vert
+  # and mesh.mesh variants as well, since those put the id into the flat output for this case.
+  addMeshFragmentDepthOnlyVariants "${1}_picking" "$2 -DDEPTHONLY -DPICKING"
 
   # -DFRUSTUMCLUSTERGRID -DLIGHTCLUSTERS
 

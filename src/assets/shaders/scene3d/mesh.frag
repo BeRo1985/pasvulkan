@@ -135,6 +135,15 @@ vec3 inGeometricNormal = normalize(
   // against the scene depth at the seed position (reverse-Z). No scene-depth sampler is needed in this fragment.
   layout(location = 0) out uvec2 outSelectionMask;
 #endif
+#ifdef PICKING
+  // Object picking (also a DEPTHONLY variant): the mesh object id of the frontmost surface. It comes
+  // in on an output of its own rather than sharing inInstanceDataIndex, which stays what it is - the
+  // alpha test below indexes instanceDataItems[] with that one, so anything else in there would read
+  // the wrong entry. Zero means nothing was drawn here, which is what the attachment is cleared to;
+  // ids start at one.
+  layout(location = 18) flat in uint inPickMeshObjectID;
+  layout(location = 0) out uint outPickID;
+#endif
 #else
   #if defined(VELOCITY) && !(defined(MBOIT) && defined(MBOITPASS1))
     layout(location = 1) out vec2 outFragVelocity;
@@ -1259,6 +1268,14 @@ void main() {
   // Surviving (alpha-tested) selected fragment: write the object id + its depth. The mask pass depth-tests against its own
   // depth buffer (frontmost selected wins per pixel); visible-vs-occluded is decided in the compose pass vs the scene depth.
   outSelectionMask = uvec2(inInstanceDataIndex, floatBitsToUint(gl_FragCoord.z));
+#endif
+
+#ifdef PICKING
+  // Surviving (alpha-tested) fragment: this is what one actually sees at this pixel, so this is what
+  // a click there means. The pick pass depth-tests against its own depth buffer, so the frontmost
+  // surface wins - alpha-masked leaves included, which is the whole point of testing rather than
+  // taking the quad they are drawn on.
+  outPickID = inPickMeshObjectID;
 #endif
 
 }

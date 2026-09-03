@@ -38,6 +38,11 @@ layout(location = 13) out vec4 outPreviousClipSpace;
 layout(location = 14) out vec4 outCurrentClipSpace;
 #endif // VELOCITY
 #endif // VOXELIZATION
+#ifdef PICKING
+// Object picking: location 18 because the depth-only side of mesh.frag, which the picking variant is
+// compiled as, already declares everything up to 17.
+layout(location = 18) flat out uint outPickMeshObjectID;
+#endif // PICKING
 
 /* clang-format off */
 
@@ -193,6 +198,15 @@ void main() {
   vec3 worldSpacePosition = (modelMatrix * vec4(position, 1.0)).xyz;
 
   outInstanceDataIndex = drawInfo.instanceDataIndex;
+
+#ifdef PICKING
+  // Object picking asks WHICH object is under the cursor, and what identifies one there is the mesh
+  // object id - the instance data index does not, since several objects can share one instance data
+  // slot. It gets an output of its own instead of riding on that one, which the fragment stage needs
+  // unchanged: it indexes instanceDataItems[] with it for dissolve and colour key effects, so a mesh
+  // object id in there would address the wrong entry or none at all.
+  outPickMeshObjectID = meshObjectID;
+#endif
 
 #ifdef VELOCITY
   vec4 previousClipSpacePosition;
