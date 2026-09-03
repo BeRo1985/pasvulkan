@@ -1037,13 +1037,16 @@ type { TpvScene3DRendererInstance }
        fPickRequestX:TpvInt32;
        fPickRequestY:TpvInt32;
        fPickRequested:Boolean;
-       // Which request each slot was filled for, so that an answer fetched from it can be told apart
-       // from a newer one.
-       fPickGeneration:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       // The last answer that did arrive, kept apart from whatever is still on its way: asking again
-       // must not throw away the answer already in hand, and with a request per frame nothing would
-       // ever settle otherwise. The generation says which request it belongs to, so a caller can
-       // tell its own answer from an older one.
+       // Which slot the running pick was recorded into and in which frame, so that its answer is
+       // fetched only once that frame is certainly through on the GPU. Reading it earlier - "one
+       // frame later", as it looked at first - reads a buffer the GPU may still be writing.
+       fPickPendingSlot:TpvSizeInt;
+       fPickPendingFrameIndex:TpvInt64;
+       fPickPendingGeneration:TpvUInt64;
+       // The last answer that did arrive, kept apart from whatever is pending: asking again while an
+       // answer is still on its way must not throw away the one already in hand, and with a request
+       // per frame nothing would ever settle otherwise. The generation says which request it belongs
+       // to, so a caller can tell its own answer from an older one.
        fPickRequestGeneration:TpvUInt64;
        fPickResultGeneration:TpvUInt64;
        fPickResultID:TpvUInt32;
@@ -3167,7 +3170,6 @@ begin
   fPickPositionX[InFlightFrameIndex]:=0;
   fPickPositionY[InFlightFrameIndex]:=0;
   fPickActive[InFlightFrameIndex]:=false;
-  fPickGeneration[InFlightFrameIndex]:=0;
  end;
 
  fPickRequestX:=0;
@@ -3175,6 +3177,12 @@ begin
  fPickRequestY:=0;
 
  fPickRequested:=false;
+
+ fPickPendingSlot:=-1;
+
+ fPickPendingFrameIndex:=0;
+
+ fPickPendingGeneration:=0;
 
  fPickRequestGeneration:=0;
 
@@ -10243,13 +10251,13 @@ begin
  // nothing until somebody asks anew.
  if fPicking and (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
 
-  // Fetch first, ask second - and what is fetched is this very slot, because this is the moment it
-  // is about to be filled again: the update side waits on its fence before reusing it, so whatever a
-  // previous pick left in its buffers is complete right now. Counting frames instead does not work,
-  // as a request per frame keeps pushing the deadline ahead of itself.
-  if fPickActive[aInFlightFrameIndex] then begin
+  // Fetch first, ask second. A full round of in-flight frames after the pick was recorded, the frame
+  // that drew it has been waited for and its two pixels are in the buffers - so they are taken out
+  // and kept, before a request made in this very frame can point the pending slot somewhere else.
+  if (fPickPendingSlot>=0) and
+     ((aFrameCounter-fPickPendingFrameIndex)>=fScene3D.CountInFlightFrames) then begin
    fPickResultID:=0;
-   Buffer:=fPickReadBackBuffers[aInFlightFrameIndex];
+   Buffer:=fPickReadBackBuffers[fPickPendingSlot];
    if assigned(Buffer) and assigned(Buffer.Memory) then begin
     // Buffer.Memory is the memory BLOCK, not a pointer into it - MapMemory is what turns it into
     // one, adding the block's own offset within its chunk. Casting the block itself to a pointer
@@ -10266,7 +10274,7 @@ begin
     end;
    end;
    fPickResultDepth:=0.0;
-   Buffer:=fPickDepthReadBackBuffers[aInFlightFrameIndex];
+   Buffer:=fPickDepthReadBackBuffers[fPickPendingSlot];
    if assigned(Buffer) and assigned(Buffer.Memory) then begin
     MappedData:=Buffer.Memory.MapMemory(0,SizeOf(TpvFloat));
     if assigned(MappedData) then begin
@@ -10278,16 +10286,19 @@ begin
      end;
     end;
    end;
-   fPickResultGeneration:=fPickGeneration[aInFlightFrameIndex];
+   fPickResultGeneration:=fPickPendingGeneration;
    fPickHasResult:=true;
+   fPickPendingSlot:=-1;
   end;
 
   fPickActive[aInFlightFrameIndex]:=fPickRequested;
   if fPickRequested then begin
    fPickPositionX[aInFlightFrameIndex]:=fPickRequestX;
    fPickPositionY[aInFlightFrameIndex]:=fPickRequestY;
-   fPickGeneration[aInFlightFrameIndex]:=fPickRequestGeneration;
    fPickRequested:=false;
+   fPickPendingSlot:=aInFlightFrameIndex;
+   fPickPendingFrameIndex:=aFrameCounter;
+   fPickPendingGeneration:=fPickRequestGeneration;
   end;
 
  end;
