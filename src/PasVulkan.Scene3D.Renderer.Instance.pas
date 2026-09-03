@@ -1038,14 +1038,22 @@ type { TpvScene3DRendererInstance }
        fPickRequestY:TpvInt32;
        fPickRequested:Boolean;
        // Which slot the running pick was recorded into and in which frame, so that its answer is
-       // handed out only once that frame is certainly through on the GPU. Reading it earlier - "one
+       // fetched only once that frame is certainly through on the GPU. Reading it earlier - "one
        // frame later", as it looked at first - reads a buffer the GPU may still be writing.
        fPickPendingSlot:TpvSizeInt;
        fPickPendingFrameIndex:TpvInt64;
-       fPickResultReady:Boolean;
+       fPickPendingGeneration:TpvUInt64;
+       // The last answer that did arrive, kept apart from whatever is pending: asking again while an
+       // answer is still on its way must not throw away the one already in hand, and with a request
+       // per frame nothing would ever settle otherwise. The generation says which request it belongs
+       // to, so a caller can tell its own answer from an older one.
+       fPickRequestGeneration:TpvUInt64;
+       fPickResultGeneration:TpvUInt64;
+       fPickResultID:TpvUInt32;
+       fPickResultDepth:TpvFloat;
+       fPickHasResult:Boolean;
        function GetPickReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
        function GetPickDepthReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
-       function GetPickReadBackInFlightFrameIndex:TpvSizeInt;
        function GetPickPositionX(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
        function GetPickPositionY(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
       private
@@ -1528,11 +1536,15 @@ type { TpvScene3DRendererInstance }
        // pass and its read back are switched off, so what picking costs in normal play is nothing.
        // The position is taken over per in-flight frame while that frame is recorded, so the result
        // read back later belongs to the position that was asked for back then.
-       procedure RequestPick(const aX,aY:TpvInt32);
-       // Whether the answer to the last RequestPick is there. False while the frame that draws it is
-       // still on its way, so a caller that wants the exact answer waits for this rather than
-       // assuming it arrives in the next frame - with two in-flight frames it does not.
+       // Returns the generation of this request, to be compared against PickResultAnsweredGeneration.
+       function RequestPick(const aX,aY:TpvInt32):TpvUInt64;
+       // Whether any answer has arrived at all. Which request it belongs to is what
+       // PickResultAnsweredGeneration says: a caller notes the generation its own RequestPick
+       // returned and waits until this one has caught up, because with two frames in flight the
+       // answer is not there in the next frame, and asking again meanwhile must not be mistaken for
+       // an answer.
        function PickResultReady:Boolean;
+       function PickResultAnsweredGeneration:TpvUInt64;
        // The id under the cursor, or 0 for "nothing there". Never waits: reads the slot of a frame
        // that has been through, see PickResultReady.
        function PickResult:TpvUInt32;
@@ -3164,7 +3176,17 @@ begin
 
  fPickPendingFrameIndex:=0;
 
- fPickResultReady:=false;
+ fPickPendingGeneration:=0;
+
+ fPickRequestGeneration:=0;
+
+ fPickResultGeneration:=0;
+
+ fPickResultID:=0;
+
+ fPickResultDepth:=0.0;
+
+ fPickHasResult:=false;
 
  fSizeFactor:=1.0;
 
@@ -7693,6 +7715,16 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  // drops whatever nobody consumes.
  if fPicking then begin
   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=TpvScene3DRendererPassesPickRenderPass.Create(fFrameGraph,self);
+  // The draw counts this pass draws by are written by the culling, and the counter buffers are plain
+  // Vulkan buffers rather than frame graph resources - so nothing orders the two by itself, and
+  // without saying so the pass may end up scheduled before the culling and draw nothing at all.
+  // Every other pass drawing the cull output says the same, see the depth prepass and the forward
+  // render pass.
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
+  end else if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass);
+  end;
   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass:=TpvScene3DRendererPassesPickReadBackCustomPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
  end else begin
@@ -10114,20 +10146,6 @@ begin
  end;
 end;
 
-// The slot the running pick was recorded into, and only once its frame has been through: the update
-// side waits on that slot's fence before reusing it (UpdateWaitsForGPU), so after a full round of
-// in-flight frames the buffer is certainly written and nothing has to be waited for here. Deriving
-// the slot from DrawInFlightFrameIndex instead, as this did at first, was wrong twice over - that
-// index belongs to the draw side while this is read from the update side, and it says nothing about
-// which slot the pick actually used.
-function TpvScene3DRendererInstance.GetPickReadBackInFlightFrameIndex:TpvSizeInt;
-begin
- if fPicking and fPickResultReady and (fPickPendingSlot>=0) then begin
-  result:=fPickPendingSlot;
- end else begin
-  result:=-1;
- end;
-end;
 
 function TpvScene3DRendererInstance.GetPickPositionX(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
 begin
@@ -10147,11 +10165,13 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererInstance.RequestPick(const aX,aY:TpvInt32);
+function TpvScene3DRendererInstance.RequestPick(const aX,aY:TpvInt32):TpvUInt64;
 begin
  fPickRequestX:=aX;
  fPickRequestY:=aY;
  fPickRequested:=true;
+ inc(fPickRequestGeneration);
+ result:=fPickRequestGeneration;
 end;
 
 function TpvScene3DRendererInstance.PickActive(const aInFlightFrameIndex:TpvSizeInt):Boolean;
@@ -10164,51 +10184,39 @@ end;
 
 function TpvScene3DRendererInstance.PickResultReady:Boolean;
 begin
- result:=GetPickReadBackInFlightFrameIndex>=0;
+ result:=fPicking and fPickHasResult;
+end;
+
+function TpvScene3DRendererInstance.PickResultAnsweredGeneration:TpvUInt64;
+begin
+ if fPicking and fPickHasResult then begin
+  result:=fPickResultGeneration;
+ end else begin
+  result:=0;
+ end;
 end;
 
 function TpvScene3DRendererInstance.PickResult:TpvUInt32;
-var InFlightFrameIndex:TpvSizeInt;
-    Buffer:TpvVulkanBuffer;
 begin
-
- result:=0;
-
- InFlightFrameIndex:=GetPickReadBackInFlightFrameIndex;
- if InFlightFrameIndex<0 then begin
-  exit;
+ if fPicking and fPickHasResult then begin
+  result:=fPickResultID;
+ end else begin
+  result:=0;
  end;
-
- Buffer:=fPickReadBackBuffers[InFlightFrameIndex];
- if assigned(Buffer) and assigned(Buffer.Memory) then begin
-  result:=PpvUInt32(Buffer.Memory)^;
- end;
-
 end;
 
 function TpvScene3DRendererInstance.PickDepthResult(out aDepth:TpvFloat):Boolean;
-var InFlightFrameIndex:TpvSizeInt;
-    Buffer:TpvVulkanBuffer;
 begin
-
- result:=false;
-
- aDepth:=0.0;
-
- InFlightFrameIndex:=GetPickReadBackInFlightFrameIndex;
- if InFlightFrameIndex<0 then begin
-  exit;
+ result:=fPicking and fPickHasResult;
+ if result then begin
+  aDepth:=fPickResultDepth;
+ end else begin
+  aDepth:=0.0;
  end;
-
- Buffer:=fPickDepthReadBackBuffers[InFlightFrameIndex];
- if assigned(Buffer) and assigned(Buffer.Memory) then begin
-  aDepth:=PpvFloat(Buffer.Memory)^;
-  result:=true;
- end;
-
 end;
 
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+var Buffer:TpvVulkanBuffer;
 begin
 
  // Take over the requested pick position for this frame, so that the pixel copied out later belongs
@@ -10216,6 +10224,29 @@ begin
  // is consumed here: one click, one frame that draws, and afterwards the passes go back to doing
  // nothing until somebody asks anew.
  if fPicking and (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+
+  // Fetch first, ask second. A full round of in-flight frames after the pick was recorded, the frame
+  // that drew it has been waited for and its two pixels are in the buffers - so they are taken out
+  // and kept, before a request made in this very frame can point the pending slot somewhere else.
+  if (fPickPendingSlot>=0) and
+     ((aFrameCounter-fPickPendingFrameIndex)>=fScene3D.CountInFlightFrames) then begin
+   Buffer:=fPickReadBackBuffers[fPickPendingSlot];
+   if assigned(Buffer) and assigned(Buffer.Memory) then begin
+    fPickResultID:=PpvUInt32(Buffer.Memory)^;
+   end else begin
+    fPickResultID:=0;
+   end;
+   Buffer:=fPickDepthReadBackBuffers[fPickPendingSlot];
+   if assigned(Buffer) and assigned(Buffer.Memory) then begin
+    fPickResultDepth:=PpvFloat(Buffer.Memory)^;
+   end else begin
+    fPickResultDepth:=0.0;
+   end;
+   fPickResultGeneration:=fPickPendingGeneration;
+   fPickHasResult:=true;
+   fPickPendingSlot:=-1;
+  end;
+
   fPickActive[aInFlightFrameIndex]:=fPickRequested;
   if fPickRequested then begin
    fPickPositionX[aInFlightFrameIndex]:=fPickRequestX;
@@ -10223,14 +10254,9 @@ begin
    fPickRequested:=false;
    fPickPendingSlot:=aInFlightFrameIndex;
    fPickPendingFrameIndex:=aFrameCounter;
-   fPickResultReady:=false;
-  end else if (fPickPendingSlot>=0) and
-              (not fPickResultReady) and
-              ((aFrameCounter-fPickPendingFrameIndex)>=fScene3D.CountInFlightFrames) then begin
-   // A full round of in-flight frames has passed, so the frame that drew the pick has been waited
-   // for and its one pixel is in the buffer.
-   fPickResultReady:=true;
+   fPickPendingGeneration:=fPickRequestGeneration;
   end;
+
  end;
 
  fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);
