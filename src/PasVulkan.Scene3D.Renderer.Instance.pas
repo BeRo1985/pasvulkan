@@ -1037,6 +1037,12 @@ type { TpvScene3DRendererInstance }
        fPickRequestX:TpvInt32;
        fPickRequestY:TpvInt32;
        fPickRequested:Boolean;
+       // Which slot the running pick was recorded into and in which frame, so that its answer is
+       // handed out only once that frame is certainly through on the GPU. Reading it earlier - "one
+       // frame later", as it looked at first - reads a buffer the GPU may still be writing.
+       fPickPendingSlot:TpvSizeInt;
+       fPickPendingFrameIndex:TpvInt64;
+       fPickResultReady:Boolean;
        function GetPickReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
        function GetPickDepthReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
        function GetPickReadBackInFlightFrameIndex:TpvSizeInt;
@@ -1523,15 +1529,20 @@ type { TpvScene3DRendererInstance }
        // The position is taken over per in-flight frame while that frame is recorded, so the result
        // read back later belongs to the position that was asked for back then.
        procedure RequestPick(const aX,aY:TpvInt32);
-       // The id under the cursor as of the last frame that finished, or 0 for "nothing there".
-       // Never waits: it reads the slot of a frame whose fence has passed by the time its in-flight
-       // index comes around again.
+       // Whether the answer to the last RequestPick is there. False while the frame that draws it is
+       // still on its way, so a caller that wants the exact answer waits for this rather than
+       // assuming it arrives in the next frame - with two in-flight frames it does not.
+       function PickResultReady:Boolean;
+       // The id under the cursor, or 0 for "nothing there". Never waits: reads the slot of a frame
+       // that has been through, see PickResultReady.
        function PickResult:TpvUInt32;
        // The scene depth of the same pixel, as it stands in the depth buffer - so reverse-Z where
        // that is in use, and the cleared far value where nothing was drawn. Unprojecting it gives
        // the point on the visible surface under the cursor. False when there is nothing to read.
        function PickDepthResult(out aDepth:TpvFloat):Boolean;
-       // For the read back pass; not meant for anything else.
+       // For the pick passes; not meant for anything else. PickActive says whether that in-flight
+       // frame was asked to pick at all.
+       function PickActive(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        property PickReadBackBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickReadBackBuffer;
        property PickDepthReadBackBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickDepthReadBackBuffer;
        property PickPositionX[const aInFlightFrameIndex:TpvSizeInt]:TpvInt32 read GetPickPositionX;
@@ -3148,6 +3159,12 @@ begin
  fPickRequestY:=0;
 
  fPickRequested:=false;
+
+ fPickPendingSlot:=-1;
+
+ fPickPendingFrameIndex:=0;
+
+ fPickResultReady:=false;
 
  fSizeFactor:=1.0;
 
@@ -10097,22 +10114,18 @@ begin
  end;
 end;
 
-// The oldest slot, which is the one about to be reused: its fence has passed, so its content is
-// complete without anything having to be waited for here. Reading the slot just recorded would be
-// the one thing that could actually stall the pipeline.
+// The slot the running pick was recorded into, and only once its frame has been through: the update
+// side waits on that slot's fence before reusing it (UpdateWaitsForGPU), so after a full round of
+// in-flight frames the buffer is certainly written and nothing has to be waited for here. Deriving
+// the slot from DrawInFlightFrameIndex instead, as this did at first, was wrong twice over - that
+// index belongs to the draw side while this is read from the update side, and it says nothing about
+// which slot the pick actually used.
 function TpvScene3DRendererInstance.GetPickReadBackInFlightFrameIndex:TpvSizeInt;
 begin
- result:=-1;
- if fPicking and (fScene3D.CountInFlightFrames>0) then begin
-  result:=fFrameGraph.DrawInFlightFrameIndex;
-  if result>=0 then begin
-   result:=(result+1) mod fScene3D.CountInFlightFrames;
-   // Only a slot whose frame actually drew holds an answer. Without this the buffer of some earlier
-   // pick would be handed out as if it were about the spot asked for now.
-   if not fPickActive[result] then begin
-    result:=-1;
-   end;
-  end;
+ if fPicking and fPickResultReady and (fPickPendingSlot>=0) then begin
+  result:=fPickPendingSlot;
+ end else begin
+  result:=-1;
  end;
 end;
 
@@ -10139,6 +10152,19 @@ begin
  fPickRequestX:=aX;
  fPickRequestY:=aY;
  fPickRequested:=true;
+end;
+
+function TpvScene3DRendererInstance.PickActive(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+begin
+ result:=fPicking and
+         (aInFlightFrameIndex>=0) and
+         (aInFlightFrameIndex<MaxInFlightFrames) and
+         fPickActive[aInFlightFrameIndex];
+end;
+
+function TpvScene3DRendererInstance.PickResultReady:Boolean;
+begin
+ result:=GetPickReadBackInFlightFrameIndex>=0;
 end;
 
 function TpvScene3DRendererInstance.PickResult:TpvUInt32;
@@ -10183,46 +10209,28 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-var SelectionActive:boolean;
 begin
 
  // Take over the requested pick position for this frame, so that the pixel copied out later belongs
  // to where the cursor was when this frame was built - not to where it has moved since. The request
- // is consumed here: one click, one frame that draws, and afterwards the pass is off again until
- // somebody asks anew.
+ // is consumed here: one click, one frame that draws, and afterwards the passes go back to doing
+ // nothing until somebody asks anew.
  if fPicking and (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
   fPickActive[aInFlightFrameIndex]:=fPickRequested;
   if fPickRequested then begin
    fPickPositionX[aInFlightFrameIndex]:=fPickRequestX;
    fPickPositionY[aInFlightFrameIndex]:=fPickRequestY;
    fPickRequested:=false;
+   fPickPendingSlot:=aInFlightFrameIndex;
+   fPickPendingFrameIndex:=aFrameCounter;
+   fPickResultReady:=false;
+  end else if (fPickPendingSlot>=0) and
+              (not fPickResultReady) and
+              ((aFrameCounter-fPickPendingFrameIndex)>=fScene3D.CountInFlightFrames) then begin
+   // A full round of in-flight frames has passed, so the frame that drew the pick has been waited
+   // for and its one pixel is in the buffer.
+   fPickResultReady:=true;
   end;
-  if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass.Enabled:=fPickActive[aInFlightFrameIndex];
-  end;
-  if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass.Enabled:=fPickActive[aInFlightFrameIndex];
-  end;
- end;
-
-
- // Object-selection outline: with nothing selected, the list compute pass and the mask render pass
- // have nothing to do. Both did the work of finding that out inside their Execute and returned
- // early, which still left the mask render pass being begun every frame - and that means its
- // attachment load-ops, a full screen RG32UI clear plus the depth clear, for an image nobody reads.
- // Switching the passes off instead skips them earlier: a render pass whose single subpass is
- // disabled is not even begun (TpvFrameGraph.TPhysicalRenderPass.Execute), so the clears go away
- // with it. The flag is double buffered and sampled here in Update, so flipping it per frame costs
- // nothing and needs no recompilation of the frame graph.
- // The outline build pass stays enabled on purpose: the compose pass always runs and samples the
- // outline buffer, and it is that build pass's clear which keeps the buffer transparent while
- // nothing is selected.
- SelectionActive:=assigned(fScene3D) and (fScene3D.CountSelectedInstances>0);
- if assigned(TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass) then begin
-  TpvScene3DRendererInstancePasses(fPasses).fSelectionListComputePass.Enabled:=SelectionActive;
- end;
- if assigned(TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass) then begin
-  TpvScene3DRendererInstancePasses(fPasses).fSelectionMaskRenderPass.Enabled:=SelectionActive;
  end;
 
  fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);

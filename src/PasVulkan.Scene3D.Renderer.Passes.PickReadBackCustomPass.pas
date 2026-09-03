@@ -152,6 +152,12 @@ begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
+ // Nothing to fetch in a frame nobody asked about - and copying anyway would overwrite the answer to
+ // the pick that is still being waited for.
+ if not fInstance.PickActive(aInFlightFrameIndex) then begin
+  exit;
+ end;
+
  IDBuffer:=fInstance.PickReadBackBuffers[aInFlightFrameIndex];
  DepthBuffer:=fInstance.PickDepthReadBackBuffers[aInFlightFrameIndex];
 
