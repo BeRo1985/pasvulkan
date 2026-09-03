@@ -614,7 +614,11 @@ begin
                                   // No jitter: a pick is not accumulated over frames like TAA, and a
                                   // sub pixel offset would only move the answer off the cursor.
                                   nil,
-                                  true,
+                                  // NOT the disocclusion set, which is what a depth prepass draws:
+                                  // that is only what became visible since the last frame, and in a
+                                  // settled image it is empty. A pick wants everything that is
+                                  // visible now.
+                                  false,
                                   false,
                                   @fMeshShaderGraphicsPipelines[AlphaMode]);
  end;
