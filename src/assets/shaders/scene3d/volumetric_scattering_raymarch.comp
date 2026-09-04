@@ -835,7 +835,7 @@ void main(){
         float shellRayleighModulated = shellRayleigh;
         float shellMieModulated = shellMie;
         if(noiseModulated){
-          float dustVariation = ((noiseField - 0.5) * 2.0) * noiseDensityFactor;
+          float dustVariation = (noiseField - 0.5) * 2.0;
           shellMieModulated *= max(1.0 + (dustVariation * noiseModulation.x), 0.0);
           shellRayleighModulated *= max(1.0 + (dustVariation * noiseModulation.y), 0.0);
         }
@@ -963,7 +963,7 @@ void main(){
           float shellRayleighModulated = shellRayleigh;
           float shellMieModulated = shellMie;
           if(noiseModulated){
-            float dustVariation = ((noiseField - 0.5) * 2.0) * noiseDensityFactor;
+            float dustVariation = (noiseField - 0.5) * 2.0;
             shellMieModulated *= max(1.0 + (dustVariation * noiseModulation.x), 0.0);
             shellRayleighModulated *= max(1.0 + (dustVariation * noiseModulation.y), 0.0);
           }
