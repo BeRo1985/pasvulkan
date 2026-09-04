@@ -9,6 +9,11 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant, std140) uniform PushConstants {
   vec4 lightDirectionIntensityFactor; // xyz = light direction, w = intensity factor
+  // The sun, in absolute luminances, all zero when this bake is not the one that should carry it. See
+  // TpvScene3DRendererEnvironmentCubeMap.TPushConstants for when that is.
+  vec4 sunDiscRadianceRadius; // xyz = radiance of the disc, w = its angular radius in radians
+  vec4 sunAureoleRadianceEdgeSoftness; // xyz = radiance of the aureole, w = the disc's edge softness
+  vec4 sunLimbDarkeningAureoleWidth; // x = limb darkening, y = aureole width, zw = unused
 } pushConstants;
 
 /* clang-format on */
@@ -43,13 +48,35 @@ ivec2 destinationTextureSize = imageSize(uDestinationTexture);
 #define COMPUTE_DERIVATIVES
 #include "env_starlight.glsl"
 
+#include "sun_disc.glsl"
+
+// The sun, so that the cube map baked from this sky lights the scene with the same sun the sky box draws on
+// it. Deliberately outside the intensity factor below, which is there to dim a star field to where a night
+// sky belongs and has no business dividing an absolute solar luminance along with it.
+vec3 getStarlightCubeMapSun(const in vec3 aDirection){
+  vec3 discRadiance = pushConstants.sunDiscRadianceRadius.xyz;
+  if(all(lessThanEqual(discRadiance, vec3(0.0)))){
+    return vec3(0.0);
+  }
+  float radius = max(pushConstants.sunDiscRadianceRadius.w, 1e-6);
+  vec3 sunDirection = -normalize(pushConstants.lightDirectionIntensityFactor.xyz);
+  float angle = acos(clamp(dot(aDirection, sunDirection), -1.0, 1.0));
+  return sunDiscRadiance(angle,
+                         radius,
+                         pushConstants.sunAureoleRadianceEdgeSoftness.w,
+                         pushConstants.sunLimbDarkeningAureoleWidth.x,
+                         discRadiance,
+                         pushConstants.sunAureoleRadianceEdgeSoftness.xyz,
+                         pushConstants.sunLimbDarkeningAureoleWidth.y);
+}
+
 void main() {
   ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
     vec3 direction = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
     vec3 directionX = getCubeMapDirection((vec2(uvw.xy) + vec2(1.5, 0.5)) / vec2(destinationTextureSize), uvw.z);
     vec3 directionY = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5, 1.5)) / vec2(destinationTextureSize), uvw.z);
-    vec4 c = vec4(vec3(getStarlight(direction, directionX, directionY)) * pushConstants.lightDirectionIntensityFactor.w, 1.0);
+    vec4 c = vec4((vec3(getStarlight(direction, directionX, directionY)) * pushConstants.lightDirectionIntensityFactor.w) + getStarlightCubeMapSun(direction), 1.0);
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(c.xyz)));
 #elif defined(USE_RGBA16F)

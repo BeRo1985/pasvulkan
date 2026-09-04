@@ -78,6 +78,12 @@ type { TpvScene3DRendererEnvironmentCubeMap }
       public
        type TPushConstants=packed record
              LightDirectionIntensityFactor:TpvVector4; // xyz = light direction, w = intensity factor
+             // The sun, for the bakes that draw it. All zero when they do not, and a radiance of zero is the
+             // whole of the off switch. Only the starlight shader reads these; the others declare a shorter
+             // block and simply do not see them, which a push constant range is allowed to be longer than.
+             SunDiscRadianceRadius:TpvVector4; // xyz = radiance of the disc, w = its angular radius
+             SunAureoleRadianceEdgeSoftness:TpvVector4; // xyz = radiance of the aureole, w = the disc's edge softness
+             SunLimbDarkeningAureoleWidth:TpvVector4; // x = limb darkening, y = aureole width, zw = unused
             end;
             PPushConstants=^TPushConstants;
       private
@@ -95,7 +101,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky;const aName:TpvUTF8String='');
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky;const aName:TpvUTF8String='';const aScene3D:TpvScene3D=nil);
 
        destructor Destroy; override;
 
@@ -123,7 +129,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode;const aName:TpvUTF8String);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aSampler:TpvVulkanSampler;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aForEnvMap:Boolean;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode;const aName:TpvUTF8String;const aScene3D:TpvScene3D);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -161,9 +167,12 @@ var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     DownsampleVulkanDescriptorPool:TpvVulkanDescriptorPool;
     DownsampleVulkanDescriptorSets:array[0..7] of TpvVulkanDescriptorSet;
     DownsampleVulkanComputePipelineLayout:TpvVulkanPipelineLayout;
-    DownsampleVulkanComputePipeline:TpvVulkanComputePipeline;    
+    DownsampleVulkanComputePipeline:TpvVulkanComputePipeline;
     DownsampleMipMapIndex:TpvInt32;
     DownsampleCountMipMaps:TpvInt32;
+    SunDiscRadiance:TpvVector3;
+    SunAureoleRadiance:TpvVector3;
+    SunDrawnRadius:TpvFloat;
 begin
  inherited Create;
 
@@ -172,6 +181,25 @@ begin
  fIntensityFactor:=aIntensityFactor;
  
  fPushConstants.LightDirectionIntensityFactor:=TpvVector4.InlineableCreate(fLightDirection,fIntensityFactor);
+
+ // The sun into the cube map that lights the scene, so that a sun which is seen is also a sun which shines.
+ // Two conditions, both of them narrow on purpose:
+ //
+ //   aForEnvMap - only the bake for image based lighting. The sky box's own cube map must NOT have it baked
+ //     in, because the sky box shader draws it over that cube map live, and twice is once too often.
+ //   SunDiscMode = SkyBox - only where the scene has said the background owns the sun. Where the atmosphere
+ //     owns it, the atmosphere bakes its own cube map with the sun already in it, and a scene that has said
+ //     nothing at all keeps exactly the lighting it had.
+ if assigned(aScene3D) and aForEnvMap and (aScene3D.SunDiscMode=TpvScene3DSunDiscMode.SkyBox) then begin
+  aScene3D.GetSunDiscDrawParameters(SunDiscRadiance,SunAureoleRadiance,SunDrawnRadius);
+  fPushConstants.SunDiscRadianceRadius:=TpvVector4.InlineableCreate(SunDiscRadiance,SunDrawnRadius);
+  fPushConstants.SunAureoleRadianceEdgeSoftness:=TpvVector4.InlineableCreate(SunAureoleRadiance,Max(aScene3D.SunDiscEdgeSoftness,0.0));
+  fPushConstants.SunLimbDarkeningAureoleWidth:=TpvVector4.InlineableCreate(Max(aScene3D.SunDiscLimbDarkening,0.0),Max(aScene3D.SunDiscAureoleWidth,0.0),0.0,0.0);
+ end else begin
+  fPushConstants.SunDiscRadianceRadius:=TpvVector4.Null;
+  fPushConstants.SunAureoleRadianceEdgeSoftness:=TpvVector4.Null;
+  fPushConstants.SunLimbDarkeningAureoleWidth:=TpvVector4.Null;
+ end;
 
  case aImageFormat of
   VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin

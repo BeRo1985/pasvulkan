@@ -674,16 +674,12 @@ end;
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
     SunHalo:TpvFloat;
-    SunRadius:TpvFloat;
     SunDrawnRadius:TpvFloat;
-    SunEnergyScale:TpvFloat;
-    SunAmount:TpvFloat;
-    SunDiscScale:TpvFloat;
-    SunAureoleStrength:TpvFloat;
     SunEdgeSoftness:TpvFloat;
     SunLimbDarkening:TpvFloat;
     SunAureoleWidth:TpvFloat;
     SunDiscRadiance:TpvVector3;
+    SunAureoleRadiance:TpvVector3;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
@@ -749,23 +745,16 @@ begin
 
  end else if fScene3D.SunDiscMode=TpvScene3DSunDiscMode.SkyBox then begin
 
-  // The scene's own sun, for the cube map and starlight skies. The artistic scale and the energy factor
-  // are folded in here rather than sent along, because the three vec4 are all the room there is - see the
-  // table in skybox.glsl. The maths is sunDiscEnergyScale from sun_disc.glsl, kept in step by hand.
-  SunRadius:=Max(fScene3D.SunDiscAngularRadius,1e-6);
-  SunDrawnRadius:=SunRadius*Max(fScene3D.SunDiscRadiusScale,1e-6);
-  SunEnergyScale:=SunRadius/Max(SunDrawnRadius,1e-6);
-  SunAmount:=Min(Max(fScene3D.SunDiscEnergyConservation,0.0),1.0);
-  SunEnergyScale:=(1.0*(1.0-SunAmount))+((SunEnergyScale*SunEnergyScale)*SunAmount);
-  SunDiscScale:=fScene3D.SunDiscLuminance*SunEnergyScale;
-  SunDiscRadiance:=fScene3D.SunDiscColor*SunDiscScale;
-  SunAureoleStrength:=Max(fScene3D.SunDiscAureoleStrength,0.0);
+  // The scene's own sun, for the cube map and starlight skies. The artistic scale and the energy factor are
+  // already worked into what comes back, because the three vec4 are all the room there is - see the table
+  // in skybox.glsl - and because the cube map baked for image based lighting asks the same question.
+  fScene3D.GetSunDiscDrawParameters(SunDiscRadiance,SunAureoleRadiance,SunDrawnRadius);
   SunEdgeSoftness:=Max(fScene3D.SunDiscEdgeSoftness,0.0);
   SunLimbDarkening:=Max(fScene3D.SunDiscLimbDarkening,0.0);
   SunAureoleWidth:=Max(fScene3D.SunDiscAureoleWidth,0.0);
 
   PushConstants.SkyParameters0:=TpvVector4.InlineableCreate(SunDiscRadiance,SunDrawnRadius);
-  PushConstants.SkyParameters1:=TpvVector4.InlineableCreate(SunDiscRadiance*SunAureoleStrength,SunEdgeSoftness);
+  PushConstants.SkyParameters1:=TpvVector4.InlineableCreate(SunAureoleRadiance,SunEdgeSoftness);
   PushConstants.SkyParameters2:=TpvVector4.InlineableCreate(SunLimbDarkening,SunAureoleWidth,0.0,0.0);
 
  end else begin

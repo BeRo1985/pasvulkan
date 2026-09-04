@@ -5473,6 +5473,11 @@ type EpvScene3D=class(Exception);
        // would be exactly the sort of disagreement this is meant to end.
        property SunDiscAureoleStrength:TpvFloat read fSunDiscAureoleStrength write fSunDiscAureoleStrength;
        property SunDiscAureoleWidth:TpvFloat read fSunDiscAureoleWidth write fSunDiscAureoleWidth;
+       // What the drawn sun comes to once the artistic scale and the energy factor are worked in: the two
+       // radiances and the radius that anything drawing it needs. Here, and only here, because more than one
+       // thing draws it - the sky box, and the cube map baked from it for image based lighting - and the one
+       // thing worse than a sun in two places is a sun of two different sizes in two places.
+       procedure GetSunDiscDrawParameters(out aDiscRadiance:TpvVector3;out aAureoleRadiance:TpvVector3;out aDrawnRadius:TpvFloat);
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
@@ -41031,6 +41036,25 @@ begin
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count Group Instances: '+IntToStr(fCountGroupInstancesTotal));
 end;
 
+procedure TpvScene3D.GetSunDiscDrawParameters(out aDiscRadiance:TpvVector3;out aAureoleRadiance:TpvVector3;out aDrawnRadius:TpvFloat);
+var Radius:TpvFloat;
+    EnergyScale:TpvFloat;
+    Amount:TpvFloat;
+    Scale:TpvFloat;
+begin
+ Radius:=Max(fSunDiscAngularRadius,1e-6);
+ aDrawnRadius:=Radius*Max(fSunDiscRadiusScale,1e-6);
+ // The same as sunDiscEnergyScale in sun_disc.glsl, and it has to stay the same: a disc drawn twice as wide
+ // is a quarter as bright per unit area, so that widening it does not pull the automatic exposure down with
+ // it. At a scale of one this comes out at exactly one either way.
+ EnergyScale:=Radius/Max(aDrawnRadius,1e-6);
+ Amount:=Min(Max(fSunDiscEnergyConservation,0.0),1.0);
+ EnergyScale:=(1.0*(1.0-Amount))+((EnergyScale*EnergyScale)*Amount);
+ Scale:=fSunDiscLuminance*EnergyScale;
+ aDiscRadiance:=fSunDiscColor*Scale;
+ aAureoleRadiance:=aDiscRadiance*Max(fSunDiscAureoleStrength,0.0);
+end;
+
 procedure TpvScene3D.CollectLights(var aLightItemArray:TpvScene3D.TLightItems;
                                    var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
 var LightIndex:TpvSizeInt;
@@ -41098,6 +41122,16 @@ begin
     LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
     LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
     LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+    // A directional light has no cone, so the two above are meaningless for it and nothing reads them -
+    // lighting.glsl only touches them in the spot case. So the first one carries the light's angular radius
+    // instead, which is what the ray traced soft shadow cone needs and had hard coded until now. It is the
+    // PHYSICAL radius, deliberately not the drawn one: a sun drawn larger than life for the look of it has
+    // no business making every shadow edge in the scene softer along with it.
+    if Light.fDataPointer^.Type_ in [TpvScene3D.TLightData.TType.Directional,
+                                     TpvScene3D.TLightData.TType.PrimaryDirectional,
+                                     TpvScene3D.TLightData.TType.ViewDirectional] then begin
+     LightItem^.LightAngleScale:=fSunDiscAngularRadius;
+    end;
     LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
     LightItem^.PositionRadius:=TpvVector4.InlineableCreate(Light.fPosition,Light.fRadius);
     LightItem^.DirectionRange:=TpvVector4.InlineableCreate(Light.fDirection,Light.fDataPointer^.fRange);

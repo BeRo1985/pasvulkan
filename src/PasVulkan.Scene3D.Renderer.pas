@@ -1555,7 +1555,7 @@ begin
                  (fScene3D.SkyBoxMode=fScene3D.EnvironmentMode) and
                  SameValue(fScene3D.SkyBoxIntensityFactor,fScene3D.EnvironmentIntensityFactor);
 
- fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,fScene3D.EnvironmentIntensityFactor,not EnvMapIsSkyBox,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode,'TpvScene3DRenderer.fEnvironmentCubeMap');
+ fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,fScene3D.EnvironmentIntensityFactor,not EnvMapIsSkyBox,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode,'TpvScene3DRenderer.fEnvironmentCubeMap',fScene3D);
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEnvironmentCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEnvironmentCubeMap.ImageView');
 
@@ -1591,7 +1591,7 @@ begin
    end;
   end;
 
-  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,IntensityFactor,false,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode,'TpvScene3DRenderer.fSkyBoxCubeMap');
+  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fGeneralSampler,fScene3D.PrimaryLightDirection,IntensityFactor,false,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode,'TpvScene3DRenderer.fSkyBoxCubeMap',fScene3D);
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyBoxCubeMap.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyBoxCubeMap.ImageView');
 

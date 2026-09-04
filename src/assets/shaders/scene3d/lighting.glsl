@@ -223,11 +223,18 @@ float applyCloudShadowMapAttenuation(const in vec3 worldSpacePosition, const in 
                       case 1u:
                       case 4u: {
 
-                        // Directional/Sun: Sample directions in a cone of fixed angular radius
-                        // Sun angular radius = 0.00465 rad (~0.267 degrees)
-                        const float sunAngularRadius = 0.00465;
-                        const float cosMax = cos(sunAngularRadius);
-                        const float oneMinusCosMax = 1.0 - cosMax;
+                        // Directional/Sun: sample directions in a cone of the light's own angular radius,
+                        // which for a directional light rides in metaData.z - the spot cone's scale, which
+                        // a directional light has no use for. It used to be a hard coded 0.00465 here, so
+                        // that the sun one could see and the sun that cast the shadows were two different
+                        // suns that happened to be about the same size.
+                        //
+                        // Note that this is the light's PHYSICAL radius and deliberately not the drawn one:
+                        // a sun drawn three times over life size for the look of it has no business making
+                        // every shadow edge in the scene three times as soft.
+                        float sunAngularRadius = max(uintBitsToFloat(light.metaData.z), 1e-6);
+                        float cosMax = cos(sunAngularRadius);
+                        float oneMinusCosMax = 1.0 - cosMax;
 
                         vec3 lightNormal = pointToLightDirection;
                         vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
