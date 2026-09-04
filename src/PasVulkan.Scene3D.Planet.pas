@@ -3685,6 +3685,19 @@ type TpvScene3DPlanets=class;
        procedure ReleaseSmearBuffer;
        procedure EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
        procedure MarkAllTilesDirty;
+       // Writes one rectangle of height values straight into the height map and marks everything
+       // derived from it as out of date. The whole-planet upload in TSerializedData does the same
+       // two things for the whole map; this is that for a piece of it, so that a small area can be
+       // put right without touching - or waiting for - the rest.
+       //
+       // The values are read tightly packed, aWidth per row, aHeight rows. Everything that follows
+       // from the height map (the smoothed map, the normals, the meshes, the physics, the readback
+       // copy) is worked out again by the ordinary per-frame path, because the generation counter
+       // this bumps is what that path watches.
+       //
+       // The image is expected to be in the layout it rests in between frames, which is why this
+       // belongs between two frames and not into the middle of one.
+       procedure UploadHeightMapRegion(const aX,aY,aWidth,aHeight:TpvInt32;const aData:pointer);
        procedure EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
        procedure EnqueueGrassMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aOnlyIfEmpty:Boolean=false);
        procedure EnqueueGrassAgeMapSet(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aAge:TpvFloat);
@@ -37908,6 +37921,171 @@ begin
   fData.fForceAllTilesDirty:=true;
   inc(fData.fHeightMapGeneration); // Force re-processing of heightmap pipeline including smoothing
  end;
+end;
+
+procedure TpvScene3DPlanet.UploadHeightMapRegion(const aX,aY,aWidth,aHeight:TpvInt32;const aData:pointer);
+var Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
+    TemporaryBuffer:TpvVulkanBuffer;
+    ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+    DataSize:TVkDeviceSize;
+begin
+
+ if not (assigned(fVulkanDevice) and
+         assigned(aData) and
+         assigned(fData.fHeightMapImage) and
+         (aWidth>0) and
+         (aHeight>0) and
+         (aX>=0) and
+         (aY>=0) and
+         ((aX+aWidth)<=fHeightMapResolution) and
+         ((aY+aHeight)<=fHeightMapResolution)) then begin
+  exit;
+ end;
+
+ DataSize:=TVkDeviceSize(aWidth)*TVkDeviceSize(aHeight)*SizeOf(TpvFloat);
+
+ Queue:=fVulkanDevice.UniversalQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.UniversalQueueFamilyIndex);
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(fVulkanDevice);
+   try
+
+    TemporaryBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                            DataSize,
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            [],
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                            0,
+                                            0,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                            0,
+                                            pvAllocationGroupIDScene3DPlanetDynamic,
+                                            'TpvScene3DPlanet.UploadHeightMapRegion.TemporaryBuffer'
+                                           );
+    try
+
+     fVulkanDevice.MemoryStaging.Upload(Queue,
+                                        CommandBuffer,
+                                        Fence,
+                                        aData^,
+                                        TemporaryBuffer,
+                                        0,
+                                        DataSize);
+
+     CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     CommandBuffer.BeginRecording;
+
+     begin
+      ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fData.fHeightMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+      CommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarrier);
+     end;
+
+     begin
+      // Tightly packed on the way in, placed as a rectangle on the way out.
+      BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                                 aWidth,
+                                                 aHeight,
+                                                 TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                                 TVkOffset3D.Create(aX,aY,0),
+                                                 TVkExtent3D.Create(aWidth,aHeight,1));
+      CommandBuffer.CmdCopyBufferToImage(TemporaryBuffer.Handle,
+                                         fData.fHeightMapImage.VulkanImage.Handle,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         1,
+                                         @BufferImageCopy);
+      // Every tile, not only the ones under the rectangle: which tiles a piece of the map belongs to
+      // is the tile map's business, and marking too many costs work once while marking too few
+      // leaves a seam standing.
+      if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+       fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(CommandBuffer.Handle,TpvVulkanBreadcrumbType.FillBuffer,'TileDirtyMapFill');
+      end;
+      CommandBuffer.CmdFillBuffer(fData.fTileDirtyMapBuffer.Handle,
+                                  0,
+                                  VK_WHOLE_SIZE,
+                                  TVkUInt32($ffffffff));
+      if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+       fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(CommandBuffer.Handle);
+      end;
+     end;
+
+     begin
+      ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       0,
+                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fData.fHeightMapImage.VulkanImage.Handle,
+                                                       TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                       0,
+                                                                                       1,
+                                                                                       0,
+                                                                                       1));
+      CommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarrier);
+     end;
+
+     CommandBuffer.EndRecording;
+
+     CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,Fence,true);
+
+     // What the rest of the pipeline watches: the smoothing, the normals, the meshes, the physics
+     // and the readback copy all follow from this one number changing.
+     inc(fData.fHeightMapGeneration);
+     fData.fForceAllTilesDirty:=true;
+
+    finally
+     FreeAndNil(TemporaryBuffer);
+    end;
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end;
+
 end;
 
 procedure TpvScene3DPlanet.EnqueueBlendMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aReplace:Boolean);
