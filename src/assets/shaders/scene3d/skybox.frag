@@ -16,9 +16,35 @@ layout (set = 0, binding = 1) uniform samplerCube uTexture;
 
 #include "skybox.glsl"
 #include "env_starlight.glsl"
+#include "sun_disc.glsl"
 #include "sky_gradient_sun.glsl"
 
 float skyBoxFactor = pushConstants.skyBoxIntensityFactor * pushConstants.skyBoxBrightnessFactor;
+
+// The sun for the cube map and starlight skies, in absolute luminances - see the sky parameter table in
+// skybox.glsl. This is what lets there be a sun with no atmosphere in front of it: out in space, or over a
+// world that has not been given any air yet. Where there IS an atmosphere, its pass runs after this one and
+// multiplies whatever stands here by its transmittance before adding its own scattered light, so the sun
+// reddens and dims on the way down without anybody having to arrange it.
+//
+// A radiance of zero is the whole of the off switch: the scene sends zeroes when the sun is not the sky
+// box's to draw, and then this costs one compare.
+vec3 getSkyBoxSun(const in vec3 aDirection){
+  vec3 discRadiance = pushConstants.skyParameters0.xyz;
+  if(all(lessThanEqual(discRadiance, vec3(0.0)))){
+    return vec3(0.0);
+  }
+  float radius = max(pushConstants.skyParameters0.w, 1e-6);
+  vec3 sunDirection = -normalize(pushConstants.lightDirection.xyz);
+  float angle = acos(clamp(dot(aDirection, sunDirection), -1.0, 1.0));
+  return sunDiscRadiance(angle,
+                         radius,
+                         pushConstants.skyParameters1.w,
+                         pushConstants.skyParameters2.x,
+                         discRadiance,
+                         pushConstants.skyParameters1.xyz,
+                         pushConstants.skyParameters2.y);
+}
 
 #ifdef SKYBOX_CACHED_REPROJECTION
 #ifdef SKYBOX_CACHED_REPROJECTION_RGB9E5
@@ -127,9 +153,15 @@ void main(){
 #else
 #error "SKYBOX_CACHED_REPROJECTION requires either SKYBOX_CACHED_REPROJECTION_RGB9E5 or SKYBOX_CACHED_REPROJECTION_RGBA16F"
 #endif
+      // And the sun on top, AFTER the history has been written. It must not go into the history and must
+      // not come out of it: it is a few pixels across, hard edged and brighter than everything else, so the
+      // reprojection's fifteen percent motion reject and its one-in-sixty-four refresh would have it
+      // smearing and flickering across the sky at every turn of the camera. The stars cache well because
+      // they are fixed to the sky and dim; the sun is neither.
+      outFragColor.xyz = clamp(outFragColor.xyz + getSkyBoxSun(direction), vec3(-65504.0), vec3(65504.0));
 #else
       // Full computation every frame
-      outFragColor = vec4(clamp(getStarlight(direction) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      outFragColor = vec4(clamp((getStarlight(direction) * skyBoxFactor) + getSkyBoxSun(direction), vec3(-65504.0), vec3(65504.0)), 1.0);
 #endif
       break;
     }
@@ -141,18 +173,22 @@ void main(){
     case 3u:{
       // Stylized gradient sky: a vertical top/horizon/bottom colour ramp, the sun (see
       // sky_gradient_sun.glsl), and optional cheap hash stars in the upper sky.
+      // Named locally, because in this mode the three sky parameters are the palette; see skybox.glsl.
+      vec4 gradientTopColor = pushConstants.skyParameters0;
+      vec4 gradientHorizonColor = pushConstants.skyParameters1;
+      vec4 gradientBottomColor = pushConstants.skyParameters2;
       float upness = direction.y;
       float ramp = pow(clamp(abs(upness), 0.0, 1.0), 0.5);
       vec3 skyColor = (upness >= 0.0)
-                        ? mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientTopColor.xyz, ramp)
-                        : mix(pushConstants.gradientHorizonColor.xyz, pushConstants.gradientBottomColor.xyz, ramp);
+                        ? mix(gradientHorizonColor.xyz, gradientTopColor.xyz, ramp)
+                        : mix(gradientHorizonColor.xyz, gradientBottomColor.xyz, ramp);
       skyColor += skyGradientSun(direction,
                                  -normalize(pushConstants.lightDirection.xyz),
-                                 pushConstants.gradientHorizonColor.xyz,
-                                 pushConstants.gradientHorizonColor.w,
-                                 pushConstants.gradientBottomColor.w,
+                                 gradientHorizonColor.xyz,
+                                 gradientHorizonColor.w,
+                                 gradientBottomColor.w,
                                  float(pushConstants.mode >> 16u) / 65535.0);
-      float starIntensity = pushConstants.gradientTopColor.w;
+      float starIntensity = gradientTopColor.w;
       if((starIntensity > 0.0) && (upness > 0.0)){
         vec3 cell = floor(direction * 220.0);
         float hash = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
@@ -179,7 +215,11 @@ void main(){
 #error "SKYBOX_CACHED_REPROJECTION requires either SKYBOX_CACHED_REPROJECTION_RGB9E5 or SKYBOX_CACHED_REPROJECTION_RGBA16F"
 #endif
 #endif
+      // The sun on top, and deliberately NOT scaled by skyBoxBrightnessFactor above: that one is there to
+      // dim a star field down to where a night sky belongs, and the sun's luminance is an absolute figure
+      // that has no business being divided by a hundred and twenty-eight along with the stars.
+      outFragColor.xyz = clamp(outFragColor.xyz + getSkyBoxSun(direction), vec3(-65504.0), vec3(65504.0));
       break;
-    } 
+    }
   }
 }

@@ -64,6 +64,7 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -97,11 +98,14 @@ type { TpvScene3DRendererSkyBox }
              FrameIndex:TpvUInt32;
              SkyBoxIntensityFactor:TpvFloat;
 
-             // Gradient sky palette (Mode 3); rgb = colour, w packs a scalar. The
-             // three vec4 keep the record at 128 bytes (the portable push-constant limit).
-             GradientTopColor:TpvVector4;      // rgb = top colour,    w = star intensity
-             GradientHorizonColor:TpvVector4;  // rgb = horizon colour, w = sun size
-             GradientBottomColor:TpvVector4;   // rgb = bottom colour,  w = sun brightness
+             // Three vec4 whose meaning depends on Mode, which is what keeps the record at 128 bytes, the
+             // portable push-constant limit. In Mode 3 they are the gradient sky's palette with the sun
+             // packed into their w components; in Mode 0 and 1 they are the sun alone, in absolute
+             // luminances, and all zero when it is not the sky box's job to draw it. The full table is in
+             // skybox.glsl beside the matching declaration.
+             SkyParameters0:TpvVector4;
+             SkyParameters1:TpvVector4;
+             SkyParameters2:TpvVector4;
 
             end;
             PPushConstants=^TPushConstants;
@@ -670,6 +674,16 @@ end;
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
     SunHalo:TpvFloat;
+    SunRadius:TpvFloat;
+    SunDrawnRadius:TpvFloat;
+    SunEnergyScale:TpvFloat;
+    SunAmount:TpvFloat;
+    SunDiscScale:TpvFloat;
+    SunAureoleStrength:TpvFloat;
+    SunEdgeSoftness:TpvFloat;
+    SunLimbDarkening:TpvFloat;
+    SunAureoleWidth:TpvFloat;
+    SunDiscRadiance:TpvVector3;
 begin
 
  fScene3D.VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Skybox',[0.25,0.75,0.75,1.0]);
@@ -725,9 +739,43 @@ begin
 
  PushConstants.SkyBoxIntensityFactor:=fScene3D.SkyBoxIntensityFactor;
 
- PushConstants.GradientTopColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientTopColor,fScene3D.SkyGradientStarIntensity);
- PushConstants.GradientHorizonColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientHorizonColor,fScene3D.SkyGradientSunSize);
- PushConstants.GradientBottomColor:=TpvVector4.InlineableCreate(fScene3D.SkyGradientBottomColor,fScene3D.SkyGradientSunBrightness);
+ if (PushConstants.Mode and $ffff)=3 then begin
+
+  // The stylised gradient sky's palette. Its sun is part of that palette and predates the scene-wide one,
+  // so it is drawn whatever TpvScene3D.SunDiscMode says - a gradient sky is a sky that brings its own.
+  PushConstants.SkyParameters0:=TpvVector4.InlineableCreate(fScene3D.SkyGradientTopColor,fScene3D.SkyGradientStarIntensity);
+  PushConstants.SkyParameters1:=TpvVector4.InlineableCreate(fScene3D.SkyGradientHorizonColor,fScene3D.SkyGradientSunSize);
+  PushConstants.SkyParameters2:=TpvVector4.InlineableCreate(fScene3D.SkyGradientBottomColor,fScene3D.SkyGradientSunBrightness);
+
+ end else if fScene3D.SunDiscMode=TpvScene3DSunDiscMode.SkyBox then begin
+
+  // The scene's own sun, for the cube map and starlight skies. The artistic scale and the energy factor
+  // are folded in here rather than sent along, because the three vec4 are all the room there is - see the
+  // table in skybox.glsl. The maths is sunDiscEnergyScale from sun_disc.glsl, kept in step by hand.
+  SunRadius:=Max(fScene3D.SunDiscAngularRadius,1e-6);
+  SunDrawnRadius:=SunRadius*Max(fScene3D.SunDiscRadiusScale,1e-6);
+  SunEnergyScale:=SunRadius/Max(SunDrawnRadius,1e-6);
+  SunAmount:=Min(Max(fScene3D.SunDiscEnergyConservation,0.0),1.0);
+  SunEnergyScale:=(1.0*(1.0-SunAmount))+((SunEnergyScale*SunEnergyScale)*SunAmount);
+  SunDiscScale:=fScene3D.SunDiscLuminance*SunEnergyScale;
+  SunDiscRadiance:=fScene3D.SunDiscColor*SunDiscScale;
+  SunAureoleStrength:=Max(fScene3D.SunDiscAureoleStrength,0.0);
+  SunEdgeSoftness:=Max(fScene3D.SunDiscEdgeSoftness,0.0);
+  SunLimbDarkening:=Max(fScene3D.SunDiscLimbDarkening,0.0);
+  SunAureoleWidth:=Max(fScene3D.SunDiscAureoleWidth,0.0);
+
+  PushConstants.SkyParameters0:=TpvVector4.InlineableCreate(SunDiscRadiance,SunDrawnRadius);
+  PushConstants.SkyParameters1:=TpvVector4.InlineableCreate(SunDiscRadiance*SunAureoleStrength,SunEdgeSoftness);
+  PushConstants.SkyParameters2:=TpvVector4.InlineableCreate(SunLimbDarkening,SunAureoleWidth,0.0,0.0);
+
+ end else begin
+
+  // Nothing to draw. A radiance of zero is the off switch the shader looks for.
+  PushConstants.SkyParameters0:=TpvVector4.Null;
+  PushConstants.SkyParameters1:=TpvVector4.Null;
+  PushConstants.SkyParameters2:=TpvVector4.Null;
+
+ end;
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
 

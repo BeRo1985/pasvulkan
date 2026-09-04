@@ -22,9 +22,24 @@ layout(push_constant) uniform PushConstants {
   uint frameIndex;     // For stochastic refresh
   float skyBoxIntensityFactor;
 
-  vec4 gradientTopColor;      // rgb = top colour,    w = star intensity
-  vec4 gradientHorizonColor;  // rgb = horizon colour, w = sun size
-  vec4 gradientBottomColor;   // rgb = bottom colour,  w = sun brightness
+  // Three vec4 whose meaning depends on the low half of mode above. This block sits exactly on the 128 byte
+  // push-constant limit, so there is nothing to spare and what a mode does not need another one uses:
+  //
+  //   mode 3, the stylised gradient sky - its palette, with the sun packed into the w components:
+  //     0: rgb = top colour,     w = star intensity
+  //     1: rgb = horizon colour, w = the sun's angular radius in radians
+  //     2: rgb = bottom colour,  w = the sun's brightness, in multiples of the palette
+  //
+  //   modes 0 and 1, the cube map and the real time starlight - the sun, and nothing else, in absolute
+  //   luminances. All zero when the scene does not have the sky box draw the sun, which then draws nothing:
+  //     0: rgb = radiance of the disc, w = its angular radius in radians, artistic scale already applied
+  //     1: rgb = radiance of the aureole, w = the disc's edge softness
+  //     2: x = limb darkening, y = aureole width, zw = unused
+  //
+  //   mode 2, the colour key: unused.
+  vec4 skyParameters0;
+  vec4 skyParameters1;
+  vec4 skyParameters2;
 
 } pushConstants;
 
