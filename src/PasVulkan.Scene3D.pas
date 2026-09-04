@@ -178,6 +178,19 @@ type EpvScene3D=class(Exception);
       );
      PpvScene3DEnvironmentMode=^TpvScene3DEnvironmentMode;
 
+     // Who draws the sun's disc. It is one choice rather than a switch per drawer, because the sun is one
+     // object: two of them drawing it at once would simply be two suns.
+     TpvScene3DSunDiscMode=
+      (
+       None,       // Nobody. The directional light is still there, there is just nothing to look at.
+       Atmosphere, // The atmosphere, in its own ray march. The default, and all that ever happened before.
+       SkyBox      // The sky box, so that there is a sun with no atmosphere around it at all - out in space,
+                   // or on a world that has not been given any air yet. Where there IS an atmosphere it then
+                   // dims that sun by its transmittance and lays its own scattered light over it, which is
+                   // what sunlight does on the way down and needs no special case to arrange.
+      );
+     PpvScene3DSunDiscMode=^TpvScene3DSunDiscMode;
+
      TpvScene3DFrameProcessingMode=
       (
        Serialized,
@@ -4911,6 +4924,16 @@ type EpvScene3D=class(Exception);
        fSkyGradientSunBrightness:TpvFloat;
        fSkyGradientSunHalo:TpvFloat;
        fGradientEnvironmentIntensityFactor:TpvFloat;
+       fSunDiscMode:TpvScene3DSunDiscMode;
+       fSunDiscColor:TpvVector3;
+       fSunDiscLuminance:TpvFloat;
+       fSunDiscAngularRadius:TpvFloat;
+       fSunDiscRadiusScale:TpvFloat;
+       fSunDiscEnergyConservation:TpvFloat;
+       fSunDiscLimbDarkening:TpvFloat;
+       fSunDiscEdgeSoftness:TpvFloat;
+       fSunDiscAureoleStrength:TpvFloat;
+       fSunDiscAureoleWidth:TpvFloat;
       private
        fRendererInstanceLock:TPasMPCriticalSection;
        fRendererInstanceList:TpvObjectList;
@@ -5415,6 +5438,41 @@ type EpvScene3D=class(Exception);
        // drawn, and how much of it is the post-processing's business.
        property SkyGradientSunHalo:TpvFloat read fSkyGradientSunHalo write fSkyGradientSunHalo;
        property GradientEnvironmentIntensityFactor:TpvFloat read fGradientEnvironmentIntensityFactor write fGradientEnvironmentIntensityFactor;
+      public
+       // The sun's disc. It is kept here, on the scene, rather than on the atmosphere, because the same sun
+       // has to be agreed upon by everything that draws it, and it has to go on existing where there is no
+       // atmosphere to own it. The atmosphere copies these into its own uniforms when it uploads them; the
+       // shape maths itself is in sun_disc.glsl.
+       property SunDiscMode:TpvScene3DSunDiscMode read fSunDiscMode write fSunDiscMode;
+       property SunDiscColor:TpvVector3 read fSunDiscColor write fSunDiscColor;
+       // Absolute, and enormous on purpose: the sun is not a bright colour, it is a value the display
+       // cannot hold, and that is what the bloom pass makes the halo and the streaks out of.
+       property SunDiscLuminance:TpvFloat read fSunDiscLuminance write fSunDiscLuminance;
+       // The sun's angular radius IN RADIANS, as it physically is from here. The real one seen from Earth is
+       // 0.004675; the default below is the 0.505 degrees ACROSS that the atmosphere has always drawn.
+       property SunDiscAngularRadius:TpvFloat read fSunDiscAngularRadius write fSunDiscAngularRadius;
+       // And what to multiply that by for the picture's sake, leaving the physical radius alone - the
+       // physical one is what the shadow penumbrae are worked out from, and a sun drawn three times over
+       // life size has no business making every shadow edge three times as soft.
+       property SunDiscRadiusScale:TpvFloat read fSunDiscRadiusScale write fSunDiscRadiusScale;
+       // 0..1: how much of the sun's flux is held constant while it is scaled. At one, a disc drawn twice as
+       // wide is a quarter as bright per unit area, so the automatic exposure does not stop down and darken
+       // the whole picture the moment the camera turns towards it. At zero the luminance stays and the
+       // brightness grows with the area. Does nothing at all at a scale of one.
+       property SunDiscEnergyConservation:TpvFloat read fSunDiscEnergyConservation write fSunDiscEnergyConservation;
+       // 0.0 = a flat disc, around 0.6 = the way a ball of glowing gas actually looks at its rim. Only worth
+       // anything once the disc is large enough to have a visible rim at all.
+       property SunDiscLimbDarkening:TpvFloat read fSunDiscLimbDarkening write fSunDiscLimbDarkening;
+       // Width of the disc's edge as a fraction of its radius. Zero is the hard edge this always had, which
+       // is fine while the sun is a few pixels across and is not once it is made larger, since a hard-edged
+       // circle of an unholdable value is what temporal antialiasing cannot settle on.
+       property SunDiscEdgeSoftness:TpvFloat read fSunDiscEdgeSoftness write fSunDiscEdgeSoftness;
+       // The tight halo immediately around the disc, as a fraction of its radiance and as a multiple of its
+       // radius. Zero, the default, leaves the bare disc - which is right for the atmosphere, since the air
+       // in front of it produces the real aureole by scattering, and painting a second one on top of that
+       // would be exactly the sort of disagreement this is meant to end.
+       property SunDiscAureoleStrength:TpvFloat read fSunDiscAureoleStrength write fSunDiscAureoleStrength;
+       property SunDiscAureoleWidth:TpvFloat read fSunDiscAureoleWidth write fSunDiscAureoleWidth;
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
@@ -35423,6 +35481,24 @@ begin
   fSkyGradientSunBrightness:=6.0;
   fSkyGradientSunHalo:=1.0;   // aureole and glow as they are; zero leaves the bare disc
   fGradientEnvironmentIntensityFactor:=1.0;
+
+  // The drawn sun, set so that this reproduces exactly what the atmosphere drew before it was made
+  // adjustable: a white disc of 0.505 degrees across at a million, with no rim, no soft edge and no
+  // painted halo. Energy conservation is on because it does nothing until the disc is actually scaled,
+  // and then it is what keeps the exposure from collapsing.
+  fSunDiscMode:=TpvScene3DSunDiscMode.Atmosphere;
+  fSunDiscColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+  fSunDiscLuminance:=1000000.0;
+  // Written as the expression rather than as its value because that expression, odd truncated pi and all,
+  // is literally what stood hard coded in GetSunLuminance, and this way the default cannot drift from it by
+  // a rounding. The real sun seen from Earth is 0.004675, a little wider than this.
+  fSunDiscAngularRadius:=(0.5*0.505*3.14159)/180.0;
+  fSunDiscRadiusScale:=1.0;
+  fSunDiscEnergyConservation:=1.0;
+  fSunDiscLimbDarkening:=0.0;
+  fSunDiscEdgeSoftness:=0.0;
+  fSunDiscAureoleStrength:=0.0;
+  fSunDiscAureoleWidth:=6.0;
 
   fEnvironmentIntensityFactor:=1e-4;
 

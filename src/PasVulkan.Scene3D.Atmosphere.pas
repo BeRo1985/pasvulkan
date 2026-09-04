@@ -689,6 +689,18 @@ type TpvScene3DAtmosphere=class;
               _SkyShadowSoftenReserved0:TpvFloat;
               _SkyShadowSoftenReserved1:TpvFloat; // padding to keep AtmosphereCullingParameters (uvec4 → align 16) at a 16-byte-aligned offset
 
+              // The drawn sun. Copied in from TpvScene3D, which owns it, since the same sun has to be agreed
+              // upon by everything that draws it. 48 bytes, three times sixteen, so what follows stays aligned.
+              SunDiscColorLuminance:TpvVector4; // xyz = colour of the drawn disc, w = its luminance
+              SunDiscAngularRadius:TpvFloat;
+              SunDiscRadiusScale:TpvFloat;
+              SunDiscEnergyConservation:TpvFloat;
+              SunDiscLimbDarkening:TpvFloat;
+              SunDiscEdgeSoftness:TpvFloat;
+              SunDiscAureoleStrength:TpvFloat;
+              SunDiscAureoleWidth:TpvFloat;
+              _SunDiscReserved0:TpvFloat; // padding to keep the block above at three times sixteen bytes
+
               AtmosphereCullingParameters:TGPUAtmosphereCullingParameters;
 
               VolumetricClouds:TGPUVolumetricCloudParameters;
@@ -2056,6 +2068,18 @@ begin
  _SkyShadowSoftenReserved0:=0.0;
  _SkyShadowSoftenReserved1:=0.0;
 
+ // The sun belongs to the scene, not to this atmosphere - see TpvScene3D.SunDiscMode and the properties
+ // beside it. It is copied in here so that the ray march and the cube map baked from it draw the same sun.
+ SunDiscColorLuminance:=TpvVector4.InlineableCreate(TpvScene3D(aScene3D).SunDiscColor,TpvScene3D(aScene3D).SunDiscLuminance);
+ SunDiscAngularRadius:=TpvScene3D(aScene3D).SunDiscAngularRadius;
+ SunDiscRadiusScale:=TpvScene3D(aScene3D).SunDiscRadiusScale;
+ SunDiscEnergyConservation:=TpvScene3D(aScene3D).SunDiscEnergyConservation;
+ SunDiscLimbDarkening:=TpvScene3D(aScene3D).SunDiscLimbDarkening;
+ SunDiscEdgeSoftness:=TpvScene3D(aScene3D).SunDiscEdgeSoftness;
+ SunDiscAureoleStrength:=TpvScene3D(aScene3D).SunDiscAureoleStrength;
+ SunDiscAureoleWidth:=TpvScene3D(aScene3D).SunDiscAureoleWidth;
+ _SunDiscReserved0:=0.0;
+
  Flags:=0;
 
  AtmosphereCullingParameters.Assign(aAtmosphereParameters.AtmosphereCullingParameters);
@@ -2666,8 +2690,9 @@ begin
                                                                     TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*1);
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*11);
+ // Two storage buffers per set now, and no uniform buffer at all: the atmosphere parameters at binding 1
+ // are read as a std430 storage buffer here as they are everywhere else.
  fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*2);
- fCloudRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2*2);
  fCloudRaymarchingPassDescriptorPool.Initialize;
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.SetObjectName(fCloudRaymarchingPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CloudRaymarchingPassDescriptorPool');
 
@@ -2700,8 +2725,7 @@ begin
   fCloudRaymarchingPassDescriptorSets[CloudPassIndex,InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                0,
                                                                                1,
-                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-//                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                                [],
                                                                                [fAtmosphere.fAtmosphereParametersBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                                [],
@@ -4934,8 +4958,11 @@ begin
 
   fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
+  // The sun disc bit is about the ON-SCREEN ray march only. The cube map baked from this atmosphere for
+  // image based lighting has no background to composite over, so it draws the sun whatever this says.
   fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fPrecipitationMap.fTextureSourceImage) and fUsePrecipitationMap,1 shl 0,0) or
-                                                       IfThen(assigned(fAtmosphereMap.fTextureSourceImage) and fUseAtmosphereMap,1 shl 1,0);
+                                                       IfThen(assigned(fAtmosphereMap.fTextureSourceImage) and fUseAtmosphereMap,1 shl 1,0) or
+                                                       IfThen(TpvScene3D(fScene3D).SunDiscMode=TpvScene3DSunDiscMode.Atmosphere,1 shl 2,0);
 
 { fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
   fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}
@@ -5682,8 +5709,7 @@ begin
 
   // Atmosphere parameters
   fCloudRaymarchingPassDescriptorSetLayout.AddBinding(1,
-                                                      //VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                       1,
                                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                       []);

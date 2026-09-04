@@ -1,7 +1,14 @@
 #ifndef SKY_GRADIENT_SUN_GLSL
 #define SKY_GRADIENT_SUN_GLSL
 
+#include "sun_disc.glsl"
+
 // The sun of the stylized gradient sky.
+//
+// The shape of it - the disc, its edge, its rim, its falloff - is not written here but in sun_disc.glsl,
+// which the atmosphere's own sun uses as well, so that the two cannot end up disagreeing about how wide a
+// sun is. What stays here is everything that is particular to THIS sky: its brightness convention, which
+// is a multiple of the palette rather than an absolute luminance, and the horizon tinting below.
 //
 // Shared by the visible sky (skybox.frag, mode 3) and by the cube map the same sky is baked into for the
 // IBL (cubemap_gradient.comp), because the two have to agree: a sun that is drawn in one place and lit
@@ -50,12 +57,9 @@ const float SkyGradientSunAureoleStrength = 0.55;
 const float SkyGradientSunGlowWidth = 0.10;
 const float SkyGradientSunGlowStrength = 0.18;
 
-// Half at aHalfWidth, and never quite zero. Written on the angle rather than as a power of the cosine
-// because the powers a disc this small needs run into the hundreds, where the precision goes.
-float skyGradientSunFalloff(const in float aAngle, const in float aHalfWidth){
-  float t = aAngle / max(aHalfWidth, 1e-6);
-  return exp2(-(t * t));
-}
+// A soft edge about one pixel wide at the resolutions and fields of view this is looked at from, kept as a
+// fraction of the radius so it holds when the sun is made larger or smaller.
+const float SkyGradientSunEdgeSoftness = 0.08;
 
 // aHalo scales the aureole and the glow together. At one they are as written above; at zero nothing is
 // left but the disc - a circle a few pixels across and nothing around it, which is what the sun really
@@ -80,15 +84,11 @@ vec3 skyGradientSun(const in vec3 aDirection,
   float lowness = 1.0 - clamp(aSunDirection.y * 3.0, 0.0, 1.0);
   vec3 tint = mix(vec3(1.0), horizonHue, lowness);
 
-  // A soft edge about one pixel wide at the resolutions and fields of view this is looked at from, kept
-  // as a fraction of the radius so it holds when the sun is made larger or smaller. Not fwidth: the cube
-  // map side of this is a compute shader and has no derivatives to take.
-  float edge = radius * 0.08;
-  float disc = 1.0 - smoothstep(radius - edge, radius + edge, angle);
+  float disc = sunDiscCoverage(angle, radius, SkyGradientSunEdgeSoftness);
 
   float halo = clamp(aHalo, 0.0, 1.0);
-  float aureole = skyGradientSunFalloff(angle, radius * SkyGradientSunAureoleWidth) * halo;
-  float glow = skyGradientSunFalloff(angle, SkyGradientSunGlowWidth) * halo;
+  float aureole = sunDiscFalloff(angle, radius * SkyGradientSunAureoleWidth) * halo;
+  float glow = sunDiscFalloff(angle, SkyGradientSunGlowWidth) * halo;
 
   return ((tint * (aSunBrightness * SkyGradientSunDiscOverbright)) * disc) +
          ((tint * (aSunBrightness * SkyGradientSunAureoleStrength)) * aureole) +

@@ -385,6 +385,9 @@ void main() {
        needAerialPerspective = false,
        applyFastCloudIntegration = false,
        useAtmosphereMap = (uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u,
+       // Off wherever the background behind the atmosphere brings its own sun, which the atmosphere then
+       // merely dims and lays its scattered light over. See FLAGS_DRAW_SUN_DISC.
+       drawSunDisc = (uAtmosphereParameters.atmosphereParameters.flags & FLAGS_DRAW_SUN_DISC) != 0u,
        needToProcess = (uAtmosphereParameters.atmosphereParameters.AbsorptionExtinction.w > 0.0) &&
                        // When atmosphere map is used, but the min and max are near zero, then the atmosphere is not visible, so we can skip the processing
                        !(useAtmosphereMap &&
@@ -443,8 +446,8 @@ void main() {
       vec3 transmittance = vec3(inscattering.w); // convert from monochromatic transmittance, not optimal but better than nothing
 #endif
 
-      if(!IntersectGround){
-        addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz, vec3(1.0));
+      if(drawSunDisc && !IntersectGround){
+        addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius, uAtmosphereParameters.atmosphereParameters).xyz, vec3(1.0));
       }
 
       addScatteringSample(inscattering.xyz, transmittance.xyz);
@@ -453,7 +456,9 @@ void main() {
 
     }else{
 
-      addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius).xyz, vec3(1.0));
+      if(drawSunDisc){
+        addScatteringSample(GetSunLuminance(originalWorldPos, worldDir, sunDirection, uAtmosphereParameters.atmosphereParameters.BottomRadius, uAtmosphereParameters.atmosphereParameters).xyz, vec3(1.0));
+      }
 
       needToRayMarch = true;
 

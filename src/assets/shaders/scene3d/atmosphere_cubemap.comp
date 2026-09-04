@@ -115,8 +115,10 @@ void main() {
       // Move to top atmosphere as the starting point for ray marching.
       // This is critical to be after the above to not disrupt above atmosphere tests and voxel selection.
       
-      // Ray is not intersecting the atmosphere       
-      inscattering = GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz;
+      // Ray is not intersecting the atmosphere
+      // Deliberately not gated by FLAGS_DRAW_SUN_DISC: this cube map has no background to composite over,
+      // so whoever else draws the sun on screen, here it has to be drawn or it would light nothing.
+      inscattering = GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius, atmosphereParameters).xyz;
       transmittance = vec3(1.0);
 
     }else {
@@ -163,7 +165,7 @@ void main() {
         inscattering = ss.L;
 
         //if(!IntersectGround){
-          //inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius).xyz * ss.Transmittance;
+          //inscattering += GetSunLuminance(cameraPosition, worldDir, sunDirection, atmosphereParameters.BottomRadius, atmosphereParameters).xyz * ss.Transmittance;
         //}
 
         transmittance = ss.Transmittance;

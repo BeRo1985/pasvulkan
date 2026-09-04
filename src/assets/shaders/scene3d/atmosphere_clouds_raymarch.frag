@@ -179,7 +179,10 @@ layout(set = 2, binding = 0) uniform texture2D uDepthTexture;
 
 #endif // !SHADOWMAP && !CLOUDS_SHADOWMAP
 
-layout(set = 2, binding = 1, std140) uniform AtmosphereParametersBuffer {
+// std430, like every other place this buffer is read from. It was the one std140 binding of it, and while
+// the two layouts happen to agree for the members this struct has, that agreement is not something anyone
+// should have to re-check each time a field is added to it.
+layout(set = 2, binding = 1, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 

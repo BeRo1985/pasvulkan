@@ -27,6 +27,8 @@
 
 #include "octahedralmap.glsl"
 
+#include "sun_disc.glsl"
+
 float SampleSegmentT = 0.3;
 
 struct CloudPhaseParameters {
@@ -229,6 +231,20 @@ struct AtmosphereParameters {
   float _skyShadowSoftenReserved0; // reserved for future use / padding
   float _skyShadowSoftenReserved1; // reserved for future use / padding so that the following CullingParameters struct (which starts with uvec4, alignment 16) stays 16-byte aligned
 
+  // The drawn sun. These do not belong to the atmosphere, they belong to the scene - the same sun has to be
+  // agreed upon by whoever draws it, with or without air around it - so they are copied in from there. The
+  // shape maths itself is in sun_disc.glsl. This block is 48 bytes, three times sixteen, so the
+  // CullingParameters below keep their alignment.
+  vec4 sunDiscColorLuminance; // xyz = colour of the drawn disc (1,1,1 = white), w = its luminance
+  float sunDiscAngularRadius; // Angular radius of the sun as it physically is, in radians
+  float sunDiscRadiusScale; // Artistic multiplier on top of that, 1.0 = drawn at its physical size
+  float sunDiscEnergyConservation; // 0..1, how much of the flux is kept when the disc is scaled; see sunDiscEnergyScale
+  float sunDiscLimbDarkening; // 0.0 = flat disc, ~0.6 = as the real sun
+  float sunDiscEdgeSoftness; // Width of the disc's edge as a fraction of its radius, 0.0 = the hard edge this always had
+  float sunDiscAureoleStrength; // Tight halo around the disc, as a fraction of the disc's radiance; 0.0 = none (default)
+  float sunDiscAureoleWidth; // Half width of that halo, as a multiple of the drawn radius
+  float _sunDiscReserved0; // reserved for future use / padding to keep this block at three times sixteen bytes
+
   AtmosphereCullingParameters CullingParameters;
 
   VolumetricCloudParameters VolumetricClouds;
@@ -237,6 +253,12 @@ struct AtmosphereParameters {
 
 const uint FLAGS_USE_PRECIPITATION_MAP = 1u << 0u;
 const uint FLAGS_USE_ATMOSPHERE_MAP = 1u << 1u;
+// Whether the ON-SCREEN atmosphere draws the sun's disc itself. It is off wherever the background behind
+// the atmosphere already has a sun of its own - the atmosphere then only dims that one and lays its own
+// scattered light over it, which is what actually happens to sunlight and needs no special case. It says
+// nothing about the cube maps baked for image based lighting: those have no background to composite over,
+// so they always draw it, or the sun would light nothing.
+const uint FLAGS_DRAW_SUN_DISC = 1u << 2u;
 
 float getAtmosphereCullingSDF(const in AtmosphereCullingParameters CullingParameters, vec3 p){
   if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){
@@ -1171,15 +1193,56 @@ vec3 GetAtmosphereTransmittance(const in AtmosphereParameters Atmosphere,
   }
 }
 
-vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float PlanetRadius){
-  if (dot(WorldDir, sunDirection) > cos(0.5*0.505*3.14159 / 180.0)){
-    float t = raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), PlanetRadius);
-    if(t < 0.0){ // no intersection
-      const vec3 SunLuminance = vec3(1000000.0); // arbitrary. But fine, not use when comparing the models
-      return vec4(SunLuminance, 1.0);
-    }
+// The sun's disc, as the atmosphere draws it. What used to stand here was a fixed half degree at a fixed
+// million: `dot(WorldDir, sunDirection) > cos(0.5*0.505*3.14159/180.0)` returning vec3(1000000.0). The
+// numbers now come from the parameters, and the shape from sun_disc.glsl, which the sky box draws the same
+// sun with. At the defaults this returns exactly what it returned before.
+//
+// The result is added as the BACKMOST scattering sample by the callers, so it is afterwards multiplied by
+// the transmittance of the air in front of it - the sun is behind the sky, not in front of it - and the .w
+// says whether anything was drawn at all.
+vec4 GetSunLuminance(vec3 WorldPos, vec3 WorldDir, vec3 sunDirection, float PlanetRadius, const in AtmosphereParameters Atmosphere){
+
+  float baseRadius = max(Atmosphere.sunDiscAngularRadius, 1e-6);
+  float radius = baseRadius * max(Atmosphere.sunDiscRadiusScale, 1e-6);
+
+  // How far from the centre anything is drawn at all: the disc with whatever soft edge it has, and the
+  // aureole, which reaches further and is cut off where it has fallen to about a thousandth of itself.
+  float reach = radius * (1.0 + max(Atmosphere.sunDiscEdgeSoftness, 0.0));
+  if(Atmosphere.sunDiscAureoleStrength > 0.0){
+    reach = max(reach, (radius * max(Atmosphere.sunDiscAureoleWidth, 0.0)) * 3.2);
   }
-  return vec4(0.0);
+  // Capped at half a turn, since the comparison below is on cosines and a reach past pi would wrap around
+  // and start rejecting the very directions it is supposed to accept. Only an absurd scale can get there.
+  reach = min(reach, 3.14159265);
+
+  // Comparing cosines first, so that the whole of the sky that is nowhere near the sun - which is nearly
+  // all of it - still costs a dot product and a compare, as it did before.
+  float cosAngle = dot(WorldDir, sunDirection);
+  if(cosAngle <= cos(reach)){
+    return vec4(0.0);
+  }
+
+  // The planet is in the way.
+  if(raySphereIntersectNearest(WorldPos, WorldDir, vec3(0.0), PlanetRadius) >= 0.0){
+    return vec4(0.0);
+  }
+
+  float angle = acos(clamp(cosAngle, -1.0, 1.0));
+
+  vec3 discRadiance = Atmosphere.sunDiscColorLuminance.xyz *
+                      (Atmosphere.sunDiscColorLuminance.w *
+                       sunDiscEnergyScale(baseRadius, radius, Atmosphere.sunDiscEnergyConservation));
+
+  return vec4(sunDiscRadiance(angle,
+                              radius,
+                              Atmosphere.sunDiscEdgeSoftness,
+                              Atmosphere.sunDiscLimbDarkening,
+                              discRadiance,
+                              discRadiance * Atmosphere.sunDiscAureoleStrength,
+                              Atmosphere.sunDiscAureoleWidth),
+              1.0);
+
 }
 
 // Code by me (Benjamin Rosseaux):
