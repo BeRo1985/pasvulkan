@@ -5447,6 +5447,12 @@ type EpvScene3D=class(Exception);
        property SunDiscColor:TpvVector3 read fSunDiscColor write fSunDiscColor;
        // Absolute, and enormous on purpose: the sun is not a bright colour, it is a value the display
        // cannot hold, and that is what the bloom pass makes the halo and the streaks out of.
+       //
+       // There is a ceiling on it though, and it is 65504: the colour targets are R16G16B16A16_SFLOAT, and
+       // past that a value does not saturate, it becomes an infinity that then spreads through every pass
+       // that averages neighbours. Setting it higher also quietly breaks the energy conservation above,
+       // because the clamp lands on the unscaled disc and not on the scaled one - the sun would then change
+       // the exposure as it is made larger, which is the one thing that was meant to be prevented.
        property SunDiscLuminance:TpvFloat read fSunDiscLuminance write fSunDiscLuminance;
        // The sun's angular radius IN RADIANS, as it physically is from here. The real one seen from Earth is
        // 0.004675; the default below is the 0.505 degrees ACROSS that the atmosphere has always drawn.
@@ -35487,13 +35493,19 @@ begin
   fSkyGradientSunHalo:=1.0;   // aureole and glow as they are; zero leaves the bare disc
   fGradientEnvironmentIntensityFactor:=1.0;
 
-  // The drawn sun, set so that this reproduces exactly what the atmosphere drew before it was made
-  // adjustable: a white disc of 0.505 degrees across at a million, with no rim, no soft edge and no
-  // painted halo. Energy conservation is on because it does nothing until the disc is actually scaled,
-  // and then it is what keeps the exposure from collapsing.
+  // The drawn sun, set so that this reproduces what the atmosphere drew before it was made adjustable: a
+  // white disc of 0.505 degrees across, with no rim, no soft edge and no painted halo. Energy conservation
+  // is on because it does nothing until the disc is actually scaled, and then it is what keeps the exposure
+  // from collapsing.
+  //
+  // The luminance is the ceiling of the colour targets rather than the million that used to stand in
+  // GetSunLuminance. That million never arrived anywhere: R16G16B16A16_SFLOAT stops at 65504, so it was
+  // clamped on the way out where it was clamped at all, and turned into an infinity where it was not. As a
+  // nominal value it was worse than useless, because the clamp landed on the unscaled disc only - scaling
+  // the sun up then did not divide the same number, and the exposure moved with the size after all.
   fSunDiscMode:=TpvScene3DSunDiscMode.Atmosphere;
   fSunDiscColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
-  fSunDiscLuminance:=1000000.0;
+  fSunDiscLuminance:=65504.0;
   // Written as the expression rather than as its value because that expression, odd truncated pi and all,
   // is literally what stood hard coded in GetSunLuminance, and this way the default cannot drift from it by
   // a rounding. The real sun seen from Earth is 0.004675, a little wider than this.

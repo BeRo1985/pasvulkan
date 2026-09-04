@@ -813,7 +813,7 @@ void main() {
     outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range, alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
     outTransmittance = vec4(vec3(clamp(transmittance, vec3(0.0), vec3(1.0))), 1.0); // clamp to normalized range
 #else
-    outInscattering = vec4(max(vec3(0.0), inscattering), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
+    outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range like the dual blend path above does - the attachment is R16G16B16A16_SFLOAT, and anything past 65504 does not saturate there, it turns into an infinity that then spreads through every pass that averages it; alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance
 #endif
 
   }else{
