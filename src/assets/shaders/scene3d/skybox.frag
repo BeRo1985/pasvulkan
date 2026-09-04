@@ -16,6 +16,7 @@ layout (set = 0, binding = 1) uniform samplerCube uTexture;
 
 #include "skybox.glsl"
 #include "env_starlight.glsl"
+#include "quaternion.glsl"
 #include "sun_disc.glsl"
 #include "sky_gradient_sun.glsl"
 
@@ -35,8 +36,14 @@ vec3 getSkyBoxSun(const in vec3 aDirection){
     return vec3(0.0);
   }
   float radius = max(pushConstants.skyParameters0.w, 1e-6);
+  // In WORLD space, which the direction handed in is not. The vertex shader passes the bare cube direction
+  // through and rotates only the clip position by the sky box orientation, so what arrives here is a
+  // direction into the CELESTIAL sphere - which is exactly right for looking up a star field that turns
+  // with the sky, and exactly wrong for the sun, whose direction comes from the scene's light in world
+  // space. Rotating it back by the same orientation is what the vertex shader did to get to the screen.
+  vec3 worldDirection = transformVectorByQuaternion(aDirection, pushConstants.currentOrientation);
   vec3 sunDirection = -normalize(pushConstants.lightDirection.xyz);
-  float angle = acos(clamp(dot(aDirection, sunDirection), -1.0, 1.0));
+  float angle = acos(clamp(dot(worldDirection, sunDirection), -1.0, 1.0));
   return sunDiscRadiance(angle,
                          radius,
                          pushConstants.skyParameters1.w,
