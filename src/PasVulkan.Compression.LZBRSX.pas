@@ -298,7 +298,9 @@ type PBytes=^TBytes;
 {$ifend}
 
 {$if defined(cpux86_64) or defined(cpux64)}
-{$asmmode intel}
+{$ifdef fpc}
+ {$asmmode intel}
+{$endif}
 
 // Both cores below are the clang output of the C form of the loops, with the Win64 register
 // convention, so that the very same block works under FPC and under Delphi. They call nothing and
