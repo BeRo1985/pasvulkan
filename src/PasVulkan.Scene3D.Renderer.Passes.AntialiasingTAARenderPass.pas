@@ -109,9 +109,11 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
 
               DisocclusionDebugFactor:TpvFloat;
               VelocityDisocclusionThreshold:TpvFloat;
-              DepthDisocclusionThreshold:TpvFloat;
-              SharpingFactor:TpvFloat; // <= 0.0 = disabled, > 0.0 = enabled (although 1e-7 is the real threshold, not 0.0) 
+              DepthDisocclusionRelativeThreshold:TpvFloat; // part of the distance itself, so it means the same near and far
+              SharpingFactor:TpvFloat; // <= 0.0 = disabled, > 0.0 = enabled (although 1e-7 is the real threshold, not 0.0)
 
+              DepthDisocclusionSlopeScale:TpvFloat; // in texels of the surface's own depth slope
+              DepthDisocclusionFloor:TpvFloat; // in reciprocal world units, below which everything is equally far away
               JitterUV:TpvVector2;
 
              end;
@@ -499,7 +501,17 @@ begin
 
  PushConstants.Flags:=//FLAG_TRANSLUCENT_DISOCCLUSION or
                       FLAG_VELOCITY_DISOCCLUSION or
-                    //FLAG_DEPTH_DISOCCLUSION or // works not yet so good, needs more work
+                    // FLAG_DEPTH_DISOCCLUSION is correct now and works for the reversed infinite as well as
+                    // for the ordinary finite projection, but it is off because it does not pay for itself
+                    // here. What it alone can catch is a surface revealed or covered by something at a very
+                    // different DEPTH that happens to have a similar COLOUR and a similar screen VELOCITY -
+                    // anything else is already caught by the velocity disocclusion or by the neighbourhood
+                    // clamp. That combination barely occurs, while the cost falls due every frame: the
+                    // velocity is dilated towards the closest sample, so along every depth discontinuity the
+                    // background pixels are reprojected by the foreground's motion vector, their history
+                    // really is wrong, and the test rightly says so - which with a moving camera means a
+                    // band along every silhouette in the picture losing part of its accumulation.
+                    //FLAG_DEPTH_DISOCCLUSION or
                       FLAG_INCLUDE_BACKGROUND or
                       FLAG_VARIANCE_CLIPPING or
                       //FLAG_CHROMA_SHRINKING or // problematic with very bright pixels at bloom and so on later
@@ -540,7 +552,18 @@ begin
 
  PushConstants.VelocityDisocclusionThreshold:=1e-2;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
 
- PushConstants.DepthDisocclusionThreshold:=1.0;//32.0/TpvVector2.InlineableCreate(fResourceCurrentColor.Width,fResourceCurrentColor.Height).Length;
+ // A part of the distance rather than a distance, since a fixed one does not mean the same thing twice in
+ // a perspective picture: half a metre is a chasm at two metres away and nothing at all at five hundred.
+ PushConstants.DepthDisocclusionRelativeThreshold:=0.05;
+
+ // How much of the surface's own depth slope, in texels, the reprojection is allowed to have moved along
+ // before it counts as a disocclusion. Without this a road or any other steeply foreshortened surface
+ // rejects its whole history, which is what made the earlier attempt at this unusable.
+ PushConstants.DepthDisocclusionSlopeScale:=2.0;
+
+ // Below this reciprocal distance everything counts as equally far away, which keeps the sky and other
+ // far-plane pixels from tripping the test on nothing but floating point noise. 1e-5 is 100 km out.
+ PushConstants.DepthDisocclusionFloor:=1e-5;
 
  PushConstants.SharpingFactor:=0.0; // No sharping for now
 

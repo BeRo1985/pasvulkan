@@ -55,9 +55,11 @@ layout(push_constant, std140) uniform PushConstants {
 
   float disocclusionDebugFactor;
   float velocityDisocclusionThreshold;
-  float depthDisocclusionThreshold;
+  float depthDisocclusionRelativeThreshold; // part of the distance itself, so it means the same near and far
   float sharpingFactor;
 
+  float depthDisocclusionSlopeScale; // in texels of the surface's own depth slope
+  float depthDisocclusionFloor;      // in reciprocal world units, below which everything is equally far away
   vec2 jitterUV;
 
 } pushConstants;
@@ -83,6 +85,24 @@ float LinearizeDepth(float depth, vec2 uv){
   vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(depth), inverseProjectionMatrix[3].zw);
 #endif
   return -(v.x / v.y);
+}
+
+// Reciprocal of the linearized depth. Exactly 1.0 / LinearizeDepth, but written the other way round so
+// that it stays finite where that one does not: with a reversed infinite far plane the far plane sits at a
+// linearized depth of infinity, and a test built on differences of those ends up comparing infinities. In
+// reciprocal form the far plane is simply zero, for the reversed infinite and the ordinary finite
+// projection alike, so a single formulation covers both. It is also the quantity a reversed-Z buffer
+// already stores, so its precision is spread evenly over the range instead of piling up near the eye.
+float InverseLinearDepth(const in float depth){
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(depth), inverseProjectionMatrix[3].zw);
+  return -(v.y / v.x);
+}
+
+// Reciprocal linearized depth of one texel, unfiltered. Avoiding the filter is the whole point: a
+// bilinearly mixed depth across a silhouette is a depth that no surface in the scene actually has, and
+// testing against it reports a disocclusion along every silhouette in the picture.
+float InverseLinearDepthAt(const in sampler2DArray tex, const in ivec2 coord, const in ivec2 maxCoord, const in int layer){
+  return InverseLinearDepth(texelFetch(tex, ivec3(clamp(coord, ivec2(0), maxCoord), layer), 0).x);
 }
 
 // Get the luminance of a RGB color
@@ -305,31 +325,93 @@ bool IsDisoccluded(const in vec3 uvw, const in vec3 historyUVW, const in vec4 cu
     }
   }
 
-  // Optional depth disocclusion for further reducing ghosting artifacts.
-  if((pushConstants.flags & FLAG_DEPTH_DISOCCLUSION) != 0u){
-
-    // Get the current and history depth samples as raw values
-    float currentDepth = textureLod(uCurrentDepthTexture, uvw, 0.0).x;
-    float historyDepth = textureLod(uHistoryDepthTexture, historyUVW, 0.0).x;
-
-    // Check if we're not in the far plane for avoiding other unwanted artifacts than ghosting and so on.
-    if(all(greaterThan(vec2(fma(vec2(currentDepth, historyDepth), depthTransform.xx, depthTransform.yy)), vec2(1e-7)))){
-
-      // Linearize the current and history depth samples
-      float currentLinearDepth = LinearizeDepth(currentDepth, uvw.xy);
-      float historyLinearDepth = LinearizeDepth(historyDepth, historyUVW.xy);
-
-      // Check if the current and history depth samples are candidates for disocclusion
-      if(abs(currentLinearDepth - historyLinearDepth) > pushConstants.depthDisocclusionThreshold){
-        return true;
-      }
-
-    }
-
-  }
-
   // Otherwise we're not disoccluded
   return false;
+
+}
+
+// How far the history at the reprojected position can still be trusted on the strength of its depth, as a
+// factor between zero and one rather than as a verdict.
+//
+// A verdict is what this used to be, and it was the wrong shape for the job. The velocity is dilated
+// towards the closest of the neighbouring samples, so along every depth discontinuity the background
+// pixels get reprojected by the FOREGROUND's motion vector - deliberately, so that the foreground edge is
+// the one that stays stable. Their history really is wrong, so the test fires, and it is right to. But a
+// moving camera puts such a band along every silhouette in the picture in every frame, and answering with
+// a flat no drops all of them to the fallback, which is precisely the aliasing that shows up. Weighing the
+// history down instead keeps most of what temporal accumulation is worth in those bands while still
+// suppressing the ghost, and a genuine disocclusion drives the factor to zero anyway, where the caller's
+// own threshold hands it to the fallback as before.
+//
+// The comparison happens in reciprocal linearized depth, which is finite for a reversed infinite far plane
+// as well as for an ordinary finite one, so no case distinction between the two is needed. The tolerance
+// has to be built rather than picked, because a single distance does not mean the same thing twice in a
+// perspective picture: a relative part, so that it scales with the distance itself, plus whatever the
+// surface's own slope already accounts for, plus a floor beyond which everything is equally far away.
+float DepthDisocclusionWeight(const in vec3 uvw, const in vec3 historyUVW){
+
+  const ivec2 depthTextureSize = textureSize(uCurrentDepthTexture, 0).xy;
+  const ivec2 maxCoord = depthTextureSize - ivec2(1);
+  const int layer = int(uvw.z);
+
+  const ivec2 currentCoord = ivec2(uvw.xy * vec2(depthTextureSize));
+  const float currentInverseDepth = InverseLinearDepthAt(uCurrentDepthTexture, currentCoord, maxCoord, layer);
+
+  // How much the depth changes over one texel here. On a surface seen at a grazing angle - a road
+  // filling the lower half of the screen, say - it changes a great deal from one texel to the next
+  // without anything having been disoccluded, and a test that does not allow for that throws away the
+  // history of the whole surface. This is the slope the reprojection is permitted to have moved along.
+  //
+  // Both sides of each axis are looked at, and the SMALLER of the two is taken. On a smooth surface
+  // the two agree and the choice does not matter, but on a silhouette one of them steps across the
+  // jump: a centred difference would average that in and a maximum would take it outright, and either
+  // one inflates the tolerance exactly where the disocclusions are, switching the test off where it is
+  // the whole point. The smaller one is the side that is still the same surface. The diagonals are
+  // left out on purpose - the gradient of a plane is already fully determined by its two axes.
+  const float slopeX = min(abs(InverseLinearDepthAt(uCurrentDepthTexture, currentCoord + ivec2( 1,  0), maxCoord, layer) - currentInverseDepth),
+                           abs(InverseLinearDepthAt(uCurrentDepthTexture, currentCoord + ivec2(-1,  0), maxCoord, layer) - currentInverseDepth));
+  const float slopeY = min(abs(InverseLinearDepthAt(uCurrentDepthTexture, currentCoord + ivec2( 0,  1), maxCoord, layer) - currentInverseDepth),
+                           abs(InverseLinearDepthAt(uCurrentDepthTexture, currentCoord + ivec2( 0, -1), maxCoord, layer) - currentInverseDepth));
+  const float slope = slopeX + slopeY;
+
+  // The reprojected position lands between texels, so take the nearest of the four it falls between
+  // rather than a filtered value. Which of the four is nearest is exactly the question being asked, so
+  // picking the closest one is not a fudge: it asks whether ANY of the surfaces the history could
+  // plausibly have come from matches, and only reports a disocclusion when none of them does.
+  const vec2 historyPosition = fma(historyUVW.xy, vec2(depthTextureSize), vec2(-0.5));
+  const ivec2 historyBase = ivec2(floor(historyPosition));
+  float historyInverseDepth = InverseLinearDepthAt(uHistoryDepthTexture, historyBase + ivec2(0, 0), maxCoord, layer);
+  float difference = abs(historyInverseDepth - currentInverseDepth);
+
+  float candidate = InverseLinearDepthAt(uHistoryDepthTexture, historyBase + ivec2(1, 0), maxCoord, layer);
+  float candidateDifference = abs(candidate - currentInverseDepth);
+  if(candidateDifference < difference){
+    difference = candidateDifference;
+    historyInverseDepth = candidate;
+  }
+
+  candidate = InverseLinearDepthAt(uHistoryDepthTexture, historyBase + ivec2(0, 1), maxCoord, layer);
+  candidateDifference = abs(candidate - currentInverseDepth);
+  if(candidateDifference < difference){
+    difference = candidateDifference;
+    historyInverseDepth = candidate;
+  }
+
+  candidate = InverseLinearDepthAt(uHistoryDepthTexture, historyBase + ivec2(1, 1), maxCoord, layer);
+  candidateDifference = abs(candidate - currentInverseDepth);
+  if(candidateDifference < difference){
+    difference = candidateDifference;
+    historyInverseDepth = candidate;
+  }
+
+  const float tolerance = fma(max(currentInverseDepth, historyInverseDepth),
+                              pushConstants.depthDisocclusionRelativeThreshold,
+                              slope * pushConstants.depthDisocclusionSlopeScale) +
+                          pushConstants.depthDisocclusionFloor;
+
+  // Full trust up to the tolerance, none from twice it onwards, straight line in between. Expressed as a
+  // ratio so that it needs no scale of its own - the tolerance already carries the units.
+  return clamp(2.0 - (difference / max(tolerance, 1e-9)), 0.0, 1.0);
 
 }
 
@@ -479,6 +561,12 @@ void main() {
 
       // Initial weight for blending (weight = 1.0), which will be modified later if needed
       blendWeight = 1.0;
+
+      // Weigh the history down where its depth says it belongs to another surface than the one in front of
+      // us now. Not a rejection: see the note at DepthDisocclusionWeight for why this must be gradual.
+      if((pushConstants.flags & FLAG_DEPTH_DISOCCLUSION) != 0u){
+        blendWeight *= DepthDisocclusionWeight(uvw, historyUVW);
+      }
 
       // Get the history color sample, convert it to YCoCg color space and apply tonemapping
       historySample = ConvertFromRGB(TonemappedTextureCatmullRom(uHistoryColorTexture, historyUVW, 0));
