@@ -50,7 +50,7 @@ void main() {
   if (dot(a, vec4(1.0, 1.0, 1.0, 1.0)) <= 1e-5) {
     outColor = textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);  // LinearSampler
 #if SMAA_REPROJECTION
-    outColor.w = sqrt(5.0 * length(textureLod(uVelocityTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xy)); 
+    outColor.w = sqrt(5.0 * length(textureLod(uVelocityTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xy));
 #endif
   } else {
     bool h = max(a.x, a.z) > max(a.y, a.w);  // max(horizontal) > max(vertical)
@@ -67,10 +67,15 @@ void main() {
 
     // We exploit bilinear filtering to mix current pixel with the chosen
     // neighbor:
+#if 1
+    outColor = SRGBout((blendingWeight.x * SRGBGammaCorrectedTexture(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0)) +  // LinearSampler
+                       (blendingWeight.y * SRGBGammaCorrectedTexture(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0)));  // LinearSampler
+#else
     outColor = ApplyInverseToneMapping((blendingWeight.x * ApplyToneMapping(textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0))) +  // LinearSampler
-                                       (blendingWeight.y * ApplyToneMapping(textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0))));   // LinearSampler
+                                       (blendingWeight.y * ApplyToneMapping(textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0))));  // LinearSampler
+#endif
 #if SMAA_REPROJECTION
-    outColor.w = sqrt(5.0 * length((textureLod(uVelocityTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0).xy * blendingWeight.x) + 
+    outColor.w = sqrt(5.0 * length((textureLod(uVelocityTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0.0).xy * blendingWeight.x) +
                                    (textureLod(uVelocityTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0.0).xy * blendingWeight.y)));
 #endif
   }

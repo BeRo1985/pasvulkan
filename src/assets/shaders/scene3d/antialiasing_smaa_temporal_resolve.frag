@@ -13,11 +13,11 @@ layout(set = 0, binding = 0) uniform sampler2DArray uTextureCurrent;
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureVelocity;
 layout(set = 0, binding = 2) uniform sampler2DArray uTexturePrevious;
 
-// SMAA T2x reprojection, but with additional TAA-style rejecting and disocclusion handling for better anti-ghosting and temporal stability, at least in theory.   
+// SMAA T2x reprojection, but with additional TAA-style rejecting and disocclusion handling for better anti-ghosting and temporal stability, at least in theory.
 
 #define ColorSpaceRGB 0
 #define ColorSpaceYCoCg 1
-#define ColorSpace ColorSpaceYCoCg 
+#define ColorSpace ColorSpaceYCoCg
 
 #include "bidirectional_tonemapping.glsl"
 
@@ -31,7 +31,7 @@ vec4 Tonemap(vec4 color){
 
 // Inverse tone mapping
 vec4 Untonemap(vec4 color){
-  return ApplyInverseToneMapping(color); 
+  return ApplyInverseToneMapping(color);
   //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
 }
 
@@ -64,8 +64,8 @@ float Luminance(vec4 color){
 }
 
 // Clip a point to an axis-aligned bounding box
-vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){	
-#if 0  
+vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){
+#if 0
   vec3 p_clip = (aabbMin + aabbMax) * 0.5;
 	vec3 e_clip = fma(aabbMax - aabbMin, vec3(0.5), vec3(1e-7));
 	vec4 v_clip = q - vec4(p_clip, p.w);
@@ -100,20 +100,20 @@ vec4 ClipAABB(vec4 q, vec4 p, vec3 aabbMin, vec3 aabbMax){
 }
 
 void main(){
-  
+
   vec3 uvw = vec3(inTexCoord, float(gl_ViewIndex));
 
   vec4 current = ConvertFromRGB(Tonemap(textureLod(uTextureCurrent, uvw, 0.0)));
-  
+
   vec2 velocity = textureLod(uTextureVelocity, uvw, 0.0).xy;
-  
+
   vec4 previous = ConvertFromRGB(Tonemap(textureLod(uTexturePrevious, vec3(inTexCoord - velocity, float(gl_ViewIndex)), 0.0)));
 
   float delta = ((current.a * current.a) - (previous.a * previous.a)) * (1.0 / 5.0);
   float weight = 1.0 - (clamp(1.0 - (sqrt(delta) * SMAA_REPROJECTION_WEIGHT_SCALE), 0.0, 1.0) * 0.5);
 
-  // Get the current color samples    
-  vec4 currentSamples[9] = vec4[9](    
+  // Get the current color samples
+  vec4 currentSamples[9] = vec4[9](
     ConvertFromRGB(Tonemap(textureLodOffset(uTextureCurrent, uvw, 0, ivec2(-1, -1)))), // a 0
     ConvertFromRGB(Tonemap(textureLodOffset(uTextureCurrent, uvw, 0, ivec2( 0, -1)))), // b 1
     ConvertFromRGB(Tonemap(textureLodOffset(uTextureCurrent, uvw, 0, ivec2( 1, -1)))), // c 2
@@ -129,7 +129,7 @@ void main(){
   // Soft minimum and maximum ("Hybrid Reconstruction Antialiasing")
   //        1         0 1 2
   // (min 3 4 5 + min 3 4 5) * 0.5
-  //        7         6 7 8        
+  //        7         6 7 8
   vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
        maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
   minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
@@ -142,13 +142,13 @@ void main(){
 
   // Average color
   vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
-  
+
   {
     // Variance clipping ("An Excursion in Temporal Supersampling")
     vec4 m0 = currentSamples[0],
-          m1 = currentSamples[0] * currentSamples[0];   
+          m1 = currentSamples[0] * currentSamples[0];
     for(int i = 1; i < 9; i++) {
-      vec4 currentSample = currentSamples[i]; 
+      vec4 currentSample = currentSamples[i];
       m0 += currentSample;
       m1 += currentSample * currentSample;
     }
@@ -157,32 +157,32 @@ void main(){
     vec4 sigma = sqrt(m1 - (m0 * m0)) * 1.0;//pushConstants.varianceClipGamma;
     minimumColor = max(minimumColor, m0 - sigma);
     maximumColor = min(maximumColor, m0 + sigma);
-  }            
+  }
 
-#if ColorSpace == ColorSpaceYCoCg 
+#if ColorSpace == ColorSpaceYCoCg
   // Shrink chroma extents for luminance-chroma-based color spaces like YCoCg, YCbCr, YUV, etc.
   vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.125;
   vec2 chromaCenter = current.yz;
   minimumColor.yz = chromaCenter - chromaExtent;
   maximumColor.yz = chromaCenter + chromaExtent;
   averageColor.yz = chromaCenter;
-#endif      
+#endif
 
   previous = ClipAABB(previous, clamp(averageColor, minimumColor, maximumColor), minimumColor.xyz, maximumColor.xyz);
 
 // Luminance disocclusion with different feedback coefficients for opaque and translucent surfaces
 #if ColorSpace == ColorSpaceYCoCg
   float currentLuminance = current.x;
-  float historyLuminance = previous.x;    
+  float historyLuminance = previous.x;
 #else
   float currentLuminance = Luminance(current);
   float historyLuminance = Luminance(previous);
-#endif      
+#endif
   float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
   float unbiasedWeightSquaredClamped = clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0);
   float luminanceDisocclusionBasedBlendFactor = mix(0.88, 0.97, unbiasedWeightSquaredClamped);
 
-  weight *= luminanceDisocclusionBasedBlendFactor;     
+  weight *= luminanceDisocclusionBasedBlendFactor;
 
   outFragColor = Untonemap(ConvertToRGB(mix(previous, current, weight)));
 

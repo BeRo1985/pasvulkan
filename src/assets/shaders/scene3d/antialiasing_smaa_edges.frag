@@ -27,13 +27,13 @@ float colorEdgeMetric(vec3 a, vec3 b){
 #if 0
   // Weighted color edge detection, idea from CMAA2, which needs to be converted to sRGB space first for better human perception
   #define ConvertColorSpace(x) convertLinearRGBToSRGB(x) // Convert to sRGB space outside this function for better performance
-  return dot(abs(a - b), vec3(0.229, 0.587, 0.114)); 
+  return dot(abs(a - b), vec3(0.229, 0.587, 0.114));
 #else
   // Original SMAA color edge detection with max(R, G, B)
   #define ConvertColorSpace(x) (x) // No color space conversion in this case, as in the original SMAA
   vec3 t = abs(a - b);
   return max(t.x, max(t.y, t.z));
-#endif  
+#endif
 }
 #endif
 
@@ -51,7 +51,7 @@ void main() {
   const vec3 weights = vec3(0.2126, 0.7152, 0.0722);
   float L = dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xyz), weights);
   vec2 Llt = vec2(
-    dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.xy, float(gl_ViewIndex)), 0.0).xyz), weights), 
+    dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.xy, float(gl_ViewIndex)), 0.0).xyz), weights),
     dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.zw, float(gl_ViewIndex)), 0.0).xyz), weights)
   );
   vec2 delta = abs(vec2(L) - Llt);
@@ -60,17 +60,17 @@ void main() {
     discard;
   } else {
     vec2 maxDelta = max(
-      delta, 
+      delta,
       max(
         abs(
           vec2(L) - vec2(
-            dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.xy, float(gl_ViewIndex)), 0.0).xyz), weights), 
+            dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.xy, float(gl_ViewIndex)), 0.0).xyz), weights),
             dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.zw, float(gl_ViewIndex)), 0.0).xyz), weights)
           )
         ),
         abs(
           vec2(Llt) - vec2(
-            dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.xy, float(gl_ViewIndex)), 0.0).xyz), weights), 
+            dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.xy, float(gl_ViewIndex)), 0.0).xyz), weights),
             dot(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.zw, float(gl_ViewIndex)), 0.0).xyz), weights)
           )
         )
@@ -89,7 +89,7 @@ void main() {
     discard;
   } else {
     vec2 maxDelta = max(
-      delta, 
+      delta,
       max(
         vec2(
           colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.xy, float(gl_ViewIndex)), 0.0).xyz))),
