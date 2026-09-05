@@ -192,6 +192,34 @@ vec4 textureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in 
            (textureLod(tex, vec3(vec2(p33.x, p33.y), uvw.z), float(lod)) * w3.x)) * w3.y);
 }
 
+// Catmull-Rom over tone mapped texels. The optimized nine-tap form cannot be used here: its
+// p12 tap leans on the hardware bilinear filter, and that mixes in linear HDR, where a value
+// far above the display's clipping point stays there for almost the whole coverage ramp - the
+// same trap that made the SMAA blend pass leave shallow edges untouched. Compressing each
+// texel before it is weighted is the whole point, so the taps are fetched individually.
+// Note that wx/wy .x and .w are negative (the sharpening lobes), so the sum is no longer a
+// convex mix and may leave the operator's domain; the ClipAABB right after this catches that.
+vec4 TonemappedTextureCatmullRom(const in sampler2DArray tex, const in vec3 uvw, const in int lod){
+  const ivec2 texSize = textureSize(tex, lod).xy;
+  const ivec2 maxCoord = texSize - ivec2(1);
+  const int layer = int(uvw.z);
+  const vec2 samplePos = fma(uvw.xy, vec2(texSize), vec2(-0.5));
+  const ivec2 base = ivec2(floor(samplePos));
+  const vec2 f = samplePos - vec2(base), ff = f * f, fff = ff * f;
+  const vec4 wx = vec4((ff.x - (fff.x * 0.5)) - (0.5 * f.x), ((fff.x * 1.5) - (ff.x * 2.5)) + 1.0, ((ff.x * 2.0) - (fff.x * 1.5)) + (f.x * 0.5), (fff.x * 0.5) - (ff.x * 0.5)),
+             wy = vec4((ff.y - (fff.y * 0.5)) - (0.5 * f.y), ((fff.y * 1.5) - (ff.y * 2.5)) + 1.0, ((ff.y * 2.0) - (fff.y * 1.5)) + (f.y * 0.5), (fff.y * 0.5) - (ff.y * 0.5));
+  const ivec4 cx = clamp(base.x + ivec4(-1, 0, 1, 2), ivec4(0), ivec4(maxCoord.x)),
+              cy = clamp(base.y + ivec4(-1, 0, 1, 2), ivec4(0), ivec4(maxCoord.y));
+  return (((Tonemap(texelFetch(tex, ivec3(cx.x, cy.x, layer), lod)) * wx.x) + (Tonemap(texelFetch(tex, ivec3(cx.y, cy.x, layer), lod)) * wx.y) +
+           (Tonemap(texelFetch(tex, ivec3(cx.z, cy.x, layer), lod)) * wx.z) + (Tonemap(texelFetch(tex, ivec3(cx.w, cy.x, layer), lod)) * wx.w)) * wy.x) +
+         (((Tonemap(texelFetch(tex, ivec3(cx.x, cy.y, layer), lod)) * wx.x) + (Tonemap(texelFetch(tex, ivec3(cx.y, cy.y, layer), lod)) * wx.y) +
+           (Tonemap(texelFetch(tex, ivec3(cx.z, cy.y, layer), lod)) * wx.z) + (Tonemap(texelFetch(tex, ivec3(cx.w, cy.y, layer), lod)) * wx.w)) * wy.y) +
+         (((Tonemap(texelFetch(tex, ivec3(cx.x, cy.z, layer), lod)) * wx.x) + (Tonemap(texelFetch(tex, ivec3(cx.y, cy.z, layer), lod)) * wx.y) +
+           (Tonemap(texelFetch(tex, ivec3(cx.z, cy.z, layer), lod)) * wx.z) + (Tonemap(texelFetch(tex, ivec3(cx.w, cy.z, layer), lod)) * wx.w)) * wy.z) +
+         (((Tonemap(texelFetch(tex, ivec3(cx.x, cy.w, layer), lod)) * wx.x) + (Tonemap(texelFetch(tex, ivec3(cx.y, cy.w, layer), lod)) * wx.y) +
+           (Tonemap(texelFetch(tex, ivec3(cx.z, cy.w, layer), lod)) * wx.z) + (Tonemap(texelFetch(tex, ivec3(cx.w, cy.w, layer), lod)) * wx.w)) * wy.w);
+}
+
 // Sacht-Nehab3 texture sampling with 9-tap filtering by exploiting the bilinear filtering of the texture hardware.
 vec4 textureSachtNehab3(const in sampler2DArray tex, const in vec3 uvw, const in float lod){
  vec2 texSize = textureSize(tex, int(lod)).xy,
@@ -453,7 +481,7 @@ void main() {
       blendWeight = 1.0;
 
       // Get the history color sample, convert it to YCoCg color space and apply tonemapping
-      historySample = ConvertFromRGB(Tonemap(textureCatmullRom(uHistoryColorTexture, historyUVW, 0.0)));
+      historySample = ConvertFromRGB(TonemappedTextureCatmullRom(uHistoryColorTexture, historyUVW, 0));
 
       // Clip the history color sample to the current minimum and maximum color values
       if((pushConstants.flags & FLAG_CLIPPING) != 0u){

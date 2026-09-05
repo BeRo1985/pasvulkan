@@ -35,6 +35,23 @@ vec4 Untonemap(vec4 color){
   //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
 }
 
+// Bilinear sampling that compresses each texel BEFORE interpolating. The hardware
+// bilinear mixes in linear HDR, and a value far above the display's clipping point
+// remains there over almost the entire ramp - the same trap as in SMAA-Blend.
+vec4 TonemappedTexture(const in sampler2DArray tex, const in vec3 uvw, const in int lod){
+  const ivec2 texSize = textureSize(tex, lod).xy;
+  const ivec2 maxCoord = texSize - ivec2(1);
+  const int layer = int(uvw.z);
+  const vec2 uv = fma(uvw.xy, vec2(texSize), vec2(-0.5));
+  const ivec2 base = ivec2(floor(uv));
+  const vec2 f = uv - vec2(base);
+  vec4 t0 = Tonemap(texelFetch(tex, ivec3(clamp(base + ivec2(0, 0), ivec2(0), maxCoord), layer), lod));
+  vec4 t1 = Tonemap(texelFetch(tex, ivec3(clamp(base + ivec2(1, 0), ivec2(0), maxCoord), layer), lod));
+  vec4 t2 = Tonemap(texelFetch(tex, ivec3(clamp(base + ivec2(0, 1), ivec2(0), maxCoord), layer), lod));
+  vec4 t3 = Tonemap(texelFetch(tex, ivec3(clamp(base + ivec2(1, 1), ivec2(0), maxCoord), layer), lod));
+  return mix(mix(t0, t1, f.x), mix(t2, t3, f.x), f.y);
+}
+
 #if ColorSpace == ColorSpaceYCoCg
 
 // RGB to YCoCg conversion
@@ -107,7 +124,7 @@ void main(){
 
   vec2 velocity = textureLod(uTextureVelocity, uvw, 0.0).xy;
 
-  vec4 previous = ConvertFromRGB(Tonemap(textureLod(uTexturePrevious, vec3(inTexCoord - velocity, float(gl_ViewIndex)), 0.0)));
+  vec4 previous = ConvertFromRGB(TonemappedTexture(uTexturePrevious, vec3(inTexCoord - velocity, float(gl_ViewIndex)), 0));
 
   float delta = ((current.a * current.a) - (previous.a * previous.a)) * (1.0 / 5.0);
   float weight = 1.0 - (clamp(1.0 - (sqrt(delta) * SMAA_REPROJECTION_WEIGHT_SCALE), 0.0, 1.0) * 0.5);
