@@ -135,8 +135,11 @@ Eight selectable order-independent transparency modes: `Direct`, spinlock and in
 
 ### Video
 
-- **FlexibleVideo** — an own video codec with decoder, encoder-side tooling and a player integrated with the audio system.
-- An **H.264 decoder** written in Pascal, and an AVI writer for capturing.
+- **FlexibleVideo** — an own video container and codec with encoder-side tooling and a player integrated with the audio system. The spatial transform is selectable per stream, and separately for B-frames: either an 8×8 DCT with JPEG-style quantization matrices and rANS entropy coding, optionally with adaptive quad-tree transform sizes and a reversible integer DCT for lossless output, or a wavelet with bit-plane coding. Prediction is coefficient difference, colour difference, open-loop 3D wavelet or MCTF 3D wavelet.
+- Further codec features: I, P and B frames with motion compensation and exp-Golomb or range-coded motion vectors, 4:4:4 / 4:2:2 / 4:2:0 chroma, adaptive per-tile quantization, an optional alpha plane that can carry its own motion field and its own AQ map, in-loop deblocking and AV1-style CDEF deringing, per-frame payload compression, HDR mastering metadata, an embedded audio track and an extensible key-value header.
+- **Decoding runs on the GPU** — compute pipelines for entropy unpack, inverse transform, deblocking and deringing, fed from ring buffers.
+- **GPU H.264 decoding through `VK_KHR_video_decode_h264`** — a FlexibleVideo container can carry an H.264 Annex-B elementary stream alongside its native stream, and where the GPU exposes Vulkan video decode the player decodes it on the GPU, falling back to the container's own decoder otherwise. The Pascal side is the bitstream front-end (Annex-B NAL splitting, SPS/PPS/slice header and POC parsing) driving the Vulkan video session, DPB and NV12 output.
+- An AVI writer for capturing.
 
 ### Assets, file formats and I/O
 
