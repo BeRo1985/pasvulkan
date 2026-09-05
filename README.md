@@ -323,6 +323,7 @@ Creating is my passion, and with your support, I can keep it alive. Support my w
 
 - [My website](https://www.rosseaux.net)
 - [My blog](https://blog.rosseaux.net)
+- [My Mastodon account](https://mastodon.rosseaux.com/@bero)
 - [My Twitter account](https://twitter.com/coder)
 - [My Facebook account](https://www.facebook.com/benjamin.rosseaux)
 
