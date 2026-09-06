@@ -24681,20 +24681,19 @@ var FBXScene:TpvFBXScene;
         end;
         if MinKeyCount>0 then begin
          Channel:=TpvScene3D.TGroup.TAnimation.TChannel.Create;
-          Channel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation;
-          Channel.fTargetIndex:=NodeIndex;
-          Channel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
-          SetLength(Channel.fInputTimeArray,MinKeyCount);
-          SetLength(Channel.fOutputVector4Array,MinKeyCount);
-          for KeyIndex:=0 to MinKeyCount-1 do begin
-           KeyTime:=aSourceFBX.TimeUtils.TimeToSeconds(CurveX.AnimationKeys[KeyIndex].Time);
-           Channel.fInputTimeArray[KeyIndex]:=KeyTime;
-           Channel.fOutputVector4Array[KeyIndex]:=TpvVector4(EulerToQuaternion(
-            CurveX.AnimationKeys[KeyIndex].Value,
-            CurveY.AnimationKeys[KeyIndex].Value,
-            CurveZ.AnimationKeys[KeyIndex].Value));
-          end;
-          Animation.fChannels.Add(Channel);
+         Channel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation;
+         Channel.fTargetIndex:=NodeIndex;
+         Channel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
+         SetLength(Channel.fInputTimeArray,MinKeyCount);
+         SetLength(Channel.fOutputVector4Array,MinKeyCount);
+         for KeyIndex:=0 to MinKeyCount-1 do begin
+          KeyTime:=aSourceFBX.TimeUtils.TimeToSeconds(CurveX.AnimationKeys[KeyIndex].Time);
+          Channel.fInputTimeArray[KeyIndex]:=KeyTime;
+          Channel.fOutputVector4Array[KeyIndex]:=TpvVector4(EulerToQuaternion(CurveX.AnimationKeys[KeyIndex].Value,
+                                                                              CurveY.AnimationKeys[KeyIndex].Value,
+                                                                              CurveZ.AnimationKeys[KeyIndex].Value));
+         end;
+         Animation.fChannels.Add(Channel);
         end;
        end;
       end;
@@ -24737,17 +24736,17 @@ var FBXScene:TpvFBXScene;
         end;
         if MinKeyCount>0 then begin
          Channel:=TpvScene3D.TGroup.TAnimation.TChannel.Create;
-          Channel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale;
-          Channel.fTargetIndex:=NodeIndex;
-          Channel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
-          SetLength(Channel.fInputTimeArray,MinKeyCount);
-          SetLength(Channel.fOutputVector3Array,MinKeyCount);
-          for KeyIndex:=0 to MinKeyCount-1 do begin
-           KeyTime:=aSourceFBX.TimeUtils.TimeToSeconds(CurveX.AnimationKeys[KeyIndex].Time);
-           Channel.fInputTimeArray[KeyIndex]:=KeyTime;
-           Channel.fOutputVector3Array[KeyIndex]:=TpvVector3.InlineableCreate(CurveX.AnimationKeys[KeyIndex].Value,CurveY.AnimationKeys[KeyIndex].Value,CurveZ.AnimationKeys[KeyIndex].Value);
-          end;
-          Animation.fChannels.Add(Channel);
+         Channel.fTarget:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale;
+         Channel.fTargetIndex:=NodeIndex;
+         Channel.fInterpolation:=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear;
+         SetLength(Channel.fInputTimeArray,MinKeyCount);
+         SetLength(Channel.fOutputVector3Array,MinKeyCount);
+         for KeyIndex:=0 to MinKeyCount-1 do begin
+          KeyTime:=aSourceFBX.TimeUtils.TimeToSeconds(CurveX.AnimationKeys[KeyIndex].Time);
+          Channel.fInputTimeArray[KeyIndex]:=KeyTime;
+          Channel.fOutputVector3Array[KeyIndex]:=TpvVector3.InlineableCreate(CurveX.AnimationKeys[KeyIndex].Value,CurveY.AnimationKeys[KeyIndex].Value,CurveZ.AnimationKeys[KeyIndex].Value);
+         end;
+         Animation.fChannels.Add(Channel);
         end;
        end;
       end;
