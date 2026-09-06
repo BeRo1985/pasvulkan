@@ -4208,6 +4208,7 @@ type EpvScene3D=class(Exception);
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
               property Cameras:TCameras read fCameras;
+              property Materials:TpvScene3D.TMaterials read fMaterials;
               property Meshes:TMeshes read fMeshes;
               property Skins:TSkins read fSkins;
               property Lights:TpvScene3D.TGroup.TLights read fLights;
