@@ -232,12 +232,8 @@ bool usePrecipitationMap = ((uAtmosphereParameters.atmosphereParameters.flags & 
 // Check if the atmosphere map should be used, if it is enabled in the flags and if the min and max values are not both 1.0,
 // which would indicate that the atmosphere can be considered fully existing everywhere (no atmosphere map lookups needed =>
 // faster and more performance).
-bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) &&
+bool useAtmosphereMap = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_USE_ATMOSPHERE_MAP) != 0u) && 
                         (((abs(1.0 - uAtmosphereMapMinMax.minValue) > 1e-4) || (abs(1.0 - uAtmosphereMapMinMax.maxValue) > 1e-4)));
-
-// Read the two maps with the cloud layer's rotation rather than in planet space, so that the cloud field
-// drifts as a whole instead of being held in place by them.
-bool cloudMapDrift = ((uAtmosphereParameters.atmosphereParameters.flags & FLAGS_CLOUD_MAP_DRIFT) != 0u);
 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -337,7 +333,7 @@ vec3 scaleLayerHighCloudPosition(vec3 position){
 
 vec4 getWeatherData(const in vec3 position, const in mat3 rotationMatrices[2], const float mipMapLevel){
   // Percipitation map: -1.0 = no clouds, 0.0 = dry clouds, 1.0 = wet clouds
-  const float percipitation = usePrecipitationMap ? clamp(textureLod(uTexturePercipitationMap, normalize(cloudMapDrift ? (rotationMatrices[0] * position) : position), 0.0).x, -1.0, 1.0) : 0.0;
+  const float percipitation = usePrecipitationMap ? clamp(textureLod(uTexturePercipitationMap, normalize(position), 0.0).x, -1.0, 1.0) : 0.0;
   const float wetness = clamp(percipitation, 0.0, 1.0);
   const float factor = clamp(percipitation + 1.0, 0.0, 1.0); // -1.0 .. 0.0 => 0.0 .. 1.0
   return clamp(
@@ -411,8 +407,8 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
     // Layer low clouds
 
     // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
-    const float atmosphereFactor = useAtmosphereMap
-                                    ? textureLod(uTextureAtmosphereMap, normalize(cloudMapDrift ? (rotationMatrices[0] * position) : position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere
+    const float atmosphereFactor = useAtmosphereMap 
+                                    ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
                                     : 1.0; // No atmosphere map, so return full atmosphere
     if(atmosphereFactor < 1e-4){
       return 0.0; // No atmosphere, so no clouds
@@ -459,8 +455,8 @@ float getLowResCloudDensity(vec3 position, const in mat3 rotationMatrices[2], co
     // Layer high clouds
 
     // Evaluate atmosphere map, with AtmosphereMapTexture cube map with atmosphere visiblity values
-    const float atmosphereFactor = useAtmosphereMap
-                                    ? textureLod(uTextureAtmosphereMap, normalize(cloudMapDrift ? (rotationMatrices[1] * position) : position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere
+    const float atmosphereFactor = useAtmosphereMap 
+                                    ? textureLod(uTextureAtmosphereMap, normalize(position), 0.0).x // 0.0 = no atmosphere, 1.0 = full atmosphere    
                                     : 1.0; // No atmosphere map, so return full atmosphere
     if(atmosphereFactor < 1e-4){
       return 0.0; // No atmosphere, so no clouds
