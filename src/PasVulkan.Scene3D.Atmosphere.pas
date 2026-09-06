@@ -875,6 +875,10 @@ type TpvScene3DAtmosphere=class;
        fAtmosphereMap:TDirectionalMap;
        fUsePrecipitationMap:TPasMPBool32;
        fUseAtmosphereMap:TPasMPBool32;
+       // The cloud layers turn with their orientation, but the two maps that say where clouds may be at all
+       // are read in planet space and hold them in place. With this set the maps turn with the layer, so the
+       // whole cloud field drifts across the sky on its own, with no simulation behind it.
+       fCloudMapDrift:TPasMPBool32;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
        fRendererInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -929,6 +933,7 @@ type TpvScene3DAtmosphere=class;
        property AtmosphereMap:TDirectionalMap read fAtmosphereMap;
        property UsePrecipitationMap:TPasMPBool32 read fUsePrecipitationMap write fUsePrecipitationMap;
        property UseAtmosphereMap:TPasMPBool32 read fUseAtmosphereMap write fUseAtmosphereMap;
+       property CloudMapDrift:TPasMPBool32 read fCloudMapDrift write fCloudMapDrift;
        property Ready:TPasMPBool32 read fReady;
        property Uploaded:LongBool read fUploaded;
        property Visible:Boolean read fVisible;
@@ -4760,6 +4765,8 @@ begin
 
  fUseAtmosphereMap:=true;
 
+ fCloudMapDrift:=false;
+
  fReady:=true;
 
 end;
@@ -4962,7 +4969,8 @@ begin
   // image based lighting has no background to composite over, so it draws the sun whatever this says.
   fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fPrecipitationMap.fTextureSourceImage) and fUsePrecipitationMap,1 shl 0,0) or
                                                        IfThen(assigned(fAtmosphereMap.fTextureSourceImage) and fUseAtmosphereMap,1 shl 1,0) or
-                                                       IfThen(TpvScene3D(fScene3D).SunDiscMode=TpvScene3DSunDiscMode.Atmosphere,1 shl 2,0);
+                                                       IfThen(TpvScene3D(fScene3D).SunDiscMode=TpvScene3DSunDiscMode.Atmosphere,1 shl 2,0) or
+                                                       IfThen(fCloudMapDrift,1 shl 3,0);
 
 { fGPUAtmosphereParameters[aInFlightFrameIndex].Transform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
   fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}

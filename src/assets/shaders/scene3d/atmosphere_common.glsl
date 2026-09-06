@@ -259,6 +259,10 @@ const uint FLAGS_USE_ATMOSPHERE_MAP = 1u << 1u;
 // nothing about the cube maps baked for image based lighting: those have no background to composite over,
 // so they always draw it, or the sun would light nothing.
 const uint FLAGS_DRAW_SUN_DISC = 1u << 2u;
+// Whether the precipitation and atmosphere maps are read with the cloud layer's own rotation instead of in
+// planet space. They say where clouds may be at all, so read in planet space they pin the cloud field to the
+// ground; turned with the layer, the whole field drifts across the sky without anything simulating it.
+const uint FLAGS_CLOUD_MAP_DRIFT = 1u << 3u;
 
 float getAtmosphereCullingSDF(const in AtmosphereCullingParameters CullingParameters, vec3 p){
   if(CullingParameters.innerOuterFadeDistancesCountFacesMode.w == 0u){

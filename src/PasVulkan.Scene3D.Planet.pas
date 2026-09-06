@@ -3279,6 +3279,10 @@ type TpvScene3DPlanets=class;
        fScene3D:TObject;
        fIndex:TpvSizeInt;
        fSimulationActive:TPasMPBool32;
+       // The weather on a switch of its own, next to the planet simulation as a whole: the precipitation map
+       // is what the clouds are made of, so with this set it keeps being advected and the cloud fields keep
+       // moving over the planet while grass, atmosphere spread and the rest stay still.
+       fPrecipitationSimulationActive:TPasMPBool32;
        fWaitOnceOnPreviousFrameForCheckFirst:boolean;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanMemoryStagingQueue:TpvVulkanDeviceMemoryStagingQueue;
@@ -3915,6 +3919,7 @@ type TpvScene3DPlanets=class;
        property WaterRainSettings:TpvScene3DPlanet.TWaterRainSettings read fWaterRainSettings;
        property PrecipitationSimulationSettings:TpvScene3DPlanet.TPrecipitationSimulationSettings read fPrecipitationSimulationSettings;
        property SimulationActive:TPasMPBool32 read fSimulationActive write fSimulationActive;
+       property PrecipitationSimulationActive:TPasMPBool32 read fPrecipitationSimulationActive write fPrecipitationSimulationActive;
        property WaterMiniMapResolution:TpvSizeInt read fWaterMiniMapResolution;
        property HeightMiniMapResolution:TpvSizeInt read fHeightMiniMapResolution;
      end;
@@ -33547,6 +33552,8 @@ begin
 
  fSimulationActive:=true;
 
+ fPrecipitationSimulationActive:=false;
+
  fWaitOnceOnPreviousFrameForCheckFirst:=false;
 
  fWaterRainSettings:=TpvScene3DPlanet.TWaterRainSettings.Create;
@@ -36597,7 +36604,7 @@ begin
 
  end;
 
- if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and fSimulationActive then begin
+ if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and (fSimulationActive or fPrecipitationSimulationActive) then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -38542,7 +38549,7 @@ begin
     end;
 
     // Process precipitation simulation
-    if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and fSimulationActive then begin
+    if (aInFlightFrameIndex>=0) and assigned(fPrecipitationMapSimulation) and assigned(fPrecipitationMapSimulationTransfer) and (fPrecipitationSimulationSettings.fInterval>1e-6) and (fSimulationActive or fPrecipitationSimulationActive) then begin
      fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.ProcessAtmospherePrecipitationSimulation.PrecipitationSimulation',[0.5,0.75,0.25,1.0]);
      try
       fPrecipitationMapSimulation.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex]);
