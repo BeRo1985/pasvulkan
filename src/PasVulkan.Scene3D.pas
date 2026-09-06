@@ -28985,6 +28985,18 @@ begin
   fActive:=aActive;
   TPasMPInterlocked.Increment(fSceneInstance.fDrawDataGeneration);
   fSceneInstance.InvalidateDirectedAcyclicGraph;
+  // Switching an instance on re-arms its render instance countdown, so every per-in-flight-frame slot
+  // is filled again from the master matrices before it is drawn from.
+  //
+  // Without this an instance that was BUILT while inactive comes back settled: the countdown had either
+  // run out or never run, UpdateRenderInstances then takes the "fully settled" path and enqueues
+  // nothing, and each in-flight frame draws whatever its own slot happens to hold. On screen that is a
+  // render instance that is in the right place on one frame and somewhere else - or nowhere - on the
+  // next, which is exactly what building a pool up front and only flipping Active later is supposed to
+  // be safe for.
+  if fActive and fUseRenderInstances then begin
+   TPasMPInterlocked.Write(fRenderInstanceChangeCounter,TPasMPInt32(MaxInFlightFrames));
+  end;
  end;
 end;
 
