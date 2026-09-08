@@ -956,6 +956,9 @@ type TpvScene3DAtmosphere=class;
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameIndex:TpvSizeInt;
                                    const aQueueFamilyIndex:TpvInt32=-1);
+       procedure ProcessWeatherMap(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aInFlightFrameIndex:TpvSizeInt;
+                                   const aQueueFamilyIndex:TpvInt32=-1);
        procedure Execute(const aInFlightFrameIndex:TpvSizeInt;
                          const aCommandBuffer:TpvVulkanCommandBuffer;
                          const aRendererInstance:TObject);
@@ -5170,6 +5173,23 @@ end;
 procedure TpvScene3DAtmosphere.ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                  const aInFlightFrameIndex:TpvSizeInt;
                                                  const aQueueFamilyIndex:TpvInt32=-1);
+begin
+
+ if fInFlightFrameVisible[aInFlightFrameIndex] then begin
+
+  fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
+
+  fPrecipitationMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
+
+ end;
+
+end;
+
+// The weather map rebuild is a separate step from the map updates above, so that it appears on its own in the
+// frame timings instead of hiding inside them.
+procedure TpvScene3DAtmosphere.ProcessWeatherMap(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aInFlightFrameIndex:TpvSizeInt;
+                                                 const aQueueFamilyIndex:TpvInt32=-1);
 var Index:TpvSizeInt;
     AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
     WeatherMapParameters:PWeatherMapParameters;
@@ -5185,22 +5205,18 @@ var Index:TpvSizeInt;
 begin
 
  // Calculate appropriate pipeline stages based on queue family
- if (aQueueFamilyIndex>=0) and (aQueueFamilyIndex=TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) and 
+ if (aQueueFamilyIndex>=0) and (aQueueFamilyIndex=TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) and
     (TpvScene3D(fScene3D).VulkanDevice.UniversalQueueFamilyIndex<>TpvScene3D(fScene3D).VulkanDevice.ComputeQueueFamilyIndex) then begin
    // We're on a compute-only queue, use only compute pipeline stages
    SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
    DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
  end else begin
-   // We're on the universal queue or default, can use graphics+compute pipeline stages  
+   // We're on the universal queue or default, can use graphics+compute pipeline stages
    SourcePipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
    DestPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
  end;
 
  if fInFlightFrameVisible[aInFlightFrameIndex] then begin
-
-  fAtmosphereMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
-
-  fPrecipitationMap.Update(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
 
   begin
 

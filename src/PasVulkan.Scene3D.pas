@@ -4992,6 +4992,7 @@ type EpvScene3D=class(Exception);
        fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
        fProcessFrameTimerQueryPlanetSimulationIndex:TpvSizeInt;
        fProcessFrameTimerQueryAtmosphereSimulationIndex:TpvSizeInt;
+       fProcessFrameTimerQueryAtmosphereWeatherMapIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshBoundsComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshletBoundsComputeIndex:TpvSizeInt;
@@ -5187,6 +5188,9 @@ type EpvScene3D=class(Exception);
        procedure ProcessPlanetGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                        const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aInFlightFrameIndex:TpvSizeInt;
+                                              const aQueueFamilyIndex:TpvInt32=-1);
+       procedure ProcessAtmosphereWeatherMaps(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aInFlightFrameIndex:TpvSizeInt;
                                               const aQueueFamilyIndex:TpvInt32=-1);
        function RaytracingOnMustWaitForPreviousFrame(const aSender:TObject):Boolean;
@@ -35653,7 +35657,7 @@ begin
 
    begin
 
-    Count:=5+IfThen(fMeshShaders,1,0)+IfThen(fRaytracingActive,1,0);
+    Count:=6+IfThen(fMeshShaders,1,0)+IfThen(fRaytracingActive,1,0);
 
     for Index:=0 to fCountInFlightFrames-1 do begin
      fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
@@ -35662,6 +35666,7 @@ begin
     fProcessFrameTimerQueryUploadFrameDataIndex:=-1;
     fProcessFrameTimerQueryPlanetSimulationIndex:=-1;
     fProcessFrameTimerQueryAtmosphereSimulationIndex:=-1;
+    fProcessFrameTimerQueryAtmosphereWeatherMapIndex:=-1;
     fProcessFrameTimerQueryMeshComputeIndex:=-1;
     fProcessFrameTimerQueryMeshBoundsComputeIndex:=-1;
     fProcessFrameTimerQueryMeshletBoundsComputeIndex:=-1;
@@ -42152,6 +42157,14 @@ begin
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetAtmospherePrecipitationSimulationQueue,PlanetAtmospherePrecipitationSimulationCommandBuffer);
 
+    fProcessFrameTimerQueryAtmosphereWeatherMapIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetAtmospherePrecipitationSimulationQueue,PlanetAtmospherePrecipitationSimulationCommandBuffer,'Planet Atmosphere Weather Map');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetAtmospherePrecipitationSimulationCommandBuffer,'Planet Atmosphere Weather Map',[0.25,0.5,1.0,1.0]);
+    ProcessAtmosphereWeatherMaps(PlanetAtmospherePrecipitationSimulationCommandBuffer,aInFlightFrameIndex,fPlanetAtmospherePrecipitationSimulationQueueFamilyIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetAtmospherePrecipitationSimulationCommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereWeatherMapIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetAtmospherePrecipitationSimulationQueue,PlanetAtmospherePrecipitationSimulationCommandBuffer);
+
     PlanetAtmospherePrecipitationSimulationCommandBuffer.EndRecording;
 
     PlanetAtmospherePrecipitationSimulationCommandBufferHandle:=PlanetAtmospherePrecipitationSimulationCommandBuffer.Handle;
@@ -42189,6 +42202,14 @@ begin
     ProcessAtmosphereSimulations(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
     fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+
+    fProcessFrameTimerQueryAtmosphereWeatherMapIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Atmosphere Weather Map');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Atmosphere Weather Map',[0.25,0.5,1.0,1.0]);
+    ProcessAtmosphereWeatherMaps(CommandBuffer,aInFlightFrameIndex,fVulkanDevice.UniversalQueueFamilyIndex);
+    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryAtmosphereWeatherMapIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    end;
@@ -44399,6 +44420,25 @@ begin
    Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[AtmosphereIndex];
    if Atmosphere.Ready then begin
     Atmosphere.ProcessSimulation(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
+   end;
+  end;
+ finally
+  TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
+ end;
+end;
+
+procedure TpvScene3D.ProcessAtmosphereWeatherMaps(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aInFlightFrameIndex:TpvSizeInt;
+                                                  const aQueueFamilyIndex:TpvInt32=-1);
+var AtmosphereIndex:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ TpvScene3DAtmospheres(fAtmospheres).Lock.AcquireRead;
+ try
+  for AtmosphereIndex:=0 to TpvScene3DAtmospheres(fAtmospheres).Count-1 do begin
+   Atmosphere:=TpvScene3DAtmospheres(fAtmospheres).Items[AtmosphereIndex];
+   if Atmosphere.Ready then begin
+    Atmosphere.ProcessWeatherMap(aCommandBuffer,aInFlightFrameIndex,aQueueFamilyIndex);
    end;
   end;
  finally
