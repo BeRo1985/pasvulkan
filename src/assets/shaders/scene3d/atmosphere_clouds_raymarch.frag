@@ -1092,7 +1092,11 @@ bool traceVolumetricClouds(vec3 rayOrigin,
 
 void main(){
 
-  layerLowWindRotation = layerLowCurlRotation = mat3(1.0);
+  // The wind orientation drifts the shape, detail and curl noise against the weather map, which is sampled
+  // with the layer orientation alone, so that the low clouds change their shapes while they move.
+  layerLowWindRotation = quaternionToMatrix(uAtmosphereParameters.atmosphereParameters.VolumetricClouds.LayerLow.WindOrientation);
+
+  layerLowCurlRotation = mat3(1.0);
 
 #ifdef COMPUTE_SHADER
   int viewIndex = pushConstants.baseViewIndex;

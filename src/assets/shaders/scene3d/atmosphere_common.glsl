@@ -72,6 +72,8 @@ struct VolumetricCloudLayerLow {
 
   vec4 Orientation;
 
+  vec4 WindOrientation; // orientation of the shape, detail and curl noise relative to the weather map
+
   float StartHeight;
   float EndHeight;
   float PositionScale;

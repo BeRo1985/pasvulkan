@@ -320,19 +320,24 @@ type TpvScene3DAtmosphere=class;
           
               Orientation:TpvQuaternion;
 
+              // Orientation of the shape, detail and curl noise relative to the weather map. When it drifts
+              // slowly away from the layer orientation above, the noise wanders through the coverage field,
+              // so that clouds grow and dissolve in place instead of just moving along rigidly.
+              WindOrientation:TpvQuaternion;
+
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;
               PositionScale:TpvFloat;
               ShapeNoiseScale:TpvFloat;
-          
+
               DetailNoiseScale:TpvFloat;
               CurlScale:TpvFloat;
               AdvanceCurlScale:TpvFloat;
               AdvanceCurlAmplitude:TpvFloat;
-          
+
               HeightGradients:array[0..2] of TpvVector4; // mat3x4
               AnvilDeformations:array[0..2] of TpvVector4; // mat3x4 unused for now
-          
+
               procedure Initialize;
               procedure LoadFromJSON(const aJSON:TPasJSONItem);
               procedure LoadFromJSONStream(const aStream:TStream);
@@ -505,11 +510,13 @@ type TpvScene3DAtmosphere=class;
 
               Orientation:TpvQuaternion;
 
+              WindOrientation:TpvQuaternion;
+
               StartHeight:TpvFloat;
               EndHeight:TpvFloat;
               PositionScale:TpvFloat;
               ShapeNoiseScale:TpvFloat;
-             
+
               DetailNoiseScale:TpvFloat;
               CurlScale:TpvFloat;
               AdvanceCurlScale:TpvFloat;
@@ -1066,6 +1073,7 @@ end;
 procedure TpvScene3DAtmosphere.TVolumetricCloudLayerLow.Initialize;
 begin
  Orientation:=TpvQuaternion.Identity;
+ WindOrientation:=TpvQuaternion.Identity;
  StartHeight:=6380.0;
  EndHeight:=6400.0;
  PositionScale:=0.0005;
@@ -1094,6 +1102,7 @@ begin
   JSONRootObject:=TPasJSONItemObject(aJSON);
   
   Orientation.Vector:=JSONToVector4(JSONRootObject.Properties['orientation'],Orientation.Vector);
+  WindOrientation.Vector:=JSONToVector4(JSONRootObject.Properties['windorientation'],WindOrientation.Vector);
   StartHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['startheight'],StartHeight);
   EndHeight:=TPasJSON.GetNumber(JSONRootObject.Properties['endheight'],EndHeight);
   PositionScale:=TPasJSON.GetNumber(JSONRootObject.Properties['positionscale'],PositionScale);
@@ -1156,6 +1165,7 @@ begin
 
  result:=TPasJSONItemObject.Create;
  result.Add('orientation',Vector4ToJSON(Orientation.Vector));
+ result.Add('windorientation',Vector4ToJSON(WindOrientation.Vector));
  result.Add('startheight',TPasJSONItemNumber.Create(StartHeight));
  result.Add('endheight',TPasJSONItemNumber.Create(EndHeight));
  result.Add('positionscale',TPasJSONItemNumber.Create(PositionScale));
@@ -1873,7 +1883,9 @@ procedure TpvScene3DAtmosphere.TGPUVolumetricCloudLayerLow.Assign(const aVolumet
 begin
 
  Orientation:=aVolumetricCloudLayerLow.Orientation;
- 
+
+ WindOrientation:=aVolumetricCloudLayerLow.WindOrientation;
+
  StartHeight:=aVolumetricCloudLayerLow.StartHeight;
  EndHeight:=aVolumetricCloudLayerLow.EndHeight;
 
