@@ -825,8 +825,10 @@ type TpvScene3DPlanets=class;
               fFakeWaterAmount:TpvFloat; // Strength of that field, zero switches it off
               fFakeWaterScale:TpvFloat; // Spatial frequency of that field
               fFakeWaterSpeed:TpvFloat; // Degrees per second at which that field turns
-              // Bounds for what is written into the precipitation map, on the scale of the map itself, where
-              // -1 is cloudless, 0 is dry clouds and 1 is rain clouds
+              // Scale, offset and bounds for what is written into the precipitation map, on the scale of the
+              // map itself, where -1 is cloudless, 0 is dry clouds and 1 is rain clouds
+              fPrecipitationMul:TpvFloat; // Scale before the bounds below, 1 leaves it alone
+              fPrecipitationAdd:TpvFloat; // Offset after that scale, 0 leaves it alone
               fMinimumPrecipitation:TpvFloat; // -1 leaves it alone, 0 keeps clouds everywhere, 1 forces rain clouds
               fMaximumPrecipitation:TpvFloat; // 1 leaves it alone, 0 forbids rain clouds, -1 forbids clouds at all
               fInterval:TpvDouble;
@@ -852,6 +854,8 @@ type TpvScene3DPlanets=class;
               property FakeWaterAmount:TpvFloat read fFakeWaterAmount write fFakeWaterAmount;
               property FakeWaterScale:TpvFloat read fFakeWaterScale write fFakeWaterScale;
               property FakeWaterSpeed:TpvFloat read fFakeWaterSpeed write fFakeWaterSpeed;
+              property PrecipitationMul:TpvFloat read fPrecipitationMul write fPrecipitationMul;
+              property PrecipitationAdd:TpvFloat read fPrecipitationAdd write fPrecipitationAdd;
               property MinimumPrecipitation:TpvFloat read fMinimumPrecipitation write fMinimumPrecipitation;
               property MaximumPrecipitation:TpvFloat read fMaximumPrecipitation write fMaximumPrecipitation;
               property Interval:TpvDouble read fInterval write fInterval;
@@ -1529,6 +1533,8 @@ type TpvScene3DPlanets=class;
                     DryClouds:TpvFloat; // Value for dry clouds
                     WetClouds:TpvFloat; // Value for wet clouds
                     Alpha:TpvFloat; // Interpolation factor for the advection map
+                    PrecipitationMul:TpvFloat; // Scale of the written value before the bounds below, 1 leaves it alone
+                    PrecipitationAdd:TpvFloat; // Offset after that scale, 0 leaves it alone
                     MinimumPrecipitation:TpvFloat; // Lower bound of the written value, -1 leaves it alone, 0 keeps clouds everywhere, 1 forces rain clouds
                     MaximumPrecipitation:TpvFloat; // Upper bound of the written value, 1 leaves it alone, 0 forbids rain clouds, -1 forbids clouds at all
                    end;
@@ -9848,6 +9854,8 @@ begin
  fFakeWaterAmount:=1.0; // Strength of the noise field which stands in for the water height
  fFakeWaterScale:=2.5; // About fifteen of its cells around the planet, which matches the scale of the cloud fields
  fFakeWaterSpeed:=0.1; // Degrees per second, slow enough that the fluid, not the field, does the visible work
+ fPrecipitationMul:=1.0; // Unchanged, so the simulation decides on its own
+ fPrecipitationAdd:=0.0; // Unchanged, so the simulation decides on its own
  fMinimumPrecipitation:=-1.0; // The whole range, so the simulation decides on its own
  fMaximumPrecipitation:=1.0; // The whole range, so the simulation decides on its own
  fInterval:=0.0;
@@ -9899,6 +9907,10 @@ begin
   fFakeWaterScale:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterscale'],fFakeWaterScale); // Spatial frequency of that field
 
   fFakeWaterSpeed:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterspeed'],fFakeWaterSpeed); // Degrees per second at which that field turns
+
+  fPrecipitationMul:=TPasJSON.GetNumber(JSONRootObject.Properties['precipitationmul'],fPrecipitationMul); // Scale before the bounds below, 1 leaves it alone
+
+  fPrecipitationAdd:=TPasJSON.GetNumber(JSONRootObject.Properties['precipitationadd'],fPrecipitationAdd); // Offset after that scale, 0 leaves it alone
 
   fMinimumPrecipitation:=TPasJSON.GetNumber(JSONRootObject.Properties['minimumprecipitation'],fMinimumPrecipitation); // -1 leaves it alone, 0 keeps clouds everywhere, 1 forces rain clouds
 
@@ -17798,6 +17810,8 @@ begin
  fPushConstants.DryClouds:=fPlanet.fPrecipitationSimulationSettings.fDryClouds;
  fPushConstants.WetClouds:=fPlanet.fPrecipitationSimulationSettings.fWetClouds;
  fPushConstants.Alpha:=fPlanet.fData.fPrecipitationSimulationTime/fPlanet.fPrecipitationSimulationSettings.fInterval;
+ fPushConstants.PrecipitationMul:=fPlanet.fPrecipitationSimulationSettings.fPrecipitationMul;
+ fPushConstants.PrecipitationAdd:=fPlanet.fPrecipitationSimulationSettings.fPrecipitationAdd;
  fPushConstants.MinimumPrecipitation:=fPlanet.fPrecipitationSimulationSettings.fMinimumPrecipitation;
  fPushConstants.MaximumPrecipitation:=fPlanet.fPrecipitationSimulationSettings.fMaximumPrecipitation;
 
