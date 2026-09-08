@@ -473,10 +473,11 @@ type TpvScene3DAtmosphere=class;
               TotalSize:TpvFloat;
               WorleySeed:TpvFloat;
 
-              // These three take precedence over the properties of the atmosphere itself, where a negative
-              // value means off and therefore leaves the property in charge, and where the full rebuild is
-              // simply ored with it.
+              // These take precedence over the properties of the atmosphere itself, where a negative value
+              // means off and therefore leaves the property in charge, where the full rebuild is simply ored
+              // with it and where the dynamic updating is anded with it, so that either side can switch it off.
 
+              DynamicUpdate:LongBool; // off freezes the weather map after its first build, so nothing changes any more
               UpdateInterval:TpvFloat; // seconds between two rebuilds, zero rebuilds every frame for a continuous change
               FullRebuild:LongBool; // whole map in one frame, otherwise one cube map face per frame over six frames
 
@@ -920,6 +921,7 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTextureGeneration:TpvUInt64;
        fWeatherMapTextureLastGeneration:TpvUInt64;
        fWeatherMapFaceIndex:TpvUInt32;
+       fWeatherMapDynamicUpdate:TPasMPBool32;
        fWeatherMapFullRebuild:TPasMPBool32;
        fWeatherMapUpdateInterval:TpvDouble;
        fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
@@ -985,6 +987,9 @@ type TpvScene3DAtmosphere=class;
        // to the elapsed time in seconds, like the cloud layer orientations, or leave it at zero for a map
        // which never changes.
        property WeatherMapTime:TpvDouble read fWeatherMapTime write fWeatherMapTime;
+       // Switches the dynamic updating of the weather map as a whole. Off freezes it after its first build,
+       // so that the clouds still move but no longer form or dissolve.
+       property WeatherMapDynamicUpdate:TPasMPBool32 read fWeatherMapDynamicUpdate write fWeatherMapDynamicUpdate;
        // Rebuilds the whole weather map in one frame, which is the default. Switch it off to spread a rebuild
        // over six frames, one cube map face each, should the rebuild show up in the frame time.
        property WeatherMapFullRebuild:TPasMPBool32 read fWeatherMapFullRebuild write fWeatherMapFullRebuild;
@@ -1574,6 +1579,7 @@ begin
  TotalSize:=4.0;
  WorleySeed:=10.0;
 
+ DynamicUpdate:=true;
  UpdateInterval:=-1.0;
  FullRebuild:=false;
 
@@ -1597,6 +1603,7 @@ begin
   CoveragePerlinWorleyDifference:=TPasJSON.GetNumber(JSONRootObject.Properties['coverageperlinworleydifference'],CoveragePerlinWorleyDifference);
   TotalSize:=TPasJSON.GetNumber(JSONRootObject.Properties['totalsize'],TotalSize);
   WorleySeed:=TPasJSON.GetNumber(JSONRootObject.Properties['worleyseed'],WorleySeed);
+  DynamicUpdate:=TPasJSON.GetBoolean(JSONRootObject.Properties['dynamicupdate'],DynamicUpdate);
   UpdateInterval:=TPasJSON.GetNumber(JSONRootObject.Properties['updateinterval'],UpdateInterval);
   FullRebuild:=TPasJSON.GetBoolean(JSONRootObject.Properties['fullrebuild'],FullRebuild);
   Time:=TPasJSON.GetNumber(JSONRootObject.Properties['time'],Time);
@@ -1617,6 +1624,7 @@ begin
  result.Add('coverageperlinworleydifference',TPasJSONItemNumber.Create(CoveragePerlinWorleyDifference));
  result.Add('totalsize',TPasJSONItemNumber.Create(TotalSize));
  result.Add('worleyseed',TPasJSONItemNumber.Create(WorleySeed));
+ result.Add('dynamicupdate',TPasJSONItemBoolean.Create(DynamicUpdate));
  result.Add('updateinterval',TPasJSONItemNumber.Create(UpdateInterval));
  result.Add('fullrebuild',TPasJSONItemBoolean.Create(FullRebuild));
  result.Add('time',TPasJSONItemNumber.Create(Time));
@@ -4860,6 +4868,8 @@ begin
 
  fWeatherMapTime:=0.0;
 
+ fWeatherMapDynamicUpdate:=true;
+
  fWeatherMapFullRebuild:=true;
 
  fWeatherMapUpdateInterval:=0.0;
@@ -5252,7 +5262,12 @@ begin
    PushConstants.WorleySeed:=WeatherMapParameters^.WorleySeed;
    PushConstants.BaseFaceIndex:=0;
 
-   if (fWeatherMapTextureLastGeneration=fWeatherMapTextureGeneration) and not CompareMem(@PushConstants,@fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants)) then begin
+   // Without the dynamic updating no new rebuild cycle is started any more, so the map freezes at whatever it
+   // was last built with. A rebuild which is already under way, and above all the very first one, still runs
+   // to its end below, since nothing may sample faces which have never been written.
+   if (WeatherMapParameters^.DynamicUpdate and fWeatherMapDynamicUpdate) and
+      (fWeatherMapTextureLastGeneration=fWeatherMapTextureGeneration) and
+      not CompareMem(@PushConstants,@fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants)) then begin
     inc(fWeatherMapTextureGeneration);
    end;
 
