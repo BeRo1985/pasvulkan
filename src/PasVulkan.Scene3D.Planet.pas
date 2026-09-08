@@ -838,6 +838,7 @@ type TpvScene3DPlanets=class;
               constructor Create; reintroduce;
               destructor Destroy; override;
               procedure Assign(const aJSONItem:TPasJSONItem);
+              function SaveToJSON:TPasJSONItemObject;
              public
               property AdditionCoefficient:TpvFloat read fAdditionCoefficient write fAdditionCoefficient;
               property RemovalCoefficient:TpvFloat read fRemovalCoefficient write fRemovalCoefficient;
@@ -9942,6 +9943,37 @@ begin
 
  end;
 
+end;
+
+// The counterpart of Assign, which is what lets a script read the settings back before it changes single
+// values of them, and what a dump of the effective state can be built from.
+function TpvScene3DPlanet.TPrecipitationSimulationSettings.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('additioncoefficient',TPasJSONItemNumber.Create(fAdditionCoefficient));
+ result.Add('removalcoefficient',TPasJSONItemNumber.Create(fRemovalCoefficient));
+ result.Add('cscale',TPasJSONItemNumber.Create(fCScale));
+ result.Add('k',TPasJSONItemNumber.Create(fK));
+ result.Add('v',TPasJSONItemNumber.Create(fV));
+ result.Add('vorticity',TPasJSONItemNumber.Create(fVorticity));
+ result.Add('dampingfactor',TPasJSONItemNumber.Create(fDampingFactor));
+ result.Add('waterfactor',TPasJSONItemNumber.Create(fWaterFactor));
+ result.Add('waterexponent',TPasJSONItemNumber.Create(fWaterExponent));
+ result.Add('waterforce',TPasJSONItemNumber.Create(fWaterForce));
+ result.Add('maximumvelocity',TPasJSONItemNumber.Create(fMaximumVelocity));
+ result.Add('noclouds',TPasJSONItemNumber.Create(fNoClouds));
+ result.Add('dryclouds',TPasJSONItemNumber.Create(fDryClouds));
+ result.Add('wetclouds',TPasJSONItemNumber.Create(fWetClouds));
+ result.Add('fakewateramount',TPasJSONItemNumber.Create(fFakeWaterAmount));
+ result.Add('fakewaterscale',TPasJSONItemNumber.Create(fFakeWaterScale));
+ result.Add('fakewaterthresholdlow',TPasJSONItemNumber.Create(fFakeWaterThresholdLow));
+ result.Add('fakewaterthresholdhigh',TPasJSONItemNumber.Create(fFakeWaterThresholdHigh));
+ result.Add('fakewaterspeed',TPasJSONItemNumber.Create(fFakeWaterSpeed));
+ result.Add('precipitationmul',TPasJSONItemNumber.Create(fPrecipitationMul));
+ result.Add('precipitationadd',TPasJSONItemNumber.Create(fPrecipitationAdd));
+ result.Add('minimumprecipitation',TPasJSONItemNumber.Create(fMinimumPrecipitation));
+ result.Add('maximumprecipitation',TPasJSONItemNumber.Create(fMaximumPrecipitation));
+ result.Add('interval',TPasJSONItemNumber.Create(fInterval));
 end;
 
 { TpvScene3DPlanet.TSerializedData }
