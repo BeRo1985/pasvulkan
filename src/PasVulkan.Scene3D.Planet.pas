@@ -824,6 +824,8 @@ type TpvScene3DPlanets=class;
               // so that the clouds keep forming and dissolving without water and atmosphere generators
               fFakeWaterAmount:TpvFloat; // Strength of that field, zero switches it off
               fFakeWaterScale:TpvFloat; // Spatial frequency of that field
+              fFakeWaterThresholdLow:TpvFloat; // Below this the field is no source at all
+              fFakeWaterThresholdHigh:TpvFloat; // Above this it is a full one, the two together decide how much of the planet feeds clouds
               fFakeWaterSpeed:TpvFloat; // Degrees per second at which that field turns
               // Scale, offset and bounds for what is written into the precipitation map, on the scale of the
               // map itself, where -1 is cloudless, 0 is dry clouds and 1 is rain clouds
@@ -853,6 +855,8 @@ type TpvScene3DPlanets=class;
               property WetClouds:TpvFloat read fWetClouds write fWetClouds;
               property FakeWaterAmount:TpvFloat read fFakeWaterAmount write fFakeWaterAmount;
               property FakeWaterScale:TpvFloat read fFakeWaterScale write fFakeWaterScale;
+              property FakeWaterThresholdLow:TpvFloat read fFakeWaterThresholdLow write fFakeWaterThresholdLow;
+              property FakeWaterThresholdHigh:TpvFloat read fFakeWaterThresholdHigh write fFakeWaterThresholdHigh;
               property FakeWaterSpeed:TpvFloat read fFakeWaterSpeed write fFakeWaterSpeed;
               property PrecipitationMul:TpvFloat read fPrecipitationMul write fPrecipitationMul;
               property PrecipitationAdd:TpvFloat read fPrecipitationAdd write fPrecipitationAdd;
@@ -1498,6 +1502,8 @@ type TpvScene3DPlanets=class;
 
                     FakeWaterAmount:TpvFloat; // Strength of the noise field which stands in for the water height, zero switches it off
                     FakeWaterScale:TpvFloat; // Spatial frequency of that noise field
+                    FakeWaterThresholdLow:TpvFloat; // Below this the noise field is no source at all
+                    FakeWaterThresholdHigh:TpvFloat; // Above this it is a full one, the two together decide how much of the planet feeds clouds
 
                     FakeWaterSpeed:TpvFloat; // Radians per second at which that noise field turns
                     FakeWaterTime:TpvFloat; // Elapsed time in seconds, which the speed above is multiplied with
@@ -9853,6 +9859,8 @@ begin
  fWetClouds:=1.0; // Value for wet clouds
  fFakeWaterAmount:=1.0; // Strength of the noise field which stands in for the water height
  fFakeWaterScale:=2.5; // About fifteen of its cells around the planet, which matches the scale of the cloud fields
+ fFakeWaterThresholdLow:=0.35; // Below this no source at all
+ fFakeWaterThresholdHigh:=0.75; // Above this a full one, so that roughly a third of the planet feeds clouds
  fFakeWaterSpeed:=0.1; // Degrees per second, slow enough that the fluid, not the field, does the visible work
  fPrecipitationMul:=1.0; // Unchanged, so the simulation decides on its own
  fPrecipitationAdd:=0.0; // Unchanged, so the simulation decides on its own
@@ -9905,6 +9913,10 @@ begin
   fFakeWaterAmount:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewateramount'],fFakeWaterAmount); // Strength of the noise field which stands in for the water height while the general simulation is not running
 
   fFakeWaterScale:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterscale'],fFakeWaterScale); // Spatial frequency of that field
+
+  fFakeWaterThresholdLow:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterthresholdlow'],fFakeWaterThresholdLow); // Below this the field is no source at all
+
+  fFakeWaterThresholdHigh:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterthresholdhigh'],fFakeWaterThresholdHigh); // Above this it is a full one
 
   fFakeWaterSpeed:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterspeed'],fFakeWaterSpeed); // Degrees per second at which that field turns
 
@@ -17452,6 +17464,8 @@ begin
   fPushConstants.UseAtmosphereMap:=0;
  end;
  fPushConstants.FakeWaterScale:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterScale;
+ fPushConstants.FakeWaterThresholdLow:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterThresholdLow;
+ fPushConstants.FakeWaterThresholdHigh:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterThresholdHigh;
  fPushConstants.FakeWaterSpeed:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterSpeed*(PI/180.0); // Degrees per second in the settings, radians per second here
  fPushConstants.FakeWaterTime:=fFakeWaterTime;
 

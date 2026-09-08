@@ -54,6 +54,8 @@ layout(push_constant) uniform PushConstants {
 
   float fakeWaterAmount; // Strength of the noise field which stands in for the water height, zero switches it off
   float fakeWaterScale; // Spatial frequency of that noise field
+  float fakeWaterThresholdLow; // Below this the noise field is no source at all
+  float fakeWaterThresholdHigh; // Above this it is a full one, the two together decide how much of the planet feeds clouds
 
   float fakeWaterSpeed; // Radians per second at which that noise field turns
   float fakeWaterTime; // Elapsed time in seconds, which the speed above is multiplied with
@@ -152,7 +154,7 @@ float getFakeWaterHeight(const in vec3 position){
   // The water height this stands in for is a sharp mask, lakes and seas and nothing in between, so the smooth
   // noise is cut into clearly bounded regions as well. Without that the whole planet would be one weak source
   // and the clouds would come out as an even soup instead of separate cloud fields.
-  return smoothstep(0.35, 0.75, value);
+  return smoothstep(pushConstants.fakeWaterThresholdLow, pushConstants.fakeWaterThresholdHigh, value);
 }
 
 vec4 getValue(ivec2 texel){
