@@ -477,7 +477,7 @@ type TpvScene3DAtmosphere=class;
               // means off and therefore leaves the property in charge, where the full rebuild is simply ored
               // with it and where the dynamic updating is anded with it, so that either side can switch it off.
 
-              DynamicUpdate:LongBool; // off freezes the weather map after its first build, so nothing changes any more
+              DynamicUpdate:LongBool; // off, the default, freezes the weather map after its first build, so that nothing changes any more
               UpdateInterval:TpvFloat; // seconds between two rebuilds, zero rebuilds every frame for a continuous change
               FullRebuild:LongBool; // whole map in one frame, otherwise one cube map face per frame over six frames
 
@@ -987,7 +987,8 @@ type TpvScene3DAtmosphere=class;
        // to the elapsed time in seconds, like the cloud layer orientations, or leave it at zero for a map
        // which never changes.
        property WeatherMapTime:TpvDouble read fWeatherMapTime write fWeatherMapTime;
-       // Switches the dynamic updating of the weather map as a whole. Off freezes it after its first build,
+       // Switches the dynamic updating of the weather map as a whole, and is anded with the parameter of the
+       // same name, which is off by default and therefore decides. Off freezes the map after its first build,
        // so that the clouds still move but no longer form or dissolve.
        property WeatherMapDynamicUpdate:TPasMPBool32 read fWeatherMapDynamicUpdate write fWeatherMapDynamicUpdate;
        // Rebuilds the whole weather map in one frame, which is the default. Switch it off to spread a rebuild
@@ -1579,7 +1580,8 @@ begin
  TotalSize:=4.0;
  WorleySeed:=10.0;
 
- DynamicUpdate:=true;
+ // Off by default, because a rebuild of the whole map is not free and the clouds still move without it.
+ DynamicUpdate:=false;
  UpdateInterval:=-1.0;
  FullRebuild:=false;
 
