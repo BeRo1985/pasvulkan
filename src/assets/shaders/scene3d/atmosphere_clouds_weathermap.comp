@@ -22,7 +22,8 @@ layout(push_constant, std140) uniform PushConstants {
   vec4 topRotation; // xyz = axis, w = angle
   float coveragePerlinWorleyDifference;
   float totalSize;
-  float worleySeed; 
+  float worleySeed;
+  uint baseFaceIndex; // first cube map face to write, so that a rebuild can be spread over several frames
 } pushConstants;
 
 #ifdef EQUIRECTANGULAR_MAP
@@ -44,7 +45,7 @@ void main(){
 #ifdef EQUIRECTANGULAR_MAP
   ivec2 p = ivec2(gl_GlobalInvocationID.xy), size = ivec2(imageSize(uDestinationTexture).xy);
 #else
-  ivec3 p = ivec3(gl_GlobalInvocationID.xyz), size = ivec3(imageSize(uDestinationTexture).xy, 6); 
+  ivec3 p = ivec3(gl_GlobalInvocationID.xyz) + ivec3(0, 0, int(pushConstants.baseFaceIndex)), size = ivec3(imageSize(uDestinationTexture).xy, 6);
 #endif
 
   if(

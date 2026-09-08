@@ -152,6 +152,7 @@ type TpvScene3DAtmosphere=class;
              CoveragePerlinWorleyDifference:TpvFloat;
              TotalSize:TpvFloat;
              WorleySeed:TpvFloat;
+             BaseFaceIndex:TpvUInt32; // first cube map face to write, so that a rebuild can be spread over frames
             end;
             PCloudWeatherMapPushConstants=^TCloudWeatherMapPushConstants;
             TDirectionalMapTextureInitializationPushConstants=record
@@ -446,6 +447,46 @@ type TpvScene3DAtmosphere=class;
 
             end;
             PVolumetricCloudParameters=^TVolumetricCloudParameters;
+            { TWeatherMapParameters }
+            TWeatherMapParameters=packed record
+             public
+
+              // The weather map decides where clouds are at all, so as long as it stays the same picture, the
+              // clouds can only drift along with the cloud layer rotation and never form or dissolve. Each of
+              // the four noise fields it is built from has its own axis and angle here, plus a rate at which
+              // it keeps turning: the coverage field anchors the clouds and therefore stands still by default,
+              // while the field which is subtracted from the coverage, the cloud type field and the field for
+              // the high layer's veil drift, so that cloud fields open and close, clouds morph between stratus,
+              // cumulus and cumulonimbus, and the veil changes along with them.
+
+              CoverageRotation:TpvVector4; // xyz = axis, w = angle
+              TypeRotation:TpvVector4; // xyz = axis, w = angle
+              WetnessRotation:TpvVector4; // xyz = axis, w = angle
+              TopRotation:TpvVector4; // xyz = axis, w = angle
+
+              CoverageDriftRate:TpvFloat; // degrees per second
+              TypeDriftRate:TpvFloat; // degrees per second
+              WetnessDriftRate:TpvFloat; // degrees per second
+              TopDriftRate:TpvFloat; // degrees per second
+
+              CoveragePerlinWorleyDifference:TpvFloat;
+              TotalSize:TpvFloat;
+              WorleySeed:TpvFloat;
+
+              // These three take precedence over the properties of the atmosphere itself, where a negative
+              // value means off and therefore leaves the property in charge, and where the full rebuild is
+              // simply ored with it.
+
+              UpdateInterval:TpvFloat; // seconds between two rebuilds, zero rebuilds every frame for a continuous change
+              FullRebuild:LongBool; // whole map in one frame, otherwise one cube map face per frame over six frames
+
+              Time:TpvDouble; // elapsed time in seconds, which the drift rates above are multiplied with
+
+              procedure Initialize;
+              procedure LoadFromJSON(const aJSON:TPasJSONItem);
+              function SaveToJSON:TPasJSONItemObject;
+            end;
+            PWeatherMapParameters=^TWeatherMapParameters;
             { TAtmosphereParameters }
             TAtmosphereParameters=packed record             
              public
@@ -489,6 +530,7 @@ type TpvScene3DAtmosphere=class;
               RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
               AtmosphereCullingParameters:TAtmosphereCullingParameters;
               VolumetricClouds:TVolumetricCloudParameters;
+              WeatherMap:TWeatherMapParameters; // CPU side only, it feeds the weather map compute pass, not the uniform buffer
               procedure InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat=6360.0;
                                                   const aEarthTopRadius:TpvFloat=6460.0;
                                                   const aEarthRayleighScaleHeight:TpvFloat=8.0;
@@ -877,7 +919,11 @@ type TpvScene3DAtmosphere=class;
        fWeatherMapTextureDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fWeatherMapTextureGeneration:TpvUInt64;
        fWeatherMapTextureLastGeneration:TpvUInt64;
+       fWeatherMapFaceIndex:TpvUInt32;
+       fWeatherMapFullRebuild:TPasMPBool32;
+       fWeatherMapUpdateInterval:TpvDouble;
        fCloudWeatherMapPushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
+       fWeatherMapTime:TpvDouble;
        fPrecipitationMap:TDirectionalMap;
        fAtmosphereMap:TDirectionalMap;
        fUsePrecipitationMap:TPasMPBool32;
@@ -932,6 +978,16 @@ type TpvScene3DAtmosphere=class;
                       var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       public
        property AtmosphereParameters:PAtmosphereParameters read fPointerToAtmosphereParameters;
+       // Drives the slow drift of the weather map's mixed-in fields, so that clouds form and dissolve. Set it
+       // to the elapsed time in seconds, like the cloud layer orientations, or leave it at zero for a map
+       // which never changes.
+       property WeatherMapTime:TpvDouble read fWeatherMapTime write fWeatherMapTime;
+       // Rebuilds the whole weather map in one frame, which is the default. Switch it off to spread a rebuild
+       // over six frames, one cube map face each, should the rebuild show up in the frame time.
+       property WeatherMapFullRebuild:TPasMPBool32 read fWeatherMapFullRebuild write fWeatherMapFullRebuild;
+       // Seconds between two rebuilds of the weather map. Zero, the default, rebuilds it every frame, so that
+       // the clouds change continuously. Anything else quantizes the time and makes them change in steps.
+       property WeatherMapUpdateInterval:TpvDouble read fWeatherMapUpdateInterval write fWeatherMapUpdateInterval;
        property PrecipitationMap:TDirectionalMap read fPrecipitationMap;
        property AtmosphereMap:TDirectionalMap read fAtmosphereMap;
        property UsePrecipitationMap:TPasMPBool32 read fUsePrecipitationMap write fUsePrecipitationMap;
@@ -1492,6 +1548,77 @@ begin
  end;
 end;
 
+{ TpvScene3DAtmosphere.TWeatherMapParameters }
+
+procedure TpvScene3DAtmosphere.TWeatherMapParameters.Initialize;
+const OneOverSquareRootOfThree=0.57735026918962576451; // for a normalized diagonal rotation axis
+begin
+
+ // The three drifting fields turn on differing axes, so that none of them stands still where another one does.
+ CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,PI*0.25);
+ TypeRotation:=TpvVector4.InlineableCreate(0.0,1.0,0.0,PI*0.125);
+ WetnessRotation:=TpvVector4.InlineableCreate(OneOverSquareRootOfThree,OneOverSquareRootOfThree,OneOverSquareRootOfThree,PI*0.5);
+ TopRotation:=TpvVector4.InlineableCreate(0.0,0.0,1.0,PI*0.75);
+
+ // A coverage feature spans about ten degrees of arc, so a tenth of a degree per second changes the clouds
+ // over roughly half a minute, which reads as weather rather than as motion.
+ CoverageDriftRate:=0.0;
+ TypeDriftRate:=0.11;
+ WetnessDriftRate:=0.17;
+ TopDriftRate:=0.13;
+
+ CoveragePerlinWorleyDifference:=0.5;
+ TotalSize:=4.0;
+ WorleySeed:=10.0;
+
+ UpdateInterval:=-1.0;
+ FullRebuild:=false;
+
+ Time:=-1.0;
+
+end;
+
+procedure TpvScene3DAtmosphere.TWeatherMapParameters.LoadFromJSON(const aJSON:TPasJSONItem);
+var JSONRootObject:TPasJSONItemObject;
+begin
+ if assigned(aJSON) and (aJSON is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSON);
+  CoverageRotation:=JSONToVector4(JSONRootObject.Properties['coveragerotation'],CoverageRotation);
+  TypeRotation:=JSONToVector4(JSONRootObject.Properties['typerotation'],TypeRotation);
+  WetnessRotation:=JSONToVector4(JSONRootObject.Properties['wetnessrotation'],WetnessRotation);
+  TopRotation:=JSONToVector4(JSONRootObject.Properties['toprotation'],TopRotation);
+  CoverageDriftRate:=TPasJSON.GetNumber(JSONRootObject.Properties['coveragedriftrate'],CoverageDriftRate);
+  TypeDriftRate:=TPasJSON.GetNumber(JSONRootObject.Properties['typedriftrate'],TypeDriftRate);
+  WetnessDriftRate:=TPasJSON.GetNumber(JSONRootObject.Properties['wetnessdriftrate'],WetnessDriftRate);
+  TopDriftRate:=TPasJSON.GetNumber(JSONRootObject.Properties['topdriftrate'],TopDriftRate);
+  CoveragePerlinWorleyDifference:=TPasJSON.GetNumber(JSONRootObject.Properties['coverageperlinworleydifference'],CoveragePerlinWorleyDifference);
+  TotalSize:=TPasJSON.GetNumber(JSONRootObject.Properties['totalsize'],TotalSize);
+  WorleySeed:=TPasJSON.GetNumber(JSONRootObject.Properties['worleyseed'],WorleySeed);
+  UpdateInterval:=TPasJSON.GetNumber(JSONRootObject.Properties['updateinterval'],UpdateInterval);
+  FullRebuild:=TPasJSON.GetBoolean(JSONRootObject.Properties['fullrebuild'],FullRebuild);
+  Time:=TPasJSON.GetNumber(JSONRootObject.Properties['time'],Time);
+ end;
+end;
+
+function TpvScene3DAtmosphere.TWeatherMapParameters.SaveToJSON:TPasJSONItemObject;
+begin
+ result:=TPasJSONItemObject.Create;
+ result.Add('coveragerotation',Vector4ToJSON(CoverageRotation));
+ result.Add('typerotation',Vector4ToJSON(TypeRotation));
+ result.Add('wetnessrotation',Vector4ToJSON(WetnessRotation));
+ result.Add('toprotation',Vector4ToJSON(TopRotation));
+ result.Add('coveragedriftrate',TPasJSONItemNumber.Create(CoverageDriftRate));
+ result.Add('typedriftrate',TPasJSONItemNumber.Create(TypeDriftRate));
+ result.Add('wetnessdriftrate',TPasJSONItemNumber.Create(WetnessDriftRate));
+ result.Add('topdriftrate',TPasJSONItemNumber.Create(TopDriftRate));
+ result.Add('coverageperlinworleydifference',TPasJSONItemNumber.Create(CoveragePerlinWorleyDifference));
+ result.Add('totalsize',TPasJSONItemNumber.Create(TotalSize));
+ result.Add('worleyseed',TPasJSONItemNumber.Create(WorleySeed));
+ result.Add('updateinterval',TPasJSONItemNumber.Create(UpdateInterval));
+ result.Add('fullrebuild',TPasJSONItemBoolean.Create(FullRebuild));
+ result.Add('time',TPasJSONItemNumber.Create(Time));
+end;
+
 { TpvScene3DAtmosphere.TAtmosphereParameters }
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.InitializeEarthAtmosphere(const aEarthBottomRadius:TpvFloat;
@@ -1582,6 +1709,9 @@ begin
 
  // Volumetric clouds
  VolumetricClouds.Initialize;
+
+ // Weather map
+ WeatherMap.Initialize;
 
 end;
 
@@ -1675,6 +1805,8 @@ begin
 
   VolumetricClouds.LoadFromJSON(JSONRootObject.Properties['volumetricclouds']);
 
+  WeatherMap.LoadFromJSON(JSONRootObject.Properties['weathermap']);
+
  end;
 
 end;
@@ -1763,6 +1895,7 @@ begin
  result.Add('rainatmospherecubemapluminancefactor',TPasJSONItemNumber.Create(RainAtmosphereCubeMapLuminanceFactor));
  result.Add('raymarching',SaveRaymarching);
  result.Add('volumetricclouds',VolumetricClouds.SaveToJSON);
+ result.Add('weathermap',WeatherMap.SaveToJSON);
 end;
 
 procedure TpvScene3DAtmosphere.TAtmosphereParameters.SaveToJSONStream(const aStream:TStream);
@@ -4721,7 +4854,13 @@ begin
  
  fAtmosphereParameters.InitializeEarthAtmosphere;
  fPointerToAtmosphereParameters:=@fAtmosphereParameters;
- 
+
+ fWeatherMapTime:=0.0;
+
+ fWeatherMapFullRebuild:=true;
+
+ fWeatherMapUpdateInterval:=0.0;
+
  FillChar(fAtmosphereParametersBuffers,SizeOf(fAtmosphereParametersBuffers),#0);
 
  if assigned(TpvScene3D(fScene3D).VulkanDevice) then begin
@@ -4932,6 +5071,8 @@ begin
 
    fWeatherMapTextureLastGeneration:=0;
 
+   fWeatherMapFaceIndex:=0;
+
    FillChar(fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),#0);
 
   end;
@@ -5031,6 +5172,10 @@ procedure TpvScene3DAtmosphere.ProcessSimulation(const aCommandBuffer:TpvVulkanC
                                                  const aQueueFamilyIndex:TpvInt32=-1);
 var Index:TpvSizeInt;
     AtmosphereGlobals:TpvScene3DAtmosphereGlobals;
+    WeatherMapParameters:PWeatherMapParameters;
+    WeatherMapTime:TpvDouble;
+    UpdateInterval:TpvDouble;
+    CountFaces:TpvUInt32;
     PushConstants:TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
@@ -5059,30 +5204,80 @@ begin
 
   begin
 
+   WeatherMapParameters:=@fAtmosphereParameters.WeatherMap;
+
+   // The weather map parameters take precedence, a negative value there is off and leaves the property of the
+   // atmosphere itself in charge.
+   if WeatherMapParameters^.Time>=0.0 then begin
+    WeatherMapTime:=WeatherMapParameters^.Time;
+   end else begin
+    WeatherMapTime:=fWeatherMapTime;
+   end;
+
+   if WeatherMapParameters^.UpdateInterval>=0.0 then begin
+    UpdateInterval:=WeatherMapParameters^.UpdateInterval;
+   end else begin
+    UpdateInterval:=fWeatherMapUpdateInterval;
+   end;
+
+   // Without an update interval the map is rebuilt every frame, so that the clouds change continuously,
+   // otherwise the time is quantized and they change in steps of that many seconds.
+   if UpdateInterval>0.0 then begin
+    WeatherMapTime:=Floor(WeatherMapTime/UpdateInterval)*UpdateInterval;
+   end;
+
    FillChar(PushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants),#0);
-   PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.25));
-   PushConstants.TypeRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.125));
-   PushConstants.WetnessRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.5));
-   PushConstants.TopRotation:=TpvVector4.InlineableCreate(1.0,0.0,0.0,1.0*(PI*0.75));
-   PushConstants.CoveragePerlinWorleyDifference:=0.5;
-   PushConstants.TotalSize:=4.0;
-   PushConstants.WorleySeed:=10.0;
+   PushConstants.CoverageRotation:=TpvVector4.InlineableCreate(WeatherMapParameters^.CoverageRotation.xyz,WeatherMapParameters^.CoverageRotation.w+(WeatherMapTime*WeatherMapParameters^.CoverageDriftRate*DEG2RAD));
+   PushConstants.TypeRotation:=TpvVector4.InlineableCreate(WeatherMapParameters^.TypeRotation.xyz,WeatherMapParameters^.TypeRotation.w+(WeatherMapTime*WeatherMapParameters^.TypeDriftRate*DEG2RAD));
+   PushConstants.WetnessRotation:=TpvVector4.InlineableCreate(WeatherMapParameters^.WetnessRotation.xyz,WeatherMapParameters^.WetnessRotation.w+(WeatherMapTime*WeatherMapParameters^.WetnessDriftRate*DEG2RAD));
+   PushConstants.TopRotation:=TpvVector4.InlineableCreate(WeatherMapParameters^.TopRotation.xyz,WeatherMapParameters^.TopRotation.w+(WeatherMapTime*WeatherMapParameters^.TopDriftRate*DEG2RAD));
+   PushConstants.CoveragePerlinWorleyDifference:=WeatherMapParameters^.CoveragePerlinWorleyDifference;
+   PushConstants.TotalSize:=WeatherMapParameters^.TotalSize;
+   PushConstants.WorleySeed:=WeatherMapParameters^.WorleySeed;
+   PushConstants.BaseFaceIndex:=0;
 
    if (fWeatherMapTextureLastGeneration=fWeatherMapTextureGeneration) and not CompareMem(@PushConstants,@fCloudWeatherMapPushConstants,SizeOf(TpvScene3DAtmosphereGlobals.TCloudWeatherMapPushConstants)) then begin
     inc(fWeatherMapTextureGeneration);
    end;
 
-   fCloudWeatherMapPushConstants:=PushConstants;
-
    if fWeatherMapTextureLastGeneration<>fWeatherMapTextureGeneration then begin
 
-    fWeatherMapTextureLastGeneration:=fWeatherMapTextureGeneration;
+    if fWeatherMapFaceIndex=0 then begin
+     // Start of a rebuild cycle: the parameters are taken over once here and the cycle is then carried out
+     // from them, so that all six cube map faces end up showing the same moment in time. They stay the
+     // reference for the comparison above as well, which therefore compares against the last built map.
+     fCloudWeatherMapPushConstants:=PushConstants;
+    end;
+
+    // The very first build has to fill the whole cube map at once, since nothing may sample faces which have
+    // never been written. Later rebuilds do the same as long as the option is set, otherwise they spread their
+    // six faces over six frames, so that a rebuild of the whole map, which costs a few milliseconds and would
+    // therefore cost a frame, can be traded for a smaller amount of work per frame. A handful of frames worth
+    // of drift is far too little to show a seam between a face which has already been rebuilt and one which
+    // has not.
+    if (fWeatherMapTextureLastGeneration=0) or WeatherMapParameters^.FullRebuild or fWeatherMapFullRebuild then begin
+     CountFaces:=6;
+     fWeatherMapFaceIndex:=0;
+    end else begin
+     CountFaces:=1;
+    end;
+
+    PushConstants:=fCloudWeatherMapPushConstants;
+    PushConstants.BaseFaceIndex:=fWeatherMapFaceIndex;
+
+    inc(fWeatherMapFaceIndex,CountFaces);
+    if fWeatherMapFaceIndex>=6 then begin
+     fWeatherMapFaceIndex:=0;
+     fWeatherMapTextureLastGeneration:=fWeatherMapTextureGeneration;
+    end;
 
     AtmosphereGlobals:=TpvScene3DAtmosphereGlobals(TpvScene3D(fScene3D).AtmosphereGlobals);
 
+    // The old layout must be the real one and not undefined here, because a rebuild which writes only a single
+    // face would otherwise throw away the contents of the five faces it does not touch.
     ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                     VK_IMAGE_LAYOUT_UNDEFINED,
+                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                      VK_IMAGE_LAYOUT_GENERAL,
                                                      VK_QUEUE_FAMILY_IGNORED,
                                                      VK_QUEUE_FAMILY_IGNORED,
@@ -5121,7 +5316,7 @@ begin
     end;
     aCommandBuffer.CmdDispatch((fWeatherMapTexture.Width+15) shr 4,
                                (fWeatherMapTexture.Height+15) shr 4,
-                               6);
+                               CountFaces);
     if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
      TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
     end;
