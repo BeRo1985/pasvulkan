@@ -26,6 +26,8 @@ layout(push_constant) uniform PushConstants {
   float dryClouds; // Value for dry clouds
   float wetClouds; // Value for wet clouds
   float alpha; // Interpolation factor for the advection map
+  float minimumPrecipitation; // Lower bound of the written value, -1 leaves it alone, 0 keeps clouds everywhere, 1 forces rain clouds
+  float maximumPrecipitation; // Upper bound of the written value, 1 leaves it alone, 0 forbids rain clouds, -1 forbids clouds at all
 } pushConstants;
 
 /* clang-format on */
@@ -50,6 +52,10 @@ void main(){
 
   // Map to the precipitation map values
   float precipitationValue = mix(mix(-1.0, 0.0, clamp((advectionValue - pushConstants.noClouds) / (pushConstants.dryClouds - pushConstants.noClouds), 0.0, 1.0)), 1.0, clamp((advectionValue - pushConstants.dryClouds) / (pushConstants.wetClouds - pushConstants.dryClouds), 0.0, 1.0));
+
+  // Keep the value inside the wanted range, which is what forces or forbids rain clouds. The scale is the one
+  // of the map itself: -1 is cloudless, 0 is dry clouds and 1 is rain clouds.
+  precipitationValue = clamp(precipitationValue, pushConstants.minimumPrecipitation, pushConstants.maximumPrecipitation);
 
   // Store the precipitation value in the image
   imageStore(uImagePrecipitationMap, ivec2(texel), vec4(precipitationValue));
