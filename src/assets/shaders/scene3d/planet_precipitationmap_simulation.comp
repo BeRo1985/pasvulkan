@@ -157,6 +157,50 @@ float getFakeWaterHeight(const in vec3 position){
   return smoothstep(pushConstants.fakeWaterThresholdLow, pushConstants.fakeWaterThresholdHigh, value);
 }
 
+// The velocity is kept in the local tangent frame of the sphere, east and north at that very place, and not
+// in texel space. A texel space vector means a different direction on the sphere in every octant of the
+// octahedral map and flips outright across its folds, which is what let material pile up along them in a
+// straight line. Everything fetched from a neighbouring texel therefore has to be turned from its own frame
+// into this one, and the finite differences, which still run along the texture axes, are turned with the two
+// axis directions below. The map is equal-area but not conformal, so those two are not exactly perpendicular
+// everywhere; treating them as a rotation is close enough here and keeps the magnitudes the existing tuning
+// was made for.
+
+vec2 texelAxisX, texelAxisY; // the texture axes as directions in the local tangent frame, set up in main
+
+void getTangentFrame(const in vec3 position, out vec3 tangentEast, out vec3 tangentNorth){
+  vec3 east = cross(vec3(0.0, 1.0, 0.0), position);
+  float eastLength = length(east);
+  tangentEast = (eastLength > 1e-6) ? (east / eastLength) : normalize(cross(vec3(0.0, 0.0, 1.0), position));
+  tangentNorth = cross(position, tangentEast);
+}
+
+vec3 fromTangentFrame(const in vec3 position, const in vec2 value){
+  vec3 tangentEast, tangentNorth;
+  getTangentFrame(position, tangentEast, tangentNorth);
+  return fma(tangentEast, vec3(value.x), tangentNorth * value.y);
+}
+
+vec2 toTangentFrame(const in vec3 position, const in vec3 value){
+  vec3 tangentEast, tangentNorth;
+  getTangentFrame(position, tangentEast, tangentNorth);
+  return vec2(dot(value, tangentEast), dot(value, tangentNorth));
+}
+
+vec3 getTexelPosition(const in ivec2 texel){
+  return octPlanetUnsignedDecode(vec2(wrapOctahedralTexelCoordinates(texel, ivec2(precipitationSimulationMapSize))) / vec2(precipitationSimulationMapResolution));
+}
+
+vec2 texelSpaceToTangentFrame(const in vec2 value){
+  return fma(texelAxisX, vec2(value.x), texelAxisY * value.y);
+}
+
+vec2 tangentFrameToTexelSpace(const in vec2 value){
+  float determinant = (texelAxisX.x * texelAxisY.y) - (texelAxisY.x * texelAxisX.y);
+  return (abs(determinant) > 1e-6) ? (vec2((value.x * texelAxisY.y) - (texelAxisY.x * value.y),
+                                           (texelAxisX.x * value.y) - (value.x * texelAxisX.y)) / determinant) : value;
+}
+
 vec4 getValue(ivec2 texel){
   texel = wrapOctahedralTexelCoordinates(texel, ivec2(precipitationSimulationMapSize));
   return precipitationSimulationMapInput.values[uint((texel.y * precipitationSimulationMapResolution) + texel.x)];
@@ -167,11 +211,28 @@ void setValue(ivec2 texel, vec4 value){
   precipitationSimulationMapOutput.values[uint((texel.y * precipitationSimulationMapResolution) + texel.x)] = value;
 }
 
-vec4 getInterpolatedValue(vec2 texel){  
+vec4 getInterpolatedValue(vec2 texel){
   ivec2 texelFloor = ivec2(floor(texel));
   vec2 texelFrac = fract(texel);
-  return mix(mix(getValue(texelFloor + ivec2(0, 0)), getValue(texelFloor + ivec2(1, 0)), texelFrac.x), 
+  return mix(mix(getValue(texelFloor + ivec2(0, 0)), getValue(texelFloor + ivec2(1, 0)), texelFrac.x),
              mix(getValue(texelFloor + ivec2(0, 1)), getValue(texelFloor + ivec2(1, 1)), texelFrac.x), texelFrac.y);
+}
+
+// Fetches a value and turns its velocity from the tangent frame of the place it is stored at into the one of
+// the given place, so that neighbours and advected values can be added up although each of them was stored
+// in a frame of its own.
+
+vec4 getValueInFrameOf(const in ivec2 texel, const in vec3 position){
+  vec4 value = getValue(texel);
+  value.xy = toTangentFrame(position, fromTangentFrame(getTexelPosition(texel), value.xy));
+  return value;
+}
+
+vec4 getInterpolatedValueInFrameOf(const in vec2 texel, const in vec3 position){
+  ivec2 texelFloor = ivec2(floor(texel));
+  vec2 texelFrac = fract(texel);
+  return mix(mix(getValueInFrameOf(texelFloor + ivec2(0, 0), position), getValueInFrameOf(texelFloor + ivec2(1, 0), position), texelFrac.x),
+             mix(getValueInFrameOf(texelFloor + ivec2(0, 1), position), getValueInFrameOf(texelFloor + ivec2(1, 1), position), texelFrac.x), texelFrac.y);
 }
 
 float getAdvectionValue(ivec2 texel){
@@ -215,17 +276,23 @@ void main(){
   float v = pushConstants.v;
   float S = K / dt;
 
-  vec4 FC = getValue(ivec2(texel));
-  vec4 FR = getValue(ivec2(texel) + ivec2(1, 0));
-  vec4 FL = getValue(ivec2(texel) + ivec2(-1, 0));
-  vec4 FU = getValue(ivec2(texel) + ivec2(0, 1));
-  vec4 FD = getValue(ivec2(texel) + ivec2(0, -1));
+  // The texture axes as directions in the local tangent frame, which is what turns the finite differences
+  // below into it. Central differences of the neighbouring positions, so that the folds of the octahedral map
+  // are crossed the same way the neighbour fetches cross them.
+  texelAxisX = normalize(toTangentFrame(position, getTexelPosition(ivec2(texel) + ivec2(1, 0)) - getTexelPosition(ivec2(texel) + ivec2(-1, 0))));
+  texelAxisY = normalize(toTangentFrame(position, getTexelPosition(ivec2(texel) + ivec2(0, 1)) - getTexelPosition(ivec2(texel) + ivec2(0, -1))));
+
+  vec4 FC = getValue(ivec2(texel)); // already in the frame of this place, since it is stored here
+  vec4 FR = getValueInFrameOf(ivec2(texel) + ivec2(1, 0), position);
+  vec4 FL = getValueInFrameOf(ivec2(texel) + ivec2(-1, 0), position);
+  vec4 FU = getValueInFrameOf(ivec2(texel) + ivec2(0, 1), position);
+  vec4 FD = getValueInFrameOf(ivec2(texel) + ivec2(0, -1), position);
 
   const vec3 UdX = (FR.xyz - FL.xyz) * CScale; // Right - Left
   const vec3 UdY = (FU.xyz - FD.xyz) * CScale; // Up - Down
-  
-  const vec2 DdX = vec2(UdX.z, UdY.z); // Density difference
-  const float Udiv = UdX.x + UdY.y;
+
+  const vec2 DdX = texelSpaceToTangentFrame(vec2(UdX.z, UdY.z)); // Density difference, along the texture axes and therefore turned
+  const float Udiv = dot(UdX.xy, texelAxisX) + dot(UdY.xy, texelAxisY); // Divergence, each difference taken along its own axis
 
   // Solve for density
   FC.z -= dot(vec3(DdX, Udiv), FC.xyz) * dt;
@@ -235,11 +302,15 @@ void main(){
   vec2 laplacian = (FR.xy + FL.xy + FU.xy + FD.xy) - (FC.xy * 4.0);
   vec2 viscosityForce = laplacian * v;
 
-  // Semi-lagrangian advection
-  vec2 Was = vec2(texel) - ((FC.xy / vec2(precipitationSimulationMapResolution)) * dt);
-  FC.xyw = getInterpolatedValue(Was).xyw;
+  // Semi-lagrangian advection. The step is where the velocity has to become a texel space vector again, and
+  // what is fetched there comes back turned into the frame of this place.
+  vec2 Was = vec2(texel) - ((tangentFrameToTexelSpace(FC.xy) / vec2(precipitationSimulationMapResolution)) * dt);
+  FC.xyw = getInterpolatedValueInFrameOf(Was, position).xyw;
 
-  vec2 externalForces = vec2(water * pushConstants.waterForce);
+  // What drives the whole flow: the wetter it is below, the harder the air is pushed along the prevailing
+  // wind, which runs eastwards around the planet's axis, as it does on any turning planet. In the tangent
+  // frame that is simply the first axis.
+  vec2 externalForces = vec2(water * pushConstants.waterForce, 0.0);
   
   // Update the velocity
   FC.xy += ((viscosityForce - PdX) + externalForces) * dt;
@@ -265,8 +336,9 @@ void main(){
   // Set the new value in the output buffer
   setValue(ivec2(texel), FC);
 
-  // Advection 
-  float advectionValue = getInterpolatedAdvectionValue(vec2(texel) - FC.xy);
+  // Advection. The velocity has to become a texel space vector for the step here as well, otherwise the
+  // clouds would travel in a different direction than the air which carries them.
+  float advectionValue = getInterpolatedAdvectionValue(vec2(texel) - tangentFrameToTexelSpace(FC.xy));
   advectionValue *= exp(-dt * pushConstants.removalCoefficient); // Apply removal coefficient
   advectionValue += water * pushConstants.additionCoefficient * dt; // Add water height contribution
   advectionValue *= atmosphere; // Apply atmosphere factor
