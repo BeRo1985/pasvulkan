@@ -51,7 +51,14 @@ layout(push_constant) uniform PushConstants {
   
   float waterForce; // Force applied to the water height
   float maximumVelocity; // Maximum velocity for the simulation
-  
+
+  float fakeWaterAmount; // Strength of the noise field which stands in for the water height, zero switches it off
+  float fakeWaterScale; // Spatial frequency of that noise field
+
+  float fakeWaterSpeed; // Radians per second at which that noise field turns
+  float fakeWaterTime; // Elapsed time in seconds, which the speed above is multiplied with
+  uint useAtmosphereMap; // Zero lets the simulation run where no atmosphere has been generated yet
+
 } pushConstants;
 
 /* clang-format on */
@@ -110,7 +117,45 @@ float getWaterHeight(const vec3 position){
 
 }
 
-vec4 getValue(ivec2 texel){  
+// Without a water simulation nothing feeds the clouds: the addition term below is the only place where
+// anything is born at all, and it is fed by the evaporating water surface. This noise field takes that place
+// then. It only says where clouds are born, the forming and dissolving is still done by the fluid itself,
+// which is why a handful of octaves once per texel are enough here, instead of a whole weather map rebuilt
+// from scratch. It turns slowly, so that the fluid never settles into a steady state.
+
+float fakeWaterHash(const in vec3 p){
+  vec3 p3 = fract(p * 0.1031);
+  p3 += dot(p3, p3.zyx + vec3(31.32));
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float fakeWaterNoise(const in vec3 p){
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f *= f * (3.0 - (2.0 * f));
+  vec2 e = vec2(0.0, 1.0);
+  return mix(mix(mix(fakeWaterHash(i + e.xxx), fakeWaterHash(i + e.yxx), f.x),
+                 mix(fakeWaterHash(i + e.xyx), fakeWaterHash(i + e.yyx), f.x), f.y),
+             mix(mix(fakeWaterHash(i + e.xxy), fakeWaterHash(i + e.yxy), f.x),
+                 mix(fakeWaterHash(i + e.xyy), fakeWaterHash(i + e.yyy), f.x), f.y), f.z);
+}
+
+float getFakeWaterHeight(const in vec3 position){
+  float angle = pushConstants.fakeWaterTime * pushConstants.fakeWaterSpeed;
+  vec2 sinCos = sin(vec2(angle) + vec2(0.0, 1.57079632679));
+  vec3 axis = vec3(0.42426406871192851, 0.56568542494923802, 0.70710678118654752); // normalized (3, 4, 5)
+  vec3 p = fma(cross(axis, position), vec3(sinCos.x), mix(dot(position, axis) * axis, position, sinCos.y)) * pushConstants.fakeWaterScale;
+  float value = (fakeWaterNoise(p) * 0.5) +
+                (fakeWaterNoise(p * 2.0) * 0.25) +
+                (fakeWaterNoise(p * 4.0) * 0.15) +
+                (fakeWaterNoise(p * 8.0) * 0.1);
+  // The water height this stands in for is a sharp mask, lakes and seas and nothing in between, so the smooth
+  // noise is cut into clearly bounded regions as well. Without that the whole planet would be one weak source
+  // and the clouds would come out as an even soup instead of separate cloud fields.
+  return smoothstep(0.35, 0.75, value);
+}
+
+vec4 getValue(ivec2 texel){
   texel = wrapOctahedralTexelCoordinates(texel, ivec2(precipitationSimulationMapSize));
   return precipitationSimulationMapInput.values[uint((texel.y * precipitationSimulationMapResolution) + texel.x)];
 }
@@ -154,9 +199,13 @@ void main(){
 
   vec3 position = octPlanetUnsignedDecode(vec2(texel) / vec2(pushConstants.precipitationSimulationMapResolution));
 
-  float atmosphere = clamp(texturePlanetOctahedralMap(uImageAtmosphereMap, position).x, 0.0, 1.0);
-  
+  float atmosphere = (pushConstants.useAtmosphereMap != 0u) ? clamp(texturePlanetOctahedralMap(uImageAtmosphereMap, position).x, 0.0, 1.0) : 1.0;
+
   float water = clamp(pow(getWaterHeight(position) * pushConstants.waterFactor, pushConstants.waterExponent), 0.0, 1.0);
+
+  if(pushConstants.fakeWaterAmount > 0.0){
+    water = max(water, getFakeWaterHeight(position) * pushConstants.fakeWaterAmount);
+  }
   
   float dt = pushConstants.deltaTime;
   float CScale = pushConstants.CScale;

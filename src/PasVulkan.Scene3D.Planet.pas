@@ -820,6 +820,11 @@ type TpvScene3DPlanets=class;
               fNoClouds:TpvFloat; // Value for no clouds
               fDryClouds:TpvFloat; // Value for dry clouds
               fWetClouds:TpvFloat; // Value for wet clouds
+              // A noise field which stands in for the water height while the general simulation is not running,
+              // so that the clouds keep forming and dissolving without water and atmosphere generators
+              fFakeWaterAmount:TpvFloat; // Strength of that field, zero switches it off
+              fFakeWaterScale:TpvFloat; // Spatial frequency of that field
+              fFakeWaterSpeed:TpvFloat; // Degrees per second at which that field turns
               fInterval:TpvDouble;
              public
               constructor Create; reintroduce;
@@ -840,6 +845,9 @@ type TpvScene3DPlanets=class;
               property NoClouds:TpvFloat read fNoClouds write fNoClouds;
               property DryClouds:TpvFloat read fDryClouds write fDryClouds;
               property WetClouds:TpvFloat read fWetClouds write fWetClouds;
+              property FakeWaterAmount:TpvFloat read fFakeWaterAmount write fFakeWaterAmount;
+              property FakeWaterScale:TpvFloat read fFakeWaterScale write fFakeWaterScale;
+              property FakeWaterSpeed:TpvFloat read fFakeWaterSpeed write fFakeWaterSpeed;
               property Interval:TpvDouble read fInterval write fInterval;
             end;
             { TSerializedData }
@@ -1476,8 +1484,15 @@ type TpvScene3DPlanets=class;
                     WaterExponent:TpvFloat; // Exponent for the water height contribution
                     
                     WaterForce:TpvFloat; // Force applied to the water height
-                    MaximumVelocity:TpvFloat; // Maximum velocity for the simulation                    
-              
+                    MaximumVelocity:TpvFloat; // Maximum velocity for the simulation
+
+                    FakeWaterAmount:TpvFloat; // Strength of the noise field which stands in for the water height, zero switches it off
+                    FakeWaterScale:TpvFloat; // Spatial frequency of that noise field
+
+                    FakeWaterSpeed:TpvFloat; // Radians per second at which that noise field turns
+                    FakeWaterTime:TpvFloat; // Elapsed time in seconds, which the speed above is multiplied with
+                    UseAtmosphereMap:TpvUInt32; // Zero lets the simulation run where no atmosphere has been generated yet
+
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1491,6 +1506,7 @@ type TpvScene3DPlanets=class;
               fDescriptorSets:array[0..1,0..1] of TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
+              fFakeWaterTime:TpvDouble;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -9821,6 +9837,9 @@ begin
  fNoClouds:=0.0; // Value for no clouds
  fDryClouds:=0.5; // Value for dry clouds
  fWetClouds:=1.0; // Value for wet clouds
+ fFakeWaterAmount:=1.0; // Strength of the noise field which stands in for the water height
+ fFakeWaterScale:=2.5; // About fifteen of its cells around the planet, which matches the scale of the cloud fields
+ fFakeWaterSpeed:=0.1; // Degrees per second, slow enough that the fluid, not the field, does the visible work
  fInterval:=0.0;
 end;
 
@@ -9864,6 +9883,12 @@ begin
   fDryClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['dryclouds'],fDryClouds); // Value for dry clouds
 
   fWetClouds:=TPasJSON.GetNumber(JSONRootObject.Properties['wetclouds'],fWetClouds); // Value for wet clouds
+
+  fFakeWaterAmount:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewateramount'],fFakeWaterAmount); // Strength of the noise field which stands in for the water height while the general simulation is not running
+
+  fFakeWaterScale:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterscale'],fFakeWaterScale); // Spatial frequency of that field
+
+  fFakeWaterSpeed:=TPasJSON.GetNumber(JSONRootObject.Properties['fakewaterspeed'],fFakeWaterSpeed); // Degrees per second at which that field turns
 
   JSONItem:=JSONRootObject.Properties['interval'];
   if assigned(JSONItem) then begin
@@ -17386,6 +17411,23 @@ begin
  fPushConstants.WaterExponent:=fPlanet.fPrecipitationSimulationSettings.fWaterExponent; // Exponent for the water height contribution
  fPushConstants.WaterForce:=fPlanet.fPrecipitationSimulationSettings.fWaterForce; // Force applied to the water height
  fPushConstants.MaximumVelocity:=fPlanet.fPrecipitationSimulationSettings.fMaximumVelocity; // Maximum velocity for the simulation
+
+ fFakeWaterTime:=fFakeWaterTime+aDeltaTime;
+
+ // Without the general simulation there is neither water which could evaporate nor an atmosphere from the
+ // generators, so the simulation would have nothing to work with and would decay to nothing. The noise field
+ // takes the place of the water surface then and the atmosphere gate is left open, which lets the clouds form
+ // and dissolve without any of it. With the general simulation running, everything stays as it was.
+ if fPlanet.fSimulationActive then begin
+  fPushConstants.FakeWaterAmount:=0.0;
+  fPushConstants.UseAtmosphereMap:=1;
+ end else begin
+  fPushConstants.FakeWaterAmount:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterAmount;
+  fPushConstants.UseAtmosphereMap:=0;
+ end;
+ fPushConstants.FakeWaterScale:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterScale;
+ fPushConstants.FakeWaterSpeed:=fPlanet.fPrecipitationSimulationSettings.fFakeWaterSpeed*(PI/180.0); // Degrees per second in the settings, radians per second here
+ fPushConstants.FakeWaterTime:=fFakeWaterTime;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet PrecipitationMapSimulation',[0.5,0.5,0.5,1.0]);
 
