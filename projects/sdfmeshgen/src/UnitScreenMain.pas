@@ -537,8 +537,8 @@ procedure TScreenMain.TUpdateThread.Execute;
           '                 mat2x4 mp0,'#13#10+
           '                 mat2x4 mp1,'#13#10+
           '                 mat2x4 mp2){'#13#10+
-          '  if(volumeTrianglesMetaData.x < volumeTrianglesMetaData.y){'#13#10+
-          '    uint triangleIndex = atomicAdd(volumeTrianglesMetaData.x, 1);'#13#10+
+          '  uint triangleIndex = atomicAdd(volumeTrianglesMetaData.x, 1);'#13#10+ // The bound must be checked on the index which the increment actually handed out, since a check before the increment is not atomic with it and lets several invocations through at once.
+          '  if(triangleIndex < volumeTrianglesMetaData.y){'#13#10+
           '    vec3 normal = normalize(cross(normalize(p2 - p0),'#13#10+
           '                                  normalize(p1 - p0)));'#13#10+
           '    VolumeTriangle volumeTriangle;'#13#10+
@@ -560,6 +560,8 @@ procedure TScreenMain.TUpdateThread.Execute;
           '    volumeTriangle.vertices[1].parameters1 = mp1[1];'#13#10+
           '    volumeTriangle.vertices[2].parameters1 = mp2[1];'#13#10+
           '    volumeTriangles[triangleIndex] = volumeTriangle;'#13#10+
+          '  }else{'#13#10+
+          '    atomicMin(volumeTrianglesMetaData.x, volumeTrianglesMetaData.y);'#13#10+ // Every invocation which found no room left has raised the counter past the capacity, so it is pulled back here, which keeps the count the host reads a valid one.
           '  }'#13#10+
           '}'#13#10+
 
@@ -1035,6 +1037,11 @@ begin
                                                                   0,
                                                                   SizeOf(TVolumeTrianglesMetaData),
                                                                   TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+                   // The count is the one number here which comes straight from the GPU and which then decides how much is
+                   // read back, so it is held to the capacity of the buffer before it is used as a size.
+                   if fScreenMain.fVolumeTriangles.MetaData.Count>MaxTrianglesPerIteration then begin
+                    fScreenMain.fVolumeTriangles.MetaData.Count:=MaxTrianglesPerIteration;
+                   end;
  //                writeln(fScreenMain.fVolumeTriangles.MetaData.Count);
                    fScreenMain.fVolumeTriangleBuffer.DownloadData(pvApplication.VulkanDevice.TransferQueue,
                                                                   SignedDistanceFieldComputeTransferCommandBuffer,
@@ -1190,35 +1197,43 @@ begin
 
  fVulkanGraphicsPipeline:=nil;
 
+ // A signed distance field with no zero crossing inside the grid is a valid result which simply has no
+ // geometry, so the buffers are given room for one element in that case, since Vulkan has no buffer of
+ // size zero, and it is the upload which is left out. The draw then runs with an index count of zero
+ // and puts nothing on the screen.
  fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                             fMesh.Vertices.Count*SizeOf(TVertex),
+                                             Max(TpvSizeInt(1),fMesh.Vertices.Count)*SizeOf(TVertex),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                              [],
                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                             );
- fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                fVulkanTransferCommandBuffer,
-                                fVulkanTransferCommandBufferFence,
-                                fMesh.Vertices.Items[0],
-                                0,
-                                fMesh.Vertices.Count*SizeOf(TVertex),
-                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+ if fMesh.Vertices.Count>0 then begin
+  fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                 fVulkanTransferCommandBuffer,
+                                 fVulkanTransferCommandBufferFence,
+                                 fMesh.Vertices.Items[0],
+                                 0,
+                                 fMesh.Vertices.Count*SizeOf(TVertex),
+                                 TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+ end;
 
  fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                            fMesh.Indices.Count*SizeOf(TpvUInt32),
+                                            Max(TpvSizeInt(1),fMesh.Indices.Count)*SizeOf(TpvUInt32),
                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                             [],
                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                            );
- fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
-                               fVulkanTransferCommandBuffer,
-                               fVulkanTransferCommandBufferFence,
-                               fMesh.Indices.Items[0],
-                               0,
-                               fMesh.Indices.Count*SizeOf(TpvUInt32),
-                               TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+ if fMesh.Indices.Count>0 then begin
+  fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                fVulkanTransferCommandBuffer,
+                                fVulkanTransferCommandBufferFence,
+                                fMesh.Indices.Items[0],
+                                0,
+                                fMesh.Indices.Count*SizeOf(TpvUInt32),
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+ end;
 
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -2700,6 +2715,10 @@ end;
 
 procedure TScreenMain.AfterCreateSwapChain;
 var Index:TpvInt32;
+    ColorAttachment:TpvUInt32;
+    DepthStencilAttachment:TpvUInt32;
+    ColorAttachmentReference:TpvInt32;
+    DepthStencilAttachmentReference:TpvInt32;
 begin
  inherited AfterCreateSwapChain;
 
@@ -2707,34 +2726,45 @@ begin
 
  fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
 
+ // The order in which the attachments are added is the order of their indices, so they are added in
+ // their own statements here instead of inside the argument list of the subpass description, where
+ // the order would be the order in which the compiler happens to evaluate arguments. The framebuffer
+ // comes from the application and has the color attachment first, so the color one has to be added
+ // first here as well.
+ ColorAttachment:=fVulkanRenderPass.AddAttachmentDescription(0,
+                                                             pvApplication.VulkanSwapChain.ImageFormat,
+                                                             VK_SAMPLE_COUNT_1_BIT,
+                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                             VK_ATTACHMENT_STORE_OP_STORE,
+                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                             VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                            );
+
+ DepthStencilAttachment:=fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                    pvApplication.VulkanDepthImageFormat,
+                                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                                    VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                    VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                    VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                    VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                    VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                   );
+
+ ColorAttachmentReference:=fVulkanRenderPass.AddAttachmentReference(ColorAttachment,
+                                                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+ DepthStencilAttachmentReference:=fVulkanRenderPass.AddAttachmentReference(DepthStencilAttachment,
+                                                                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
  fVulkanRenderPass.AddSubpassDescription(0,
                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
                                          [],
-                                         [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                              pvApplication.VulkanSwapChain.ImageFormat,
-                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
-                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                                                                             ),
-                                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                            )],
+                                         [ColorAttachmentReference],
                                          [],
-                                         fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                             pvApplication.VulkanDepthImageFormat,
-                                                                                                                             VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                                            ),
-                                                                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                 ),
+                                         DepthStencilAttachmentReference,
                                          []);
  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                         0,
@@ -2756,6 +2786,11 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
+
+ // The depth attachment is cleared on load as well, and with the far value, since the meshes are
+ // drawn with an ordinary less-than depth test.
+ fVulkanRenderPass.ClearValues[1].depthStencil.depth:=1.0;
+ fVulkanRenderPass.ClearValues[1].depthStencil.stencil:=0;
 
  fVulkanCanvas.VulkanRenderPass:=fVulkanRenderPass;
  fVulkanCanvas.CountBuffers:=pvApplication.CountInFlightFrames;
