@@ -96,10 +96,16 @@ function JSONToColorSpace(const aColorSpaceJSONItem:TPasJSONItem;const aDefault:
 // Reads a RGB color and hands it back linear, which is what the engine works in throughout. Numbers
 // (a three element array, or an object with x/y/z) are read according to aColorSpace, a string is
 // read as a hexadecimal color and is always 8-bit sRGB regardless of aColorSpace, since that is the
-// one thing a "#rrggbb" can mean. Accepted are "#rgb", "#rrggbb" and "#rrggbbaa" (the alpha pair is
-// read for the sake of the syntax and then dropped, the targets here are all RGB), the leading "#"
-// being optional. Anything unreadable yields aDefault, which is expected to be linear already.
+// one thing a "#rrggbb" can mean. Accepted are "#rgb", "#rgba", "#rrggbb" and "#rrggbbaa", the
+// leading "#" being optional; any alpha given is read for the sake of the syntax and then dropped,
+// the target here being RGB. Anything unreadable yields aDefault, which is expected to be linear.
 function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+
+// The same for a color with an alpha channel. Alpha is coverage, not color, so it never goes through
+// a color space conversion, and it is only changed when one is actually given: a three element array,
+// an object without w/a, and a "#rgb" or "#rrggbb" all keep the alpha of aDefault, while a four
+// element array, a w or a property, and a "#rgba" or "#rrggbbaa" set it.
+function JSONToColorRGBA(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector4;const aColorSpace:TpvJSONColorSpace):TpvVector4;
 
 function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;
 function Vector2ToJSON(const aVector:TpvVector2):TPasJSONItemArray;
@@ -156,7 +162,11 @@ begin
  result:=JSONToColorSpace(aColorSpaceJSONItem,aDefault,Recognized);
 end;
 
-function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+// Reads "#rgb", "#rgba", "#rrggbb" or "#rrggbbaa", the leading "#" being optional, and hands back the
+// color with the RGB part converted from 8-bit sRGB to linear and the alpha left as the coverage it is.
+// aHasAlpha says whether the string actually carried one, so that callers can leave their own alpha
+// alone when it did not.
+function ParseHexColorString(const aText:TpvUTF8String;out aColor:TpvVector4;out aHasAlpha:boolean):boolean;
  function HexDigit(const aCharacter:AnsiChar;out aValue:TpvUInt32):boolean;
  begin
   case aCharacter of
@@ -178,67 +188,154 @@ function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVect
    end;
   end;
  end;
-var Index,Count:TpvSizeInt;
+var Index,Count,CountComponents:TpvSizeInt;
     HighNibble,LowNibble:TpvUInt32;
-    Components:array[0..2] of TpvUInt32;
+    Components:array[0..3] of TpvUInt32;
     Text:TpvUTF8String;
-    OK:boolean;
 begin
- if assigned(aColorJSONItem) and (aColorJSONItem is TPasJSONItemString) then begin
-  Text:=TpvUTF8String(Trim(String(TPasJSON.GetString(aColorJSONItem,''))));
-  if (length(Text)>0) and (Text[1]='#') then begin
-   Delete(Text,1,1);
-  end;
-  Count:=length(Text);
-  OK:=false;
-  Components[0]:=0;
-  Components[1]:=0;
-  Components[2]:=0;
-  if Count=3 then begin
-   OK:=true;
-   for Index:=0 to 2 do begin
+
+ result:=false;
+ aHasAlpha:=false;
+ aColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+
+ Text:=TpvUTF8String(Trim(String(aText)));
+ if (length(Text)>0) and (Text[1]='#') then begin
+  Delete(Text,1,1);
+ end;
+
+ Components[0]:=0;
+ Components[1]:=0;
+ Components[2]:=0;
+ Components[3]:=255;
+
+ Count:=length(Text);
+ case Count of
+  3,4:begin
+   CountComponents:=Count;
+   result:=true;
+   for Index:=0 to CountComponents-1 do begin
     if HexDigit(Text[Index+1],HighNibble) then begin
      Components[Index]:=(HighNibble shl 4) or HighNibble; // "#abc" means "#aabbcc", so each digit is doubled
     end else begin
-     OK:=false;
+     result:=false;
      break;
     end;
    end;
-  end else if (Count=6) or (Count=8) then begin
-   OK:=true;
-   for Index:=0 to 2 do begin
+   aHasAlpha:=result and (Count=4);
+  end;
+  6,8:begin
+   CountComponents:=Count shr 1;
+   result:=true;
+   for Index:=0 to CountComponents-1 do begin
     if HexDigit(Text[(Index shl 1)+1],HighNibble) and HexDigit(Text[(Index shl 1)+2],LowNibble) then begin
      Components[Index]:=(HighNibble shl 4) or LowNibble;
     end else begin
-     OK:=false;
+     result:=false;
      break;
     end;
    end;
-   if OK and (Count=8) and not (HexDigit(Text[7],HighNibble) and HexDigit(Text[8],LowNibble)) then begin
-    OK:=false; // The alpha pair has to be well formed to be droppable
-   end;
+   aHasAlpha:=result and (Count=8);
   end;
-  if OK then begin
-   result:=ConvertSRGBToLinear(TpvVector3.Create(Components[0],Components[1],Components[2])*(1.0/255.0));
+  else begin
+   result:=false;
+  end;
+ end;
+
+ if result then begin
+  aColor.xyz:=ConvertSRGBToLinear(TpvVector3.Create(Components[0],Components[1],Components[2])*(1.0/255.0));
+  aColor.w:=Components[3]/255.0; // Coverage, so no color space conversion
+ end;
+
+end;
+
+// Applies a color space to numbers that were read as a color. Linear passes through, which is what the
+// engine wants anyway.
+function ConvertJSONColor(const aColor:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+begin
+ case aColorSpace of
+  TpvJSONColorSpace.SRGB:begin
+   result:=ConvertSRGBToLinear(aColor);
+  end;
+  TpvJSONColorSpace.SRGB8:begin
+   result:=ConvertSRGBToLinear(aColor*(1.0/255.0));
+  end;
+  else begin
+   result:=aColor;
+  end;
+ end;
+end;
+
+function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+var Color:TpvVector4;
+    HasAlpha:boolean;
+begin
+ if assigned(aColorJSONItem) and (aColorJSONItem is TPasJSONItemString) then begin
+  if ParseHexColorString(TpvUTF8String(TPasJSON.GetString(aColorJSONItem,'')),Color,HasAlpha) then begin
+   result:=Color.xyz; // Any alpha that came along is dropped, the target here is RGB
   end else begin
    result:=aDefault;
   end;
  end else if assigned(aColorJSONItem) and ((aColorJSONItem is TPasJSONItemArray) or (aColorJSONItem is TPasJSONItemObject)) then begin
-  result:=JSONToVector3(aColorJSONItem,aDefault);
-  case aColorSpace of
-   TpvJSONColorSpace.SRGB:begin
-    result:=ConvertSRGBToLinear(result);
-   end;
-   TpvJSONColorSpace.SRGB8:begin
-    result:=ConvertSRGBToLinear(result*(1.0/255.0));
-   end;
-   else begin
-    // Linear, so the numbers are already what the engine wants
-   end;
-  end;
+  result:=ConvertJSONColor(JSONToVector3(aColorJSONItem,aDefault),aColorSpace);
  end else begin
   result:=aDefault;
  end;
+end;
+
+function JSONToColorRGBA(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector4;const aColorSpace:TpvJSONColorSpace):TpvVector4;
+var Index:TpvSizeInt;
+    Color:TpvVector4;
+    RGB:TpvVector3;
+    JSONArray:TPasJSONItemArray;
+    JSONObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;
+    HasAlpha:boolean;
+begin
+
+ result:=aDefault;
+
+ if assigned(aColorJSONItem) then begin
+
+  if aColorJSONItem is TPasJSONItemString then begin
+
+   if ParseHexColorString(TpvUTF8String(TPasJSON.GetString(aColorJSONItem,'')),Color,HasAlpha) then begin
+    result.xyz:=Color.xyz;
+    if HasAlpha then begin
+     result.w:=Color.w;
+    end;
+   end;
+
+  end else if aColorJSONItem is TPasJSONItemArray then begin
+
+   // Three elements leave the alpha alone, four set it. Read here rather than through JSONToVector3,
+   // which insists on exactly three and would otherwise drop a four element color on the floor.
+   JSONArray:=TPasJSONItemArray(aColorJSONItem);
+   if (JSONArray.Count=3) or (JSONArray.Count=4) then begin
+    for Index:=0 to 2 do begin
+     RGB[Index]:=TPasJSON.GetNumber(JSONArray.Items[Index],0.0);
+    end;
+    result.xyz:=ConvertJSONColor(RGB,aColorSpace);
+    if JSONArray.Count=4 then begin
+     result.w:=TPasJSON.GetNumber(JSONArray.Items[3],aDefault.w); // Coverage, so no color space conversion
+    end;
+   end;
+
+  end else if aColorJSONItem is TPasJSONItemObject then begin
+
+   JSONObject:=TPasJSONItemObject(aColorJSONItem);
+   result.xyz:=JSONToColorRGB(aColorJSONItem,aDefault.xyz,aColorSpace);
+   JSONItem:=JSONObject.Properties['w'];
+   if not assigned(JSONItem) then begin
+    JSONItem:=JSONObject.Properties['a'];
+   end;
+   if assigned(JSONItem) then begin
+    result.w:=TPasJSON.GetNumber(JSONItem,aDefault.w);
+   end;
+
+  end;
+
+ end;
+
 end;
 
 function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;

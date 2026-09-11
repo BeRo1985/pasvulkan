@@ -76,8 +76,10 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.JSON,
      PasVulkan.Framework;
 
 type { TpvScene3DGizmo }
@@ -128,22 +130,23 @@ type { TpvScene3DGizmo }
               Move,
               Up
              );
+      public
+       type TColors=record
+             public
+              Selection:TpvVector4; // Highlight of whatever the mouse is over
+              Black:TpvVector4; // Outline behind the rotation circles
+              White:TpvVector4; // Screen space handle at the center
+              Translation:TpvVector4; // Origin markers and the line back to the starting point
+              Rotation:TpvVector4; // Rotation arc and its border
+              RotationHalfAlpha:TpvVector4; // Filled area of the rotation arc
+              Gray:TpvVector4; // Scale axis stems and their end knobs
+              Planes:array[0..2] of TpvVector4; // The three translation plane quads, X / Y / Z
+              Directions:array[0..2] of TpvVector4; // The three axes, X / Y / Z
+              class function CreateDefault:TColors; static;
+            end;
+            PColors=^TColors;
       private
-       const SelectionColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.25);
-             InactiveColor:TpvVector4=(x:0.6;y:0.6;z:0.6;w:0.6);
-             BlackColor:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.25);
-             WhiteColor:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
-             TranslationColor:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
-             //TranslationColor:TpvVector4=(x:0.6666;y:0.6666;z:0.6666;w:0.6666);
-             RotationColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:1.0);
-             RotationHalfAlphaColor:TpvVector4=(x:1.0;y:0.5;z:0.125;w:0.25);
-             GrayColor:TpvVector4=(x:0.25;y:0.25;z:0.25;w:1.0);
-             PlaneColors:array[0..2] of TpvVector4=((x:1.0;y:0.0;z:0.0;w:0.25),
-                                                    (x:0.0;y:1.0;z:0.0;w:0.25),
-                                                    (x:0.0;y:0.0;z:1.0;w:0.25));
-             DirectionColors:array[0..2] of TpvVector4=((x:0.6666;y:0.0;z:0.0;w:1.0),
-                                                        (x:0.0;y:0.6666;z:0.0;w:1.0),
-                                                        (x:0.0;y:0.0;z:0.6666;w:1.0));
+       const InactiveColor:TpvVector4=(x:0.6;y:0.6;z:0.6;w:0.6); // No users, kept as it was found
              DirectionUnary:array[0..2] of TpvVector3=((x:1.0;y:0.0;z:0.0),
                                                        (x:0.0;y:1.0;z:0.0),
                                                        (x:0.0;y:0.0;z:1.0));
@@ -213,6 +216,7 @@ type { TpvScene3DGizmo }
        fSnapScale:TpvScalar;
        fSnapRotate:TpvScalar;
        fUniformScale:boolean;
+       fColors:TColors;
       public
        constructor Create(const aScene3D,aRendererInstance:TObject); reintroduce;
        destructor Destroy; override;
@@ -240,6 +244,9 @@ type { TpvScene3DGizmo }
                             const aMouseAction:TMouseAction;
                             const aDeltaMatrix:PpvMatrix4x4=nil;
                             const aNewMatrix:PpvMatrix4x4=nil):boolean;
+       procedure LoadColorSettings(const aJSONItem:TPasJSONItem);
+       procedure LoadColorSettingsFromStream(const aStream:TStream);
+       procedure LoadColorSettingsFromFile(const aFileName:TpvUTF8String);
       public
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
        property Matrix:TpvMatrix4x4 read fMatrix write fMatrix;
@@ -248,6 +255,7 @@ type { TpvScene3DGizmo }
        property ViewPort:TpvVector4 read fViewPort write fViewPort;
        property GizmoSizeClipSpace:TpvScalar read fGizmoSizeClipSpace write fGizmoSizeClipSpace;
        property AspectRatio:TpvScalar read fAspectRatio write fAspectRatio;
+       property Colors:TColors read fColors write fColors;
       published
        property Scene3D:TObject read fScene3D;
        property RendererInstance:TObject read fRendererInstance;
@@ -264,11 +272,32 @@ type { TpvScene3DGizmo }
 
 implementation
 
-uses PasVulkan.Scene3D,
+uses PasVulkan.Application,
+     PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
 const Epsilon=1.192092896e-07;
+
+{ TpvScene3DGizmo.TColors }
+
+class function TpvScene3DGizmo.TColors.CreateDefault:TpvScene3DGizmo.TColors;
+begin
+ // The colors the gizmo was drawn in before they became configurable
+ result.Selection:=TpvVector4.Create(1.0,0.5,0.125,0.25);
+ result.Black:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+ result.White:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ result.Translation:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ result.Rotation:=TpvVector4.Create(1.0,0.5,0.125,1.0);
+ result.RotationHalfAlpha:=TpvVector4.Create(1.0,0.5,0.125,0.25);
+ result.Gray:=TpvVector4.Create(0.25,0.25,0.25,1.0);
+ result.Planes[0]:=TpvVector4.Create(1.0,0.0,0.0,0.25);
+ result.Planes[1]:=TpvVector4.Create(0.0,1.0,0.0,0.25);
+ result.Planes[2]:=TpvVector4.Create(0.0,0.0,1.0,0.25);
+ result.Directions[0]:=TpvVector4.Create(0.6666,0.0,0.0,1.0);
+ result.Directions[1]:=TpvVector4.Create(0.0,0.6666,0.0,1.0);
+ result.Directions[2]:=TpvVector4.Create(0.0,0.0,0.6666,1.0);
+end;
 
 { TpvScene3DGizmo }
 
@@ -290,6 +319,7 @@ begin
  fSnapScale:=0.0;
  fSnapRotate:=0.0;
  fUniformScale:=false;
+ fColors:=TColors.CreateDefault;
  fScene3D:=aScene3D;
 end;
 
@@ -717,83 +747,83 @@ var Colors:array[0..7] of TpvVector4;
   case Operation of
    TOperation.Rotate:begin
     if fAction=TAction.RotateScreen then begin
-     Colors[0]:=SelectionColor;
+     Colors[0]:=fColors.Selection;
     end else begin
-     Colors[0]:=WhiteColor;
+     Colors[0]:=fColors.White;
     end;
     if fAction=TAction.RotateX then begin
-     Colors[1]:=SelectionColor;
+     Colors[1]:=fColors.Selection;
     end else begin
-     Colors[1]:=DirectionColors[0];
+     Colors[1]:=fColors.Directions[0];
     end;
     if fAction=TAction.RotateY then begin
-     Colors[2]:=SelectionColor;
+     Colors[2]:=fColors.Selection;
     end else begin
-     Colors[2]:=DirectionColors[1];
+     Colors[2]:=fColors.Directions[1];
     end;
     if fAction=TAction.RotateZ then begin
-     Colors[3]:=SelectionColor;
+     Colors[3]:=fColors.Selection;
     end else begin
-     Colors[3]:=DirectionColors[2];
+     Colors[3]:=fColors.Directions[2];
     end;
    end;
    TOperation.Translate:begin
     if fAction=TAction.MoveScreen then begin
-     Colors[0]:=SelectionColor;
+     Colors[0]:=fColors.Selection;
     end else begin
-     Colors[0]:=WhiteColor;
+     Colors[0]:=fColors.White;
     end;
     if fAction=TAction.MoveX then begin
-     Colors[1]:=SelectionColor;
+     Colors[1]:=fColors.Selection;
     end else begin
-     Colors[1]:=DirectionColors[0];
+     Colors[1]:=fColors.Directions[0];
     end;
     if fAction=TAction.MoveY then begin
-     Colors[2]:=SelectionColor;
+     Colors[2]:=fColors.Selection;
     end else begin
-     Colors[2]:=DirectionColors[1];
+     Colors[2]:=fColors.Directions[1];
     end;
     if fAction=TAction.MoveZ then begin
-     Colors[3]:=SelectionColor;
+     Colors[3]:=fColors.Selection;
     end else begin
-     Colors[3]:=DirectionColors[2];
+     Colors[3]:=fColors.Directions[2];
     end;
     if fAction=TAction.MoveYZ then begin
-     Colors[4]:=SelectionColor;
+     Colors[4]:=fColors.Selection;
     end else begin
-     Colors[4]:=PlaneColors[0];
+     Colors[4]:=fColors.Planes[0];
     end;
     if fAction=TAction.MoveZX then begin
-     Colors[5]:=SelectionColor;
+     Colors[5]:=fColors.Selection;
     end else begin
-     Colors[5]:=PlaneColors[1];
+     Colors[5]:=fColors.Planes[1];
     end;
     if fAction=TAction.MoveXY then begin
-     Colors[6]:=SelectionColor;
+     Colors[6]:=fColors.Selection;
     end else begin
-     Colors[6]:=PlaneColors[2];
+     Colors[6]:=fColors.Planes[2];
     end;
    end;
    TOperation.Scale:begin
     if fAction=TAction.ScaleXYZ then begin
-     Colors[0]:=SelectionColor;
+     Colors[0]:=fColors.Selection;
     end else begin
-     Colors[0]:=WhiteColor;
+     Colors[0]:=fColors.White;
     end;
     if fAction=TAction.ScaleX then begin
-     Colors[1]:=SelectionColor;
+     Colors[1]:=fColors.Selection;
     end else begin
-     Colors[1]:=DirectionColors[0];
+     Colors[1]:=fColors.Directions[0];
     end;
     if fAction=TAction.ScaleY then begin
-     Colors[2]:=SelectionColor;
+     Colors[2]:=fColors.Selection;
     end else begin
-     Colors[2]:=DirectionColors[1];
+     Colors[2]:=fColors.Directions[1];
     end;
     if fAction=TAction.ScaleZ then begin
-     Colors[3]:=SelectionColor;
+     Colors[3]:=fColors.Selection;
     end else begin
-     Colors[3]:=DirectionColors[2];
+     Colors[3]:=fColors.Directions[2];
     end;
    end;
    TOperation.Bounds:begin
@@ -829,7 +859,7 @@ var Colors:array[0..7] of TpvVector4;
     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                  fModelMatrix.MulHomogen(aAxis*0.05*(Index*2)*fScreenFactor),
                                                                  fModelMatrix.MulHomogen(aAxis*0.05*((Index*2)+1)*fScreenFactor),
-                                                                 BlackColor,
+                                                                 fColors.Black,
                                                                  6.0,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
@@ -905,7 +935,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                       CirclePos3D[0],
                                                                       CirclePos3D[Index+1],
                                                                       CirclePos3D[((Index+1) mod HalfCircleSegmentCount)+1],
-                                                                      RotationHalfAlphaColor,
+                                                                      fColors.RotationHalfAlpha,
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null);
@@ -913,7 +943,7 @@ var Colors:array[0..7] of TpvVector4;
     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                  CirclePos3D[0],
                                                                  CirclePos3D[1],
-                                                                 RotationColor,
+                                                                 fColors.Rotation,
                                                                  2.0,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
@@ -921,7 +951,7 @@ var Colors:array[0..7] of TpvVector4;
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                   CirclePos3D[Index+1],
                                                                   CirclePos3D[((Index+1) mod HalfCircleSegmentCount)+1],
-                                                                  RotationColor,
+                                                                  fColors.Rotation,
                                                                   2.0,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
@@ -929,7 +959,7 @@ var Colors:array[0..7] of TpvVector4;
     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                  CirclePos3D[HalfCircleSegmentCount],
                                                                  CirclePos3D[0],
-                                                                 RotationColor,
+                                                                 fColors.Rotation,
                                                                  2.0,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
@@ -1015,12 +1045,12 @@ var Colors:array[0..7] of TpvVector4;
     SourcePosOnScreen:=WorldToPosition(fMatrixOrigin,fViewProjectionMatrix);
     DestinationPosOnScreen:=WorldToPosition(fModelMatrix.Translation.xyz,fViewProjectionMatrix);
     Difference:=(DestinationPosOnScreen-SourcePosOnScreen).Normalize*5.0;
-    DrawCircle(fMatrixOrigin,6.0,TranslationColor,32,1.0);
-    DrawCircle(fModelMatrix.Translation.xyz,6.0,TranslationColor,32,1.0);
+    DrawCircle(fMatrixOrigin,6.0,fColors.Translation,32,1.0);
+    DrawCircle(fModelMatrix.Translation.xyz,6.0,fColors.Translation,32,1.0);
     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                  fMatrixOrigin,
                                                                  fModelMatrix.Translation.xyz,
-                                                                 TranslationColor,
+                                                                 fColors.Translation,
                                                                  2.0,
                                                                  Difference/fViewPort.zw,
                                                                  -Difference/fViewPort.zw);
@@ -1054,11 +1084,11 @@ var Colors:array[0..7] of TpvVector4;
       TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                    fModelMatrix.MulHomogen(DirAxis*0.1*fScreenFactor),
                                                                    fModelMatrix.MulHomogen(DirAxis*fScreenFactor),
-                                                                   GrayColor,
+                                                                   fColors.Gray,
                                                                    3.0,
                                                                    TpvVector2.Null,
                                                                    TpvVector2.Null);
-      DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*fScreenFactor),6.0,GrayColor,32);
+      DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*fScreenFactor),6.0,fColors.Gray,32);
      end;
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                   fModelMatrix.MulHomogen(DirAxis*0.1*fScreenFactor),
@@ -1495,6 +1525,96 @@ begin
  end else begin
   fAction:=TAction.None;
   result:=false;
+ end;
+end;
+
+procedure TpvScene3DGizmo.LoadColorSettings(const aJSONItem:TPasJSONItem);
+var JSONRootObject,JSONGizmoObject,JSONColorsObject:TPasJSONItemObject;
+    JSONItem:TPasJSONItem;
+    ColorSpace:TpvJSONColorSpace;
+    ColorSpaceRecognized:boolean;
+ // The three axis colors, either as one object with x/y/z or r/g/b keys, or as a three element array
+ // of colors. Whatever is missing keeps the color it had.
+ procedure LoadAxisColors(const aJSONItem:TPasJSONItem;var aColors:array of TpvVector4);
+ const AxisNames:array[0..2] of TpvUTF8String=('x','y','z');
+       AxisAlternativeNames:array[0..2] of TpvUTF8String=('r','g','b');
+ var AxisIndex:TpvSizeInt;
+     JSONAxisItem:TPasJSONItem;
+     JSONAxisObject:TPasJSONItemObject;
+     JSONAxisArray:TPasJSONItemArray;
+ begin
+  if assigned(aJSONItem) then begin
+   if aJSONItem is TPasJSONItemObject then begin
+    JSONAxisObject:=TPasJSONItemObject(aJSONItem);
+    for AxisIndex:=0 to 2 do begin
+     JSONAxisItem:=JSONAxisObject.Properties[AxisNames[AxisIndex]];
+     if not assigned(JSONAxisItem) then begin
+      JSONAxisItem:=JSONAxisObject.Properties[AxisAlternativeNames[AxisIndex]];
+     end;
+     aColors[AxisIndex]:=JSONToColorRGBA(JSONAxisItem,aColors[AxisIndex],ColorSpace);
+    end;
+   end else if aJSONItem is TPasJSONItemArray then begin
+    JSONAxisArray:=TPasJSONItemArray(aJSONItem);
+    if JSONAxisArray.Count=3 then begin
+     for AxisIndex:=0 to 2 do begin
+      aColors[AxisIndex]:=JSONToColorRGBA(JSONAxisArray.Items[AxisIndex],aColors[AxisIndex],ColorSpace);
+     end;
+    end;
+   end;
+  end;
+ end;
+begin
+ if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
+  JSONRootObject:=TPasJSONItemObject(aJSONItem);
+  JSONItem:=JSONRootObject.Properties['gizmo'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONGizmoObject:=TPasJSONItemObject(JSONItem);
+  end else begin
+   JSONGizmoObject:=JSONRootObject;
+  end;
+  // The color space governs the numeric color values only; alpha is coverage and never converted, and
+  // a hexadecimal color string brings its own along and overrides it.
+  ColorSpace:=JSONToColorSpace(JSONGizmoObject.Properties['colorspace'],TpvJSONColorSpace.Linear,ColorSpaceRecognized);
+  if not ColorSpaceRecognized then begin
+   pvApplication.Log(LOG_ERROR,'TpvScene3DGizmo','Unknown gizmo color space "'+String(TPasJSON.GetString(JSONGizmoObject.Properties['colorspace'],''))+'", falling back to linear');
+  end;
+  JSONItem:=JSONGizmoObject.Properties['colors'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONColorsObject:=TPasJSONItemObject(JSONItem);
+  end else begin
+   JSONColorsObject:=JSONGizmoObject;
+  end;
+  fColors.Selection:=JSONToColorRGBA(JSONColorsObject.Properties['selection'],fColors.Selection,ColorSpace);
+  fColors.Black:=JSONToColorRGBA(JSONColorsObject.Properties['black'],fColors.Black,ColorSpace);
+  fColors.White:=JSONToColorRGBA(JSONColorsObject.Properties['white'],fColors.White,ColorSpace);
+  fColors.Translation:=JSONToColorRGBA(JSONColorsObject.Properties['translation'],fColors.Translation,ColorSpace);
+  fColors.Rotation:=JSONToColorRGBA(JSONColorsObject.Properties['rotation'],fColors.Rotation,ColorSpace);
+  fColors.RotationHalfAlpha:=JSONToColorRGBA(JSONColorsObject.Properties['rotationhalfalpha'],fColors.RotationHalfAlpha,ColorSpace);
+  fColors.Gray:=JSONToColorRGBA(JSONColorsObject.Properties['gray'],fColors.Gray,ColorSpace);
+  LoadAxisColors(JSONColorsObject.Properties['planes'],fColors.Planes);
+  LoadAxisColors(JSONColorsObject.Properties['directions'],fColors.Directions);
+ end;
+end;
+
+procedure TpvScene3DGizmo.LoadColorSettingsFromStream(const aStream:TStream);
+var JSON:TPasJSONItem;
+begin
+ JSON:=TPasJSON.Parse(aStream);
+ try
+  LoadColorSettings(JSON);
+ finally
+  FreeAndNil(JSON);
+ end;
+end;
+
+procedure TpvScene3DGizmo.LoadColorSettingsFromFile(const aFileName:TpvUTF8String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(String(aFileName),fmOpenRead or fmShareDenyWrite);
+ try
+  LoadColorSettingsFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
  end;
 end;
 
