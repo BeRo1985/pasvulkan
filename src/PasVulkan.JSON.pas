@@ -76,6 +76,31 @@ type TpvJSONUtils=class
       class procedure ResolveInheritances(const aJSONItem:TPasJSONItem); static;
      end;
 
+// How the numeric forms of a color value are to be read. The engine stores and expects linear color
+// everywhere, so Linear is the neutral case in which the numbers pass through unchanged, while SRGB
+// (0.0 .. 1.0) and SRGB8 (0 .. 255) are the two forms a color picker hands out and get converted on
+// the way in. Hex string values carry their color space themselves and ignore this.
+type TpvJSONColorSpace=
+      (
+       Linear,
+       SRGB,
+       SRGB8
+      );
+
+// The overload with aRecognized reports whether a color space key that is actually there could be
+// made sense of, so that a caller with a log at hand can say so instead of silently falling back. A
+// missing key is not a mistake and counts as recognized.
+function JSONToColorSpace(const aColorSpaceJSONItem:TPasJSONItem;const aDefault:TpvJSONColorSpace;out aRecognized:boolean):TpvJSONColorSpace; overload;
+function JSONToColorSpace(const aColorSpaceJSONItem:TPasJSONItem;const aDefault:TpvJSONColorSpace):TpvJSONColorSpace; overload;
+
+// Reads a RGB color and hands it back linear, which is what the engine works in throughout. Numbers
+// (a three element array, or an object with x/y/z) are read according to aColorSpace, a string is
+// read as a hexadecimal color and is always 8-bit sRGB regardless of aColorSpace, since that is the
+// one thing a "#rrggbb" can mean. Accepted are "#rgb", "#rrggbb" and "#rrggbbaa" (the alpha pair is
+// read for the sake of the syntax and then dropped, the targets here are all RGB), the leading "#"
+// being optional. Anything unreadable yields aDefault, which is expected to be linear already.
+function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+
 function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;
 function Vector2ToJSON(const aVector:TpvVector2):TPasJSONItemArray;
 
@@ -101,6 +126,120 @@ function JSONToMatrix4x4D(const aMatrixJSONItem:TPasJSONItem;const aDefault:TpvM
 function Matrix4x4DToJSON(const aMatrix:TpvMatrix4x4D):TPasJSONItemArray;
 
 implementation
+
+function JSONToColorSpace(const aColorSpaceJSONItem:TPasJSONItem;const aDefault:TpvJSONColorSpace;out aRecognized:boolean):TpvJSONColorSpace;
+var Name:TpvUTF8String;
+begin
+ aRecognized:=true;
+ result:=aDefault;
+ if assigned(aColorSpaceJSONItem) then begin
+  if aColorSpaceJSONItem is TPasJSONItemString then begin
+   Name:=TpvUTF8String(LowerCase(Trim(String(TPasJSON.GetString(aColorSpaceJSONItem,'')))));
+   if Name='linear' then begin
+    result:=TpvJSONColorSpace.Linear;
+   end else if Name='srgb' then begin
+    result:=TpvJSONColorSpace.SRGB;
+   end else if (Name='srgb8') or (Name='srgb255') then begin
+    result:=TpvJSONColorSpace.SRGB8;
+   end else begin
+    aRecognized:=false;
+   end;
+  end else begin
+   aRecognized:=false;
+  end;
+ end;
+end;
+
+function JSONToColorSpace(const aColorSpaceJSONItem:TPasJSONItem;const aDefault:TpvJSONColorSpace):TpvJSONColorSpace;
+var Recognized:boolean;
+begin
+ result:=JSONToColorSpace(aColorSpaceJSONItem,aDefault,Recognized);
+end;
+
+function JSONToColorRGB(const aColorJSONItem:TPasJSONItem;const aDefault:TpvVector3;const aColorSpace:TpvJSONColorSpace):TpvVector3;
+ function HexDigit(const aCharacter:AnsiChar;out aValue:TpvUInt32):boolean;
+ begin
+  case aCharacter of
+   '0'..'9':begin
+    aValue:=TpvUInt32(TpvUInt8(aCharacter))-TpvUInt32(TpvUInt8(AnsiChar('0')));
+    result:=true;
+   end;
+   'a'..'f':begin
+    aValue:=(TpvUInt32(TpvUInt8(aCharacter))-TpvUInt32(TpvUInt8(AnsiChar('a'))))+10;
+    result:=true;
+   end;
+   'A'..'F':begin
+    aValue:=(TpvUInt32(TpvUInt8(aCharacter))-TpvUInt32(TpvUInt8(AnsiChar('A'))))+10;
+    result:=true;
+   end;
+   else begin
+    aValue:=0;
+    result:=false;
+   end;
+  end;
+ end;
+var Index,Count:TpvSizeInt;
+    HighNibble,LowNibble:TpvUInt32;
+    Components:array[0..2] of TpvUInt32;
+    Text:TpvUTF8String;
+    OK:boolean;
+begin
+ if assigned(aColorJSONItem) and (aColorJSONItem is TPasJSONItemString) then begin
+  Text:=TpvUTF8String(Trim(String(TPasJSON.GetString(aColorJSONItem,''))));
+  if (length(Text)>0) and (Text[1]='#') then begin
+   Delete(Text,1,1);
+  end;
+  Count:=length(Text);
+  OK:=false;
+  Components[0]:=0;
+  Components[1]:=0;
+  Components[2]:=0;
+  if Count=3 then begin
+   OK:=true;
+   for Index:=0 to 2 do begin
+    if HexDigit(Text[Index+1],HighNibble) then begin
+     Components[Index]:=(HighNibble shl 4) or HighNibble; // "#abc" means "#aabbcc", so each digit is doubled
+    end else begin
+     OK:=false;
+     break;
+    end;
+   end;
+  end else if (Count=6) or (Count=8) then begin
+   OK:=true;
+   for Index:=0 to 2 do begin
+    if HexDigit(Text[(Index shl 1)+1],HighNibble) and HexDigit(Text[(Index shl 1)+2],LowNibble) then begin
+     Components[Index]:=(HighNibble shl 4) or LowNibble;
+    end else begin
+     OK:=false;
+     break;
+    end;
+   end;
+   if OK and (Count=8) and not (HexDigit(Text[7],HighNibble) and HexDigit(Text[8],LowNibble)) then begin
+    OK:=false; // The alpha pair has to be well formed to be droppable
+   end;
+  end;
+  if OK then begin
+   result:=ConvertSRGBToLinear(TpvVector3.Create(Components[0],Components[1],Components[2])*(1.0/255.0));
+  end else begin
+   result:=aDefault;
+  end;
+ end else if assigned(aColorJSONItem) and ((aColorJSONItem is TPasJSONItemArray) or (aColorJSONItem is TPasJSONItemObject)) then begin
+  result:=JSONToVector3(aColorJSONItem,aDefault);
+  case aColorSpace of
+   TpvJSONColorSpace.SRGB:begin
+    result:=ConvertSRGBToLinear(result);
+   end;
+   TpvJSONColorSpace.SRGB8:begin
+    result:=ConvertSRGBToLinear(result*(1.0/255.0));
+   end;
+   else begin
+    // Linear, so the numbers are already what the engine wants
+   end;
+  end;
+ end else begin
+  result:=aDefault;
+ end;
+end;
 
 function JSONToVector2(const aVectorJSONItem:TPasJSONItem;const aDefault:TpvVector2):TpvVector2;
 begin

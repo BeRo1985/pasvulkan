@@ -220,6 +220,15 @@ type TpvScene3DPlanets=class;
              WaterRainSplashParams2:TpvHalfFloatVector4; // x=normalStrength, y=depthThresholdLow, z=depthThresholdHigh, w=unused
              WaterRainSplashParams3:TpvHalfFloatVector4; // padding (fills second uvec4 of waterRainSplashParams2)
 
+             GrassColorParams0:TpvHalfFloatVector4; // xyz = grass base color (linear), w = fake self shadowing floor at the blade base
+             GrassColorParams1:TpvHalfFloatVector4; // x = roughness, y = occlusion, z = blade roundness fake angle in degrees, w = blade leaning factor
+
+             GrassStateParams0:TpvHalfFloatVector4; // xyz = BURNED tint (linear), w = BURNED tint strength
+             GrassStateParams1:TpvHalfFloatVector4; // xyz = FROZEN tint (linear), w = FROZEN tint strength
+
+             GrassBladeParams0:TpvHalfFloatVector4; // x = wind strength, y = wind speed, z = blade height random minimum, w = MOWED blade height factor
+             GrassBladeParams1:TpvHalfFloatVector4; // padding (fills uvec4 grassBladeParams)
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -3605,6 +3614,23 @@ type TpvScene3DPlanets=class;
        fGrassDecayRate:TpvFloat;
        fGrassWaterThreshold:TpvFloat;
        fGrassSandboxGrowthDuration:TpvFloat;
+       fGrassHeight:TpvFloat;
+       fGrassThickness:TpvFloat;
+       fGrassBladesPerPatch:TpvUInt32;
+       fGrassBaseColor:TpvVector3; // Linear, the JSON side does the color space conversion
+       fGrassSelfShadowFloor:TpvFloat;
+       fGrassRoughness:TpvFloat;
+       fGrassOcclusion:TpvFloat;
+       fGrassBladeRoundAngle:TpvFloat; // Degrees
+       fGrassLeaning:TpvFloat;
+       fGrassBurnedTint:TpvVector3; // Linear
+       fGrassBurnedStrength:TpvFloat;
+       fGrassFrozenTint:TpvVector3; // Linear
+       fGrassFrozenStrength:TpvFloat;
+       fGrassWindStrength:TpvFloat;
+       fGrassWindSpeed:TpvFloat;
+       fGrassHeightRandomMinimum:TpvFloat;
+       fGrassMowedHeightFactor:TpvFloat;
        fPrecipitationMapModificationItems:TPrecipitationMapModificationItems;
        fAtmosphereMapModificationItems:TAtmosphereMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
@@ -3867,6 +3893,9 @@ type TpvScene3DPlanets=class;
       public
        property WaterCausticTintColor:TpvVector3 read fWaterCausticTintColor write fWaterCausticTintColor;
        property WaterWhitecapColor:TpvVector3 read fWaterWhitecapColor write fWaterWhitecapColor;
+       property GrassBaseColor:TpvVector3 read fGrassBaseColor write fGrassBaseColor;
+       property GrassBurnedTint:TpvVector3 read fGrassBurnedTint write fGrassBurnedTint;
+       property GrassFrozenTint:TpvVector3 read fGrassFrozenTint write fGrassFrozenTint;
       published
        property WaterWhitecapPatternScale:TpvFloat read fWaterWhitecapPatternScale write fWaterWhitecapPatternScale;
        property WaterWhitecapSlopeThreshLow:TpvFloat read fWaterWhitecapSlopeThreshLow write fWaterWhitecapSlopeThreshLow;
@@ -3890,6 +3919,20 @@ type TpvScene3DPlanets=class;
        property GrassDecayRate:TpvFloat read fGrassDecayRate write fGrassDecayRate;
        property GrassWaterThreshold:TpvFloat read fGrassWaterThreshold write fGrassWaterThreshold;
        property GrassSandboxGrowthDuration:TpvFloat read fGrassSandboxGrowthDuration write fGrassSandboxGrowthDuration;
+       property GrassHeight:TpvFloat read fGrassHeight write fGrassHeight;
+       property GrassThickness:TpvFloat read fGrassThickness write fGrassThickness;
+       property GrassBladesPerPatch:TpvUInt32 read fGrassBladesPerPatch write fGrassBladesPerPatch;
+       property GrassSelfShadowFloor:TpvFloat read fGrassSelfShadowFloor write fGrassSelfShadowFloor;
+       property GrassRoughness:TpvFloat read fGrassRoughness write fGrassRoughness;
+       property GrassOcclusion:TpvFloat read fGrassOcclusion write fGrassOcclusion;
+       property GrassBladeRoundAngle:TpvFloat read fGrassBladeRoundAngle write fGrassBladeRoundAngle;
+       property GrassLeaning:TpvFloat read fGrassLeaning write fGrassLeaning;
+       property GrassBurnedStrength:TpvFloat read fGrassBurnedStrength write fGrassBurnedStrength;
+       property GrassFrozenStrength:TpvFloat read fGrassFrozenStrength write fGrassFrozenStrength;
+       property GrassWindStrength:TpvFloat read fGrassWindStrength write fGrassWindStrength;
+       property GrassWindSpeed:TpvFloat read fGrassWindSpeed write fGrassWindSpeed;
+       property GrassHeightRandomMinimum:TpvFloat read fGrassHeightRandomMinimum write fGrassHeightRandomMinimum;
+       property GrassMowedHeightFactor:TpvFloat read fGrassMowedHeightFactor write fGrassMowedHeightFactor;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -27550,9 +27593,9 @@ begin
          fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
          fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
          fGrassPushConstants.MaximumDistance:=Planet.fTopRadius;
-         fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
-         fGrassPushConstants.GrassThickness:=0.01;
-         fGrassPushConstants.MaximalCountBladesPerPatch:=8;
+         fGrassPushConstants.GrassHeight:=Planet.fGrassHeight;
+         fGrassPushConstants.GrassThickness:=Planet.fGrassThickness;
+         fGrassPushConstants.MaximalCountBladesPerPatch:=Planet.fGrassBladesPerPatch;
          fGrassPushConstants.Flags:=0;
          if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
           fGrassPushConstants.Flags:=fGrassPushConstants.Flags or 1;
@@ -30109,9 +30152,9 @@ begin
       fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
       fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
       fGrassPushConstants.MaximumDistance:=Planet.fTopRadius;
-      fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
-      fGrassPushConstants.GrassThickness:=0.01;
-      fGrassPushConstants.MaximalCountBladesPerPatch:=8;
+      fGrassPushConstants.GrassHeight:=Planet.fGrassHeight;
+      fGrassPushConstants.GrassThickness:=Planet.fGrassThickness;
+      fGrassPushConstants.MaximalCountBladesPerPatch:=Planet.fGrassBladesPerPatch;
       fGrassPushConstants.Flags:=0;
       if TpvScene3DRendererInstance(fRendererInstance).DrawMeshletDebugColors then begin
        fGrassPushConstants.Flags:=fGrassPushConstants.Flags or 1;
@@ -34347,6 +34390,43 @@ begin
 
  fGrassSandboxGrowthDuration:=1.0;
 
+ // Grass appearance defaults. These are exactly the values that used to sit in planet_grass.frag and
+ // planet_grass.mesh as literals, so a planet without a grass settings file looks as it always did.
+ // The colors are linear, the base color being the linear form of the sRGB #3a6917 the shader had.
+ fGrassHeight:=0.125*5.0;
+
+ fGrassThickness:=0.01;
+
+ fGrassBladesPerPatch:=8;
+
+ fGrassBaseColor:=ConvertSRGBToLinear(TpvVector3.Create(58.0,105.0,23.0)*(1.0/255.0));
+
+ fGrassSelfShadowFloor:=0.1;
+
+ fGrassRoughness:=0.3;
+
+ fGrassOcclusion:=1.0;
+
+ fGrassBladeRoundAngle:=60.0;
+
+ fGrassLeaning:=0.5;
+
+ fGrassBurnedTint:=TpvVector3.Create(0.035,0.015,0.003);
+
+ fGrassBurnedStrength:=0.8;
+
+ fGrassFrozenTint:=TpvVector3.Create(0.7,0.8,1.0);
+
+ fGrassFrozenStrength:=0.7;
+
+ fGrassWindStrength:=0.01;
+
+ fGrassWindSpeed:=1.0;
+
+ fGrassHeightRandomMinimum:=0.25;
+
+ fGrassMowedHeightFactor:=0.15;
+
  fPrecipitationMapInitialization:=TPrecipitationMapInitialization.Create(self);
 
  fPrecipitationMapModification:=TPrecipitationMapModification.Create(self);
@@ -37723,6 +37803,30 @@ begin
    fPlanetData.WaterRainSplashParams3.y:=0.0;
    fPlanetData.WaterRainSplashParams3.z:=0.0;
    fPlanetData.WaterRainSplashParams3.w:=0.0;
+   fPlanetData.GrassColorParams0.x:=fGrassBaseColor.x;
+   fPlanetData.GrassColorParams0.y:=fGrassBaseColor.y;
+   fPlanetData.GrassColorParams0.z:=fGrassBaseColor.z;
+   fPlanetData.GrassColorParams0.w:=fGrassSelfShadowFloor;
+   fPlanetData.GrassColorParams1.x:=fGrassRoughness;
+   fPlanetData.GrassColorParams1.y:=fGrassOcclusion;
+   fPlanetData.GrassColorParams1.z:=fGrassBladeRoundAngle;
+   fPlanetData.GrassColorParams1.w:=fGrassLeaning;
+   fPlanetData.GrassStateParams0.x:=fGrassBurnedTint.x;
+   fPlanetData.GrassStateParams0.y:=fGrassBurnedTint.y;
+   fPlanetData.GrassStateParams0.z:=fGrassBurnedTint.z;
+   fPlanetData.GrassStateParams0.w:=fGrassBurnedStrength;
+   fPlanetData.GrassStateParams1.x:=fGrassFrozenTint.x;
+   fPlanetData.GrassStateParams1.y:=fGrassFrozenTint.y;
+   fPlanetData.GrassStateParams1.z:=fGrassFrozenTint.z;
+   fPlanetData.GrassStateParams1.w:=fGrassFrozenStrength;
+   fPlanetData.GrassBladeParams0.x:=fGrassWindStrength;
+   fPlanetData.GrassBladeParams0.y:=fGrassWindSpeed;
+   fPlanetData.GrassBladeParams0.z:=fGrassHeightRandomMinimum;
+   fPlanetData.GrassBladeParams0.w:=fGrassMowedHeightFactor;
+   fPlanetData.GrassBladeParams1.x:=0.0;
+   fPlanetData.GrassBladeParams1.y:=0.0;
+   fPlanetData.GrassBladeParams1.z:=0.0;
+   fPlanetData.GrassBladeParams1.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
@@ -38508,8 +38612,10 @@ begin
 end;
 
 procedure TpvScene3DPlanet.LoadGrassSettings(const aJSONItem:TPasJSONItem);
-var JSONRootObject,JSONGrassObject:TPasJSONItemObject;
+var JSONRootObject,JSONGrassObject,JSONAppearanceObject,JSONSubObject,JSONWindObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
+    ColorSpace,SubColorSpace:TpvJSONColorSpace;
+    ColorSpaceRecognized:boolean;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSONItem);
@@ -38523,6 +38629,47 @@ begin
   fGrassDecayRate:=TPasJSON.GetNumber(JSONGrassObject.Properties['decayrate'],fGrassDecayRate);
   fGrassWaterThreshold:=TPasJSON.GetNumber(JSONGrassObject.Properties['waterthreshold'],fGrassWaterThreshold);
   fGrassSandboxGrowthDuration:=TPasJSON.GetNumber(JSONGrassObject.Properties['sandboxgrowthduration'],fGrassSandboxGrowthDuration);
+  JSONItem:=JSONGrassObject.Properties['appearance'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONAppearanceObject:=TPasJSONItemObject(JSONItem);
+   // The color space governs the numeric color forms in this block only, never the plain factors next
+   // to them, and a hexadecimal color string brings its own along and overrides it.
+   ColorSpace:=JSONToColorSpace(JSONAppearanceObject.Properties['colorspace'],TpvJSONColorSpace.Linear,ColorSpaceRecognized);
+   if not ColorSpaceRecognized then begin
+    pvApplication.Log(LOG_ERROR,'TpvScene3DPlanet','Unknown grass appearance color space "'+String(TPasJSON.GetString(JSONAppearanceObject.Properties['colorspace'],''))+'", falling back to linear');
+   end;
+   fGrassBaseColor:=JSONToColorRGB(JSONAppearanceObject.Properties['basecolor'],fGrassBaseColor,ColorSpace);
+   fGrassSelfShadowFloor:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['selfshadowfloor'],fGrassSelfShadowFloor);
+   fGrassRoughness:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['roughness'],fGrassRoughness);
+   fGrassOcclusion:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['occlusion'],fGrassOcclusion);
+   fGrassBladeRoundAngle:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['bladeroundangle'],fGrassBladeRoundAngle);
+   fGrassHeight:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['height'],fGrassHeight);
+   fGrassThickness:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['thickness'],fGrassThickness);
+   fGrassBladesPerPatch:=Min(Max(Round(TPasJSON.GetNumber(JSONAppearanceObject.Properties['bladesperpatch'],fGrassBladesPerPatch)),1),8); // The mesh shader clamps to 1 .. 8 anyway
+   fGrassLeaning:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['leaning'],fGrassLeaning);
+   fGrassHeightRandomMinimum:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['heightrandomminimum'],fGrassHeightRandomMinimum);
+   fGrassMowedHeightFactor:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['mowedheightfactor'],fGrassMowedHeightFactor);
+   JSONItem:=JSONAppearanceObject.Properties['burned'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONSubObject:=TPasJSONItemObject(JSONItem);
+    SubColorSpace:=JSONToColorSpace(JSONSubObject.Properties['colorspace'],ColorSpace);
+    fGrassBurnedTint:=JSONToColorRGB(JSONSubObject.Properties['tint'],fGrassBurnedTint,SubColorSpace);
+    fGrassBurnedStrength:=TPasJSON.GetNumber(JSONSubObject.Properties['strength'],fGrassBurnedStrength);
+   end;
+   JSONItem:=JSONAppearanceObject.Properties['frozen'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONSubObject:=TPasJSONItemObject(JSONItem);
+    SubColorSpace:=JSONToColorSpace(JSONSubObject.Properties['colorspace'],ColorSpace);
+    fGrassFrozenTint:=JSONToColorRGB(JSONSubObject.Properties['tint'],fGrassFrozenTint,SubColorSpace);
+    fGrassFrozenStrength:=TPasJSON.GetNumber(JSONSubObject.Properties['strength'],fGrassFrozenStrength);
+   end;
+   JSONItem:=JSONAppearanceObject.Properties['wind'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONWindObject:=TPasJSONItemObject(JSONItem);
+    fGrassWindStrength:=TPasJSON.GetNumber(JSONWindObject.Properties['strength'],fGrassWindStrength);
+    fGrassWindSpeed:=TPasJSON.GetNumber(JSONWindObject.Properties['speed'],fGrassWindSpeed);
+   end;
+  end;
  end;
 end;
 

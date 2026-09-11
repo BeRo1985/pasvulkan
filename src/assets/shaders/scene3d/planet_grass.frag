@@ -251,10 +251,13 @@ void main(){
 #endif
 #endif
 
-  const vec3 baseColorSRGB = vec3(58.0, 105.0, 23.0); // vec3(74.0, 149.0, 0.0); 
-  const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
+  // Grass appearance from the planet's grass settings, already linear color on the host side
+  const vec2 grassBaseColorRG = unpackHalf2x16(planetData.grassColorParams.x);
+  const vec2 grassBaseColorBSelfShadowFloor = unpackHalf2x16(planetData.grassColorParams.y);
+  const vec2 grassRoughnessOcclusion = unpackHalf2x16(planetData.grassColorParams.z);
+  const vec3 baseColorLinearRGB = vec3(grassBaseColorRG, grassBaseColorBSelfShadowFloor.x);
 
-  const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
+  const float fakeSelfShadowing = clamp(inBlock.texCoord.y, grassBaseColorBSelfShadowFloor.y, 1.0);
 
   // Sample GrassFlagsMap using the octahedral UV derived from world-space position
   vec2 grassFlagsUV = octPlanetUnsignedEncode(normalize(inBlock.worldSpacePosition - planetData.modelMatrix[3].xyz));
@@ -264,17 +267,21 @@ void main(){
 
   // BURNED: tint towards dark brown
   if((grassFragFlags & GRASS_FLAG_BURNED) != 0u){
-    grassAlbedo = mix(grassAlbedo, vec3(0.035, 0.015, 0.003), 0.8);
+    vec2 burnedTintRG = unpackHalf2x16(planetData.grassStateParams.x);
+    vec2 burnedTintBStrength = unpackHalf2x16(planetData.grassStateParams.y);
+    grassAlbedo = mix(grassAlbedo, vec3(burnedTintRG, burnedTintBStrength.x), burnedTintBStrength.y);
   }
 
   // FROZEN: tint towards white-blue
   if((grassFragFlags & GRASS_FLAG_FROZEN) != 0u){
-    grassAlbedo = mix(grassAlbedo, vec3(0.7, 0.8, 1.0), 0.7);
+    vec2 frozenTintRG = unpackHalf2x16(planetData.grassStateParams.z);
+    vec2 frozenTintBStrength = unpackHalf2x16(planetData.grassStateParams.w);
+    grassAlbedo = mix(grassAlbedo, vec3(frozenTintRG, frozenTintBStrength.x), frozenTintBStrength.y);
   }
 
-  vec4 albedo = vec4(grassAlbedo * fakeSelfShadowing, 1.0);  
+  vec4 albedo = vec4(grassAlbedo * fakeSelfShadowing, 1.0);
 //vec3 baseColor = albedo.xyz;
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.3, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(grassRoughnessOcclusion.y, grassRoughnessOcclusion.x, 0.0, 0.0);
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
@@ -336,7 +343,8 @@ void main(){
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
-  vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-60.0, 60.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
+  float bladeRoundAngle = unpackHalf2x16(planetData.grassColorParams.w).x;
+  vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-bladeRoundAngle, bladeRoundAngle, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * blendNormals((decalNormalBlend > 0.0) ? blendNormals(bladeRelativeNormal, decalNormal, decalNormalBlend) : bladeRelativeNormal.xyz, wetnessNormal.xyz, wetnessNormal.w));
 
   float NdotV;

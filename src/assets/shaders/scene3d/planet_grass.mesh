@@ -457,7 +457,11 @@ void main() {
 
   const float grassHeight = pushConstants.grassHeight;
   const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.5;//min(0.5, grassOffsetRadius); // TODO: Make it configurable
+  const float grassLeaning = unpackHalf2x16(planetData.grassColorParams.w).y;//min(0.5, grassOffsetRadius);
+
+  // Blade shaping from the planet's grass settings
+  const vec2 grassWindStrengthSpeed = unpackHalf2x16(planetData.grassBladeParams.x);
+  const vec2 grassHeightRandomMinimumMowedFactor = unpackHalf2x16(planetData.grassBladeParams.y);
 
   ////////////////////////////////////////////////////////////////////////////
 
@@ -661,11 +665,11 @@ void main() {
 #endif      
 
       float growthFactor = smoothstep(0.0, 1.0, grassAge);
-      float bladeHeight = grassHeight * mix(0.25, 1.0, randomFloatData[0].w) * fadeOutFactor * growthFactor;
+      float bladeHeight = grassHeight * mix(grassHeightRandomMinimumMowedFactor.x, 1.0, randomFloatData[0].w) * fadeOutFactor * growthFactor;
 
-      // MOWED: cap blade height to 15% of maximum
+      // MOWED: cap blade height to the configured fraction of the maximum
       if((grassFlags & GRASS_FLAG_MOWED) != 0u){
-        bladeHeight = min(bladeHeight, grassHeight * 0.15);
+        bladeHeight = min(bladeHeight, grassHeight * grassHeightRandomMinimumMowedFactor.y);
       }
 
       float bladeLeaning = grassLeaning * mix(0.1, 1.0, randomFloatData[1].x);
@@ -684,14 +688,16 @@ void main() {
       // Add some wind effect to the grass blade 
       {
 
-        const float windDirection = radians(20.0); // TODO: Calculate this based on the global position in 3D space and make it configurable
+        const float windDirection = radians(20.0); // TODO: Calculate this based on the global position in 3D space, the directional term below is still commented out
 
-        const float windStrength = 0.01; // TODO: Calculate this based on the global position in 3D space and make it configurable
+        const float windStrength = grassWindStrengthSpeed.x; // TODO: Calculate this based on the global position in 3D space
+
+        const float windSpeed = grassWindStrengthSpeed.y; // Scales the time term only, so that the per blade random phase offset stays put
 
         vec2 windOffset = sin(
           vec2(
-            pushConstants.time + 
-            //dot(sin(vec2(windDirection) + vec2(1.57079632679, 0.0)), vec2(globalXY) / vec2(pushConstants.tileMapResolution * pushConstants.tileResolution)) + 
+            (pushConstants.time * windSpeed) +
+            //dot(sin(vec2(windDirection) + vec2(1.57079632679, 0.0)), vec2(globalXY) / vec2(pushConstants.tileMapResolution * pushConstants.tileResolution)) +
             (randomFloatData[1].y * 4.0)
           ) * vec2(0.5, 1.0)
         ) * vec2(2.0, 1.0) * windStrength;
@@ -701,8 +707,8 @@ void main() {
 #ifdef VELOCITY
         vec2 previousWindOffset = sin(
           vec2(
-            (pushConstants.previousTime) +
-            //dot(sin(vec2(windDirection) + vec2(1.57079632679, 0.0)), vec2(globalXY) / vec2(pushConstants.tileMapResolution * pushConstants.tileResolution)) + 
+            (pushConstants.previousTime * windSpeed) +
+            //dot(sin(vec2(windDirection) + vec2(1.57079632679, 0.0)), vec2(globalXY) / vec2(pushConstants.tileMapResolution * pushConstants.tileResolution)) +
             (randomFloatData[1].y * 4.0)
           ) * vec2(0.5, 1.0)
         ) * vec2(2.0, 1.0) * windStrength;
