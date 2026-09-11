@@ -3812,7 +3812,16 @@ begin
  t.x:=self.y-self.z;
  t.y:=self.z-self.x;
  t.z:=self.x-self.y;
- result:=(t-(self*self.Dot(t))).Normalize;
+ t:=t-(self*self.Dot(t));
+ // The construction above collapses to the zero vector wherever all three components are equal,
+ // so for every direction along the (1,1,1) diagonal, and Normalize hands back a zero vector
+ // there, which would leave the caller with a degenerate basis. Fall back to the axis aligned
+ // construction in that case, which is not smooth but is defined everywhere.
+ if t.SquaredLength>1e-12 then begin
+  result:=t.Normalize;
+ end else begin
+  result:=OneUnitOrthogonalVector;
+ end;
 end;
 
 function TpvVector3.Length:TpvScalar;
