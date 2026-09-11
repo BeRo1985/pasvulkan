@@ -403,6 +403,10 @@ void main(){
       }
     }
 
+    const bool grassUnderLayers = isGrassUnderLayers();
+
+    float grass = layerMaterialGrass;
+
     // Process the default ground texture if the weight sum is less than fadeEnd
     {
 
@@ -419,18 +423,34 @@ void main(){
       if(defaultWeight > 0.0){
 
         const PlanetMaterial defaultMaterial = layerMaterials[15];
-        albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(defaultMaterial) << 1) | 1], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
-        normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
-        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)) * defaultWeight;
+        vec4 defaultAlbedo = multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(defaultMaterial) << 1) | 1], GetPlanetMaterialScale(defaultMaterial));
+        vec4 defaultNormalHeight = multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial));
+        vec4 defaultOcclusionRoughnessMetallic = multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial));
+
+        // Grass under the painted layers: it goes onto the default ground here, and the block further down
+        // is skipped, so that a painted layer covers the grass rather than the other way round. Nothing is
+        // fetched where the painted layers already cover everything, since the default ground and with it
+        // the grass would be invisible there anyway.
+        if(grassUnderLayers && (grass > 0.0)){
+          const float f = getGrassUnderlyingFactor(grass);
+          const float factor = 1.0 / max(1e-7, f + grass);
+          const PlanetMaterial grassMaterial = layerMaterials[14];
+          defaultAlbedo = ((defaultAlbedo * f) + (multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(grassMaterial) << 1) | 1], GetPlanetMaterialScale(grassMaterial)) * grass)) * factor;
+          defaultNormalHeight = ((defaultNormalHeight * f) + (multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)) * grass)) * factor;
+          defaultOcclusionRoughnessMetallic = ((defaultOcclusionRoughnessMetallic * f) + (multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)) * grass)) * factor;
+        }
+
+        albedo += defaultAlbedo * defaultWeight;
+        normalHeight += defaultNormalHeight * defaultWeight;
+        occlusionRoughnessMetallic += defaultOcclusionRoughnessMetallic * defaultWeight;
         weightSum += defaultWeight;
 
       }
 
     }
 
-    // Process the grass texture if the grass value is greater than 0.0
-    float grass = layerMaterialGrass;
-    if(grass > 0.0){
+    // Process the grass texture on top of everything if the grass value is greater than 0.0
+    if((!grassUnderLayers) && (grass > 0.0)){
 
       // Normalize the weights before adding the grass texture
       if(weightSum > 0.0){
@@ -442,7 +462,7 @@ void main(){
       }
 
       // Optional attenuation of the current textures based on the grass value
-      float f = pow(1.0 - grass, 16.0);
+      float f = getGrassUnderlyingFactor(grass);
       albedo *= f;
       normalHeight *= f;
       occlusionRoughnessMetallic *= f;

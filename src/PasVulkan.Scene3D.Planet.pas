@@ -3631,6 +3631,7 @@ type TpvScene3DPlanets=class;
        fGrassWindSpeed:TpvFloat;
        fGrassHeightRandomMinimum:TpvFloat;
        fGrassMowedHeightFactor:TpvFloat;
+       fGrassGroundLayerUnderLayers:boolean; // Where the grass ground texture sits in the terrain layer order
        fPrecipitationMapModificationItems:TPrecipitationMapModificationItems;
        fAtmosphereMapModificationItems:TAtmosphereMapModificationItems;
        fWaterModificationItems:TWaterModificationItems;
@@ -3933,6 +3934,7 @@ type TpvScene3DPlanets=class;
        property GrassWindSpeed:TpvFloat read fGrassWindSpeed write fGrassWindSpeed;
        property GrassHeightRandomMinimum:TpvFloat read fGrassHeightRandomMinimum write fGrassHeightRandomMinimum;
        property GrassMowedHeightFactor:TpvFloat read fGrassMowedHeightFactor write fGrassMowedHeightFactor;
+       property GrassGroundLayerUnderLayers:boolean read fGrassGroundLayerUnderLayers write fGrassGroundLayerUnderLayers;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
@@ -34427,6 +34429,9 @@ begin
 
  fGrassMowedHeightFactor:=0.15;
 
+ // The grass ground texture goes on top of everything by default, which is where it always was
+ fGrassGroundLayerUnderLayers:=false;
+
  fPrecipitationMapInitialization:=TPrecipitationMapInitialization.Create(self);
 
  fPrecipitationMapModification:=TPrecipitationMapModification.Create(self);
@@ -37670,6 +37675,9 @@ begin
    if fWaterCalmSurfaceNormal then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 4); // PLANET_WATER_FLAG_CALM_SURFACE_NORMAL
    end;
+   if fGrassGroundLayerUnderLayers then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 5); // PLANET_FLAG_GRASS_UNDER_LAYERS
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
    fPlanetData.DecalGroupMask:=fDecalGroupMask;
@@ -38616,6 +38624,7 @@ var JSONRootObject,JSONGrassObject,JSONAppearanceObject,JSONSubObject,JSONWindOb
     JSONItem:TPasJSONItem;
     ColorSpace,SubColorSpace:TpvJSONColorSpace;
     ColorSpaceRecognized:boolean;
+    GroundLayerOrder:TpvUTF8String;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSONItem);
@@ -38649,6 +38658,18 @@ begin
    fGrassLeaning:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['leaning'],fGrassLeaning);
    fGrassHeightRandomMinimum:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['heightrandomminimum'],fGrassHeightRandomMinimum);
    fGrassMowedHeightFactor:=TPasJSON.GetNumber(JSONAppearanceObject.Properties['mowedheightfactor'],fGrassMowedHeightFactor);
+   JSONItem:=JSONAppearanceObject.Properties['groundlayerorder'];
+   if assigned(JSONItem) then begin
+    // Named rather than a boolean, so that both states read as themselves in the file
+    GroundLayerOrder:=TpvUTF8String(LowerCase(Trim(String(TPasJSON.GetString(JSONItem,'')))));
+    if GroundLayerOrder='ontop' then begin
+     fGrassGroundLayerUnderLayers:=false;
+    end else if GroundLayerOrder='underlayers' then begin
+     fGrassGroundLayerUnderLayers:=true;
+    end else begin
+     pvApplication.Log(LOG_ERROR,'TpvScene3DPlanet','Unknown grass appearance ground layer order "'+String(GroundLayerOrder)+'", keeping the current one');
+    end;
+   end;
    JSONItem:=JSONAppearanceObject.Properties['burned'];
    if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
     JSONSubObject:=TPasJSONItemObject(JSONItem);

@@ -7,6 +7,23 @@
 mat2x4 layerMaterialWeights;
 float layerMaterialGrass;
 
+// Where the grass ground texture sits in the layer order. Cleared, it goes on top of everything, which is
+// what it always did. Set, it goes over the default ground texture but under the painted layers, so that a
+// painted layer covers the grass instead of the other way round. The default ground already lies beneath the
+// painted layers through its complement weight, so the whole reordering amounts to blending the grass into
+// the default ground material and leaving the on-top step out.
+#define PLANET_FLAG_GRASS_UNDER_LAYERS (1u << 5u)
+
+bool isGrassUnderLayers(){
+  return (planetData.flagsResolutions.x & PLANET_FLAG_GRASS_UNDER_LAYERS) != 0u;
+}
+
+// The share of the underlying material that survives under a given amount of grass. Steep on purpose, a
+// quarter of grass already leaves only a hundredth of what is below it.
+float getGrassUnderlyingFactor(const in float aGrass){
+  return pow(1.0 - aGrass, 16.0);
+}
+
 void layerMaterialSetup(vec3 sphereNormal){
 
 /*
@@ -257,15 +274,26 @@ float getLayeredMultiplanarHeight(){
     // Calculate the weight of the default ground texture
     const float defaultWeight = defaultWeightFactor;   
 
-    if(defaultWeight > 0.0){   
+    if(defaultWeight > 0.0){
 
       const PlanetMaterial defaultMaterial = layerMaterials[15];
-      heightWeightSum += vec2(multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)).w, 1.0) * defaultWeight;
+      float defaultHeight = multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(defaultMaterial) << 1) | 0], GetPlanetMaterialScale(defaultMaterial)).w;
 
-    }  
+      // Grass under the painted layers: it goes onto the default ground here, so that the painted layers
+      // above cover it. Nothing is fetched where the painted layers already cover everything, since the
+      // default ground and with it the grass would be invisible there anyway.
+      if(isGrassUnderLayers() && (layerMaterialGrass > 0.0)){
+        const float f = getGrassUnderlyingFactor(layerMaterialGrass);
+        const PlanetMaterial grassMaterial = layerMaterials[14];
+        defaultHeight = ((defaultHeight * f) + (multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(grassMaterial) << 1) | 0], GetPlanetMaterialScale(grassMaterial)).w * layerMaterialGrass)) / max(1e-7, f + layerMaterialGrass);
+      }
+
+      heightWeightSum += vec2(defaultHeight, 1.0) * defaultWeight;
+
+    }
 
   }
-  if(layerMaterialGrass > 0.0){
+  if((!isGrassUnderLayers()) && (layerMaterialGrass > 0.0)){
 
     // Normalize the weights before adding the grass texture
     if(heightWeightSum.y > 0.0){
@@ -274,7 +302,7 @@ float getLayeredMultiplanarHeight(){
     } 
 
     // Optional attenuation of the current textures based on the grass value
-    float f = pow(1.0 - layerMaterialGrass, 16.0);     
+    float f = getGrassUnderlyingFactor(layerMaterialGrass);
     heightWeightSum *= f;
 
     // Add the grass texture 
