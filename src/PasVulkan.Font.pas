@@ -760,7 +760,13 @@ begin
                                                     aPadding,
                                                     aTrimPadding,
                                                     false,
-                                                    @GlyphTrimmedHullVectors[OtherGlyphIndex]);
+                                                    @GlyphTrimmedHullVectors[OtherGlyphIndex],
+                                                    false,
+                                                    // A glyph goes in as raw data: these four channels
+                                                    // are a distance field, not a colour with an
+                                                    // opacity, so neither the alpha mode conversion nor
+                                                    // the dilation of transparent colours may touch it.
+                                                    true);
           Glyph^.Sprite.SignedDistanceField:=true;
           Glyph^.Sprite.SignedDistanceFieldVariant:=fSignedDistanceFieldVariant;
          end;

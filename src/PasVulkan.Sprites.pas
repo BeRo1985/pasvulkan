@@ -306,6 +306,8 @@ type EpvSpriteAtlas=class(Exception);
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fUseConvexHullTrimming:boolean;
+       fPremultipliedAlpha:boolean;
+       fDilateTransparentColours:boolean;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fMaximumCountArrayLayers:TpvInt32;
@@ -331,7 +333,10 @@ type EpvSpriteAtlas=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
-       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
+       // aRawData takes the image data exactly as it is: no alpha mode conversion and no dilation of the
+       // transparent colours, because its channels are not a colour with an opacity. Signed distance
+       // fields are what needs this, whichever variant they were generated in.
+       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil;const aPremultipliedAlpha:boolean=false;const aRawData:boolean=false):TpvSprite;
        function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default;const aProtectBorder:boolean=false):TpvSprite; overload;
        function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aSDFVariant:TpvSignedDistanceField2DVariant=TpvSignedDistanceField2DVariant.Default;const aProtectBorder:boolean=false):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
@@ -347,6 +352,10 @@ type EpvSpriteAtlas=class(Exception);
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
        property UseConvexHullTrimming:boolean read fUseConvexHullTrimming write fUseConvexHullTrimming;
+       property PremultipliedAlpha:boolean read fPremultipliedAlpha write fPremultipliedAlpha;
+       // Off by default, since it rewrites the incoming image data. See DilateTransparentColoursInImage
+       // in the implementation section for what it does and when a sprite needs it.
+       property DilateTransparentColours:boolean read fDilateTransparentColours write fDilateTransparentColours;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
        property MaximumCountArrayLayers:TpvInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
@@ -506,7 +515,7 @@ begin
      s16:=fPixels;
      d16:=UploadPixels;
      for Index:=1 to fWidth*fHeight do begin
-      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.b,s16^.a)*Div16Bit);
       d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
       d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
       d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
@@ -724,7 +733,7 @@ begin
      s16:=@fTexels[0];
      d16:=UploadPixels;
      for Index:=1 to fCountTexels do begin
-      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.b,s16^.a)*Div16Bit);
       d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
       d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
       d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
@@ -877,6 +886,8 @@ begin
  fIsUploaded:=false;
  fMipMaps:=true;
  fUseConvexHullTrimming:=false;
+ fPremultipliedAlpha:=false;
+ fDilateTransparentColours:=false;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
  fHeight:=Min(VULKAN_SPRITEATLASTEXTURE_HEIGHT,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
  fMaximumCountArrayLayers:=fDevice.PhysicalDevice.Properties.limits.maxImageArrayLayers;
@@ -1144,7 +1155,7 @@ begin
    ImageData:=nil;
    try
     if LoadImage(MemoryStream.Memory,MemoryStream.Size,ImageData,ImageWidth,ImageHeight) then begin
-     SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit);
+     SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit,fPremultipliedAlpha);
      SpriteAtlasArrayTexture.Resize(ImageWidth,ImageHeight,1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin
       SetLength(fArrayTextures,(fCountArrayTextures+1)*2);
@@ -1221,7 +1232,273 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
+// Give every fully transparent texel the colour of the nearest texel that has some opacity, in place,
+// leaving every alpha value exactly as it was.
+//
+// Why a sprite may need this: the atlas stores straight, NOT premultiplied alpha, and the canvas
+// fragment shader premultiplies at draw time. The hardware's bilinear filter and the mip chain, though,
+// run BEFORE that shader, on the stored colour - so a fully transparent texel still contributes its
+// colour to every neighbouring texel the filter touches. Image editors and vector exporters commonly
+// leave pure white or pure black under a transparent area, and every edge of the sprite is then pulled
+// towards that colour: a visible fringe, measurable in a frame as an edge texel brighter (or darker)
+// than both the sprite and the background behind it. Carrying the colour outwards makes the filter mix
+// in the sprite's own colour instead, which is what it should have been mixing all along.
+//
+// Two passes - one forward over the image, one backward, each looking only at the four neighbours it
+// has already visited - carry the nearest opaque texel across the whole image. That is linear in the
+// pixel count, rather than one pass per texel of distance covered.
+procedure DilateTransparentColoursInImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aDepth16Bit:boolean);
+type PPixels32=^TPixels32;
+     TPixels32=array[0..0] of TpvUInt32;
+     PPixels64=^TPixels64;
+     TPixels64=array[0..0] of TpvUInt64;
+var NearestX,NearestY:array of TpvInt32;
+    Pixels32:PPixels32;
+    Pixels64:PPixels64;
+    Index,CountPixels,Source,x,y:TpvInt32;
+    Opaque:boolean;
+
+ // Take over the neighbour's nearest opaque texel when it is closer to this texel than whatever this
+ // texel has found so far.
+ procedure Consider(const aIndex,aX,aY,aNeighbourIndex:TpvInt32);
+ var SourceX,SourceY,CurrentX,CurrentY:TpvInt32;
+     Distance,CurrentDistance:TpvInt64;
+ begin
+
+  SourceX:=NearestX[aNeighbourIndex];
+  if SourceX<0 then begin
+   exit;
+  end;
+  SourceY:=NearestY[aNeighbourIndex];
+
+  Distance:=(TpvInt64(aX-SourceX)*TpvInt64(aX-SourceX))+(TpvInt64(aY-SourceY)*TpvInt64(aY-SourceY));
+
+  CurrentX:=NearestX[aIndex];
+  if CurrentX<0 then begin
+   CurrentDistance:=High(TpvInt64);
+  end else begin
+   CurrentY:=NearestY[aIndex];
+   CurrentDistance:=(TpvInt64(aX-CurrentX)*TpvInt64(aX-CurrentX))+(TpvInt64(aY-CurrentY)*TpvInt64(aY-CurrentY));
+  end;
+
+  if Distance<CurrentDistance then begin
+   NearestX[aIndex]:=SourceX;
+   NearestY[aIndex]:=SourceY;
+  end;
+
+ end;
+
+begin
+
+ if (not assigned(aImageData)) or ((aImageWidth<1) or (aImageHeight<1)) then begin
+  exit;
+ end;
+
+ Pixels32:=aImageData;
+ Pixels64:=aImageData;
+
+ CountPixels:=aImageWidth*aImageHeight;
+
+ NearestX:=nil;
+ NearestY:=nil;
+ try
+
+  SetLength(NearestX,CountPixels);
+  SetLength(NearestY,CountPixels);
+
+  // A texel with any opacity at all is its own nearest opaque texel. A fully transparent one has found
+  // nothing yet. Alpha is the top channel of the texel in both depths.
+  for y:=0 to aImageHeight-1 do begin
+   for x:=0 to aImageWidth-1 do begin
+    Index:=(y*aImageWidth)+x;
+    if aDepth16Bit then begin
+     Opaque:=(Pixels64^[Index] and TpvUInt64($ffff000000000000))<>0;
+    end else begin
+     Opaque:=(Pixels32^[Index] and TpvUInt32($ff000000))<>0;
+    end;
+    if Opaque then begin
+     NearestX[Index]:=x;
+     NearestY[Index]:=y;
+    end else begin
+     NearestX[Index]:=-1;
+     NearestY[Index]:=-1;
+    end;
+   end;
+  end;
+
+  // Forward, top left to bottom right: the neighbour to the left and the three above.
+  for y:=0 to aImageHeight-1 do begin
+   for x:=0 to aImageWidth-1 do begin
+    Index:=(y*aImageWidth)+x;
+    if (NearestX[Index]<>x) or (NearestY[Index]<>y) then begin
+     if x>0 then begin
+      Consider(Index,x,y,Index-1);
+     end;
+     if y>0 then begin
+      Consider(Index,x,y,Index-aImageWidth);
+      if x>0 then begin
+       Consider(Index,x,y,(Index-aImageWidth)-1);
+      end;
+      if x<(aImageWidth-1) then begin
+       Consider(Index,x,y,(Index-aImageWidth)+1);
+      end;
+     end;
+    end;
+   end;
+  end;
+
+  // Backward, bottom right to top left: the neighbour to the right and the three below.
+  for y:=aImageHeight-1 downto 0 do begin
+   for x:=aImageWidth-1 downto 0 do begin
+    Index:=(y*aImageWidth)+x;
+    if (NearestX[Index]<>x) or (NearestY[Index]<>y) then begin
+     if x<(aImageWidth-1) then begin
+      Consider(Index,x,y,Index+1);
+     end;
+     if y<(aImageHeight-1) then begin
+      Consider(Index,x,y,Index+aImageWidth);
+      if x>0 then begin
+       Consider(Index,x,y,(Index+aImageWidth)-1);
+      end;
+      if x<(aImageWidth-1) then begin
+       Consider(Index,x,y,(Index+aImageWidth)+1);
+      end;
+     end;
+    end;
+   end;
+  end;
+
+  // And only now the colour itself, alpha untouched, so the image still looks exactly the same wherever
+  // anything of it is actually visible.
+  for Index:=0 to CountPixels-1 do begin
+   if NearestX[Index]>=0 then begin
+    Source:=(NearestY[Index]*aImageWidth)+NearestX[Index];
+    if Source<>Index then begin
+     if aDepth16Bit then begin
+      Pixels64^[Index]:=(Pixels64^[Index] and TpvUInt64($ffff000000000000)) or
+                        (Pixels64^[Source] and TpvUInt64($0000ffffffffffff));
+     end else begin
+      Pixels32^[Index]:=(Pixels32^[Index] and TpvUInt32($ff000000)) or
+                        (Pixels32^[Source] and TpvUInt32($00ffffff));
+     end;
+    end;
+   end;
+  end;
+
+ finally
+  NearestX:=nil;
+  NearestY:=nil;
+ end;
+
+end;
+
+// Convert the colour channels of an image in place between straight and premultiplied alpha, leaving
+// every alpha value exactly as it was.
+//
+// The multiplication has to happen in linear light, not on the stored channel values. An sRGB atlas
+// keeps its texels sRGB encoded - the eight bit one goes to Vulkan as VK_FORMAT_R8G8B8A8_SRGB directly,
+// the sixteen bit one is converted to linear on upload - and in both cases the hardware hands the
+// fragment shader linear values. Scaling the encoded values instead would darken every partially
+// transparent texel, which is the very error premultiplied alpha is there to avoid. Alpha is not a
+// colour and is never converted.
+//
+// Coming back from premultiplied, a texel without any alpha is left exactly as it is: there is nothing
+// to divide by, and a correctly premultiplied texel carries no colour there anyway.
+procedure ConvertImageAlphaMode(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aDepth16Bit,aSRGB,aToPremultiplied:boolean);
+type PPixel8Bit=^TPixel8Bit;
+     TPixel8Bit=packed record
+      r,g,b,a:TpvUInt8;
+     end;
+     PPixel16Bit=^TPixel16Bit;
+     TPixel16Bit=packed record
+      r,g,b,a:TpvUInt16;
+     end;
+const Div8Bit=1.0/255.0;
+      Div16Bit=1.0/65535.0;
+var Index,CountPixels:TpvInt32;
+    p8:PPixel8Bit;
+    p16:PPixel16Bit;
+    Alpha,Factor:TpvFloat;
+    Colour:TpvVector3;
+
+ // The colour of one texel, as the normalised channel values the stored texel holds, scaled in linear
+ // light and handed back in the same encoding it came in.
+ function Scale(const aColour:TpvVector3;const aFactor:TpvFloat):TpvVector3;
+ begin
+  if aSRGB then begin
+   result.x:=ConvertLinearToSRGB(ConvertSRGBToLinear(aColour.x)*aFactor);
+   result.y:=ConvertLinearToSRGB(ConvertSRGBToLinear(aColour.y)*aFactor);
+   result.z:=ConvertLinearToSRGB(ConvertSRGBToLinear(aColour.z)*aFactor);
+  end else begin
+   result.x:=aColour.x*aFactor;
+   result.y:=aColour.y*aFactor;
+   result.z:=aColour.z*aFactor;
+  end;
+ end;
+
+begin
+
+ if (not assigned(aImageData)) or ((aImageWidth<1) or (aImageHeight<1)) then begin
+  exit;
+ end;
+
+ CountPixels:=aImageWidth*aImageHeight;
+
+ if aDepth16Bit then begin
+
+  p16:=aImageData;
+  for Index:=1 to CountPixels do begin
+
+   Alpha:=p16^.a*Div16Bit;
+
+   if aToPremultiplied then begin
+    Factor:=Alpha;
+   end else if Alpha>0.0 then begin
+    Factor:=1.0/Alpha;
+   end else begin
+    Factor:=1.0;
+   end;
+
+   Colour:=Scale(TpvVector3.InlineableCreate(p16^.r*Div16Bit,p16^.g*Div16Bit,p16^.b*Div16Bit),Factor);
+
+   p16^.r:=Min(Max(round(Clamp(Colour.x,0.0,1.0)*65535.0),0),65535);
+   p16^.g:=Min(Max(round(Clamp(Colour.y,0.0,1.0)*65535.0),0),65535);
+   p16^.b:=Min(Max(round(Clamp(Colour.z,0.0,1.0)*65535.0),0),65535);
+
+   inc(p16);
+
+  end;
+
+ end else begin
+
+  p8:=aImageData;
+  for Index:=1 to CountPixels do begin
+
+   Alpha:=p8^.a*Div8Bit;
+
+   if aToPremultiplied then begin
+    Factor:=Alpha;
+   end else if Alpha>0.0 then begin
+    Factor:=1.0/Alpha;
+   end else begin
+    Factor:=1.0;
+   end;
+
+   Colour:=Scale(TpvVector3.InlineableCreate(p8^.r*Div8Bit,p8^.g*Div8Bit,p8^.b*Div8Bit),Factor);
+
+   p8^.r:=Min(Max(round(Clamp(Colour.x,0.0,1.0)*255.0),0),255);
+   p8^.g:=Min(Max(round(Clamp(Colour.y,0.0,1.0)*255.0),0),255);
+   p8^.b:=Min(Max(round(Clamp(Colour.z,0.0,1.0)*255.0),0),255);
+
+   inc(p8);
+
+  end;
+
+ end;
+
+end;
+
+function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil;const aPremultipliedAlpha:boolean=false;const aRawData:boolean=false):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex,Index:TpvInt32;
     ArrayTexture,TemporaryArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
@@ -1230,7 +1507,7 @@ var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex,Inde
     sp16,dp16:PpvUInt64;
     p8:PpvUInt8;
     p16:PpvUInt16;
-    OK,SpecialSizedArrayTexture:boolean;
+    OK,SpecialSizedArrayTexture,ConvertAlphaMode,Dilate:boolean;
     WorkImageData,TrimmedImageData:TpvPointer;
     TrimmedImageWidth:TpvInt32;
     TrimmedImageHeight:TpvInt32;
@@ -1280,6 +1557,50 @@ begin
       inc(p8);
       inc(p16);
      end;
+    end;
+
+    // Both of the two steps below read the four channels as a colour with an opacity, so raw data is
+    // handed through untouched. The depth conversion above still had to run on it, because that one only
+    // changes how wide a channel is stored and keeps its value.
+    //
+    // Beyond that, straight alpha is what the dilation is there for: it gives the fully transparent
+    // texels a colour, so that the bilinear filter and the mip chain mix in the sprite's own colour
+    // rather than whatever the image file happens to carry underneath. A premultiplied atlas solves the
+    // same thing properly and by construction - a transparent texel MUST carry no colour at all there,
+    // or the canvas' own premultiplied blending would add it to the background - so those two never run
+    // together either.
+    ConvertAlphaMode:=(fPremultipliedAlpha<>aPremultipliedAlpha) and not aRawData;
+    Dilate:=(fDilateTransparentColours and not fPremultipliedAlpha) and not aRawData;
+
+    // Both of the steps below rewrite the image, so from here on the work needs a buffer this routine
+    // owns. Without a depth conversion above, WorkImageData is still the caller's pointer, and the
+    // caller does not expect its image to change - LoadSprites hands the same one in more than once.
+    // The finally block frees the copy again, because it is no longer the caller's pointer then.
+    if (ConvertAlphaMode or Dilate) and (WorkImageData=aImageData) then begin
+     if fDepth16Bit then begin
+      GetMem(WorkImageData,aImageWidth*aImageHeight*8);
+      Move(aImageData^,WorkImageData^,aImageWidth*aImageHeight*8);
+     end else begin
+      GetMem(WorkImageData,aImageWidth*aImageHeight*4);
+      Move(aImageData^,WorkImageData^,aImageWidth*aImageHeight*4);
+     end;
+    end;
+
+    if ConvertAlphaMode and (aPremultipliedAlpha and not fPremultipliedAlpha) then begin
+     // Premultiplied in, straight in the atlas: divide the colour back out.
+     ConvertImageAlphaMode(WorkImageData,aImageWidth,aImageHeight,fDepth16Bit,fSRGB,false);
+    end else if ConvertAlphaMode and (fPremultipliedAlpha and not aPremultipliedAlpha) then begin
+     // Straight in, premultiplied in the atlas. This is the case that makes a filtered or mipmapped
+     // sprite come out right: the filter then works on colour that is already weighted by its own
+     // alpha, which is what the canvas' ONE / ONE_MINUS_SRC_ALPHA blending expects, and what the canvas
+     // fragment shader is told about through TpvSpriteAtlasArrayTexture.PremultipliedAlpha so that it
+     // does not premultiply a second time.
+     ConvertImageAlphaMode(WorkImageData,aImageWidth,aImageHeight,fDepth16Bit,fSRGB,true);
+    end;
+
+    // Before anything is measured or cut out of the image. Off by default, since it rewrites the image.
+    if Dilate then begin
+     DilateTransparentColoursInImage(WorkImageData,aImageWidth,aImageHeight,fDepth16Bit);
     end;
 
     x0:=0;
@@ -1598,7 +1919,7 @@ begin
     if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
      Layer:=0;
      SpecialSizedArrayTexture:=(fWidth<=TrimmedImageWidth) or (fHeight<=TrimmedImageHeight);
-     ArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit);
+     ArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit,fPremultipliedAlpha);
      ArrayTexture.fSpecialSizedArrayTexture:=SpecialSizedArrayTexture;
      ArrayTexture.Resize(Max(fWidth,TrimmedImageWidth),Max(fHeight,TrimmedImageHeight),1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin
@@ -1780,7 +2101,12 @@ begin
   finally
    FreeAndNil(VectorPathShape);
   end;
-  result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
+  // What the four channels hold depends on the variant - one packed distance repeated for SDF, four
+  // supersampled ones for SSAASDF, a distance plus its gradient for GSDF, three per-channel distances
+  // plus the median one for MSDF - but in none of them is the fourth channel an opacity, and in none of
+  // them are the first three a colour. So the field goes in as raw data, whichever variant was asked
+  // for, and neither the alpha mode conversion nor the dilation of transparent colours touches it.
+  result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding,false,nil,false,true);
   result.SignedDistanceField:=true;
   result.SignedDistanceFieldVariant:=aSDFVariant;
  finally
@@ -2110,13 +2436,14 @@ begin
     fSRGB:=(ui8 and 2)<>0;
     fUseConvexHullTrimming:=(ui8 and 4)<>0;
     fDepth16Bit:=(ui8 and 8)<>0;
+    fPremultipliedAlpha:=(ui8 and 16)<>0;
     fCountArrayTextures:=ReadInt32;
     CountSprites:=ReadInt32;
 
     SetLength(fArrayTextures,fCountArrayTextures);
 
     for Index:=0 to fCountArrayTextures-1 do begin
-     fArrayTextures[Index]:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit);
+     fArrayTextures[Index]:=TpvSpriteAtlasArrayTexture.Create(fSRGB,fDepth16Bit,fPremultipliedAlpha);
     end;
 
     for Index:=0 to fCountArrayTextures-1 do begin
@@ -2398,7 +2725,8 @@ begin
      WriteUInt8((TpvUInt8(ord(fMipMaps) and 1) shl 0) or
                 (TpvUInt8(ord(fsRGB) and 1) shl 1) or
                 (TpvUInt8(ord(fUseConvexHullTrimming) and 1) shl 2) or
-                (TpvUInt8(ord(fDepth16Bit) and 1) shl 3));
+                (TpvUInt8(ord(fDepth16Bit) and 1) shl 3) or
+                (TpvUInt8(ord(fPremultipliedAlpha) and 1) shl 4));
      WriteInt32(fCountArrayTextures);
      WriteInt32(fList.Count);
 
