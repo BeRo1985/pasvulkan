@@ -156,7 +156,7 @@ type { TpvScene3DGizmo }
                                               QuadMin,QuadMax,
                                               QuadMax,QuadMax,
                                               QuadMax,QuadMin);
-             ScreenRotateSize=0.06;
+             ScreenRotateHitTolerance=8.0; // Screen space pixels to either side of the view aligned rotation circle that still count as a hit on it
              HalfCircleSegmentCount=64;
       private
        fScene3D:TObject;
@@ -386,6 +386,11 @@ begin
   fScreenSquareCenter:=WorldToPositionEx(TpvVector3.Null,fModelViewProjectionMatrix);
   fScreenSquareMin:=fScreenSquareCenter-TpvVector2.InlineableCreate(10.0,10.0);
   fScreenSquareMax:=fScreenSquareCenter+TpvVector2.InlineableCreate(10.0,10.0);
+  // Screen space radius of the view aligned circle around the gizmo, the very circle the rotation
+  // gizmo draws, so that it can be grabbed exactly where it is seen. The circle lies in a plane
+  // parallel to the image plane, therefore it projects to a circle again and a single point on it
+  // gives the radius.
+  fRadiusSquareCenter:=fScreenSquareCenter.DistanceTo(WorldToPositionEx(fModelMatrix.Translation.xyz+(fInverseViewMatrix.Right.xyz*fScreenFactor),fViewProjectionMatrix));
  end;
  ComputeCameraRay(fRayOrigin,fRayDirection);
 end;
@@ -570,7 +575,7 @@ begin
 
  DeltaScreen:=fMousePosition-fScreenSquareCenter;
  Dist:=DeltaScreen.Length;
- if (Dist>=(fRadiusSquareCenter-1.0)) and (Dist<=(fRadiusSquareCenter+1.0)) then begin
+ if (Dist>=(fRadiusSquareCenter-ScreenRotateHitTolerance)) and (Dist<=(fRadiusSquareCenter+ScreenRotateHitTolerance)) then begin
   result:=TAction.RotateScreen;
  end else begin
   result:=TAction.None;
@@ -869,7 +874,6 @@ var Colors:array[0..7] of TpvVector4;
  procedure DrawRotationGizmo;
  var AxisIndex,Index:TpvSizeInt;
      CameraToModelNormalized,AxisPos:TpvVector3;
-     CirclePos:array[0..HalfCircleSegmentCount] of TpvVector2;
      CirclePos3D:array[0..HalfCircleSegmentCount] of TpvVector3;
      AngleStart,ng:TpvScalar;
  begin
@@ -879,7 +883,6 @@ var Colors:array[0..7] of TpvVector4;
    CameraToModelNormalized:=(fModelMatrix.Translation.xyz-fInverseViewMatrix.Translation.xyz).Normalize;
   end;
   CameraToModelNormalized:=fInverseModelMatrix.MulBasis(CameraToModelNormalized);
-  fRadiusSquareCenter:=ScreenRotateSize*fViewPort.w;
   for AxisIndex:=0 to 2 do begin
    AngleStart:=ArcTan2(CameraToModelNormalized[(4-AxisIndex) mod 3],
                        CameraToModelNormalized[(3-AxisIndex) mod 3])+HalfPI;
@@ -887,10 +890,7 @@ var Colors:array[0..7] of TpvVector4;
     ng:=AngleStart+(PI*(Index/HalfCircleSegmentCount));
     AxisPos:=TpvVector3.InlineableCreate(cos(ng),sin(ng),0.0);
     CirclePos3D[Index]:=fModelMatrix.MulHomogen(TpvVector3.InlineableCreate(AxisPos[AxisIndex],AxisPos[(AxisIndex+1) mod 3],AxisPos[(AxisIndex+2) mod 3])*fScreenFactor);
-    CirclePos[Index]:=WorldToPosition(TpvVector3.InlineableCreate(AxisPos[AxisIndex],AxisPos[(AxisIndex+1) mod 3],AxisPos[(AxisIndex+2) mod 3])*fScreenFactor,fModelViewProjectionMatrix);
    end;
-   fRadiusSquareCenter:=Max(fRadiusSquareCenter,
-                             WorldToPosition(fModelMatrix.Translation.xyz,fViewProjectionMatrix).DistanceTo(CirclePos[0]));
    if aInFlightFrameIndex>=0 then begin
     for Index:=0 to HalfCircleSegmentCount-2 do begin
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
@@ -1183,7 +1183,9 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
     Index:=2;
    end;
   end;
-  if fMode=TMode.Local then begin
+  // The screen space rotation turns around the view axis, which is no object axis in either mode, so
+  // its plane normal always comes from the camera and never from the DirectionUnary axis triple.
+  if (fMode=TMode.Local) or (fAction=TAction.RotateScreen) then begin
    fTranslationPlane:=TpvPlane.Create(RotatePlaneNormals[Index],-RotatePlaneNormals[Index].Dot(fModelMatrix.Translation.xyz));
   end else begin
    fTranslationPlane:=TpvPlane.Create(DirectionUnary[Index],-DirectionUnary[Index].Dot(fModelSourceMatrix.Translation.xyz));
