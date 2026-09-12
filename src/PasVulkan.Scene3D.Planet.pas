@@ -3209,21 +3209,22 @@ type TpvScene3DPlanets=class;
               fRendererInstance:TObject;
               fScene3D:TObject;
               fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fVertexShaderModule:TpvVulkanShaderModule;
+              fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fFragmentShaderModule:TpvVulkanShaderModule;
+              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fPassDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fPassDescriptorPool:TpvVulkanDescriptorPool;
               fPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fIBLDescriptors:array[0..MaxInFlightFrames-1] of TpvScene3DRendererIBLDescriptor;
-              fStorageImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
               fPipelineLayout:TpvVulkanPipelineLayout;
-              fPipeline:TpvVulkanComputePipeline;
+              fPipeline:TpvVulkanGraphicsPipeline;
               fWidth,fHeight:TpvInt32;
              public
               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
               destructor Destroy; override;
-              procedure AllocateResources(const aSceneColorImages:TpvVulkanImageDynamicArray;
-                                          const aSceneColorFormat:TVkFormat;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass;
+                                          const aSubpassIndex:TpvUInt32;
                                           const aCascadedShadowMapViews:TpvVulkanImageViewDynamicArray;
                                           const aCascadedShadowMapLayout:TVkImageLayout;
                                           const aSSAOViews:TpvVulkanImageViewDynamicArray;
@@ -30286,18 +30287,14 @@ begin
 
  fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
 
+ // The array-typed variant regardless of the view count, and not the view count's own choice between the
+ // two: the frame graph gives out a 2D array image view for every one of its images, a single view being
+ // an array of one, and the shader that reads this map back declares it as an array as well. The variants
+ // for a plain 2D image would fit neither of the two, which is why the view count does not decide here.
  if TpvScene3DRendererInstance(fRendererInstance).Renderer.SurfaceSampleCountFlagBits<>VK_SAMPLE_COUNT_1_BIT then begin
-  if TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_msaa_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_msaa_multiview_comp.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_msaa_multiview_comp.spv');
  end else begin
-  if TpvScene3DRendererInstance(fRendererInstance).CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_multiview_comp.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_screenspace_wetness_map_multiview_comp.spv');
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -31368,20 +31365,30 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  if TpvScene3DRendererInstance(fRendererInstance).Scene3D.RaytracingActive then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_raytracing_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_bufref_comp.spv');
-  end;
-
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
   try
-   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
    FreeAndNil(Stream);
   end;
-  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterCaustics.fComputeShaderModule');
+  fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterCaustics.fVertexShaderModule');
 
-  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+  fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
+
+  if TpvScene3DRendererInstance(fRendererInstance).Scene3D.RaytracingActive then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_raytracing_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_caustics_bufref_frag.spv');
+  end;
+
+  try
+   fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterCaustics.fFragmentShaderModule');
+
+  fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
 
  end;
 
@@ -31390,16 +31397,20 @@ end;
 destructor TpvScene3DPlanet.TWaterCaustics.Destroy;
 begin
 
- FreeAndNil(fComputeShaderStage);
+ FreeAndNil(fFragmentShaderStage);
 
- FreeAndNil(fComputeShaderModule);
+ FreeAndNil(fFragmentShaderModule);
+
+ FreeAndNil(fVertexShaderStage);
+
+ FreeAndNil(fVertexShaderModule);
 
  inherited Destroy;
 
 end;
 
-procedure TpvScene3DPlanet.TWaterCaustics.AllocateResources(const aSceneColorImages:TpvVulkanImageDynamicArray;
-                                                            const aSceneColorFormat:TVkFormat;
+procedure TpvScene3DPlanet.TWaterCaustics.AllocateResources(const aRenderPass:TpvVulkanRenderPass;
+                                                            const aSubpassIndex:TpvUInt32;
                                                             const aCascadedShadowMapViews:TpvVulkanImageViewDynamicArray;
                                                             const aCascadedShadowMapLayout:TVkImageLayout;
                                                             const aSSAOViews:TpvVulkanImageViewDynamicArray;
@@ -31419,63 +31430,59 @@ begin
  fPassDescriptorSetLayout.AddBinding(0, // View UBO
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(1, // BRDF LUTs
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                      3,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(2, // IBL cubemaps
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                      6,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(3, // Cascaded shadow map UBO
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(4, // Cascaded shadow map
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip + clouds shadow map (uPassTextures[3], sampled by lighting.glsl)
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                      4,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(6, // Frustum cluster grid globals UBO
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(7, // Frustum cluster grid index list SSBO
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
  fPassDescriptorSetLayout.AddBinding(8, // Frustum cluster grid data SSBO
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                      1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
- fPassDescriptorSetLayout.AddBinding(9, // Scene color storage image
-                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                     1,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                     [],
-                                     0);
+ // No binding for the scene colour any more: it is the attachment this pass draws into, and the addition
+ // that used to be a read-modify-write through a storage image is left to the blend unit.
  fPassDescriptorSetLayout.Initialize;
 
  fVulkanDevice.DebugUtils.SetObjectName(fPassDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterCaustics.fPassDescriptorSetLayout');
@@ -31486,29 +31493,11 @@ begin
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,14*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*CountInFlightFrames);
- fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,CountInFlightFrames);
  fPassDescriptorPool.Initialize;
 
  fVulkanDevice.DebugUtils.SetObjectName(fPassDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterCaustics.fPassDescriptorPool');
 
  for InFlightFrameIndex:=0 to CountInFlightFrames-1 do begin
-
-  fStorageImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fVulkanDevice,
-                                                                    aSceneColorImages[InFlightFrameIndex],
-                                                                    TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
-                                                                    aSceneColorFormat,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                    0,
-                                                                    1,
-                                                                    0,
-                                                                    aCountSurfaceViews
-                                                                   );
-
-   fVulkanDevice.DebugUtils.SetObjectName(fStorageImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TWaterCaustics.fStorageImageViews['+IntToStr(InFlightFrameIndex)+']');
 
   fPassDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPassDescriptorPool,
                                                                          fPassDescriptorSetLayout);
@@ -31619,17 +31608,6 @@ begin
                                                                [],
                                                                false);
 
-  fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
-                                                               0,
-                                                               1,
-                                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                               [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                              fStorageImageViews[InFlightFrameIndex].Handle,
-                                                                                              VK_IMAGE_LAYOUT_GENERAL)],
-                                                               [],
-                                                               [],
-                                                               false);
-
   fPassDescriptorSets[InFlightFrameIndex].Flush;
 
   fIBLDescriptors[InFlightFrameIndex]:=TpvScene3DRendererIBLDescriptor.Create(fVulkanDevice,
@@ -31640,7 +31618,7 @@ begin
  end;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
                                       SizeOf(TWaterRenderPassPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout);
@@ -31650,13 +31628,75 @@ begin
 
  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterCaustics.fPipelineLayout');
 
- fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
-                                            pvApplication.VulkanPipelineCache,
-                                            TVkPipelineCreateFlags(0),
-                                            fComputeShaderStage,
-                                            fPipelineLayout,
-                                            nil,
-                                            0);
+ fPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             [],
+                                             fPipelineLayout,
+                                             aRenderPass,
+                                             aSubpassIndex,
+                                             nil,
+                                             0);
+
+ fPipeline.AddStage(fVertexShaderStage);
+ fPipeline.AddStage(fFragmentShaderStage);
+
+ fPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ fPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+ fPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+
+ fPipeline.RasterizationState.DepthClampEnable:=false;
+ fPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+ fPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+ fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+ fPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_CLOCKWISE;
+ fPipeline.RasterizationState.DepthBiasEnable:=false;
+ fPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+ fPipeline.RasterizationState.DepthBiasClamp:=0.0;
+ fPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+ fPipeline.RasterizationState.LineWidth:=1.0;
+
+ // At the sample count of whatever colour this pass was given, but deliberately without sample shading:
+ // the caustics are a function of the depth at a pixel and of the water above it, not of which sample of
+ // an edge is being looked at, so one invocation per pixel whose result reaches every covered sample is
+ // both right and as cheap as the single sampled case.
+ fPipeline.MultisampleState.RasterizationSamples:=TpvScene3DRenderer(fRenderer).SurfaceSampleCountFlagBits;
+ fPipeline.MultisampleState.SampleShadingEnable:=false;
+ fPipeline.MultisampleState.MinSampleShading:=0.0;
+ fPipeline.MultisampleState.CountSampleMasks:=0;
+ fPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+ fPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+ fPipeline.ColorBlendState.LogicOpEnable:=false;
+ fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+ fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+ fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+ fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+ fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+ // The addition that the compute variant did by hand: colour one to one, and an alpha left as it is found.
+ fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                        VK_BLEND_FACTOR_ONE,
+                                                        VK_BLEND_FACTOR_ONE,
+                                                        VK_BLEND_OP_ADD,
+                                                        VK_BLEND_FACTOR_ZERO,
+                                                        VK_BLEND_FACTOR_ONE,
+                                                        VK_BLEND_OP_ADD,
+                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+ fPipeline.DepthStencilState.DepthTestEnable:=false;
+ fPipeline.DepthStencilState.DepthWriteEnable:=false;
+ fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+ fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+ fPipeline.DepthStencilState.StencilTestEnable:=false;
+
+ fPipeline.Initialize;
+
+ fPipeline.FreeMemory;
 
  fVulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterCaustics.fPipeline');
 
@@ -31673,7 +31713,6 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fIBLDescriptors[InFlightFrameIndex]);
   FreeAndNil(fPassDescriptorSets[InFlightFrameIndex]);
-  FreeAndNil(fStorageImageViews[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fPassDescriptorPool);
@@ -31710,12 +31749,12 @@ begin
  fIBLDescriptors[aInFlightFrameIndex].SetFrom(fScene3D,fRendererInstance,aInFlightFrameIndex);
  fIBLDescriptors[aInFlightFrameIndex].Update(true);
 
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipeline.Handle);
 
  DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  DescriptorSets[1]:=fPassDescriptorSets[aInFlightFrameIndex].Handle;
 
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fPipelineLayout.Handle,
                                       0,
                                       2,
@@ -31742,7 +31781,7 @@ begin
 
       DescriptorSets[2]:=Planet.fPlanetDescriptorSets[aInFlightFrameIndex].Handle;
 
-      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            fPipelineLayout.Handle,
                                            2,
                                            1,
@@ -31779,14 +31818,14 @@ begin
 {$endif}
 
       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
                                       SizeOf(TWaterRenderPassPushConstants),
                                       @PushConstants);
 
-      aCommandBuffer.CmdDispatch(Max(1,(fWidth+15) shr 4),
-                                  Max(1,(fHeight+15) shr 4),
-                                  InFlightFrameState^.CountFinalViews);
+      // One fullscreen triangle. The views are no longer a dispatch dimension: the render pass is a
+      // multiview one, so it draws this once per view by itself and gl_ViewIndex tells the shader which.
+      aCommandBuffer.CmdDraw(3,1,0,0);
 
      end else begin
 {$ifdef PlanetWaterCausticsDebug}
@@ -31939,7 +31978,7 @@ begin
  begin
 {$ifdef PlanetWaterCausticsFragShader}
   // Load caustics shaders
-  ShaderFileName:='planet_water_caustics';
+  ShaderFileName:='planet_water_surface_caustics';
   if TpvScene3D(fScene3D).RaytracingActive then begin
    ShaderFileName:=ShaderFileName+'_raytracing';
   end else begin

@@ -705,6 +705,12 @@ compileshaderarguments=(
   "-V planet_water_caustics.comp -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_comp.spv"
   "-V planet_water_caustics.comp -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_comp.spv"
 
+  # The same caustics as the two compute variants above, as a fullscreen draw that blends into the scene
+  # colour attachment instead of writing a storage image, so that it can also be given the multisampled
+  # colour. The compute variants are kept beside them for now.
+  "-V planet_water_caustics.frag -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_frag.spv"
+  "-V planet_water_caustics.frag -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_frag.spv"
+
   "-V planet_blendmap_downsample.comp -o ${tempPath}/planet_blendmap_downsample_comp.spv"
 
   "-V planet_blendmap_initialization.comp -o ${tempPath}/planet_blendmap_initialization_comp.spv"
@@ -871,13 +877,15 @@ compileshaderarguments=(
   "-V planet_water.frag -DUNDERWATER -DRAYTRACING -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_underwater_raytracing_cvct_frag.spv"
   "-V planet_water.frag -DUNDERWATER -DUSE_BUFFER_REFERENCE -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING -o ${tempPath}/planet_water_underwater_bufref_cvct_frag.spv"
 
-  "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_vert.spv"
-  "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_vert.spv"
-  "-V planet_water.vert -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_vert.spv"
+  # The water SURFACE's own caustics variants. Named apart from planet_water_caustics_*_frag.spv, which is
+  # the screen space caustics pass built from planet_water_caustics.frag further up.
+  "-V planet_water.vert -DWATER_CAUSTICS -o ${tempPath}/planet_water_surface_caustics_vert.spv"
+  "-V planet_water.vert -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_surface_caustics_bufref_vert.spv"
+  "-V planet_water.vert -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_surface_caustics_raytracing_vert.spv"
 
-  "-V planet_water.frag -DWATER_CAUSTICS -o ${tempPath}/planet_water_caustics_frag.spv"
-  "-V planet_water.frag -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_frag.spv"
-  "-V planet_water.frag -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_frag.spv"
+  "-V planet_water.frag -DWATER_CAUSTICS -o ${tempPath}/planet_water_surface_caustics_frag.spv"
+  "-V planet_water.frag -DWATER_CAUSTICS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_surface_caustics_bufref_frag.spv"
+  "-V planet_water.frag -DWATER_CAUSTICS -DRAYTRACING -o ${tempPath}/planet_water_surface_caustics_raytracing_frag.spv"
 
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"

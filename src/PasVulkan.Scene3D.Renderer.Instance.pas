@@ -2175,7 +2175,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.WaterWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.PlanetWaterCausticsComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.PlanetWaterCausticsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LockOrderIndependentTransparencyClearCustomPass,
@@ -2331,7 +2331,7 @@ type TpvScene3DRendererInstancePasses=class
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fWaterWaitCustomPass:TpvScene3DRendererPassesWaterWaitCustomPass;
        fWaterRenderPass:TpvScene3DRendererPassesWaterRenderPass;
-       fPlanetWaterCausticsComputePass:TpvScene3DRendererPassesPlanetWaterCausticsComputePass;
+       fPlanetWaterCausticsRenderPass:TpvScene3DRendererPassesPlanetWaterCausticsRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TpvScene3DRendererPassesDirectTransparencyRenderPass;
        fDirectTransparencyResolveRenderPass:TpvScene3DRendererPassesDirectTransparencyResolveRenderPass;
@@ -7240,18 +7240,29 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
 
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=TpvScene3DRendererPassesPlanetWaterCausticsComputePass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
-  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass:=TpvScene3DRendererPassesPlanetWaterCausticsRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
+  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass);
+
+  // Caustics are lit ground seen THROUGH the water, so they have to be in the scene colour before anything
+  // takes a copy of it: the water surface refracts what it finds in the scene mip pyramid, and that pyramid
+  // is built from the colour once, here. Added the other way round - these two passes waiting on the
+  // caustics - because both were built further up, and an ordering constraint may be stated from either
+  // end. Without it the graph is free to read the colour first and let the caustics write it afterwards,
+  // which is where they went missing: in the picture, but only ever behind the water that hides them.
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass);
+  end;
 
  end else begin
 
   TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass:=nil;
   fWaterExternalWaitingOnSemaphore:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=nil;
-  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsComputePass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass:=nil;
 
  end;
 

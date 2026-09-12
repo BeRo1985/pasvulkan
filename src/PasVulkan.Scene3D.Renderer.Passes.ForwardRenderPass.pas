@@ -366,7 +366,7 @@ procedure TpvScene3DRendererPassesForwardRenderPass.AcquirePersistentResources;
 var Index:TpvSizeInt;
     Stream:TStream;
     MeshFragmentSpecializationConstants:TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants;
-    VelocityVariant,WetnessMapVariant:TpvUTF8String;
+    VelocityVariant,WetnessMapVariant,MSAAVariant:TpvUTF8String;
 begin
  inherited AcquirePersistentResources;
 
@@ -406,7 +406,18 @@ begin
   WetnessMapVariant:='';
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+WetnessMapVariant+VelocityVariant+'frag.spv');
+ // The msaa_ variant is not only about how the alpha test behaves at sample rate. With the wetness map in
+ // play it also decides how uWetnessMap is declared in the shader, and that map really is multisampled
+ // whenever the surface is. So it belongs on every fragment shader this pass loads, the opaque one
+ // included - fetched without it, a single-sampled declaration ends up reading a multisampled image, which
+ // is a spec violation that costs a device loss on drivers that do not quietly let it pass.
+ if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  MSAAVariant:='';
+ end else begin
+  MSAAVariant:='msaa_';
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+MSAAVariant+WetnessMapVariant+VelocityVariant+'frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -414,23 +425,11 @@ begin
  end;
 
  if fInstance.Renderer.UseDemote then begin
-  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+WetnessMapVariant+VelocityVariant+'alphatest_demote_frag.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+VelocityVariant+'alphatest_demote_frag.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+MSAAVariant+WetnessMapVariant+VelocityVariant+'alphatest_demote_frag.spv');
  end else if fInstance.Renderer.UseNoDiscard then begin
-  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+WetnessMapVariant+VelocityVariant+'alphatest_nodiscard_frag.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+VelocityVariant+'alphatest_nodiscard_frag.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+MSAAVariant+WetnessMapVariant+VelocityVariant+'alphatest_nodiscard_frag.spv');
  end else begin
-  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+WetnessMapVariant+VelocityVariant+'alphatest_frag.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+WetnessMapVariant+VelocityVariant+'alphatest_frag.spv');
-  end;
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+MSAAVariant+WetnessMapVariant+VelocityVariant+'alphatest_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
