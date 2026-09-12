@@ -5477,7 +5477,7 @@ begin
    if QueueItem^.MaskingMode then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 0);
    end;
-   if assigned(fState.fAtlasTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha then begin
+   if assigned(fState.fAtlasTexture) and (State.fAtlasTexture is TpvSpriteAtlasArrayTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 1);
    end;
   finally
@@ -5897,12 +5897,14 @@ var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
-    TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
+//  TransformMatrix,FillMatrix,MaskMatrix:TpvMatrix4x4;
     ForceUpdate,ForceUpdatePushConstants,h,RenderPassActive:boolean;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ClearColorValue:TVkClearColorValue;
+    PushConstants:TpvCanvasPushConstants;
 //  DynamicOffset:TVkDeviceSize;
+
  procedure ResetState;
  begin
 
@@ -5913,11 +5915,11 @@ var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
 
   Descriptor:=nil;
 
-  TransformMatrix:=TpvMatrix4x4.Null;
+{ TransformMatrix:=TpvMatrix4x4.Null;
 
   FillMatrix:=TpvMatrix4x4.Null;
 
-  MaskMatrix:=TpvMatrix4x4.Null;
+  MaskMatrix:=TpvMatrix4x4.Null;}
 
   OldQueueItemKind:=TpvCanvasQueueItemKind.None;
 
@@ -5934,6 +5936,8 @@ var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
   OldVulkanVertexBuffer:=nil;
 
   OldVulkanIndexBuffer:=nil;
+
+  FillChar(PushConstants,SizeOf(TpvCanvasPushConstants),#0);
 
  end;
 
@@ -6031,12 +6035,14 @@ begin
 
       if ForceUpdate or
          ForceUpdatePushConstants or
+         (not CompareMem(@PushConstants,@QueueItem^.PushConstants,SizeOf(TpvCanvasPushConstants))){or
          (TransformMatrix<>QueueItem^.TransformMatrix) or
          (FillMatrix<>QueueItem^.FillMatrix) or
-         (MaskMatrix<>QueueItem^.MaskMatrix) then begin
-       TransformMatrix:=QueueItem^.TransformMatrix;
+         (MaskMatrix<>QueueItem^.MaskMatrix)}then begin
+       PushConstants:=QueueItem^.PushConstants;
+{      TransformMatrix:=QueueItem^.TransformMatrix;
        FillMatrix:=QueueItem^.FillMatrix;
-       MaskMatrix:=QueueItem^.MaskMatrix;
+       MaskMatrix:=QueueItem^.MaskMatrix;}
        aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[BlendingMode,TextureMode].Handle,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
