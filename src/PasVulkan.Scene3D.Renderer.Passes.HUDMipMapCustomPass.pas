@@ -319,8 +319,8 @@ begin
                                  [TVkOffset3D.Create(0,
                                                      0,
                                                      0),
-                                  TVkOffset3D.Create(fInstance.HUDMipmappedArray2DImage.Width shr (MipMapLevelIndex-1),
-                                                     fInstance.HUDMipmappedArray2DImage.Height shr (MipMapLevelIndex-1),
+                                  TVkOffset3D.Create(Max(1,fInstance.HUDMipmappedArray2DImage.Width shr (MipMapLevelIndex-1)),
+                                                     Max(1,fInstance.HUDMipmappedArray2DImage.Height shr (MipMapLevelIndex-1)),
                                                      1)],
                                  TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                   MipMapLevelIndex,
@@ -329,8 +329,8 @@ begin
                                  [TVkOffset3D.Create(0,
                                                      0,
                                                      0),
-                                  TVkOffset3D.Create(fInstance.HUDMipmappedArray2DImage.Width shr MipMapLevelIndex,
-                                                     fInstance.HUDMipmappedArray2DImage.Height shr MipMapLevelIndex,
+                                  TVkOffset3D.Create(Max(1,fInstance.HUDMipmappedArray2DImage.Width shr MipMapLevelIndex),
+                                                     Max(1,fInstance.HUDMipmappedArray2DImage.Height shr MipMapLevelIndex),
                                                      1)]
                                 );
 

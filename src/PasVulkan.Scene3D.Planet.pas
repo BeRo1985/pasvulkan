@@ -20491,8 +20491,8 @@ begin
   if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
    fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'WaterDownsample');
   end;
-  aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
-                             ((fPlanet.fWaterMapResolution shr 1)+8) shr 3,
+  aCommandBuffer.CmdDispatch(((fPlanet.fWaterMapResolution shr 1)+7) shr 3,
+                             ((fPlanet.fWaterMapResolution shr 1)+7) shr 3,
                              1);
   if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
    fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
@@ -30456,8 +30456,8 @@ begin
       if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
        TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'RainStreakRendering');
       end;
-      aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance(fRendererInstance).ScaledWidth+16) shr 4,
-                                 (TpvScene3DRendererInstance(fRendererInstance).ScaledHeight+16) shr 4,
+      aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance(fRendererInstance).ScaledWidth+15) shr 4,
+                                 (TpvScene3DRendererInstance(fRendererInstance).ScaledHeight+15) shr 4,
                                  TpvScene3DRendererInstance(fRendererInstance).Renderer.CountSurfaceMSAASamples);
       if assigned(TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer) then begin
        TpvScene3D(fScene3D).VulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);

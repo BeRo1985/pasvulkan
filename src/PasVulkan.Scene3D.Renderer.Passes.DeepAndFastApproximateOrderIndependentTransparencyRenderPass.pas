@@ -1014,8 +1014,8 @@ begin
 
   fInstance.Renderer.Scene3D.InitializeParticleGraphicsPipeline(VulkanGraphicsPipeline);
 
-  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.Width,fInstance.Height,0.0,1.0);
-  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.Width,fInstance.Height);
+  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.ScaledWidth,fInstance.ScaledHeight,0.0,1.0);
+  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.ScaledWidth,fInstance.ScaledHeight);
 
   VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
