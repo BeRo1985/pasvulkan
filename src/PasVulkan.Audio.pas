@@ -306,6 +306,46 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioSoundSampleVoiceLowPassHistory=array[0..1] of TpvInt32;
 
+     { TpvAudioSoundSampleGeneratorInstance }
+
+     // The per-voice state of a procedural sound source. Every voice of a generator-backed sample owns
+     // one of these, so that two voices of the same sample can run at different rates and stand at
+     // different points of their own waveform without ever sharing state.
+     TpvAudioSoundSampleGeneratorInstance=class
+      public
+
+       // Writes aCountFrames interleaved stereo frames into aData, continuing seamlessly where the
+       // previous call left off.
+       //
+       // aRate is what the game asked for through SetRate, and this is the ONLY place where it acts.
+       // The voice increment of a generator-backed sample carries the Doppler shift alone, which
+       // splits two things that the plain resampler path cannot tell apart: a rate the game asks for
+       // (engine revolutions, say) must move the source's own periodicity while its resonances stay
+       // where they are, whereas the Doppler shift is a real time scaling of the arriving wave and
+       // must move the whole spectrum with it.
+       procedure Generate(const aData:PpvAudioSoundSampleValues;const aCountFrames:TpvInt32;const aRate:TpvFloat); virtual; abstract;
+
+     end;
+
+     { TpvAudioSoundSampleGenerator }
+
+     // A procedural source that takes the place of the fixed wave in TpvAudioSoundSample.Data. The
+     // sample then hands every voice a ring buffer of RingFrames frames, which the voice's own
+     // generator instance keeps filled just ahead of the read position.
+     TpvAudioSoundSampleGenerator=class
+      public
+
+       // The per-voice ring buffer size in frames. It must be more than twice what a voice can read
+       // in one mixing block, because half of it is the safety distance between the write and the
+       // read position. One block reads AudioEngine.BufferSamples frames scaled by the largest
+       // increment that can occur, and with the rate taken out of the increment that is the Doppler
+       // shift alone, so the default is generous for anything moving below the speed of sound.
+       function RingFrames:TpvInt32; virtual;
+
+       function CreateInstance:TpvAudioSoundSampleGeneratorInstance; virtual; abstract;
+
+     end;
+
      TpvAudioSoundSampleVoice=class;
 
      TpvAudioSoundSampleVoiceOnIntervalHook=function(const aSampleVoice:TpvAudioSoundSampleVoice;const aDeltaSamples:TpvInt32):boolean of object;
@@ -321,6 +361,20 @@ type PpvAudioInt32=^TpvInt32;
        fActiveVoiceIndex:TpvInt32;
        fAudioEngine:TpvAudio;
        fSample:TpvAudioSoundSample;
+
+       // Where this voice reads its frames from: the sample's own wave for an ordinary sample, or the
+       // voice's private ring buffer for a generator-backed one.
+       fData:PpvAudioSoundSampleValues;
+
+       // The procedural source of a generator-backed sample. fGeneratorMemory is the raw allocation,
+       // fData points SampleFixUp frames into it so that the mixer's interpolation may read past both
+       // ends, fGeneratorWritePosition is the frame the next Generate call writes to, and the read
+       // position trails it by half a ring.
+       fGeneratorInstance:TpvAudioSoundSampleGeneratorInstance;
+       fGeneratorMemory:TpvPointer;
+       fGeneratorRingFrames:TpvInt32;
+       fGeneratorWritePosition:TpvInt32;
+
        fIndex:TpvInt32;
        fMixToEffect:LongBool;
        fActive:LongBool;
@@ -427,6 +481,9 @@ type PpvAudioInt32=^TpvInt32;
        fOnIntervalHookTotalSampleCounter:TpvInt64;
        fOnIntervalHookLastTotalSampleCounter:TpvInt64;
        procedure UpdateSpatialization;
+       procedure UpdateIncrement;
+       procedure SetupGenerator;
+       procedure GenerateAhead(const aCountFrames:TpvInt32);
        function GetSampleLength(CountSamplesValue:TpvInt32):TpvInt32;
        procedure PreClickRemoval(Buffer:TpvPointer);
        procedure PostClickRemoval(Buffer:TpvPointer;Remain:TpvInt32);
@@ -575,6 +632,13 @@ type PpvAudioInt32=^TpvInt32;
        SoundSamples:TpvAudioSoundSamples;
        Name:TpvRawByteString;
        Data:PpvAudioSoundSampleValues;
+
+       // When this is assigned, Data stays nil and every voice reads from its own ring buffer instead,
+       // which this object fills. SampleLength and Loop then describe that ring rather than a wave on
+       // disk, so the whole mixing path below - looping, interpolation, spatialization and the Doppler
+       // shift - keeps working unchanged on top of a source that is computed while it plays.
+       Generator:TpvAudioSoundSampleGenerator;
+
        SampleLength:TpvInt32;
        SampleRate:TpvInt32;
        Loop:TpvAudioSoundSampleLoop;
@@ -607,6 +671,7 @@ type PpvAudioInt32=^TpvInt32;
        function GetReservedVoiceID:TpvInt32;
        procedure CorrectVoices;
        procedure FixUp;
+       procedure SetGenerator(const aGenerator:TpvAudioSoundSampleGenerator);
        procedure SetVirtualVoices(aVirtualVoices:TpvInt32);
        procedure SetRealVoices(aRealVoices:TpvInt32);
        function Play(aVolume,aPanning,aRate:TpvFloat;aVoiceIndexPointer:TpvPointer=nil;aPerreservedGlobalVoiceID:TpvID=0):TpvInt32;
@@ -1671,6 +1736,11 @@ begin
  result:=Min(Max(AngleChange*25.0,GainChange)*2.0,1.0);
 end;
 
+function TpvAudioSoundSampleGenerator.RingFrames:TpvInt32;
+begin
+ result:=4096;
+end;
+
 constructor TpvAudioSoundSampleVoice.Create(aAudioEngine:TpvAudio;aSample:TpvAudioSoundSample;aIndex:TpvInt32);
 begin
  inherited Create;
@@ -1681,6 +1751,15 @@ begin
  fActiveVoiceIndex:=-1;
  fAudioEngine:=aAudioEngine;
  fSample:=aSample;
+
+ // The wave the voice reads is picked up in Init, because a sample is constructed before its data is
+ // loaded and a generator is attached later still.
+ fData:=nil;
+
+ fGeneratorInstance:=nil;
+ fGeneratorMemory:=nil;
+ fGeneratorRingFrames:=0;
+ fGeneratorWritePosition:=0;
  fIndex:=aIndex;
  fMixToEffect:=false;
  fActive:=false;
@@ -1764,10 +1843,107 @@ end;
 
 destructor TpvAudioSoundSampleVoice.Destroy;
 begin
+
  Dequeue;
+
  SetLength(fSpatializationDelayLeftLine,0);
  SetLength(fSpatializationDelayRightLine,0);
+
+ FreeAndNil(fGeneratorInstance);
+
+ if assigned(fGeneratorMemory) then begin
+  FreeMem(fGeneratorMemory);
+  fGeneratorMemory:=nil;
+ end;
+
+ fData:=nil;
+
  inherited Destroy;
+
+end;
+
+// Gives this voice its own ring buffer and its own generator state, once, on the first play of a
+// generator-backed sample. The ring is laid out exactly like an ordinary sample's wave - SampleFixUp
+// frames of room before and after - so that nothing in the mixing path below has to know the
+// difference, and the loop of the sample is what wraps the read position around it.
+procedure TpvAudioSoundSampleVoice.SetupGenerator;
+var RingFrames:TpvInt32;
+begin
+
+ if not assigned(fGeneratorInstance) then begin
+
+  RingFrames:=fSample.Generator.RingFrames;
+
+  GetMem(fGeneratorMemory,(RingFrames+(2*SampleFixUp))*2*SizeOf(TpvAudioSoundSampleValue));
+  FillChar(fGeneratorMemory^,(RingFrames+(2*SampleFixUp))*2*SizeOf(TpvAudioSoundSampleValue),#0);
+
+  fData:=fGeneratorMemory;
+  inc(PpvAudioInt32(fData),2*SampleFixUp);
+
+  fGeneratorRingFrames:=RingFrames;
+  fGeneratorInstance:=fSample.Generator.CreateInstance;
+
+ end;
+
+ // Half a ring of lead, so that the frames written at the head of a block are always that far in
+ // front of the frames the same block reads.
+ fGeneratorWritePosition:=0;
+ GenerateAhead(fGeneratorRingFrames shr 1);
+
+end;
+
+// Produces the next aCountFrames frames of the procedural source, wrapping at the end of the ring,
+// and keeps the guard frames behind the ring in step with its head so that the mixer may interpolate
+// across the wrap the same way it does across an ordinary sample's loop point.
+procedure TpvAudioSoundSampleVoice.GenerateAhead(const aCountFrames:TpvInt32);
+var Remain,ToDo,Counter:TpvInt32;
+    Destination:PpvAudioSoundSampleValues;
+begin
+
+ Remain:=aCountFrames;
+
+ while Remain>0 do begin
+
+  ToDo:=Min(Remain,fGeneratorRingFrames-fGeneratorWritePosition);
+
+  Destination:=fData;
+  inc(PpvAudioInt32(Destination),2*fGeneratorWritePosition);
+
+  fGeneratorInstance.Generate(Destination,ToDo,fRate);
+
+  inc(fGeneratorWritePosition,ToDo);
+  if fGeneratorWritePosition>=fGeneratorRingFrames then begin
+   fGeneratorWritePosition:=0;
+  end;
+
+  dec(Remain,ToDo);
+
+ end;
+
+ // The mixer reads one frame past the frame it is standing on, so the first frames of the ring must
+ // also exist behind its end. A handful of them covers every interpolator in this unit.
+ for Counter:=0 to 7 do begin
+  fData^[(fGeneratorRingFrames+Counter)*2]:=fData^[Counter*2];
+  fData^[((fGeneratorRingFrames+Counter)*2)+1]:=fData^[(Counter*2)+1];
+ end;
+
+end;
+
+// The one place that turns a rate into a read increment. A generator-backed sample leaves fRate out
+// of it on purpose: there the rate is the generator's business and only the Doppler shift, which is
+// a real time scaling of the arriving wave, may scale the reading of the frames themselves.
+procedure TpvAudioSoundSampleVoice.UpdateIncrement;
+var Rate:TpvFloat;
+begin
+
+ if assigned(fSample.Generator) then begin
+  Rate:=fDopplerRate;
+ end else begin
+  Rate:=fRate*fDopplerRate;
+ end;
+
+ fIncrement:=(TpvInt64(fSample.SampleRate)*round(Rate*TpvInt64($100000000))) div fAudioEngine.SampleRate;
+
 end;
 
 procedure TpvAudioSoundSampleVoice.Enqueue;
@@ -1829,7 +2005,16 @@ begin
  fPanning:=round(Clamp(aPanning,-1.0,1.0)*65536);
  fRate:=aRate;
  fDopplerRate:=1.0;
- fIncrement:=(fSample.SampleRate*round((fRate*fDopplerRate)*TpvInt64($100000000))) div fSample.AudioEngine.SampleRate;
+
+ // An ordinary sample plays the wave it was loaded with, a generator-backed one its own freshly
+ // filled ring, and from here on nothing downstream tells the two apart.
+ if assigned(fSample.Generator) then begin
+  SetupGenerator;
+ end else begin
+  fData:=fSample.Data;
+ end;
+
+ UpdateIncrement;
  fIncrementCurrent:=fIncrement shl 16;
  fIncrementLast:=fIncrement;
  fIncrementIncrement:=0;
@@ -2212,7 +2397,7 @@ begin
   DopplerSource:=Min(fSpatializationVelocity.Dot(SourceToListenerVector)*Factor,SpeedOfSound/Factor);
   fDopplerRate:=Clamp(SpeedOfSound+DopplerListener,1.0,(SpeedOfSound*2.0)-1.0)/
                Clamp(SpeedOfSound+DopplerSource,1.0,(SpeedOfSound*2.0)-1.0);
-  fIncrement:=(TpvInt64(fSample.SampleRate)*round((fRate*fDopplerRate)*TpvInt64($100000000))) div fAudioEngine.SampleRate;
+  UpdateIncrement;
  end;
 end;
 
@@ -2383,7 +2568,7 @@ var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,hhi,hm,p,m
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=fSample.Data;
+ d:=fData;
  vl:=fVolumeLeftCurrent;
  vr:=fVolumeRightCurrent;
  vli:=fVolumeLeftIncrement;
@@ -2545,7 +2730,7 @@ var vl,vr,vli,vri,pll,plr,plli,plri,pdl,pdr,pdli,pdri,pdlip,pdrip,pdm,p,m,s,v:Tp
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=fSample.Data;
+ d:=fData;
  vl:=fVolumeLeftCurrent;
  vr:=fVolumeRightCurrent;
  vli:=fVolumeLeftIncrement;
@@ -2675,7 +2860,7 @@ var vl,vr,vli,vri,p,m,s:TpvInt32;
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=fSample.Data;
+ d:=fData;
  vl:=fVolumeLeftCurrent;
  vr:=fVolumeRightCurrent;
  vli:=fVolumeLeftIncrement;
@@ -2716,7 +2901,7 @@ var vl,vr,p,m,s:TpvInt32;
     d:PpvAudioSoundSampleValues;
 begin
  Buf:=TpvPointer(Buffer);
- d:=fSample.Data;
+ d:=fData;
 {$ifdef UseDIV}
  vl:=VolumeLeft div 32768;
  vr:=VolumeRight div 32768;
@@ -2911,7 +3096,8 @@ begin
 end;
 
 procedure TpvAudioSoundSampleVoice.MixTo(aBuffer:PpvAudioSoundSampleValues;aMixVolume:TpvInt32;const aRealVoice:Boolean);
-var Remain,ToDo,Counter:TpvInt32;
+var Remain,ToDo,Counter,GeneratorFrames:TpvInt32;
+    GeneratorIncrement:TpvInt64;
     Buf:PpvAudioInt32;
     BufEx:PpvAudioInt32s;
 begin
@@ -2933,6 +3119,30 @@ begin
    end;
 
    UpdateIncrementRamping;
+
+   // A generator-backed voice makes the frames it is about to read, right before it reads them, so
+   // that the write position keeps the half ring of lead that SetupGenerator gave it. The block reads
+   // BufferSamples output frames, each of them advancing the read position by the increment, and the
+   // increment may still be ramping towards its target, so the larger of the two is what has to be
+   // covered.
+   if assigned(fGeneratorInstance) then begin
+
+    GeneratorIncrement:=fIncrementCurrent shr 16;
+    if GeneratorIncrement<fTargetIncrement then begin
+     GeneratorIncrement:=fTargetIncrement;
+    end;
+
+    GeneratorFrames:=TpvInt32((GeneratorIncrement*fSample.AudioEngine.BufferSamples) shr PositionShift)+2;
+
+    // Never write further ahead than the lead itself, because past that point the block would be
+    // overwriting the very frames it is about to read.
+    if GeneratorFrames>((fGeneratorRingFrames shr 1)-1) then begin
+     GeneratorFrames:=(fGeneratorRingFrames shr 1)-1;
+    end;
+
+    GenerateAhead(GeneratorFrames);
+
+   end;
 
    if aRealVoice then begin
     UpdateVolumeRamping(aMixVolume);
@@ -3605,6 +3815,7 @@ begin
   SoundSamples.HashMap.Add(Name,self);
  end;}
  Data:=nil;
+ Generator:=nil;
  Loop.Mode:=SoundLoopModeNONE;
  SustainLoop.Mode:=SoundLoopModeNONE;
  Voices:=nil;
@@ -3659,6 +3870,11 @@ begin
   FreeMem(Data);
   Data:=nil;
  end;
+
+ // The sample owns its generator, and the voices above have already let go of the instances they
+ // took from it.
+ FreeAndNil(Generator);
+
  if assigned(MixingBuffer) then begin
   FreeMem(MixingBuffer);
   MixingBuffer:=nil;
@@ -3744,6 +3960,39 @@ begin
    end;
   end;
  end;
+end;
+
+// Hands the sample over to a procedural source. The wave that was loaded is released - from here on every
+// voice reads from a ring buffer of its own instead - and the loop is made to describe that ring, which is
+// what wraps the read position around it and what lets the whole mixing path stay exactly as it is.
+//
+// To be called while the sample is silent, which in practice means right after loading it: a voice that is
+// already playing holds a pointer into the wave that is freed here.
+procedure TpvAudioSoundSample.SetGenerator(const aGenerator:TpvAudioSoundSampleGenerator);
+begin
+
+ FreeAndNil(Generator);
+
+ Generator:=aGenerator;
+
+ if assigned(Generator) then begin
+
+  if assigned(Data) then begin
+   dec(PpvAudioInt32(Data),2*SampleFixUp);
+   FreeMem(Data);
+   Data:=nil;
+  end;
+
+  SampleLength:=Generator.RingFrames;
+
+  Loop.Mode:=SoundLoopModeFORWARD;
+  Loop.StartSample:=0;
+  Loop.EndSample:=SampleLength;
+
+  SustainLoop.Mode:=SoundLoopModeNONE;
+
+ end;
+
 end;
 
 procedure TpvAudioSoundSample.SetVirtualVoices(aVirtualVoices:TpvInt32);
@@ -3837,6 +4086,14 @@ var Voice:TpvAudioSoundSampleVoice;
     SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd:TpvInt64;
     LoopMode:TpvInt32;
 begin
+
+ // A generator-backed sample has nowhere to reseek to. Every voice carries its own generator state
+ // and is already decorrelated from the others by construction, and moving the read position would
+ // only break the lead that the write position holds over it.
+ if assigned(Generator) then begin
+  exit;
+ end;
+
  if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
   Voice:=Voices[aVoiceNumber];
   SmpLen:=TpvInt64(SampleLength);
@@ -3864,6 +4121,13 @@ var Voice:TpvAudioSoundSampleVoice;
     SmpInc,SmpLen,SmpLoopStart,SmpLoopEnd:TpvInt64;
     LoopMode:TpvInt32;
 begin
+
+ // The ring of a generator-backed sample is not a loop that can be restarted - the read position and
+ // the write position only make sense relative to each other, see RandomReseek above.
+ if assigned(Generator) then begin
+  exit;
+ end;
+
  if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
   Voice:=Voices[aVoiceNumber];
   SmpLen:=TpvInt64(SampleLength);
@@ -3960,7 +4224,7 @@ begin
  if (aVoiceNumber>=0) and (aVoiceNumber<length(Voices)) then begin
   Voice:=Voices[aVoiceNumber];
   Voice.fRate:=aRate;
-  Voice.fIncrement:=(SampleRate*round((aRate*Voice.fDopplerRate)*TpvInt64($100000000))) div AudioEngine.SampleRate;
+  Voice.UpdateIncrement;
  end;
 end;
 
