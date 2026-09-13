@@ -251,6 +251,9 @@ type EpvVulkanException=class(Exception);
       ZoneIndex:TpvUInt32;
       BreadcrumbType:TpvVulkanBreadcrumbType;
       CommandInfo:TpvRawByteString;
+      // The breadcrumb index comes from one global counter shared by every queue, so the entry alone
+      // cannot say where it was recorded - this pins it to its command buffer
+      CommandBuffer:TVkCommandBuffer;
      end;
 
      TpvVulkanBreadcrumbs=array of TpvVulkanBreadcrumb;
@@ -852,6 +855,7 @@ type EpvVulkanException=class(Exception);
        fUseBreadcrumbs:boolean;
        fBreadcrumbForceManual:boolean;
        fBreadcrumbForceSyncManual:boolean;
+       fBreadcrumbTraceFileName:TpvUTF8String;
        fBreadcrumbTechnique:TpvVulkanBreadcrumbTechnique;
        fBreadcrumbBuffer:TpvVulkanBreadcrumbBuffer;
        fFullScreenExclusiveSupport:boolean;
@@ -964,6 +968,7 @@ type EpvVulkanException=class(Exception);
        property UseBreadcrumbs:boolean read fUseBreadcrumbs write fUseBreadcrumbs;
        property BreadcrumbForceManual:boolean read fBreadcrumbForceManual write fBreadcrumbForceManual;
        property BreadcrumbForceSyncManual:boolean read fBreadcrumbForceSyncManual write fBreadcrumbForceSyncManual;
+       property BreadcrumbTraceFileName:TpvUTF8String read fBreadcrumbTraceFileName write fBreadcrumbTraceFileName; // empty = no file, otherwise the device-lost breadcrumb report is appended to it
        property BreadcrumbTechnique:TpvVulkanBreadcrumbTechnique read fBreadcrumbTechnique;
        property BreadcrumbBuffer:TpvVulkanBreadcrumbBuffer read fBreadcrumbBuffer;
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
@@ -1121,7 +1126,7 @@ type EpvVulkanException=class(Exception);
        procedure RenderPassHint(const aEnterRenderPass:boolean);
        function BeginBreadcrumb(const aCommandBuffer:TVkCommandBuffer;const aType:TpvVulkanBreadcrumbType;const aCommandInfo:TpvRawByteString):boolean;
        procedure EndBreadcrumb(const aCommandBuffer:TVkCommandBuffer);
-       procedure TraceState(const aQueue:TVkQueue);
+       procedure TraceState(const aQueue:TVkQueue;const aLabel:TpvUTF8String='');
       published
        property Device:TpvVulkanDevice read fDevice;
        property Technique:TpvVulkanBreadcrumbTechnique read fTechnique;
@@ -8484,6 +8489,9 @@ procedure VulkanCheckResult(const ResultCode:TVkResult);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
 var s:TpvUTF8String;
 {$ifend}
+var BreadcrumbQueueFamilyIndex,BreadcrumbQueueIndex:TpvSizeInt;
+    BreadcrumbQueue:TpvVulkanQueue;
+    BreadcrumbQueueLabel:TpvUTF8String;
 begin
  if ResultCode<>VK_SUCCESS then begin
   if (ResultCode=VK_ERROR_DEVICE_LOST) and
@@ -8492,7 +8500,32 @@ begin
      BreadcrumbVulkanDevice.fBreadcrumbBuffer.fDirectTrace and
     assigned(BreadcrumbVulkanDevice.fUniversalQueue) then begin
    VulkanDebugLn('VK_ERROR_DEVICE_LOST detected - dumping breadcrumb state:');
-   BreadcrumbVulkanDevice.fBreadcrumbBuffer.TraceState(BreadcrumbVulkanDevice.fUniversalQueue.fQueueHandle);
+   // Every queue, not just the universal one - the device loss may be noticed on another queue than
+   // the one that died, and checkpoints only ever report for the queue they are asked about
+   for BreadcrumbQueueFamilyIndex:=0 to length(BreadcrumbVulkanDevice.fQueueFamilyQueues)-1 do begin
+    for BreadcrumbQueueIndex:=0 to length(BreadcrumbVulkanDevice.fQueueFamilyQueues[BreadcrumbQueueFamilyIndex])-1 do begin
+     BreadcrumbQueue:=BreadcrumbVulkanDevice.fQueueFamilyQueues[BreadcrumbQueueFamilyIndex,BreadcrumbQueueIndex];
+     if assigned(BreadcrumbQueue) then begin
+      BreadcrumbQueueLabel:='['+TpvUTF8String(IntToStr(BreadcrumbQueueFamilyIndex))+','+TpvUTF8String(IntToStr(BreadcrumbQueueIndex))+']';
+      if BreadcrumbQueue=BreadcrumbVulkanDevice.fUniversalQueue then begin
+       BreadcrumbQueueLabel:=BreadcrumbQueueLabel+'universal';
+      end;
+      if BreadcrumbQueue=BreadcrumbVulkanDevice.fPresentQueue then begin
+       BreadcrumbQueueLabel:=BreadcrumbQueueLabel+'present';
+      end;
+      if BreadcrumbQueue=BreadcrumbVulkanDevice.fGraphicsQueue then begin
+       BreadcrumbQueueLabel:=BreadcrumbQueueLabel+'graphics';
+      end;
+      if BreadcrumbQueue=BreadcrumbVulkanDevice.fComputeQueue then begin
+       BreadcrumbQueueLabel:=BreadcrumbQueueLabel+'compute';
+      end;
+      if BreadcrumbQueue=BreadcrumbVulkanDevice.fTransferQueue then begin
+       BreadcrumbQueueLabel:=BreadcrumbQueueLabel+'transfer';
+      end;
+      BreadcrumbVulkanDevice.fBreadcrumbBuffer.TraceState(BreadcrumbQueue.fQueueHandle,BreadcrumbQueueLabel);
+     end;
+    end;
+   end;
   end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   s:='Vulkan error ['+IntToStr(TpvInt64(ResultCode))+']: '+VulkanErrorToString(ResultCode);
@@ -11495,6 +11528,7 @@ begin
    fBreadcrumbs[BreadcrumbIndex].ZoneIndex:=TpvUInt32(fZoneCount-1);
    fBreadcrumbs[BreadcrumbIndex].BreadcrumbType:=aType;
    fBreadcrumbs[BreadcrumbIndex].CommandInfo:=aCommandInfo;
+   fBreadcrumbs[BreadcrumbIndex].CommandBuffer:=aCommandBuffer;
 
    fCurrentBreadcrumbIndex:=BreadcrumbIndex;
 
@@ -11536,7 +11570,10 @@ begin
      end;
     end;
     TpvVulkanBreadcrumbTechnique.NVCheckpoint:begin
-     fDevice.fDeviceVulkan.CmdSetCheckpointNV(aCommandBuffer,pointer(TpvPtrUInt(BreadcrumbIndex)));
+     // One past the index, so that breadcrumb 0 does not become a nil marker: a nil checkpoint is
+     // indistinguishable from a queue that carries no marker at all, and every such queue was then
+     // reported as hanging in breadcrumb 0
+     fDevice.fDeviceVulkan.CmdSetCheckpointNV(aCommandBuffer,pointer(TpvPtrUInt(BreadcrumbIndex+1)));
     end;
    end;
 
@@ -11619,7 +11656,7 @@ begin
 
 end;
 
-procedure TpvVulkanBreadcrumbBuffer.TraceState(const aQueue:TVkQueue);
+procedure TpvVulkanBreadcrumbBuffer.TraceState(const aQueue:TVkQueue;const aLabel:TpvUTF8String='');
 var BreadcrumbIndex:TpvInt32;
     MarkerIndex:TpvInt32;
     MarkerValueStart,MarkerValueEnd:TpvUInt32;
@@ -11631,10 +11668,30 @@ var BreadcrumbIndex:TpvInt32;
     LastFailedBreadcrumbIndex:TpvInt32;
     FoundBreadcrumbReport:boolean;
     CheckpointBreadcrumbIndex:TpvUInt32;
+ // The whole body of VulkanDebugLn sits in {$if defined(Debug) or not defined(Release)}, so a release
+ // build collects breadcrumbs but throws the report away - with a trace file name set on the device
+ // (--breadcrumbtracefile <file>) the same lines are appended to that file as well, which is the only
+ // way to see them from a release run
+ procedure Emit(const aLine:TpvUTF8String);
+ var TraceFile:TextFile;
+ begin
+  VulkanDebugLn(aLine);
+  if length(fDevice.fBreadcrumbTraceFileName)>0 then begin
+   AssignFile(TraceFile,String(fDevice.fBreadcrumbTraceFileName));
+   if FileExists(String(fDevice.fBreadcrumbTraceFileName)) then begin
+    Append(TraceFile);
+   end else begin
+    Rewrite(TraceFile);
+   end;
+   WriteLn(TraceFile,String(aLine));
+   CloseFile(TraceFile);
+  end;
+ end;
 begin
  if not assigned(self) then begin
   exit;
  end;
+ Emit('--- breadcrumb trace on queue '+aLabel+' 0x'+TpvUTF8String(LowerCase(IntToHex(TpvPtrUInt(aQueue),16)))+', technique '+IntToStr(TpvInt32(ord(fTechnique)))+', '+IntToStr(fBreadcrumbCount)+' breadcrumbs');
 
  fLock.Acquire;
  try
@@ -11654,7 +11711,7 @@ begin
       end else if MarkerStateStart=1 then begin
        ZoneId:='';
        FormatZoneId(ZoneId,fBreadcrumbs[BreadcrumbIndex].ZoneIndex);
-       VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+       Emit('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo+' CmdBuf:0x'+TpvUTF8String(LowerCase(IntToHex(TpvPtrUInt(fBreadcrumbs[BreadcrumbIndex].CommandBuffer),16))));
       end else if MarkerStateStart=0 then begin
        // Not yet started
       end;
@@ -11673,11 +11730,12 @@ begin
       CheckpointData[CheckpointDataIndex].sType:=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
      end;
      fDevice.fDeviceVulkan.GetQueueCheckpointDataNV(aQueue,@CheckpointDataCount,@CheckpointData[0]);
-     LastFailedBreadcrumbIndex:=0;
+     // The markers are one based, so a nil one means this queue carries no breadcrumb at all
+     LastFailedBreadcrumbIndex:=-1;
      for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
       CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
-      if TpvInt32(CheckpointBreadcrumbIndex)>LastFailedBreadcrumbIndex then begin
-       LastFailedBreadcrumbIndex:=TpvInt32(CheckpointBreadcrumbIndex);
+      if (CheckpointBreadcrumbIndex>0) and (TpvInt32(CheckpointBreadcrumbIndex-1)>LastFailedBreadcrumbIndex) then begin
+       LastFailedBreadcrumbIndex:=TpvInt32(CheckpointBreadcrumbIndex-1);
       end;
      end;
      for BreadcrumbIndex:=0 to LastFailedBreadcrumbIndex do begin
@@ -11687,20 +11745,20 @@ begin
        FoundBreadcrumbReport:=false;
        for CheckpointDataIndex:=0 to TpvInt32(CheckpointDataCount)-1 do begin
         CheckpointBreadcrumbIndex:=TpvUInt32(TpvPtrUInt(CheckpointData[CheckpointDataIndex].pCheckpointMarker));
-        if CheckpointBreadcrumbIndex=TpvUInt32(BreadcrumbIndex) then begin
+        if (CheckpointBreadcrumbIndex>0) and ((CheckpointBreadcrumbIndex-1)=TpvUInt32(BreadcrumbIndex)) then begin
          FoundBreadcrumbReport:=true;
-         VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+         Emit('Breadcrumb '+IntToStr(BreadcrumbIndex)+': started execution and did not finish. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo+' CmdBuf:0x'+TpvUTF8String(LowerCase(IntToHex(TpvPtrUInt(fBreadcrumbs[BreadcrumbIndex].CommandBuffer),16))));
         end;
        end;
        if not FoundBreadcrumbReport then begin
-        VulkanDebugLn('Breadcrumb '+IntToStr(BreadcrumbIndex)+': finished execution. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo);
+        Emit('Breadcrumb '+IntToStr(BreadcrumbIndex)+': finished execution. Zone:'+ZoneId+' Type:'+GetBreadcrumbTypeString(fBreadcrumbs[BreadcrumbIndex].BreadcrumbType)+' Info:'+fBreadcrumbs[BreadcrumbIndex].CommandInfo+' CmdBuf:0x'+TpvUTF8String(LowerCase(IntToHex(TpvPtrUInt(fBreadcrumbs[BreadcrumbIndex].CommandBuffer),16))));
        end;
       end;
      end;
     end;
    end;
    else begin
-    VulkanDebugLn('Vulkan breadcrumbs are disabled');
+    Emit('Vulkan breadcrumbs are disabled');
    end;
   end;
 
@@ -11792,6 +11850,7 @@ begin
  fUseBreadcrumbs:=false;
  fBreadcrumbForceManual:=false;
  fBreadcrumbForceSyncManual:=true;
+ fBreadcrumbTraceFileName:='';
  fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.None;
  fBreadcrumbBuffer:=nil;
 
@@ -13062,6 +13121,13 @@ begin
       ((fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)<0) and
        (fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)<0)) then begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.Manual;
+   // On NVIDIA the checkpoints win. NVIDIA exposes VK_AMD_buffer_marker as well, so asking for that
+   // one first made every NVIDIA device take the AMD path and left the checkpoints - the native
+   // mechanism there, and the one Aftermath reads - unused, which is why a device loss reported no
+   // breadcrumbs at all. Everywhere else the buffer marker stays the first choice.
+   end else if (TpvVulkanVendorID(fPhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA) and
+               (fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0) then begin
+    fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.NVCheckpoint;
    end else if fEnabledExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
     fBreadcrumbTechnique:=TpvVulkanBreadcrumbTechnique.AMDMarker;
    end else if fEnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin

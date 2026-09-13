@@ -137,9 +137,13 @@ begin
 
 //SeparateCommandBuffer:=true;
 
+ // Full resolution (1.0), NOT SizeFactor: this pass sits behind the tone mapping, so it reads the
+ // already upscaled picture and hands LastOutputResource on to the selection outline compose and the
+ // canvas / HUD, all of which are 1.0. At SizeFactor the chain broke one pass later, because the
+ // compose pass inherits its output resource type from LastOutputResource while its own size is 1.0.
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                       fInstance.SizeFactor,
-                                       fInstance.SizeFactor,
+                                       1.0,
+                                       1.0,
                                        1.0,
                                        fInstance.CountSurfaceViews);
 

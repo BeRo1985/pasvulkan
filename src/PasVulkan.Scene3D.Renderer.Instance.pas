@@ -6179,12 +6179,14 @@ begin
  // it sits in the same chain and simply hands the picture on; it needs its own type only because a pass
  // may not read and write one and the same resource.
  if fRadialBlurActive then begin
+  // 1.0, not fSizeFactor: the radial blur runs behind the tone mapping, where everything - tone mapping
+  // output, selection outline compose, canvas, HUD - is at full resolution
   fFrameGraph.AddImageResourceType('resourcetype_color_radialblur',
                                    false,
                                    VK_FORMAT_R16G16B16A16_SFLOAT,
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
-                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                    1
                                   );

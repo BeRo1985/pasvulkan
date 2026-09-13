@@ -7428,6 +7428,21 @@ type TEventBeforeAfter=(Event,Before,After);
          end;
         end;
        end;
+       // NVIDIA workaround: a depth/stencil attachment that is left with VK_ATTACHMENT_STORE_OP_DONT_CARE between two
+       // multisampled depth passes (a 1x selection mask depth after the MSAA forward pass and before the next LOAD of the
+       // MSAA depth) makes the ROP read past the end of that 1x image in the next MSAA depth pass, which ends as a GPU
+       // page fault (VK_ERROR_DEVICE_LOST) on the 591.86 driver with a RTX 4090, but only with MSAA and only with a
+       // render size factor other than 1.0. Storing the depth/stencil content instead avoids it, and the extra store of
+       // the few never-read-again depth buffers is cheap on a desktop GPU.
+       if (Attachment^.ImageType in [TImageType.Depth,TImageType.DepthStencil,TImageType.Stencil]) and
+          (TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID)=TpvVulkanVendorID.NVIDIA) then begin
+        if Attachment^.ImageType in [TImageType.Depth,TImageType.DepthStencil] then begin
+         Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+        end;
+        if Attachment^.ImageType in [TImageType.DepthStencil,TImageType.Stencil] then begin
+         Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+        end;
+       end;
       end;
 
       Subpass.fInputAttachments.Finish;

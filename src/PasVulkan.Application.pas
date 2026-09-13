@@ -1729,6 +1729,7 @@ type EpvApplication=class(Exception)
        fUseBreadcrumbs:boolean;
        fManualBreadcrumbs:boolean;
        fManualSyncBreadcrumbs:boolean;
+       fBreadcrumbTraceFileName:TpvUTF8String;
        fCrashLog:boolean;
        fCrashDumps:boolean;
        fCrashDumpKind:TpvCrashReportMiniDumpKind;
@@ -2517,6 +2518,10 @@ type EpvApplication=class(Exception)
        property UseBreadcrumbs:boolean read fUseBreadcrumbs write fUseBreadcrumbs;
 
        property ManualBreadcrumbs:boolean read fManualBreadcrumbs write fManualBreadcrumbs;
+
+       // File the device-lost breadcrumb report is appended to (--breadcrumbtracefile <file>); empty means
+       // debug output only, which a release build drops
+       property BreadcrumbTraceFileName:TpvUTF8String read fBreadcrumbTraceFileName write fBreadcrumbTraceFileName;
 
        property ManualSyncBreadcrumbs:boolean read fManualSyncBreadcrumbs write fManualSyncBreadcrumbs;
 
@@ -10546,6 +10551,7 @@ begin
  fUseBreadcrumbs:=false;
  fManualBreadcrumbs:=false;
  fManualSyncBreadcrumbs:=false;
+ fBreadcrumbTraceFileName:='';
  fCrashLog:=false;
  fCrashDumps:=false;
  fCrashDumpKind:=TpvCrashReportMiniDumpKind.Normal;
@@ -10972,6 +10978,12 @@ begin
     fManualBreadcrumbs:=true;
    end else if Parameter='manualsyncbreadcrumbs' then begin
     fManualSyncBreadcrumbs:=true;
+   end else if Parameter='breadcrumbtracefile' then begin
+    // Takes the file name as the next argument, like recordinput below
+    if Index<=Count then begin
+     fBreadcrumbTraceFileName:=TpvUTF8String(ParamStr(Index));
+     inc(Index);
+    end;
    end else if Parameter='crashlogging' then begin
     // Not spelled crashlog, which is already taken and names the file rather
     // than switching the writing of it on.
@@ -11588,6 +11600,7 @@ begin
   fVulkanDevice.UseBreadcrumbs:=fUseBreadcrumbs;
   fVulkanDevice.BreadcrumbForceManual:=fManualBreadcrumbs;
   fVulkanDevice.BreadcrumbForceSyncManual:=fManualSyncBreadcrumbs;
+  fVulkanDevice.BreadcrumbTraceFileName:=fBreadcrumbTraceFileName;
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
