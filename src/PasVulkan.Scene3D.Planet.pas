@@ -32986,13 +32986,17 @@ begin
  fPrecipitationAtmosphereDescriptorPool:=TpvScene3DPlanet.CreatePlanetPrecipitationAtmosphereDescriptorPool(TpvScene3DRendererInstance(aRendererInstance).Renderer.VulkanDevice,TpvScene3DRendererInstance(aRendererInstance).Renderer.CountInFlightFrames);
 
  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  // Both from the per-in-flight-frame copies, which TransferTo fills for exactly this purpose, and not
+  // from the master maps: these sets are read on the graphics queue while the planet update queue
+  // transitions the master images in its own submits (SYNC-HAZARD-WRITE-RACING-READ). With
+  // PlanetSingleBuffers the per-in-flight-frame data aliases the master data, so it is the same image there.
   fPrecipitationAtmosphereDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPrecipitationAtmosphereDescriptorPool,TpvScene3D(fScene3D).PlanetPrecipitationAtmosphereDescriptorSetLayout);
   fPrecipitationAtmosphereDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                   0,
                                                                                   1,
                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                   [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                                 fPlanet.fData.fPrecipitationMapImage.VulkanImageView.Handle,
+                                                                                                                 fPlanet.fInFlightFrameDataList[InFlightFrameIndex].fPrecipitationMapImage.VulkanImageView.Handle,
                                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                   [],
                                                                                   [],
@@ -33002,7 +33006,7 @@ begin
                                                                                   1,
                                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                   [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                                 fPlanet.fData.fAtmosphereMapImage.VulkanImageView.Handle,
+                                                                                                                 fPlanet.fInFlightFrameDataList[InFlightFrameIndex].fAtmosphereMapImage.VulkanImageView.Handle,
                                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                   [],
                                                                                   [],
@@ -33033,12 +33037,17 @@ begin
                                                                                [fPlanet.fData.PrecipitationAtmosphereMapBuffer.DescriptorBufferInfo],
                                                                                [],
                                                                                false);
+  // The per-in-flight-frame copy, not the master height map: this dispatch runs on the graphics queue
+  // while the planet update queue transitions the master image in its own submits (TData.TransferTo),
+  // and the two submits are not synchronized against each other (SYNC-HAZARD-WRITE-RACING-READ). With
+  // PlanetSingleBuffers the per-in-flight-frame data aliases the master data anyway, so this is the
+  // same image there.
   fRainStreakSimulationDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                                0,
                                                                                1,
                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                                              fPlanet.fData.fHeightMapImage.VulkanImageView.Handle,
+                                                                                                              fPlanet.fInFlightFrameDataList[InFlightFrameIndex].fHeightMapImage.VulkanImageView.Handle,
                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                [],
                                                                                [],
