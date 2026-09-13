@@ -632,7 +632,9 @@ begin
         ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         ImageMemoryBarriers[0].pNext:=nil;
         ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
-        ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        // Shader read too: mip level 0 is what the first reduction dispatch below READS as a storage
+        // image, it only writes the levels the second barrier covers (SYNC-HAZARD-READ-AFTER-WRITE)
+        ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
         ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_GENERAL;
         ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;

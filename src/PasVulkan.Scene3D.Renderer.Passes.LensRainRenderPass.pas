@@ -148,10 +148,14 @@ begin
                                         fInstance.CountSurfaceViews);
  end;
 
+ // Sampled (VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER below), NOT read back per subpassLoad like in the
+ // lens resolve pass - so no attachment flag: as an attachment of this very render pass the image would
+ // be in the framebuffer the fragment shader samples from (feedback loop), and its store op would count
+ // as a write to an image that is being read in the same pass (SYNC-HAZARD-WRITE-AFTER-READ).
  fResourceScene:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
                                fInstance.LastOutputResource.Resource.Name,
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               []
                               );
 
  if fInstance.PostProcessingAtScaledResolution and not SameValue(fInstance.SizeFactor,1.0) then begin

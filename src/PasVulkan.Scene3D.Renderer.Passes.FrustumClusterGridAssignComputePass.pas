@@ -350,8 +350,12 @@ begin
   MemoryBarrier.pNext:=nil;
   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  // CountFinalViews, the very count the loop above runs over: with CountViews (all views of the frame,
+  // including the shadow map ones) the condition never became true, so the last barrier never got the
+  // fragment stage and the forward passes read the cluster grid buffers without any barrier covering
+  // their fragment shader reads (SYNC-HAZARD-READ-AFTER-WRITE).
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    IfThen(ViewIndex=((InFlightFrameState^.CountViews+InFlightFrameState^.CountReflectionProbeViews)-1),TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)),
+                                    IfThen(ViewIndex=((InFlightFrameState^.CountFinalViews+InFlightFrameState^.CountReflectionProbeViews)-1),TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)),
                                     0,
                                     1,@MemoryBarrier,
                                     0,nil,

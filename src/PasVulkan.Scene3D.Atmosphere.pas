@@ -4585,8 +4585,10 @@ begin
 
    TpvScene3D(fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DAtmosphere.TDirectionalMap.Update.Barrier0',[0.0,0.5,1.0,1.0]);
 
+   // Shader write as well: what follows is the texture transfer dispatch, which writes this cube map as
+   // a storage image (SYNC-HAZARD-WRITE-AFTER-WRITE against this very layout transition)
    ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
-                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_UNDEFINED,
                                                         VK_IMAGE_LAYOUT_GENERAL,
                                                         VK_QUEUE_FAMILY_IGNORED,

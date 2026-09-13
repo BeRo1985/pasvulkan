@@ -247,6 +247,21 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
+ // The histogram pass just filled the histogram buffer this dispatch reads and writes back, and the
+ // explicit pass dependency on it only orders the passes, it does not put a memory barrier on that
+ // buffer - without this one the two dispatches raced on it (SYNC-HAZARD-WRITE-AFTER-READ).
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                   1,@MemoryBarrier,
+                                   0,nil,
+                                   0,nil);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,

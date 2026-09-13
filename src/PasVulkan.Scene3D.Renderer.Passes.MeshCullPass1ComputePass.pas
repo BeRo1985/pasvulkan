@@ -536,6 +536,17 @@ begin
                                                          0,
                                                          VK_WHOLE_SIZE);
 
+  // The reset dispatch below writes the indirect dispatch buffer, which the previous cull pass wrote
+  // and its CmdDispatchIndirect read - the only barrier on it so far was the one AFTER the reset, to
+  // the indirect read, so the next reset ran into a write-after-write / write-after-read on it.
+  BufferMemoryBarriers[4]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fInstance.MeshCullIndirectDispatchBuffers[aInFlightFrameIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
@@ -547,7 +558,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     0,
                                     0,nil,
-                                    4,@BufferMemoryBarriers[0],
+                                    5,@BufferMemoryBarriers[0],
                                     0,nil);
 
   begin

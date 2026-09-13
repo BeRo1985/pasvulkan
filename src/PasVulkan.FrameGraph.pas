@@ -5329,6 +5329,16 @@ type TEventBeforeAfter=(Event,Before,After);
      assigned(aResourceTransition.fPass) and
      (aResourceTransition.fPass is TRenderPass) then begin
    result:=result or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+   // And an image input that is an attachment of a render pass is what a subpassLoad reads, which is
+   // VK_ACCESS_INPUT_ATTACHMENT_READ_BIT and not covered by VK_ACCESS_SHADER_READ_BIT - without it the
+   // barrier before such a pass does not make the previous store visible to its subpassLoad reads
+   // (SYNC-HAZARD-READ-AFTER-WRITE on every frame, for example on the MBOIT resolve pass). Only for the
+   // layouts whose stage mask above carries the fragment shader stage, since the access flags of a
+   // barrier have to be supported by its stage mask (VUID-vkCmdPipelineBarrier-pImageMemoryBarriers-02820).
+   if (aResourceTransition.fLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) or
+      (aResourceTransition.fLayout=VK_IMAGE_LAYOUT_GENERAL) then begin
+    result:=result or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+   end;
   end;
   // An attachment is read AND written by the render pass whatever its layout is called, and the layout is
   // what the masks above are derived from - so for an attachment they are derived from the wrong thing.

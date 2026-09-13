@@ -21226,8 +21226,10 @@ begin
  // Barrier: simulation writes to image[WriteIndex] must be visible to downstream sampler reads
  // (tess/mesh/frag stages). Queue-family ownership transfer to the universal queue is handled
  // afterwards by TData.ReleaseWaterOnSimulationQueue, which now also covers both ripple images.
+ // Shader write in the destination mask as well, because of the ping-pong: this image is the one the
+ // NEXT frame's injection dispatch writes into (SYNC-HAZARD-WRITE-AFTER-WRITE).
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                      TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       VK_IMAGE_LAYOUT_GENERAL,
                                                       VK_IMAGE_LAYOUT_GENERAL,
                                                       VK_QUEUE_FAMILY_IGNORED,
@@ -27301,8 +27303,10 @@ begin
             end;
             inc(CountBufferMemoryBarriers);
 
+            // Transfer write as well, because what follows in this pass is the CmdFillBuffer sequence on
+            // this very buffer, not a shader access (SYNC-HAZARD-WRITE-AFTER-WRITE).
             BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
-                                                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                            VK_QUEUE_FAMILY_IGNORED,
                                                                                            VK_QUEUE_FAMILY_IGNORED,
                                                                                            RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
@@ -27496,7 +27500,10 @@ begin
            end;
           end;
 
-          if fPass=1 then begin
+          // Pass 0 too, not just pass 1: pass 0's dispatch writes this buffer as well, and the next pass
+          // on the same view instance writes it again right away, so without this barrier the two
+          // dispatches ran into a write-after-write on it (SYNC-HAZARD-WRITE-AFTER-WRITE).
+          if (fPass=0) or (fPass=1) then begin
 
            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
