@@ -12307,6 +12307,78 @@ begin
  end;
 end;
 
+procedure TpvScene3DPlanet.TSerializedData.UploadWaterHeightMap;
+var Queue:TpvVulkanQueue;
+    CommandPool:TpvVulkanCommandPool;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    Fence:TpvVulkanFence;
+begin
+
+ if (not assigned(fPlanet.fVulkanDevice)) or
+    (fWaterHeightMapData.Size<>(fWaterMapResolution*fWaterMapResolution*SizeOf(TpvFloat))) or
+    (TpvUInt32(fPlanet.fWaterMapResolution)<>fWaterMapResolution) or
+    not (assigned(fPlanet.fData.fWaterHeightMapBuffers[0]) and
+         assigned(fPlanet.fData.fWaterHeightMapBuffers[1]) and
+         assigned(fPlanet.fData.fWaterFlowMapBuffer)) then begin
+  exit;
+ end;
+
+ Queue:=fPlanet.fVulkanDevice.UniversalQueue;
+
+ CommandPool:=TpvVulkanCommandPool.Create(fPlanet.fVulkanDevice,fPlanet.fVulkanDevice.UniversalQueueFamilyIndex);
+ try
+
+  CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   Fence:=TpvVulkanFence.Create(fPlanet.fVulkanDevice);
+   try
+
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(Fence.Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DPlanet.TSerializedData.UploadWaterHeightMap.Fence');
+
+    // Both of them, since which one is read is decided by the ping pong index of the simulation
+    fPlanet.fVulkanDevice.MemoryStaging.Upload(Queue,
+                                               CommandBuffer,
+                                               Fence,
+                                               fWaterHeightMapData.Memory^,
+                                               fPlanet.fData.fWaterHeightMapBuffers[0],
+                                               0,
+                                               fWaterHeightMapData.Size);
+
+    fPlanet.fVulkanDevice.MemoryStaging.Upload(Queue,
+                                               CommandBuffer,
+                                               Fence,
+                                               fWaterHeightMapData.Memory^,
+                                               fPlanet.fData.fWaterHeightMapBuffers[1],
+                                               0,
+                                               fWaterHeightMapData.Size);
+
+    // The flow that was in the pipes belonged to the water which is now gone, so it goes with it
+    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    CommandBuffer.BeginRecording;
+    CommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterFlowMapBuffer.Handle,
+                                0,
+                                VK_WHOLE_SIZE,
+                                0);
+    CommandBuffer.EndRecording;
+    CommandBuffer.Execute(Queue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,Fence,true);
+
+   finally
+    FreeAndNil(Fence);
+   end;
+
+  finally
+   FreeAndNil(CommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(CommandPool);
+ end;
+
+ fPlanet.fData.WakeWater;
+
+end;
+
 procedure TpvScene3DPlanet.TSerializedData.LoadFromStream(const aStream:TStream);
 var Header:TpvScene3DPlanet.TSerializedData.THeader;
     Chunk:TpvScene3DPlanet.TSerializedData.TChunk;
