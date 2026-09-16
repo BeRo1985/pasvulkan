@@ -36765,6 +36765,28 @@ begin
   UpdatedGrass:=UpdatedGrass or fData.fDirtyGrassMap;
   UpdatedPrecipitation:=UpdatedPrecipitation or fData.fDirtyPrecipitationMap;
   UpdatedAtmosphere:=UpdatedAtmosphere or fData.fDirtyAtmosphereMap;
+  // What was just uploaded went into the ground truth maps, and the copies the frames in flight
+  // read are only refreshed where a generation counter says that something changed - see the
+  // TransferTo call in TransferData. Without this, a map written this way sits in the ground truth
+  // unseen until something else happens to raise the same counter.
+  if fData.fDirtyHeightMap then begin
+   inc(fData.fHeightMapGeneration);
+  end;
+  if fData.fDirtyBlendMap then begin
+   inc(fData.fBlendMapGeneration);
+  end;
+  if fData.fDirtyGrassMap then begin
+   inc(fData.fGrassMapGeneration);
+  end;
+  if fData.fDirtyGrassAgeMap then begin
+   inc(fData.fGrassAgeMapGeneration);
+  end;
+  if fData.fDirtyPrecipitationMap then begin
+   inc(fData.fPrecipitationMapGeneration);
+  end;
+  if fData.fDirtyAtmosphereMap then begin
+   inc(fData.fAtmosphereMapGeneration);
+  end;
   fData.fDirtyHeightMap:=false;
   fData.fDirtyBlendMap:=false;
   fData.fDirtyGrassMap:=false;
