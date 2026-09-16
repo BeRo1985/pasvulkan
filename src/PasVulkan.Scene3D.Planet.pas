@@ -1001,6 +1001,7 @@ type TpvScene3DPlanets=class;
               property AtmosphereMapResolution:TpvUInt32 read fAtmosphereMapResolution write fAtmosphereMapResolution;
               property WaterMapResolution:TpvUInt32 read fWaterMapResolution write fWaterMapResolution;
               property HeightMapData:TMemoryStream read fHeightMapData;
+              property BlendMapData:TMemoryStream read fBlendMapData;
               property GrassMapData:TMemoryStream read fGrassMapData;
               property GrassAgeMapData:TMemoryStream read fGrassAgeMapData;
               property GrassFlagsMapData:TMemoryStream read fGrassFlagsMapData;
