@@ -643,6 +643,12 @@ type TpvScene3DPlanets=class;
               procedure AcquireAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseAtmospherePrecipitationOnSimulationQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure CopyHeightMapImageToHeightMapBuffer;
+              // To be called when the water height map was put there as a whole rather than changed through
+              // a brush - by a loaded save game or by anything else which writes the buffer directly. The
+              // simulation has to be told, because it is what carries the new state into the image the
+              // renderer reads, and it does that only while it is stepping: left asleep, water written this
+              // way would simply never show up.
+              procedure WakeWater;
               procedure CheckDirtyMap;
               procedure Download(const aQueue:TpvVulkanQueue;
                                  const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -987,6 +993,11 @@ type TpvScene3DPlanets=class;
               procedure Upload(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence); overload;
               procedure Download; overload;
               procedure Upload; overload;
+              // Only the water height map, into both of its ping pong buffers, with the flow map cleared
+              // and the simulation woken afterwards. For anything which changes the water again and again
+              // rather than once: the full Upload moves every map the planet has, which is hundreds of
+              // megabytes and far too much to do several times per second.
+              procedure UploadWaterHeightMap;
               procedure LoadFromStream(const aStream:TStream);
               procedure SaveToStream(const aStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.None;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0);
               procedure LoadFromFile(const aFileName:String);
@@ -7616,6 +7627,14 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.TData.WakeWater;
+begin
+ fWaterFirst:=true;
+ fWaterActive:=true;
+ fWaterSimulationCountUnderThresholdFrames:=0;
+ fWaterFrameIndex:=1;
 end;
 
 procedure TpvScene3DPlanet.TData.Download(const aQueue:TpvVulkanQueue;
