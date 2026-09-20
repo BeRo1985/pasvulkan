@@ -9,6 +9,19 @@
 // height (r) and velocity (g) channels, so that the subsequent wave-equation
 // simulation pass can propagate them across the octahedral water surface.
 //
+// Two dispatch modes, selected by pushConstants.sourceIndex:
+//
+// - Windowed (sourceIndex >= 0): one dispatch per source over just the texel
+//   window that its Gaussian can reach, whose center and half extent the CPU
+//   computes. This is what normally runs, and its cost follows the footprint of
+//   the stamps instead of the size of the map. Since each dispatch applies a
+//   single source, the read-modify-write below cannot lose a contribution; the
+//   caller puts an image barrier between the per-source dispatches.
+// - Full map (sourceIndex < 0): every texel loops over every source, the way it
+//   worked before the windowed mode existed. Kept as the fallback for the case
+//   of so many sources that one dispatch per source would cost more than one
+//   pass over the whole map.
+//
 // This is fully independent of the existing CPU TGamePlanetWaterImpactMap and
 // of the long-lived EnqueueWaterModification brush writes on the water height
 // map, which keep their semantics unchanged.
@@ -42,51 +55,75 @@ layout(set = 0, binding = 1, rg16f) uniform image2D uTargetImage;
 layout(push_constant) uniform PushConstants {
   uint waterRippleMapResolution;
   uint countSources;
-  float maxAmplitude; // Clamp of the stamped field, see below
+  float maxAmplitude;    // Clamp of the stamped field, see below
+  int sourceIndex;       // >= 0 = windowed mode for exactly this source, < 0 = full map mode over all sources
+  int windowHalfTexels;  // Half extent of the window in texels (windowed mode)
+  int windowCenterX;     // Texel the source sits on (windowed mode)
+  int windowCenterY;
 } pushConstants;
 
 #include "octahedral.glsl"
 
+// Additive Gaussian contribution of one source at a texel direction. sigma ~ angularRadius/2, so t=2 is about
+// two sigma out and t=3 is where the tail is cut off.
+vec2 sourceContribution(const in WaterRippleSource aSource, const in vec3 aNormal){
+  float angularRadius = max(aSource.positionRadius.w, 1e-4);
+  float cosAngle = clamp(dot(aNormal, aSource.positionRadius.xyz), -1.0, 1.0);
+  float t = acos(cosAngle) / angularRadius;
+  if(t >= 3.0){
+    return vec2(0.0);
+  }
+  return vec2(aSource.strengthVelocityPad.x, aSource.strengthVelocityPad.y) * exp(t * t * -2.0);
+}
+
 void main(){
 
-  const uvec2 position = uvec2(gl_GlobalInvocationID.xy);
-
-  if(!all(lessThan(position, uvec2(pushConstants.waterRippleMapResolution)))){
-    return;
-  }
+  const int resolution = int(pushConstants.waterRippleMapResolution);
 
   uint countSources = min(pushConstants.countSources, waterRippleSources.count);
   if(countSources == 0u){
     return;
   }
 
-  vec3 n = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(pushConstants.waterRippleMapResolution));
-
+  ivec2 position;
   vec2 accum = vec2(0.0);
 
-  for(uint i = 0u; i < countSources; i++){
-    WaterRippleSource src = waterRippleSources.items[i];
-    vec3 sn = src.positionRadius.xyz;
-    float angularRadius = max(src.positionRadius.w, 1e-4);
-    // Great-circle angle between texel direction and source direction.
-    float cosAngle = clamp(dot(n, sn), -1.0, 1.0);
-    float angle = acos(cosAngle);
-    float t = angle / angularRadius;
-    if(t < 3.0){
-      // Gaussian falloff; sigma ~ angularRadius/2 so that t=2 means ~2 sigma out.
-      float weight = exp(t * t * -2.0);
-      accum += vec2(src.strengthVelocityPad.x, src.strengthVelocityPad.y) * weight;
+  if(pushConstants.sourceIndex >= 0){
+
+    // Windowed mode: the invocation grid spans the window around one single source, so it is mapped onto the
+    // map through the octahedral wrap instead of being the map coordinate itself.
+    if(uint(pushConstants.sourceIndex) >= countSources){
+      return;
     }
+    ivec2 windowTexel = ivec2(pushConstants.windowCenterX, pushConstants.windowCenterY) +
+                        (ivec2(gl_GlobalInvocationID.xy) - ivec2(pushConstants.windowHalfTexels));
+    position = wrapOctahedralTexelCoordinates(windowTexel, ivec2(resolution));
+    accum = sourceContribution(waterRippleSources.items[pushConstants.sourceIndex],
+                               octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(resolution)));
+
+  }else{
+
+    // Full map mode: one invocation per texel, accumulating every source, so that overlapping stamps cannot
+    // lose a contribution in the read-modify-write below.
+    position = ivec2(gl_GlobalInvocationID.xy);
+    if(!all(lessThan(position, ivec2(resolution)))){
+      return;
+    }
+    vec3 n = octPlanetUnsignedDecode((vec2(position) + vec2(0.5)) / vec2(resolution));
+    for(uint i = 0u; i < countSources; i++){
+      accum += sourceContribution(waterRippleSources.items[i], n);
+    }
+
   }
 
   if(any(greaterThan(abs(accum), vec2(1e-7)))){
-    vec4 prev = imageLoad(uTargetImage, ivec2(position));
+    vec4 prev = imageLoad(uTargetImage, position);
     // The stamps are additive and the continuous wake puts several of them per second onto nearly the same
     // spot, where a bump wider than a texel is no longer dispersed right away by the Laplace term of the
     // simulation pass. The clamp bounds that pile-up, so a mistuned config cannot grow the field without end.
     float limit = max(pushConstants.maxAmplitude, 1e-4);
     vec2 result = clamp(vec2(prev.x, prev.y) + accum, vec2(-limit), vec2(limit));
-    imageStore(uTargetImage, ivec2(position), vec4(result.x, result.y, 0.0, 0.0));
+    imageStore(uTargetImage, position, vec4(result.x, result.y, 0.0, 0.0));
   }
 
 }

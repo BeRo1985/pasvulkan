@@ -472,6 +472,39 @@ type EpvScene3D=class(Exception);
               function Get(const aDefault:TpvVector4):TpvVector4; overload;
             end;
             TInFlightFrameAABBs=array[0..MaxInFlightFrames-1] of TpvAABB;
+            { TDynamicBufferFreeMode }
+            // Where the host waits for the previous frame when a short term dynamic buffer is replaced on a
+            // resize, see TVulkanShortTermDynamicBufferData.Update. The velocity read of the previous frame's
+            // buffers is GPU to GPU and needs none of this, only the lifetime of a replaced buffer does.
+            TDynamicBufferFreeMode=
+             (
+              WaitAlways,    // Wait on every frame, then free replaced buffers right away (the former behaviour)
+              WaitOnReplace, // Wait only on the frames that really replace a buffer, then free it right away
+              DeferAlways    // Never wait, hand every replaced buffer to the free queue instead
+             );
+            { TUploadFrameCPUTimes }
+            // Wall clock of the parts of UploadFrame in milliseconds, so that the frame time of the whole call
+            // can be attributed instead of guessed. Filled every call, read afterwards by whoever displays it.
+            TUploadFrameCPUTimes=record
+             Planets:TpvDouble;
+             Atmospheres:TpvDouble;
+             Groups:TpvDouble;
+             BoundingSpheres:TpvDouble;
+             Buffers:TpvDouble;
+             BuffersLongTermStatic:TpvDouble;    // The four calls the Buffers section above is made of. The second
+             BuffersShortTermDynamic:TpvDouble;  // one carries the frame's single WaitOnceOnPreviousFrame, the first
+             BuffersMorphWeights:TpvDouble;      // one the full reload of the static buffers, so the split tells the
+             BuffersMeshletBoundingSpheres:TpvDouble; // two apart.
+             Materials:TpvDouble;
+             LightsAndDecals:TpvDouble;
+             InstanceData:TpvDouble;
+             DrawInfos:TpvDouble;
+             MatrixPairs:TpvDouble;
+             Rest:TpvDouble;
+             Total:TpvDouble;
+            end;
+            PUploadFrameCPUTimes=^TUploadFrameCPUTimes;
+            TUploadFrameCPUTimesArray=array[0..MaxInFlightFrames-1] of TUploadFrameCPUTimes;
        const MaxViews=65536 div SizeOf(TView);
        type TID=TpvUInt32;
             TIDManager=class(TpvGenericIDManager<TID>);
@@ -4769,6 +4802,8 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfos:array[0..MaxInFlightFrames-1] of TpvScene3D.TImageInfos;
        fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+       fUploadFrameCPUTimes:TUploadFrameCPUTimesArray;
+       fDynamicBufferFreeMode:TDynamicBufferFreeMode;
        fPrimaryLightDirection:TpvVector3;
        fPrimaryLightDirections:TInFlightFrameVector3s;
        fPrimaryShadowMapLightDirection:TpvVector3;
@@ -5585,6 +5620,11 @@ type EpvScene3D=class(Exception);
        property DebugDumpDrawInfo:boolean read fDebugDumpDrawInfo write fDebugDumpDrawInfo;
 {$endif}
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
+      public
+       // An array of records cannot be published, so this one sits in a public section of its own
+       property UploadFrameCPUTimes:TUploadFrameCPUTimesArray read fUploadFrameCPUTimes;
+      published
+       property DynamicBufferFreeMode:TDynamicBufferFreeMode read fDynamicBufferFreeMode write fDynamicBufferFreeMode;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
@@ -14267,14 +14307,25 @@ begin
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
   // These buffers are not private to their own frame: the velocity path reads the PREVIOUS in-flight
-  // frame's cached vertex and generation buffers through their device addresses. With three frames in
-  // flight, the frame two back read the very buffer this slot is about to replace - so replacing it is
-  // only safe once that frame is done. Waiting for the frame ONE back settles it, because the timeline is
-  // monotonic and an older frame cannot outlive a newer one. That is what this asks, from the frame's
-  // single real wait, and it is what the frees below hand on: they still free on the spot in the normal
-  // case and only queue the old buffer when the wait could not confirm it, which is exactly the case
-  // where the GPU may still be reading it.
-  PreviousFrameFinished:=fSceneInstance.WaitOnceOnPreviousFrame;
+  // frame's cached vertex and generation buffers through their device addresses. That read itself needs
+  // nothing from the host, it is written by the cache compute pass and read by the mesh stage, both on the
+  // GPU and both ordered by the queue and its barriers. What does need the host is the LIFETIME of a
+  // buffer that gets REPLACED on a resize: the draw info of a frame still in flight keeps pointing at the
+  // old device address, so destroying the old buffer right away would be a use after free. Only the frees
+  // below care, and they already carry the alternative: with false they hand the old buffer to the free
+  // queue, which holds it for CountInFlightFrames frames and therefore outlives every frame that could
+  // still reference it. Where the wait happens is what DynamicBufferFreeMode selects.
+  case fSceneInstance.fDynamicBufferFreeMode of
+   TDynamicBufferFreeMode.WaitAlways:begin
+    // The former behaviour, kept for comparison: the frame's single real wait, paid on every frame even
+    // though a resize is rare, which is what showed up as several milliseconds in UploadFrame.
+    PreviousFrameFinished:=fSceneInstance.WaitOnceOnPreviousFrame;
+   end;
+   else begin
+    // WaitOnReplace waits below, once it is known that a buffer really is replaced, DeferAlways never
+    // waits and leaves the frees to the free queue.
+   end;
+  end;
 
   fBuffersRebuilt:=false;
 
@@ -14291,6 +14342,12 @@ begin
    // vertex index no longer points at the same vertex it did in the frame before, so the previous frame's
    // positions are not comparable and this frame has to do without them.
    fBuffersRebuilt:=true;
+
+   // Here it is known that buffers really are replaced, so this is where the wait belongs when it is asked
+   // for at all. DeferAlways skips it and lets the free queue carry the old buffers instead.
+   if fSceneInstance.fDynamicBufferFreeMode=TDynamicBufferFreeMode.WaitOnReplace then begin
+    PreviousFrameFinished:=fSceneInstance.WaitOnceOnPreviousFrame;
+   end;
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
@@ -34921,6 +34978,9 @@ begin
   fSmartResize:=true;
   fAllowBufferShrink:=false;
   fUseMegaDispatch:=true;
+  // Only the frames that really replace a buffer pay the wait for the previous frame, instead of every
+  // frame paying it for a case that is rare. WaitAlways is the former behaviour, DeferAlways never waits.
+  fDynamicBufferFreeMode:=TDynamicBufferFreeMode.WaitOnReplace;
  {$ifdef FrameTextFileDebug}
   fDebugDumpDrawInfo:=false;
  {$endif}
@@ -42748,9 +42808,19 @@ var Index,ItemID,PlanetIndex:TpvSizeInt;
     RendererInstanceIndex:TpvSizeInt;
     RendererInstance:TpvScene3DRendererInstance;
     MeshletBoundingSphereBuffer:TpvVulkanBuffer;
+    UploadFrameCPUTimes:PUploadFrameCPUTimes;
+    TotalStartTime,SectionStartTime,SectionEndTime:TpvHighResolutionTime;
+    SubSectionStartTime,SubSectionEndTime:TpvHighResolutionTime;
 begin
 
  if assigned(fVulkanDevice) then begin
+
+  // Wall clock per part, so that the frame time of this call can be attributed. The sections follow the blocks
+  // below one by one, the last one collects whatever comes after the matrix pairs.
+  UploadFrameCPUTimes:=@fUploadFrameCPUTimes[aInFlightFrameIndex];
+  FillChar(UploadFrameCPUTimes^,SizeOf(TUploadFrameCPUTimes),#0);
+  TotalStartTime:=pvApplication.HighResolutionTimer.GetTime;
+  SectionStartTime:=TotalStartTime;
 
   TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
   try
@@ -42763,6 +42833,10 @@ begin
   finally
    TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
   end;
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Planets:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   TpvScene3DAtmospheres(fAtmospheres).Lock.AcquireRead;
   try
@@ -42782,23 +42856,54 @@ begin
    TpvScene3DAtmospheres(fAtmospheres).Lock.ReleaseRead;
   end;
 
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Atmospheres:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
+
   for Group in fGroups do begin
    Group.UploadFrame(aInFlightFrameIndex);
   end;
 
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Groups:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
+
   UploadBoundingSphereBuffer(aInFlightFrameIndex);
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.BoundingSpheres:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   begin
 
    fVulkanLongTermStaticBuffer.Update(aInFlightFrameIndex);
 
+   SubSectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+   UploadFrameCPUTimes^.BuffersLongTermStatic:=pvApplication.HighResolutionTimer.ToFloatSeconds(SubSectionEndTime-SectionStartTime)*1000.0;
+   SubSectionStartTime:=SubSectionEndTime;
+
    fVulkanShortTermDynamicBuffers.Update(aInFlightFrameIndex);
+
+   SubSectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+   UploadFrameCPUTimes^.BuffersShortTermDynamic:=pvApplication.HighResolutionTimer.ToFloatSeconds(SubSectionEndTime-SubSectionStartTime)*1000.0;
+   SubSectionStartTime:=SubSectionEndTime;
 
    UpdateMorphWeightBaseOffsetsBuffer(aInFlightFrameIndex);
 
+   SubSectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+   UploadFrameCPUTimes^.BuffersMorphWeights:=pvApplication.HighResolutionTimer.ToFloatSeconds(SubSectionEndTime-SubSectionStartTime)*1000.0;
+   SubSectionStartTime:=SubSectionEndTime;
+
    UpdateMeshletBoundingSphereBuffer(aInFlightFrameIndex);
 
+   SubSectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+   UploadFrameCPUTimes^.BuffersMeshletBoundingSpheres:=pvApplication.HighResolutionTimer.ToFloatSeconds(SubSectionEndTime-SubSectionStartTime)*1000.0;
+
   end;
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Buffers:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
    fImageDescriptorGenerationLock.Acquire;
@@ -42948,9 +43053,17 @@ begin
 
   end;
 
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Materials:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
+
   LightBuffers[aInFlightFrameIndex].UploadFrame;
 
   DecalBuffers[aInFlightFrameIndex].UploadFrame;
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.LightsAndDecals:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   if fInFlightFrameGPUInstanceDataDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
@@ -43061,6 +43174,10 @@ begin
    end;
 
   end;
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.InstanceData:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   // DrawInfo SSBO: per-frame buffer for BDA vertex pulling
   fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].AcquireRead;
@@ -43285,6 +43402,10 @@ begin
    fGlobalVulkanDrawInfoLocks[aInFlightFrameIndex].ReleaseRead;
   end;
 
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.DrawInfos:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
+
   // Upload MatrixPair buffer
   fGlobalMatrixPairLocks[aInFlightFrameIndex].AcquireRead;
   try
@@ -43429,6 +43550,10 @@ begin
   finally
    fGlobalMatrixPairLocks[aInFlightFrameIndex].ReleaseRead;
   end;
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.MatrixPairs:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  SectionStartTime:=SectionEndTime;
 
   // Fill MatrixPairDeviceAddress after buffer is created/uploaded
   fGlobalVulkanBDAPointersData[aInFlightFrameIndex].MatrixPairDeviceAddress:=0;
@@ -43765,6 +43890,10 @@ begin
 { fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Execute(fVulkanStagingQueue,
                                                                 fVulkanStagingCommandBuffer,
                                                                 fVulkanStagingFence);}
+
+  SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
+  UploadFrameCPUTimes^.Rest:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
+  UploadFrameCPUTimes^.Total:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-TotalStartTime)*1000.0;
 
  end;
 

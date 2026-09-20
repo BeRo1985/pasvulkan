@@ -1790,6 +1790,13 @@ type TpvScene3DPlanets=class;
                    TWaterRipplesSimulation=class
                     public
                      const MaxSourcesLimit=256;
+                           // Above this many sources in one frame, one dispatch per source window costs more
+                           // than a single pass over the whole map, so the injection falls back to that.
+                           MaxWindowedSources=24;
+                           // The equal area octahedral mapping keeps texel areas, not texel shapes, so a window
+                           // derived from the average angular texel size is widened by this factor to cover the
+                           // anisotropy as well.
+                           WindowSafetyFactor=2.0;
                      type TWaterRippleSource=packed record
                            PositionAngularRadius:TpvVector4; // xyz = normalized sphere direction, w = angular radius (radians)
                            StrengthVelocity:TpvVector4; // x = height impulse, y = velocity impulse, z,w = reserved
@@ -1813,6 +1820,10 @@ type TpvScene3DPlanets=class;
                            WaterRippleMapResolution:TpvUInt32;
                            CountSources:TpvUInt32;
                            MaxAmplitude:TpvFloat; // Clamp of the resulting height and velocity, so that repeated stamps on the same spot can never run away
+                           SourceIndex:TpvInt32; // >=0 = windowed dispatch for exactly this source, <0 = full map dispatch over all sources
+                           WindowHalfTexels:TpvInt32; // Half extent of the window in texels (windowed dispatch)
+                           WindowCenterX:TpvInt32; // Texel the source sits on (windowed dispatch)
+                           WindowCenterY:TpvInt32;
                           end;
                           PInjectionPushConstants=^TInjectionPushConstants;
                           TSimulationPushConstants=packed record
@@ -3398,6 +3409,7 @@ type TpvScene3DPlanets=class;
        // ones by default, so every decal reaches it.
        fDecalGroupMask:TpvUInt32;
        fWaterMapBorder:TpvInt32;
+       fWaterRipplesActive:Boolean;                // Master switch of the GPU ripple subsystem. Off by default: no sources are taken, neither pass is dispatched, and the shader side gate stays at zero, so nothing of it costs or shows anything. The ping-pong images are allocated either way, see WaterRipplesActive.
        fWaterRippleMapResolution:TpvInt32;         // GPU ripple ping-pong image resolution. 0 = ripple subsystem disabled.
        fSerializeWaterRipples:Boolean;             // when true, TSerializedData includes the current ripple image contents so a reload restores the exact ripple state (primarily for test/regression comparisons). Default: false - ripples are transient and normally not persisted.
        fWaterAbsorption:TpvVector3;                // Per-channel Beer-Lambert absorption coefficient (1/m) applied to through-water refraction.
@@ -3866,6 +3878,7 @@ type TpvScene3DPlanets=class;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
        property DecalGroupMask:TpvUInt32 read fDecalGroupMask write fDecalGroupMask;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
+       property WaterRipplesActive:Boolean read fWaterRipplesActive write fWaterRipplesActive;
        property WaterRippleMapResolution:TpvInt32 read fWaterRippleMapResolution;
        property SerializeWaterRipples:Boolean read fSerializeWaterRipples write fSerializeWaterRipples;
       public
@@ -21184,9 +21197,19 @@ var ReadIndex,WriteIndex:TpvUInt32;
     ClearColor:TVkClearColorValue;
     ClearRange:TVkImageSubresourceRange;
     Active:Boolean;
+    Resolution:TpvInt32;
+    SourceIndex:TpvSizeInt;
+    Source:PWaterRippleSource;
+    TexelAngle:TpvFloat;
+    WindowUV:TpvVector2;
+    WindowGroupCount:TpvUInt32;
+    WindowHalfTexels:array[0..MaxSourcesLimit-1] of TpvInt32;
+    WindowCenterX:array[0..MaxSourcesLimit-1] of TpvInt32;
+    WindowCenterY:array[0..MaxSourcesLimit-1] of TpvInt32;
 begin
 
- if (not assigned(fVulkanDevice)) or
+ if (not fPlanet.fWaterRipplesActive) or
+    (not assigned(fVulkanDevice)) or
     (not assigned(fInjectionPipeline)) or
     (not assigned(fSimulationPipeline)) or
     (fPlanet.fWaterRippleMapResolution<=0) or
@@ -21194,6 +21217,8 @@ begin
     (not assigned(fPlanet.fData.fWaterRippleImages[1])) then begin
   exit;
  end;
+
+ Resolution:=fPlanet.fWaterRippleMapResolution;
 
  // Idle gate: both passes cover the whole ripple map, so they are skipped once the field has gone quiet, which
  // is the normal state on water that nothing moves through. Every enqueued source restarts the countdown, and
@@ -21294,6 +21319,18 @@ begin
     BufferPtr^.Header.Pad2:=0;
     if CountSources>0 then begin
      Move(fEnqueuedSources[aInFlightFrameIndex,0],BufferPtr^.Items[0],CountSources*SizeOf(TWaterRippleSource));
+     // The window of each source is worked out here, while the queue is still held, because the dispatch loop
+     // below runs outside the lock and another thread may already be refilling the queue by then. The window
+     // has to cover the cut-off of the Gaussian at three times the angular radius.
+     TexelAngle:=Sqrt(4.0*PI)/Max(1.0,Resolution);
+     for SourceIndex:=0 to CountSources-1 do begin
+      Source:=@fEnqueuedSources[aInFlightFrameIndex,SourceIndex];
+      WindowHalfTexels[SourceIndex]:=Min(TpvInt32(Ceil(((3.0*Max(Source^.PositionAngularRadius.w,1e-4))/TexelAngle)*WindowSafetyFactor))+2,
+                                         Resolution shr 1);
+      WindowUV:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(Source^.PositionAngularRadius.xyz));
+      WindowCenterX[SourceIndex]:=Min(Max(TpvInt32(Floor(WindowUV.x*Resolution)),0),Resolution-1);
+      WindowCenterY[SourceIndex]:=Min(Max(TpvInt32(Floor(WindowUV.y*Resolution)),0),Resolution-1);
+     end;
     end;
     BufferSize:=SizeOf(TWaterRippleSourceBufferHeader)+TVkDeviceSize(CountSources)*SizeOf(TWaterRippleSource);
     fSourceBuffers[aInFlightFrameIndex].Flush(MappedPtr,0,BufferSize);
@@ -21326,22 +21363,82 @@ begin
 
  GroupCount:=(TpvUInt32(fPlanet.fWaterRippleMapResolution)+15) shr 4;
 
- // Injection pass: stamp enqueued sources into image[ReadIndex] (additive).
- InjectionPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
- InjectionPushConstants.CountSources:=TpvUInt32(CountSources);
- InjectionPushConstants.MaxAmplitude:=fMaxAmplitude;
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fInjectionPipeline.Handle);
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      fInjectionPipelineLayout.Handle,
-                                      0,
-                                      1,@fInjectionDescriptorSets[aInFlightFrameIndex,ReadIndex].Handle,
-                                      0,nil);
- aCommandBuffer.CmdPushConstants(fInjectionPipelineLayout.Handle,
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                 0,
-                                 SizeOf(TInjectionPushConstants),
-                                 @InjectionPushConstants);
- aCommandBuffer.CmdDispatch(GroupCount,GroupCount,1);
+ // Injection pass: stamp enqueued sources into image[ReadIndex] (additive). Without sources there is nothing to
+ // stamp, and the pass is left out entirely rather than dispatched over the whole map for an early return.
+ if CountSources>0 then begin
+
+  InjectionPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
+  InjectionPushConstants.CountSources:=TpvUInt32(CountSources);
+  InjectionPushConstants.MaxAmplitude:=fMaxAmplitude;
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fInjectionPipeline.Handle);
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fInjectionPipelineLayout.Handle,
+                                       0,
+                                       1,@fInjectionDescriptorSets[aInFlightFrameIndex,ReadIndex].Handle,
+                                       0,nil);
+
+  if CountSources<=MaxWindowedSources then begin
+
+   // One dispatch per source over its own texel window, so the cost follows the footprint of the stamps
+   // instead of the size of the map. A stamp of one meter covers about twenty texels at a height map
+   // resolution of 4096, against 4096 by 4096 texels for a pass over the whole map.
+   for SourceIndex:=0 to CountSources-1 do begin
+
+    InjectionPushConstants.SourceIndex:=SourceIndex;
+    InjectionPushConstants.WindowHalfTexels:=WindowHalfTexels[SourceIndex];
+    InjectionPushConstants.WindowCenterX:=WindowCenterX[SourceIndex];
+    InjectionPushConstants.WindowCenterY:=WindowCenterY[SourceIndex];
+    aCommandBuffer.CmdPushConstants(fInjectionPipelineLayout.Handle,
+                                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                    0,
+                                    SizeOf(TInjectionPushConstants),
+                                    @InjectionPushConstants);
+    WindowGroupCount:=(TpvUInt32((WindowHalfTexels[SourceIndex]*2)+1)+15) shr 4;
+    aCommandBuffer.CmdDispatch(WindowGroupCount,WindowGroupCount,1);
+
+    // Two windows can overlap, and each dispatch reads, adds and writes back, so the next source has to see
+    // the writes of this one. Without this barrier an overlapping stamp would be lost.
+    if SourceIndex<(CountSources-1) then begin
+     ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          VK_IMAGE_LAYOUT_GENERAL,
+                                                          VK_IMAGE_LAYOUT_GENERAL,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fPlanet.fData.fWaterRippleImages[ReadIndex].VulkanImage.Handle,
+                                                          TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                          0,
+                                                                                          1,
+                                                                                          0,
+                                                                                          1));
+     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       0,
+                                       0,nil,
+                                       0,nil,
+                                       1,@ImageMemoryBarriers[0]);
+    end;
+
+   end;
+
+  end else begin
+
+   // Fallback for a frame with that many sources: one pass over the whole map, which accumulates all of them
+   // per texel and therefore needs neither per source dispatches nor barriers between them.
+   InjectionPushConstants.SourceIndex:=-1;
+   InjectionPushConstants.WindowHalfTexels:=0;
+   InjectionPushConstants.WindowCenterX:=0;
+   InjectionPushConstants.WindowCenterY:=0;
+   aCommandBuffer.CmdPushConstants(fInjectionPipelineLayout.Handle,
+                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                   0,
+                                   SizeOf(TInjectionPushConstants),
+                                   @InjectionPushConstants);
+   aCommandBuffer.CmdDispatch(GroupCount,GroupCount,1);
+
+  end;
+
+ end;
 
  // Barrier: injection writes to image[ReadIndex] must be visible to simulation reads.
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -34008,6 +34105,8 @@ begin
 
  fWaterMapBorder:=1;
 
+ fWaterRipplesActive:=false; // Off by default, switched on per planet via the WaterRipplesActive property when the object ripples are wanted
+
  fWaterRippleMapResolution:=fWaterMapResolution; // GPU ripple subsystem image resolution; can be overridden per planet. Independent from fWaterMapResolution.
 
  fSerializeWaterRipples:=false; // transient by default. Set via SerializeWaterRipples property before Save/Load if exact restore of ripple state is required.
@@ -37935,7 +38034,8 @@ begin
    // until the initial clear has been recorded by TWaterRipplesSimulation.Execute so that 
    // the (undefined) initial image content is never observed. Ripples are transient and 
    // deliberately NOT part of TSerializedData (dampens to zero in seconds, no save value).
-   if assigned(fWaterSimulation) and
+   if fWaterRipplesActive and
+      assigned(fWaterSimulation) and
       assigned(fWaterSimulation.fWaterRipplesSimulation) and
       (not fWaterSimulation.fWaterRipplesSimulation.fInitialClearPending) then begin
     fPlanetData.WaterRippleMapResolution:=fWaterRippleMapResolution;
@@ -38725,7 +38825,7 @@ begin
  // The velocity part defaults to zero, which gives a pure displacement of the surface. It used to be passed the
  // same value as the height, and since a velocity impulse integrates into height over the whole damping time of
  // the field, that made every stamp several times as strong as its nominal amplitude suggests.
- if assigned(fWaterSimulation) and assigned(fWaterSimulation.fWaterRipplesSimulation) then begin
+ if fWaterRipplesActive and assigned(fWaterSimulation) and assigned(fWaterSimulation.fWaterRipplesSimulation) then begin
   fWaterSimulation.fWaterRipplesSimulation.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aStrength,aVelocityStrength);
  end;
 end;
