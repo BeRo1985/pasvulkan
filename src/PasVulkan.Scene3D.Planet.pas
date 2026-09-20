@@ -21120,7 +21120,7 @@ var Index:TpvSizeInt;
     NormalizedPosition:TpvVector3;
     Length:TpvFloat;
     AngularRadius:TpvFloat;
-    TopRadius:TpvFloat;
+//  TopRadius:TpvFloat;
 begin
  if (aInFlightFrameIndex<0) or (aInFlightFrameIndex>=MaxInFlightFrames) then begin
   exit;
@@ -21130,11 +21130,14 @@ begin
   exit;
  end;
  NormalizedPosition:=aPosition/Length;
- TopRadius:=fPlanet.fTopRadius;
+{TopRadius:=fPlanet.fTopRadius;
  if TopRadius<1e-6 then begin
   TopRadius:=1.0;
- end;
- AngularRadius:=Max(aRadius,1e-4)/TopRadius;
+ end;}
+ // The source lies on the water surface, so its own radius is the reference that converts the metric ripple
+ // radius into the great circle angle which the injection pass compares against. The planet top radius used
+ // before is larger than the water surface radius, which made every injected bump correspondingly narrower.
+ AngularRadius:=Max(aRadius,1e-4)/Length;
  fEnqueuedLock.Acquire;
  try
   Index:=fEnqueuedSourceCounts[aInFlightFrameIndex];
