@@ -1829,6 +1829,9 @@ type TpvScene3DPlanets=class;
                      fDamping:TpvFloat;
                      fWaveSpeed:TpvFloat;
                      fInitialClearPending:Boolean;
+                     fActivityTimeout:TpvDouble; // Seconds of simulation after the last enqueued source before the passes are skipped again
+                     fActivityTimeRemaining:TpvDouble; // Countdown of the above; while it is at zero the ripple field is quiet and the passes are skipped
+                     fActivityRefreshPending:Boolean; // Set by EnqueueSource under fEnqueuedLock, consumed by Execute to restart the countdown
                      fEnqueuedLock:TPasMPCriticalSection;
                      fEnqueuedSourceCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
                      fEnqueuedSources:array[0..MaxInFlightFrames-1] of TWaterRippleSources;
@@ -1862,6 +1865,7 @@ type TpvScene3DPlanets=class;
                      property MaxSourcesPerFrame:TpvInt32 read fMaxSourcesPerFrame;
                      property Damping:TpvFloat read fDamping write fDamping;
                      property WaveSpeed:TpvFloat read fWaveSpeed write fWaveSpeed;
+                     property ActivityTimeout:TpvDouble read fActivityTimeout write fActivityTimeout;
                    end;
              private
               fPlanet:TpvScene3DPlanet;
@@ -1939,6 +1943,7 @@ type TpvScene3DPlanets=class;
               fTimeAccumulator:TpvDouble;
               fLastTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
+              fRippleTimeAccumulator:TpvDouble; // Own accumulator of the ripple subsystem, which steps independently of the settle gate of the pipe model above
               fWaterRipplesSimulation:TWaterRipplesSimulation;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
@@ -19712,6 +19717,8 @@ begin
 
  fLastTimeAccumulator:=-1.0;
 
+ fRippleTimeAccumulator:=0.0;
+
  fWaterRipplesSimulation:=TWaterRipplesSimulation.Create(self);
 
 end;
@@ -20383,12 +20390,26 @@ begin
 
   DoInterpolate:=true;
 
-  if assigned(fWaterRipplesSimulation) then begin
+{ if assigned(fWaterRipplesSimulation) then begin
    fWaterRipplesSimulation.Execute(aCommandBuffer,fTimeStep,aInFlightFrameIndex);
-  end;
+  end;}
 
   First:=false;
 
+ end;
+
+ // Water ripple subsystem: it must also step when the pipe model above has settled and its substep loop is
+ // skipped, because object ripples appear exactly on calm water, so it runs on its own accumulator here. The
+ // step stays fixed at fTimeStep, since the explicit wave equation of the ripple pass needs its stable time
+ // step independently of the frame rate, and the same accumulator cap limits the substeps per frame.
+ if assigned(fWaterRipplesSimulation) and fPlanet.fWaterSimulationEnabled then begin
+  fRippleTimeAccumulator:=Min(fRippleTimeAccumulator+aDeltaTime,MaximumTimeAccumulator);
+  while fRippleTimeAccumulator>=fTimeStep do begin
+   fRippleTimeAccumulator:=fRippleTimeAccumulator-fTimeStep;
+   fWaterRipplesSimulation.Execute(aCommandBuffer,fTimeStep,aInFlightFrameIndex);
+  end;
+ end else begin
+  fRippleTimeAccumulator:=0.0;
  end;
 
  // Atomic free reduction of the per workgroup water height difference maxima (written by the water height pass without
@@ -20856,6 +20877,12 @@ begin
  fWaveSpeed:=5.0;
  fInitialClearPending:=true;
 
+ // At the default damping of 0.995 per 1/60 s step the wave energy is down to a few percent after about ten
+ // seconds, so the field is visually quiet long before the countdown expires and the passes are skipped again.
+ fActivityTimeout:=10.0;
+ fActivityTimeRemaining:=0.0;
+ fActivityRefreshPending:=false;
+
  fEnqueuedLock:=TPasMPCriticalSection.Create;
 
  for Index:=0 to MaxInFlightFrames-1 do begin
@@ -21115,6 +21142,7 @@ begin
    fEnqueuedSources[aInFlightFrameIndex,Index].PositionAngularRadius:=TpvVector4.InlineableCreate(NormalizedPosition.x,NormalizedPosition.y,NormalizedPosition.z,AngularRadius);
    fEnqueuedSources[aInFlightFrameIndex,Index].StrengthVelocity:=TpvVector4.InlineableCreate(aStrength,aVelocityStrength,0.0,0.0);
    fEnqueuedSourceCounts[aInFlightFrameIndex]:=Index+1;
+   fActivityRefreshPending:=true; // Wakes the injection and simulation passes up again, which are skipped while the field is quiet
   end;
  finally
   fEnqueuedLock.Release;
@@ -21136,6 +21164,7 @@ var ReadIndex,WriteIndex:TpvUInt32;
     ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
     ClearColor:TVkClearColorValue;
     ClearRange:TVkImageSubresourceRange;
+    Active:Boolean;
 begin
 
  if (not assigned(fVulkanDevice)) or
@@ -21144,6 +21173,26 @@ begin
     (fPlanet.fWaterRippleMapResolution<=0) or
     (not assigned(fPlanet.fData.fWaterRippleImages[0])) or
     (not assigned(fPlanet.fData.fWaterRippleImages[1])) then begin
+  exit;
+ end;
+
+ // Idle gate: both passes cover the whole ripple map, so they are skipped once the field has gone quiet, which
+ // is the normal state on water that nothing moves through. Every enqueued source restarts the countdown, and
+ // the one-time initial clear always runs, because the shader side gate (planetData.waterRippleMapResolution)
+ // stays at zero until it has been recorded.
+ fEnqueuedLock.Acquire;
+ try
+  if fActivityRefreshPending then begin
+   fActivityRefreshPending:=false;
+   fActivityTimeRemaining:=fActivityTimeout;
+  end else if fActivityTimeRemaining>0.0 then begin
+   fActivityTimeRemaining:=Max(fActivityTimeRemaining-aDeltaTime,0.0);
+  end;
+  Active:=fActivityTimeRemaining>0.0;
+ finally
+  fEnqueuedLock.Release;
+ end;
+ if (not Active) and (not fInitialClearPending) then begin
   exit;
  end;
 
