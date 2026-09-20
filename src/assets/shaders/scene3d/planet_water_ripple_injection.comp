@@ -42,6 +42,7 @@ layout(set = 0, binding = 1, rg16f) uniform image2D uTargetImage;
 layout(push_constant) uniform PushConstants {
   uint waterRippleMapResolution;
   uint countSources;
+  float maxAmplitude; // Clamp of the stamped field, see below
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -80,7 +81,12 @@ void main(){
 
   if(any(greaterThan(abs(accum), vec2(1e-7)))){
     vec4 prev = imageLoad(uTargetImage, ivec2(position));
-    imageStore(uTargetImage, ivec2(position), vec4(prev.x + accum.x, prev.y + accum.y, 0.0, 0.0));
+    // The stamps are additive and the continuous wake puts several of them per second onto nearly the same
+    // spot, where a bump wider than a texel is no longer dispersed right away by the Laplace term of the
+    // simulation pass. The clamp bounds that pile-up, so a mistuned config cannot grow the field without end.
+    float limit = max(pushConstants.maxAmplitude, 1e-4);
+    vec2 result = clamp(vec2(prev.x, prev.y) + accum, vec2(-limit), vec2(limit));
+    imageStore(uTargetImage, ivec2(position), vec4(result.x, result.y, 0.0, 0.0));
   }
 
 }

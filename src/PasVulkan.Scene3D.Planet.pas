@@ -1812,6 +1812,7 @@ type TpvScene3DPlanets=class;
                           TInjectionPushConstants=packed record
                            WaterRippleMapResolution:TpvUInt32;
                            CountSources:TpvUInt32;
+                           MaxAmplitude:TpvFloat; // Clamp of the resulting height and velocity, so that repeated stamps on the same spot can never run away
                           end;
                           PInjectionPushConstants=^TInjectionPushConstants;
                           TSimulationPushConstants=packed record
@@ -1819,6 +1820,7 @@ type TpvScene3DPlanets=class;
                            WaveSpeedSquared:TpvFloat;
                            Damping:TpvFloat;
                            DeltaTime:TpvFloat;
+                           HeightDamping:TpvFloat; // Relaxation of the height field back towards zero per step, since the damping of the velocity alone leaves any injected height standing forever
                           end;
                           PSimulationPushConstants=^TSimulationPushConstants;
                     private
@@ -1827,7 +1829,9 @@ type TpvScene3DPlanets=class;
                      fVulkanDevice:TpvVulkanDevice;
                      fMaxSourcesPerFrame:TpvInt32;
                      fDamping:TpvFloat;
+                     fHeightDamping:TpvFloat;
                      fWaveSpeed:TpvFloat;
+                     fMaxAmplitude:TpvFloat;
                      fInitialClearPending:Boolean;
                      fActivityTimeout:TpvDouble; // Seconds of simulation after the last enqueued source before the passes are skipped again
                      fActivityTimeRemaining:TpvDouble; // Countdown of the above; while it is at zero the ripple field is quiet and the passes are skipped
@@ -1864,7 +1868,9 @@ type TpvScene3DPlanets=class;
                     public
                      property MaxSourcesPerFrame:TpvInt32 read fMaxSourcesPerFrame;
                      property Damping:TpvFloat read fDamping write fDamping;
+                     property HeightDamping:TpvFloat read fHeightDamping write fHeightDamping;
                      property WaveSpeed:TpvFloat read fWaveSpeed write fWaveSpeed;
+                     property MaxAmplitude:TpvFloat read fMaxAmplitude write fMaxAmplitude;
                      property ActivityTimeout:TpvDouble read fActivityTimeout write fActivityTimeout;
                    end;
              private
@@ -3794,7 +3800,7 @@ type TpvScene3DPlanets=class;
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-       procedure EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar);
+       procedure EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar;const aVelocityStrength:TpvScalar=0.0);
        procedure LoadWaterSettings(const aJSONItem:TPasJSONItem);
        procedure LoadWaterSettingsFromStream(const aStream:TStream);
        procedure LoadWaterSettingsFromFile(const aFileName:TpvUTF8String);
@@ -20875,11 +20881,21 @@ begin
  fMaxSourcesPerFrame:=MaxSourcesLimit;
  fDamping:=0.995;
  fWaveSpeed:=5.0;
+
+ // Relaxation of the height field back towards zero, about three seconds of time constant at the 1/60 s step.
+ // The velocity damping alone only stops the field from moving, it does not flatten it, so every injected bump
+ // that has not dispersed by then would stand still forever.
+ fHeightDamping:=0.9945;
+
+ // Clamp of the ripple field in the injection pass. The stamps are additive and the wake puts several of them
+ // per second onto nearly the same spot, so without this a mistuned config can pile up without any bound.
+ fMaxAmplitude:=0.5;
+
  fInitialClearPending:=true;
 
- // At the default damping of 0.995 per 1/60 s step the wave energy is down to a few percent after about ten
- // seconds, so the field is visually quiet long before the countdown expires and the passes are skipped again.
- fActivityTimeout:=10.0;
+ // Four time constants of the height relaxation above, so that nothing visible is left standing when the passes
+ // stop after the countdown has expired.
+ fActivityTimeout:=15.0;
  fActivityTimeRemaining:=0.0;
  fActivityRefreshPending:=false;
 
@@ -21313,6 +21329,7 @@ begin
  // Injection pass: stamp enqueued sources into image[ReadIndex] (additive).
  InjectionPushConstants.WaterRippleMapResolution:=TpvUInt32(fPlanet.fWaterRippleMapResolution);
  InjectionPushConstants.CountSources:=TpvUInt32(CountSources);
+ InjectionPushConstants.MaxAmplitude:=fMaxAmplitude;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fInjectionPipeline.Handle);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                       fInjectionPipelineLayout.Handle,
@@ -21351,6 +21368,7 @@ begin
  SimulationPushConstants.WaveSpeedSquared:=fWaveSpeed*fWaveSpeed;
  SimulationPushConstants.Damping:=fDamping;
  SimulationPushConstants.DeltaTime:=aDeltaTime;
+ SimulationPushConstants.HeightDamping:=fHeightDamping;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fSimulationPipeline.Handle);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                       fSimulationPipelineLayout.Handle,
@@ -38702,10 +38720,13 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar);
+procedure TpvScene3DPlanet.EnqueueWaterRipple(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aStrength:TpvScalar;const aVelocityStrength:TpvScalar);
 begin
+ // The velocity part defaults to zero, which gives a pure displacement of the surface. It used to be passed the
+ // same value as the height, and since a velocity impulse integrates into height over the whole damping time of
+ // the field, that made every stamp several times as strong as its nominal amplitude suggests.
  if assigned(fWaterSimulation) and assigned(fWaterSimulation.fWaterRipplesSimulation) then begin
-  fWaterSimulation.fWaterRipplesSimulation.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aStrength,aStrength);
+  fWaterSimulation.fWaterRipplesSimulation.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aStrength,aVelocityStrength);
  end;
 end;
 

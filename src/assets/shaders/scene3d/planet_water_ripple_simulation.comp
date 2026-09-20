@@ -10,7 +10,7 @@
 //
 //   laplacian = (H(+x) + H(-x) + H(+y) + H(-y)) - 4 * H(0)
 //   velocity  = (velocity + laplacian * waveSpeedSquared * dt) * damping
-//   height    = height + velocity * dt
+//   height    = (height + velocity * dt) * heightDamping
 //
 // This subsystem is fully independent of the existing CPU
 // TGamePlanetWaterImpactMap and of the long-lived EnqueueWaterModification
@@ -36,6 +36,7 @@ layout(push_constant) uniform PushConstants {
   float waveSpeedSquared;  // = waveSpeed * waveSpeed
   float damping;           // velocity multiplier per step, < 1.0
   float deltaTime;         // time step in seconds
+  float heightDamping;     // height multiplier per step, < 1.0
 } pushConstants;
 
 ivec2 clampCoord(ivec2 coord, int resolution){
@@ -60,7 +61,11 @@ void main(){
   float laplacian = (xNeg.x + xPos.x + yNeg.x + yPos.x) - (center.x * 4.0);
 
   float velocity = (center.y + (laplacian * pushConstants.waveSpeedSquared * pushConstants.deltaTime)) * pushConstants.damping;
-  float height = center.x + (velocity * pushConstants.deltaTime);
+
+  // The height is relaxed back towards zero as well. Damping the velocity alone only brings the field to a
+  // standstill, it does not flatten it, so whatever height was injected and has not dispersed by then would
+  // stay as a frozen bump on the water surface for good.
+  float height = (center.x + (velocity * pushConstants.deltaTime)) * pushConstants.heightDamping;
 
   imageStore(uTargetImage, position, vec4(height, velocity, 0.0, 0.0));
 
