@@ -72,6 +72,12 @@ unit PasVulkan.Scene3D;
 
 {$define UpdateProfilingTimes}
 
+// The per instance timing of the directed acyclic graph step, which is a pair of clock reads around every
+// single instance update. At about half a microsecond per read and a few thousand instances that is several
+// milliseconds of measurement inside a step of six, so it is switchable on its own. Off, the sums inside the
+// instance update and the skip counters stay, only the maximum instance and its name go away.
+{-$define UpdateProfilingTimesPerInstance}
+
 {$define SplitInstanceUpdate}
 
 {-$define FrameTextFileDebug}
@@ -3724,6 +3730,10 @@ type EpvScene3D=class(Exception);
                      // per-in-flight-frame copy after the last master state change (Active/ModelMatrix/
                      // InstanceDataIndex/add/remove) of any render instance; 0 = fully settled, both loops skippable
                      fRenderInstanceChangeCounter:TPasMPInt32;
+                     // Counts the frames an instance still takes part in the graph step after it went
+                     // inactive, so that every per-in-flight-frame slot gets its reset before the instance
+                     // drops out of the graph. See TpvScene3D.SkipInactiveInstancesInGraph.
+                     fInactiveGraphSettleCounter:TPasMPInt32;
                      // Cached result of the phase-2 render-instance bounding box combine, restored when the
                      // settled instance skips the global render instance processing (TInstance.Update overwrites
                      // fBoundingBox with the node-based one each frame)
@@ -4804,6 +4814,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fUploadFrameCPUTimes:TUploadFrameCPUTimesArray;
        fDynamicBufferFreeMode:TDynamicBufferFreeMode;
+       fSkipInactiveInstancesInGraph:Boolean;
        fPrimaryLightDirection:TpvVector3;
        fPrimaryLightDirections:TInFlightFrameVector3s;
        fPrimaryShadowMapLightDirection:TpvVector3;
@@ -5104,6 +5115,7 @@ type EpvScene3D=class(Exception);
        procedure UpdateRaytracingRaytracingGroupInstanceNodeUpdateStructuresSimpleParallelForJob(const aData:pointer;const aFromIndex,aToIndex:TPasMPInt32;const aThreadIndex:TPasMPInt32);
       private
        procedure InvalidateDirectedAcyclicGraph;
+       procedure SetSkipInactiveInstancesInGraph(const aSkipInactiveInstancesInGraph:Boolean);
        procedure RebuildDirectedAcyclicGraph(const aInFlightFrameIndex:TpvSizeInt);
        function CreateDirectedAcyclicGraphInstanceLeafsToRootJob(const aParentJob:PPasMPJob;const aInstance:TpvScene3D.TGroup.TInstance):PPasMPJob;
        procedure ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
@@ -5177,6 +5189,7 @@ type EpvScene3D=class(Exception);
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure DumpUpdateProfilingTimes;
+       procedure DumpGroupInstanceBreakdown;
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
        function WaitOnceOnPreviousFrame:boolean;
@@ -5625,6 +5638,7 @@ type EpvScene3D=class(Exception);
        property UploadFrameCPUTimes:TUploadFrameCPUTimesArray read fUploadFrameCPUTimes;
       published
        property DynamicBufferFreeMode:TDynamicBufferFreeMode read fDynamicBufferFreeMode write fDynamicBufferFreeMode;
+       property SkipInactiveInstancesInGraph:Boolean read fSkipInactiveInstancesInGraph write SetSkipInactiveInstancesInGraph;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
@@ -27687,6 +27701,10 @@ begin
  fRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create;
 
  fRenderInstanceChangeCounter:=MaxInFlightFrames;
+
+ // A fresh instance owes every in-flight frame its first pass through the graph step, whether it starts
+ // active or not, so it begins with the full settle countdown rather than with zero.
+ fInactiveGraphSettleCounter:=MaxInFlightFrames;
  fRenderInstances.OwnsObjects:=true;
 
  fPreallocatedRenderInstances:=nil; // For virtual instance auto-assignment
@@ -29057,6 +29075,15 @@ begin
   // be safe for.
   if fActive and fUseRenderInstances then begin
    TPasMPInterlocked.Write(fRenderInstanceChangeCounter,TPasMPInt32(MaxInFlightFrames));
+  end;
+  if fActive then begin
+   // Coming back into the graph, the instance has to redo everything once: while it was out of it, it saw
+   // neither a floating origin snap nor anything else that would normally have marked it dirty.
+   SetDirty;
+  end else begin
+   // Going out of it, it still owes every in-flight frame the reset of its per frame slots, which the
+   // inactive branch of Update does. Only after that many frames may it drop out of the graph.
+   TPasMPInterlocked.Write(fInactiveGraphSettleCounter,TPasMPInt32(MaxInFlightFrames));
   end;
  end;
 end;
@@ -33128,9 +33155,22 @@ begin
 
   fPreviousActive:=true;
 
- end else if fPreviousActive then begin
+ end else begin
 
-  UpdateDeactivation(aInFlightFrameIndex,false);
+  if fPreviousActive then begin
+
+   UpdateDeactivation(aInFlightFrameIndex,false);
+
+  end;
+
+  // A deactivation takes effect per in-flight frame index, because each index only learns about it when it
+  // is processed itself. Once every index has been through here, an inactive instance has nothing left to
+  // do, and the invalidation asks the next rebuild to leave it out of the graph altogether.
+  if (aInFlightFrameIndex>=0) and (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
+   if TPasMPInterlocked.Decrement(fInactiveGraphSettleCounter)<=0 then begin
+    fSceneInstance.InvalidateDirectedAcyclicGraph;
+   end;
+  end;
 
  end;
 
@@ -33742,6 +33782,14 @@ begin
   end;
 
   fPreviousActive:=false;
+
+  // Once every in-flight frame has had its reset above, an inactive instance has nothing left to do, so it
+  // may drop out of the graph. The rebuild decides that, which is what the invalidation here asks for.
+  if (aInFlightFrameIndex>=0) and (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
+   if TPasMPInterlocked.Decrement(fInactiveGraphSettleCounter)<=0 then begin
+    fSceneInstance.InvalidateDirectedAcyclicGraph;
+   end;
+  end;
 
  end;
 
@@ -34981,6 +35029,9 @@ begin
   // Only the frames that really replace a buffer pay the wait for the previous frame, instead of every
   // frame paying it for a case that is rare. WaitAlways is the former behaviour, DeferAlways never waits.
   fDynamicBufferFreeMode:=TDynamicBufferFreeMode.WaitOnReplace;
+  // Inactive plain leaf instances stay out of the graph step, which is what a pool of held-back instances
+  // costs otherwise: job handling plus call for every one of them, every frame, to do three assignments.
+  fSkipInactiveInstancesInGraph:=true;
  {$ifdef FrameTextFileDebug}
   fDebugDumpDrawInfo:=false;
  {$endif}
@@ -40027,6 +40078,15 @@ begin
  TPasMPInterlocked.Increment(fDirectedAcyclicGraphGeneration);
 end;
 
+procedure TpvScene3D.SetSkipInactiveInstancesInGraph(const aSkipInactiveInstancesInGraph:Boolean);
+begin
+ if fSkipInactiveInstancesInGraph<>aSkipInactiveInstancesInGraph then begin
+  fSkipInactiveInstancesInGraph:=aSkipInactiveInstancesInGraph;
+  // The graph is cached by generation, so switching this only takes effect once it is rebuilt
+  InvalidateDirectedAcyclicGraph;
+ end;
+end;
+
 procedure TpvScene3D.InvalidateDraw(const aIncrementGeneration,aInvalidateDirectedGraph:boolean);
 begin
  if aIncrementGeneration then begin
@@ -40198,9 +40258,21 @@ begin
 
       GroupInstance.fVisitedState[aInFlightFrameIndex]:=TpvScene3D.TGroup.TInstance.TVisitedState.Visited;
 
-      fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
+      // A plain leaf without any dependency that is inactive and has had its per frame resets has nothing
+      // to contribute, and walking it still costs the job handling plus the call. With a pool of a few
+      // thousand held-back instances that is the bulk of the step, so it stays out of the graph until
+      // SetActive puts it back in. Anything with an OnUpdate handler keeps taking part, that handler is
+      // called before the active state is even looked at and may be what turns the instance on again.
+      if (not fSkipInactiveInstancesInGraph) or
+         GroupInstance.fActive or
+         (TPasMPInterlocked.Read(GroupInstance.fInactiveGraphSettleCounter)>0) or
+         assigned(GroupInstance.fOnUpdate) then begin
 
-      fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
+       fDirectedAcyclicGraphLeafInstances.Add(GroupInstance);
+
+       fDirectedAcyclicGraphLinearInstanceChoreography.Add(GroupInstance);
+
+      end;
 
      end;
 
@@ -40221,16 +40293,21 @@ begin
 end;
 
 procedure TpvScene3D.ProcessDirectedAcyclicGraphRealInstance(const aInstance:TpvScene3D.TGroup.TInstance);
-{$ifdef UpdateProfilingTimes}
+{$ifdef UpdateProfilingTimesPerInstance}
 var StartCPUTime,EndCPUTime:TpvHighResolutionTime;
     Ticks,OldTicks:TPasMPInt64;
 {$endif}
 begin
-{$ifdef UpdateProfilingTimes}
+ // The two clock reads around the call are per INSTANCE, so with a few thousand of them they are no longer
+ // free: clock_gettime costs about half a microsecond here, which at 3000 instances is about three
+ // milliseconds of pure measurement in a step that takes six. UpdateProfilingTimesPerInstance therefore
+ // switches exactly this pair, together with the maximum and the instance count that come out of it, while
+ // the sums inside the instance update stay on the far cheaper non-skipped path.
+{$ifdef UpdateProfilingTimesPerInstance}
  StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
  aInstance.Update(fDirectedAcyclicGraphInFlightFrameIndex);
-{$ifdef UpdateProfilingTimes}
+{$ifdef UpdateProfilingTimesPerInstance}
  EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
  Ticks:=EndCPUTime-StartCPUTime;
  TPasMPInterlocked.Increment(fCountUpdatedInstances);
@@ -40245,6 +40322,12 @@ begin
    break;
   end;
  until false;
+{$else}
+ // Without the per instance timing the counter is still wanted, it is one atomic increment and says how many
+ // instances the step walked at all, which is the number the skip ratio is read against.
+{$ifdef UpdateProfilingTimes}
+ TPasMPInterlocked.Increment(fCountUpdatedInstances);
+{$endif}
 {$endif}
 end;
 
@@ -41123,6 +41206,67 @@ begin
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count Updated Instances: '+IntToStr(fCountUpdatedInstances));
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count DAG Leaf Instances: '+IntToStr(fCountDirectedAcyclicGraphLeafInstances));
  pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Count Group Instances: '+IntToStr(fCountGroupInstancesTotal));
+ DumpGroupInstanceBreakdown;
+end;
+
+procedure TpvScene3D.DumpGroupInstanceBreakdown;
+var Group:TpvScene3D.TGroup;
+    Instance:TpvScene3D.TGroup.TInstance;
+    GroupName:TpvUTF8String;
+    InstanceIndex,CountInstances,CountActiveInstances,CountNodes,CountNodeVisits:TpvSizeInt;
+    TotalInstances,TotalActiveInstances,TotalNodeVisits,CountListedGroups:TpvSizeInt;
+begin
+
+ // Which groups the instances of the graph step actually belong to. The step walks every instance once per
+ // frame, but only an ACTIVE one runs over all of its nodes: the inactive branch is a handful of assignments,
+ // while the dirty skip path of an active one still copies bounding box, fill flag and bounding sphere of
+ // every node over from the previous in-flight frame. So the number that says where the work sits is active
+ // instances times nodes, which is what the last column gives.
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D',' Group instance breakdown (instances, active ones, nodes, active x nodes = node visits per frame):');
+
+ TotalInstances:=0;
+ TotalActiveInstances:=0;
+ TotalNodeVisits:=0;
+ CountListedGroups:=0;
+
+ fGroupListLock.Acquire;
+ try
+  for Group in fGroups do begin
+   if assigned(Group) then begin
+    CountInstances:=Group.fInstances.Count;
+    if CountInstances>0 then begin
+     CountNodes:=Group.fNodes.Count;
+     CountActiveInstances:=0;
+     Group.fInstanceListLock.Acquire;
+     try
+      for InstanceIndex:=0 to Group.fInstances.Count-1 do begin
+       Instance:=Group.fInstances[InstanceIndex];
+       if assigned(Instance) and Instance.Active then begin
+        inc(CountActiveInstances);
+       end;
+      end;
+     finally
+      Group.fInstanceListLock.Release;
+     end;
+     CountNodeVisits:=CountActiveInstances*CountNodes;
+     inc(TotalInstances,CountInstances);
+     inc(TotalActiveInstances,CountActiveInstances);
+     inc(TotalNodeVisits,CountNodeVisits);
+     inc(CountListedGroups);
+     GroupName:=Group.Name;
+     if length(GroupName)=0 then begin
+      GroupName:=TpvUTF8String(ExtractFileName(String(Group.FileName)));
+     end;
+     pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  '+IntToStr(CountInstances)+' inst, '+IntToStr(CountActiveInstances)+' active, '+IntToStr(CountNodes)+' nodes = '+IntToStr(CountNodeVisits)+' visits  '+String(GroupName));
+    end;
+   end;
+  end;
+ finally
+  fGroupListLock.Release;
+ end;
+
+ pvApplication.Log(LOG_VERBOSE,'TpvScene3D','  Total: '+IntToStr(TotalInstances)+' instances ('+IntToStr(TotalActiveInstances)+' active) in '+IntToStr(CountListedGroups)+' groups, '+IntToStr(TotalNodeVisits)+' node visits per frame');
+
 end;
 
 procedure TpvScene3D.GetSunDiscDrawParameters(out aDiscRadiance:TpvVector3;out aAureoleRadiance:TpvVector3;out aDrawnRadius:TpvFloat);
