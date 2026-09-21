@@ -29076,14 +29076,17 @@ begin
   if fActive and fUseRenderInstances then begin
    TPasMPInterlocked.Write(fRenderInstanceChangeCounter,TPasMPInt32(MaxInFlightFrames));
   end;
-  if fActive then begin
-   // Coming back into the graph, the instance has to redo everything once: while it was out of it, it saw
-   // neither a floating origin snap nor anything else that would normally have marked it dirty.
-   SetDirty;
-  end else begin
-   // Going out of it, it still owes every in-flight frame the reset of its per frame slots, which the
-   // inactive branch of Update does. Only after that many frames may it drop out of the graph.
-   TPasMPInterlocked.Write(fInactiveGraphSettleCounter,TPasMPInt32(MaxInFlightFrames));
+  // Both of these only concern SkipInactiveInstancesInGraph, so with it off an instance behaves as before
+  if fSceneInstance.fSkipInactiveInstancesInGraph then begin
+   if fActive then begin
+    // Coming back into the graph, the instance has to redo everything once: while it was out of it, it saw
+    // neither a floating origin snap nor anything else that would normally have marked it dirty.
+    SetDirty;
+   end else begin
+    // Going out of it, it still owes every in-flight frame the reset of its per frame slots, which the
+    // inactive branch of Update does. Only after that many frames may it drop out of the graph.
+    TPasMPInterlocked.Write(fInactiveGraphSettleCounter,TPasMPInt32(MaxInFlightFrames));
+   end;
   end;
  end;
 end;
@@ -33166,7 +33169,9 @@ begin
   // A deactivation takes effect per in-flight frame index, because each index only learns about it when it
   // is processed itself. Once every index has been through here, an inactive instance has nothing left to
   // do, and the invalidation asks the next rebuild to leave it out of the graph altogether.
-  if (aInFlightFrameIndex>=0) and (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
+  if fSceneInstance.fSkipInactiveInstancesInGraph and
+     (aInFlightFrameIndex>=0) and
+     (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
    if TPasMPInterlocked.Decrement(fInactiveGraphSettleCounter)<=0 then begin
     fSceneInstance.InvalidateDirectedAcyclicGraph;
    end;
@@ -33785,7 +33790,9 @@ begin
 
   // Once every in-flight frame has had its reset above, an inactive instance has nothing left to do, so it
   // may drop out of the graph. The rebuild decides that, which is what the invalidation here asks for.
-  if (aInFlightFrameIndex>=0) and (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
+  if fSceneInstance.fSkipInactiveInstancesInGraph and
+     (aInFlightFrameIndex>=0) and
+     (TPasMPInterlocked.Read(fInactiveGraphSettleCounter)>0) then begin
    if TPasMPInterlocked.Decrement(fInactiveGraphSettleCounter)<=0 then begin
     fSceneInstance.InvalidateDirectedAcyclicGraph;
    end;
@@ -35029,9 +35036,12 @@ begin
   // Only the frames that really replace a buffer pay the wait for the previous frame, instead of every
   // frame paying it for a case that is rare. WaitAlways is the former behaviour, DeferAlways never waits.
   fDynamicBufferFreeMode:=TDynamicBufferFreeMode.WaitOnReplace;
-  // Inactive plain leaf instances stay out of the graph step, which is what a pool of held-back instances
-  // costs otherwise: job handling plus call for every one of them, every frame, to do three assignments.
-  fSkipInactiveInstancesInGraph:=true;
+  // Off by default. Leaving inactive plain leaf instances out of the graph step halved the number of walked
+  // instances without a measurable gain in time, and an instance that is out of the graph keeps the per in-
+  // flight-frame render instance lists of its last pass, which can still point at render instances that
+  // have since been freed: placing an item then crashed in the draw preparation of the renderer instance on
+  // NodeMeshObjectIDs of such a stale entry. With this off, every path below behaves as before.
+  fSkipInactiveInstancesInGraph:=false;
  {$ifdef FrameTextFileDebug}
   fDebugDumpDrawInfo:=false;
  {$endif}
