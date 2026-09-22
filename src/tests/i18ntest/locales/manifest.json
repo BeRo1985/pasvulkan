@@ -1,0 +1,22 @@
+{
+ // Test manifest for the engine.localization POCA bindings
+ "sourcelanguage":"en",
+ "basepath":"locales/",
+ "domains":["game"],
+ "languages":[
+  {
+   "tag":"en",
+   "name":"English",
+   "nativename":"English",
+   "decimalseparator":".",
+   "thousandsseparator":","
+  },
+  {
+   "tag":"de",
+   "name":"German",
+   "nativename":"Deutsch",
+   "decimalseparator":",",
+   "thousandsseparator":"."
+  }
+ ]
+}

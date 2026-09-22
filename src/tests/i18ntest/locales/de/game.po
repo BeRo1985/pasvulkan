@@ -1,0 +1,21 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "hud.button.inventory"
+msgstr "Inventar"
+
+msgid "hud.progress"
+msgstr "{done} von {total}"
+
+msgid "hud.credits"
+msgstr "{have:n2} von {total:n} Credits"
+
+msgid "hud.pickup"
+msgstr "{item} aufgesammelt"
+
+msgid "hud.items"
+msgid_plural "hud.items"
+msgstr[0] "ein Gegenstand"
+msgstr[1] "mehrere Gegenstände"

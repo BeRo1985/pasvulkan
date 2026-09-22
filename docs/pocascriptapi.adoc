@@ -10149,6 +10149,267 @@ do **not** call `Free`. The POCA ghost is invalidated after `remove()`.
 
 '''''
 
+== Localization
+
+=== Overview
+
+The Localization API exposes the translation catalogs of
+`+PasVulkan.Localization.pas+` to POCA scripts, so that a script drawn user
+interface is translated by the same catalogs and by the same keys as the Pascal
+side.  It is accessed through the `+engine.localization+` object.
+
+NOTE: `+engine.localization+` is *not* created by the engine itself — like
+`+engine.scene3d+` it is injected by the *application* at context
+initialisation time by calling
+`+InitializePOCALocalizationContext(context, engineHash)+` (implemented in
+`+PasVulkan.POCA.Localization.pas+`).  An application that does not make this
+call will not have an `+engine.localization+` object at all.
+
+A translated string is addressed by a symbolic *key* plus an *inline default*,
+for example `+engine.localization.tr("menu.settings.audio.globalvolume", "Global volume")+`.
+The key is the `+msgid+` inside the catalogs, and the inline default is what is
+drawn when no catalog knows the key, so a missing or incomplete catalog can
+never break the user interface.  Because the key and not the English text is
+the `+msgid+`, fixing an English wording does not invalidate any translation.
+
+Every function stays usable when no localization instance exists at all, in
+which case the inline default of the call is returned.
+
+'''''
+
+==== engine.localization.tr(key, default)
+
+*Usage:*
+
+[source,js]
+----
+let label = engine.localization.tr("menu.settings.audio.globalvolume", "Global volume");
+----
+
+* *Description:* Translates a key into the current language.
+* *Parameters:*
+** `+key+` (string): The symbolic key, which is the `+msgid+` in the catalogs.
+** `+default+` (string): The source language text, drawn when no catalog knows
+   the key.  When omitted, the key itself is used.
+* *Return Value:* The translated text, or `+default+` when the key is unknown.
+
+'''''
+
+==== engine.localization.trPlural(key, singular, plural, count)
+
+*Usage:*
+
+[source,js]
+----
+let text = engine.localization.trPlural("hud.items", "{n} item", "{n} items", count);
+----
+
+* *Description:* Picks the plural form which fits `+count+` in the current
+  language.  The form is chosen by the plural rule of the catalog which
+  contains the key, so a language with more than two forms — Polish or Russian,
+  for example — is handled correctly.
+* *Parameters:*
+** `+key+` (string): The symbolic key.
+** `+singular+` (string): Source language singular, used when no catalog knows
+   the key.
+** `+plural+` (string): Source language plural, used when no catalog knows the
+   key.
+** `+count+` (number): The count which selects the form.
+* *Return Value:* The translated text in the fitting plural form.
+
+'''''
+
+==== engine.localization.trFormat(key, default, name, value, …)
+
+*Usage:*
+
+[source,js]
+----
+let text = engine.localization.trFormat("hud.progress", "{done} of {total}",
+                                        "done", done, "total", total);
+----
+
+* *Description:* Translates a key and fills in its *named* placeholders.
+  Placeholders are written as `+{name}+` or `+{name:spec}+`, and a literal brace
+  is written as `+{{+` or `+}}+`.  Names, not positions, are what a translator
+  sees, so placeholders can be reordered freely in a translation.  The names and
+  values are passed in pairs, in the same way as the Pascal side passes an array
+  of const.
+* *Parameters:*
+** `+key+` (string): The symbolic key.
+** `+default+` (string): The source language text with its placeholders.
+** `+name+` (string), `+value+` (any): Any number of name and value pairs.  A
+   trailing name without a value is dropped.
+* *Return Value:* The translated and filled in text.
+* *Notes:* A value passed as a number stays a number, so that a spec can format
+  it with the separators of the current language: `+n+` is a grouped number,
+  `+n<digits>+` a grouped number with that many fraction digits, and
+  `+f<digits>+` an ungrouped one.  An unknown name stays visible as `+{name}+`
+  in the output on purpose, since that is a bug which should be seen.
+* *Example:*
++
+[source,js]
+----
+// "1,234.50 of 2,000 credits" in English, "1.234,50 von 2.000 Credits" in German
+engine.localization.trFormat("hud.credits", "{have:n2} of {total:n} credits",
+                             "have", 1234.5, "total", 2000);
+----
+
+'''''
+
+==== engine.localization.formatNumber(value, fractionDigits, grouping)
+
+*Usage:*
+
+[source,js]
+----
+let text = engine.localization.formatNumber(1234.5, 2, true);
+----
+
+* *Description:* Formats a number with the decimal and thousands separators of
+  the current language.
+* *Parameters:*
+** `+value+` (number): The value to format.
+** `+fractionDigits+` (number, optional): Number of fraction digits.  A negative
+   value, which is the default, keeps the digits which the value needs.
+** `+grouping+` (boolean, optional): Whether to group the thousands.  Default is
+   `+true+`.
+* *Return Value:* The formatted number as a string.
+
+'''''
+
+==== engine.localization.formatInteger(value, grouping)
+
+*Usage:*
+
+[source,js]
+----
+let text = engine.localization.formatInteger(1234567);
+----
+
+* *Description:* Formats an integer with the thousands separator of the current
+  language.
+* *Parameters:*
+** `+value+` (number): The value to format, truncated to an integer.
+** `+grouping+` (boolean, optional): Whether to group the thousands.  Default is
+   `+true+`.
+* *Return Value:* The formatted integer as a string.
+
+'''''
+
+==== engine.localization.getLanguage()
+
+*Usage:*
+
+[source,js]
+----
+let tag = engine.localization.getLanguage();
+----
+
+* *Description:* Returns the tag of the current language.
+* *Return Value:* A language tag such as `+"de"+` or `+"pt-BR"+`.
+
+'''''
+
+==== engine.localization.setLanguage(tag)
+
+*Usage:*
+
+[source,js]
+----
+engine.localization.setLanguage("de");
+----
+
+* *Description:* Switches the language, loads the catalogs of the whole fallback
+  chain and increments the generation counter.  An unknown tag falls back to the
+  source language instead of raising an error.
+* *Parameters:*
+** `+tag+` (string): The wanted language tag.
+* *Return Value:* `+true+` when the language is now the wanted one, `+false+`
+  when it fell back.
+* *Notes:* Cached texts and cached text layouts have to be rebuilt afterwards —
+  see `+getGeneration()+`.
+
+'''''
+
+==== engine.localization.getLanguages()
+
+*Usage:*
+
+[source,js]
+----
+let languages = engine.localization.getLanguages();
+----
+
+* *Description:* Lists the available languages, for a language selection in the
+  user interface.
+* *Return Value:* An array of hashes, each with `+tag+`, `+name+` (the English
+  name), `+nativeName+` (the name in the language itself) and `+fallback+`.
+* *Example:*
++
+[source,js]
+----
+for(let i = 0; i < languages.length; i++) {
+  puts(languages[i].tag ~ ": " ~ languages[i].nativeName);
+}
+----
+
+'''''
+
+==== engine.localization.getGeneration()
+
+*Usage:*
+
+[source,js]
+----
+if(cachedGeneration != engine.localization.getGeneration()) { rebuildLabels(); }
+----
+
+* *Description:* Returns a counter which increments on every language change.
+* *Return Value:* A number.
+* *Notes:* This is the cheap way for a script to know when to throw away cached
+  texts and cached text layouts — comparing one number per frame instead of
+  translating every string again.
+
+'''''
+
+==== engine.localization.getSystemLanguage()
+
+*Usage:*
+
+[source,js]
+----
+let tag = engine.localization.getSystemLanguage();
+----
+
+* *Description:* Returns the language which the user's system suggests.  On
+  Windows it comes from the user locale, otherwise from `+LC_ALL+`,
+  `+LC_MESSAGES+` or `+LANG+`.
+* *Return Value:* A language tag such as `+"de-DE"+`, or an empty string when it
+  could not be determined.
+* *Notes:* An application should prefer, in this order, an explicit setting of
+  its own, the platform store language, for example the Steam one, and this one.
+
+'''''
+
+==== engine.localization.matchLanguage(tags)
+
+*Usage:*
+
+[source,js]
+----
+let tag = engine.localization.matchLanguage(["pt-BR", "pt", "en"]);
+----
+
+* *Description:* Returns the best matching available language for a wish list.
+* *Parameters:*
+** `+tags+` (array of strings): The wish list, most wanted first.  The tags can
+   also be passed as single arguments instead of as an array.
+* *Return Value:* The matching language tag, or an empty string when nothing
+  matches.
+
+'''''
+
 == Summary
 
 The PasVulkan POCA Script API provides a comprehensive set of types and functions for game development:
@@ -10159,6 +10420,7 @@ The PasVulkan POCA Script API provides a comprehensive set of types and function
 * *Input API:* Keyboard, mouse, and pointer event handling
 * *Audio API:* Sound effects with polyphony and 3D spatialization, background music playback
 * *Scene3D API:* 3D scene-graph access — images, samplers, textures, materials, groups, meshes, primitives, nodes, and scenes with full PBR and hologram support
+* *Localization API:* Translations by key with plural forms, named placeholders and language aware number formatting
 
 All types support operator overloading and provide fluent APIs for method chaining. The Canvas API is hardware-accelerated using Vulkan for high-performance 2D rendering. The Audio API provides both simple 2D and advanced 3D spatial audio capabilities.
 
