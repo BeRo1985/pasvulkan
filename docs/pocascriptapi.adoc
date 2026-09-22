@@ -10,7 +10,19 @@
 
 == Overview
 
-This document describes the PasVulkan-specific extensions to the POCA scripting API. PasVulkan provides a comprehensive set of types and functions for 2D/3D graphics, mathematics, input handling, and sprite management within POCA scripts.
+This document describes the PasVulkan-specific extensions to the POCA scripting API. PasVulkan provides a comprehensive set of types and functions for 2D/3D graphics, mathematics, input handling, sprite management and localization within POCA scripts.
+
+The extensions are grouped as follows:
+
+* *Math types* — Vector2, Vector3, Vector4, Quaternion, Matrix3x3, Matrix4x4
+* *Graphics types* — Sprite, SpriteAtlas, Texture, Font, CanvasFont, CanvasShape
+* *`+engine.canvas+`* — hardware accelerated 2D drawing with shapes, text, sprites and paths
+* *`+engine.input+`* — keyboard, mouse and pointer event handling
+* *Audio* — sound effects with polyphony and 3D spatialization, background music playback
+* *`+engine.scene3d+`* — 3D scene-graph access: images, samplers, textures, materials, groups, meshes, primitives, nodes and scenes
+* *`+engine.localization+`* — translations by key, plural forms and language aware number formatting
+
+`+engine.scene3d+` and `+engine.localization+` are injected by the application rather than by the engine itself, see the notes in their own sections.
 
 For the base POCA scripting API (Array, Boolean, Console, etc.), please refer to link:https://github.com/BeRo1985/poca/blob/master/docs/scriptapi.adoc[POCA Script API Documentation].
 
