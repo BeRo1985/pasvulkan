@@ -711,6 +711,7 @@ type EpvApplication=class(Exception)
        function HasKey(const aKeyCode,aScanCode:TpvInt32):boolean;
        // Human-readable list of the bound key names (for HUD/menu display).
        function KeyNames(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
+       function KeyNamesWithReference(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
       published
        property ID:TpvUInt64 read fID write fID;
        property Name:TpvUTF8String read fName write fName;
@@ -4683,6 +4684,39 @@ begin
       ((Shortcut.fKey.ScanCode>0) and (Shortcut.fKey.ScanCode=aScanCode)) then begin
     result:=true;
     exit;
+   end;
+  end;
+ end;
+end;
+
+// The same list, but a position whose key prints something other than its reference name carries
+// that reference name after it in angle brackets - "Z <W>" on a French keyboard. For the rebinding
+// menu, where knowing which place a key is also tells the player what every guide written for a US
+// keyboard means by it. In-game hints want the plain KeyNames instead: there the player only needs
+// to find the key, not to understand where it came from.
+function TpvApplicationInputKeyAction.KeyNamesWithReference(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
+var Index:TpvSizeInt;
+    Shortcut:TpvApplicationInputKeyShortcut;
+    Name,Reference:TpvUTF8String;
+begin
+ result:='';
+ if assigned(fApplication) then begin
+  for Index:=0 to fKeyShortcuts.Count-1 do begin
+   Shortcut:=fKeyShortcuts[Index];
+   if assigned(Shortcut) then begin
+    if length(result)>0 then begin
+     result:=result+aSeparator;
+    end;
+    if Shortcut.fKey.KeyCode>=0 then begin
+     result:=result+TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.KeyCode));
+    end else begin
+     Name:=TpvUTF8String(fApplication.Input.GetPhysicalKeyName(Shortcut.fKey.ScanCode));
+     Reference:=TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.ScanCode));
+     result:=result+Name;
+     if (length(Reference)>0) and (Name<>Reference) then begin
+      result:=result+' <'+Reference+'>';
+     end;
+    end;
    end;
   end;
  end;
