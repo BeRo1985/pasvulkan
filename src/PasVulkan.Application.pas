@@ -4722,7 +4722,10 @@ begin
      Name:=TpvUTF8String(fApplication.Input.GetPhysicalKeyName(Shortcut.fKey.ScanCode));
      Reference:=TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.ScanCode));
      result:=result+Name;
-     if (length(Reference)>0) and (Name<>Reference) then begin
+     // Without regard to case: the reference names are held in lower case for the letters while a
+     // layout prints them in upper case, and "A <a>" would be noise rather than help.
+     if (length(Reference)>0) and
+        (PUCUUTF8LowerCase(Name)<>PUCUUTF8LowerCase(Reference)) then begin
       result:=result+' <'+Reference+'>';
      end;
     end;
@@ -6524,8 +6527,10 @@ begin
   end;
   Printed:=TpvUTF8String(GetPhysicalKeyName(KeyCode));
   // Only worth a word where the layout disagrees with the reference; the rest would be the same name
-  // twice and just make the interesting lines harder to find.
-  if Printed=Reference then begin
+  // twice and just make the interesting lines harder to find. Compared without regard to case,
+  // because the reference names are held in lower case for the letters while a layout prints them in
+  // upper case - "a" and "A" are the same key, not a disagreement worth reporting.
+  if PUCUUTF8LowerCase(Printed)=PUCUUTF8LowerCase(Reference) then begin
    Printed:='';
   end;
   result:=result+'  '+Reference+' | '+TpvUTF8String(IntToStr(NativeScanCode));
