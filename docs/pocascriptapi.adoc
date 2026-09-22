@@ -10269,6 +10269,28 @@ engine.localization.trFormat("hud.credits", "{have:n2} of {total:n} credits",
 
 '''''
 
+==== engine.localization.formatText(text, name, value, …)
+
+*Usage:*
+
+[source,js]
+----
+let text = engine.localization.formatText(
+             engine.localization.trPlural("hud.items", "{n} item", "{n} items", count),
+             "n", count);
+----
+
+* *Description:* Fills the named placeholders of a text which is *already translated*, without
+  looking it up as a key first.  This is what the result of `+trPlural+` needs, since `+trFormat+`
+  would wrongly treat that text as a key again.  Names, values and format specs work exactly as in
+  `+trFormat+`.
+* *Parameters:*
+** `+text+` (string): The already translated text with its placeholders.
+** `+name+` (string), `+value+` (any): Any number of name and value pairs.
+* *Return Value:* The text with its placeholders filled in.
+
+'''''
+
 ==== engine.localization.formatNumber(value, fractionDigits, grouping)
 
 *Usage:*
