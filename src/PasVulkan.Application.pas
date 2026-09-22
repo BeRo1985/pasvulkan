@@ -1282,11 +1282,6 @@ type EpvApplication=class(Exception)
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
 {$else}
 {$ifend}
-       // The one place that knows how the compiled-in backend numbers physical key positions: it
-       // turns such a native position code into the reference key code used everywhere above. SDL
-       // hands out USB HID usages, Win32 PS/2 set 1 codes; both already arrive as reference key
-       // codes in the key events, this is only the same step made callable for table building.
-       function TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
        procedure BuildKeyCodeToNativeScanCodes;
        procedure AddEvent(const aEvent:TpvApplicationEvent);
        procedure ProcessEvents;
@@ -1353,6 +1348,16 @@ type EpvApplication=class(Exception)
        function IsButtonPressed(const aButton:TpvApplicationInputPointerButton):boolean;
        function IsKeyPressed(const aKeyCode:TpvInt32):boolean;
        function IsPhysicalKeyPressed(const aScanCode:TpvInt32):boolean;
+       // The one place that knows how the compiled-in backend numbers physical key positions: it
+       // turns such a native position code into the reference key code used everywhere above. SDL
+       // hands out USB HID usages, Win32 PS/2 set 1 codes (with the $e000 of an extended one folded
+       // into bit 7); both already arrive as reference key codes in the key events, so this is only
+       // the same step made callable - for building the table below, for the self test, and for the
+       // key positions dump.
+       function TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
+       // The way back: which native position code the backend uses for a reference key code, or -1
+       // where it knows no such position.
+       function KeyCodeToNativeScanCode(const aScanCode:TpvInt32):TpvInt32;
        function IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
        function GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        // What the player's current keyboard layout prints on the physical key at the given reference
@@ -6476,6 +6481,15 @@ const pvApplicationWin32ScanCodeToKeyCodes:array[0..255] of TpvUInt32=
        );
 {$ifend}
 
+function TpvApplicationInput.KeyCodeToNativeScanCode(const aScanCode:TpvInt32):TpvInt32;
+begin
+ if (aScanCode>0) and (aScanCode<=high(fKeyCodeToNativeScanCodes)) then begin
+  result:=fKeyCodeToNativeScanCodes[aScanCode];
+ end else begin
+  result:=-1;
+ end;
+end;
+
 function TpvApplicationInput.TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
 begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
@@ -9898,10 +9912,7 @@ begin
  result:='';
 
 {$if not defined(PasVulkanHeadless)}
- NativeScanCode:=-1;
- if (aScanCode>0) and (aScanCode<=high(fKeyCodeToNativeScanCodes)) then begin
-  NativeScanCode:=fKeyCodeToNativeScanCodes[aScanCode];
- end;
+ NativeScanCode:=KeyCodeToNativeScanCode(aScanCode);
 {$ifend}
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
