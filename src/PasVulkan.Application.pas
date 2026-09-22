@@ -1332,6 +1332,7 @@ type EpvApplication=class(Exception)
        procedure LoadGamepadBindingsFromJSON(const aJSON:TPasJSONItem);
        function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
+       function JSONToKeyCode(const aJSON:TPasJSONItem;const aDefault:TpvInt32):TpvInt32;
        function GetAccelerometerX:TpvFloat;
        function GetAccelerometerY:TpvFloat;
        function GetAccelerometerZ:TpvFloat;
@@ -6903,15 +6904,16 @@ begin
       ShortcutItem:=ShortcutsArray.Items[ShortcutIndex];
       if assigned(ShortcutItem) then begin
        if ShortcutItem is TPasJSONItemObject then begin
-        // Full shortcut form: {"key":..,"scan":..,"modifiers":[..],"any":..}
-        Shortcut:=AddKeyShortcut(TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['key'],-1.0))),
-                                 TpvInt32(round(TPasJSON.GetNumber(TPasJSONItemObject(ShortcutItem).Properties['scan'],-1.0))),
+        // Full shortcut form: {"key":..,"scan":..,"modifiers":[..],"any":..}, where each of the two
+        // key fields may be a number or a key code name.
+        Shortcut:=AddKeyShortcut(JSONToKeyCode(TPasJSONItemObject(ShortcutItem).Properties['key'],-1),
+                                 JSONToKeyCode(TPasJSONItemObject(ShortcutItem).Properties['scan'],-1),
                                  pvApplicationJSONToKeyModifiers(TPasJSONItemObject(ShortcutItem).Properties['modifiers']),
                                  TPasJSON.GetBoolean(TPasJSONItemObject(ShortcutItem).Properties['any'],false));
         Action.AddKeyShortcut(Shortcut);
        end else if (ShortcutItem is TPasJSONItemNumber) or (ShortcutItem is TPasJSONItemString) then begin
         // Shorthand form: a bare key code (no scan code, no modifiers, modifier-agnostic).
-        KeyCodeValue:=TpvInt32(round(TPasJSON.GetNumber(ShortcutItem,-1.0)));
+        KeyCodeValue:=JSONToKeyCode(ShortcutItem,-1);
         if KeyCodeValue>=0 then begin
          Shortcut:=AddKeyShortcut(KeyCodeValue,-1,[],true);
          Action.AddKeyShortcut(Shortcut);
@@ -7389,6 +7391,29 @@ end;
 function TpvApplicationInput.StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
 begin
  result:=fKeyCodeNameHashmap[PUCUUTF8LowerCase(aString)];
+end;
+
+// One stored half of a key binding, which may be written either as the number of its reference key
+// code or as that key code's name - 119 or "W" for the same thing. Saving always writes the number,
+// so that what the game produces stays stable and diffable, but a configuration written by hand or
+// copied out of a guide is understood just as well. Anything else, and a name nothing is called,
+// leaves the default in place rather than binding some arbitrary key.
+function TpvApplicationInput.JSONToKeyCode(const aJSON:TPasJSONItem;const aDefault:TpvInt32):TpvInt32;
+var Name:TpvApplicationRawByteString;
+begin
+ result:=aDefault;
+ if assigned(aJSON) then begin
+  if aJSON is TPasJSONItemString then begin
+   Name:=TpvApplicationRawByteString(trim(TPasJSONItemString(aJSON).Value));
+   if length(Name)>0 then begin
+    if StringToKeyCode(Name)<>KEYCODE_UNKNOWN then begin
+     result:=StringToKeyCode(Name);
+    end;
+   end;
+  end else if aJSON is TPasJSONItemNumber then begin
+   result:=TpvInt32(round(TPasJSONItemNumber(aJSON).Value));
+  end;
+ end;
 end;
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
