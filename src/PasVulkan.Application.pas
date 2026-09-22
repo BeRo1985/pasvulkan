@@ -708,6 +708,7 @@ type EpvApplication=class(Exception)
        function IsPressed:boolean;
        // True if aKeyCode is bound to this action (modifier-agnostic).
        function HasKeyCode(const aKeyCode:TpvInt32):boolean;
+       function HasKey(const aKeyCode,aScanCode:TpvInt32):boolean;
        // Human-readable list of the bound key names (for HUD/menu display).
        function KeyNames(const aSeparator:TpvUTF8String=' / '):TpvUTF8String;
       published
@@ -1226,6 +1227,11 @@ type EpvApplication=class(Exception)
        fVulkanApplication:TpvApplication;
        fKeyCodeNames:array[-1..KEYCODE_COUNT-1] of TpvApplicationRawByteString;
        fKeyCodeLowerCaseNames:array[-1..KEYCODE_COUNT-1] of TpvApplicationRawByteString;
+       // Reference key code of a physical key position back to the native position code of whichever
+       // backend is compiled in, so that the position can be handed back to the platform to ask what
+       // the current keyboard layout prints on it. Built by inverting the backend's own forward
+       // translation, so it cannot drift away from it. -1 where the backend knows no such position.
+       fKeyCodeToNativeScanCodes:array[-1..KEYCODE_COUNT-1] of TpvInt32;
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TpvApplicationInputProcessor;
        fEvents:array of TpvApplicationEvent;
@@ -1233,6 +1239,9 @@ type EpvApplication=class(Exception)
        fEventCount:TpvInt32;
        fCurrentEventTime:TpvInt64;
        fKeyDown:array[0..$ffff] of boolean;
+       // The same for the physical key positions, indexed by their reference key code. A binding by
+       // position has no key code of its own, so asking fKeyDown about it would always answer no.
+       fScanCodeDown:array[0..$ffff] of boolean;
        fKeyDownCount:TpvInt32;
        fJustKeyDown:array[0..$ffff] of boolean;
        fPointerX:array[0..$ffff] of TpvFloat;
@@ -1272,6 +1281,12 @@ type EpvApplication=class(Exception)
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
 {$else}
 {$ifend}
+       // The one place that knows how the compiled-in backend numbers physical key positions: it
+       // turns such a native position code into the reference key code used everywhere above. SDL
+       // hands out USB HID usages, Win32 PS/2 set 1 codes; both already arrive as reference key
+       // codes in the key events, this is only the same step made callable for table building.
+       function TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
+       procedure BuildKeyCodeToNativeScanCodes;
        procedure AddEvent(const aEvent:TpvApplicationEvent);
        procedure ProcessEvents;
       public
@@ -1296,8 +1311,9 @@ type EpvApplication=class(Exception)
        // key-action + key-shortcut model; no existing behaviour is changed).
        function GetKeyActionByName(const aName:TpvUTF8String):TpvApplicationInputKeyAction;
        function IsKeyActionPressed(const aName:TpvUTF8String):boolean;
-       procedure RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
-       procedure AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+       procedure DetachKeyFromAllActions(const aKeyCode,aScanCode:TpvInt32);
+       procedure RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32;const aScanCode:TpvInt32=-1);
+       procedure AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32;const aScanCode:TpvInt32=-1);
        function SaveKeyBindingsToJSON:TPasJSONItem;
        procedure LoadKeyBindingsFromJSON(const aJSON:TPasJSONItem);
        // Gamepad action helpers (poll / rebind / (de)serialize), analogous to the key action helpers above
@@ -1334,8 +1350,17 @@ type EpvApplication=class(Exception)
        function JustTouched:boolean;
        function IsButtonPressed(const aButton:TpvApplicationInputPointerButton):boolean;
        function IsKeyPressed(const aKeyCode:TpvInt32):boolean;
+       function IsPhysicalKeyPressed(const aScanCode:TpvInt32):boolean;
        function IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
        function GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
+       // What the player's current keyboard layout prints on the physical key at the given reference
+       // position, e.g. "Z" on a French layout for the position US QWERTY calls W. For showing a
+       // position binding in a key rebinding user interface, where the reference name would name a
+       // letter which is not on that key. Falls back to the reference name when the platform has
+       // nothing to say, when the position carries no printable character at all, or when the
+       // character is non-Latin: layouts like the Cyrillic ones carry the Latin reference letters on
+       // the very same key caps, so the reference name is the one the player can actually find.
+       function GetPhysicalKeyName(const aScanCode:TpvInt32):TpvApplicationRawByteString;
        function GetKeyModifiers:TpvApplicationInputKeyModifiers;
        procedure StartTextInput;
        procedure StopTextInput;
@@ -4621,24 +4646,43 @@ begin
  if assigned(fApplication) then begin
   for Index:=0 to fKeyShortcuts.Count-1 do begin
    Shortcut:=fKeyShortcuts[Index];
-   if assigned(Shortcut) and (Shortcut.fKey.KeyCode>=0) and fApplication.Input.IsKeyPressed(Shortcut.fKey.KeyCode) then begin
-    result:=true;
-    exit;
+   if assigned(Shortcut) then begin
+    // Asked of whichever half the shortcut is bound by: a binding by position carries no key code,
+    // so it has to be looked up among the held positions instead of the held characters.
+    if ((Shortcut.fKey.KeyCode>=0) and fApplication.Input.IsKeyPressed(Shortcut.fKey.KeyCode)) or
+       ((Shortcut.fKey.ScanCode>0) and fApplication.Input.IsPhysicalKeyPressed(Shortcut.fKey.ScanCode)) then begin
+     result:=true;
+     exit;
+    end;
    end;
   end;
  end;
 end;
 
 function TpvApplicationInputKeyAction.HasKeyCode(const aKeyCode:TpvInt32):boolean;
+begin
+ result:=HasKey(aKeyCode,-1);
+end;
+
+// Whether this action answers to a key, asked with both halves of what a key event carries: the key
+// code, which is the character the layout puts on the key, and the scan code, which is the position
+// it sits at. A shortcut bound by character is matched by the first, one bound by position by the
+// second, so a caller which passes both does not have to know which way round an action was bound.
+function TpvApplicationInputKeyAction.HasKey(const aKeyCode,aScanCode:TpvInt32):boolean;
 var Index:TpvSizeInt;
     Shortcut:TpvApplicationInputKeyShortcut;
 begin
  result:=false;
  for Index:=0 to fKeyShortcuts.Count-1 do begin
   Shortcut:=fKeyShortcuts[Index];
-  if assigned(Shortcut) and (Shortcut.fKey.KeyCode=aKeyCode) then begin
-   result:=true;
-   exit;
+  if assigned(Shortcut) then begin
+   // A shortcut carries -1 in whichever half it does not bind by, and KEYCODE_UNKNOWN (zero) is what
+   // a backend reports for a position it has no reference key code for, so neither may match.
+   if ((Shortcut.fKey.KeyCode>=0) and (Shortcut.fKey.KeyCode=aKeyCode)) or
+      ((Shortcut.fKey.ScanCode>0) and (Shortcut.fKey.ScanCode=aScanCode)) then begin
+    result:=true;
+    exit;
+   end;
   end;
  end;
 end;
@@ -4655,7 +4699,14 @@ begin
     if length(result)>0 then begin
      result:=result+aSeparator;
     end;
-    result:=result+TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.KeyCode));
+    // A shortcut bound by position has no key code to name, and naming its position by the reference
+    // layout would print a letter which is not on that key. Ask the platform what the player's
+    // layout puts there instead.
+    if Shortcut.fKey.KeyCode>=0 then begin
+     result:=result+TpvUTF8String(fApplication.Input.GetKeyName(Shortcut.fKey.KeyCode));
+    end else begin
+     result:=result+TpvUTF8String(fApplication.Input.GetPhysicalKeyName(Shortcut.fKey.ScanCode));
+    end;
    end;
   end;
  end;
@@ -6083,6 +6134,7 @@ begin
  fEventCount:=0;
  fCurrentEventTime:=0;
  FillChar(fKeyDown,SizeOf(fKeyDown),AnsiChar(#0));
+ FillChar(fScanCodeDown,SizeOf(fScanCodeDown),AnsiChar(#0));
  fKeyDownCount:=0;
  FillChar(fJustKeyDown,SizeOf(fJustKeyDown),AnsiChar(#0));
  FillChar(fPointerX,SizeOf(fPointerX),AnsiChar(#0));
@@ -6118,6 +6170,322 @@ begin
  fGamepadBindingIDCounter:=0;
  fGamepadActions:=TpvApplicationInputGamepadActions.Create;
  fGamepadActionIDCounter:=0;
+ BuildKeyCodeToNativeScanCodes;
+end;
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+// Reference key code of every physical key position the Win32 backend can see, indexed by PS/2 set 1
+// scan code: entries $00..$7f are the plain codes, $80..$ff the extended $e0xx ones with the $e000
+// folded into bit 7, which is how the key event handler indexes it and what the comment on each
+// entry names. Used in both directions - forwards to fill the scan code of a key event, backwards
+// to ask Windows what the player's layout prints on a position - so it lives here rather than
+// inside the event handler it used to be local to.
+const pvApplicationWin32ScanCodeToKeyCodes:array[0..255] of TpvUInt32=
+       (
+        KEYCODE_UNKNOWN, // $00
+        KEYCODE_ESCAPE, // $01
+        KEYCODE_1, // $02
+        KEYCODE_2, // $03
+        KEYCODE_3, // $04
+        KEYCODE_4, // $05
+        KEYCODE_5, // $06
+        KEYCODE_6, // $07
+        KEYCODE_7, // $08
+        KEYCODE_8, // $09
+        KEYCODE_9, // $0a
+        KEYCODE_0, // $0b
+        KEYCODE_MINUS, // $0c
+        KEYCODE_EQUALS, // $0d
+        KEYCODE_BACKSPACE, // $0e
+        KEYCODE_TAB, // $0f
+        KEYCODE_Q, // $10
+        KEYCODE_W, // $11
+        KEYCODE_E, // $12
+        KEYCODE_R, // $13
+        KEYCODE_T, // $14
+        KEYCODE_Y, // $15
+        KEYCODE_U, // $16
+        KEYCODE_I, // $17
+        KEYCODE_O, // $18
+        KEYCODE_P, // $19
+        KEYCODE_LEFTBRACKET, // $1a
+        KEYCODE_RIGHTBRACKET, // $1b
+        KEYCODE_RETURN, // $1c
+        KEYCODE_LCTRL, // $1d
+        KEYCODE_A, // $1e
+        KEYCODE_S, // $1f
+        KEYCODE_D, // $20
+        KEYCODE_F, // $21
+        KEYCODE_G, // $22
+        KEYCODE_H, // $23
+        KEYCODE_J, // $24
+        KEYCODE_K, // $25
+        KEYCODE_L, // $26
+        KEYCODE_SEMICOLON, // $27
+        KEYCODE_APOSTROPHE, // $28
+        KEYCODE_GRAVE, // $29
+        KEYCODE_LSHIFT, // $2a
+        KEYCODE_BACKSLASH, // $2b
+        KEYCODE_Z, // $2c
+        KEYCODE_X, // $2d
+        KEYCODE_C, // $2e
+        KEYCODE_V, // $2f
+        KEYCODE_B, // $30
+        KEYCODE_N, // $31
+        KEYCODE_M, // $32
+        KEYCODE_COMMA, // $33
+        KEYCODE_PERIOD, // $34
+        KEYCODE_SLASH, // $35
+        KEYCODE_RSHIFT, // $36
+        KEYCODE_KP_MULTIPLY, // $37
+        KEYCODE_LALT, // $38
+        KEYCODE_SPACE, // $39
+        KEYCODE_CAPSLOCK, // $3a
+        KEYCODE_F1, // $3b
+        KEYCODE_F2, // $3c
+        KEYCODE_F3, // $3d
+        KEYCODE_F4, // $3e
+        KEYCODE_F5, // $3f
+        KEYCODE_F6, // $40
+        KEYCODE_F7, // $41
+        KEYCODE_F8, // $42
+        KEYCODE_F9, // $43
+        KEYCODE_F10, // $44
+        KEYCODE_NUMLOCK, // $45
+        KEYCODE_SCROLLLOCK, // $46
+        KEYCODE_KP7, // $47
+        KEYCODE_KP8, // $48
+        KEYCODE_KP9, // $49
+        KEYCODE_KP_MINUS, // $4a
+        KEYCODE_KP4, // $4b
+        KEYCODE_KP5, // $4c
+        KEYCODE_KP6, // $4d
+        KEYCODE_KP_PLUS, // $4e
+        KEYCODE_KP1, // $4f
+        KEYCODE_KP2, // $50
+        KEYCODE_KP3, // $51
+        KEYCODE_KP0, // $52
+        KEYCODE_KP_PERIOD, // $53
+        KEYCODE_UNKNOWN, // $54
+        KEYCODE_UNKNOWN, // $55
+        KEYCODE_NONUSBACKSLASH, // $56
+        KEYCODE_F11, // $57
+        KEYCODE_F12, // $58
+        KEYCODE_KP_EQUALS, // $59
+        KEYCODE_UNKNOWN, // $5a
+        KEYCODE_UNKNOWN, // $5b
+        KEYCODE_INTERNATIONAL6, // $5c
+        KEYCODE_UNKNOWN, // $5d
+        KEYCODE_UNKNOWN, // $5e
+        KEYCODE_UNKNOWN, // $5f
+        KEYCODE_UNKNOWN, // $60
+        KEYCODE_UNKNOWN, // $61
+        KEYCODE_UNKNOWN, // $62
+        KEYCODE_UNKNOWN, // $63
+        KEYCODE_F13, // $64
+        KEYCODE_F14, // $65
+        KEYCODE_F15, // $66
+        KEYCODE_F16, // $67
+        KEYCODE_F17, // $68
+        KEYCODE_F18, // $69
+        KEYCODE_F19, // $6a
+        KEYCODE_F20, // $6b
+        KEYCODE_F21, // $6c
+        KEYCODE_F22, // $6d
+        KEYCODE_F23, // $6e
+        KEYCODE_UNKNOWN, // $6f
+        KEYCODE_INTERNATIONAL2, // $70
+        KEYCODE_LANG2, // $71
+        KEYCODE_LANG1, // $72
+        KEYCODE_INTERNATIONAL1, // $73
+        KEYCODE_UNKNOWN, // $74
+        KEYCODE_UNKNOWN, // $75
+        KEYCODE_F24, // $76
+        KEYCODE_LANG4, // $77
+        KEYCODE_LANG3, // $78
+        KEYCODE_INTERNATIONAL4, // $79
+        KEYCODE_UNKNOWN, // $7a
+        KEYCODE_INTERNATIONAL5, // $7b
+        KEYCODE_UNKNOWN, // $7c
+        KEYCODE_INTERNATIONAL3, // $7d
+        KEYCODE_KP_COMMA, // $7e
+        KEYCODE_UNKNOWN, // $7f
+        KEYCODE_UNKNOWN, // $e000
+        KEYCODE_UNKNOWN, // $e001
+        KEYCODE_UNKNOWN, // $e002
+        KEYCODE_UNKNOWN, // $e003
+        KEYCODE_UNKNOWN, // $e004
+        KEYCODE_UNKNOWN, // $e005
+        KEYCODE_UNKNOWN, // $e006
+        KEYCODE_UNKNOWN, // $e007
+        KEYCODE_UNKNOWN, // $e008
+        KEYCODE_UNKNOWN, // $e009
+        KEYCODE_PASTE, // $e00a
+        KEYCODE_UNKNOWN, // $e00b
+        KEYCODE_UNKNOWN, // $e00c
+        KEYCODE_UNKNOWN, // $e00d
+        KEYCODE_UNKNOWN, // $e00e
+        KEYCODE_UNKNOWN, // $e00f
+        KEYCODE_AUDIOPREV, // $e010
+        KEYCODE_UNKNOWN, // $e011
+        KEYCODE_UNKNOWN, // $e012
+        KEYCODE_UNKNOWN, // $e013
+        KEYCODE_UNKNOWN, // $e014
+        KEYCODE_UNKNOWN, // $e015
+        KEYCODE_UNKNOWN, // $e016
+        KEYCODE_CUT, // $e017
+        KEYCODE_COPY, // $e018
+        KEYCODE_AUDIONEXT, // $e019
+        KEYCODE_UNKNOWN, // $e01a
+        KEYCODE_UNKNOWN, // $e01b
+        KEYCODE_KP_ENTER, // $e01c
+        KEYCODE_RCTRL, // $e01d
+        KEYCODE_UNKNOWN, // $e01e
+        KEYCODE_UNKNOWN, // $e01f
+        KEYCODE_MUTE, // $e020
+        KEYCODE_UNKNOWN, // $e021 // LaunchApp2
+        KEYCODE_AUDIOPLAY, // $e022
+        KEYCODE_UNKNOWN, // $e023
+        KEYCODE_AUDIOSTOP, // $e024
+        KEYCODE_UNKNOWN, // $e025
+        KEYCODE_UNKNOWN, // $e026
+        KEYCODE_UNKNOWN, // $e027
+        KEYCODE_UNKNOWN, // $e028
+        KEYCODE_UNKNOWN, // $e029
+        KEYCODE_UNKNOWN, // $e02a
+        KEYCODE_UNKNOWN, // $e02b
+        KEYCODE_EJECT, // $e02c
+        KEYCODE_UNKNOWN, // $e02d
+        KEYCODE_VOLUMEDOWN, // $e02e
+        KEYCODE_UNKNOWN, // $e02f
+        KEYCODE_VOLUMEUP, // $e030
+        KEYCODE_UNKNOWN, // $e031
+        KEYCODE_AC_HOME, // $e032
+        KEYCODE_UNKNOWN, // $e033
+        KEYCODE_UNKNOWN, // $e034
+        KEYCODE_KP_DIVIDE, // $e035
+        KEYCODE_UNKNOWN, // $e036
+        KEYCODE_PRINTSCREEN, // $e037
+        KEYCODE_RALT, // $e038
+        KEYCODE_UNKNOWN, // $e039
+        KEYCODE_UNKNOWN, // $e03a
+        KEYCODE_HELP, // $e03b
+        KEYCODE_UNKNOWN, // $e03c
+        KEYCODE_UNKNOWN, // $e03d
+        KEYCODE_UNKNOWN, // $e03e
+        KEYCODE_UNKNOWN, // $e03f
+        KEYCODE_UNKNOWN, // $e040
+        KEYCODE_UNKNOWN, // $e041
+        KEYCODE_UNKNOWN, // $e042
+        KEYCODE_UNKNOWN, // $e043
+        KEYCODE_UNKNOWN, // $e044
+        KEYCODE_NUMLOCK, // $e045
+        KEYCODE_PAUSE, // $e046
+        KEYCODE_HOME, // $e047
+        KEYCODE_UP, // $e048
+        KEYCODE_PAGEUP, // $e049
+        KEYCODE_UNKNOWN, // $e04a
+        KEYCODE_LEFT, // $e04b
+        KEYCODE_UNKNOWN, // $e04c
+        KEYCODE_RIGHT, // $e04d
+        KEYCODE_UNKNOWN, // $e04e
+        KEYCODE_END, // $e04f
+        KEYCODE_DOWN, // $e050
+        KEYCODE_PAGEDOWN, // $e051
+        KEYCODE_INSERT, // $e052
+        KEYCODE_DELETE, // $e053
+        KEYCODE_UNKNOWN, // $e054
+        KEYCODE_UNKNOWN, // $e055
+        KEYCODE_UNKNOWN, // $e056
+        KEYCODE_UNKNOWN, // $e057
+        KEYCODE_UNKNOWN, // $e058
+        KEYCODE_UNKNOWN, // $e059
+        KEYCODE_UNKNOWN, // $e05a
+        KEYCODE_LGUI, // $e05b
+        KEYCODE_RGUI, // $e05c
+        KEYCODE_APPLICATION, // $e05d
+        KEYCODE_POWER, // $e05e
+        KEYCODE_SLEEP, // $e05f
+        KEYCODE_UNKNOWN, // $e060
+        KEYCODE_UNKNOWN, // $e061
+        KEYCODE_UNKNOWN, // $e062
+        KEYCODE_UNKNOWN, // $e063
+        KEYCODE_UNKNOWN, // $e064
+        KEYCODE_AC_SEARCH, // $e065
+        KEYCODE_AC_BOOKMARKS, // $e066
+        KEYCODE_AC_REFRESH, // $e067
+        KEYCODE_AC_STOP, // $e068
+        KEYCODE_AC_FORWARD, // $e069
+        KEYCODE_AC_BACK, // $e06a
+        KEYCODE_APPLICATION, // $e06b
+        KEYCODE_MAIL, // $e06c
+        KEYCODE_MEDIASELECT, // $e06d
+        KEYCODE_UNKNOWN, // $e06e
+        KEYCODE_UNKNOWN, // $e06f
+        KEYCODE_UNKNOWN, // $e070
+        KEYCODE_UNKNOWN, // $e071
+        KEYCODE_UNKNOWN, // $e072
+        KEYCODE_UNKNOWN, // $e073
+        KEYCODE_UNKNOWN, // $e074
+        KEYCODE_UNKNOWN, // $e075
+        KEYCODE_UNKNOWN, // $e076
+        KEYCODE_UNKNOWN, // $e077
+        KEYCODE_UNKNOWN, // $e078
+        KEYCODE_UNKNOWN, // $e079
+        KEYCODE_UNKNOWN, // $e07a
+        KEYCODE_UNKNOWN, // $e07b
+        KEYCODE_UNKNOWN, // $e07c
+        KEYCODE_UNKNOWN, // $e07d
+        KEYCODE_UNKNOWN, // $e07e
+        KEYCODE_UNKNOWN  // $e07f
+       );
+{$ifend}
+
+function TpvApplicationInput.TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
+begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ // An SDL scan code is the USB HID usage of the key position, which is what the table wants anyway.
+ // The key code argument only ever serves the few positions SDL cannot tell apart on its own, and
+ // there is none here, so it stays unknown.
+ result:=TranslateSDLScanCode(KEYCODE_UNKNOWN,aNativeScanCode);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ // Index of the PS/2 table, which is the plain scan code with the $e000 of an extended one folded
+ // into bit 7 - the same number the key event handler looks up with.
+ if (aNativeScanCode>=low(pvApplicationWin32ScanCodeToKeyCodes)) and
+    (aNativeScanCode<=high(pvApplicationWin32ScanCodeToKeyCodes)) then begin
+  result:=pvApplicationWin32ScanCodeToKeyCodes[aNativeScanCode];
+ end else begin
+  result:=KEYCODE_UNKNOWN;
+ end;
+{$else}
+ result:=KEYCODE_UNKNOWN;
+{$ifend}
+end;
+
+procedure TpvApplicationInput.BuildKeyCodeToNativeScanCodes;
+      // Zero for a backend which has no position numbering to invert, which leaves the table empty
+      // and every position answering by its reference name.
+const NativeScanCodeCount={$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}SDL_NUM_SCANCODES{$elseif defined(Windows) and not defined(PasVulkanHeadless)}256{$else}0{$ifend};
+var NativeScanCode,KeyCode:TpvInt32;
+begin
+
+ for KeyCode:=low(fKeyCodeToNativeScanCodes) to high(fKeyCodeToNativeScanCodes) do begin
+  fKeyCodeToNativeScanCodes[KeyCode]:=-1;
+ end;
+
+ // Inverted from the backend's own forward translation rather than written out a second time, so
+ // that a position added there is carried here without anybody having to remember to do so. Counted
+ // upwards with the first hit kept, because where several positions share one reference key code the
+ // lower one is the main keyboard rather than the keypad duplicate.
+ for NativeScanCode:=0 to NativeScanCodeCount-1 do begin
+  KeyCode:=TranslateNativeScanCode(NativeScanCode);
+  if (KeyCode>0) and
+     (KeyCode<=high(fKeyCodeToNativeScanCodes)) and
+     (fKeyCodeToNativeScanCodes[KeyCode]<0) then begin
+   fKeyCodeToNativeScanCodes[KeyCode]:=NativeScanCode;
+  end;
+ end;
+
 end;
 
 destructor TpvApplicationInput.Destroy;
@@ -6167,7 +6535,10 @@ begin
   end;
  end;
 
- if aScanCode>=0 then begin
+ // KEYCODE_UNKNOWN (zero) is what a backend reports for a physical key it has no reference key code
+ // for, so it must not take part in the lookup: every such key would otherwise answer to one and the
+ // same position binding.
+ if aScanCode>0 then begin
   Key:=TpvApplicationInputKey.Create(-1,aScanCode,KeyModifiers);
   result:=fKeyShortcutHashMap[Key];
   if assigned(result) then begin
@@ -6293,18 +6664,40 @@ begin
  result:=assigned(Action) and Action.IsPressed;
 end;
 
-procedure TpvApplicationInput.RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+// Frees one physical key from every action, by both of the ways it can be bound: as the character
+// its layout puts on it and as the position it sits at. Both halves have to go, or a key rebound
+// from a character binding to a position binding would answer to its old action as well as its new
+// one, which is exactly the "one key, one action" rule the rebinding menu promises.
+procedure TpvApplicationInput.DetachKeyFromAllActions(const aKeyCode,aScanCode:TpvInt32);
+var Shortcut:TpvApplicationInputKeyShortcut;
+begin
+ if aKeyCode>=0 then begin
+  Shortcut:=GetKeyShortcut(aKeyCode,-1,[]);
+  if assigned(Shortcut) then begin
+   RemoveKeyShortcut(Shortcut);
+  end;
+ end;
+ if aScanCode>0 then begin
+  Shortcut:=GetKeyShortcut(-1,aScanCode,[]);
+  if assigned(Shortcut) then begin
+   RemoveKeyShortcut(Shortcut);
+  end;
+ end;
+end;
+
+// Binds an action to one key alone. Which way the key is bound follows from the arguments: a scan
+// code alone binds the position, so the action keeps the same place on every keyboard layout, a key
+// code binds the character. Both are taken for the detaching step regardless, so the caller can hand
+// over both halves of the key event it just saw and know the key is free afterwards.
+procedure TpvApplicationInput.RebindActionToSoleKey(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32;const aScanCode:TpvInt32=-1);
 var Shortcut:TpvApplicationInputKeyShortcut;
 begin
  if not assigned(aAction) then begin
   exit;
  end;
- // 1. Detach this key code from every action (drop its shortcut object entirely so no other action
- //    keeps it) - keep bindings unique per key.
- Shortcut:=GetKeyShortcut(aKeyCode,-1,[]);
- if assigned(Shortcut) then begin
-  RemoveKeyShortcut(Shortcut);
- end;
+ // 1. Detach the key from every action (drop its shortcut object entirely so no other action keeps
+ //    it) - keep bindings unique per key.
+ DetachKeyFromAllActions(aKeyCode,aScanCode);
  // 2. Remove all existing shortcuts of this action; free any that become orphaned.
  while aAction.fKeyShortcuts.Count>0 do begin
   Shortcut:=aAction.fKeyShortcuts[0];
@@ -6314,29 +6707,35 @@ begin
   end;
  end;
  // 3. Bind the new sole key (modifier-agnostic, so held movement keys keep working with modifiers).
- Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ if (aKeyCode<0) and (aScanCode>0) then begin
+  Shortcut:=AddKeyShortcut(-1,aScanCode,[],true);
+ end else begin
+  Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ end;
  aAction.AddKeyShortcut(Shortcut);
 end;
 
-procedure TpvApplicationInput.AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32);
+procedure TpvApplicationInput.AddKeyToActionUnique(const aAction:TpvApplicationInputKeyAction;const aKeyCode:TpvInt32;const aScanCode:TpvInt32=-1);
 var Shortcut:TpvApplicationInputKeyShortcut;
 begin
  if not assigned(aAction) then begin
   exit;
  end;
- // Adds aKeyCode as an ADDITIONAL binding of aAction (a secondary/tertiary key), keeping the existing
- // ones - unlike RebindActionToSoleKey which replaces them. Bindings stay unique per key.
- // No-op if the action already carries this key.
- if aAction.HasKeyCode(aKeyCode) then begin
+ // Adds the key as an ADDITIONAL binding of aAction (a secondary/tertiary key), keeping the existing
+ // ones - unlike RebindActionToSoleKey which replaces them. Which way it is bound follows from the
+ // arguments the same way as there. Bindings stay unique per key.
+ // No-op if the action already carries this key, by either half.
+ if aAction.HasKey(aKeyCode,aScanCode) then begin
   exit;
  end;
  // Detach the key from every other action first (drop its shortcut object so no one else keeps it).
- Shortcut:=GetKeyShortcut(aKeyCode,-1,[]);
- if assigned(Shortcut) then begin
-  RemoveKeyShortcut(Shortcut);
- end;
+ DetachKeyFromAllActions(aKeyCode,aScanCode);
  // Append the key to this action, leaving its current shortcuts in place.
- Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ if (aKeyCode<0) and (aScanCode>0) then begin
+  Shortcut:=AddKeyShortcut(-1,aScanCode,[],true);
+ end else begin
+  Shortcut:=AddKeyShortcut(aKeyCode,-1,[],true);
+ end;
  aAction.AddKeyShortcut(Shortcut);
 end;
 
@@ -8687,6 +9086,9 @@ begin
       case SDLEvent^.type_ of
        SDL_KEYDOWN:begin
         fKeyDown[KeyCode and $ffff]:=true;
+        if ScanCode>0 then begin
+         fScanCodeDown[ScanCode and $ffff]:=true;
+        end;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
@@ -8695,6 +9097,9 @@ begin
        end;
        SDL_KEYUP:begin
         fKeyDown[KeyCode and $ffff]:=false;
+        if ScanCode>0 then begin
+         fScanCodeDown[ScanCode and $ffff]:=false;
+        end;
         if fKeyDownCount>0 then begin
          dec(fKeyDownCount);
         end;
@@ -8930,6 +9335,9 @@ begin
       case NativeEvent^.Kind of
        TpvApplicationNativeEventKind.KeyDown:begin
         fKeyDown[KeyCode and $ffff]:=true;
+        if ScanCode>0 then begin
+         fScanCodeDown[ScanCode and $ffff]:=true;
+        end;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,ScanCode,KeyModifiers,KeyShortcut))) and assigned(fProcessor) then begin
@@ -8938,6 +9346,9 @@ begin
        end;
        TpvApplicationNativeEventKind.KeyUp:begin
         fKeyDown[KeyCode and $ffff]:=false;
+        if ScanCode>0 then begin
+         fScanCodeDown[ScanCode and $ffff]:=false;
+        end;
         if fKeyDownCount>0 then begin
          dec(fKeyDownCount);
         end;
@@ -9388,6 +9799,18 @@ begin
  end;
 end;
 
+// Whether the physical key at the given reference position is held right now, the counterpart of
+// IsKeyPressed for bindings which name a place on the keyboard rather than a character.
+function TpvApplicationInput.IsPhysicalKeyPressed(const aScanCode:TpvInt32):boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  result:=(aScanCode>0) and (aScanCode<=$ffff) and fScanCodeDown[aScanCode];
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
 function TpvApplicationInput.GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
 begin
  if (aKeyCode>=low(fKeyCodeNames)) and (aKeyCode<=high(fKeyCodeNames)) then begin
@@ -9395,6 +9818,82 @@ begin
  end else begin
   result:='';
  end;
+end;
+
+function TpvApplicationInput.GetPhysicalKeyName(const aScanCode:TpvInt32):TpvApplicationRawByteString;
+{$if not defined(PasVulkanHeadless)}
+var NativeScanCode,Index:TpvInt32;
+{$if defined(PasVulkanUseSDL2)}
+    KeyCodeOfLayout:TpvInt32;
+    Name:PAnsiChar;
+{$else}
+{$ifdef Windows}
+    KeyNameParameter:TpvInt32;
+    WideName:array[0..63] of WideChar;
+    WideNameLength:TpvInt32;
+{$endif}
+{$ifend}
+{$ifend}
+begin
+
+ result:='';
+
+{$if not defined(PasVulkanHeadless)}
+ NativeScanCode:=-1;
+ if (aScanCode>0) and (aScanCode<=high(fKeyCodeToNativeScanCodes)) then begin
+  NativeScanCode:=fKeyCodeToNativeScanCodes[aScanCode];
+ end;
+{$ifend}
+
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ if NativeScanCode>=0 then begin
+  KeyCodeOfLayout:=SDL_GetKeyFromScancode(NativeScanCode);
+  if KeyCodeOfLayout<>SDLK_UNKNOWN then begin
+   Name:=SDL_GetKeyName(TSDLUInt32(KeyCodeOfLayout));
+   if assigned(Name) then begin
+    result:=TpvApplicationRawByteString(Name);
+   end;
+  end;
+ end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if NativeScanCode>=0 then begin
+  // GetKeyNameText wants the key message parameter it would have seen: the plain scan code in bits
+  // 16..23 and, for an extended one, bit 24 set. Bit 7 of the table index is what carries the $e000
+  // of an extended code, so it moves over into that flag.
+  KeyNameParameter:=(NativeScanCode and $7f) shl 16;
+  if (NativeScanCode and $80)<>0 then begin
+   KeyNameParameter:=KeyNameParameter or (1 shl 24);
+  end;
+  WideNameLength:=GetKeyNameTextW(KeyNameParameter,@WideName[0],length(WideName));
+  if WideNameLength>0 then begin
+   result:=TpvApplicationRawByteString(UTF8Encode(WideString(PWideChar(@WideName[0]))));
+  end;
+ end;
+{$ifend}
+
+{$if not defined(PasVulkanHeadless)}
+
+ // A Latin name is what the player can match against the key caps, and that includes the accented
+ // letters: a German keyboard really does print "Ü" where US QWERTY has the left bracket, and that
+ // is the name to show. Only scripts beyond Latin are dropped - a Cyrillic or Greek keyboard carries
+ // the Latin reference letters on the very same key caps, so there the reference name is the one the
+ // player can find. In UTF-8 that is a lead byte of $ca or above, or any byte from $e0 up, which
+ // starts a sequence of three bytes or more and so can never be a Latin letter.
+ if (length(result)>0) and (result[1]<#33) then begin
+  result:='';
+ end;
+ for Index:=1 to length(result) do begin
+  if result[Index]>=#$ca then begin
+   result:='';
+   break;
+  end;
+ end;
+{$ifend}
+
+ if length(result)=0 then begin
+  result:=GetKeyName(aScanCode);
+ end;
+
 end;
 
 function TpvApplicationInput.GetKeyModifiers:TpvApplicationInputKeyModifiers;
@@ -17362,265 +17861,6 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
   result:=((MessageExtraInfo and $ffffff00)=$ff515700) or ((MessageExtraInfo and $82)=$82);
  end;
  procedure TranslateKeyEvent;
- const ScanCodes:array[0..255] of TpvUInt32=
-        (
-         KEYCODE_UNKNOWN, // $00
-         KEYCODE_ESCAPE, // $01
-         KEYCODE_1, // $02
-         KEYCODE_2, // $03
-         KEYCODE_3, // $04
-         KEYCODE_4, // $05
-         KEYCODE_5, // $06
-         KEYCODE_6, // $07
-         KEYCODE_7, // $08
-         KEYCODE_8, // $09
-         KEYCODE_9, // $0a
-         KEYCODE_0, // $0b
-         KEYCODE_MINUS, // $0c
-         KEYCODE_EQUALS, // $0d
-         KEYCODE_BACKSPACE, // $0e
-         KEYCODE_TAB, // $0f
-         KEYCODE_Q, // $10
-         KEYCODE_W, // $11
-         KEYCODE_E, // $12
-         KEYCODE_R, // $13
-         KEYCODE_T, // $14
-         KEYCODE_Y, // $15
-         KEYCODE_U, // $16
-         KEYCODE_I, // $17
-         KEYCODE_O, // $18
-         KEYCODE_P, // $19
-         KEYCODE_LEFTBRACKET, // $1a
-         KEYCODE_RIGHTBRACKET, // $1b
-         KEYCODE_RETURN, // $1c
-         KEYCODE_LCTRL, // $1d
-         KEYCODE_A, // $1e
-         KEYCODE_S, // $1f
-         KEYCODE_D, // $20
-         KEYCODE_F, // $21
-         KEYCODE_G, // $22
-         KEYCODE_H, // $23
-         KEYCODE_J, // $24
-         KEYCODE_K, // $25
-         KEYCODE_L, // $26
-         KEYCODE_SEMICOLON, // $27
-         KEYCODE_APOSTROPHE, // $28
-         KEYCODE_GRAVE, // $29
-         KEYCODE_LSHIFT, // $2a
-         KEYCODE_BACKSLASH, // $2b
-         KEYCODE_Z, // $2c
-         KEYCODE_X, // $2d
-         KEYCODE_C, // $2e
-         KEYCODE_V, // $2f
-         KEYCODE_B, // $30
-         KEYCODE_N, // $31
-         KEYCODE_M, // $32
-         KEYCODE_COMMA, // $33
-         KEYCODE_PERIOD, // $34
-         KEYCODE_SLASH, // $35
-         KEYCODE_RSHIFT, // $36
-         KEYCODE_KP_MULTIPLY, // $37
-         KEYCODE_LALT, // $38
-         KEYCODE_SPACE, // $39
-         KEYCODE_CAPSLOCK, // $3a
-         KEYCODE_F1, // $3b
-         KEYCODE_F2, // $3c
-         KEYCODE_F3, // $3d
-         KEYCODE_F4, // $3e
-         KEYCODE_F5, // $3f
-         KEYCODE_F6, // $40
-         KEYCODE_F7, // $41
-         KEYCODE_F8, // $42
-         KEYCODE_F9, // $43
-         KEYCODE_F10, // $44
-         KEYCODE_NUMLOCK, // $45
-         KEYCODE_SCROLLLOCK, // $46
-         KEYCODE_KP7, // $47
-         KEYCODE_KP8, // $48
-         KEYCODE_KP9, // $49
-         KEYCODE_KP_MINUS, // $4a
-         KEYCODE_KP4, // $4b
-         KEYCODE_KP5, // $4c
-         KEYCODE_KP6, // $4d
-         KEYCODE_KP_PLUS, // $4e
-         KEYCODE_KP1, // $4f
-         KEYCODE_KP2, // $50
-         KEYCODE_KP3, // $51
-         KEYCODE_KP0, // $52
-         KEYCODE_KP_PERIOD, // $53
-         KEYCODE_UNKNOWN, // $54
-         KEYCODE_UNKNOWN, // $55
-         KEYCODE_NONUSBACKSLASH, // $56
-         KEYCODE_F11, // $57
-         KEYCODE_F12, // $58
-         KEYCODE_KP_EQUALS, // $59
-         KEYCODE_UNKNOWN, // $5a
-         KEYCODE_UNKNOWN, // $5b
-         KEYCODE_INTERNATIONAL6, // $5c
-         KEYCODE_UNKNOWN, // $5d
-         KEYCODE_UNKNOWN, // $5e
-         KEYCODE_UNKNOWN, // $5f
-         KEYCODE_UNKNOWN, // $60
-         KEYCODE_UNKNOWN, // $61
-         KEYCODE_UNKNOWN, // $62
-         KEYCODE_UNKNOWN, // $63
-         KEYCODE_F13, // $64
-         KEYCODE_F14, // $65
-         KEYCODE_F15, // $66
-         KEYCODE_F16, // $67
-         KEYCODE_F17, // $68
-         KEYCODE_F18, // $69
-         KEYCODE_F19, // $6a
-         KEYCODE_F20, // $6b
-         KEYCODE_F21, // $6c
-         KEYCODE_F22, // $6d
-         KEYCODE_F23, // $6e
-         KEYCODE_UNKNOWN, // $6f
-         KEYCODE_INTERNATIONAL2, // $70
-         KEYCODE_LANG2, // $71
-         KEYCODE_LANG1, // $72
-         KEYCODE_INTERNATIONAL1, // $73
-         KEYCODE_UNKNOWN, // $74
-         KEYCODE_UNKNOWN, // $75
-         KEYCODE_F24, // $76
-         KEYCODE_LANG4, // $77
-         KEYCODE_LANG3, // $78
-         KEYCODE_INTERNATIONAL4, // $79
-         KEYCODE_UNKNOWN, // $7a
-         KEYCODE_INTERNATIONAL5, // $7b
-         KEYCODE_UNKNOWN, // $7c
-         KEYCODE_INTERNATIONAL3, // $7d
-         KEYCODE_KP_COMMA, // $7e
-         KEYCODE_UNKNOWN, // $7f
-         KEYCODE_UNKNOWN, // $e000
-         KEYCODE_UNKNOWN, // $e001
-         KEYCODE_UNKNOWN, // $e002
-         KEYCODE_UNKNOWN, // $e003
-         KEYCODE_UNKNOWN, // $e004
-         KEYCODE_UNKNOWN, // $e005
-         KEYCODE_UNKNOWN, // $e006
-         KEYCODE_UNKNOWN, // $e007
-         KEYCODE_UNKNOWN, // $e008
-         KEYCODE_UNKNOWN, // $e009
-         KEYCODE_PASTE, // $e00a
-         KEYCODE_UNKNOWN, // $e00b
-         KEYCODE_UNKNOWN, // $e00c
-         KEYCODE_UNKNOWN, // $e00d
-         KEYCODE_UNKNOWN, // $e00e
-         KEYCODE_UNKNOWN, // $e00f
-         KEYCODE_AUDIOPREV, // $e010
-         KEYCODE_UNKNOWN, // $e011
-         KEYCODE_UNKNOWN, // $e012
-         KEYCODE_UNKNOWN, // $e013
-         KEYCODE_UNKNOWN, // $e014
-         KEYCODE_UNKNOWN, // $e015
-         KEYCODE_UNKNOWN, // $e016
-         KEYCODE_CUT, // $e017
-         KEYCODE_COPY, // $e018
-         KEYCODE_AUDIONEXT, // $e019
-         KEYCODE_UNKNOWN, // $e01a
-         KEYCODE_UNKNOWN, // $e01b
-         KEYCODE_KP_ENTER, // $e01c
-         KEYCODE_RCTRL, // $e01d
-         KEYCODE_UNKNOWN, // $e01e
-         KEYCODE_UNKNOWN, // $e01f
-         KEYCODE_MUTE, // $e020
-         KEYCODE_UNKNOWN, // $e021 // LaunchApp2
-         KEYCODE_AUDIOPLAY, // $e022
-         KEYCODE_UNKNOWN, // $e023
-         KEYCODE_AUDIOSTOP, // $e024
-         KEYCODE_UNKNOWN, // $e025
-         KEYCODE_UNKNOWN, // $e026
-         KEYCODE_UNKNOWN, // $e027
-         KEYCODE_UNKNOWN, // $e028
-         KEYCODE_UNKNOWN, // $e029
-         KEYCODE_UNKNOWN, // $e02a
-         KEYCODE_UNKNOWN, // $e02b
-         KEYCODE_EJECT, // $e02c
-         KEYCODE_UNKNOWN, // $e02d
-         KEYCODE_VOLUMEDOWN, // $e02e
-         KEYCODE_UNKNOWN, // $e02f
-         KEYCODE_VOLUMEUP, // $e030
-         KEYCODE_UNKNOWN, // $e031
-         KEYCODE_AC_HOME, // $e032
-         KEYCODE_UNKNOWN, // $e033
-         KEYCODE_UNKNOWN, // $e034
-         KEYCODE_KP_DIVIDE, // $e035
-         KEYCODE_UNKNOWN, // $e036
-         KEYCODE_PRINTSCREEN, // $e037
-         KEYCODE_RALT, // $e038
-         KEYCODE_UNKNOWN, // $e039
-         KEYCODE_UNKNOWN, // $e03a
-         KEYCODE_HELP, // $e03b
-         KEYCODE_UNKNOWN, // $e03c
-         KEYCODE_UNKNOWN, // $e03d
-         KEYCODE_UNKNOWN, // $e03e
-         KEYCODE_UNKNOWN, // $e03f
-         KEYCODE_UNKNOWN, // $e040
-         KEYCODE_UNKNOWN, // $e041
-         KEYCODE_UNKNOWN, // $e042
-         KEYCODE_UNKNOWN, // $e043
-         KEYCODE_UNKNOWN, // $e044
-         KEYCODE_NUMLOCK, // $e045
-         KEYCODE_PAUSE, // $e046
-         KEYCODE_HOME, // $e047
-         KEYCODE_UP, // $e048
-         KEYCODE_PAGEUP, // $e049
-         KEYCODE_UNKNOWN, // $e04a
-         KEYCODE_LEFT, // $e04b
-         KEYCODE_UNKNOWN, // $e04c
-         KEYCODE_RIGHT, // $e04d
-         KEYCODE_UNKNOWN, // $e04e
-         KEYCODE_END, // $e04f
-         KEYCODE_DOWN, // $e050
-         KEYCODE_PAGEDOWN, // $e051
-         KEYCODE_INSERT, // $e052
-         KEYCODE_DELETE, // $e053
-         KEYCODE_UNKNOWN, // $e054
-         KEYCODE_UNKNOWN, // $e055
-         KEYCODE_UNKNOWN, // $e056
-         KEYCODE_UNKNOWN, // $e057
-         KEYCODE_UNKNOWN, // $e058
-         KEYCODE_UNKNOWN, // $e059
-         KEYCODE_UNKNOWN, // $e05a
-         KEYCODE_LGUI, // $e05b
-         KEYCODE_RGUI, // $e05c
-         KEYCODE_APPLICATION, // $e05d
-         KEYCODE_POWER, // $e05e
-         KEYCODE_SLEEP, // $e05f
-         KEYCODE_UNKNOWN, // $e060
-         KEYCODE_UNKNOWN, // $e061
-         KEYCODE_UNKNOWN, // $e062
-         KEYCODE_UNKNOWN, // $e063
-         KEYCODE_UNKNOWN, // $e064
-         KEYCODE_AC_SEARCH, // $e065
-         KEYCODE_AC_BOOKMARKS, // $e066
-         KEYCODE_AC_REFRESH, // $e067
-         KEYCODE_AC_STOP, // $e068
-         KEYCODE_AC_FORWARD, // $e069
-         KEYCODE_AC_BACK, // $e06a
-         KEYCODE_APPLICATION, // $e06b
-         KEYCODE_MAIL, // $e06c
-         KEYCODE_MEDIASELECT, // $e06d
-         KEYCODE_UNKNOWN, // $e06e
-         KEYCODE_UNKNOWN, // $e06f
-         KEYCODE_UNKNOWN, // $e070
-         KEYCODE_UNKNOWN, // $e071
-         KEYCODE_UNKNOWN, // $e072
-         KEYCODE_UNKNOWN, // $e073
-         KEYCODE_UNKNOWN, // $e074
-         KEYCODE_UNKNOWN, // $e075
-         KEYCODE_UNKNOWN, // $e076
-         KEYCODE_UNKNOWN, // $e077
-         KEYCODE_UNKNOWN, // $e078
-         KEYCODE_UNKNOWN, // $e079
-         KEYCODE_UNKNOWN, // $e07a
-         KEYCODE_UNKNOWN, // $e07b
-         KEYCODE_UNKNOWN, // $e07c
-         KEYCODE_UNKNOWN, // $e07d
-         KEYCODE_UNKNOWN, // $e07e
-         KEYCODE_UNKNOWN  // $e07f
-        );
  var VirtualKey:WPARAM;
      ScanCode,KeyFlags:DWORD;
      Extended:Boolean;
@@ -17866,7 +18106,7 @@ var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
    end;
   end;
 
-  NativeEvent.ScanCode:=ScanCodes[(ScanCode and $ff) or IfThen((ScanCode and $ff00)<>0,$80,$00)];
+  NativeEvent.ScanCode:=pvApplicationWin32ScanCodeToKeyCodes[(ScanCode and $ff) or IfThen((ScanCode and $ff00)<>0,$80,$00)];
 
   NativeEvent.KeyModifiers:=[];
 

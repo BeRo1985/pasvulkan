@@ -2357,6 +2357,7 @@ procedure SDL_EnableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName
 function SDL_IsScreenSaverEnabled:TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GetScancodeFromKey(KeyCode:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetKeyFromScancode(ScanCode:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_LogSetAllPriority(priority:TSDL_LogPriority); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_LogSetPriority(category:TSDL_LogCategory;priority:TSDL_LogPriority); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
