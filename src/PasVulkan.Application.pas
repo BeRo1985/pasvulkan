@@ -1358,6 +1358,10 @@ type EpvApplication=class(Exception)
        // The way back: which native position code the backend uses for a reference key code, or -1
        // where it knows no such position.
        function KeyCodeToNativeScanCode(const aScanCode:TpvInt32):TpvInt32;
+       // One line per physical key the bindings can name, with the number the backend calls it by
+       // and what the player's current keyboard layout prints on it. The first thing to look at when
+       // somebody reports that a key of his does nothing.
+       function PhysicalKeyPositionsReport:TpvUTF8String;
        function IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
        function GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        // What the player's current keyboard layout prints on the physical key at the given reference
@@ -6488,6 +6492,49 @@ begin
  end else begin
   result:=-1;
  end;
+end;
+
+function TpvApplicationInput.PhysicalKeyPositionsReport:TpvUTF8String;
+var KeyCode,NativeScanCode:TpvInt32;
+    Reference,Printed:TpvUTF8String;
+begin
+
+ result:='Physical key positions'+#10+
+         '  backend: '+
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+         'SDL2 (positions numbered as USB HID usages)'
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+         'Win32 (positions numbered as PS/2 set 1, extended codes with bit 7 set)'
+{$else}
+         'none (no position numbering; every position answers by its reference name)'
+{$ifend}
+         +#10+
+         '  reference | native | printed by the current layout'+#10;
+
+ // Walked by reference key code rather than by native number, because that is the order the bindings
+ // and the configuration file speak in, and it leaves out the positions nothing can be bound to.
+ for KeyCode:=1 to high(fKeyCodeToNativeScanCodes) do begin
+  NativeScanCode:=KeyCodeToNativeScanCode(KeyCode);
+  if NativeScanCode<0 then begin
+   continue;
+  end;
+  Reference:=TpvUTF8String(GetKeyName(KeyCode));
+  if length(Reference)=0 then begin
+   continue;
+  end;
+  Printed:=TpvUTF8String(GetPhysicalKeyName(KeyCode));
+  // Only worth a word where the layout disagrees with the reference; the rest would be the same name
+  // twice and just make the interesting lines harder to find.
+  if Printed=Reference then begin
+   Printed:='';
+  end;
+  result:=result+'  '+Reference+' | '+TpvUTF8String(IntToStr(NativeScanCode));
+  if length(Printed)>0 then begin
+   result:=result+' | '+Printed;
+  end;
+  result:=result+#10;
+ end;
+
 end;
 
 function TpvApplicationInput.TranslateNativeScanCode(const aNativeScanCode:TpvInt32):TpvInt32;
