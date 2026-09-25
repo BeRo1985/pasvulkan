@@ -15435,7 +15435,8 @@ begin
 
   fAnimationEndTime:=StreamIO.ReadDouble;
 
-  fAnimationDuration:=fAnimationEndTime-fAnimationBeginTime;
+  // Older POCA-generated caches can contain keyframes but uninitialized animation bounds.
+  Finish;
 
  finally
   FreeAndNil(StreamIO);
