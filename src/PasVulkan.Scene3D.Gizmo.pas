@@ -244,6 +244,8 @@ type { TpvScene3DGizmo }
                             const aMouseAction:TMouseAction;
                             const aDeltaMatrix:PpvMatrix4x4=nil;
                             const aNewMatrix:PpvMatrix4x4=nil):boolean;
+       procedure SetScaleFeedback(const aScale:TpvVector3);
+       property ScaleFeedback:TpvVector3 read fScale;
        procedure LoadColorSettings(const aJSONItem:TPasJSONItem);
        procedure LoadColorSettingsFromStream(const aStream:TStream);
        procedure LoadColorSettingsFromFile(const aFileName:TpvUTF8String);
@@ -1143,6 +1145,17 @@ begin
     end;
    end;
   end;
+ end;
+end;
+
+procedure TpvScene3DGizmo.SetScaleFeedback(const aScale:TpvVector3);
+begin
+ // A caller may constrain the result of MouseAction, for example to keep every part of a
+ // multi-selection inside its scale limits. Draw the applied scale relative to the drag start.
+ if fUsing and (fOperation=TOperation.Scale) then begin
+  fScale.x:=aScale.x/Max(fScaleValueOrigin.x,1e-9);
+  fScale.y:=aScale.y/Max(fScaleValueOrigin.y,1e-9);
+  fScale.z:=aScale.z/Max(fScaleValueOrigin.z,1e-9);
  end;
 end;
 
