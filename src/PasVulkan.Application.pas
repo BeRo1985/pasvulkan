@@ -675,6 +675,8 @@ type EpvApplication=class(Exception)
        procedure AddKeyAction(const aAction:TpvApplicationInputKeyAction);
        procedure RemoveKeyAction(const aAction:TpvApplicationInputKeyAction);
        function HasKeyAction(const aAction:TpvApplicationInputKeyAction):boolean;
+       // How many actions this shortcut is bound to; zero once the last one let go of it.
+       function CountKeyActions:TpvSizeInt;
       published
        property ID:TpvUInt64 read fID write fID;
        property KeyCode:TpvInt32 read fKey.KeyCode write fKey.KeyCode;
@@ -4577,6 +4579,11 @@ end;
 function TpvApplicationInputKeyShortcut.HasKeyAction(const aAction:TpvApplicationInputKeyAction):boolean;
 begin
  result:=fKeyActions.IndexOf(aAction)>=0;
+end;
+
+function TpvApplicationInputKeyShortcut.CountKeyActions:TpvSizeInt;
+begin
+ result:=fKeyActions.Count;
 end;
 
 constructor TpvApplicationInputKeyAction.Create(const aApplication:TpvApplication;
