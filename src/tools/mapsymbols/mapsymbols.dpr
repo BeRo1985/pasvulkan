@@ -2226,9 +2226,15 @@ begin
   // could break that assumption, so it is checked rather than hoped for.
   //
   // What is left here is what pulling a range back off the next one cannot
-  // explain: a range which the following one begins inside of rather than
-  // behind, which is two units genuinely woven through each other and not a
-  // boundary which came in a few bytes long.
+  // explain: an overlap too wide to be an end marker which came in a few bytes
+  // long, which is two units genuinely woven through each other.
+  //
+  // Comparing each range against only the one before it is enough, and not
+  // because a wider overlap is unthinkable. The trimming clamps a repaired
+  // range to exactly where the next one starts, so afterwards either every
+  // range ends at or before its successor's start, in which case none of them
+  // can reach the one after that either, or some pair was left overlapping and
+  // is found right here.
   OverlapCount:=0;
   for UnitIndex:=1 to Builder.UnitCount-1 do begin
    PreviousUnit:=Builder.GetUnit(UnitIndex-1);

@@ -605,23 +605,33 @@ end;
 // stronger statement than another one saying where it stops, since the second
 // is only ever one past the last byte and is what the compiler is loose about.
 //
-// Only a boundary which came out a little long is repaired, and three things
-// have to hold for that to be what this is. The next range has to begin behind
-// this one, or the two do not stand in that relation at all. It has to end at
-// or behind this one, or it sits inside this one, which is the linker having
-// woven two units together and not an end marker being off. And the overlap has
-// to be small, since a large one is not a marker being off either whatever else
-// it is. Anything which fails one of those is left exactly as it stands and
-// walks straight into the check which stops the run.
+// Only a boundary which came out a little long is repaired, and two things have
+// to hold for that to be what this is. The next range has to begin behind this
+// one, or the two do not stand in that relation at all. And the overlap has to
+// be small, since a large one is not a marker being off, whatever else it is.
+// Anything which fails one of those is left exactly as it stands and walks
+// straight into the check which stops the run.
 //
-// Trimming everything which merely overlaps would be worse than not trimming at
-// all: a range enclosing another would be cut back to where that one begins, the
-// tail it had behind it would silently disappear, and the check afterwards would
-// then find nothing left to complain about.
+// Whether the next range ends behind this one or inside it says nothing about
+// which case this is, and asking made the tool refuse a sound build over an
+// overlap of exactly this shape. An overshooting end marker swallows whatever
+// the linker put behind the unit, and when that is a single short routine,
+// thirteen bytes of an inlinable one in the measured case, the swallowed range
+// ends well before the marker does. It is the same end marker being off by the
+// same handful of bytes either way.
+//
+// Which is why the size of the overlap is the whole of what is asked. It bounds
+// what a repair can cost: at most cMaximalTrim bytes of this range are given
+// up, and the ones behind the enclosed range were never this unit's either,
+// since an end marker reaching past a foreign routine has reached into whatever
+// follows that routine as well. Trimming on overlap alone and nothing else
+// would be the thing to avoid, since a range enclosing a large one would lose
+// the whole of its tail and the check afterwards would find nothing left to
+// complain about.
 function TSymbolBuilder.TrimOverlappingUnits:TpvSizeInt;
 const cMaximalTrim=TpvUInt64(64);
 var Index:TpvSizeInt;
-    PreviousStart,PreviousEnd,CurrentStart,CurrentEnd:TpvUInt64;
+    PreviousStart,PreviousEnd,CurrentStart:TpvUInt64;
     UnitRecord:PUnitRecord;
 begin
  result:=0;
@@ -631,10 +641,8 @@ begin
   PreviousEnd:=PreviousStart+UnitRecord^.Size;
   UnitRecord:=@fUnits[Index];
   CurrentStart:=UnitRecord^.StartRVA;
-  CurrentEnd:=CurrentStart+UnitRecord^.Size;
   if (PreviousEnd>CurrentStart) and
      (CurrentStart>PreviousStart) and
-     (CurrentEnd>=PreviousEnd) and
      ((PreviousEnd-CurrentStart)<=cMaximalTrim) then begin
    fUnits[Index-1].Size:=CurrentStart-PreviousStart;
    inc(result);
