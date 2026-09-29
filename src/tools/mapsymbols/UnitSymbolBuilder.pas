@@ -38,6 +38,13 @@ type TSymbolBuilder=class
              FileName:TpvUTF8String;
              StartRVA:TpvUInt64;
              Size:TpvUInt64;
+             // How far the rows which stand for an instruction reach, from the
+             // start: one past the last of them. Size may reach further, since
+             // it ends where the end of sequence marker says, and that marker is
+             // what the compiler gets wrong. Zero where it is not known, as for
+             // a unit out of a Delphi map file. Only used to decide overlaps,
+             // never written.
+             RowsSize:TpvUInt64;
              NameOffset:TpvUInt32;
              FileNameOffset:TpvUInt32;
             end;
@@ -89,7 +96,7 @@ type TSymbolBuilder=class
       public
        constructor Create;
        destructor Destroy; override;
-       procedure AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64);
+       procedure AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64;const aRowsSize:TpvUInt64=0);
        procedure AddSymbol(const aRVA:TpvUInt64;const aName:TpvUTF8String);
        procedure AddLine(const aRVA:TpvUInt64;const aLineNumber:TpvUInt32);
        // Fills in the source file of a unit which was added without one, which
@@ -228,7 +235,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TSymbolBuilder.AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64);
+procedure TSymbolBuilder.AddUnit(const aName,aFileName:TpvUTF8String;const aStartRVA,aSize:TpvUInt64;const aRowsSize:TpvUInt64);
 var UnitRecord:PUnitRecord;
 begin
  if fUnitCount>=length(fUnits) then begin
@@ -239,6 +246,7 @@ begin
  UnitRecord^.FileName:=aFileName;
  UnitRecord^.StartRVA:=aStartRVA;
  UnitRecord^.Size:=aSize;
+ UnitRecord^.RowsSize:=aRowsSize;
  UnitRecord^.NameOffset:=0;
  UnitRecord^.FileNameOffset:=0;
  inc(fUnitCount);
@@ -562,33 +570,39 @@ end;
 //
 // Must run after the sort, since only then is a record next to the ones it
 // shares an address with.
+//
+// The whole run of records at one address is looked at, not just the two
+// neighbours of a marker. Two sequences can end where a third begins, and the
+// sort then may well put both markers in front of the row, so that the first
+// marker has only the other marker beside it. Asking the neighbours alone kept
+// that one, and the reader, finding it first, answered a real row with no line.
 procedure TSymbolBuilder.DropRedundantEndMarkers;
-var Index,Kept:TpvSizeInt;
-    Redundant:Boolean;
-    LineRecord:PLineRecord;
+var Index,Last,Scan,Kept:TpvSizeInt;
+    HasRow:Boolean;
 begin
  Kept:=0;
- for Index:=0 to fLineCount-1 do begin
-  Redundant:=false;
-  LineRecord:=@fLines[Index];
-  if LineRecord^.LineNumber=0 then begin
-   if (Index>0) and
-      (fLines[Index-1].RVA=LineRecord^.RVA) and
-      (fLines[Index-1].LineNumber>0) then begin
-    Redundant:=true;
-   end;
-   if (Index<(fLineCount-1)) and
-      (fLines[Index+1].RVA=LineRecord^.RVA) and
-      (fLines[Index+1].LineNumber>0) then begin
-    Redundant:=true;
+ Index:=0;
+ while Index<fLineCount do begin
+  Last:=Index;
+  while ((Last+1)<fLineCount) and (fLines[Last+1].RVA=fLines[Index].RVA) do begin
+   inc(Last);
+  end;
+  HasRow:=false;
+  for Scan:=Index to Last do begin
+   if fLines[Scan].LineNumber>0 then begin
+    HasRow:=true;
+    break;
    end;
   end;
-  if not Redundant then begin
-   if Kept<>Index then begin
-    fLines[Kept]:=fLines[Index];
+  for Scan:=Index to Last do begin
+   if (fLines[Scan].LineNumber>0) or not HasRow then begin
+    if Kept<>Scan then begin
+     fLines[Kept]:=fLines[Scan];
+    end;
+    inc(Kept);
    end;
-   inc(Kept);
   end;
+  Index:=Last+1;
  end;
  fLineCount:=Kept;
 end;
@@ -628,10 +642,20 @@ end;
 // would be the thing to avoid, since a range enclosing a large one would lose
 // the whole of its tail and the check afterwards would find nothing left to
 // complain about.
+//
+// The size is only the fallback, though, for a unit whose rows are not known.
+// Where they are, they answer the question outright: if the last row of this
+// unit which stands for an instruction lies before the next unit begins, then
+// nothing of this unit is in the disputed bytes but its end marker, however far
+// that marker reaches. A Win64 build of planetgame1 had eight such overlaps between
+// 69 and 260 bytes long, every one of them without a single row of the unit in
+// front inside it, and a fixed limit of a few dozen bytes refused all of them.
+// Trimming there gives up nothing of this unit, the enclosed case included,
+// since a tail without rows of its own was never described by this unit.
 function TSymbolBuilder.TrimOverlappingUnits:TpvSizeInt;
 const cMaximalTrim=TpvUInt64(64);
 var Index:TpvSizeInt;
-    PreviousStart,PreviousEnd,CurrentStart:TpvUInt64;
+    PreviousStart,PreviousEnd,PreviousRowsSize,CurrentStart:TpvUInt64;
     UnitRecord:PUnitRecord;
 begin
  result:=0;
@@ -639,11 +663,13 @@ begin
   UnitRecord:=@fUnits[Index-1];
   PreviousStart:=UnitRecord^.StartRVA;
   PreviousEnd:=PreviousStart+UnitRecord^.Size;
+  PreviousRowsSize:=UnitRecord^.RowsSize;
   UnitRecord:=@fUnits[Index];
   CurrentStart:=UnitRecord^.StartRVA;
   if (PreviousEnd>CurrentStart) and
      (CurrentStart>PreviousStart) and
-     ((PreviousEnd-CurrentStart)<=cMaximalTrim) then begin
+     (((PreviousEnd-CurrentStart)<=cMaximalTrim) or
+      ((PreviousRowsSize>0) and ((PreviousStart+PreviousRowsSize)<=CurrentStart))) then begin
    fUnits[Index-1].Size:=CurrentStart-PreviousStart;
    inc(result);
   end;

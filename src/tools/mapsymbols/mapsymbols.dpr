@@ -59,6 +59,10 @@ type
       Low:TpvUInt64;
       // Exclusive, like everything else about ranges here.
       High:TpvUInt64;
+      // One past the last row which stands for an instruction, which is where
+      // High would be if the end of sequence marker were always right. Zero
+      // for a run with no such row.
+      RowsHigh:TpvUInt64;
      end;
      PCollectorRange=^TCollectorRange;
      TCollectorRanges=array of TCollectorRange;
@@ -110,6 +114,9 @@ type
        // OnLineRow.
        CurrentLow:TpvUInt64;
        CurrentEnd:TpvUInt64;
+       // The same end, but over the rows which stand for an instruction only,
+       // leaving the end of sequence marker out. Zero while there is none.
+       CurrentRowsEnd:TpvUInt64;
        HaveCurrent:Boolean;
 {$ifndef PasVulkanMapSymbolsSingleRangePerUnit}
        // The ranges of the compilation unit being read, one per run of code
@@ -373,6 +380,10 @@ begin
   end;
  end;
 
+ if (aLineNumber>0) and (RowEnd>CurrentRowsEnd) then begin
+  CurrentRowsEnd:=RowEnd;
+ end;
+
  // A line number of zero is an end of sequence marker. It is not a line of its
  // own, but it is kept, because it is the only thing which says where the code
  // described by the rows before it stops. Dropping it would leave a hole inside
@@ -410,11 +421,13 @@ begin
   Range:=@Ranges[RangeCount];
   Range^.Low:=CurrentLow;
   Range^.High:=CurrentEnd;
+  Range^.RowsHigh:=CurrentRowsEnd;
   inc(RangeCount);
  end;
  HaveCurrent:=false;
  CurrentLow:=0;
  CurrentEnd:=0;
+ CurrentRowsEnd:=0;
 end;
 
 procedure TCollector.SortRanges(const aLeft,aRight:TpvSizeInt);
@@ -499,6 +512,9 @@ begin
    if Range^.High>KeptRange^.High then begin
     KeptRange^.High:=Range^.High;
    end;
+   if Range^.RowsHigh>KeptRange^.RowsHigh then begin
+    KeptRange^.RowsHigh:=Range^.RowsHigh;
+   end;
   end else begin
    inc(Kept);
    if Kept<>Index then begin
@@ -531,11 +547,16 @@ begin
  // units the linker kept in one piece each, but where it did not, such a range
  // reaches over the code of another unit and answers for it.
  if HaveCurrent and (CurrentEnd>CurrentLow) then begin
-  Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,CurrentEnd-CurrentLow);
+  if CurrentRowsEnd>CurrentLow then begin
+   Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,CurrentEnd-CurrentLow,CurrentRowsEnd-CurrentLow);
+  end else begin
+   Builder.AddUnit(Name,aFileName,CurrentLow-ImageBase,CurrentEnd-CurrentLow);
+  end;
  end;
  HaveCurrent:=false;
  CurrentLow:=0;
  CurrentEnd:=0;
+ CurrentRowsEnd:=0;
 
 {$else}
 
@@ -545,7 +566,11 @@ begin
  MergeRanges;
  for Index:=0 to RangeCount-1 do begin
   Range:=@Ranges[Index];
-  Builder.AddUnit(Name,aFileName,Range^.Low-ImageBase,Range^.High-Range^.Low);
+  if Range^.RowsHigh>Range^.Low then begin
+   Builder.AddUnit(Name,aFileName,Range^.Low-ImageBase,Range^.High-Range^.Low,Range^.RowsHigh-Range^.Low);
+  end else begin
+   Builder.AddUnit(Name,aFileName,Range^.Low-ImageBase,Range^.High-Range^.Low);
+  end;
  end;
  RangeCount:=0;
 
@@ -2082,6 +2107,7 @@ begin
   Collector.SymbolsAdded:=0;
   Collector.DiscardedRows:=0;
   Collector.HaveCurrent:=false;
+  Collector.CurrentRowsEnd:=0;
 
   // Decide which frontend applies. A Delphi build never carries DWARF, so
   // preferring DWARF when it is present is unambiguous.
@@ -2218,7 +2244,7 @@ begin
   Builder.Finish;
 
   if Builder.TrimmedUnitCount>0 then begin
-   WriteLn(Builder.TrimmedUnitCount,' unit ranges reached a few bytes into the one behind them and were pulled back to its start.');
+   WriteLn(Builder.TrimmedUnitCount,' unit ranges reached into the one behind them with nothing but their end marker and were pulled back to its start.');
   end;
 
   // The runtime resolver looks a unit up by binary search, which assumes the
