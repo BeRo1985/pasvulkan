@@ -55,6 +55,11 @@
  {$realcompatibility off}
  {$localsymbols on}
  {$define LITTLE_ENDIAN}
+ // Delphi defines CPU64BITS on every 64-bit target (XE8 and later), but CPUX64 only on
+ // x86-64: without this, ARM64 (Android64, iOS, macOS on ARM) is taken for a 32-bit target.
+ {$ifdef CPU64BITS}
+  {$define cpu64}
+ {$endif}
  {$ifdef cpux64}
   {$define cpuamd64}
   {$define cpux86_64}

@@ -1572,18 +1572,21 @@ end;
 { TpvIDHelper }
 
 function pvAtomicIncrement64(var aValue:TpvInt64):TpvInt64;
-{$ifndef CPU64}
+{$if not defined(CPU64) and (defined(fpc) or defined(cpu386))}
 var OldValue:TpvInt64;
-{$endif}
+{$ifend}
 begin
-{$ifdef CPU64}
+{$if defined(CPU64)}
  result:=TPasMPInterlocked.Increment(aValue);
-{$else}
+{$elseif defined(fpc) or defined(cpu386)}
  repeat
   OldValue:=TPasMPInterlocked.Read(aValue);
   result:=OldValue+1;
  until TPasMPInterlocked.CompareExchange(aValue,result,OldValue)=OldValue;
-{$endif}
+{$else}
+ // Delphi on 32-bit ARM: PasMP has no 64-bit atomics there, the compiler intrinsic has
+ result:=AtomicIncrement(aValue);
+{$ifend}
 end;
 
 function pvAtomicIncrement64(var aValue:TpvUInt64):TpvUInt64;
