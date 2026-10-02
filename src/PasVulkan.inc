@@ -63,6 +63,9 @@
  {$ifndef cpu64}
   {$define cpu32}
  {$endif}
+ {$ifdef cpu64bits}
+  {$define cpu64}
+ {$endif}
  {$define HAS_TYPE_EXTENDED}
  {$define HAS_TYPE_DOUBLE}
  {$define HAS_TYPE_SINGLE}

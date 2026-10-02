@@ -3683,7 +3683,7 @@ const LZMA_FINISH_ANY=0;
 
       SZ_OK=0;
 
-function C_LzmaDecode(dest:pointer;destLen:PpvSizeUInt;src:pointer;srcLen:PpvSizeUInt;propData:pointer;propSize:TpvSizeUInt;finishMode:TpvInt32;status:PpvInt32;alloc:PISzAlloc):TPvInt32; cdecl; external name 'LzmaDecode';
+function C_LzmaDecode(dest:pointer;destLen:PpvSizeUInt;src:pointer;srcLen:PpvSizeUInt;propData:pointer;propSize:TpvSizeUInt;finishMode:TpvInt32;status:PpvInt32;alloc:PISzAlloc):TPvInt32; cdecl; external name {$if defined(Windows) and defined(cpu386) and not defined(fpc)}'_LzmaDecode'{$else}'LzmaDecode'{$ifend};
 {$endif}
 
 function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;

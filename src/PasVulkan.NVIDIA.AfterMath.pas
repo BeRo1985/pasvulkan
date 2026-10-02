@@ -658,6 +658,9 @@ type EGFSDK_Aftermath=class(Exception);
 
      TGFSDK_Aftermath_GetShaderHashForShaderInfo=function(Decoder:TGFSDK_Aftermath_GpuCrashDump_Decoder;pShaderInfo:PGFSDK_Aftermath_GpuCrashDump_ShaderInfo;pShaderHash:PGFSDK_Aftermath_ShaderBinaryHash):TGFSDK_Aftermath_Result; cdecl;
 
+     TpvNVIDIAAfterMathApplicationNameHook=function:TpvRawByteString;
+     TpvNVIDIAAfterMathDescribeDeviceAddressHook=function(const aAddress:TpvUInt64):TpvRawByteString;
+
 var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil;
 
     GFSDK_Aftermath_DisableGpuCrashDumps:TGFSDK_Aftermath_DisableGpuCrashDumps=nil;
@@ -712,6 +715,9 @@ var GFSDK_Aftermath_EnableGpuCrashDumps:TGFSDK_Aftermath_EnableGpuCrashDumps=nil
 
     GFSDK_Aftermath_CriticalSection:TPasMPCriticalSection=nil;
 
+    pvNVIDIAAfterMathApplicationNameHook:TpvNVIDIAAfterMathApplicationNameHook=nil;
+    pvNVIDIAAfterMathDescribeDeviceAddressHook:TpvNVIDIAAfterMathDescribeDeviceAddressHook=nil;
+
 procedure AFTERMATH_CHECK_ERROR(const aResult:TGFSDK_Aftermath_Result);
 
 // A capture layer takes the two NVIDIA diagnostics extensions out of what the driver reports, so Aftermath's
@@ -732,8 +738,7 @@ procedure RegisterNVIDIAAfterMathShaderBinary(const aData;const aDataSize:TpvSiz
 
 implementation
 
-uses PasVulkan.Application,
-     PasVulkan.Framework,
+uses PasVulkan.Framework,
      PasVulkan.Collections;
 
 type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifier,TBytes>;
@@ -1107,7 +1112,7 @@ begin
  if assigned(LibraryHandle) then begin
   @GetAPI:=_GetProcAddress(LibraryHandle,'RENDERDOC_GetAPI');
  end;
-{$else}
+{$elseif defined(Unix)}
  // First in the global scope, which is where it sits when RenderDoc's UI started the process and preloaded
  // its library. Nil is RTLD_DEFAULT, so this looks only at what is already there.
  @GetAPI:=_GetProcAddress(nil,'RENDERDOC_GetAPI');
@@ -1425,9 +1430,8 @@ begin
       FillChar(pageFaultInfo,SizeOf(TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo),#0);
       if (GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo(decoder,@pageFaultInfo)=GFSDK_Aftermath_Result_Success) and
          (pageFaultInfo.faultingGpuVA<>0) and
-         assigned(pvApplication) and
-         assigned(pvApplication.VulkanInstance) then begin
-       pageFaultText:=TpvRawByteString(pvApplication.VulkanInstance.DescribeDeviceAddress(pageFaultInfo.faultingGpuVA))+
+         assigned(pvNVIDIAAfterMathDescribeDeviceAddressHook) then begin
+       pageFaultText:=pvNVIDIAAfterMathDescribeDeviceAddressHook(pageFaultInfo.faultingGpuVA)+
                       TpvRawByteString({$ifdef Unix}#10{$else}#13#10{$endif});
        // Built from the base name rather than from the dump file name, which only exists when there was
        // something to write.
@@ -1621,10 +1625,19 @@ begin
  end;
 end;
 
+
 procedure CrashDumpDescriptionCallback(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
+var ApplicationName:TpvRawByteString;
 begin
  if assigned(addValue) then begin
-  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,pAnsiChar(pvApplication.Title));
+  ApplicationName:='';
+  if assigned(pvNVIDIAAfterMathApplicationNameHook) then begin
+   ApplicationName:=pvNVIDIAAfterMathApplicationNameHook();
+  end;
+  if length(ApplicationName)=0 then begin
+   ApplicationName:='PasVulkan Application';
+  end;
+  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,pAnsiChar(ApplicationName));
   addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion,'1.0');
   addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined,'GPU crash dump');
  end;

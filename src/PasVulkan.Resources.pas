@@ -205,8 +205,8 @@ type EpvResource=class(Exception);
        fNeedsMainThreadFinalization:boolean;
        procedure SetFileName(const aFileName:TpvUTF8String);
       protected
-       function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
-       function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+       function _AddRef:TpvInt32; override; {$if defined(Windows) or not defined(fpc)}stdcall{$else}cdecl{$ifend};
+       function _Release:TpvInt32; override; {$if defined(Windows) or not defined(fpc)}stdcall{$else}cdecl{$ifend};
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); reintroduce; virtual;
        destructor Destroy; override;

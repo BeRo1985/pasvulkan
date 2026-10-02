@@ -1588,7 +1588,7 @@ end;
 {$endif}
 
 function CrashReportFormatAddressFallback(const aAddress:TpvPointer;const aReturnAddress:Boolean):TpvUTF8String;
-{$ifdef fpc}
+{$if defined(fpc)}
 var Answer:TpvUTF8String;
     Position:TpvSizeInt;
 begin
@@ -1648,7 +1648,7 @@ begin
   CrashReportLeaveBackTrace;
  end;
 end;
-{$else}
+{$elseif defined(Windows)}
 var MemoryInformation:TMemoryBasicInformation;
     ModuleFileName:array[0..MAX_PATH] of Char;
 begin
@@ -1666,6 +1666,10 @@ begin
            IntToHex(TpvPtrUInt(aAddress)-TpvPtrUInt(MemoryInformation.AllocationBase),8)+')';
   end;
  end;
+end;
+{$else}
+begin
+ result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
 end;
 {$endif}
 
@@ -2353,7 +2357,7 @@ begin
 {$endif}
    GetMem(StackInfo,SizeOf(TpvCrashReportStackInfo));
    FillChar(StackInfo^,SizeOf(TpvCrashReportStackInfo),#0);
-   StackInfo^.Count:=RtlCaptureStackBackTrace(2,cMaximalStackFrames,@StackInfo^.Addresses[0],nil);
+   StackInfo^.Count:={$ifdef Windows}RtlCaptureStackBackTrace(2,cMaximalStackFrames,@StackInfo^.Addresses[0],nil){$else}0{$endif};
    if StackInfo^.Count>0 then begin
     result:=StackInfo;
    end else begin

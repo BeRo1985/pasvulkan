@@ -3906,6 +3906,10 @@ begin
 
 end;
 
+{$if defined(Windows)}
+function ChangeDisplaySettingsW(lpDevMode:Pointer;dwFlags:TpvUInt32):TpvInt32; stdcall; external 'user32.dll' name 'ChangeDisplaySettingsW';
+{$ifend}
+
 {$if defined(Linux)}
 function IsDebuggerPresent:LongBool;
 var StatFile:TextFile;

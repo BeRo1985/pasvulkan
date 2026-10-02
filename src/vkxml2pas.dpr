@@ -134,7 +134,7 @@ uses SysUtils,Classes,Contnrs;
 // On Windows, Vulkan commands use the stdcall convention
 // On Android/ARMv7a, Vulkan functions use the armeabi-v7a-hard calling convention, even if the application's native code is compiled with the armeabi-v7a calling convention.
 // On other platforms, use the default calling convention
-const CallingConventions='{$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}';
+const CallingConventions='{$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}';
 
       CommentPadding=80;
 

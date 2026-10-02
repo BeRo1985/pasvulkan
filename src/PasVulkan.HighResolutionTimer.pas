@@ -67,16 +67,18 @@ uses {$ifdef windows}
       Windows,
       MMSystem,
      {$else}
-      {$ifdef unix}
+      {$if defined(unix)}
        BaseUnix,
        Unix,
        UnixType,
        {$if defined(linux) or defined(android)}
         linux,
        {$ifend}
+      {$elseif defined(POSIX)}
+       Posix.Time,
       {$else}
        SDL,
-      {$endif}
+      {$ifend}
      {$endif}
      SysUtils,
      Classes,
@@ -507,14 +509,22 @@ begin
    if SleepTime>0 then begin
     req.tv_sec:=SleepTime div 1000000000;
     req.tv_nsec:=SleepTime mod 10000000000;
+{$ifdef fpc}
     fpNanoSleep(@req,@rem);
+{$else}
+    nanosleep(req,@rem);
+{$endif}
    end;
 {$elseif defined(Unix)}
    SleepTime:=SleepDuration;
    if SleepTime>0 then begin
     req.tv_sec:=SleepTime div 1000000;
     req.tv_nsec:=(SleepTime mod 1000000)*1000;
+{$ifdef fpc}
     fpNanoSleep(@req,@rem);
+{$else}
+    nanosleep(req,@rem);
+{$endif}
    end;
 {$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    SleepDuration:=ToMilliseconds(SleepDuration);

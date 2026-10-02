@@ -67,6 +67,8 @@ uses {$if defined(Windows)}
       BaseUnix,
       Unix,
       UnixType,
+     {$elseif defined(POSIX)}
+      Posix.Unistd,
      {$ifend}
      SysUtils,
      Classes,
@@ -87,11 +89,11 @@ type EpvDataStream=class(Exception);
       public
        constructor Create(const AData:TpvPointer;const ASize:TpvInt64);
        destructor Destroy; override;
-       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
-       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
-       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
+       function Read(var Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Write(const Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt; overload; override;
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
-       procedure SetSize(NewSize:TpvInt32); overload; override;
+       procedure SetSize(NewSize:TpvStreamInt); overload; override;
        procedure SetSize(const NewSize:TpvInt64); overload; override;
      end;
 
@@ -108,14 +110,14 @@ type EpvDataStream=class(Exception);
        fStreamBufferDirty:boolean;
        procedure ReadBufferFromFile;
       protected
-       procedure SetSize(NewSize:TpvInt32); overload; override;
+       procedure SetSize(NewSize:TpvStreamInt); overload; override;
        procedure SetSize(const NewSize:TpvInt64); overload; override;
       public
        constructor Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize);
        destructor Destroy; override;
-       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
-       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
-       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
+       function Read(var Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Write(const Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt; overload; override;
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
        procedure Flush;
      end;
@@ -150,14 +152,14 @@ type EpvDataStream=class(Exception);
        fBucketCount:TpvInt32;
        function GetBucket(fStreamPosition:TpvInt64):PpvBufferedStreamBucket;
       protected
-       procedure SetSize(NewSize:TpvInt32); overload; override;
+       procedure SetSize(NewSize:TpvStreamInt); overload; override;
        procedure SetSize(const NewSize:TpvInt64); overload; override;
       public
        constructor Create(Stream:TStream;FreeStream:boolean=false;BufferSize:TpvInt32=DefaultBufferSize;BufferBucketCount:TpvInt32=DefaultBufferBucketCount);
        destructor Destroy; override;
-       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
-       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
-       function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
+       function Read(var Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Write(const Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt; overload; override;
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
        procedure Flush;
      end;
@@ -187,11 +189,11 @@ type EpvDataStream=class(Exception);
       public
        constructor Create(const AStream:TStream;const AOffset,ASize:TpvInt64;const AMemory:boolean=true);
        destructor Destroy; override;
-       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
-       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
-       function Seek(Offset:TpvInt32;Origin:word):TpvInt32; override;
+       function Read(var Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Write(const Buffer;Count:TpvStreamInt):TpvStreamInt; override;
+       function Seek(Offset:TpvStreamInt;Origin:word):TpvStreamInt; override;
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; override;
-       procedure SetSize(NewSize:TpvInt32); override;
+       procedure SetSize(NewSize:TpvStreamInt); override;
        procedure SetSize(const NewSize:TpvInt64); override;
        function ReadWithCheck(var Buffer;Count:TpvInt32):TpvInt32;
        function ReadString:TpvUTF8String;
@@ -288,7 +290,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvDataStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+function TpvDataStream.Read(var Buffer;Count:TpvStreamInt):TpvStreamInt;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -302,7 +304,7 @@ begin
  end;
 end;
 
-function TpvDataStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+function TpvDataStream.Write(const Buffer;Count:TpvStreamInt):TpvStreamInt;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -316,7 +318,7 @@ begin
  end;
 end;
 
-function TpvDataStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
+function TpvDataStream.Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt;
 begin
  case Origin of
   soFromBeginning:begin
@@ -354,7 +356,7 @@ begin
  result:=fPosition;
 end;
 
-procedure TpvDataStream.SetSize(NewSize:TpvInt32);
+procedure TpvDataStream.SetSize(NewSize:TpvStreamInt);
 begin
  if fSize<>NewSize then begin
   raise EpvDataStream.Create('Stream set size error');
@@ -406,7 +408,7 @@ begin
  fStreamBufferEnd:=@fStreamBufferPointer[BytesRead];
 end;
 
-function TpvSimpleBufferedStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+function TpvSimpleBufferedStream.Read(var Buffer;Count:TpvStreamInt):TpvStreamInt;
 var Destination,OldfStreamBufferPointer:PpvRawByteChar;
     BytesToRead,BytesInBuffer:TpvPtrUInt;
 begin
@@ -443,7 +445,7 @@ begin
  end;
 end;
 
-function TpvSimpleBufferedStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+function TpvSimpleBufferedStream.Write(const Buffer;Count:TpvStreamInt):TpvStreamInt;
 var Source:PpvRawByteChar;
     BytesToWrite,CurrentPosition:TpvInt64;
 begin
@@ -480,7 +482,7 @@ begin
  end;
 end;
 
-function TpvSimpleBufferedStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
+function TpvSimpleBufferedStream.Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt;
 var CurrentPosition,Delta:TpvInt64;
 begin
  CurrentPosition:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
@@ -574,16 +576,18 @@ begin
   end;
   fWrappedStreamSize:=fWrappedStream.Size;
   if fWrappedStream is TFileStream then begin
-{$ifdef Windows}
+{$if defined(Windows)}
   Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
-{$else}
+{$elseif defined(fpc)}
   fpfsync(TFileStream(fWrappedStream).Handle);
-{$endif}
+{$else}
+  fsync(TFileStream(fWrappedStream).Handle);
+{$ifend}
   end;
  end;
 end;
 
-procedure TpvSimpleBufferedStream.SetSize(NewSize:TpvInt32);
+procedure TpvSimpleBufferedStream.SetSize(NewSize:TpvStreamInt);
 begin
  if NewSize<0 then begin
   NewSize:=0;
@@ -740,7 +744,7 @@ begin
  end;
 end;
 
-function TpvBufferedStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+function TpvBufferedStream.Read(var Buffer;Count:TpvStreamInt):TpvStreamInt;
 var Bucket:PpvBufferedStreamBucket;
     Destination:PpvRawByteChar;
     BufferPosition,BytesToRead:TpvInt64;
@@ -772,7 +776,7 @@ begin
  end;
 end;
 
-function TpvBufferedStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+function TpvBufferedStream.Write(const Buffer;Count:TpvStreamInt):TpvStreamInt;
 var Bucket:PpvBufferedStreamBucket;
     Source:PpvRawByteChar;
     BufferPosition,BytesToWrite:TpvInt64;
@@ -817,7 +821,7 @@ begin
  end;
 end;
 
-function TpvBufferedStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
+function TpvBufferedStream.Seek(Offset:TpvStreamInt;Origin:TpvUInt16):TpvStreamInt;
 begin
  if (Origin=soFromCurrent) and (Offset=0) then begin
   result:=fStreamPosition;
@@ -893,13 +897,15 @@ begin
  if Dirty and (fWrappedStream is TFileStream) then begin
 {$ifdef windows}
   Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
-{$else}
+{$elseif defined(fpc)}
   fpfsync(TFileStream(fWrappedStream).Handle);
-{$endif}
+{$else}
+  fsync(TFileStream(fWrappedStream).Handle);
+{$ifend}
  end;
 end;
 
-procedure TpvBufferedStream.SetSize(NewSize:TpvInt32);
+procedure TpvBufferedStream.SetSize(NewSize:TpvStreamInt);
 begin
  if NewSize<0 then begin
   NewSize:=0;
@@ -973,7 +979,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvChunkStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+function TpvChunkStream.Read(var Buffer;Count:TpvStreamInt):TpvStreamInt;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -991,7 +997,7 @@ begin
  end;
 end;
 
-function TpvChunkStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+function TpvChunkStream.Write(const Buffer;Count:TpvStreamInt):TpvStreamInt;
 begin
  if (fPosition+Count)>fSize then begin
   Count:=fSize-fPosition;
@@ -1009,7 +1015,7 @@ begin
  end;
 end;
 
-function TpvChunkStream.Seek(Offset:TpvInt32;Origin:word):TpvInt32;
+function TpvChunkStream.Seek(Offset:TpvStreamInt;Origin:word):TpvStreamInt;
 begin
  case Origin of
   soFromBeginning:begin
@@ -1047,7 +1053,7 @@ begin
  result:=fPosition;
 end;
 
-procedure TpvChunkStream.SetSize(NewSize:TpvInt32);
+procedure TpvChunkStream.SetSize(NewSize:TpvStreamInt);
 begin
  if fSize<>NewSize then begin
   raise EpvChunkStream.Create('Stream set size error');

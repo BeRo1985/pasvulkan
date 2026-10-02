@@ -232,7 +232,7 @@ implementation
 uses PasVulkan.Math,
      Generics.Defaults;
 
-procedure DebugBreakPoint;{$if defined(cpuarm)}assembler; // E7FFDEFE
+procedure DebugBreakPoint;{$if defined(fpc) and defined(cpuarm)}assembler; // E7FFDEFE
 asm
  .long 0xFEDEFFE7
 end;

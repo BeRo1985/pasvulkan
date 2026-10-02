@@ -546,7 +546,7 @@ begin
 end;
 
 function TpvBufferRangeAllocator.Defragment(const aMove:TOnDefragmentMove):Boolean;
-type TNodes=array of TRangeRedBlackTree.TNode;
+type TNodes={$ifdef fpc}array of TRangeRedBlackTree.TNode{$else}TArray<TRangeRedBlackTree.TNode>{$endif};
 var Index,CountAllocatedNodes:TpvSizeInt;
     AllocatedNodes:TNodes;
     Node,NextNode:TRangeRedBlackTree.TNode;
