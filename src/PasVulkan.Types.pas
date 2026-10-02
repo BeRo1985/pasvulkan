@@ -459,6 +459,13 @@ var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
     HalfFloatToFloatExponentTable:array[0..63] of TpvUInt32;
     HalfFloatToFloatOffsetTable:array[0..63] of TpvUInt32;
 
+// Atomic 64-bit increment, returning the new value, that also compiles on 32-bit targets.
+// PasMP declares its 64-bit Increment/Decrement/Add only for CPU64, so calling
+// TPasMPInterlocked.Increment on a 64-bit counter fails to compile for Win32 (E2250), while its
+// 64-bit CompareExchange is available there too (x86-32, and ARM with LDREXD/STREXD).
+function pvAtomicIncrement64(var aValue:TpvInt64):TpvInt64; overload;
+function pvAtomicIncrement64(var aValue:TpvUInt64):TpvUInt64; overload;
+
 implementation
 
 uses PasVulkan.CPU.Info;
@@ -1563,6 +1570,26 @@ begin
 end;
 
 { TpvIDHelper }
+
+function pvAtomicIncrement64(var aValue:TpvInt64):TpvInt64;
+{$ifndef CPU64}
+var OldValue:TpvInt64;
+{$endif}
+begin
+{$ifdef CPU64}
+ result:=TPasMPInterlocked.Increment(aValue);
+{$else}
+ repeat
+  OldValue:=TPasMPInterlocked.Read(aValue);
+  result:=OldValue+1;
+ until TPasMPInterlocked.CompareExchange(aValue,result,OldValue)=OldValue;
+{$endif}
+end;
+
+function pvAtomicIncrement64(var aValue:TpvUInt64):TpvUInt64;
+begin
+ result:=TpvUInt64(pvAtomicIncrement64(TpvInt64(aValue)));
+end;
 
 initialization
  GenerateHalfFloatLookUpTables;

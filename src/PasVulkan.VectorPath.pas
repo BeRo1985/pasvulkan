@@ -6686,7 +6686,7 @@ begin
    try
     result.fShapeIndex:=ShapeIndex;
     result.UpdateBufferPool;
-    result.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
+    result.fGeneration:=pvAtomicIncrement64(fGeneration);
     fShapeIndexHashMap.Add(aShape,ShapeIndex);
    finally
     fGPUShapes[ShapeIndex]:=result;
@@ -6726,7 +6726,7 @@ begin
   if assigned(GPUShape) then begin
    GPUShape.Update;
    GPUShape.UpdateBufferPool;
-   GPUShape.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
+   GPUShape.fGeneration:=pvAtomicIncrement64(fGeneration);
   end;
  end;
 end;
@@ -6755,7 +6755,7 @@ begin
   // completely instead of trying to fix it partially. 
 
   // Increment generation to force buffer updates
-  Generation:=TPasMPInterlocked.Increment(fGeneration);
+  Generation:=pvAtomicIncrement64(fGeneration);
 
   // Pass 1: Clear and invalidate all buffer ranges
   for Index:=0 to length(fGPUShapes)-1 do begin

@@ -92,7 +92,7 @@ procedure pvFrameTraceAdd(const aKind,aIndex:TpvUInt32;const aValueA:TpvUInt64=0
 var Sequence:TPasMPInt64;
     Entry:PpvFrameTraceEntry;
 begin
- Sequence:=TPasMPInterlocked.Increment(pvFrameTraceSequence);
+ Sequence:=pvAtomicIncrement64(pvFrameTraceSequence);
  Entry:=@pvFrameTraceEntries[Sequence and pvFrameTraceMask];
  Entry^.Kind:=aKind;
  Entry^.Index:=aIndex;

@@ -30822,7 +30822,7 @@ begin
  // Assign a process-wide unique id once, after any of the constructors ran. Caches that key by texture identity (e.g. the
  // canvas descriptor cache) use this instead of the object pointer, so a freed-and-reallocated texture at the same address
  // can never alias a stale cache entry.
- fUniqueID:=TPasMPInterlocked.Increment(VulkanTextureUniqueIDCounter);
+ fUniqueID:=pvAtomicIncrement64(VulkanTextureUniqueIDCounter);
 end;
 
 procedure TpvVulkanTexture.Unload;
