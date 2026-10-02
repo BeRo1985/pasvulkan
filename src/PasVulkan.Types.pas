@@ -428,9 +428,9 @@ type PPpvInt8=^PpvInt8;
       private
       protected
        fReferenceCounter:TpvInt32;
-       function QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):{$ifdef fpc}TpvInt32{$else}HResult{$endif}; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
-       function _AddRef:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
-       function _Release:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+       function QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):{$ifdef fpc}TpvInt32{$else}HResult{$endif}; virtual; {$if defined(Windows) or not defined(fpc)}stdcall{$else}cdecl{$ifend};
+       function _AddRef:TpvInt32; virtual; {$if defined(Windows) or not defined(fpc)}stdcall{$else}cdecl{$ifend};
+       function _Release:TpvInt32; virtual; {$if defined(Windows) or not defined(fpc)}stdcall{$else}cdecl{$ifend};
       public
        constructor Create;
        destructor Destroy; override;
