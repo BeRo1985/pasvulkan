@@ -8798,27 +8798,27 @@ begin
  inherited Destroy;
 end;
 
-function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanAllocationManager(UserData).AllocationCallback(Size,Alignment,Scope);
 end;
 
-function VulkanReallocationCallback(UserData,Original:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function VulkanReallocationCallback(UserData,Original:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanAllocationManager(UserData).ReallocationCallback(Original,Size,Alignment,Scope);
 end;
 
-procedure VulkanFreeCallback(UserData,Memory:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+procedure VulkanFreeCallback(UserData,Memory:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  TpvVulkanAllocationManager(UserData).FreeCallback(Memory);
 end;
 
-procedure VulkanInternalAllocationCallback(UserData:PVkVoid;Size:TVkSize;Type_:TVkInternalAllocationType;Scope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+procedure VulkanInternalAllocationCallback(UserData:PVkVoid;Size:TVkSize;Type_:TVkInternalAllocationType;Scope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  TpvVulkanAllocationManager(UserData).InternalAllocationCallback(Size,Type_,Scope);
 end;
 
-procedure VulkanInternalFreeCallback(UserData:PVkVoid;Size:TVkSize;Type_:TVkInternalAllocationType;Scope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+procedure VulkanInternalFreeCallback(UserData:PVkVoid;Size:TVkSize;Type_:TVkInternalAllocationType;Scope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  TpvVulkanAllocationManager(UserData).InternalFreeCallback(Size,Type_,Scope);
 end;
@@ -9319,7 +9319,7 @@ begin
  end;
 end;
 
-function TpvVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TpvInt32;const aLayerPrefix:PVkChar;const aMessage:PVkChar;aUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function TpvVulkanInstanceDebugReportCallbackFunction(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TpvInt32;const aLayerPrefix:PVkChar;const aMessage:PVkChar;aUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanInstance(aUserData).DebugReportCallback(flags,objectType,object_,location,messageCode,aLayerPrefix,aMessage);
 end;
@@ -9526,7 +9526,7 @@ begin
  end;
 end;
 
-function TpvVulkanInstanceDebugUtilsMessengerCallbackFunction(aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;aUserData:pointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+function TpvVulkanInstanceDebugUtilsMessengerCallbackFunction(aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;aUserData:pointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 begin
  result:=TpvVulkanInstance(aUserData).DebugUtilsMessengerCallback(aMessageSeverity,aMessageTypes,aCallbackData,aUserData);
 end;

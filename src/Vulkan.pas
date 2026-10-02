@@ -13706,35 +13706,35 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
-     TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkInternalFreeNotification=^PPFN_vkInternalFreeNotification;
      PPFN_vkInternalFreeNotification=^TPFN_vkInternalFreeNotification;
-     TPFN_vkInternalFreeNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkInternalFreeNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkReallocationFunction=^PPFN_vkReallocationFunction;
      PPFN_vkReallocationFunction=^TPFN_vkReallocationFunction;
-     TPFN_vkReallocationFunction=function(pUserData:PVkVoid;pOriginal:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkReallocationFunction=function(pUserData:PVkVoid;pOriginal:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkAllocationFunction=^PPFN_vkAllocationFunction;
      PPFN_vkAllocationFunction=^TPFN_vkAllocationFunction;
-     TPFN_vkAllocationFunction=function(pUserData:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkAllocationFunction=function(pUserData:PVkVoid;size:TVkSize;alignment:TVkSize;allocationScope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkFreeFunction=^PPFN_vkFreeFunction;
      PPFN_vkFreeFunction=^TPFN_vkFreeFunction;
-     TPFN_vkFreeFunction=procedure(pUserData:PVkVoid;pMemory:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkFreeFunction=procedure(pUserData:PVkVoid;pMemory:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkVoidFunction=^PPFN_vkVoidFunction;
      PPFN_vkVoidFunction=^TPFN_vkVoidFunction;
-     TPFN_vkVoidFunction=procedure(); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkVoidFunction=procedure(); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkDebugReportCallbackEXT=^PPFN_vkDebugReportCallbackEXT;
      PPFN_vkDebugReportCallbackEXT=^TPFN_vkDebugReportCallbackEXT;
-     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDebugReportCallbackEXT=function(flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPPFN_vkGetInstanceProcAddrLUNARG=^PPFN_vkGetInstanceProcAddrLUNARG;
      PPFN_vkGetInstanceProcAddrLUNARG=^TPFN_vkGetInstanceProcAddrLUNARG;
-     TPFN_vkGetInstanceProcAddrLUNARG=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkGetInstanceProcAddrLUNARG=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPVkBaseOutStructure=^PVkBaseOutStructure;
      PVkBaseOutStructure=^TVkBaseOutStructure;
@@ -22695,7 +22695,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkDebugUtilsMessengerCallbackEXT=^PPFN_vkDebugUtilsMessengerCallbackEXT;
      PPFN_vkDebugUtilsMessengerCallbackEXT=^TPFN_vkDebugUtilsMessengerCallbackEXT;
-     TPFN_vkDebugUtilsMessengerCallbackEXT=function(messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDebugUtilsMessengerCallbackEXT=function(messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPVkDebugUtilsMessengerCreateInfoEXT=^PVkDebugUtilsMessengerCreateInfoEXT;
      PVkDebugUtilsMessengerCreateInfoEXT=^TVkDebugUtilsMessengerCreateInfoEXT;
@@ -22761,7 +22761,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkDeviceMemoryReportCallbackEXT=^PPFN_vkDeviceMemoryReportCallbackEXT;
      PPFN_vkDeviceMemoryReportCallbackEXT=^TPFN_vkDeviceMemoryReportCallbackEXT;
-     TPFN_vkDeviceMemoryReportCallbackEXT=procedure(const pCallbackData:PVkDeviceMemoryReportCallbackDataEXT;pUserData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDeviceMemoryReportCallbackEXT=procedure(const pCallbackData:PVkDeviceMemoryReportCallbackDataEXT;pUserData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
      PPVkDeviceDeviceMemoryReportCreateInfoEXT=^PVkDeviceDeviceMemoryReportCreateInfoEXT;
      PVkDeviceDeviceMemoryReportCreateInfoEXT=^TVkDeviceDeviceMemoryReportCreateInfoEXT;
@@ -27523,7 +27523,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef VulkanSC}
      PPPFN_vkFaultCallbackFunction=^PPFN_vkFaultCallbackFunction;
      PPFN_vkFaultCallbackFunction=^TPFN_vkFaultCallbackFunction;
-     TPFN_vkFaultCallbackFunction=procedure(unrecordedFaults:TVkBool32;faultCount:TVkUInt32;const pFaults:PVkFaultData); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkFaultCallbackFunction=procedure(unrecordedFaults:TVkBool32;faultCount:TVkUInt32;const pFaults:PVkFaultData); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VulkanSC}
@@ -41571,1821 +41571,1821 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDevices=function(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDevices=function(instance:TVkInstance;pPhysicalDeviceCount:PVkUInt32;pPhysicalDevices:PVkPhysicalDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceProcAddr=function(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceProcAddr=function(device:TVkDevice;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetInstanceProcAddr=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetInstanceProcAddr=function(instance:TVkInstance;const pName:PVkChar):TPFN_vkVoidFunction; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceProperties=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceProperties=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyProperties=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyProperties=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceMemoryProperties=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceMemoryProperties=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFeatures=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFeatures=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceImageFormatProperties=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;pImageFormatProperties:PVkImageFormatProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceImageFormatProperties=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;pImageFormatProperties:PVkImageFormatProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDevice=function(physicalDevice:TVkPhysicalDevice;const pCreateInfo:PVkDeviceCreateInfo;const pAllocator:PVkAllocationCallbacks;pDevice:PVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDevice=function(physicalDevice:TVkPhysicalDevice;const pCreateInfo:PVkDeviceCreateInfo;const pAllocator:PVkAllocationCallbacks;pDevice:PVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDevice=procedure(device:TVkDevice;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDevice=procedure(device:TVkDevice;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumerateInstanceVersion=function(pApiVersion:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumerateInstanceVersion=function(pApiVersion:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumerateInstanceLayerProperties=function(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumerateInstanceLayerProperties=function(pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumerateInstanceExtensionProperties=function(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumerateInstanceExtensionProperties=function(const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumerateDeviceLayerProperties=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumerateDeviceLayerProperties=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkLayerProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumerateDeviceExtensionProperties=function(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumerateDeviceExtensionProperties=function(physicalDevice:TVkPhysicalDevice;const pLayerName:PVkChar;pPropertyCount:PVkUInt32;pProperties:PVkExtensionProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceQueue=procedure(device:TVkDevice;queueFamilyIndex:TVkUInt32;queueIndex:TVkUInt32;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSubmit=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueWaitIdle=function(queue:TVkQueue):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueWaitIdle=function(queue:TVkQueue):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDeviceWaitIdle=function(device:TVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDeviceWaitIdle=function(device:TVkDevice):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAllocateMemory=function(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAllocateMemory=function(device:TVkDevice;const pAllocateInfo:PVkMemoryAllocateInfo;const pAllocator:PVkAllocationCallbacks;pMemory:PVkDeviceMemory):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkFreeMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkFreeMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMapMemory=function(device:TVkDevice;memory:TVkDeviceMemory;offset:TVkDeviceSize;size:TVkDeviceSize;flags:TVkMemoryMapFlags;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUnmapMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUnmapMemory=procedure(device:TVkDevice;memory:TVkDeviceMemory); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkFlushMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkFlushMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkInvalidateMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkInvalidateMappedMemoryRanges=function(device:TVkDevice;memoryRangeCount:TVkUInt32;const pMemoryRanges:PVkMappedMemoryRange):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceMemoryCommitment=procedure(device:TVkDevice;memory:TVkDeviceMemory;pCommittedMemoryInBytes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceMemoryCommitment=procedure(device:TVkDevice;memory:TVkDeviceMemory;pCommittedMemoryInBytes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferMemoryRequirements=procedure(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferMemoryRequirements=procedure(device:TVkDevice;buffer:TVkBuffer;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindBufferMemory=function(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindBufferMemory=function(device:TVkDevice;buffer:TVkBuffer;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pMemoryRequirements:PVkMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindImageMemory=function(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindImageMemory=function(device:TVkDevice;image:TVkImage;memory:TVkDeviceMemory;memoryOffset:TVkDeviceSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSparseMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSparseMemoryRequirements=procedure(device:TVkDevice;image:TVkImage;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSparseImageFormatProperties=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;samples:TVkSampleCountFlagBits;usage:TVkImageUsageFlags;tiling:TVkImageTiling;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueBindSparse=function(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueBindSparse=function(queue:TVkQueue;bindInfoCount:TVkUInt32;const pBindInfo:PVkBindSparseInfo;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateFence=function(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateFence=function(device:TVkDevice;const pCreateInfo:PVkFenceCreateInfo;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyFence=procedure(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyFence=procedure(device:TVkDevice;fence:TVkFence;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetFenceStatus=function(device:TVkDevice;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetFenceStatus=function(device:TVkDevice;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWaitForFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence;waitAll:TVkBool32;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWaitForFences=function(device:TVkDevice;fenceCount:TVkUInt32;const pFences:PVkFence;waitAll:TVkBool32;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSemaphore=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSemaphore=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreCreateInfo;const pAllocator:PVkAllocationCallbacks;pSemaphore:PVkSemaphore):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySemaphore=procedure(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySemaphore=procedure(device:TVkDevice;semaphore:TVkSemaphore;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateEvent=function(device:TVkDevice;const pCreateInfo:PVkEventCreateInfo;const pAllocator:PVkAllocationCallbacks;pEvent:PVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateEvent=function(device:TVkDevice;const pCreateInfo:PVkEventCreateInfo;const pAllocator:PVkAllocationCallbacks;pEvent:PVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyEvent=procedure(device:TVkDevice;event:TVkEvent;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyEvent=procedure(device:TVkDevice;event:TVkEvent;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetEventStatus=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetEventStatus=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetEvent=function(device:TVkDevice;event:TVkEvent):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateQueryPool=function(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateQueryPool=function(device:TVkDevice;const pCreateInfo:PVkQueryPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pQueryPool:PVkQueryPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetQueryPoolResults=function(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid;stride:TVkDeviceSize;flags:TVkQueryResultFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetQueryPool=procedure(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetQueryPoolEXT=procedure(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetQueryPoolEXT=procedure(device:TVkDevice;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateBuffer=function(device:TVkDevice;const pCreateInfo:PVkBufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pBuffer:PVkBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyBuffer=procedure(device:TVkDevice;buffer:TVkBuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyBuffer=procedure(device:TVkDevice;buffer:TVkBuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateBufferView=function(device:TVkDevice;const pCreateInfo:PVkBufferViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkBufferView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateBufferView=function(device:TVkDevice;const pCreateInfo:PVkBufferViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkBufferView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyBufferView=procedure(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyBufferView=procedure(device:TVkDevice;bufferView:TVkBufferView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateImage=function(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateImage=function(device:TVkDevice;const pCreateInfo:PVkImageCreateInfo;const pAllocator:PVkAllocationCallbacks;pImage:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyImage=procedure(device:TVkDevice;image:TVkImage;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyImage=procedure(device:TVkDevice;image:TVkImage;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSubresourceLayout=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource;pLayout:PVkSubresourceLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSubresourceLayout=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource;pLayout:PVkSubresourceLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateImageView=function(device:TVkDevice;const pCreateInfo:PVkImageViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkImageView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateImageView=function(device:TVkDevice;const pCreateInfo:PVkImageViewCreateInfo;const pAllocator:PVkAllocationCallbacks;pView:PVkImageView):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyImageView=procedure(device:TVkDevice;imageView:TVkImageView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyImageView=procedure(device:TVkDevice;imageView:TVkImageView;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateShaderModule=function(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;const pAllocator:PVkAllocationCallbacks;pShaderModule:PVkShaderModule):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateShaderModule=function(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;const pAllocator:PVkAllocationCallbacks;pShaderModule:PVkShaderModule):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyShaderModule=procedure(device:TVkDevice;shaderModule:TVkShaderModule;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyShaderModule=procedure(device:TVkDevice;shaderModule:TVkShaderModule;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreatePipelineCache=function(device:TVkDevice;const pCreateInfo:PVkPipelineCacheCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineCache:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreatePipelineCache=function(device:TVkDevice;const pCreateInfo:PVkPipelineCacheCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineCache:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPipelineCache=procedure(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPipelineCache=procedure(device:TVkDevice;pipelineCache:TVkPipelineCache;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineCacheData=function(device:TVkDevice;pipelineCache:TVkPipelineCache;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMergePipelineCaches=function(device:TVkDevice;dstCache:TVkPipelineCache;srcCacheCount:TVkUInt32;const pSrcCaches:PVkPipelineCache):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreatePipelineBinariesKHR=function(device:TVkDevice;const pCreateInfo:PVkPipelineBinaryCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pBinaries:PVkPipelineBinaryHandlesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreatePipelineBinariesKHR=function(device:TVkDevice;const pCreateInfo:PVkPipelineBinaryCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pBinaries:PVkPipelineBinaryHandlesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPipelineBinaryKHR=procedure(device:TVkDevice;pipelineBinary:TVkPipelineBinaryKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPipelineBinaryKHR=procedure(device:TVkDevice;pipelineBinary:TVkPipelineBinaryKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineKeyKHR=function(device:TVkDevice;const pPipelineCreateInfo:PVkPipelineCreateInfoKHR;pPipelineKey:PVkPipelineBinaryKeyKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineKeyKHR=function(device:TVkDevice;const pPipelineCreateInfo:PVkPipelineCreateInfoKHR;pPipelineKey:PVkPipelineBinaryKeyKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineBinaryDataKHR=function(device:TVkDevice;const pInfo:PVkPipelineBinaryDataInfoKHR;pPipelineBinaryKey:PVkPipelineBinaryKeyKHR;pPipelineBinaryDataSize:PVkSize;pPipelineBinaryData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineBinaryDataKHR=function(device:TVkDevice;const pInfo:PVkPipelineBinaryDataInfoKHR;pPipelineBinaryKey:PVkPipelineBinaryKeyKHR;pPipelineBinaryDataSize:PVkSize;pPipelineBinaryData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleaseCapturedPipelineDataKHR=function(device:TVkDevice;const pInfo:PVkReleaseCapturedPipelineDataInfoKHR;const pAllocator:PVkAllocationCallbacks):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleaseCapturedPipelineDataKHR=function(device:TVkDevice;const pInfo:PVkReleaseCapturedPipelineDataInfoKHR;const pAllocator:PVkAllocationCallbacks):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateGraphicsPipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkGraphicsPipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateGraphicsPipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkGraphicsPipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateComputePipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkComputePipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateComputePipelines=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkComputePipelineCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI=function(device:TVkDevice;renderpass:TVkRenderPass;pMaxWorkgroupSize:PVkExtent2D):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI=function(device:TVkDevice;renderpass:TVkRenderPass;pMaxWorkgroupSize:PVkExtent2D):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPipeline=procedure(device:TVkDevice;pipeline:TVkPipeline;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPipeline=procedure(device:TVkDevice;pipeline:TVkPipeline;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreatePipelineLayout=function(device:TVkDevice;const pCreateInfo:PVkPipelineLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineLayout:PVkPipelineLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreatePipelineLayout=function(device:TVkDevice;const pCreateInfo:PVkPipelineLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pPipelineLayout:PVkPipelineLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPipelineLayout=procedure(device:TVkDevice;pipelineLayout:TVkPipelineLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPipelineLayout=procedure(device:TVkDevice;pipelineLayout:TVkPipelineLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSampler=function(device:TVkDevice;const pCreateInfo:PVkSamplerCreateInfo;const pAllocator:PVkAllocationCallbacks;pSampler:PVkSampler):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSampler=function(device:TVkDevice;const pCreateInfo:PVkSamplerCreateInfo;const pAllocator:PVkAllocationCallbacks;pSampler:PVkSampler):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySampler=procedure(device:TVkDevice;sampler:TVkSampler;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySampler=procedure(device:TVkDevice;sampler:TVkSampler;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDescriptorSetLayout=function(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pSetLayout:PVkDescriptorSetLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDescriptorSetLayout=function(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;const pAllocator:PVkAllocationCallbacks;pSetLayout:PVkDescriptorSetLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDescriptorSetLayout=procedure(device:TVkDevice;descriptorSetLayout:TVkDescriptorSetLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDescriptorSetLayout=procedure(device:TVkDevice;descriptorSetLayout:TVkDescriptorSetLayout;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDescriptorPool=function(device:TVkDevice;const pCreateInfo:PVkDescriptorPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorPool:PVkDescriptorPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDescriptorPool=function(device:TVkDevice;const pCreateInfo:PVkDescriptorPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorPool:PVkDescriptorPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDescriptorPool=procedure(device:TVkDevice;descriptorPool:TVkDescriptorPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDescriptorPool=procedure(device:TVkDevice;descriptorPool:TVkDescriptorPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetDescriptorPool=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;flags:TVkDescriptorPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetDescriptorPool=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;flags:TVkDescriptorPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAllocateDescriptorSets=function(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAllocateDescriptorSets=function(device:TVkDevice;const pAllocateInfo:PVkDescriptorSetAllocateInfo;pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkFreeDescriptorSets=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkFreeDescriptorSets=function(device:TVkDevice;descriptorPool:TVkDescriptorPool;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUpdateDescriptorSets=procedure(device:TVkDevice;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet;descriptorCopyCount:TVkUInt32;const pDescriptorCopies:PVkCopyDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateDescriptorSets=procedure(device:TVkDevice;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet;descriptorCopyCount:TVkUInt32;const pDescriptorCopies:PVkCopyDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateFramebuffer=function(device:TVkDevice;const pCreateInfo:PVkFramebufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pFramebuffer:PVkFramebuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateFramebuffer=function(device:TVkDevice;const pCreateInfo:PVkFramebufferCreateInfo;const pAllocator:PVkAllocationCallbacks;pFramebuffer:PVkFramebuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyFramebuffer=procedure(device:TVkDevice;framebuffer:TVkFramebuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyFramebuffer=procedure(device:TVkDevice;framebuffer:TVkFramebuffer;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateRenderPass=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRenderPass=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyRenderPass=procedure(device:TVkDevice;renderPass:TVkRenderPass;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyRenderPass=procedure(device:TVkDevice;renderPass:TVkRenderPass;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRenderAreaGranularity=procedure(device:TVkDevice;renderPass:TVkRenderPass;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRenderAreaGranularity=procedure(device:TVkDevice;renderPass:TVkRenderPass;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRenderingAreaGranularity=procedure(device:TVkDevice;const pRenderingAreaInfo:PVkRenderingAreaInfo;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRenderingAreaGranularity=procedure(device:TVkDevice;const pRenderingAreaInfo:PVkRenderingAreaInfo;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRenderingAreaGranularityKHR=procedure(device:TVkDevice;const pRenderingAreaInfo:PVkRenderingAreaInfo;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRenderingAreaGranularityKHR=procedure(device:TVkDevice;const pRenderingAreaInfo:PVkRenderingAreaInfo;pGranularity:PVkExtent2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateCommandPool=function(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateCommandPool=function(device:TVkDevice;const pCreateInfo:PVkCommandPoolCreateInfo;const pAllocator:PVkAllocationCallbacks;pCommandPool:PVkCommandPool):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetCommandPool=function(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetCommandPool=function(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAllocateCommandBuffers=function(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAllocateCommandBuffers=function(device:TVkDevice;const pAllocateInfo:PVkCommandBufferAllocateInfo;pCommandBuffers:PVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkFreeCommandBuffers=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBeginCommandBuffer=function(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBeginCommandBuffer=function(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkCommandBufferBeginInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEndCommandBuffer=function(commandBuffer:TVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEndCommandBuffer=function(commandBuffer:TVkCommandBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkResetCommandBuffer=function(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkResetCommandBuffer=function(commandBuffer:TVkCommandBuffer;flags:TVkCommandBufferResetFlags):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindPipeline=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindPipeline=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetAttachmentFeedbackLoopEnableEXT=procedure(commandBuffer:TVkCommandBuffer;aspectMask:TVkImageAspectFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetAttachmentFeedbackLoopEnableEXT=procedure(commandBuffer:TVkCommandBuffer;aspectMask:TVkImageAspectFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewport=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewport=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetScissor=procedure(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetScissor=procedure(commandBuffer:TVkCommandBuffer;firstScissor:TVkUInt32;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineWidth=procedure(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineWidth=procedure(commandBuffer:TVkCommandBuffer;lineWidth:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBias=procedure(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBias=procedure(commandBuffer:TVkCommandBuffer;depthBiasConstantFactor:TVkFloat;depthBiasClamp:TVkFloat;depthBiasSlopeFactor:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetBlendConstants=procedure(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetBlendConstants=procedure(commandBuffer:TVkCommandBuffer;const blendConstants:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBounds=procedure(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBounds=procedure(commandBuffer:TVkCommandBuffer;minDepthBounds:TVkFloat;maxDepthBounds:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilCompareMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilCompareMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;compareMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilWriteMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilWriteMask=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;writeMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilReference=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;reference:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorSets=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorSets=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;descriptorSetCount:TVkUInt32;const pDescriptorSets:PVkDescriptorSet;dynamicOffsetCount:TVkUInt32;const pDynamicOffsets:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindIndexBuffer=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindIndexBuffer=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindVertexBuffers=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindVertexBuffers=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDraw=procedure(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDraw=procedure(commandBuffer:TVkCommandBuffer;vertexCount:TVkUInt32;instanceCount:TVkUInt32;firstVertex:TVkUInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexed=procedure(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexed=procedure(commandBuffer:TVkCommandBuffer;indexCount:TVkUInt32;instanceCount:TVkUInt32;firstIndex:TVkUInt32;vertexOffset:TVkInt32;firstInstance:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMultiEXT=procedure(commandBuffer:TVkCommandBuffer;drawCount:TVkUInt32;const pVertexInfo:PVkMultiDrawInfoEXT;instanceCount:TVkUInt32;firstInstance:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMultiEXT=procedure(commandBuffer:TVkCommandBuffer;drawCount:TVkUInt32;const pVertexInfo:PVkMultiDrawInfoEXT;instanceCount:TVkUInt32;firstInstance:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMultiIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;drawCount:TVkUInt32;const pIndexInfo:PVkMultiDrawIndexedInfoEXT;instanceCount:TVkUInt32;firstInstance:TVkUInt32;stride:TVkUInt32;const pVertexOffset:PVkInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMultiIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;drawCount:TVkUInt32;const pIndexInfo:PVkMultiDrawIndexedInfoEXT;instanceCount:TVkUInt32;firstInstance:TVkUInt32;stride:TVkUInt32;const pVertexOffset:PVkInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatch=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchIndirect=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSubpassShadingHUAWEI=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSubpassShadingHUAWEI=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawClusterHUAWEI=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawClusterHUAWEI=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawClusterIndirectHUAWEI=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawClusterIndirectHUAWEI=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdUpdatePipelineIndirectBufferNV=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdUpdatePipelineIndirectBufferNV=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBuffer=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBuffer=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBlitImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBlitImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageBlit;filter:TVkFilter); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBufferToImage=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBufferToImage=procedure(commandBuffer:TVkCommandBuffer;srcBuffer:TVkBuffer;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImageToBuffer=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImageToBuffer=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstBuffer:TVkBuffer;regionCount:TVkUInt32;const pRegions:PVkBufferImageCopy); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryIndirectNV=procedure(commandBuffer:TVkCommandBuffer;copyBufferAddress:TVkDeviceAddress;copyCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryIndirectNV=procedure(commandBuffer:TVkCommandBuffer;copyBufferAddress:TVkDeviceAddress;copyCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryIndirectInfo:PVkCopyMemoryIndirectInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryIndirectInfo:PVkCopyMemoryIndirectInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryToImageIndirectNV=procedure(commandBuffer:TVkCommandBuffer;copyBufferAddress:TVkDeviceAddress;copyCount:TVkUInt32;stride:TVkUInt32;dstImage:TVkImage;dstImageLayout:TVkImageLayout;const pImageSubresources:PVkImageSubresourceLayers); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryToImageIndirectNV=procedure(commandBuffer:TVkCommandBuffer;copyBufferAddress:TVkDeviceAddress;copyCount:TVkUInt32;stride:TVkUInt32;dstImage:TVkImage;dstImageLayout:TVkImageLayout;const pImageSubresources:PVkImageSubresourceLayers); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryToImageIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryToImageIndirectInfo:PVkCopyMemoryToImageIndirectInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryToImageIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryToImageIndirectInfo:PVkCopyMemoryToImageIndirectInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdUpdateBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdUpdateBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;dataSize:TVkDeviceSize;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdFillBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdFillBuffer=procedure(commandBuffer:TVkCommandBuffer;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;size:TVkDeviceSize;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdClearColorImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdClearColorImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pColor:PVkClearColorValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdClearDepthStencilImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdClearDepthStencilImage=procedure(commandBuffer:TVkCommandBuffer;image:TVkImage;imageLayout:TVkImageLayout;const pDepthStencil:PVkClearDepthStencilValue;rangeCount:TVkUInt32;const pRanges:PVkImageSubresourceRange); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdClearAttachments=procedure(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdClearAttachments=procedure(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pAttachments:PVkClearAttachment;rectCount:TVkUInt32;const pRects:PVkClearRect); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResolveImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResolveImage=procedure(commandBuffer:TVkCommandBuffer;srcImage:TVkImage;srcImageLayout:TVkImageLayout;dstImage:TVkImage;dstImageLayout:TVkImageLayout;regionCount:TVkUInt32;const pRegions:PVkImageResolve); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResetEvent=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWaitEvents=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWaitEvents=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPipelineBarrier=procedure(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPipelineBarrier=procedure(commandBuffer:TVkCommandBuffer;srcStageMask:TVkPipelineStageFlags;dstStageMask:TVkPipelineStageFlags;dependencyFlags:TVkDependencyFlags;memoryBarrierCount:TVkUInt32;const pMemoryBarriers:PVkMemoryBarrier;bufferMemoryBarrierCount:TVkUInt32;const pBufferMemoryBarriers:PVkBufferMemoryBarrier;imageMemoryBarrierCount:TVkUInt32;const pImageMemoryBarriers:PVkImageMemoryBarrier); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndQuery=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginConditionalRenderingEXT=procedure(commandBuffer:TVkCommandBuffer;const pConditionalRenderingBegin:PVkConditionalRenderingBeginInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginConditionalRenderingEXT=procedure(commandBuffer:TVkCommandBuffer;const pConditionalRenderingBegin:PVkConditionalRenderingBeginInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndConditionalRenderingEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndConditionalRenderingEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginCustomResolveEXT=procedure(commandBuffer:TVkCommandBuffer;const pBeginCustomResolveInfo:PVkBeginCustomResolveInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginCustomResolveEXT=procedure(commandBuffer:TVkCommandBuffer;const pBeginCustomResolveInfo:PVkBeginCustomResolveInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResetQueryPool=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResetQueryPool=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteTimestamp=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteTimestamp=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyQueryPoolResults=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyQueryPoolResults=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;stride:TVkDeviceSize;flags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushConstants=procedure(commandBuffer:TVkCommandBuffer;layout:TVkPipelineLayout;stageFlags:TVkShaderStageFlags;offset:TVkUInt32;size:TVkUInt32;const pValues:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginRenderPass=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginRenderPass=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdNextSubpass=procedure(commandBuffer:TVkCommandBuffer;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdNextSubpass=procedure(commandBuffer:TVkCommandBuffer;contents:TVkSubpassContents); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRenderPass=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRenderPass=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdExecuteCommands=procedure(commandBuffer:TVkCommandBuffer;commandBufferCount:TVkUInt32;const pCommandBuffers:PVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Android}
-     TvkCreateAndroidSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkAndroidSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateAndroidSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkAndroidSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCreateSurfaceOHOS=function(instance:TVkInstance;const pCreateInfo:PVkSurfaceCreateInfoOHOS;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSurfaceOHOS=function(instance:TVkInstance;const pCreateInfo:PVkSurfaceCreateInfoOHOS;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceDisplayPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDisplayPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceDisplayPlanePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlanePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDisplayPlanePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlanePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDisplayPlaneSupportedDisplaysKHR=function(physicalDevice:TVkPhysicalDevice;planeIndex:TVkUInt32;pDisplayCount:PVkUInt32;pDisplays:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDisplayPlaneSupportedDisplaysKHR=function(physicalDevice:TVkPhysicalDevice;planeIndex:TVkUInt32;pDisplayCount:PVkUInt32;pDisplays:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDisplayModePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDisplayModePropertiesKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDisplayModeKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;const pCreateInfo:PVkDisplayModeCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pMode:PVkDisplayModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDisplayModeKHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;const pCreateInfo:PVkDisplayModeCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pMode:PVkDisplayModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDisplayPlaneCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;mode:TVkDisplayModeKHR;planeIndex:TVkUInt32;pCapabilities:PVkDisplayPlaneCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDisplayPlaneCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;mode:TVkDisplayModeKHR;planeIndex:TVkUInt32;pCapabilities:PVkDisplayPlaneCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDisplayPlaneSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDisplayPlaneSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSharedSwapchainsKHR=function(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSharedSwapchainsKHR=function(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySurfaceKHR=procedure(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySurfaceKHR=procedure(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;surface:TVkSurfaceKHR;pSupported:PVkBool32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;surface:TVkSurfaceKHR;pSupported:PVkBool32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceFormatsKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormatKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceFormatsKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormatKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfacePresentModesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfacePresentModesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSwapchainKHR=function(device:TVkDevice;const pCreateInfo:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchain:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSwapchainKHR=function(device:TVkDevice;const pCreateInfo:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchain:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySwapchainKHR=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySwapchainKHR=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainImagesKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainImageCount:PVkUInt32;pSwapchainImages:PVkImage):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireNextImageKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;timeout:TVkUInt64;semaphore:TVkSemaphore;fence:TVkFence;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueuePresentKHR=function(queue:TVkQueue;const pPresentInfo:PVkPresentInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueuePresentKHR=function(queue:TVkQueue;const pPresentInfo:PVkPresentInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateViSurfaceNN=function(instance:TVkInstance;const pCreateInfo:PVkViSurfaceCreateInfoNN;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateViSurfaceNN=function(instance:TVkInstance;const pCreateInfo:PVkViSurfaceCreateInfoNN;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Wayland}
-     TvkCreateWaylandSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWaylandSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateWaylandSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWaylandSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Wayland}
-     TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:PVkWaylandDisplay):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceWaylandPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;display:PVkWaylandDisplay):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef UBM}
-     TvkCreateUbmSurfaceSEC=function(instance:TVkInstance;const pCreateInfo:PVkUbmSurfaceCreateInfoSEC;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateUbmSurfaceSEC=function(instance:TVkInstance;const pCreateInfo:PVkUbmSurfaceCreateInfoSEC;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef UBM}
-     TvkGetPhysicalDeviceUbmPresentationSupportSEC=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;device:PVkUBMDevice):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceUbmPresentationSupportSEC=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;device:PVkUBMDevice):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Windows}
-     TvkCreateWin32SurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateWin32SurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkWin32SurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Windows}
-     TvkGetPhysicalDeviceWin32PresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceWin32PresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef XLIB}
-     TvkCreateXlibSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateXlibSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXlibSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef XLIB}
-     TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PVkXLIBDisplay;visualID:TVkXLIBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceXlibPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dpy:PVkXLIBDisplay;visualID:TVkXLIBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef XCB}
-     TvkCreateXcbSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXcbSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateXcbSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkXcbSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef XCB}
-     TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef DirectFB}
-     TvkCreateDirectFBSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkDirectFBSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDirectFBSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkDirectFBSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef DirectFB}
-     TvkGetPhysicalDeviceDirectFBPresentationSupportEXT=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dfb:PVkDirectFBIDirectFB):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDirectFBPresentationSupportEXT=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;dfb:PVkDirectFBIDirectFB):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Fuchsia}
-     TvkCreateImagePipeSurfaceFUCHSIA=function(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateImagePipeSurfaceFUCHSIA=function(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCreateStreamDescriptorSurfaceGGP=function(instance:TVkInstance;const pCreateInfo:PVkStreamDescriptorSurfaceCreateInfoGGP;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateStreamDescriptorSurfaceGGP=function(instance:TVkInstance;const pCreateInfo:PVkStreamDescriptorSurfaceCreateInfoGGP;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef QNX}
-     TvkCreateScreenSurfaceQNX=function(instance:TVkInstance;const pCreateInfo:PVkScreenSurfaceCreateInfoQNX;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateScreenSurfaceQNX=function(instance:TVkInstance;const pCreateInfo:PVkScreenSurfaceCreateInfoQNX;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef QNX}
-     TvkGetPhysicalDeviceScreenPresentationSupportQNX=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;window:PVkQNXScreenWindow):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceScreenPresentationSupportQNX=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;window:PVkQNXScreenWindow):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugReportMessageEXT=procedure(instance:TVkInstance;flags:TVkDebugReportFlagsEXT;objectType:TVkDebugReportObjectTypeEXT;object_:TVkUInt64;location:TVkSize;messageCode:TVkInt32;const pLayerPrefix:PVkChar;const pMessage:PVkChar); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugMarkerSetObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugMarkerObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDebugMarkerSetObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDebugMarkerSetObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugMarkerObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDebugMarkerBeginEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDebugMarkerBeginEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDebugMarkerEndEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDebugMarkerEndEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDebugMarkerInsertEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDebugMarkerInsertEXT=procedure(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkDebugMarkerMarkerInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceExternalImageFormatPropertiesNV=function(physicalDevice:TVkPhysicalDevice;format:TVkFormat;type_:TVkImageType;tiling:TVkImageTiling;usage:TVkImageUsageFlags;flags:TVkImageCreateFlags;externalHandleType:TVkExternalMemoryHandleTypeFlagsNV;pExternalImageFormatProperties:PVkExternalImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Windows}
-     TvkGetMemoryWin32HandleNV=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryWin32HandleNV=function(device:TVkDevice;memory:TVkDeviceMemory;handleType:TVkExternalMemoryHandleTypeFlagsNV;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCmdExecuteGeneratedCommandsNV=procedure(commandBuffer:TVkCommandBuffer;isPreprocessed:TVkBool32;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdExecuteGeneratedCommandsNV=procedure(commandBuffer:TVkCommandBuffer;isPreprocessed:TVkBool32;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPreprocessGeneratedCommandsNV=procedure(commandBuffer:TVkCommandBuffer;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPreprocessGeneratedCommandsNV=procedure(commandBuffer:TVkCommandBuffer;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindPipelineShaderGroupNV=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline;groupIndex:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindPipelineShaderGroupNV=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline;groupIndex:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetGeneratedCommandsMemoryRequirementsNV=procedure(device:TVkDevice;const pInfo:PVkGeneratedCommandsMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetGeneratedCommandsMemoryRequirementsNV=procedure(device:TVkDevice;const pInfo:PVkGeneratedCommandsMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateIndirectCommandsLayoutNV=function(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateIndirectCommandsLayoutNV=function(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyIndirectCommandsLayoutNV=procedure(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyIndirectCommandsLayoutNV=procedure(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdExecuteGeneratedCommandsEXT=procedure(commandBuffer:TVkCommandBuffer;isPreprocessed:TVkBool32;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdExecuteGeneratedCommandsEXT=procedure(commandBuffer:TVkCommandBuffer;isPreprocessed:TVkBool32;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPreprocessGeneratedCommandsEXT=procedure(commandBuffer:TVkCommandBuffer;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoEXT;stateCommandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPreprocessGeneratedCommandsEXT=procedure(commandBuffer:TVkCommandBuffer;const pGeneratedCommandsInfo:PVkGeneratedCommandsInfoEXT;stateCommandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetGeneratedCommandsMemoryRequirementsEXT=procedure(device:TVkDevice;const pInfo:PVkGeneratedCommandsMemoryRequirementsInfoEXT;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetGeneratedCommandsMemoryRequirementsEXT=procedure(device:TVkDevice;const pInfo:PVkGeneratedCommandsMemoryRequirementsInfoEXT;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateIndirectCommandsLayoutEXT=function(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateIndirectCommandsLayoutEXT=function(device:TVkDevice;const pCreateInfo:PVkIndirectCommandsLayoutCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pIndirectCommandsLayout:PVkIndirectCommandsLayoutEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyIndirectCommandsLayoutEXT=procedure(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyIndirectCommandsLayoutEXT=procedure(device:TVkDevice;indirectCommandsLayout:TVkIndirectCommandsLayoutEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateIndirectExecutionSetEXT=function(device:TVkDevice;const pCreateInfo:PVkIndirectExecutionSetCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pIndirectExecutionSet:PVkIndirectExecutionSetEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateIndirectExecutionSetEXT=function(device:TVkDevice;const pCreateInfo:PVkIndirectExecutionSetCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pIndirectExecutionSet:PVkIndirectExecutionSetEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyIndirectExecutionSetEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyIndirectExecutionSetEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUpdateIndirectExecutionSetPipelineEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;executionSetWriteCount:TVkUInt32;const pExecutionSetWrites:PVkWriteIndirectExecutionSetPipelineEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateIndirectExecutionSetPipelineEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;executionSetWriteCount:TVkUInt32;const pExecutionSetWrites:PVkWriteIndirectExecutionSetPipelineEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUpdateIndirectExecutionSetShaderEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;executionSetWriteCount:TVkUInt32;const pExecutionSetWrites:PVkWriteIndirectExecutionSetShaderEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateIndirectExecutionSetShaderEXT=procedure(device:TVkDevice;indirectExecutionSet:TVkIndirectExecutionSetEXT;executionSetWriteCount:TVkUInt32;const pExecutionSetWrites:PVkWriteIndirectExecutionSetShaderEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFeatures2=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFeatures2=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFeatures2KHR=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFeatures2KHR=procedure(physicalDevice:TVkPhysicalDevice;pFeatures:PVkPhysicalDeviceFeatures2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceProperties2=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceProperties2=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pProperties:PVkPhysicalDeviceProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFormatProperties2=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFormatProperties2=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFormatProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFormatProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;format:TVkFormat;pFormatProperties:PVkFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceImageFormatProperties2=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2;pImageFormatProperties:PVkImageFormatProperties2):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceImageFormatProperties2=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2;pImageFormatProperties:PVkImageFormatProperties2):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceImageFormatProperties2KHR=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2;pImageFormatProperties:PVkImageFormatProperties2):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceImageFormatProperties2KHR=function(physicalDevice:TVkPhysicalDevice;const pImageFormatInfo:PVkPhysicalDeviceImageFormatInfo2;pImageFormatProperties:PVkImageFormatProperties2):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyProperties2=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyProperties2=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pQueueFamilyPropertyCount:PVkUInt32;pQueueFamilyProperties:PVkQueueFamilyProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceMemoryProperties2=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceMemoryProperties2=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceMemoryProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceMemoryProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;pMemoryProperties:PVkPhysicalDeviceMemoryProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSparseImageFormatProperties2=procedure(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSparseImageFormatProperties2=procedure(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSparseImageFormatProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSparseImageFormatProperties2KHR=procedure(physicalDevice:TVkPhysicalDevice;const pFormatInfo:PVkPhysicalDeviceSparseImageFormatInfo2;pPropertyCount:PVkUInt32;pProperties:PVkSparseImageFormatProperties2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSet=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSet=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSetKHR=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSetKHR=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32;descriptorWriteCount:TVkUInt32;const pDescriptorWrites:PVkWriteDescriptorSet); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkTrimCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkTrimCommandPool=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkTrimCommandPoolKHR=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkTrimCommandPoolKHR=procedure(device:TVkDevice;commandPool:TVkCommandPool;flags:TVkCommandPoolTrimFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceExternalBufferProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfo;pExternalBufferProperties:PVkExternalBufferProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceExternalBufferProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfo;pExternalBufferProperties:PVkExternalBufferProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceExternalBufferPropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfo;pExternalBufferProperties:PVkExternalBufferProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceExternalBufferPropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalBufferInfo:PVkPhysicalDeviceExternalBufferInfo;pExternalBufferProperties:PVkExternalBufferProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Windows}
-     TvkGetMemoryWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkMemoryGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkMemoryGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Windows}
-     TvkGetMemoryWin32HandlePropertiesKHR=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;handle:THANDLE;pMemoryWin32HandleProperties:PVkMemoryWin32HandlePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryWin32HandlePropertiesKHR=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;handle:THANDLE;pMemoryWin32HandleProperties:PVkMemoryWin32HandlePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkGetMemoryFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkMemoryGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkMemoryGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMemoryFdPropertiesKHR=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;fd:TVkInt32;pMemoryFdProperties:PVkMemoryFdPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryFdPropertiesKHR=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;fd:TVkInt32;pMemoryFdProperties:PVkMemoryFdPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Fuchsia}
-     TvkGetMemoryZirconHandleFUCHSIA=function(device:TVkDevice;const pGetZirconHandleInfo:PVkMemoryGetZirconHandleInfoFUCHSIA;pZirconHandle:PVkFuchsiaZXHandle):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef Fuchsia}
-     TvkGetMemoryZirconHandlePropertiesFUCHSIA=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;zirconHandle:TVkFuchsiaZXHandle;pMemoryZirconHandleProperties:PVkMemoryZirconHandlePropertiesFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-     TvkGetMemoryRemoteAddressNV=function(device:TVkDevice;const pMemoryGetRemoteAddressInfo:PVkMemoryGetRemoteAddressInfoNV;pAddress:PVkRemoteAddressNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-{$ifdef NvSci}
-     TvkGetMemorySciBufNV=function(device:TVkDevice;const pGetSciBufInfo:PVkMemoryGetSciBufInfoNV;pHandle:PNvSciBufObj):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef NvSci}
-     TvkGetPhysicalDeviceExternalMemorySciBufPropertiesNV=function(physicalDevice:TVkPhysicalDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;handle:TNvSciBufObj;pMemorySciBufProperties:PVkMemorySciBufPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef NvSci}
-     TvkGetPhysicalDeviceSciBufAttributesNV=function(physicalDevice:TVkPhysicalDevice;pAttributes:TNvSciBufAttrList):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-     TvkGetPhysicalDeviceExternalSemaphoreProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfo;pExternalSemaphoreProperties:PVkExternalSemaphoreProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-     TvkGetPhysicalDeviceExternalSemaphorePropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfo;pExternalSemaphoreProperties:PVkExternalSemaphoreProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-{$ifdef Windows}
-     TvkGetSemaphoreWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkSemaphoreGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef Windows}
-     TvkImportSemaphoreWin32HandleKHR=function(device:TVkDevice;const pImportSemaphoreWin32HandleInfo:PVkImportSemaphoreWin32HandleInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-     TvkGetSemaphoreFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkSemaphoreGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-     TvkImportSemaphoreFdKHR=function(device:TVkDevice;const pImportSemaphoreFdInfo:PVkImportSemaphoreFdInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-{$ifdef Fuchsia}
-     TvkGetSemaphoreZirconHandleFUCHSIA=function(device:TVkDevice;const pGetZirconHandleInfo:PVkSemaphoreGetZirconHandleInfoFUCHSIA;pZirconHandle:PVkFuchsiaZXHandle):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryZirconHandleFUCHSIA=function(device:TVkDevice;const pGetZirconHandleInfo:PVkMemoryGetZirconHandleInfoFUCHSIA;pZirconHandle:PVkFuchsiaZXHandle):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Fuchsia}
-     TvkImportSemaphoreZirconHandleFUCHSIA=function(device:TVkDevice;const pImportSemaphoreZirconHandleInfo:PVkImportSemaphoreZirconHandleInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryZirconHandlePropertiesFUCHSIA=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;zirconHandle:TVkFuchsiaZXHandle;pMemoryZirconHandleProperties:PVkMemoryZirconHandlePropertiesFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkGetPhysicalDeviceExternalFenceProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalFenceInfo:PVkPhysicalDeviceExternalFenceInfo;pExternalFenceProperties:PVkExternalFenceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryRemoteAddressNV=function(device:TVkDevice;const pMemoryGetRemoteAddressInfo:PVkMemoryGetRemoteAddressInfoNV;pAddress:PVkRemoteAddressNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceExternalFencePropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalFenceInfo:PVkPhysicalDeviceExternalFenceInfo;pExternalFenceProperties:PVkExternalFenceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef NvSci}
+     TvkGetMemorySciBufNV=function(device:TVkDevice;const pGetSciBufInfo:PVkMemoryGetSciBufInfoNV;pHandle:PNvSciBufObj):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkGetPhysicalDeviceExternalMemorySciBufPropertiesNV=function(physicalDevice:TVkPhysicalDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;handle:TNvSciBufObj;pMemorySciBufProperties:PVkMemorySciBufPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkGetPhysicalDeviceSciBufAttributesNV=function(physicalDevice:TVkPhysicalDevice;pAttributes:TNvSciBufAttrList):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+     TvkGetPhysicalDeviceExternalSemaphoreProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfo;pExternalSemaphoreProperties:PVkExternalSemaphoreProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceExternalSemaphorePropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalSemaphoreInfo:PVkPhysicalDeviceExternalSemaphoreInfo;pExternalSemaphoreProperties:PVkExternalSemaphoreProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Windows}
-     TvkGetFenceWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkFenceGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSemaphoreWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkSemaphoreGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Windows}
-     TvkImportFenceWin32HandleKHR=function(device:TVkDevice;const pImportFenceWin32HandleInfo:PVkImportFenceWin32HandleInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkImportSemaphoreWin32HandleKHR=function(device:TVkDevice;const pImportSemaphoreWin32HandleInfo:PVkImportSemaphoreWin32HandleInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkGetFenceFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkFenceGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSemaphoreFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkSemaphoreGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkImportFenceFdKHR=function(device:TVkDevice;const pImportFenceFdInfo:PVkImportFenceFdInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkImportSemaphoreFdKHR=function(device:TVkDevice;const pImportSemaphoreFdInfo:PVkImportSemaphoreFdInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-{$ifdef NvSci}
-     TvkGetFenceSciSyncFenceNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef Fuchsia}
+     TvkGetSemaphoreZirconHandleFUCHSIA=function(device:TVkDevice;const pGetZirconHandleInfo:PVkSemaphoreGetZirconHandleInfoFUCHSIA;pZirconHandle:PVkFuchsiaZXHandle):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef NvSci}
-     TvkGetFenceSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef Fuchsia}
+     TvkImportSemaphoreZirconHandleFUCHSIA=function(device:TVkDevice;const pImportSemaphoreZirconHandleInfo:PVkImportSemaphoreZirconHandleInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef NvSci}
-     TvkImportFenceSciSyncFenceNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceExternalFenceProperties=procedure(physicalDevice:TVkPhysicalDevice;const pExternalFenceInfo:PVkPhysicalDeviceExternalFenceInfo;pExternalFenceProperties:PVkExternalFenceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceExternalFencePropertiesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pExternalFenceInfo:PVkPhysicalDeviceExternalFenceInfo;pExternalFenceProperties:PVkExternalFenceProperties); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+
+{$ifdef Windows}
+     TvkGetFenceWin32HandleKHR=function(device:TVkDevice;const pGetWin32HandleInfo:PVkFenceGetWin32HandleInfoKHR;pHandle:PHANDLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef NvSci}
-     TvkImportFenceSciSyncObjNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef Windows}
+     TvkImportFenceWin32HandleKHR=function(device:TVkDevice;const pImportFenceWin32HandleInfo:PVkImportFenceWin32HandleInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-{$ifdef NvSci}
-     TvkGetSemaphoreSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncInfo:PVkSemaphoreGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
+     TvkGetFenceFdKHR=function(device:TVkDevice;const pGetFdInfo:PVkFenceGetFdInfoKHR;pFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+
+     TvkImportFenceFdKHR=function(device:TVkDevice;const pImportFenceFdInfo:PVkImportFenceFdInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef NvSci}
-     TvkImportSemaphoreSciSyncObjNV=function(device:TVkDevice;const pImportSemaphoreSciSyncInfo:PVkImportSemaphoreSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef NvSci}
-     TvkGetPhysicalDeviceSciSyncAttributesNV=function(physicalDevice:TVkPhysicalDevice;const pSciSyncAttributesInfo:PVkSciSyncAttributesInfoNV;pAttributes:TNvSciSyncAttrList):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef NvSci}
-     TvkCreateSemaphoreSciSyncPoolNV=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreSciSyncPoolCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pSemaphorePool:PVkSemaphoreSciSyncPoolNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetFenceSciSyncFenceNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef NvSci}
-     TvkDestroySemaphoreSciSyncPoolNV=procedure(device:TVkDevice;semaphorePool:TVkSemaphoreSciSyncPoolNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetFenceSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkReleaseDisplayEXT=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef NvSci}
+     TvkImportFenceSciSyncFenceNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkImportFenceSciSyncObjNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkGetSemaphoreSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncInfo:PVkSemaphoreGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkImportSemaphoreSciSyncObjNV=function(device:TVkDevice;const pImportSemaphoreSciSyncInfo:PVkImportSemaphoreSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkGetPhysicalDeviceSciSyncAttributesNV=function(physicalDevice:TVkPhysicalDevice;const pSciSyncAttributesInfo:PVkSciSyncAttributesInfoNV;pAttributes:TNvSciSyncAttrList):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkCreateSemaphoreSciSyncPoolNV=function(device:TVkDevice;const pCreateInfo:PVkSemaphoreSciSyncPoolCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pSemaphorePool:PVkSemaphoreSciSyncPoolNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef NvSci}
+     TvkDestroySemaphoreSciSyncPoolNV=procedure(device:TVkDevice;semaphorePool:TVkSemaphoreSciSyncPoolNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+     TvkReleaseDisplayEXT=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef XLIB}
-     TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireXlibDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef RandR}
-     TvkGetRandROutputDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRandROutputDisplayEXT=function(physicalDevice:TVkPhysicalDevice;dpy:PVkXLIBDisplay;rrOutput:TRROutput;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkAcquireWinrtDisplayNV=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireWinrtDisplayNV=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetWinrtDisplayNV=function(physicalDevice:TVkPhysicalDevice;deviceRelativeId:TVkUInt32;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetWinrtDisplayNV=function(physicalDevice:TVkPhysicalDevice;deviceRelativeId:TVkUInt32;pDisplay:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDisplayPowerControlEXT=function(device:TVkDevice;display:TVkDisplayKHR;const pDisplayPowerInfo:PVkDisplayPowerInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDisplayPowerControlEXT=function(device:TVkDevice;display:TVkDisplayKHR;const pDisplayPowerInfo:PVkDisplayPowerInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkRegisterDeviceEventEXT=function(device:TVkDevice;const pDeviceEventInfo:PVkDeviceEventInfoEXT;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkRegisterDeviceEventEXT=function(device:TVkDevice;const pDeviceEventInfo:PVkDeviceEventInfoEXT;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkRegisterDisplayEventEXT=function(device:TVkDevice;display:TVkDisplayKHR;const pDisplayEventInfo:PVkDisplayEventInfoEXT;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkRegisterDisplayEventEXT=function(device:TVkDevice;display:TVkDisplayKHR;const pDisplayEventInfo:PVkDisplayEventInfoEXT;const pAllocator:PVkAllocationCallbacks;pFence:PVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainCounterEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;counter:TVkSurfaceCounterFlagBitsEXT;pCounterValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainCounterEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;counter:TVkSurfaceCounterFlagBitsEXT;pCounterValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceCapabilities2EXT=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilities2EXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceCapabilities2EXT=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pSurfaceCapabilities:PVkSurfaceCapabilities2EXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDeviceGroups=function(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDeviceGroups=function(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDeviceGroupsKHR=function(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDeviceGroupsKHR=function(instance:TVkInstance;pPhysicalDeviceGroupCount:PVkUInt32;pPhysicalDeviceGroupProperties:PVkPhysicalDeviceGroupProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceGroupPeerMemoryFeatures=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceGroupPeerMemoryFeatures=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceGroupPeerMemoryFeaturesKHR=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceGroupPeerMemoryFeaturesKHR=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindBufferMemory2=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindBufferMemory2=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindBufferMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindBufferMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindImageMemory2=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindImageMemory2=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindImageMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindImageMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDeviceMask=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDeviceMask=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDeviceMaskKHR=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDeviceMaskKHR=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceGroupPresentCapabilitiesKHR=function(device:TVkDevice;pDeviceGroupPresentCapabilities:PVkDeviceGroupPresentCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceGroupPresentCapabilitiesKHR=function(device:TVkDevice;pDeviceGroupPresentCapabilities:PVkDeviceGroupPresentCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceGroupSurfacePresentModesKHR=function(device:TVkDevice;surface:TVkSurfaceKHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceGroupSurfacePresentModesKHR=function(device:TVkDevice;surface:TVkSurfaceKHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireNextImage2KHR=function(device:TVkDevice;const pAcquireInfo:PVkAcquireNextImageInfoKHR;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireNextImage2KHR=function(device:TVkDevice;const pAcquireInfo:PVkAcquireNextImageInfoKHR;pImageIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchBase=procedure(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchBase=procedure(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchBaseKHR=procedure(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchBaseKHR=procedure(commandBuffer:TVkCommandBuffer;baseGroupX:TVkUInt32;baseGroupY:TVkUInt32;baseGroupZ:TVkUInt32;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDevicePresentRectanglesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pRectCount:PVkUInt32;pRects:PVkRect2D):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDevicePresentRectanglesKHR=function(physicalDevice:TVkPhysicalDevice;surface:TVkSurfaceKHR;pRectCount:PVkUInt32;pRects:PVkRect2D):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDescriptorUpdateTemplate=function(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplate):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDescriptorUpdateTemplate=function(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplate):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDescriptorUpdateTemplateKHR=function(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplate):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDescriptorUpdateTemplateKHR=function(device:TVkDevice;const pCreateInfo:PVkDescriptorUpdateTemplateCreateInfo;const pAllocator:PVkAllocationCallbacks;pDescriptorUpdateTemplate:PVkDescriptorUpdateTemplate):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDescriptorUpdateTemplate=procedure(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDescriptorUpdateTemplate=procedure(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDescriptorUpdateTemplateKHR=procedure(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDescriptorUpdateTemplateKHR=procedure(device:TVkDevice;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUpdateDescriptorSetWithTemplate=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateDescriptorSetWithTemplate=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUpdateDescriptorSetWithTemplateKHR=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateDescriptorSetWithTemplateKHR=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSetWithTemplate=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSetWithTemplate=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSetWithTemplateKHR=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSetWithTemplateKHR=procedure(commandBuffer:TVkCommandBuffer;descriptorUpdateTemplate:TVkDescriptorUpdateTemplate;layout:TVkPipelineLayout;set_:TVkUInt32;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetHdrMetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetHdrMetadataEXT=procedure(device:TVkDevice;swapchainCount:TVkUInt32;const pSwapchains:PVkSwapchainKHR;const pMetadata:PVkHdrMetadataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainStatusKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainStatusKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRefreshCycleDurationGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRefreshCycleDurationGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pDisplayTimingProperties:PVkRefreshCycleDurationGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPastPresentationTimingGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPastPresentationTimingGOOGLE=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pPresentationTimingCount:PVkUInt32;pPresentationTimings:PVkPastPresentationTimingGOOGLE):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef MoltenVK_IOS}
-     TvkCreateIOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateIOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkIOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef MoltenVK_MacOS}
-     TvkCreateMacOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateMacOSSurfaceMVK=function(instance:TVkInstance;const pCreateInfo:PVkMacOSSurfaceCreateInfoMVK;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCreateMetalSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkMetalSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateMetalSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkMetalSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportWScalingNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportWScalings:PVkViewportWScalingNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDiscardRectangleEnableEXT=procedure(commandBuffer:TVkCommandBuffer;discardRectangleEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDiscardRectangleEnableEXT=procedure(commandBuffer:TVkCommandBuffer;discardRectangleEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDiscardRectangleModeEXT=procedure(commandBuffer:TVkCommandBuffer;discardRectangleMode:TVkDiscardRectangleModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDiscardRectangleModeEXT=procedure(commandBuffer:TVkCommandBuffer;discardRectangleMode:TVkDiscardRectangleModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetSampleLocationsEXT=procedure(commandBuffer:TVkCommandBuffer;const pSampleLocationsInfo:PVkSampleLocationsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetSampleLocationsEXT=procedure(commandBuffer:TVkCommandBuffer;const pSampleLocationsInfo:PVkSampleLocationsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceMultisamplePropertiesEXT=procedure(physicalDevice:TVkPhysicalDevice;samples:TVkSampleCountFlagBits;pMultisampleProperties:PVkMultisamplePropertiesEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceMultisamplePropertiesEXT=procedure(physicalDevice:TVkPhysicalDevice;samples:TVkSampleCountFlagBits;pMultisampleProperties:PVkMultisamplePropertiesEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfaceFormats2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfaceFormats2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceDisplayProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDisplayProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceDisplayPlaneProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlaneProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDisplayPlaneProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlaneProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDisplayModeProperties2KHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModeProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDisplayModeProperties2KHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModeProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDisplayPlaneCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pDisplayPlaneInfo:PVkDisplayPlaneInfo2KHR;pCapabilities:PVkDisplayPlaneCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDisplayPlaneCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pDisplayPlaneInfo:PVkDisplayPlaneInfo2KHR;pCapabilities:PVkDisplayPlaneCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSparseMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSparseMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSparseMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSparseMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceBufferMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceBufferMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceBufferMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceBufferMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceBufferMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceBufferMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceBufferMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceBufferMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageSparseMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageSparseMemoryRequirements=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageSparseMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageSparseMemoryRequirementsKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageMemoryRequirements;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSamplerYcbcrConversion=function(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfo;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversion):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSamplerYcbcrConversion=function(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfo;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversion):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateSamplerYcbcrConversionKHR=function(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfo;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversion):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateSamplerYcbcrConversionKHR=function(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfo;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversion):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySamplerYcbcrConversion=procedure(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversion;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySamplerYcbcrConversion=procedure(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversion;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroySamplerYcbcrConversionKHR=procedure(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversion;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroySamplerYcbcrConversionKHR=procedure(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversion;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceQueue2=procedure(device:TVkDevice;const pQueueInfo:PVkDeviceQueueInfo2;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceQueue2=procedure(device:TVkDevice;const pQueueInfo:PVkDeviceQueueInfo2;pQueue:PVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateValidationCacheEXT=function(device:TVkDevice;const pCreateInfo:PVkValidationCacheCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pValidationCache:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateValidationCacheEXT=function(device:TVkDevice;const pCreateInfo:PVkValidationCacheCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pValidationCache:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyValidationCacheEXT=procedure(device:TVkDevice;validationCache:TVkValidationCacheEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyValidationCacheEXT=procedure(device:TVkDevice;validationCache:TVkValidationCacheEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetValidationCacheDataEXT=function(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetValidationCacheDataEXT=function(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkMergeValidationCachesEXT=function(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMergeValidationCachesEXT=function(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetLayoutSupport=procedure(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;pSupport:PVkDescriptorSetLayoutSupport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetLayoutSupport=procedure(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;pSupport:PVkDescriptorSetLayoutSupport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetLayoutSupportKHR=procedure(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;pSupport:PVkDescriptorSetLayoutSupport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetLayoutSupportKHR=procedure(device:TVkDevice;const pCreateInfo:PVkDescriptorSetLayoutCreateInfo;pSupport:PVkDescriptorSetLayoutSupport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainGrallocUsageANDROID=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainGrallocUsageANDROID=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Android}
-     TvkGetSwapchainGrallocUsage2ANDROID=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;swapchainImageUsage:TVkSwapchainImageUsageFlagsANDROID;grallocConsumerUsage:PVkUInt64;grallocProducerUsage:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainGrallocUsage2ANDROID=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;swapchainImageUsage:TVkSwapchainImageUsageFlagsANDROID;grallocConsumerUsage:PVkUInt64;grallocProducerUsage:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkAcquireImageANDROID=function(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireImageANDROID=function(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetLocalDimmingAMD=procedure(device:TVkDevice;swapChain:TVkSwapchainKHR;localDimmingEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetLocalDimmingAMD=procedure(device:TVkDevice;swapChain:TVkSwapchainKHR;localDimmingEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceCalibrateableTimeDomainsKHR=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCalibrateableTimeDomainsKHR=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetCalibratedTimestampsKHR=function(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoKHR;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetCalibratedTimestampsKHR=function(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoKHR;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetCalibratedTimestampsEXT=function(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoKHR;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetCalibratedTimestampsEXT=function(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoKHR;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetDebugUtilsObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugUtilsObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetDebugUtilsObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugUtilsObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetDebugUtilsObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugUtilsObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetDebugUtilsObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugUtilsObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueBeginDebugUtilsLabelEXT=procedure(queue:TVkQueue;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueBeginDebugUtilsLabelEXT=procedure(queue:TVkQueue;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueEndDebugUtilsLabelEXT=procedure(queue:TVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueEndDebugUtilsLabelEXT=procedure(queue:TVkQueue); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueInsertDebugUtilsLabelEXT=procedure(queue:TVkQueue;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueInsertDebugUtilsLabelEXT=procedure(queue:TVkQueue;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdInsertDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdInsertDebugUtilsLabelEXT=procedure(commandBuffer:TVkCommandBuffer;const pLabelInfo:PVkDebugUtilsLabelEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDebugUtilsMessengerEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugUtilsMessengerCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pMessenger:PVkDebugUtilsMessengerEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDebugUtilsMessengerEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugUtilsMessengerCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pMessenger:PVkDebugUtilsMessengerEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDebugUtilsMessengerEXT=procedure(instance:TVkInstance;messenger:TVkDebugUtilsMessengerEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDebugUtilsMessengerEXT=procedure(instance:TVkInstance;messenger:TVkDebugUtilsMessengerEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSubmitDebugUtilsMessageEXT=procedure(instance:TVkInstance;messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSubmitDebugUtilsMessageEXT=procedure(instance:TVkInstance;messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMemoryHostPointerPropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryHostPointerPropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteBufferMarkerAMD=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteBufferMarkerAMD=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateRenderPass2=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo2;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRenderPass2=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo2;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateRenderPass2KHR=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo2;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRenderPass2KHR=function(device:TVkDevice;const pCreateInfo:PVkRenderPassCreateInfo2;const pAllocator:PVkAllocationCallbacks;pRenderPass:PVkRenderPass):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginRenderPass2=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;const pSubpassBeginInfo:PVkSubpassBeginInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginRenderPass2=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;const pSubpassBeginInfo:PVkSubpassBeginInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginRenderPass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;const pSubpassBeginInfo:PVkSubpassBeginInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginRenderPass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderPassBegin:PVkRenderPassBeginInfo;const pSubpassBeginInfo:PVkSubpassBeginInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdNextSubpass2=procedure(commandBuffer:TVkCommandBuffer;const pSubpassBeginInfo:PVkSubpassBeginInfo;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdNextSubpass2=procedure(commandBuffer:TVkCommandBuffer;const pSubpassBeginInfo:PVkSubpassBeginInfo;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdNextSubpass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassBeginInfo:PVkSubpassBeginInfo;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdNextSubpass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassBeginInfo:PVkSubpassBeginInfo;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRenderPass2=procedure(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRenderPass2=procedure(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRenderPass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRenderPass2KHR=procedure(commandBuffer:TVkCommandBuffer;const pSubpassEndInfo:PVkSubpassEndInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSemaphoreCounterValue=function(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSemaphoreCounterValue=function(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSemaphoreCounterValueKHR=function(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSemaphoreCounterValueKHR=function(device:TVkDevice;semaphore:TVkSemaphore;pValue:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWaitSemaphores=function(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfo;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWaitSemaphores=function(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfo;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWaitSemaphoresKHR=function(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfo;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWaitSemaphoresKHR=function(device:TVkDevice;const pWaitInfo:PVkSemaphoreWaitInfo;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSignalSemaphore=function(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSignalSemaphore=function(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSignalSemaphoreKHR=function(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSignalSemaphoreKHR=function(device:TVkDevice;const pSignalInfo:PVkSemaphoreSignalInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Android}
-     TvkGetAndroidHardwareBufferPropertiesANDROID=function(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAndroidHardwareBufferPropertiesANDROID=function(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Android}
-     TvkGetMemoryAndroidHardwareBufferANDROID=function(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryAndroidHardwareBufferANDROID=function(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCmdDrawIndirectCount=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectCount=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirectCount=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirectCount=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirectCountAMD=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCheckpointNV=procedure(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCheckpointNV=procedure(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetQueueCheckpointDataNV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetQueueCheckpointDataNV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindTransformFeedbackBuffersEXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindTransformFeedbackBuffersEXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirectByteCountEXT=procedure(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;counterBuffer:TVkBuffer;counterBufferOffset:TVkDeviceSize;counterOffset:TVkUInt32;vertexStride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectByteCountEXT=procedure(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;counterBuffer:TVkBuffer;counterBufferOffset:TVkDeviceSize;counterOffset:TVkUInt32;vertexStride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetExclusiveScissorNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetExclusiveScissorNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetExclusiveScissorEnableNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissorEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetExclusiveScissorEnableNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissorEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindShadingRateImageNV=procedure(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindShadingRateImageNV=procedure(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportShadingRatePaletteNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pShadingRatePalettes:PVkShadingRatePaletteNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportShadingRatePaletteNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pShadingRatePalettes:PVkShadingRatePaletteNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoarseSampleOrderNV=procedure(commandBuffer:TVkCommandBuffer;sampleOrderType:TVkCoarseSampleOrderTypeNV;customSampleOrderCount:TVkUInt32;const pCustomSampleOrders:PVkCoarseSampleOrderCustomNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoarseSampleOrderNV=procedure(commandBuffer:TVkCommandBuffer;sampleOrderType:TVkCoarseSampleOrderTypeNV;customSampleOrderCount:TVkUInt32;const pCustomSampleOrders:PVkCoarseSampleOrderCustomNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksNV=procedure(commandBuffer:TVkCommandBuffer;taskCount:TVkUInt32;firstTask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksNV=procedure(commandBuffer:TVkCommandBuffer;taskCount:TVkUInt32;firstTask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirectNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirectNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksEXT=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksEXT=procedure(commandBuffer:TVkCommandBuffer;groupCountX:TVkUInt32;groupCountY:TVkUInt32;groupCountZ:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirectEXT=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirectEXT=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirectCountEXT=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirectCountEXT=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCompileDeferredNV=function(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCompileDeferredNV=function(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateAccelerationStructureNV=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateAccelerationStructureNV=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindInvocationMaskHUAWEI=procedure(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindInvocationMaskHUAWEI=procedure(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyAccelerationStructureKHR=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyAccelerationStructureKHR=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyAccelerationStructureNV=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyAccelerationStructureNV=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureMemoryRequirementsNV=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureMemoryRequirementsNV=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindAccelerationStructureMemoryNV=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindAccelerationStructureMemoryNV=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;mode:TVkCopyAccelerationStructureModeKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;mode:TVkCopyAccelerationStructureModeKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyAccelerationStructureKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyAccelerationStructureInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyAccelerationStructureKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyAccelerationStructureInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyAccelerationStructureKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyAccelerationStructureInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyAccelerationStructureKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyAccelerationStructureInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyAccelerationStructureToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyAccelerationStructureToMemoryInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyAccelerationStructureToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyAccelerationStructureToMemoryInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyAccelerationStructureToMemoryKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyAccelerationStructureToMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyAccelerationStructureToMemoryKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyAccelerationStructureToMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryToAccelerationStructureKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMemoryToAccelerationStructureInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryToAccelerationStructureKHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMemoryToAccelerationStructureInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMemoryToAccelerationStructureKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMemoryToAccelerationStructureInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMemoryToAccelerationStructureKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMemoryToAccelerationStructureInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteAccelerationStructuresPropertiesKHR=procedure(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureKHR;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteAccelerationStructuresPropertiesKHR=procedure(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureKHR;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteAccelerationStructuresPropertiesNV=procedure(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureNV;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteAccelerationStructuresPropertiesNV=procedure(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureNV;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkAccelerationStructureInfoNV;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;update:TVkBool32;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkAccelerationStructureInfoNV;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;update:TVkBool32;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWriteAccelerationStructuresPropertiesKHR=function(device:TVkDevice;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureKHR;queryType:TVkQueryType;dataSize:TVkSize;pData:PVkVoid;stride:TVkSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWriteAccelerationStructuresPropertiesKHR=function(device:TVkDevice;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureKHR;queryType:TVkQueryType;dataSize:TVkSize;pData:PVkVoid;stride:TVkSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdTraceRaysKHR=procedure(commandBuffer:TVkCommandBuffer;const pRaygenShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pMissShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pHitShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pCallableShaderBindingTable:PVkStridedDeviceAddressRegionKHR;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdTraceRaysKHR=procedure(commandBuffer:TVkCommandBuffer;const pRaygenShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pMissShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pHitShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pCallableShaderBindingTable:PVkStridedDeviceAddressRegionKHR;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdTraceRaysNV=procedure(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;callableShaderBindingTableBuffer:TVkBuffer;callableShaderBindingOffset:TVkDeviceSize;callableShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdTraceRaysNV=procedure(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;callableShaderBindingTableBuffer:TVkBuffer;callableShaderBindingOffset:TVkDeviceSize;callableShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRayTracingShaderGroupHandlesKHR=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRayTracingShaderGroupHandlesKHR=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRayTracingShaderGroupHandlesNV=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRayTracingShaderGroupHandlesNV=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRayTracingCaptureReplayShaderGroupHandlesKHR=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRayTracingCaptureReplayShaderGroupHandlesKHR=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureHandleNV=function(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureHandleNV=function(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateRayTracingPipelinesNV=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRayTracingPipelinesNV=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateRayTracingPipelinesKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRayTracingPipelinesKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceCooperativeMatrixPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCooperativeMatrixPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdTraceRaysIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pRaygenShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pMissShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pHitShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pCallableShaderBindingTable:PVkStridedDeviceAddressRegionKHR;indirectDeviceAddress:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdTraceRaysIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;const pRaygenShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pMissShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pHitShaderBindingTable:PVkStridedDeviceAddressRegionKHR;const pCallableShaderBindingTable:PVkStridedDeviceAddressRegionKHR;indirectDeviceAddress:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdTraceRaysIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;indirectDeviceAddress:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdTraceRaysIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;indirectDeviceAddress:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetClusterAccelerationStructureBuildSizesNV=procedure(device:TVkDevice;const pInfo:PVkClusterAccelerationStructureInputInfoNV;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetClusterAccelerationStructureBuildSizesNV=procedure(device:TVkDevice;const pInfo:PVkClusterAccelerationStructureInputInfoNV;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildClusterAccelerationStructureIndirectNV=procedure(commandBuffer:TVkCommandBuffer;const pCommandInfos:PVkClusterAccelerationStructureCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildClusterAccelerationStructureIndirectNV=procedure(commandBuffer:TVkCommandBuffer;const pCommandInfos:PVkClusterAccelerationStructureCommandsInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceAccelerationStructureCompatibilityKHR=procedure(device:TVkDevice;const pVersionInfo:PVkAccelerationStructureVersionInfoKHR;pCompatibility:PVkAccelerationStructureCompatibilityKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceAccelerationStructureCompatibilityKHR=procedure(device:TVkDevice;const pVersionInfo:PVkAccelerationStructureVersionInfoKHR;pCompatibility:PVkAccelerationStructureCompatibilityKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRayTracingShaderGroupStackSizeKHR=function(device:TVkDevice;pipeline:TVkPipeline;group:TVkUInt32;groupShader:TVkShaderGroupShaderKHR):TVkDeviceSize; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRayTracingShaderGroupStackSizeKHR=function(device:TVkDevice;pipeline:TVkPipeline;group:TVkUInt32;groupShader:TVkShaderGroupShaderKHR):TVkDeviceSize; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRayTracingPipelineStackSizeKHR=procedure(commandBuffer:TVkCommandBuffer;pipelineStackSize:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRayTracingPipelineStackSizeKHR=procedure(commandBuffer:TVkCommandBuffer;pipelineStackSize:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageViewHandleNVX=function(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageViewHandleNVX=function(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageViewHandle64NVX=function(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageViewHandle64NVX=function(device:TVkDevice;const pInfo:PVkImageViewHandleInfoNVX):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageViewAddressNVX=function(device:TVkDevice;imageView:TVkImageView;pProperties:PVkImageViewAddressPropertiesNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageViewAddressNVX=function(device:TVkDevice;imageView:TVkImageView;pProperties:PVkImageViewAddressPropertiesNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceCombinedImageSamplerIndexNVX=function(device:TVkDevice;imageViewIndex:TVkUInt64;samplerIndex:TVkUInt64):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceCombinedImageSamplerIndexNVX=function(device:TVkDevice;imageViewIndex:TVkUInt64;samplerIndex:TVkUInt64):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSurfacePresentModes2EXT=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSurfacePresentModes2EXT=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pPresentModeCount:PVkUInt32;pPresentModes:PVkPresentModeKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceGroupSurfacePresentModes2EXT=function(device:TVkDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceGroupSurfacePresentModes2EXT=function(device:TVkDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pModes:PVkDeviceGroupPresentModeFlagsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleaseFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleaseFullScreenExclusiveModeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pCounterCount:PVkUInt32;pCounters:PVkPerformanceCounterKHR;pCounterDescriptions:PVkPerformanceCounterDescriptionKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pCounterCount:PVkUInt32;pCounters:PVkPerformanceCounterKHR;pCounterDescriptions:PVkPerformanceCounterDescriptionKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pPerformanceQueryCreateInfo:PVkQueryPoolPerformanceCreateInfoKHR;pNumPasses:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR=procedure(physicalDevice:TVkPhysicalDevice;const pPerformanceQueryCreateInfo:PVkQueryPoolPerformanceCreateInfoKHR;pNumPasses:PVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireProfilingLockKHR=function(device:TVkDevice;const pInfo:PVkAcquireProfilingLockInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireProfilingLockKHR=function(device:TVkDevice;const pInfo:PVkAcquireProfilingLockInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleaseProfilingLockKHR=procedure(device:TVkDevice); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleaseProfilingLockKHR=procedure(device:TVkDevice); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageDrmFormatModifierPropertiesEXT=function(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageDrmFormatModifierPropertiesEXT=function(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferOpaqueCaptureAddress=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferOpaqueCaptureAddress=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferOpaqueCaptureAddressKHR=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferOpaqueCaptureAddressKHR=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferDeviceAddress=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferDeviceAddress=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferDeviceAddressKHR=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferDeviceAddressKHR=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferDeviceAddressEXT=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferDeviceAddressEXT=function(device:TVkDevice;const pInfo:PVkBufferDeviceAddressInfo):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateHeadlessSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkHeadlessSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateHeadlessSurfaceEXT=function(instance:TVkInstance;const pCreateInfo:PVkHeadlessSurfaceCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV=function(physicalDevice:TVkPhysicalDevice;pCombinationCount:PVkUInt32;pCombinations:PVkFramebufferMixedSamplesCombinationNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV=function(physicalDevice:TVkPhysicalDevice;pCombinationCount:PVkUInt32;pCombinations:PVkFramebufferMixedSamplesCombinationNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkInitializePerformanceApiINTEL=function(device:TVkDevice;const pInitializeInfo:PVkInitializePerformanceApiInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkInitializePerformanceApiINTEL=function(device:TVkDevice;const pInitializeInfo:PVkInitializePerformanceApiInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUninitializePerformanceApiINTEL=procedure(device:TVkDevice); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUninitializePerformanceApiINTEL=procedure(device:TVkDevice); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPerformanceMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPerformanceMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPerformanceStreamMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceStreamMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPerformanceStreamMarkerINTEL=function(commandBuffer:TVkCommandBuffer;const pMarkerInfo:PVkPerformanceStreamMarkerInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPerformanceOverrideINTEL=function(commandBuffer:TVkCommandBuffer;const pOverrideInfo:PVkPerformanceOverrideInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPerformanceOverrideINTEL=function(commandBuffer:TVkCommandBuffer;const pOverrideInfo:PVkPerformanceOverrideInfoINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquirePerformanceConfigurationINTEL=function(device:TVkDevice;const pAcquireInfo:PVkPerformanceConfigurationAcquireInfoINTEL;pConfiguration:PVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquirePerformanceConfigurationINTEL=function(device:TVkDevice;const pAcquireInfo:PVkPerformanceConfigurationAcquireInfoINTEL;pConfiguration:PVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleasePerformanceConfigurationINTEL=function(device:TVkDevice;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleasePerformanceConfigurationINTEL=function(device:TVkDevice;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSetPerformanceConfigurationINTEL=function(queue:TVkQueue;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSetPerformanceConfigurationINTEL=function(queue:TVkQueue;configuration:TVkPerformanceConfigurationINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPerformanceParameterINTEL=function(device:TVkDevice;parameter:TVkPerformanceParameterTypeINTEL;pValue:PVkPerformanceValueINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPerformanceParameterINTEL=function(device:TVkDevice;parameter:TVkPerformanceParameterTypeINTEL;pValue:PVkPerformanceValueINTEL):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceMemoryOpaqueCaptureAddress=function(device:TVkDevice;const pInfo:PVkDeviceMemoryOpaqueCaptureAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceMemoryOpaqueCaptureAddress=function(device:TVkDevice;const pInfo:PVkDeviceMemoryOpaqueCaptureAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceMemoryOpaqueCaptureAddressKHR=function(device:TVkDevice;const pInfo:PVkDeviceMemoryOpaqueCaptureAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceMemoryOpaqueCaptureAddressKHR=function(device:TVkDevice;const pInfo:PVkDeviceMemoryOpaqueCaptureAddressInfo):TVkUInt64; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineExecutablePropertiesKHR=function(device:TVkDevice;const pPipelineInfo:PVkPipelineInfoKHR;pExecutableCount:PVkUInt32;pProperties:PVkPipelineExecutablePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineExecutablePropertiesKHR=function(device:TVkDevice;const pPipelineInfo:PVkPipelineInfoKHR;pExecutableCount:PVkUInt32;pProperties:PVkPipelineExecutablePropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineExecutableStatisticsKHR=function(device:TVkDevice;const pExecutableInfo:PVkPipelineExecutableInfoKHR;pStatisticCount:PVkUInt32;pStatistics:PVkPipelineExecutableStatisticKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineExecutableStatisticsKHR=function(device:TVkDevice;const pExecutableInfo:PVkPipelineExecutableInfoKHR;pStatisticCount:PVkUInt32;pStatistics:PVkPipelineExecutableStatisticKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineExecutableInternalRepresentationsKHR=function(device:TVkDevice;const pExecutableInfo:PVkPipelineExecutableInfoKHR;pInternalRepresentationCount:PVkUInt32;pInternalRepresentations:PVkPipelineExecutableInternalRepresentationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineExecutableInternalRepresentationsKHR=function(device:TVkDevice;const pExecutableInfo:PVkPipelineExecutableInfoKHR;pInternalRepresentationCount:PVkUInt32;pInternalRepresentations:PVkPipelineExecutableInternalRepresentationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineStipple=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineStipple=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineStippleKHR=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineStippleKHR=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineStippleEXT=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineStippleEXT=procedure(commandBuffer:TVkCommandBuffer;lineStippleFactor:TVkUInt32;lineStipplePattern:TVkUInt16); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef VulkanSC}
-     TvkGetFaultData=function(device:TVkDevice;faultQueryBehavior:TVkFaultQueryBehavior;pUnrecordedFaults:PVkBool32;pFaultCount:PVkUInt32;pFaults:PVkFaultData):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetFaultData=function(device:TVkDevice;faultQueryBehavior:TVkFaultQueryBehavior;pUnrecordedFaults:PVkBool32;pFaultCount:PVkUInt32;pFaults:PVkFaultData):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkGetPhysicalDeviceToolProperties=function(physicalDevice:TVkPhysicalDevice;pToolCount:PVkUInt32;pToolProperties:PVkPhysicalDeviceToolProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceToolProperties=function(physicalDevice:TVkPhysicalDevice;pToolCount:PVkUInt32;pToolProperties:PVkPhysicalDeviceToolProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceToolPropertiesEXT=function(physicalDevice:TVkPhysicalDevice;pToolCount:PVkUInt32;pToolProperties:PVkPhysicalDeviceToolProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceToolPropertiesEXT=function(physicalDevice:TVkPhysicalDevice;pToolCount:PVkUInt32;pToolProperties:PVkPhysicalDeviceToolProperties):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateAccelerationStructureKHR=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateAccelerationStructureKHR=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildAccelerationStructuresKHR=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const ppBuildRangeInfos:PPVkAccelerationStructureBuildRangeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildAccelerationStructuresKHR=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const ppBuildRangeInfos:PPVkAccelerationStructureBuildRangeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildAccelerationStructuresIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const pIndirectDeviceAddresses:PVkDeviceAddress;const pIndirectStrides:PVkUInt32;const ppMaxPrimitiveCounts:PPVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildAccelerationStructuresIndirectKHR=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const pIndirectDeviceAddresses:PVkDeviceAddress;const pIndirectStrides:PVkUInt32;const ppMaxPrimitiveCounts:PPVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBuildAccelerationStructuresKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const ppBuildRangeInfos:PPVkAccelerationStructureBuildRangeInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBuildAccelerationStructuresKHR=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;infoCount:TVkUInt32;const pInfos:PVkAccelerationStructureBuildGeometryInfoKHR;const ppBuildRangeInfos:PPVkAccelerationStructureBuildRangeInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureDeviceAddressKHR=function(device:TVkDevice;const pInfo:PVkAccelerationStructureDeviceAddressInfoKHR):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureDeviceAddressKHR=function(device:TVkDevice;const pInfo:PVkAccelerationStructureDeviceAddressInfoKHR):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDeferredOperationKHR=function(device:TVkDevice;const pAllocator:PVkAllocationCallbacks;pDeferredOperation:PVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDeferredOperationKHR=function(device:TVkDevice;const pAllocator:PVkAllocationCallbacks;pDeferredOperation:PVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDeferredOperationKHR=procedure(device:TVkDevice;operation:TVkDeferredOperationKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDeferredOperationKHR=procedure(device:TVkDevice;operation:TVkDeferredOperationKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeferredOperationMaxConcurrencyKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkUInt32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeferredOperationMaxConcurrencyKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkUInt32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeferredOperationResultKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeferredOperationResultKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDeferredOperationJoinKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDeferredOperationJoinKHR=function(device:TVkDevice;operation:TVkDeferredOperationKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineIndirectMemoryRequirementsNV=procedure(device:TVkDevice;const pCreateInfo:PVkComputePipelineCreateInfo;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineIndirectMemoryRequirementsNV=procedure(device:TVkDevice;const pCreateInfo:PVkComputePipelineCreateInfo;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelineIndirectDeviceAddressNV=function(device:TVkDevice;const pInfo:PVkPipelineIndirectDeviceAddressInfoNV):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelineIndirectDeviceAddressNV=function(device:TVkDevice;const pInfo:PVkPipelineIndirectDeviceAddressInfoNV):TVkDeviceAddress; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAntiLagUpdateAMD=procedure(device:TVkDevice;const pData:PVkAntiLagDataAMD); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAntiLagUpdateAMD=procedure(device:TVkDevice;const pData:PVkAntiLagDataAMD); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCullMode=procedure(commandBuffer:TVkCommandBuffer;cullMode:TVkCullModeFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCullMode=procedure(commandBuffer:TVkCommandBuffer;cullMode:TVkCullModeFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCullModeEXT=procedure(commandBuffer:TVkCommandBuffer;cullMode:TVkCullModeFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCullModeEXT=procedure(commandBuffer:TVkCommandBuffer;cullMode:TVkCullModeFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetFrontFace=procedure(commandBuffer:TVkCommandBuffer;frontFace:TVkFrontFace); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetFrontFace=procedure(commandBuffer:TVkCommandBuffer;frontFace:TVkFrontFace); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetFrontFaceEXT=procedure(commandBuffer:TVkCommandBuffer;frontFace:TVkFrontFace); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetFrontFaceEXT=procedure(commandBuffer:TVkCommandBuffer;frontFace:TVkFrontFace); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPrimitiveTopology=procedure(commandBuffer:TVkCommandBuffer;primitiveTopology:TVkPrimitiveTopology); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPrimitiveTopology=procedure(commandBuffer:TVkCommandBuffer;primitiveTopology:TVkPrimitiveTopology); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPrimitiveTopologyEXT=procedure(commandBuffer:TVkCommandBuffer;primitiveTopology:TVkPrimitiveTopology); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPrimitiveTopologyEXT=procedure(commandBuffer:TVkCommandBuffer;primitiveTopology:TVkPrimitiveTopology); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportWithCount=procedure(commandBuffer:TVkCommandBuffer;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportWithCount=procedure(commandBuffer:TVkCommandBuffer;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportWithCountEXT=procedure(commandBuffer:TVkCommandBuffer;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportWithCountEXT=procedure(commandBuffer:TVkCommandBuffer;viewportCount:TVkUInt32;const pViewports:PVkViewport); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetScissorWithCount=procedure(commandBuffer:TVkCommandBuffer;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetScissorWithCount=procedure(commandBuffer:TVkCommandBuffer;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetScissorWithCountEXT=procedure(commandBuffer:TVkCommandBuffer;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetScissorWithCountEXT=procedure(commandBuffer:TVkCommandBuffer;scissorCount:TVkUInt32;const pScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindIndexBuffer2=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;size:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindIndexBuffer2=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;size:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindIndexBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;size:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindIndexBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;size:TVkDeviceSize;indexType:TVkIndexType); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindVertexBuffers2=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize;const pStrides:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindVertexBuffers2=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize;const pStrides:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindVertexBuffers2EXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize;const pStrides:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindVertexBuffers2EXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize;const pStrides:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthTestEnable=procedure(commandBuffer:TVkCommandBuffer;depthTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthTestEnable=procedure(commandBuffer:TVkCommandBuffer;depthTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthWriteEnable=procedure(commandBuffer:TVkCommandBuffer;depthWriteEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthWriteEnable=procedure(commandBuffer:TVkCommandBuffer;depthWriteEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthWriteEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthWriteEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthWriteEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthWriteEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthCompareOp=procedure(commandBuffer:TVkCommandBuffer;depthCompareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthCompareOp=procedure(commandBuffer:TVkCommandBuffer;depthCompareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthCompareOpEXT=procedure(commandBuffer:TVkCommandBuffer;depthCompareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthCompareOpEXT=procedure(commandBuffer:TVkCommandBuffer;depthCompareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBoundsTestEnable=procedure(commandBuffer:TVkCommandBuffer;depthBoundsTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBoundsTestEnable=procedure(commandBuffer:TVkCommandBuffer;depthBoundsTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBoundsTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthBoundsTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBoundsTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthBoundsTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilTestEnable=procedure(commandBuffer:TVkCommandBuffer;stencilTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilTestEnable=procedure(commandBuffer:TVkCommandBuffer;stencilTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;stencilTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilTestEnableEXT=procedure(commandBuffer:TVkCommandBuffer;stencilTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilOp=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;failOp:TVkStencilOp;passOp:TVkStencilOp;depthFailOp:TVkStencilOp;compareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilOp=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;failOp:TVkStencilOp;passOp:TVkStencilOp;depthFailOp:TVkStencilOp;compareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetStencilOpEXT=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;failOp:TVkStencilOp;passOp:TVkStencilOp;depthFailOp:TVkStencilOp;compareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetStencilOpEXT=procedure(commandBuffer:TVkCommandBuffer;faceMask:TVkStencilFaceFlags;failOp:TVkStencilOp;passOp:TVkStencilOp;depthFailOp:TVkStencilOp;compareOp:TVkCompareOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPatchControlPointsEXT=procedure(commandBuffer:TVkCommandBuffer;patchControlPoints:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPatchControlPointsEXT=procedure(commandBuffer:TVkCommandBuffer;patchControlPoints:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRasterizerDiscardEnable=procedure(commandBuffer:TVkCommandBuffer;rasterizerDiscardEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRasterizerDiscardEnable=procedure(commandBuffer:TVkCommandBuffer;rasterizerDiscardEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRasterizerDiscardEnableEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizerDiscardEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRasterizerDiscardEnableEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizerDiscardEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBiasEnable=procedure(commandBuffer:TVkCommandBuffer;depthBiasEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBiasEnable=procedure(commandBuffer:TVkCommandBuffer;depthBiasEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBiasEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthBiasEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBiasEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthBiasEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLogicOpEXT=procedure(commandBuffer:TVkCommandBuffer;logicOp:TVkLogicOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLogicOpEXT=procedure(commandBuffer:TVkCommandBuffer;logicOp:TVkLogicOp); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPrimitiveRestartEnable=procedure(commandBuffer:TVkCommandBuffer;primitiveRestartEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPrimitiveRestartEnable=procedure(commandBuffer:TVkCommandBuffer;primitiveRestartEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPrimitiveRestartEnableEXT=procedure(commandBuffer:TVkCommandBuffer;primitiveRestartEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPrimitiveRestartEnableEXT=procedure(commandBuffer:TVkCommandBuffer;primitiveRestartEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetTessellationDomainOriginEXT=procedure(commandBuffer:TVkCommandBuffer;domainOrigin:TVkTessellationDomainOrigin); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetTessellationDomainOriginEXT=procedure(commandBuffer:TVkCommandBuffer;domainOrigin:TVkTessellationDomainOrigin); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthClampEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthClampEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthClampEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthClampEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetPolygonModeEXT=procedure(commandBuffer:TVkCommandBuffer;polygonMode:TVkPolygonMode); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetPolygonModeEXT=procedure(commandBuffer:TVkCommandBuffer;polygonMode:TVkPolygonMode); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRasterizationSamplesEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizationSamples:TVkSampleCountFlagBits); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRasterizationSamplesEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizationSamples:TVkSampleCountFlagBits); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetSampleMaskEXT=procedure(commandBuffer:TVkCommandBuffer;samples:TVkSampleCountFlagBits;const pSampleMask:PVkSampleMask); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetSampleMaskEXT=procedure(commandBuffer:TVkCommandBuffer;samples:TVkSampleCountFlagBits;const pSampleMask:PVkSampleMask); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetAlphaToCoverageEnableEXT=procedure(commandBuffer:TVkCommandBuffer;alphaToCoverageEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetAlphaToCoverageEnableEXT=procedure(commandBuffer:TVkCommandBuffer;alphaToCoverageEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetAlphaToOneEnableEXT=procedure(commandBuffer:TVkCommandBuffer;alphaToOneEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetAlphaToOneEnableEXT=procedure(commandBuffer:TVkCommandBuffer;alphaToOneEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLogicOpEnableEXT=procedure(commandBuffer:TVkCommandBuffer;logicOpEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLogicOpEnableEXT=procedure(commandBuffer:TVkCommandBuffer;logicOpEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetColorBlendEnableEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetColorBlendEnableEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetColorBlendEquationEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendEquations:PVkColorBlendEquationEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetColorBlendEquationEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendEquations:PVkColorBlendEquationEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetColorWriteMaskEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorWriteMasks:PVkColorComponentFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetColorWriteMaskEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorWriteMasks:PVkColorComponentFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRasterizationStreamEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizationStream:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRasterizationStreamEXT=procedure(commandBuffer:TVkCommandBuffer;rasterizationStream:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetConservativeRasterizationModeEXT=procedure(commandBuffer:TVkCommandBuffer;conservativeRasterizationMode:TVkConservativeRasterizationModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetConservativeRasterizationModeEXT=procedure(commandBuffer:TVkCommandBuffer;conservativeRasterizationMode:TVkConservativeRasterizationModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetExtraPrimitiveOverestimationSizeEXT=procedure(commandBuffer:TVkCommandBuffer;extraPrimitiveOverestimationSize:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetExtraPrimitiveOverestimationSizeEXT=procedure(commandBuffer:TVkCommandBuffer;extraPrimitiveOverestimationSize:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthClipEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthClipEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthClipEnableEXT=procedure(commandBuffer:TVkCommandBuffer;depthClipEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetSampleLocationsEnableEXT=procedure(commandBuffer:TVkCommandBuffer;sampleLocationsEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetSampleLocationsEnableEXT=procedure(commandBuffer:TVkCommandBuffer;sampleLocationsEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetColorBlendAdvancedEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendAdvanced:PVkColorBlendAdvancedEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetColorBlendAdvancedEXT=procedure(commandBuffer:TVkCommandBuffer;firstAttachment:TVkUInt32;attachmentCount:TVkUInt32;const pColorBlendAdvanced:PVkColorBlendAdvancedEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetProvokingVertexModeEXT=procedure(commandBuffer:TVkCommandBuffer;provokingVertexMode:TVkProvokingVertexModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetProvokingVertexModeEXT=procedure(commandBuffer:TVkCommandBuffer;provokingVertexMode:TVkProvokingVertexModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineRasterizationModeEXT=procedure(commandBuffer:TVkCommandBuffer;lineRasterizationMode:TVkLineRasterizationModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineRasterizationModeEXT=procedure(commandBuffer:TVkCommandBuffer;lineRasterizationMode:TVkLineRasterizationModeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetLineStippleEnableEXT=procedure(commandBuffer:TVkCommandBuffer;stippledLineEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetLineStippleEnableEXT=procedure(commandBuffer:TVkCommandBuffer;stippledLineEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthClipNegativeOneToOneEXT=procedure(commandBuffer:TVkCommandBuffer;negativeOneToOne:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthClipNegativeOneToOneEXT=procedure(commandBuffer:TVkCommandBuffer;negativeOneToOne:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportWScalingEnableNV=procedure(commandBuffer:TVkCommandBuffer;viewportWScalingEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportWScalingEnableNV=procedure(commandBuffer:TVkCommandBuffer;viewportWScalingEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetViewportSwizzleNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportSwizzles:PVkViewportSwizzleNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetViewportSwizzleNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pViewportSwizzles:PVkViewportSwizzleNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageToColorEnableNV=procedure(commandBuffer:TVkCommandBuffer;coverageToColorEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageToColorEnableNV=procedure(commandBuffer:TVkCommandBuffer;coverageToColorEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageToColorLocationNV=procedure(commandBuffer:TVkCommandBuffer;coverageToColorLocation:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageToColorLocationNV=procedure(commandBuffer:TVkCommandBuffer;coverageToColorLocation:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageModulationModeNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationMode:TVkCoverageModulationModeNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageModulationModeNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationMode:TVkCoverageModulationModeNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageModulationTableEnableNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationTableEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageModulationTableEnableNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationTableEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageModulationTableNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationTableCount:TVkUInt32;const pCoverageModulationTable:PVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageModulationTableNV=procedure(commandBuffer:TVkCommandBuffer;coverageModulationTableCount:TVkUInt32;const pCoverageModulationTable:PVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetShadingRateImageEnableNV=procedure(commandBuffer:TVkCommandBuffer;shadingRateImageEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetShadingRateImageEnableNV=procedure(commandBuffer:TVkCommandBuffer;shadingRateImageEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetCoverageReductionModeNV=procedure(commandBuffer:TVkCommandBuffer;coverageReductionMode:TVkCoverageReductionModeNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetCoverageReductionModeNV=procedure(commandBuffer:TVkCommandBuffer;coverageReductionMode:TVkCoverageReductionModeNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRepresentativeFragmentTestEnableNV=procedure(commandBuffer:TVkCommandBuffer;representativeFragmentTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRepresentativeFragmentTestEnableNV=procedure(commandBuffer:TVkCommandBuffer;representativeFragmentTestEnable:TVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreatePrivateDataSlot=function(device:TVkDevice;const pCreateInfo:PVkPrivateDataSlotCreateInfo;const pAllocator:PVkAllocationCallbacks;pPrivateDataSlot:PVkPrivateDataSlot):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreatePrivateDataSlot=function(device:TVkDevice;const pCreateInfo:PVkPrivateDataSlotCreateInfo;const pAllocator:PVkAllocationCallbacks;pPrivateDataSlot:PVkPrivateDataSlot):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreatePrivateDataSlotEXT=function(device:TVkDevice;const pCreateInfo:PVkPrivateDataSlotCreateInfo;const pAllocator:PVkAllocationCallbacks;pPrivateDataSlot:PVkPrivateDataSlot):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreatePrivateDataSlotEXT=function(device:TVkDevice;const pCreateInfo:PVkPrivateDataSlotCreateInfo;const pAllocator:PVkAllocationCallbacks;pPrivateDataSlot:PVkPrivateDataSlot):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPrivateDataSlot=procedure(device:TVkDevice;privateDataSlot:TVkPrivateDataSlot;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPrivateDataSlot=procedure(device:TVkDevice;privateDataSlot:TVkPrivateDataSlot;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyPrivateDataSlotEXT=procedure(device:TVkDevice;privateDataSlot:TVkPrivateDataSlot;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyPrivateDataSlotEXT=procedure(device:TVkDevice;privateDataSlot:TVkPrivateDataSlot;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetPrivateData=function(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;data:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetPrivateData=function(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;data:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetPrivateDataEXT=function(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;data:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetPrivateDataEXT=function(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;data:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPrivateData=procedure(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;pData:PVkUInt64); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPrivateData=procedure(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;pData:PVkUInt64); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPrivateDataEXT=procedure(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;pData:PVkUInt64); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPrivateDataEXT=procedure(device:TVkDevice;objectType:TVkObjectType;objectHandle:TVkUInt64;privateDataSlot:TVkPrivateDataSlot;pData:PVkUInt64); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBuffer2=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferInfo:PVkCopyBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBuffer2=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferInfo:PVkCopyBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferInfo:PVkCopyBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferInfo:PVkCopyBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImage2=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageInfo:PVkCopyImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImage2=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageInfo:PVkCopyImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageInfo:PVkCopyImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageInfo:PVkCopyImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBlitImage2=procedure(commandBuffer:TVkCommandBuffer;const pBlitImageInfo:PVkBlitImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBlitImage2=procedure(commandBuffer:TVkCommandBuffer;const pBlitImageInfo:PVkBlitImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBlitImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pBlitImageInfo:PVkBlitImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBlitImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pBlitImageInfo:PVkBlitImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBufferToImage2=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferToImageInfo:PVkCopyBufferToImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBufferToImage2=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferToImageInfo:PVkCopyBufferToImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyBufferToImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferToImageInfo:PVkCopyBufferToImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyBufferToImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyBufferToImageInfo:PVkCopyBufferToImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImageToBuffer2=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageToBufferInfo:PVkCopyImageToBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImageToBuffer2=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageToBufferInfo:PVkCopyImageToBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImageToBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageToBufferInfo:PVkCopyImageToBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImageToBuffer2KHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyImageToBufferInfo:PVkCopyImageToBufferInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResolveImage2=procedure(commandBuffer:TVkCommandBuffer;const pResolveImageInfo:PVkResolveImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResolveImage2=procedure(commandBuffer:TVkCommandBuffer;const pResolveImageInfo:PVkResolveImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResolveImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pResolveImageInfo:PVkResolveImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResolveImage2KHR=procedure(commandBuffer:TVkCommandBuffer;const pResolveImageInfo:PVkResolveImageInfo2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdRefreshObjectsKHR=procedure(commandBuffer:TVkCommandBuffer;const pRefreshObjects:PVkRefreshObjectListKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdRefreshObjectsKHR=procedure(commandBuffer:TVkCommandBuffer;const pRefreshObjects:PVkRefreshObjectListKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceRefreshableObjectTypesKHR=function(physicalDevice:TVkPhysicalDevice;pRefreshableObjectTypeCount:PVkUInt32;pRefreshableObjectTypes:PVkObjectType):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceRefreshableObjectTypesKHR=function(physicalDevice:TVkPhysicalDevice;pRefreshableObjectTypeCount:PVkUInt32;pRefreshableObjectTypes:PVkObjectType):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetFragmentShadingRateKHR=procedure(commandBuffer:TVkCommandBuffer;const pFragmentSize:PVkExtent2D;const combinerOps:TVkFragmentShadingRateCombinerOpKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetFragmentShadingRateKHR=procedure(commandBuffer:TVkCommandBuffer;const pFragmentSize:PVkExtent2D;const combinerOps:TVkFragmentShadingRateCombinerOpKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceFragmentShadingRatesKHR=function(physicalDevice:TVkPhysicalDevice;pFragmentShadingRateCount:PVkUInt32;pFragmentShadingRates:PVkPhysicalDeviceFragmentShadingRateKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceFragmentShadingRatesKHR=function(physicalDevice:TVkPhysicalDevice;pFragmentShadingRateCount:PVkUInt32;pFragmentShadingRates:PVkPhysicalDeviceFragmentShadingRateKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetFragmentShadingRateEnumNV=procedure(commandBuffer:TVkCommandBuffer;shadingRate:TVkFragmentShadingRateNV;const combinerOps:TVkFragmentShadingRateCombinerOpKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetFragmentShadingRateEnumNV=procedure(commandBuffer:TVkCommandBuffer;shadingRate:TVkFragmentShadingRateNV;const combinerOps:TVkFragmentShadingRateCombinerOpKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureBuildSizesKHR=procedure(device:TVkDevice;buildType:TVkAccelerationStructureBuildTypeKHR;const pBuildInfo:PVkAccelerationStructureBuildGeometryInfoKHR;const pMaxPrimitiveCounts:PVkUInt32;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureBuildSizesKHR=procedure(device:TVkDevice;buildType:TVkAccelerationStructureBuildTypeKHR;const pBuildInfo:PVkAccelerationStructureBuildGeometryInfoKHR;const pMaxPrimitiveCounts:PVkUInt32;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetVertexInputEXT=procedure(commandBuffer:TVkCommandBuffer;vertexBindingDescriptionCount:TVkUInt32;const pVertexBindingDescriptions:PVkVertexInputBindingDescription2EXT;vertexAttributeDescriptionCount:TVkUInt32;const pVertexAttributeDescriptions:PVkVertexInputAttributeDescription2EXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetVertexInputEXT=procedure(commandBuffer:TVkCommandBuffer;vertexBindingDescriptionCount:TVkUInt32;const pVertexBindingDescriptions:PVkVertexInputBindingDescription2EXT;vertexAttributeDescriptionCount:TVkUInt32;const pVertexAttributeDescriptions:PVkVertexInputAttributeDescription2EXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetColorWriteEnableEXT=procedure(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pColorWriteEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetColorWriteEnableEXT=procedure(commandBuffer:TVkCommandBuffer;attachmentCount:TVkUInt32;const pColorWriteEnables:PVkBool32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetEvent2=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetEvent2=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetEvent2KHR=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetEvent2KHR=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResetEvent2=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResetEvent2=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdResetEvent2KHR=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdResetEvent2KHR=procedure(commandBuffer:TVkCommandBuffer;event:TVkEvent;stageMask:TVkPipelineStageFlags2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWaitEvents2=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;const pDependencyInfos:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWaitEvents2=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;const pDependencyInfos:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWaitEvents2KHR=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;const pDependencyInfos:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWaitEvents2KHR=procedure(commandBuffer:TVkCommandBuffer;eventCount:TVkUInt32;const pEvents:PVkEvent;const pDependencyInfos:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPipelineBarrier2=procedure(commandBuffer:TVkCommandBuffer;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPipelineBarrier2=procedure(commandBuffer:TVkCommandBuffer;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPipelineBarrier2KHR=procedure(commandBuffer:TVkCommandBuffer;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPipelineBarrier2KHR=procedure(commandBuffer:TVkCommandBuffer;const pDependencyInfo:PVkDependencyInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSubmit2=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo2;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSubmit2=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo2;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSubmit2KHR=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo2;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSubmit2KHR=function(queue:TVkQueue;submitCount:TVkUInt32;const pSubmits:PVkSubmitInfo2;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteTimestamp2=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteTimestamp2=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteTimestamp2KHR=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteTimestamp2KHR=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteBufferMarker2AMD=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteBufferMarker2AMD=procedure(commandBuffer:TVkCommandBuffer;stage:TVkPipelineStageFlags2;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetQueueCheckpointData2NV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointData2NV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetQueueCheckpointData2NV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointData2NV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMemoryToImage=function(device:TVkDevice;const pCopyMemoryToImageInfo:PVkCopyMemoryToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMemoryToImage=function(device:TVkDevice;const pCopyMemoryToImageInfo:PVkCopyMemoryToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMemoryToImageEXT=function(device:TVkDevice;const pCopyMemoryToImageInfo:PVkCopyMemoryToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMemoryToImageEXT=function(device:TVkDevice;const pCopyMemoryToImageInfo:PVkCopyMemoryToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyImageToMemory=function(device:TVkDevice;const pCopyImageToMemoryInfo:PVkCopyImageToMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyImageToMemory=function(device:TVkDevice;const pCopyImageToMemoryInfo:PVkCopyImageToMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyImageToMemoryEXT=function(device:TVkDevice;const pCopyImageToMemoryInfo:PVkCopyImageToMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyImageToMemoryEXT=function(device:TVkDevice;const pCopyImageToMemoryInfo:PVkCopyImageToMemoryInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyImageToImage=function(device:TVkDevice;const pCopyImageToImageInfo:PVkCopyImageToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyImageToImage=function(device:TVkDevice;const pCopyImageToImageInfo:PVkCopyImageToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyImageToImageEXT=function(device:TVkDevice;const pCopyImageToImageInfo:PVkCopyImageToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyImageToImageEXT=function(device:TVkDevice;const pCopyImageToImageInfo:PVkCopyImageToImageInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkTransitionImageLayout=function(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkTransitionImageLayout=function(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkTransitionImageLayoutEXT=function(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkTransitionImageLayoutEXT=function(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef VulkanSC}
-     TvkGetCommandPoolMemoryConsumption=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBuffer:TVkCommandBuffer;pConsumption:PVkCommandPoolMemoryConsumption); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetCommandPoolMemoryConsumption=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBuffer:TVkCommandBuffer;pConsumption:PVkCommandPoolMemoryConsumption); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkGetPhysicalDeviceVideoCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;const pVideoProfile:PVkVideoProfileInfoKHR;pCapabilities:PVkVideoCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceVideoCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;const pVideoProfile:PVkVideoProfileInfoKHR;pCapabilities:PVkVideoCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkGetPhysicalDeviceVideoFormatPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;const pVideoFormatInfo:PVkPhysicalDeviceVideoFormatInfoKHR;pVideoFormatPropertyCount:PVkUInt32;pVideoFormatProperties:PVkVideoFormatPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceVideoFormatPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;const pVideoFormatInfo:PVkPhysicalDeviceVideoFormatInfoKHR;pVideoFormatPropertyCount:PVkUInt32;pVideoFormatProperties:PVkVideoFormatPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkGetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;const pQualityLevelInfo:PVkPhysicalDeviceVideoEncodeQualityLevelInfoKHR;pQualityLevelProperties:PVkVideoEncodeQualityLevelPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;const pQualityLevelInfo:PVkPhysicalDeviceVideoEncodeQualityLevelInfoKHR;pQualityLevelProperties:PVkVideoEncodeQualityLevelPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCreateVideoSessionKHR=function(device:TVkDevice;const pCreateInfo:PVkVideoSessionCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pVideoSession:PVkVideoSessionKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateVideoSessionKHR=function(device:TVkDevice;const pCreateInfo:PVkVideoSessionCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pVideoSession:PVkVideoSessionKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkDestroyVideoSessionKHR=procedure(device:TVkDevice;videoSession:TVkVideoSessionKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyVideoSessionKHR=procedure(device:TVkDevice;videoSession:TVkVideoSessionKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCreateVideoSessionParametersKHR=function(device:TVkDevice;const pCreateInfo:PVkVideoSessionParametersCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pVideoSessionParameters:PVkVideoSessionParametersKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateVideoSessionParametersKHR=function(device:TVkDevice;const pCreateInfo:PVkVideoSessionParametersCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pVideoSessionParameters:PVkVideoSessionParametersKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkUpdateVideoSessionParametersKHR=function(device:TVkDevice;videoSessionParameters:TVkVideoSessionParametersKHR;const pUpdateInfo:PVkVideoSessionParametersUpdateInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUpdateVideoSessionParametersKHR=function(device:TVkDevice;videoSessionParameters:TVkVideoSessionParametersKHR;const pUpdateInfo:PVkVideoSessionParametersUpdateInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkGetEncodedVideoSessionParametersKHR=function(device:TVkDevice;const pVideoSessionParametersInfo:PVkVideoEncodeSessionParametersGetInfoKHR;pFeedbackInfo:PVkVideoEncodeSessionParametersFeedbackInfoKHR;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetEncodedVideoSessionParametersKHR=function(device:TVkDevice;const pVideoSessionParametersInfo:PVkVideoEncodeSessionParametersGetInfoKHR;pFeedbackInfo:PVkVideoEncodeSessionParametersFeedbackInfoKHR;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkDestroyVideoSessionParametersKHR=procedure(device:TVkDevice;videoSessionParameters:TVkVideoSessionParametersKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyVideoSessionParametersKHR=procedure(device:TVkDevice;videoSessionParameters:TVkVideoSessionParametersKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkGetVideoSessionMemoryRequirementsKHR=function(device:TVkDevice;videoSession:TVkVideoSessionKHR;pMemoryRequirementsCount:PVkUInt32;pMemoryRequirements:PVkVideoSessionMemoryRequirementsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetVideoSessionMemoryRequirementsKHR=function(device:TVkDevice;videoSession:TVkVideoSessionKHR;pMemoryRequirementsCount:PVkUInt32;pMemoryRequirements:PVkVideoSessionMemoryRequirementsKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkBindVideoSessionMemoryKHR=function(device:TVkDevice;videoSession:TVkVideoSessionKHR;bindSessionMemoryInfoCount:TVkUInt32;const pBindSessionMemoryInfos:PVkBindVideoSessionMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindVideoSessionMemoryKHR=function(device:TVkDevice;videoSession:TVkVideoSessionKHR;bindSessionMemoryInfoCount:TVkUInt32;const pBindSessionMemoryInfos:PVkBindVideoSessionMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCmdDecodeVideoKHR=procedure(commandBuffer:TVkCommandBuffer;const pDecodeInfo:PVkVideoDecodeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDecodeVideoKHR=procedure(commandBuffer:TVkCommandBuffer;const pDecodeInfo:PVkVideoDecodeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCmdBeginVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkVideoBeginCodingInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pBeginInfo:PVkVideoBeginCodingInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCmdControlVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pCodingControlInfo:PVkVideoCodingControlInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdControlVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pCodingControlInfo:PVkVideoCodingControlInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCmdEndVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pEndCodingInfo:PVkVideoEndCodingInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndVideoCodingKHR=procedure(commandBuffer:TVkCommandBuffer;const pEndCodingInfo:PVkVideoEndCodingInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef VkVideo}
-     TvkCmdEncodeVideoKHR=procedure(commandBuffer:TVkCommandBuffer;const pEncodeInfo:PVkVideoEncodeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEncodeVideoKHR=procedure(commandBuffer:TVkCommandBuffer;const pEncodeInfo:PVkVideoEncodeInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCmdDecompressMemoryNV=procedure(commandBuffer:TVkCommandBuffer;decompressRegionCount:TVkUInt32;const pDecompressMemoryRegions:PVkDecompressMemoryRegionNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDecompressMemoryNV=procedure(commandBuffer:TVkCommandBuffer;decompressRegionCount:TVkUInt32;const pDecompressMemoryRegions:PVkDecompressMemoryRegionNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDecompressMemoryIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;indirectCommandsAddress:TVkDeviceAddress;indirectCommandsCountAddress:TVkDeviceAddress;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDecompressMemoryIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;indirectCommandsAddress:TVkDeviceAddress;indirectCommandsCountAddress:TVkDeviceAddress;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPartitionedAccelerationStructuresBuildSizesNV=procedure(device:TVkDevice;const pInfo:PVkPartitionedAccelerationStructureInstancesInputNV;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPartitionedAccelerationStructuresBuildSizesNV=procedure(device:TVkDevice;const pInfo:PVkPartitionedAccelerationStructureInstancesInputNV;pSizeInfo:PVkAccelerationStructureBuildSizesInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildPartitionedAccelerationStructuresNV=procedure(commandBuffer:TVkCommandBuffer;const pBuildInfo:PVkBuildPartitionedAccelerationStructureInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildPartitionedAccelerationStructuresNV=procedure(commandBuffer:TVkCommandBuffer;const pBuildInfo:PVkBuildPartitionedAccelerationStructureInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDecompressMemoryEXT=procedure(commandBuffer:TVkCommandBuffer;const pDecompressMemoryInfoEXT:PVkDecompressMemoryInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDecompressMemoryEXT=procedure(commandBuffer:TVkCommandBuffer;const pDecompressMemoryInfoEXT:PVkDecompressMemoryInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDecompressMemoryIndirectCountEXT=procedure(commandBuffer:TVkCommandBuffer;decompressionMethod:TVkMemoryDecompressionMethodFlagsEXT;indirectCommandsAddress:TVkDeviceAddress;indirectCommandsCountAddress:TVkDeviceAddress;maxDecompressionCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDecompressMemoryIndirectCountEXT=procedure(commandBuffer:TVkCommandBuffer;decompressionMethod:TVkMemoryDecompressionMethodFlagsEXT;indirectCommandsAddress:TVkDeviceAddress;indirectCommandsCountAddress:TVkDeviceAddress;maxDecompressionCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateCuModuleNVX=function(device:TVkDevice;const pCreateInfo:PVkCuModuleCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pModule:PVkCuModuleNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateCuModuleNVX=function(device:TVkDevice;const pCreateInfo:PVkCuModuleCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pModule:PVkCuModuleNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateCuFunctionNVX=function(device:TVkDevice;const pCreateInfo:PVkCuFunctionCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pFunction:PVkCuFunctionNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateCuFunctionNVX=function(device:TVkDevice;const pCreateInfo:PVkCuFunctionCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pFunction:PVkCuFunctionNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyCuModuleNVX=procedure(device:TVkDevice;module:TVkCuModuleNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyCuModuleNVX=procedure(device:TVkDevice;module:TVkCuModuleNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyCuFunctionNVX=procedure(device:TVkDevice;function_:TVkCuFunctionNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyCuFunctionNVX=procedure(device:TVkDevice;function_:TVkCuFunctionNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCuLaunchKernelNVX=procedure(commandBuffer:TVkCommandBuffer;const pLaunchInfo:PVkCuLaunchInfoNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCuLaunchKernelNVX=procedure(commandBuffer:TVkCommandBuffer;const pLaunchInfo:PVkCuLaunchInfoNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetLayoutSizeEXT=procedure(device:TVkDevice;layout:TVkDescriptorSetLayout;pLayoutSizeInBytes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetLayoutSizeEXT=procedure(device:TVkDevice;layout:TVkDescriptorSetLayout;pLayoutSizeInBytes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetLayoutBindingOffsetEXT=procedure(device:TVkDevice;layout:TVkDescriptorSetLayout;binding:TVkUInt32;pOffset:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetLayoutBindingOffsetEXT=procedure(device:TVkDevice;layout:TVkDescriptorSetLayout;binding:TVkUInt32;pOffset:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorEXT=procedure(device:TVkDevice;const pDescriptorInfo:PVkDescriptorGetInfoEXT;dataSize:TVkSize;pDescriptor:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorEXT=procedure(device:TVkDevice;const pDescriptorInfo:PVkDescriptorGetInfoEXT;dataSize:TVkSize;pDescriptor:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorBuffersEXT=procedure(commandBuffer:TVkCommandBuffer;bufferCount:TVkUInt32;const pBindingInfos:PVkDescriptorBufferBindingInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorBuffersEXT=procedure(commandBuffer:TVkCommandBuffer;bufferCount:TVkUInt32;const pBindingInfos:PVkDescriptorBufferBindingInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDescriptorBufferOffsetsEXT=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;setCount:TVkUInt32;const pBufferIndices:PVkUInt32;const pOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDescriptorBufferOffsetsEXT=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;firstSet:TVkUInt32;setCount:TVkUInt32;const pBufferIndices:PVkUInt32;const pOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorBufferEmbeddedSamplersEXT=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorBufferEmbeddedSamplersEXT=procedure(commandBuffer:TVkCommandBuffer;pipelineBindPoint:TVkPipelineBindPoint;layout:TVkPipelineLayout;set_:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetBufferOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkBufferCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetBufferOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkBufferCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkImageCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkImageCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageViewOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkImageViewCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageViewOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkImageViewCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSamplerOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkSamplerCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSamplerOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkSamplerCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkAccelerationStructureCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT=function(device:TVkDevice;const pInfo:PVkAccelerationStructureCaptureDescriptorDataInfoEXT;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetDeviceMemoryPriorityEXT=procedure(device:TVkDevice;memory:TVkDeviceMemory;priority:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetDeviceMemoryPriorityEXT=procedure(device:TVkDevice;memory:TVkDeviceMemory;priority:TVkFloat); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireDrmDisplayEXT=function(physicalDevice:TVkPhysicalDevice;drmFd:TVkInt32;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireDrmDisplayEXT=function(physicalDevice:TVkPhysicalDevice;drmFd:TVkInt32;display:TVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDrmDisplayEXT=function(physicalDevice:TVkPhysicalDevice;drmFd:TVkInt32;connectorId:TVkUInt32;display:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDrmDisplayEXT=function(physicalDevice:TVkPhysicalDevice;drmFd:TVkInt32;connectorId:TVkUInt32;display:PVkDisplayKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWaitForPresent2KHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pPresentWait2Info:PVkPresentWait2InfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWaitForPresent2KHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pPresentWait2Info:PVkPresentWait2InfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWaitForPresentKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;presentId:TVkUInt64;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWaitForPresentKHR=function(device:TVkDevice;swapchain:TVkSwapchainKHR;presentId:TVkUInt64;timeout:TVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef Fuchsia}
-     TvkCreateBufferCollectionFUCHSIA=function(device:TVkDevice;const pCreateInfo:PVkBufferCollectionCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pCollection:PVkBufferCollectionFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef Fuchsia}
-     TvkSetBufferCollectionBufferConstraintsFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pBufferConstraintsInfo:PVkBufferConstraintsInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateBufferCollectionFUCHSIA=function(device:TVkDevice;const pCreateInfo:PVkBufferCollectionCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pCollection:PVkBufferCollectionFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Fuchsia}
-     TvkSetBufferCollectionImageConstraintsFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pImageConstraintsInfo:PVkImageConstraintsInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetBufferCollectionBufferConstraintsFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pBufferConstraintsInfo:PVkBufferConstraintsInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Fuchsia}
-     TvkDestroyBufferCollectionFUCHSIA=procedure(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetBufferCollectionImageConstraintsFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pImageConstraintsInfo:PVkImageConstraintsInfoFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
 {$ifdef Fuchsia}
-     TvkGetBufferCollectionPropertiesFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;pProperties:PVkBufferCollectionPropertiesFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyBufferCollectionFUCHSIA=procedure(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkCreateCudaModuleNV=function(device:TVkDevice;const pCreateInfo:PVkCudaModuleCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pModule:PVkCudaModuleNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$ifdef Fuchsia}
+     TvkGetBufferCollectionPropertiesFUCHSIA=function(device:TVkDevice;collection:TVkBufferCollectionFUCHSIA;pProperties:PVkBufferCollectionPropertiesFUCHSIA):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
-     TvkGetCudaModuleCacheNV=function(device:TVkDevice;module:TVkCudaModuleNV;pCacheSize:PVkSize;pCacheData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateCudaModuleNV=function(device:TVkDevice;const pCreateInfo:PVkCudaModuleCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pModule:PVkCudaModuleNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateCudaFunctionNV=function(device:TVkDevice;const pCreateInfo:PVkCudaFunctionCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pFunction:PVkCudaFunctionNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetCudaModuleCacheNV=function(device:TVkDevice;module:TVkCudaModuleNV;pCacheSize:PVkSize;pCacheData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyCudaModuleNV=procedure(device:TVkDevice;module:TVkCudaModuleNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateCudaFunctionNV=function(device:TVkDevice;const pCreateInfo:PVkCudaFunctionCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pFunction:PVkCudaFunctionNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyCudaFunctionNV=procedure(device:TVkDevice;function_:TVkCudaFunctionNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyCudaModuleNV=procedure(device:TVkDevice;module:TVkCudaModuleNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCudaLaunchKernelNV=procedure(commandBuffer:TVkCommandBuffer;const pLaunchInfo:PVkCudaLaunchInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyCudaFunctionNV=procedure(device:TVkDevice;function_:TVkCudaFunctionNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginRendering=procedure(commandBuffer:TVkCommandBuffer;const pRenderingInfo:PVkRenderingInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCudaLaunchKernelNV=procedure(commandBuffer:TVkCommandBuffer;const pLaunchInfo:PVkCudaLaunchInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginRenderingKHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderingInfo:PVkRenderingInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginRendering=procedure(commandBuffer:TVkCommandBuffer;const pRenderingInfo:PVkRenderingInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRendering=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginRenderingKHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderingInfo:PVkRenderingInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRendering2KHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderingEndInfo:PVkRenderingEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRendering=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRendering2EXT=procedure(commandBuffer:TVkCommandBuffer;const pRenderingEndInfo:PVkRenderingEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRendering2KHR=procedure(commandBuffer:TVkCommandBuffer;const pRenderingEndInfo:PVkRenderingEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndRenderingKHR=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRendering2EXT=procedure(commandBuffer:TVkCommandBuffer;const pRenderingEndInfo:PVkRenderingEndInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetLayoutHostMappingInfoVALVE=procedure(device:TVkDevice;const pBindingReference:PVkDescriptorSetBindingReferenceVALVE;pHostMapping:PVkDescriptorSetLayoutHostMappingInfoVALVE); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndRenderingKHR=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDescriptorSetHostMappingVALVE=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;ppData:PPVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetLayoutHostMappingInfoVALVE=procedure(device:TVkDevice;const pBindingReference:PVkDescriptorSetBindingReferenceVALVE;pHostMapping:PVkDescriptorSetLayoutHostMappingInfoVALVE); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateMicromapEXT=function(device:TVkDevice;const pCreateInfo:PVkMicromapCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pMicromap:PVkMicromapEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDescriptorSetHostMappingVALVE=procedure(device:TVkDevice;descriptorSet:TVkDescriptorSet;ppData:PPVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildMicromapsEXT=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkMicromapBuildInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateMicromapEXT=function(device:TVkDevice;const pCreateInfo:PVkMicromapCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pMicromap:PVkMicromapEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBuildMicromapsEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;infoCount:TVkUInt32;const pInfos:PVkMicromapBuildInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildMicromapsEXT=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkMicromapBuildInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyMicromapEXT=procedure(device:TVkDevice;micromap:TVkMicromapEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBuildMicromapsEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;infoCount:TVkUInt32;const pInfos:PVkMicromapBuildInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMicromapEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMicromapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyMicromapEXT=procedure(device:TVkDevice;micromap:TVkMicromapEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMicromapEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMicromapInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMicromapEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMicromapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMicromapToMemoryEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMicromapToMemoryInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMicromapEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMicromapInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMicromapToMemoryEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMicromapToMemoryInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMicromapToMemoryEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMicromapToMemoryInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryToMicromapEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMemoryToMicromapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMicromapToMemoryEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMicromapToMemoryInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCopyMemoryToMicromapEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMemoryToMicromapInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryToMicromapEXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkCopyMemoryToMicromapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteMicromapsPropertiesEXT=procedure(commandBuffer:TVkCommandBuffer;micromapCount:TVkUInt32;const pMicromaps:PVkMicromapEXT;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCopyMemoryToMicromapEXT=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;const pInfo:PVkCopyMemoryToMicromapInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWriteMicromapsPropertiesEXT=function(device:TVkDevice;micromapCount:TVkUInt32;const pMicromaps:PVkMicromapEXT;queryType:TVkQueryType;dataSize:TVkSize;pData:PVkVoid;stride:TVkSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteMicromapsPropertiesEXT=procedure(commandBuffer:TVkCommandBuffer;micromapCount:TVkUInt32;const pMicromaps:PVkMicromapEXT;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceMicromapCompatibilityEXT=procedure(device:TVkDevice;const pVersionInfo:PVkMicromapVersionInfoEXT;pCompatibility:PVkAccelerationStructureCompatibilityKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWriteMicromapsPropertiesEXT=function(device:TVkDevice;micromapCount:TVkUInt32;const pMicromaps:PVkMicromapEXT;queryType:TVkQueryType;dataSize:TVkSize;pData:PVkVoid;stride:TVkSize):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMicromapBuildSizesEXT=procedure(device:TVkDevice;buildType:TVkAccelerationStructureBuildTypeKHR;const pBuildInfo:PVkMicromapBuildInfoEXT;pSizeInfo:PVkMicromapBuildSizesInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceMicromapCompatibilityEXT=procedure(device:TVkDevice;const pVersionInfo:PVkMicromapVersionInfoEXT;pCompatibility:PVkAccelerationStructureCompatibilityKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetShaderModuleIdentifierEXT=procedure(device:TVkDevice;shaderModule:TVkShaderModule;pIdentifier:PVkShaderModuleIdentifierEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMicromapBuildSizesEXT=procedure(device:TVkDevice;buildType:TVkAccelerationStructureBuildTypeKHR;const pBuildInfo:PVkMicromapBuildInfoEXT;pSizeInfo:PVkMicromapBuildSizesInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetShaderModuleCreateInfoIdentifierEXT=procedure(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;pIdentifier:PVkShaderModuleIdentifierEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetShaderModuleIdentifierEXT=procedure(device:TVkDevice;shaderModule:TVkShaderModule;pIdentifier:PVkShaderModuleIdentifierEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSubresourceLayout2=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetShaderModuleCreateInfoIdentifierEXT=procedure(device:TVkDevice;const pCreateInfo:PVkShaderModuleCreateInfo;pIdentifier:PVkShaderModuleIdentifierEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSubresourceLayout2KHR=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSubresourceLayout2=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageSubresourceLayout2EXT=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSubresourceLayout2KHR=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPipelinePropertiesEXT=function(device:TVkDevice;const pPipelineInfo:PVkPipelineInfoEXT;pPipelineProperties:PVkBaseOutStructure):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageSubresourceLayout2EXT=procedure(device:TVkDevice;image:TVkImage;const pSubresource:PVkImageSubresource2;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkExportMetalObjectsEXT=procedure(device:TVkDevice;pMetalObjectsInfo:PVkExportMetalObjectsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPipelinePropertiesEXT=function(device:TVkDevice;const pPipelineInfo:PVkPipelineInfoEXT;pPipelineProperties:PVkBaseOutStructure):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindTileMemoryQCOM=procedure(commandBuffer:TVkCommandBuffer;const pTileMemoryBindInfo:PVkTileMemoryBindInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkExportMetalObjectsEXT=procedure(device:TVkDevice;pMetalObjectsInfo:PVkExportMetalObjectsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetFramebufferTilePropertiesQCOM=function(device:TVkDevice;framebuffer:TVkFramebuffer;pPropertiesCount:PVkUInt32;pProperties:PVkTilePropertiesQCOM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindTileMemoryQCOM=procedure(commandBuffer:TVkCommandBuffer;const pTileMemoryBindInfo:PVkTileMemoryBindInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDynamicRenderingTilePropertiesQCOM=function(device:TVkDevice;const pRenderingInfo:PVkRenderingInfo;pProperties:PVkTilePropertiesQCOM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetFramebufferTilePropertiesQCOM=function(device:TVkDevice;framebuffer:TVkFramebuffer;pPropertiesCount:PVkUInt32;pProperties:PVkTilePropertiesQCOM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceOpticalFlowImageFormatsNV=function(physicalDevice:TVkPhysicalDevice;const pOpticalFlowImageFormatInfo:PVkOpticalFlowImageFormatInfoNV;pFormatCount:PVkUInt32;pImageFormatProperties:PVkOpticalFlowImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDynamicRenderingTilePropertiesQCOM=function(device:TVkDevice;const pRenderingInfo:PVkRenderingInfo;pProperties:PVkTilePropertiesQCOM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateOpticalFlowSessionNV=function(device:TVkDevice;const pCreateInfo:PVkOpticalFlowSessionCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pSession:PVkOpticalFlowSessionNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceOpticalFlowImageFormatsNV=function(physicalDevice:TVkPhysicalDevice;const pOpticalFlowImageFormatInfo:PVkOpticalFlowImageFormatInfoNV;pFormatCount:PVkUInt32;pImageFormatProperties:PVkOpticalFlowImageFormatPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyOpticalFlowSessionNV=procedure(device:TVkDevice;session:TVkOpticalFlowSessionNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateOpticalFlowSessionNV=function(device:TVkDevice;const pCreateInfo:PVkOpticalFlowSessionCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pSession:PVkOpticalFlowSessionNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindOpticalFlowSessionImageNV=function(device:TVkDevice;session:TVkOpticalFlowSessionNV;bindingPoint:TVkOpticalFlowSessionBindingPointNV;view:TVkImageView;layout:TVkImageLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyOpticalFlowSessionNV=procedure(device:TVkDevice;session:TVkOpticalFlowSessionNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdOpticalFlowExecuteNV=procedure(commandBuffer:TVkCommandBuffer;session:TVkOpticalFlowSessionNV;const pExecuteInfo:PVkOpticalFlowExecuteInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindOpticalFlowSessionImageNV=function(device:TVkDevice;session:TVkOpticalFlowSessionNV;bindingPoint:TVkOpticalFlowSessionBindingPointNV;view:TVkImageView;layout:TVkImageLayout):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceFaultInfoEXT=function(device:TVkDevice;pFaultCounts:PVkDeviceFaultCountsEXT;pFaultInfo:PVkDeviceFaultInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdOpticalFlowExecuteNV=procedure(commandBuffer:TVkCommandBuffer;session:TVkOpticalFlowSessionNV;const pExecuteInfo:PVkOpticalFlowExecuteInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthBias2EXT=procedure(commandBuffer:TVkCommandBuffer;const pDepthBiasInfo:PVkDepthBiasInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceFaultInfoEXT=function(device:TVkDevice;pFaultCounts:PVkDeviceFaultCountsEXT;pFaultInfo:PVkDeviceFaultInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleaseSwapchainImagesKHR=function(device:TVkDevice;const pReleaseInfo:PVkReleaseSwapchainImagesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthBias2EXT=procedure(commandBuffer:TVkCommandBuffer;const pDepthBiasInfo:PVkDepthBiasInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkReleaseSwapchainImagesEXT=function(device:TVkDevice;const pReleaseInfo:PVkReleaseSwapchainImagesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleaseSwapchainImagesKHR=function(device:TVkDevice;const pReleaseInfo:PVkReleaseSwapchainImagesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageSubresourceLayout=procedure(device:TVkDevice;const pInfo:PVkDeviceImageSubresourceInfo;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkReleaseSwapchainImagesEXT=function(device:TVkDevice;const pReleaseInfo:PVkReleaseSwapchainImagesInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceImageSubresourceLayoutKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageSubresourceInfo;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageSubresourceLayout=procedure(device:TVkDevice;const pInfo:PVkDeviceImageSubresourceInfo;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkMapMemory2=function(device:TVkDevice;const pMemoryMapInfo:PVkMemoryMapInfo;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceImageSubresourceLayoutKHR=procedure(device:TVkDevice;const pInfo:PVkDeviceImageSubresourceInfo;pLayout:PVkSubresourceLayout2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkMapMemory2KHR=function(device:TVkDevice;const pMemoryMapInfo:PVkMemoryMapInfo;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMapMemory2=function(device:TVkDevice;const pMemoryMapInfo:PVkMemoryMapInfo;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUnmapMemory2=function(device:TVkDevice;const pMemoryUnmapInfo:PVkMemoryUnmapInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkMapMemory2KHR=function(device:TVkDevice;const pMemoryMapInfo:PVkMemoryMapInfo;ppData:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUnmapMemory2KHR=function(device:TVkDevice;const pMemoryUnmapInfo:PVkMemoryUnmapInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUnmapMemory2=function(device:TVkDevice;const pMemoryUnmapInfo:PVkMemoryUnmapInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateShadersEXT=function(device:TVkDevice;createInfoCount:TVkUInt32;const pCreateInfos:PVkShaderCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pShaders:PVkShaderEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUnmapMemory2KHR=function(device:TVkDevice;const pMemoryUnmapInfo:PVkMemoryUnmapInfo):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyShaderEXT=procedure(device:TVkDevice;shader:TVkShaderEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateShadersEXT=function(device:TVkDevice;createInfoCount:TVkUInt32;const pCreateInfos:PVkShaderCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pShaders:PVkShaderEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetShaderBinaryDataEXT=function(device:TVkDevice;shader:TVkShaderEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyShaderEXT=procedure(device:TVkDevice;shader:TVkShaderEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindShadersEXT=procedure(commandBuffer:TVkCommandBuffer;stageCount:TVkUInt32;const pStages:PVkShaderStageFlagBits;const pShaders:PVkShaderEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetShaderBinaryDataEXT=function(device:TVkDevice;shader:TVkShaderEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetSwapchainPresentTimingQueueSizeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;size:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindShadersEXT=procedure(commandBuffer:TVkCommandBuffer;stageCount:TVkUInt32;const pStages:PVkShaderStageFlagBits;const pShaders:PVkShaderEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainTimingPropertiesEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainTimingProperties:PVkSwapchainTimingPropertiesEXT;pSwapchainTimingPropertiesCounter:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetSwapchainPresentTimingQueueSizeEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;size:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainTimeDomainPropertiesEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainTimeDomainProperties:PVkSwapchainTimeDomainPropertiesEXT;pTimeDomainsCounter:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainTimingPropertiesEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainTimingProperties:PVkSwapchainTimingPropertiesEXT;pSwapchainTimingPropertiesCounter:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPastPresentationTimingEXT=function(device:TVkDevice;const pPastPresentationTimingInfo:PVkPastPresentationTimingInfoEXT;pPastPresentationTimingProperties:PVkPastPresentationTimingPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainTimeDomainPropertiesEXT=function(device:TVkDevice;swapchain:TVkSwapchainKHR;pSwapchainTimeDomainProperties:PVkSwapchainTimeDomainPropertiesEXT;pTimeDomainsCounter:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPastPresentationTimingEXT=function(device:TVkDevice;const pPastPresentationTimingInfo:PVkPastPresentationTimingInfoEXT;pPastPresentationTimingProperties:PVkPastPresentationTimingPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 {$ifdef QNX}
-     TvkGetScreenBufferPropertiesQNX=function(device:TVkDevice;const buffer:P_screen_buffer;pProperties:PVkScreenBufferPropertiesQNX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetScreenBufferPropertiesQNX=function(device:TVkDevice;const buffer:P_screen_buffer;pProperties:PVkScreenBufferPropertiesQNX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
-     TvkGetPhysicalDeviceCooperativeMatrixPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCooperativeMatrixPropertiesKHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixPropertiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetExecutionGraphPipelineScratchSizeAMDX=function(device:TVkDevice;executionGraph:TVkPipeline;pSizeInfo:PVkExecutionGraphPipelineScratchSizeAMDX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetExecutionGraphPipelineScratchSizeAMDX=function(device:TVkDevice;executionGraph:TVkPipeline;pSizeInfo:PVkExecutionGraphPipelineScratchSizeAMDX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetExecutionGraphPipelineNodeIndexAMDX=function(device:TVkDevice;executionGraph:TVkPipeline;const pNodeInfo:PVkPipelineShaderStageNodeCreateInfoAMDX;pNodeIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetExecutionGraphPipelineNodeIndexAMDX=function(device:TVkDevice;executionGraph:TVkPipeline;const pNodeInfo:PVkPipelineShaderStageNodeCreateInfoAMDX;pNodeIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateExecutionGraphPipelinesAMDX=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkExecutionGraphPipelineCreateInfoAMDX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateExecutionGraphPipelinesAMDX=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkExecutionGraphPipelineCreateInfoAMDX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdInitializeGraphScratchMemoryAMDX=procedure(commandBuffer:TVkCommandBuffer;executionGraph:TVkPipeline;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdInitializeGraphScratchMemoryAMDX=procedure(commandBuffer:TVkCommandBuffer;executionGraph:TVkPipeline;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchGraphAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;const pCountInfo:PVkDispatchGraphCountInfoAMDX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchGraphAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;const pCountInfo:PVkDispatchGraphCountInfoAMDX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchGraphIndirectAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;const pCountInfo:PVkDispatchGraphCountInfoAMDX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchGraphIndirectAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;const pCountInfo:PVkDispatchGraphCountInfoAMDX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchGraphIndirectCountAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;countInfo:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchGraphIndirectCountAMDX=procedure(commandBuffer:TVkCommandBuffer;scratch:TVkDeviceAddress;scratchSize:TVkDeviceSize;countInfo:TVkDeviceAddress); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorSets2=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorSetsInfo:PVkBindDescriptorSetsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorSets2=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorSetsInfo:PVkBindDescriptorSetsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorSets2KHR=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorSetsInfo:PVkBindDescriptorSetsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorSets2KHR=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorSetsInfo:PVkBindDescriptorSetsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushConstants2=procedure(commandBuffer:TVkCommandBuffer;const pPushConstantsInfo:PVkPushConstantsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushConstants2=procedure(commandBuffer:TVkCommandBuffer;const pPushConstantsInfo:PVkPushConstantsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushConstants2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushConstantsInfo:PVkPushConstantsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushConstants2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushConstantsInfo:PVkPushConstantsInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSet2=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetInfo:PVkPushDescriptorSetInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSet2=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetInfo:PVkPushDescriptorSetInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSet2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetInfo:PVkPushDescriptorSetInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSet2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetInfo:PVkPushDescriptorSetInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSetWithTemplate2=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetWithTemplateInfo:PVkPushDescriptorSetWithTemplateInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSetWithTemplate2=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetWithTemplateInfo:PVkPushDescriptorSetWithTemplateInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDescriptorSetWithTemplate2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetWithTemplateInfo:PVkPushDescriptorSetWithTemplateInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDescriptorSetWithTemplate2KHR=procedure(commandBuffer:TVkCommandBuffer;const pPushDescriptorSetWithTemplateInfo:PVkPushDescriptorSetWithTemplateInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDescriptorBufferOffsets2EXT=procedure(commandBuffer:TVkCommandBuffer;const pSetDescriptorBufferOffsetsInfo:PVkSetDescriptorBufferOffsetsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDescriptorBufferOffsets2EXT=procedure(commandBuffer:TVkCommandBuffer;const pSetDescriptorBufferOffsetsInfo:PVkSetDescriptorBufferOffsetsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindDescriptorBufferEmbeddedSamplers2EXT=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorBufferEmbeddedSamplersInfo:PVkBindDescriptorBufferEmbeddedSamplersInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindDescriptorBufferEmbeddedSamplers2EXT=procedure(commandBuffer:TVkCommandBuffer;const pBindDescriptorBufferEmbeddedSamplersInfo:PVkBindDescriptorBufferEmbeddedSamplersInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetLatencySleepModeNV=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pSleepModeInfo:PVkLatencySleepModeInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetLatencySleepModeNV=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pSleepModeInfo:PVkLatencySleepModeInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkLatencySleepNV=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pSleepInfo:PVkLatencySleepInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkLatencySleepNV=function(device:TVkDevice;swapchain:TVkSwapchainKHR;const pSleepInfo:PVkLatencySleepInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkSetLatencyMarkerNV=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;const pLatencyMarkerInfo:PVkSetLatencyMarkerInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkSetLatencyMarkerNV=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;const pLatencyMarkerInfo:PVkSetLatencyMarkerInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetLatencyTimingsNV=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;pLatencyMarkerInfo:PVkGetLatencyMarkerInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetLatencyTimingsNV=procedure(device:TVkDevice;swapchain:TVkSwapchainKHR;pLatencyMarkerInfo:PVkGetLatencyMarkerInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueNotifyOutOfBandNV=procedure(queue:TVkQueue;const pQueueTypeInfo:PVkOutOfBandQueueTypeInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueNotifyOutOfBandNV=procedure(queue:TVkQueue;const pQueueTypeInfo:PVkOutOfBandQueueTypeInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRenderingAttachmentLocations=procedure(commandBuffer:TVkCommandBuffer;const pLocationInfo:PVkRenderingAttachmentLocationInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRenderingAttachmentLocations=procedure(commandBuffer:TVkCommandBuffer;const pLocationInfo:PVkRenderingAttachmentLocationInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRenderingAttachmentLocationsKHR=procedure(commandBuffer:TVkCommandBuffer;const pLocationInfo:PVkRenderingAttachmentLocationInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRenderingAttachmentLocationsKHR=procedure(commandBuffer:TVkCommandBuffer;const pLocationInfo:PVkRenderingAttachmentLocationInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRenderingInputAttachmentIndices=procedure(commandBuffer:TVkCommandBuffer;const pInputAttachmentIndexInfo:PVkRenderingInputAttachmentIndexInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRenderingInputAttachmentIndices=procedure(commandBuffer:TVkCommandBuffer;const pInputAttachmentIndexInfo:PVkRenderingInputAttachmentIndexInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetRenderingInputAttachmentIndicesKHR=procedure(commandBuffer:TVkCommandBuffer;const pInputAttachmentIndexInfo:PVkRenderingInputAttachmentIndexInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetRenderingInputAttachmentIndicesKHR=procedure(commandBuffer:TVkCommandBuffer;const pInputAttachmentIndexInfo:PVkRenderingInputAttachmentIndexInfo); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetDepthClampRangeEXT=procedure(commandBuffer:TVkCommandBuffer;depthClampMode:TVkDepthClampModeEXT;const pDepthClampRange:PVkDepthClampRangeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetDepthClampRangeEXT=procedure(commandBuffer:TVkCommandBuffer;depthClampMode:TVkDepthClampModeEXT;const pDepthClampRange:PVkDepthClampRangeEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixFlexibleDimensionsPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeMatrixFlexibleDimensionsPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMemoryMetalHandleEXT=function(device:TVkDevice;const pGetMetalHandleInfo:PVkMemoryGetMetalHandleInfoEXT;pHandle:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryMetalHandleEXT=function(device:TVkDevice;const pGetMetalHandleInfo:PVkMemoryGetMetalHandleInfoEXT;pHandle:PPVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMemoryMetalHandlePropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;const pHandle:PVkVoid;pMemoryMetalHandleProperties:PVkMemoryMetalHandlePropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryMetalHandlePropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;const pHandle:PVkVoid;pMemoryMetalHandleProperties:PVkMemoryMetalHandlePropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceCooperativeVectorPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeVectorPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceCooperativeVectorPropertiesNV=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkCooperativeVectorPropertiesNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkConvertCooperativeVectorMatrixNV=function(device:TVkDevice;const pInfo:PVkConvertCooperativeVectorMatrixInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkConvertCooperativeVectorMatrixNV=function(device:TVkDevice;const pInfo:PVkConvertCooperativeVectorMatrixInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdConvertCooperativeVectorMatrixNV=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkConvertCooperativeVectorMatrixInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdConvertCooperativeVectorMatrixNV=procedure(commandBuffer:TVkCommandBuffer;infoCount:TVkUInt32;const pInfos:PVkConvertCooperativeVectorMatrixInfoNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchTileQCOM=procedure(commandBuffer:TVkCommandBuffer;const pDispatchTileInfo:PVkDispatchTileInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchTileQCOM=procedure(commandBuffer:TVkCommandBuffer;const pDispatchTileInfo:PVkDispatchTileInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginPerTileExecutionQCOM=procedure(commandBuffer:TVkCommandBuffer;const pPerTileBeginInfo:PVkPerTileBeginInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginPerTileExecutionQCOM=procedure(commandBuffer:TVkCommandBuffer;const pPerTileBeginInfo:PVkPerTileBeginInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndPerTileExecutionQCOM=procedure(commandBuffer:TVkCommandBuffer;const pPerTileEndInfo:PVkPerTileEndInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndPerTileExecutionQCOM=procedure(commandBuffer:TVkCommandBuffer;const pPerTileEndInfo:PVkPerTileEndInfoQCOM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateExternalComputeQueueNV=function(device:TVkDevice;const pCreateInfo:PVkExternalComputeQueueCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pExternalQueue:PVkExternalComputeQueueNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateExternalComputeQueueNV=function(device:TVkDevice;const pCreateInfo:PVkExternalComputeQueueCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pExternalQueue:PVkExternalComputeQueueNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyExternalComputeQueueNV=procedure(device:TVkDevice;externalQueue:TVkExternalComputeQueueNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyExternalComputeQueueNV=procedure(device:TVkDevice;externalQueue:TVkExternalComputeQueueNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetExternalComputeQueueDataNV=procedure(externalQueue:TVkExternalComputeQueueNV;params:PVkExternalComputeQueueDataParamsNV;pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetExternalComputeQueueDataNV=procedure(externalQueue:TVkExternalComputeQueueNV;params:PVkExternalComputeQueueDataParamsNV;pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDeviceShaderInstrumentationMetricsARM=function(physicalDevice:TVkPhysicalDevice;pDescriptionCount:PVkUInt32;pDescriptions:PVkShaderInstrumentationMetricDescriptionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDeviceShaderInstrumentationMetricsARM=function(physicalDevice:TVkPhysicalDevice;pDescriptionCount:PVkUInt32;pDescriptions:PVkShaderInstrumentationMetricDescriptionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateShaderInstrumentationARM=function(device:TVkDevice;const pCreateInfo:PVkShaderInstrumentationCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pInstrumentation:PVkShaderInstrumentationARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateShaderInstrumentationARM=function(device:TVkDevice;const pCreateInfo:PVkShaderInstrumentationCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pInstrumentation:PVkShaderInstrumentationARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyShaderInstrumentationARM=procedure(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyShaderInstrumentationARM=procedure(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginShaderInstrumentationARM=procedure(commandBuffer:TVkCommandBuffer;instrumentation:TVkShaderInstrumentationARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginShaderInstrumentationARM=procedure(commandBuffer:TVkCommandBuffer;instrumentation:TVkShaderInstrumentationARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndShaderInstrumentationARM=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndShaderInstrumentationARM=procedure(commandBuffer:TVkCommandBuffer); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetShaderInstrumentationValuesARM=function(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM;pMetricBlockCount:PVkUInt32;pMetricValues:PVkVoid;flags:TVkShaderInstrumentationValuesFlagsARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetShaderInstrumentationValuesARM=function(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM;pMetricBlockCount:PVkUInt32;pMetricValues:PVkVoid;flags:TVkShaderInstrumentationValuesFlagsARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkClearShaderInstrumentationMetricsARM=procedure(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkClearShaderInstrumentationMetricsARM=procedure(device:TVkDevice;instrumentation:TVkShaderInstrumentationARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateTensorARM=function(device:TVkDevice;const pCreateInfo:PVkTensorCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pTensor:PVkTensorARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateTensorARM=function(device:TVkDevice;const pCreateInfo:PVkTensorCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pTensor:PVkTensorARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyTensorARM=procedure(device:TVkDevice;tensor:TVkTensorARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyTensorARM=procedure(device:TVkDevice;tensor:TVkTensorARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateTensorViewARM=function(device:TVkDevice;const pCreateInfo:PVkTensorViewCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pView:PVkTensorViewARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateTensorViewARM=function(device:TVkDevice;const pCreateInfo:PVkTensorViewCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pView:PVkTensorViewARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyTensorViewARM=procedure(device:TVkDevice;tensorView:TVkTensorViewARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyTensorViewARM=procedure(device:TVkDevice;tensorView:TVkTensorViewARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetTensorMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkTensorMemoryRequirementsInfoARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetTensorMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkTensorMemoryRequirementsInfoARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindTensorMemoryARM=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindTensorMemoryInfoARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindTensorMemoryARM=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindTensorMemoryInfoARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDeviceTensorMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkDeviceTensorMemoryRequirementsARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDeviceTensorMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkDeviceTensorMemoryRequirementsARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyTensorARM=procedure(commandBuffer:TVkCommandBuffer;const pCopyTensorInfo:PVkCopyTensorInfoARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyTensorARM=procedure(commandBuffer:TVkCommandBuffer;const pCopyTensorInfo:PVkCopyTensorInfoARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetTensorOpaqueCaptureDescriptorDataARM=function(device:TVkDevice;const pInfo:PVkTensorCaptureDescriptorDataInfoARM;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetTensorOpaqueCaptureDescriptorDataARM=function(device:TVkDevice;const pInfo:PVkTensorCaptureDescriptorDataInfoARM;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetTensorViewOpaqueCaptureDescriptorDataARM=function(device:TVkDevice;const pInfo:PVkTensorViewCaptureDescriptorDataInfoARM;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetTensorViewOpaqueCaptureDescriptorDataARM=function(device:TVkDevice;const pInfo:PVkTensorViewCaptureDescriptorDataInfoARM;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceExternalTensorPropertiesARM=procedure(physicalDevice:TVkPhysicalDevice;const pExternalTensorInfo:PVkPhysicalDeviceExternalTensorInfoARM;pExternalTensorProperties:PVkExternalTensorPropertiesARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceExternalTensorPropertiesARM=procedure(physicalDevice:TVkPhysicalDevice;const pExternalTensorInfo:PVkPhysicalDeviceExternalTensorInfoARM;pExternalTensorProperties:PVkExternalTensorPropertiesARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDataGraphPipelinesARM=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkDataGraphPipelineCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDataGraphPipelinesARM=function(device:TVkDevice;deferredOperation:TVkDeferredOperationKHR;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkDataGraphPipelineCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateDataGraphPipelineSessionARM=function(device:TVkDevice;const pCreateInfo:PVkDataGraphPipelineSessionCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pSession:PVkDataGraphPipelineSessionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateDataGraphPipelineSessionARM=function(device:TVkDevice;const pCreateInfo:PVkDataGraphPipelineSessionCreateInfoARM;const pAllocator:PVkAllocationCallbacks;pSession:PVkDataGraphPipelineSessionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDataGraphPipelineSessionBindPointRequirementsARM=function(device:TVkDevice;const pInfo:PVkDataGraphPipelineSessionBindPointRequirementsInfoARM;pBindPointRequirementCount:PVkUInt32;pBindPointRequirements:PVkDataGraphPipelineSessionBindPointRequirementARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDataGraphPipelineSessionBindPointRequirementsARM=function(device:TVkDevice;const pInfo:PVkDataGraphPipelineSessionBindPointRequirementsInfoARM;pBindPointRequirementCount:PVkUInt32;pBindPointRequirements:PVkDataGraphPipelineSessionBindPointRequirementARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDataGraphPipelineSessionMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkDataGraphPipelineSessionMemoryRequirementsInfoARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDataGraphPipelineSessionMemoryRequirementsARM=procedure(device:TVkDevice;const pInfo:PVkDataGraphPipelineSessionMemoryRequirementsInfoARM;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindDataGraphPipelineSessionMemoryARM=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindDataGraphPipelineSessionMemoryInfoARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindDataGraphPipelineSessionMemoryARM=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindDataGraphPipelineSessionMemoryInfoARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyDataGraphPipelineSessionARM=procedure(device:TVkDevice;session:TVkDataGraphPipelineSessionARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyDataGraphPipelineSessionARM=procedure(device:TVkDevice;session:TVkDataGraphPipelineSessionARM;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchDataGraphARM=procedure(commandBuffer:TVkCommandBuffer;session:TVkDataGraphPipelineSessionARM;const pInfo:PVkDataGraphPipelineDispatchInfoARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchDataGraphARM=procedure(commandBuffer:TVkCommandBuffer;session:TVkDataGraphPipelineSessionARM;const pInfo:PVkDataGraphPipelineDispatchInfoARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDataGraphPipelineAvailablePropertiesARM=function(device:TVkDevice;const pPipelineInfo:PVkDataGraphPipelineInfoARM;pPropertiesCount:PVkUInt32;pProperties:PVkDataGraphPipelinePropertyARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDataGraphPipelineAvailablePropertiesARM=function(device:TVkDevice;const pPipelineInfo:PVkDataGraphPipelineInfoARM;pPropertiesCount:PVkUInt32;pProperties:PVkDataGraphPipelinePropertyARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetDataGraphPipelinePropertiesARM=function(device:TVkDevice;const pPipelineInfo:PVkDataGraphPipelineInfoARM;propertiesCount:TVkUInt32;pProperties:PVkDataGraphPipelinePropertyQueryResultARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetDataGraphPipelinePropertiesARM=function(device:TVkDevice;const pPipelineInfo:PVkDataGraphPipelineInfoARM;propertiesCount:TVkUInt32;pProperties:PVkDataGraphPipelinePropertyQueryResultARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pQueueFamilyDataGraphPropertyCount:PVkUInt32;pQueueFamilyDataGraphProperties:PVkQueueFamilyDataGraphPropertiesARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pQueueFamilyDataGraphPropertyCount:PVkUInt32;pQueueFamilyDataGraphProperties:PVkQueueFamilyDataGraphPropertiesARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM=procedure(physicalDevice:TVkPhysicalDevice;const pQueueFamilyDataGraphProcessingEngineInfo:PVkPhysicalDeviceQueueFamilyDataGraphProcessingEngineInfoARM;pQueueFamilyDataGraphProcessingEngineProperties:PVkQueueFamilyDataGraphProcessingEnginePropertiesARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM=procedure(physicalDevice:TVkPhysicalDevice;const pQueueFamilyDataGraphProcessingEngineInfo:PVkPhysicalDeviceQueueFamilyDataGraphProcessingEngineInfoARM;pQueueFamilyDataGraphProcessingEngineProperties:PVkQueueFamilyDataGraphProcessingEnginePropertiesARM); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetNativeBufferPropertiesOHOS=function(device:TVkDevice;const buffer:POH_NativeBuffer;pProperties:PVkNativeBufferPropertiesOHOS):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetNativeBufferPropertiesOHOS=function(device:TVkDevice;const buffer:POH_NativeBuffer;pProperties:PVkNativeBufferPropertiesOHOS):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetMemoryNativeBufferOHOS=function(device:TVkDevice;const pInfo:PVkMemoryGetNativeBufferInfoOHOS;pBuffer:PPOH_NativeBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetMemoryNativeBufferOHOS=function(device:TVkDevice;const pInfo:PVkMemoryGetNativeBufferInfoOHOS;pBuffer:PPOH_NativeBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetSwapchainGrallocUsageOHOS=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetSwapchainGrallocUsageOHOS=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkAcquireImageOHOS=function(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkAcquireImageOHOS=function(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkQueueSignalReleaseImageOHOS=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkQueueSignalReleaseImageOHOS=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pCounterCount:PVkUInt32;pCounters:PVkPerformanceCounterARM;pCounterDescriptions:PVkPerformanceCounterDescriptionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;pCounterCount:PVkUInt32;pCounters:PVkPerformanceCounterARM;pCounterDescriptions:PVkPerformanceCounterDescriptionARM):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdSetComputeOccupancyPriorityNV=procedure(commandBuffer:TVkCommandBuffer;const pParameters:PVkComputeOccupancyPriorityParametersNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdSetComputeOccupancyPriorityNV=procedure(commandBuffer:TVkCommandBuffer;const pParameters:PVkComputeOccupancyPriorityParametersNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWriteSamplerDescriptorsEXT=function(device:TVkDevice;samplerCount:TVkUInt32;const pSamplers:PVkSamplerCreateInfo;const pDescriptors:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWriteSamplerDescriptorsEXT=function(device:TVkDevice;samplerCount:TVkUInt32;const pSamplers:PVkSamplerCreateInfo;const pDescriptors:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkWriteResourceDescriptorsEXT=function(device:TVkDevice;resourceCount:TVkUInt32;const pResources:PVkResourceDescriptorInfoEXT;const pDescriptors:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkWriteResourceDescriptorsEXT=function(device:TVkDevice;resourceCount:TVkUInt32;const pResources:PVkResourceDescriptorInfoEXT;const pDescriptors:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindSamplerHeapEXT=procedure(commandBuffer:TVkCommandBuffer;const pBindInfo:PVkBindHeapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindSamplerHeapEXT=procedure(commandBuffer:TVkCommandBuffer;const pBindInfo:PVkBindHeapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindResourceHeapEXT=procedure(commandBuffer:TVkCommandBuffer;const pBindInfo:PVkBindHeapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindResourceHeapEXT=procedure(commandBuffer:TVkCommandBuffer;const pBindInfo:PVkBindHeapInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdPushDataEXT=procedure(commandBuffer:TVkCommandBuffer;const pPushDataInfo:PVkPushDataInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdPushDataEXT=procedure(commandBuffer:TVkCommandBuffer;const pPushDataInfo:PVkPushDataInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkRegisterCustomBorderColorEXT=function(device:TVkDevice;const pBorderColor:PVkSamplerCustomBorderColorCreateInfoEXT;requestIndex:TVkBool32;pIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkRegisterCustomBorderColorEXT=function(device:TVkDevice;const pBorderColor:PVkSamplerCustomBorderColorCreateInfoEXT;requestIndex:TVkBool32;pIndex:PVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkUnregisterCustomBorderColorEXT=procedure(device:TVkDevice;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkUnregisterCustomBorderColorEXT=procedure(device:TVkDevice;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetImageOpaqueCaptureDataEXT=function(device:TVkDevice;imageCount:TVkUInt32;const pImages:PVkImage;pDatas:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetImageOpaqueCaptureDataEXT=function(device:TVkDevice;imageCount:TVkUInt32;const pImages:PVkImage;pDatas:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetPhysicalDeviceDescriptorSizeEXT=function(physicalDevice:TVkPhysicalDevice;descriptorType:TVkDescriptorType):TVkDeviceSize; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetPhysicalDeviceDescriptorSizeEXT=function(physicalDevice:TVkPhysicalDevice;descriptorType:TVkDescriptorType):TVkDeviceSize; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetTensorOpaqueCaptureDataARM=function(device:TVkDevice;tensorCount:TVkUInt32;const pTensors:PVkTensorARM;pDatas:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetTensorOpaqueCaptureDataARM=function(device:TVkDevice;tensorCount:TVkUInt32;const pTensors:PVkTensorARM;pDatas:PVkHostAddressRangeEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyMemoryToImageKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryImageInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyMemoryToImageKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryImageInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyImageToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryImageInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyImageToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pCopyMemoryInfo:PVkCopyDeviceMemoryImageInfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdUpdateMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pDstRange:PVkDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;dataSize:TVkDeviceSize;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdUpdateMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pDstRange:PVkDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;dataSize:TVkDeviceSize;const pData:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdFillMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pDstRange:PVkDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdFillMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;const pDstRange:PVkDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;data:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyQueryPoolResultsToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;const pDstRange:PVkStridedDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;queryResultFlags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyQueryPoolResultsToMemoryKHR=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;firstQuery:TVkUInt32;queryCount:TVkUInt32;const pDstRange:PVkStridedDeviceAddressRangeKHR;dstFlags:TVkAddressCommandFlagsKHR;queryResultFlags:TVkQueryResultFlags); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginConditionalRendering2EXT=procedure(commandBuffer:TVkCommandBuffer;const pConditionalRenderingBegin:PVkConditionalRenderingBeginInfo2EXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginConditionalRendering2EXT=procedure(commandBuffer:TVkCommandBuffer;const pConditionalRenderingBegin:PVkConditionalRenderingBeginInfo2EXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindTransformFeedbackBuffers2EXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBindingInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindTransformFeedbackBuffers2EXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBindingInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBeginTransformFeedback2EXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterRange:TVkUInt32;counterRangeCount:TVkUInt32;const pCounterInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBeginTransformFeedback2EXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterRange:TVkUInt32;counterRangeCount:TVkUInt32;const pCounterInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdEndTransformFeedback2EXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterRange:TVkUInt32;counterRangeCount:TVkUInt32;const pCounterInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdEndTransformFeedback2EXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterRange:TVkUInt32;counterRangeCount:TVkUInt32;const pCounterInfos:PVkBindTransformFeedbackBuffer2InfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirectByteCount2EXT=procedure(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;const pCounterInfo:PVkBindTransformFeedbackBuffer2InfoEXT;counterOffset:TVkUInt32;vertexStride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectByteCount2EXT=procedure(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;const pCounterInfo:PVkBindTransformFeedbackBuffer2InfoEXT;counterOffset:TVkUInt32;vertexStride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteMarkerToMemoryAMD=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkMemoryMarkerInfoAMD); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteMarkerToMemoryAMD=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkMemoryMarkerInfoAMD); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindIndexBuffer3KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkBindIndexBuffer3InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindIndexBuffer3KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkBindIndexBuffer3InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBindVertexBuffers3KHR=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBindingInfos:PVkBindVertexBuffer3InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBindVertexBuffers3KHR=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBindingInfos:PVkBindVertexBuffer3InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndirectCount2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndirectCount2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawIndexedIndirectCount2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawIndexedIndirectCount2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirect2EXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirect2EXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDrawMeshTasksIndirectCount2EXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDrawMeshTasksIndirectCount2EXT=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDrawIndirectCount2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdDispatchIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDispatchIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdDispatchIndirect2KHR=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkDispatchIndirect2InfoKHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateAccelerationStructure2KHR=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfo2KHR;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateAccelerationStructure2KHR=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfo2KHR;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$if defined(fpc) and defined(cpuarm)}hardfloat;{$else}cdecl;{$ifend}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
