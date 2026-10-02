@@ -546,7 +546,7 @@ begin
 end;
 
 function TpvBufferRangeAllocator.Defragment(const aMove:TOnDefragmentMove):Boolean;
-type TNodes=array of TRangeRedBlackTree.TNode;
+type TNodes={$ifdef fpc}array of TRangeRedBlackTree.TNode{$else}TArray<TRangeRedBlackTree.TNode>{$endif}; // Delphi ARM (LLVM): a local "array of" a generic's nested type fails with E2581
 var Index,CountAllocatedNodes:TpvSizeInt;
     AllocatedNodes:TNodes;
     Node,NextNode:TRangeRedBlackTree.TNode;
