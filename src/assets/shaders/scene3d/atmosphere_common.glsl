@@ -215,7 +215,7 @@ struct AtmosphereParameters {
   float maxShadowDistance;
   uint flags;
   float RainAtmosphereCubeMapLuminanceFactor; // Factor to multiply the rain atmosphere luminance by, this is used to adjust the rain atmosphere luminance based on the scene lighting for indirect lighting
-  float atmosphereDensityScale; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+  float reserved0; // reserved for future use / padding
   float aerialPerspectiveScale; // Scale factor for aerial perspective (atmosphere fog between camera and geometry), 0.0 = none, 1.0 = full (default)
   float distantExtinctionBoostStartDistance; // Distance (in atmosphere units) from where the extra distance-based extinction boost starts ramping up
   float distantExtinctionBoostFactor; // Quadratic ramp factor for the distance-based extinction boost, applied to (distance - startDistance)^2
@@ -232,6 +232,12 @@ struct AtmosphereParameters {
   float skyShadowSoftenInvSunLightDotRange; // Reciprocal of the cosTheta range over which the sun-angle gate ramps from 0 (toward the sun) to 1 (away from the sun)
   float _skyShadowSoftenReserved0; // reserved for future use / padding
   float _skyShadowSoftenReserved1; // reserved for future use / padding so that the following CullingParameters struct (which starts with uvec4, alignment 16) stays 16-byte aligned
+
+  // The sun dependent density scale, see sampleMediumRGB. 16 bytes, so what follows stays aligned.
+  float atmosphereDensityScaleDay; // Multiplier for all scattering/extinction densities where the sun stands high; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+  float atmosphereDensityScaleNight; // Multiplier for all scattering/extinction densities where the sun stands low or below the horizon; equal to the day scale makes the density independent of the sun
+  float atmosphereDensityScaleNightSunZenithCos; // Cosine of the local sun zenith angle at and below which the night scale applies fully
+  float atmosphereDensityScaleInvSunZenithCosRange; // Reciprocal of the cosine range over which the scale goes from night to day
 
   // The drawn sun. These do not belong to the atmosphere, they belong to the scene - the same sun has to be
   // agreed upon by whoever draws it, with or without air around it - so they are copied in from there. The
@@ -619,11 +625,24 @@ struct MediumSampleRGB {
   vec3 albedo;
 };
 
-MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in AtmosphereParameters Atmosphere){
+// SunDir has to be in the same frame as WorldPos, and the LUT passes work in a local frame of their own, so it
+// comes from the caller and not from getSunDirection.
+MediumSampleRGB sampleMediumRGB(in vec3 WorldPos, in vec3 SunDir, in AtmosphereParameters Atmosphere){
 
-  const float viewHeight = max(1e-4, length(WorldPos) - Atmosphere.BottomRadius);
+  const float pHeight = length(WorldPos);
+  const float viewHeight = max(1e-4, pHeight - Atmosphere.BottomRadius);
 
-  const float densityScale = Atmosphere.atmosphereDensityScale;
+  // The density scale goes by the sun angle at this very sample, smoothstep shaped from the night scale at and
+  // below the night edge up to the day scale. A planet has all times of day at once, so this has to be per sample
+  // and not per camera. Being symmetric about the sun axis, the field leaves the transmittance and the multiple
+  // scattering LUT exact, since both are looked up by height and sun zenith angle only: a ray towards the sun
+  // meets nothing but points whose height and sun angle follow from those at its start. With equal scales this
+  // is exactly the constant scale it always was.
+  const float sunZenithCosAngle = dot(WorldPos, SunDir) / max(1e-4, pHeight);
+  const float dayFactor = clamp((sunZenithCosAngle - Atmosphere.atmosphereDensityScaleNightSunZenithCos) * Atmosphere.atmosphereDensityScaleInvSunZenithCosRange, 0.0, 1.0);
+  const float densityScale = fma(Atmosphere.atmosphereDensityScaleDay - Atmosphere.atmosphereDensityScaleNight,
+                                 (dayFactor * dayFactor) * fma(-2.0, dayFactor, 3.0),
+                                 Atmosphere.atmosphereDensityScaleNight);
   const float densityMie = exp(Atmosphere.MieDensityExpScale * viewHeight) * densityScale;
   const float densityRay = exp(Atmosphere.RayleighDensityExpScale * viewHeight) * densityScale;
   const float densityOzo = clamp(viewHeight < Atmosphere.AbsorptionDensity0LayerWidth ?
@@ -775,7 +794,7 @@ vec3 IntegrateOpticalDepth(in vec3 WorldPos,
     }
     vec3 P = WorldPos + t * WorldDir;
 
-    MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+    MediumSampleRGB medium = sampleMediumRGB(P, WorldDir, Atmosphere); // the only caller is the transmittance LUT, whose rays run towards the sun
     const vec3 SampleOpticalDepth = medium.extinction * dt;
     OpticalDepth += SampleOpticalDepth;
 
@@ -945,7 +964,7 @@ SingleScatteringResult IntegrateScatteredLuminance(const in sampler2D Transmitta
                                      : 1.0; // No atmosphere map, so use 1.0 as factor
 #endif
 
-    MediumSampleRGB medium = sampleMediumRGB(P, Atmosphere);
+    MediumSampleRGB medium = sampleMediumRGB(P, SunDir, Atmosphere);
     const vec3 SampleOpticalDepth = medium.extinction *
 #ifdef ATMOSPHEREMAP_ENABLED
                                     atmosphereFactor *

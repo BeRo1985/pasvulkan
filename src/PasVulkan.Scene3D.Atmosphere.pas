@@ -504,7 +504,14 @@ type TpvScene3DAtmosphere=class;
               AbsorptionExtinction:TpvVector4; // w is unused, for alignment
               GroundAlbedo:TpvVector4; // w is unused, for alignment
               FadeFactor:TpvFloat; // Fade factor for the atmosphere (0.0 = no atmosphere, 1.0 = full atmosphere)
-              AtmosphereDensityScale:TpvFloat; // Multiplier for all scattering/extinction densities; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+              // The density scale follows the sun angle at each point of the atmosphere, not at the camera, since a
+              // planet has all times of day at once. Thin where the sun stands high and denser towards and beyond the
+              // terminator, so that the long light paths of dawn and dusk can redden without thickening the day sky.
+              // The field stays symmetric about the sun axis, which keeps the LUTs exact, see sampleMediumRGB.
+              AtmosphereDensityScaleDay:TpvFloat; // Multiplier for all scattering/extinction densities where the sun stands high; compensates for small-planet shorter optical paths (1.0 = Earth-scale default)
+              AtmosphereDensityScaleNight:TpvFloat; // The same where the sun stands low or below the horizon; equal to the day scale (default) makes the density independent of the sun
+              AtmosphereDensityScaleNightSunZenithCos:TpvFloat; // Cosine of the local sun zenith angle at and below which the night scale applies fully
+              AtmosphereDensityScaleDaySunZenithCos:TpvFloat; // Cosine of the local sun zenith angle at and above which the day scale applies fully, smoothstep in between
               AerialPerspectiveScale:TpvFloat; // Scale factor for aerial perspective fog between camera and geometry, 0.0 = none, 1.0 = full (default)
               DistantExtinctionBoostStartDistance:TpvFloat; // Distance (in atmosphere units) from where the extra distance-based extinction boost starts ramping up
               DistantExtinctionBoostFactor:TpvFloat; // Quadratic ramp factor for the distance-based extinction boost, applied to (distance - startDistance)^2
@@ -721,7 +728,7 @@ type TpvScene3DAtmosphere=class;
               MaxShadowDistance:TpvFloat;
               Flags:TpvUInt32;
               RainAtmosphereCubeMapLuminanceFactor:TpvFloat;
-              AtmosphereDensityScale:TpvFloat;
+              Reserved0:TpvFloat; // reserved for future use / padding
               AerialPerspectiveScale:TpvFloat;
               DistantExtinctionBoostStartDistance:TpvFloat;
               DistantExtinctionBoostFactor:TpvFloat;
@@ -738,6 +745,12 @@ type TpvScene3DAtmosphere=class;
               SkyShadowSoftenInvSunLightDotRange:TpvFloat;
               _SkyShadowSoftenReserved0:TpvFloat;
               _SkyShadowSoftenReserved1:TpvFloat; // padding to keep AtmosphereCullingParameters (uvec4 → align 16) at a 16-byte-aligned offset
+
+              // The sun dependent density scale. 16 bytes, so what follows stays aligned.
+              AtmosphereDensityScaleDay:TpvFloat;
+              AtmosphereDensityScaleNight:TpvFloat;
+              AtmosphereDensityScaleNightSunZenithCos:TpvFloat;
+              AtmosphereDensityScaleInvSunZenithCosRange:TpvFloat; // reciprocal of the cosine range from the night to the day scale
 
               // The drawn sun. Copied in from TpvScene3D, which owns it, since the same sun has to be agreed
               // upon by everything that draws it. 48 bytes, three times sixteen, so what follows stays aligned.
@@ -1661,8 +1674,11 @@ begin
  // Fade factor
  FadeFactor:=1.0;
 
- // Density scale
- AtmosphereDensityScale:=1.0;
+ // Density scale, equal by day and by night and therefore independent of the sun
+ AtmosphereDensityScaleDay:=1.0;
+ AtmosphereDensityScaleNight:=1.0;
+ AtmosphereDensityScaleNightSunZenithCos:=0.0; // sun on the horizon
+ AtmosphereDensityScaleDaySunZenithCos:=0.70710678; // sun 45 degrees above the horizon
 
  // Aerial perspective scale
  AerialPerspectiveScale:=1.0;
@@ -1772,7 +1788,11 @@ begin
 
   FadeFactor:=TPasJSON.GetNumber(JSONRootObject.Properties['fadefactor'],FadeFactor);
 
-  AtmosphereDensityScale:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScale);
+  // The older single scale still works and sets day and night alike, the separate keys then take precedence
+  AtmosphereDensityScaleDay:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscaleday'],TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScaleDay));
+  AtmosphereDensityScaleNight:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscalenight'],TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscale'],AtmosphereDensityScaleNight));
+  AtmosphereDensityScaleNightSunZenithCos:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscalenightsunzenithcos'],AtmosphereDensityScaleNightSunZenithCos);
+  AtmosphereDensityScaleDaySunZenithCos:=TPasJSON.GetNumber(JSONRootObject.Properties['atmospheredensityscaledaysunzenithcos'],AtmosphereDensityScaleDaySunZenithCos);
   AerialPerspectiveScale:=TPasJSON.GetNumber(JSONRootObject.Properties['aerialperspectivescale'],AerialPerspectiveScale);
 
   DistantExtinctionBoostStartDistance:=TPasJSON.GetNumber(JSONRootObject.Properties['distantextinctionbooststartdistance'],DistantExtinctionBoostStartDistance);
@@ -1875,7 +1895,10 @@ begin
  result.Add('topradius',TPasJSONItemNumber.Create(TopRadius));
  result.Add('groundalbedo',Vector3ToJSON(GroundAlbedo.xyz));
  result.Add('fadefactor',TPasJSONItemNumber.Create(FadeFactor));
- result.Add('atmospheredensityscale',TPasJSONItemNumber.Create(AtmosphereDensityScale));
+ result.Add('atmospheredensityscaleday',TPasJSONItemNumber.Create(AtmosphereDensityScaleDay));
+ result.Add('atmospheredensityscalenight',TPasJSONItemNumber.Create(AtmosphereDensityScaleNight));
+ result.Add('atmospheredensityscalenightsunzenithcos',TPasJSONItemNumber.Create(AtmosphereDensityScaleNightSunZenithCos));
+ result.Add('atmospheredensityscaledaysunzenithcos',TPasJSONItemNumber.Create(AtmosphereDensityScaleDaySunZenithCos));
  result.Add('aerialperspectivescale',TPasJSONItemNumber.Create(AerialPerspectiveScale));
  result.Add('distantextinctionbooststartdistance',TPasJSONItemNumber.Create(DistantExtinctionBoostStartDistance));
  result.Add('distantextinctionboostfactor',TPasJSONItemNumber.Create(DistantExtinctionBoostFactor));
@@ -2205,7 +2228,7 @@ begin
 
  RainAtmosphereCubeMapLuminanceFactor:=aAtmosphereParameters.RainAtmosphereCubeMapLuminanceFactor;
 
- AtmosphereDensityScale:=aAtmosphereParameters.AtmosphereDensityScale;
+ Reserved0:=0.0;
 
  AerialPerspectiveScale:=aAtmosphereParameters.AerialPerspectiveScale;
 
@@ -2225,6 +2248,16 @@ begin
  SkyShadowSoftenInvSunLightDotRange:=aAtmosphereParameters.SkyShadowSoftenInvSunLightDotRange;
  _SkyShadowSoftenReserved0:=0.0;
  _SkyShadowSoftenReserved1:=0.0;
+
+ AtmosphereDensityScaleDay:=aAtmosphereParameters.AtmosphereDensityScaleDay;
+ AtmosphereDensityScaleNight:=aAtmosphereParameters.AtmosphereDensityScaleNight;
+ AtmosphereDensityScaleNightSunZenithCos:=aAtmosphereParameters.AtmosphereDensityScaleNightSunZenithCos;
+ // An empty or reversed cosine range turns the transition into a hard step at the night edge
+ if aAtmosphereParameters.AtmosphereDensityScaleDaySunZenithCos>(aAtmosphereParameters.AtmosphereDensityScaleNightSunZenithCos+1e-4) then begin
+  AtmosphereDensityScaleInvSunZenithCosRange:=1.0/(aAtmosphereParameters.AtmosphereDensityScaleDaySunZenithCos-aAtmosphereParameters.AtmosphereDensityScaleNightSunZenithCos);
+ end else begin
+  AtmosphereDensityScaleInvSunZenithCosRange:=1e4;
+ end;
 
  // The sun belongs to the scene, not to this atmosphere - see TpvScene3D.SunDiscMode and the properties
  // beside it. It is copied in here so that the ray march and the cube map baked from it draw the same sun.
