@@ -677,7 +677,7 @@ type EpvVulkanException=class(Exception);
         aNext:PVkVoid; //< TpvPointer to next structure
         flags:TVkFlags; //< Reserved
        );
-{$if defined(Android) and defined(Unix)}
+{$if defined(Android)}
        TpvVulkanSurfacePlatform.Android:(
         Android:TVkAndroidSurfaceCreateInfoKHR;
        );
@@ -5227,7 +5227,7 @@ begin
  try
   if not ktxLoadAttempted then begin
    try
-    ktxLibraryHandle:=LoadLibrary({$if defined(Windows)}'ktx.dll'{$elseif defined(Darwin)}'libktx.dylib'{$else}IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libktx.so'{$ifend});
+    ktxLibraryHandle:=LoadLibrary({$ifndef fpc}PChar({$endif}{$if defined(Windows)}'ktx.dll'{$elseif defined(Darwin)}'libktx.dylib'{$else}IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libktx.so'{$ifend}{$ifndef fpc}){$endif});
     if ktxLibraryHandle<>ktxNilLibHandle then begin
      ktxTexture_CreateFromMemory:=GetProcAddress(ktxLibraryHandle,'ktxTexture_CreateFromMemory');
      ktxTexture_GetData:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetData');
@@ -7785,7 +7785,7 @@ asm
 end;
 {$endif}
 {$else}
-{$ifdef cpuarm} assembler; //inline;
+{$if defined(fpc) and defined(cpuarm)} assembler; //inline;
 asm
  mov r0,r0,asr R1
 end;// ['r0','R1'];
@@ -7794,7 +7794,7 @@ begin
  Shift:=Shift and 31;
  result:=(TpvUInt32(Value) shr Shift) or (TpvUInt32(TpvInt32(TpvUInt32(0-TpvUInt32(TpvUInt32(Value) shr 31)) and TpvUInt32(0-TpvUInt32(ord(Shift<>0) and 1)))) shl (32-Shift));
 end;
-{$endif}
+{$ifend}
 {$endif}
 {$endif}
 

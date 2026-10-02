@@ -1588,7 +1588,7 @@ end;
 {$endif}
 
 function CrashReportFormatAddressFallback(const aAddress:TpvPointer;const aReturnAddress:Boolean):TpvUTF8String;
-{$ifdef fpc}
+{$if defined(fpc)}
 var Answer:TpvUTF8String;
     Position:TpvSizeInt;
 begin
@@ -1648,7 +1648,7 @@ begin
   CrashReportLeaveBackTrace;
  end;
 end;
-{$else}
+{$elseif defined(Windows)}
 var MemoryInformation:TMemoryBasicInformation;
     ModuleFileName:array[0..MAX_PATH] of Char;
 begin
@@ -1667,7 +1667,11 @@ begin
   end;
  end;
 end;
-{$endif}
+{$else}
+begin
+ result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
+end;
+{$ifend}
 
 {$if defined(fpc) and (defined(Linux) or defined(Android))}
 // Called once per frame by the unwinder. Only collects, so that nothing which
@@ -2353,7 +2357,11 @@ begin
 {$endif}
    GetMem(StackInfo,SizeOf(TpvCrashReportStackInfo));
    FillChar(StackInfo^,SizeOf(TpvCrashReportStackInfo),#0);
+{$ifdef Windows}
    StackInfo^.Count:=RtlCaptureStackBackTrace(2,cMaximalStackFrames,@StackInfo^.Addresses[0],nil);
+{$else}
+   StackInfo^.Count:=0; // no Delphi stack walker on this platform
+{$endif}
    if StackInfo^.Count>0 then begin
     result:=StackInfo;
    end else begin

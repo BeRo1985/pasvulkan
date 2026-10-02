@@ -67,6 +67,8 @@ uses {$if defined(Windows)}
       BaseUnix,
       Unix,
       UnixType,
+     {$elseif defined(POSIX)}
+      Posix.Unistd,
      {$ifend}
      SysUtils,
      Classes,
@@ -574,11 +576,13 @@ begin
   end;
   fWrappedStreamSize:=fWrappedStream.Size;
   if fWrappedStream is TFileStream then begin
-{$ifdef Windows}
+{$if defined(Windows)}
   Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
-{$else}
+{$elseif defined(fpc)}
   fpfsync(TFileStream(fWrappedStream).Handle);
-{$endif}
+{$else}
+  fsync(TFileStream(fWrappedStream).Handle);
+{$ifend}
   end;
  end;
 end;
@@ -893,9 +897,11 @@ begin
  if Dirty and (fWrappedStream is TFileStream) then begin
 {$ifdef windows}
   Windows.FlushFileBuffers(TFileStream(fWrappedStream).Handle);
-{$else}
+{$elseif defined(fpc)}
   fpfsync(TFileStream(fWrappedStream).Handle);
-{$endif}
+{$else}
+  fsync(TFileStream(fWrappedStream).Handle);
+{$ifend}
  end;
 end;
 

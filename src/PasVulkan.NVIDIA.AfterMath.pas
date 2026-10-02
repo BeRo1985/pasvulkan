@@ -1118,7 +1118,7 @@ begin
  if assigned(LibraryHandle) then begin
   @GetAPI:=_GetProcAddress(LibraryHandle,'RENDERDOC_GetAPI');
  end;
-{$else}
+{$elseif defined(Unix)}
  // First in the global scope, which is where it sits when RenderDoc's UI started the process and preloaded
  // its library. Nil is RTLD_DEFAULT, so this looks only at what is already there.
  @GetAPI:=_GetProcAddress(nil,'RENDERDOC_GetAPI');

@@ -70,11 +70,11 @@ uses SysUtils,
      {$ifdef fpc}
       FPImage,FPReadJPEG,FPWriteJPEG,
      {$endif}
-     {$ifdef fpc}
+     {$if defined(fpc)}
       dynlibs,
-     {$else}
+     {$elseif defined(Windows)}
       Windows,
-     {$endif}
+     {$ifend}
      PasVulkan.Types;
 
 const JPEG_OUTPUT_BUFFER_SIZE=2048;
@@ -296,7 +296,7 @@ asm
 end;
 {$endif}
 {$else}
-{$ifdef cpuarm} assembler; //inline;
+{$if defined(fpc) and defined(cpuarm)} assembler; //inline;
 asm
  mov r0,r0,asr R1
 end;// ['r0','R1'];
@@ -305,7 +305,7 @@ begin
  Shift:=Shift and 31;
  result:=(TpvUInt32(Value) shr Shift) or (TpvUInt32(TpvInt32(TpvUInt32(0-TpvUInt32(TpvUInt32(Value) shr 31)) and TpvUInt32(0-TpvUInt32(ord(Shift<>0) and 1)))) shl (32-Shift));
 end;
-{$endif}
+{$ifend}
 {$endif}
 {$endif}
 
