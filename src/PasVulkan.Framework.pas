@@ -80,7 +80,6 @@ uses {$if defined(Windows)}
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections,
-     PasVulkan.XML,
      PasVulkan.Image.BMP,
      PasVulkan.Image.JPEG,
      PasVulkan.Image.PNG,
