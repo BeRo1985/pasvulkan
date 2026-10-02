@@ -135,9 +135,11 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       QTangentThreshold16Bit=1.0/32767.0;
 
+      {$if defined(fpc) or defined(cpu386) or defined(cpux64)}
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};
 
       SupraEngineFPUExceptionMask:TFPUExceptionMask=[exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision];
+      {$ifend}
 
 type PpvScalar=^TpvScalar;
      TpvScalar={$ifdef UseDouble}TpvDouble{$else}TpvFloat{$endif};
@@ -5359,7 +5361,7 @@ begin
 end;
 {$ifend}
 
-function TpvVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+function TpvVector4.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar;
 {$if defined(SIMD) and defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
@@ -7130,7 +7132,7 @@ begin
  end;
 end;
 
-function TpvQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+function TpvQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar;
 {$if defined(SIMD) and defined(cpu386)}
 asm
  movups xmm0,dqword ptr [eax]
