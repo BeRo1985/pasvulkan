@@ -221,54 +221,54 @@ type TtjInitCompress=function:pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$en
 
      TtjInitDecompress=function:pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
-     TtjDestroy=function(handle:pointer):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+     TtjDestroy=function(handle:pointer):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
-     TtjAlloc=function(bytes:longint):pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+     TtjAlloc=function(bytes:TpvInt32):pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjFree=procedure(buffer:pointer); {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjCompress2=function(handle:pointer;
                            srcBuf:pointer;
-                           width:longint;
-                           pitch:longint;
-                           height:longint;
-                           pixelFormat:longint;
+                           width:TpvInt32;
+                           pitch:TpvInt32;
+                           height:TpvInt32;
+                           pixelFormat:TpvInt32;
                            var jpegBuf:pointer;
                            var jpegSize:longword;
-                           jpegSubsamp:longint;
-                           jpegQual:longint;
-                           flags:longint):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+                           jpegSubsamp:TpvInt32;
+                           jpegQual:TpvInt32;
+                           flags:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjDecompressHeader=function(handle:pointer;
                                   jpegBuf:pointer;
                                   jpegSize:longword;
-                                  out width:longint;
-                                  out height:longint):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+                                  out width:TpvInt32;
+                                  out height:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjDecompressHeader2=function(handle:pointer;
                                    jpegBuf:pointer;
                                    jpegSize:longword;
-                                   out width:longint;
-                                   out height:longint;
-                                   out jpegSubsamp:longint):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+                                   out width:TpvInt32;
+                                   out height:TpvInt32;
+                                   out jpegSubsamp:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjDecompressHeader3=function(handle:pointer;
                                    jpegBuf:pointer;
                                    jpegSize:longword;
-                                   out width:longint;
-                                   out height:longint;
-                                   out jpegSubsamp:longint;
-                                   out jpegColorSpace:longint):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+                                   out width:TpvInt32;
+                                   out height:TpvInt32;
+                                   out jpegSubsamp:TpvInt32;
+                                   out jpegColorSpace:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
      TtjDecompress2=function(handle:pointer;
                              jpegBuf:pointer;
                              jpegSize:longword;
                              dstBuf:pointer;
-                             width:longint;
-                             pitch:longint;
-                             height:longint;
-                             pixelFormat:longint;
-                             flags:longint):longint; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+                             width:TpvInt32;
+                             pitch:TpvInt32;
+                             height:TpvInt32;
+                             pixelFormat:TpvInt32;
+                             flags:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
 
 var tjInitCompress:TtjInitCompress=nil;
     tjInitDecompress:TtjInitDecompress=nil;

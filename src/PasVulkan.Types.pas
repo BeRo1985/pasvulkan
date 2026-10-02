@@ -95,11 +95,11 @@ type PPpvInt8=^PpvInt8;
 
      PPpvInt32=^PpvInt32;
      PpvInt32=^TpvInt32;
-     TpvInt32={$ifdef fpc}Int32{$else}longint{$endif};
+     TpvInt32={$ifdef fpc}Int32{$else}Integer{$endif};
 
      PPpvUInt32=^PpvUInt32;
      PpvUInt32=^TpvUInt32;
-     TpvUInt32={$ifdef fpc}UInt32{$else}longword{$endif};
+     TpvUInt32={$ifdef fpc}UInt32{$else}Cardinal{$endif};
 
      PPpvUInt32Array=^PpvUInt32Array;
      PpvUInt32Array=^TpvUInt32Array;

@@ -114,11 +114,11 @@ type PPVkInt8=^PVkInt8;
 
      PPVkInt32=^PVkInt32;
      PVkInt32=^TVkInt32;
-     TVkInt32={$ifdef FPC}Int32{$else}LongInt{$endif};
+     TVkInt32={$ifdef FPC}Int32{$else}Integer{$endif};
 
      PPVkUInt32=^PVkUInt32;
      PVkUInt32=^TVkUInt32;
-     TVkUInt32={$ifdef FPC}UInt32{$else}LongWord{$endif};
+     TVkUInt32={$ifdef FPC}UInt32{$else}Cardinal{$endif};
 
      PPVkInt64=^PVkInt64;
      PVkInt64=^TVkInt64;

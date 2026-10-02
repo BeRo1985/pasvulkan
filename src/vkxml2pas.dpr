@@ -6051,11 +6051,11 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkInt32=^PVkInt32;');
    OutputPAS.Add('     PVkInt32=^TVkInt32;');
-   OutputPAS.Add('     TVkInt32={$ifdef FPC}Int32{$else}LongInt{$endif};');
+   OutputPAS.Add('     TVkInt32={$ifdef FPC}Int32{$else}Integer{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkUInt32=^PVkUInt32;');
    OutputPAS.Add('     PVkUInt32=^TVkUInt32;');
-   OutputPAS.Add('     TVkUInt32={$ifdef FPC}UInt32{$else}LongWord{$endif};');
+   OutputPAS.Add('     TVkUInt32={$ifdef FPC}UInt32{$else}Cardinal{$endif};');
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkInt64=^PVkInt64;');
    OutputPAS.Add('     PVkInt64=^TVkInt64;');
