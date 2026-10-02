@@ -21420,9 +21420,31 @@ begin
 
 end;
 
+// Supplied to PasVulkan.NVIDIA.AfterMath through its hooks, so that it does not have to use this unit.
+function NVIDIAAfterMathApplicationName:TpvRawByteString;
+begin
+ if assigned(pvApplication) then begin
+  result:=TpvRawByteString(pvApplication.Title);
+ end else begin
+  result:='';
+ end;
+end;
+
+function NVIDIAAfterMathDescribeDeviceAddress(const aAddress:TpvUInt64):TpvRawByteString;
+begin
+ if assigned(pvApplication) and assigned(pvApplication.VulkanInstance) then begin
+  result:=TpvRawByteString(pvApplication.VulkanInstance.DescribeDeviceAddress(aAddress));
+ end else begin
+  result:='';
+ end;
+end;
+
 initialization
 
  VulkanDisableFloatingPointExceptions;
+
+ pvNVIDIAAfterMathApplicationNameHook:=NVIDIAAfterMathApplicationName;
+ pvNVIDIAAfterMathDescribeDeviceAddressHook:=NVIDIAAfterMathDescribeDeviceAddress;
 
  // Check if a debugger is present
  pvDebuggerPresent:=IsDebuggerPresent;
@@ -21507,6 +21529,9 @@ initialization
 {$endif}
 
 finalization
+
+ pvNVIDIAAfterMathApplicationNameHook:=nil;
+ pvNVIDIAAfterMathDescribeDeviceAddressHook:=nil;
 
  // Close a still open input recording file and release the replay buffer
  pvInputRecorderStop;

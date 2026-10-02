@@ -730,10 +730,21 @@ procedure FinalizeNVIDIAAfterMath;
 
 procedure RegisterNVIDIAAfterMathShaderBinary(const aData;const aDataSize:TpvSizeInt);
 
+// Optional details for a GPU crash dump, supplied by whoever knows them: PasVulkan.Application sets
+// both from its initialization section. They are hooks rather than a use of PasVulkan.Application
+// so that this unit - which PasVulkan.Framework uses - does not pull the whole application framework
+// (audio, resources, virtual reality, compression, crash reporting, ...) into every program or
+// package that only needs PasVulkan.Framework.
+type TpvNVIDIAAfterMathApplicationNameHook=function:TpvRawByteString;
+     // A description of the resource at a GPU virtual address, or '' when none is known.
+     TpvNVIDIAAfterMathDescribeDeviceAddressHook=function(const aAddress:TpvUInt64):TpvRawByteString;
+
+var pvNVIDIAAfterMathApplicationNameHook:TpvNVIDIAAfterMathApplicationNameHook=nil;
+    pvNVIDIAAfterMathDescribeDeviceAddressHook:TpvNVIDIAAfterMathDescribeDeviceAddressHook=nil;
+
 implementation
 
-uses PasVulkan.Application,
-     PasVulkan.Framework,
+uses PasVulkan.Framework,
      PasVulkan.Collections;
 
 type TShaderDebugInfoHashMap=TpvHashMap<TGFSDK_Aftermath_ShaderDebugInfoIdentifier,TBytes>;
@@ -1425,9 +1436,8 @@ begin
       FillChar(pageFaultInfo,SizeOf(TGFSDK_Aftermath_GpuCrashDump_PageFaultInfo),#0);
       if (GFSDK_Aftermath_GpuCrashDump_GetPageFaultInfo(decoder,@pageFaultInfo)=GFSDK_Aftermath_Result_Success) and
          (pageFaultInfo.faultingGpuVA<>0) and
-         assigned(pvApplication) and
-         assigned(pvApplication.VulkanInstance) then begin
-       pageFaultText:=TpvRawByteString(pvApplication.VulkanInstance.DescribeDeviceAddress(pageFaultInfo.faultingGpuVA))+
+         assigned(pvNVIDIAAfterMathDescribeDeviceAddressHook) then begin
+       pageFaultText:=pvNVIDIAAfterMathDescribeDeviceAddressHook(pageFaultInfo.faultingGpuVA)+
                       TpvRawByteString({$ifdef Unix}#10{$else}#13#10{$endif});
        // Built from the base name rather than from the dump file name, which only exists when there was
        // something to write.
@@ -1622,9 +1632,17 @@ begin
 end;
 
 procedure CrashDumpDescriptionCallback(addValue:TPFN_GFSDK_Aftermath_AddGpuCrashDumpDescription;pUserData:Pointer); cdecl;
+var ApplicationName:TpvRawByteString;
 begin
  if assigned(addValue) then begin
-  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,pAnsiChar(pvApplication.Title));
+  ApplicationName:='';
+  if assigned(pvNVIDIAAfterMathApplicationNameHook) then begin
+   ApplicationName:=pvNVIDIAAfterMathApplicationNameHook();
+  end;
+  if length(ApplicationName)=0 then begin
+   ApplicationName:='PasVulkan Application';
+  end;
+  addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,pAnsiChar(ApplicationName));
   addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion,'1.0');
   addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined,'GPU crash dump');
  end;
