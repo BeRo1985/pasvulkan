@@ -2930,6 +2930,13 @@ implementation
 
 uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport,PasVulkan.HangWatchdog,PasDblStrUtils;
 
+{$if defined(Windows)}
+// Imported here rather than taken from the Windows unit: Delphi up to 11 declares the first
+// parameter as "var lpDevMode:TDeviceModeW" and Delphi 12 as a pointer, so neither nil nor
+// @devMode compiles with every RTL declaration. An untyped pointer works with all of them.
+function pvChangeDisplaySettingsW(lpDevMode:Pointer;dwFlags:TpvUInt32):TpvInt32; stdcall; external 'user32.dll' name 'ChangeDisplaySettingsW';
+{$ifend}
+
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
@@ -17405,7 +17412,7 @@ begin
 
    if fWin32FullScreen then begin
     if fWin32RealFullScreen then begin
-     OK:=ChangeDisplaySettingsW(nil,0)=DISP_CHANGE_SUCCESSFUL;
+     OK:=pvChangeDisplaySettingsW(nil,0)=DISP_CHANGE_SUCCESSFUL;
      fWin32RealFullScreen:=false;
     end else begin
      OK:=true;
@@ -17459,7 +17466,7 @@ begin
       devMode.dmFields:=devMode.dmFields or DM_DISPLAYFREQUENCY;
      end;
      if fUseRealFullScreen then begin
-      OK:=ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
+      OK:=pvChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL;
       fWin32RealFullScreen:=OK;
      end else begin
       OK:=true;
