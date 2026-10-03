@@ -731,6 +731,8 @@ compileshaderarguments=(
 
   "-V planet_grassagemap_sandboxgrowth.comp -o ${tempPath}/planet_grassagemap_sandboxgrowth_comp.spv"
 
+  "-V planet_grass_trample.comp -o ${tempPath}/planet_grass_trample_comp.spv"
+
   "-V planet_grassflagsmap_initialization.comp -o ${tempPath}/planet_grassflagsmap_initialization_comp.spv"
 
   "-V planet_grassflagsmap_modification.comp -o ${tempPath}/planet_grassflagsmap_modification_comp.spv"

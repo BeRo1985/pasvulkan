@@ -1,0 +1,168 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Grass trample map update pass
+//
+// The trample map is an octahedral map over the planet with one RGBA16F texel per spot:
+//
+//   xyz = planet-local direction into which the blades of this spot are pressed down (tangential to the sphere)
+//   w   = trample factor, 0 = upright, 1 = lying flat
+//
+// Every frame each texel reads its state from the image of the previous frame, gathers the CPU-enqueued trample
+// sources (feet, wheels, hulls, bodies, ...) that reach it, and writes the faded state into the image of the
+// current in-flight frame, which is the one the grass mesh stage of that frame samples.
+//
+// Both directions are exponential fades towards the target, with their own rates: fast towards flat while
+// something presses on the spot, slow back to upright once it is gone. The target of a press may lie above 1
+// (maximumFactor), while the grass stage clamps the factor to 1, so a freshly flattened spot first decays through
+// the headroom above 1 and only then starts to visibly stand up again. That gives a hold time of
+// ln(maximumFactor) / recoveryRate seconds, without a further channel for a timer.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+struct GrassTrampleSource {
+  vec4 positionRadius; // xyz = planet-local contact point, w = radius in meters
+  vec4 velocityStrength; // xyz = planet-local velocity in meters per second, w = strength (0 .. 1)
+};
+
+layout(set = 0, binding = 0, std430) readonly buffer GrassTrampleSources {
+  uint count;
+  uint pad0;
+  uint pad1;
+  uint pad2;
+  GrassTrampleSource items[];
+} grassTrampleSources;
+
+layout(set = 0, binding = 1, rgba16f) uniform image2D uSourceImage; // State of the previous frame
+
+layout(set = 0, binding = 2, rgba16f) uniform image2D uTargetImage; // State of this frame
+
+layout(push_constant) uniform PushConstants {
+  uint resolution;
+  uint countSources;
+  float deltaTime;
+  float pressRate; // Exponential rate towards flat while pressed, in 1/s
+  float recoveryRate; // Exponential rate back towards upright, in 1/s
+  float maximumFactor; // Target factor of a full press, above 1 for the hold time (see above)
+  float velocityDirectionWeight; // How much the movement direction wins over the push away from the contact center
+  float innerRadiusFactor; // Fraction of the radius that is pressed with full strength
+} pushConstants;
+
+/* clang-format on */
+
+#include "octahedral.glsl"
+
+void main(){
+
+  const ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+  const int resolution = int(pushConstants.resolution);
+
+  if(any(greaterThanEqual(texel, ivec2(resolution)))){
+    return;
+  }
+
+  vec4 state = imageLoad(uSourceImage, texel);
+
+  vec3 direction = state.xyz;
+  float factor = max(state.w, 0.0);
+
+  // Gather the press of all sources that reach this texel. The strongest one sets the target factor, while the
+  // directions are blended by their influence, so that two overlapping footprints do not flip the blades back and
+  // forth between them.
+  float targetFactor = 0.0;
+  vec3 targetDirection = vec3(0.0);
+
+  const uint countSources = min(pushConstants.countSources, grassTrampleSources.count);
+
+  if(countSources > 0u){
+
+    const vec3 normal = octPlanetUnsignedDecode((vec2(texel) + vec2(0.5)) / vec2(resolution));
+
+    for(uint sourceIndex = 0u; sourceIndex < countSources; sourceIndex++){
+
+      const GrassTrampleSource source = grassTrampleSources.items[sourceIndex];
+
+      const float radius = max(source.positionRadius.w, 1e-3);
+
+      // The texel lifted onto the sphere through the contact point, so that the distance is a metric one along the
+      // surface around the contact point, independent of the terrain height there.
+      const vec3 offset = (normal * length(source.positionRadius.xyz)) - source.positionRadius.xyz;
+
+      const float distanceToCenter = length(offset);
+
+      if(distanceToCenter < radius){
+
+        const float influence = clamp(source.velocityStrength.w, 0.0, 1.0) *
+                                (1.0 - smoothstep(radius * clamp(pushConstants.innerRadiusFactor, 0.0, 0.99), radius, distanceToCenter));
+
+        if(influence > 1e-4){
+
+          // Away from the contact center, tangential to the sphere
+          vec3 pushDirection = offset - (normal * dot(offset, normal));
+          float pushLength = length(pushDirection);
+          pushDirection = (pushLength > 1e-5) ? (pushDirection / pushLength) : vec3(0.0);
+
+          // Along the movement, tangential to the sphere
+          vec3 moveDirection = source.velocityStrength.xyz - (normal * dot(source.velocityStrength.xyz, normal));
+          const float speed = length(moveDirection);
+          moveDirection = (speed > 1e-4) ? (moveDirection / speed) : vec3(0.0);
+
+          // A body that walks along pushes the blades forward, one that stands still pushes them outward
+          const float moveWeight = clamp(pushConstants.velocityDirectionWeight, 0.0, 1.0) * smoothstep(0.1, 1.5, speed);
+
+          targetDirection += mix(pushDirection, moveDirection, moveWeight) * influence;
+
+          targetFactor = max(targetFactor, influence);
+
+        }
+
+      }
+
+    }
+
+    targetFactor *= pushConstants.maximumFactor;
+
+  }
+
+  if(targetFactor > factor){
+
+    // Towards flat
+    const float blend = 1.0 - exp(-pushConstants.pressRate * pushConstants.deltaTime);
+
+    factor = mix(factor, targetFactor, blend);
+
+    const float targetDirectionLength = length(targetDirection);
+    if(targetDirectionLength > 1e-5){
+      if(dot(direction, direction) > 1e-10){
+        direction = normalize(mix(direction, targetDirection / targetDirectionLength, blend));
+      }else{
+        direction = targetDirection / targetDirectionLength;
+      }
+    }
+
+  }else{
+
+    // Back towards upright, but never below what is still pressing on the spot. The direction is kept, so that
+    // the blades stand up again on the same way they went down.
+    factor = mix(targetFactor, factor, exp(-pushConstants.recoveryRate * pushConstants.deltaTime));
+
+    // Small remains are snapped to zero, so that the map really goes back to its clean state
+    if(factor < 1e-3){
+      factor = 0.0;
+      direction = vec3(0.0);
+    }
+
+  }
+
+  imageStore(uTargetImage, texel, vec4(direction, factor));
+
+}

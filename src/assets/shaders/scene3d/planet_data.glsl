@@ -84,7 +84,7 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 grassStateParams; // xy = half4(burnedTintR, burnedTintG, burnedTintB, burnedStrength), zw = half4(frozenTintR, frozenTintG, frozenTintB, frozenStrength)
 
-  uvec4 grassBladeParams; // xy = half4(windStrength, windSpeed, heightRandomMinimum, mowedHeightFactor), zw = unused/padding
+  uvec4 grassBladeParams; // xy = half4(windStrength, windSpeed, heightRandomMinimum, mowedHeightFactor), zw = half4(trampleStrength (0 = trample map off), trampledHeightFactor, trampleWindFactor, unused)
 
   PlanetMaterial materials[16];
 

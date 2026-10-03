@@ -125,9 +125,9 @@ type TpvScene3DPlanets=class;
              BrushSize=256;
              BrushSmoothLevels=16;
              // Descriptor count of binding 0 of the planet descriptor set layout: 11 planet textures +
-             // BrushSmoothLevels smoothed brush textures + 5 water and grass textures. Must match the
+             // BrushSmoothLevels smoothed brush textures + 6 water and grass textures. Must match the
              // array size in the shaders and the number of the actually written descriptor image infos.
-             CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+5;
+             CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+6;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -227,7 +227,7 @@ type TpvScene3DPlanets=class;
              GrassStateParams1:TpvHalfFloatVector4; // xyz = FROZEN tint (linear), w = FROZEN tint strength
 
              GrassBladeParams0:TpvHalfFloatVector4; // x = wind strength, y = wind speed, z = blade height random minimum, w = MOWED blade height factor
-             GrassBladeParams1:TpvHalfFloatVector4; // padding (fills uvec4 grassBladeParams)
+             GrassBladeParams1:TpvHalfFloatVector4; // x = trample strength (0 = trample map off), y = trampled blade height factor, z = trampled blade wind factor, w = unused
 
              Textures:array[0..15,0..3] of TpvUInt32;
 
@@ -1445,6 +1445,87 @@ type TpvScene3DPlanets=class;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TGrassTrampleMapUpdate }
+            // Grass that is walked or driven over gets pressed down and stands up again after a while. The state
+            // lives in an octahedral trample map (RGBA16F, xyz = planet-local direction the blades are pressed into,
+            // w = trample factor), one image per in-flight frame: every frame reads the image of the previous one,
+            // presses the enqueued sources into it, fades it exponentially (fast towards flat, slow back to upright)
+            // and writes the image of its own in-flight frame, which is the one the grass mesh stage of that frame
+            // samples. All of it runs on the universal queue, the same one the grass is drawn on, so ordinary
+            // pipeline barriers are all it needs. Once nothing has pressed for long enough to have faded out
+            // completely, the pass is skipped and the images are cleared once each.
+            TGrassTrampleMapUpdate=class
+             public
+              const MaxSourcesLimit=256;
+              type TGrassTrampleSource=packed record
+                    PositionRadius:TpvVector4; // xyz = planet-local contact point, w = radius in meters
+                    VelocityStrength:TpvVector4; // xyz = planet-local velocity in meters per second, w = strength (0 .. 1)
+                   end;
+                   PGrassTrampleSource=^TGrassTrampleSource;
+                   TGrassTrampleSources=array[0..MaxSourcesLimit-1] of TGrassTrampleSource;
+                   PGrassTrampleSources=^TGrassTrampleSources;
+                   TGrassTrampleSourceBufferHeader=packed record
+                    Count:TpvUInt32;
+                    Pad0:TpvUInt32;
+                    Pad1:TpvUInt32;
+                    Pad2:TpvUInt32;
+                   end;
+                   PGrassTrampleSourceBufferHeader=^TGrassTrampleSourceBufferHeader;
+                   TGrassTrampleSourceBuffer=packed record
+                    Header:TGrassTrampleSourceBufferHeader;
+                    Items:TGrassTrampleSources;
+                   end;
+                   PGrassTrampleSourceBuffer=^TGrassTrampleSourceBuffer;
+                   TPushConstants=packed record
+                    Resolution:TpvUInt32;
+                    CountSources:TpvUInt32;
+                    DeltaTime:TpvFloat;
+                    PressRate:TpvFloat;
+                    RecoveryRate:TpvFloat;
+                    MaximumFactor:TpvFloat;
+                    VelocityDirectionWeight:TpvFloat;
+                    InnerRadiusFactor:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fResolution:TpvInt32;
+              fCountInFlightFrames:TpvSizeInt;
+              fImages:array[0..MaxInFlightFrames-1] of TpvScene3DRendererImage2D; // RGBA16F, GENERAL layout throughout
+              fInitialClearPending:Boolean;
+              fLastWrittenIndex:TpvSizeInt; // In-flight frame index of the image with the newest state
+              fDirtyImageMask:TpvUInt32; // Bit per image that may still hold anything else than the clean state
+              fActivityTimeRemaining:TpvDouble; // Countdown after the last enqueued source; while it is at zero the pass is skipped
+              fActivityRefreshPending:Boolean; // Set by EnqueueSource under fEnqueuedLock, consumed by Execute to restart the countdown
+              fEnqueuedLock:TPasMPCriticalSection;
+              fEnqueuedSourceCounts:array[0..MaxInFlightFrames-1] of TpvInt32;
+              fEnqueuedSources:array[0..MaxInFlightFrames-1] of TGrassTrampleSources;
+              fSourceBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..MaxInFlightFrames-1,0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet; // [sourceImageIndex,targetImageIndex]
+              fPushConstants:TPushConstants;
+              function GetImage(const aInFlightFrameIndex:TpvSizeInt):TpvScene3DRendererImage2D;
+              procedure ClearImages(const aCommandBuffer:TpvVulkanCommandBuffer;const aImageMask:TpvUInt32);
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure EnqueueSource(const aInFlightFrameIndex:TpvSizeInt;
+                                      const aPosition:TpvVector3;
+                                      const aRadius:TpvFloat;
+                                      const aVelocity:TpvVector3;
+                                      const aStrength:TpvFloat);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat;const aInFlightFrameIndex:TpvSizeInt);
+             public
+              property Resolution:TpvInt32 read fResolution;
+              property Images[const aInFlightFrameIndex:TpvSizeInt]:TpvScene3DRendererImage2D read GetImage;
+              property InitialClearPending:Boolean read fInitialClearPending;
             end;
             { TPrecipitationMapInitialization }
             TPrecipitationMapInitialization=class
@@ -3580,6 +3661,7 @@ type TpvScene3DPlanets=class;
        fGrassFlagsMapInitialization:TGrassFlagsMapInitialization;
        fGrassFlagsMapModification:TGrassFlagsMapModification;
        fGrassFlagsMapFlagsUpdate:TGrassFlagsMapFlagsUpdate;
+       fGrassTrampleMapUpdate:TGrassTrampleMapUpdate;
        fGrassFlagsMapModificationPerInFlightFrameItems:TGrassFlagsMapModificationPerInFlightFrameItems;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
        fPrecipitationMapModification:TPrecipitationMapModification;
@@ -3667,6 +3749,16 @@ type TpvScene3DPlanets=class;
        fGrassWindSpeed:TpvFloat;
        fGrassHeightRandomMinimum:TpvFloat;
        fGrassMowedHeightFactor:TpvFloat;
+       fGrassTrampleActive:boolean; // Master switch of the trampling: off = no sources are taken, the pass is skipped and the grass stage does not sample the trample map
+       fGrassTrampleMapResolution:TpvInt32; // Resolution of the octahedral trample map, fixed at creation
+       fGrassTrampleStrength:TpvFloat; // How far a fully trampled blade goes down, 0 .. 1
+       fGrassTrampledHeightFactor:TpvFloat; // Height of a flattened blade above the ground relative to its length
+       fGrassTrampleWindFactor:TpvFloat; // Share of the wind that still moves a flattened blade
+       fGrassTramplePressRate:TpvFloat; // Exponential rate towards flat while pressed, in 1/s
+       fGrassTrampleRecoveryRate:TpvFloat; // Exponential rate back towards upright, in 1/s
+       fGrassTrampleMaximumFactor:TpvFloat; // Target factor of a full press; the share above 1 is the hold time before the grass visibly stands up again
+       fGrassTrampleVelocityDirectionWeight:TpvFloat; // How much the movement direction wins over the push away from the contact center
+       fGrassTrampleInnerRadiusFactor:TpvFloat; // Fraction of a source radius that is pressed with full strength
        fGrassGroundLayerUnderLayers:boolean; // Where the grass ground texture sits in the terrain layer order
        fPrecipitationMapModificationItems:TPrecipitationMapModificationItems;
        fAtmosphereMapModificationItems:TAtmosphereMapModificationItems;
@@ -3809,6 +3901,11 @@ type TpvScene3DPlanets=class;
        procedure ProcessGrassAgeMapUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueueGrassFlagsMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aOuterRadius,aInnerRadius:TpvFloat;const aFlagsSetMask,aFlagsClearMask:TpvUInt32;const aBrushIndex:TpvUInt32=0;const aBrushRotation:TpvFloat=0.0);
        procedure ProcessGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       // Presses the grass around aPosition (planet-local contact point on the ground) down for this frame.
+       // Meant to be called every frame for as long as something stands on or moves through the grass;
+       // aVelocity (planet-local, m/s) tips the blades along the movement, aStrength (0 .. 1) scales the press.
+       procedure EnqueueGrassTrample(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius:TpvFloat;const aVelocity:TpvVector3;const aStrength:TpvFloat=1.0);
+       procedure ProcessGrassTrampleMapUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure EnqueuePrecipitationMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueAtmosphereMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
        procedure EnqueueWaterModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
@@ -3971,6 +4068,16 @@ type TpvScene3DPlanets=class;
        property GrassWindSpeed:TpvFloat read fGrassWindSpeed write fGrassWindSpeed;
        property GrassHeightRandomMinimum:TpvFloat read fGrassHeightRandomMinimum write fGrassHeightRandomMinimum;
        property GrassMowedHeightFactor:TpvFloat read fGrassMowedHeightFactor write fGrassMowedHeightFactor;
+       property GrassTrampleActive:boolean read fGrassTrampleActive write fGrassTrampleActive;
+       property GrassTrampleMapResolution:TpvInt32 read fGrassTrampleMapResolution;
+       property GrassTrampleStrength:TpvFloat read fGrassTrampleStrength write fGrassTrampleStrength;
+       property GrassTrampledHeightFactor:TpvFloat read fGrassTrampledHeightFactor write fGrassTrampledHeightFactor;
+       property GrassTrampleWindFactor:TpvFloat read fGrassTrampleWindFactor write fGrassTrampleWindFactor;
+       property GrassTramplePressRate:TpvFloat read fGrassTramplePressRate write fGrassTramplePressRate;
+       property GrassTrampleRecoveryRate:TpvFloat read fGrassTrampleRecoveryRate write fGrassTrampleRecoveryRate;
+       property GrassTrampleMaximumFactor:TpvFloat read fGrassTrampleMaximumFactor write fGrassTrampleMaximumFactor;
+       property GrassTrampleVelocityDirectionWeight:TpvFloat read fGrassTrampleVelocityDirectionWeight write fGrassTrampleVelocityDirectionWeight;
+       property GrassTrampleInnerRadiusFactor:TpvFloat read fGrassTrampleInnerRadiusFactor write fGrassTrampleInnerRadiusFactor;
        property GrassGroundLayerUnderLayers:boolean read fGrassGroundLayerUnderLayers write fGrassGroundLayerUnderLayers;
        property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualTileResolution:TpvInt32 read fVisualTileResolution;
@@ -17052,6 +17159,512 @@ begin
  inc(fPlanet.fData.fGrassFlagsMapGeneration);
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TGrassTrampleMapUpdate }
+
+constructor TpvScene3DPlanet.TGrassTrampleMapUpdate.Create(const aPlanet:TpvScene3DPlanet);
+var Index,SourceIndex,TargetIndex:TpvSizeInt;
+    Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ fResolution:=Max(16,fPlanet.fGrassTrampleMapResolution);
+
+ fCountInFlightFrames:=Min(Max(TpvScene3D(fPlanet.fScene3D).CountInFlightFrames,1),MaxInFlightFrames);
+
+ fInitialClearPending:=true;
+
+ fLastWrittenIndex:=0;
+
+ fDirtyImageMask:=0;
+
+ fActivityTimeRemaining:=0.0;
+
+ fActivityRefreshPending:=false;
+
+ fEnqueuedLock:=TPasMPCriticalSection.Create;
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fImages[Index]:=nil;
+  fEnqueuedSourceCounts[Index]:=0;
+  FillChar(fEnqueuedSources[Index],SizeOf(TGrassTrampleSources),#0);
+  fSourceBuffers[Index]:=nil;
+  for TargetIndex:=0 to MaxInFlightFrames-1 do begin
+   fDescriptorSets[Index,TargetIndex]:=nil;
+  end;
+ end;
+
+ FillChar(fPushConstants,SizeOf(TPushConstants),#0);
+
+ if not assigned(fVulkanDevice) then begin
+  exit;
+ end;
+
+ // One trample map per in-flight frame, see the class comment. They stay in GENERAL layout throughout, since the
+ // update pass writes them as storage images, while the grass stages sample them.
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fImages[Index]:=TpvScene3DRendererImage2D.Create(fVulkanDevice,
+                                                   fResolution,
+                                                   fResolution,
+                                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                   true,
+                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   fPlanet.fInFlightFrameSharingMode,
+                                                   fPlanet.fInFlightFrameQueueFamilyIndices,
+                                                   pvAllocationGroupIDScene3DPlanetStatic,
+                                                   'TpvScene3DPlanet.TGrassTrampleMapUpdate.fImages['+IntToStr(Index)+']');
+  fVulkanDevice.DebugUtils.SetObjectName(fImages[Index].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fImages['+IntToStr(Index)+'].Image');
+  fVulkanDevice.DebugUtils.SetObjectName(fImages[Index].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fImages['+IntToStr(Index)+'].ImageView');
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_trample_comp.spv');
+ try
+  fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fComputeShaderModule');
+
+ fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+ // Binding 0 = sources, binding 1 = state of the previous frame, binding 2 = state of this frame
+ fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+ fDescriptorSetLayout.AddBinding(0,
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0);
+ fDescriptorSetLayout.AddBinding(1,
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0);
+ fDescriptorSetLayout.AddBinding(2,
+                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 [],
+                                 0);
+ fDescriptorSetLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fDescriptorSetLayout');
+
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+ fPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fPipelineLayout');
+
+ fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                            pvApplication.VulkanPipelineCache,
+                                            TVkPipelineCreateFlags(0),
+                                            fComputeShaderStage,
+                                            fPipelineLayout,
+                                            nil,
+                                            0);
+ fVulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fPipeline');
+
+ // Source buffer ring, one per in-flight frame, 16 byte header + MaxSourcesLimit * 32 bytes
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fSourceBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                SizeOf(TGrassTrampleSourceBuffer),
+                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                fPlanet.fGlobalBufferSharingMode,
+                                                fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                0,
+                                                pvAllocationGroupIDScene3DPlanetStatic,
+                                                'TpvScene3DPlanet.TGrassTrampleMapUpdate.fSourceBuffers['+IntToStr(Index)+']');
+  fVulkanDevice.DebugUtils.SetObjectName(fSourceBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fSourceBuffers['+IntToStr(Index)+']');
+ end;
+
+ // One descriptor set per pair of previous and current image, since the previous one is whichever was written
+ // last, which after an idle phase does not have to be the image of the preceding in-flight frame.
+ fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                 fCountInFlightFrames*fCountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),fCountInFlightFrames*fCountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),fCountInFlightFrames*fCountInFlightFrames*2);
+ fDescriptorPool.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fDescriptorPool');
+
+ for SourceIndex:=0 to fCountInFlightFrames-1 do begin
+  for TargetIndex:=0 to fCountInFlightFrames-1 do begin
+   fDescriptorSets[SourceIndex,TargetIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+   fDescriptorSets[SourceIndex,TargetIndex].WriteToDescriptorSet(0,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                 [],
+                                                                 [fSourceBuffers[TargetIndex].DescriptorBufferInfo],
+                                                                 [],
+                                                                 false);
+   fDescriptorSets[SourceIndex,TargetIndex].WriteToDescriptorSet(1,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                fImages[SourceIndex].VulkanImageView.Handle,
+                                                                                                VK_IMAGE_LAYOUT_GENERAL)],
+                                                                 [],
+                                                                 [],
+                                                                 false);
+   fDescriptorSets[SourceIndex,TargetIndex].WriteToDescriptorSet(2,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                 [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                fImages[TargetIndex].VulkanImageView.Handle,
+                                                                                                VK_IMAGE_LAYOUT_GENERAL)],
+                                                                 [],
+                                                                 [],
+                                                                 false);
+   fDescriptorSets[SourceIndex,TargetIndex].Flush;
+   fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[SourceIndex,TargetIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TGrassTrampleMapUpdate.fDescriptorSets['+IntToStr(SourceIndex)+','+IntToStr(TargetIndex)+']');
+  end;
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TGrassTrampleMapUpdate.Destroy;
+var Index,TargetIndex:TpvSizeInt;
+begin
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  for TargetIndex:=0 to MaxInFlightFrames-1 do begin
+   FreeAndNil(fDescriptorSets[Index,TargetIndex]);
+  end;
+ end;
+
+ FreeAndNil(fDescriptorPool);
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fSourceBuffers[Index]);
+ end;
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fImages[Index]);
+ end;
+
+ FreeAndNil(fEnqueuedLock);
+
+ inherited Destroy;
+
+end;
+
+function TpvScene3DPlanet.TGrassTrampleMapUpdate.GetImage(const aInFlightFrameIndex:TpvSizeInt):TpvScene3DRendererImage2D;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<fCountInFlightFrames) then begin
+  result:=fImages[aInFlightFrameIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvScene3DPlanet.TGrassTrampleMapUpdate.ClearImages(const aCommandBuffer:TpvVulkanCommandBuffer;const aImageMask:TpvUInt32);
+var Index,CountImageMemoryBarriers:TpvSizeInt;
+    ImageMemoryBarriers:array[0..MaxInFlightFrames-1] of TVkImageMemoryBarrier;
+    ClearColor:TVkClearColorValue;
+    ClearRange:TVkImageSubresourceRange;
+begin
+
+ FillChar(ClearColor,SizeOf(TVkClearColorValue),#0);
+
+ ClearRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                             0,
+                                             1,
+                                             0,
+                                             1);
+
+ CountImageMemoryBarriers:=0;
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  if (aImageMask and (TpvUInt32(1) shl Index))<>0 then begin
+   ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(0,
+                                                                               TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                               VK_IMAGE_LAYOUT_GENERAL,
+                                                                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                                               fImages[Index].VulkanImage.Handle,
+                                                                               ClearRange);
+   inc(CountImageMemoryBarriers);
+  end;
+ end;
+
+ if CountImageMemoryBarriers>0 then begin
+
+  // Whatever of earlier frames still samples these images has to be done with them first
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+  for Index:=0 to CountImageMemoryBarriers-1 do begin
+   aCommandBuffer.CmdClearColorImage(ImageMemoryBarriers[Index].image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,@ClearColor,1,@ClearRange);
+  end;
+
+  for Index:=0 to CountImageMemoryBarriers-1 do begin
+   ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                            VK_IMAGE_LAYOUT_GENERAL,
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            ImageMemoryBarriers[Index].image,
+                                                            ClearRange);
+  end;
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TGrassTrampleMapUpdate.EnqueueSource(const aInFlightFrameIndex:TpvSizeInt;
+                                                                const aPosition:TpvVector3;
+                                                                const aRadius:TpvFloat;
+                                                                const aVelocity:TpvVector3;
+                                                                const aStrength:TpvFloat);
+var Index:TpvSizeInt;
+begin
+ if (aInFlightFrameIndex<0) or
+    (aInFlightFrameIndex>=fCountInFlightFrames) or
+    (aRadius<=0.0) or
+    (aStrength<=0.0) or
+    (aPosition.Length<1e-6) then begin
+  exit;
+ end;
+ fEnqueuedLock.Acquire;
+ try
+  Index:=fEnqueuedSourceCounts[aInFlightFrameIndex];
+  if Index<MaxSourcesLimit then begin
+   fEnqueuedSources[aInFlightFrameIndex,Index].PositionRadius:=TpvVector4.InlineableCreate(aPosition.x,aPosition.y,aPosition.z,aRadius);
+   fEnqueuedSources[aInFlightFrameIndex,Index].VelocityStrength:=TpvVector4.InlineableCreate(aVelocity.x,aVelocity.y,aVelocity.z,Min(aStrength,1.0));
+   fEnqueuedSourceCounts[aInFlightFrameIndex]:=Index+1;
+   fActivityRefreshPending:=true; // Wakes the pass up again, which is skipped while everything has faded out
+  end;
+ finally
+  fEnqueuedLock.Release;
+ end;
+end;
+
+procedure TpvScene3DPlanet.TGrassTrampleMapUpdate.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvFloat;const aInFlightFrameIndex:TpvSizeInt);
+var SourceIndex,TargetIndex:TpvSizeInt;
+    CountSources:TpvInt32;
+    MappedPtr:Pointer;
+    BufferPtr:PGrassTrampleSourceBuffer;
+    Active:Boolean;
+    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+begin
+
+ if (not fPlanet.fGrassTrampleActive) or
+    (not assigned(fVulkanDevice)) or
+    (not assigned(fPipeline)) or
+    (aInFlightFrameIndex<0) or
+    (aInFlightFrameIndex>=fCountInFlightFrames) then begin
+  exit;
+ end;
+
+ TargetIndex:=aInFlightFrameIndex;
+
+ // Idle gate: the pass covers the whole map, so it is skipped once everything has stood up again, which is the
+ // normal state on grass that nothing moves through. Every enqueued source restarts the countdown, which is long
+ // enough for a full press to fade out below the point where the shader snaps the remains to zero.
+ fEnqueuedLock.Acquire;
+ try
+  if fActivityRefreshPending then begin
+   fActivityRefreshPending:=false;
+   fActivityTimeRemaining:=(ln(Max(fPlanet.fGrassTrampleMaximumFactor,1.0)*1000.0)/Max(fPlanet.fGrassTrampleRecoveryRate,1e-3))+1.0;
+  end else if fActivityTimeRemaining>0.0 then begin
+   fActivityTimeRemaining:=Max(fActivityTimeRemaining-aDeltaTime,0.0);
+  end;
+  Active:=fActivityTimeRemaining>0.0;
+ finally
+  fEnqueuedLock.Release;
+ end;
+
+ if (not Active) and
+    (not fInitialClearPending) and
+    ((fDirtyImageMask and (TpvUInt32(1) shl TargetIndex))=0) then begin
+  exit;
+ end;
+
+ fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet GrassTrampleMapUpdate',[0.3,0.75,0.3,1.0]);
+
+ // One-time initial clear of all images, whose content is undefined after creation. Until it has been recorded,
+ // the grass stage does not sample them at all, see the planet data upload.
+ if fInitialClearPending then begin
+  fInitialClearPending:=false;
+  ClearImages(aCommandBuffer,(TpvUInt32(1) shl fCountInFlightFrames)-1);
+  fDirtyImageMask:=0;
+  fLastWrittenIndex:=TargetIndex;
+ end;
+
+ if Active then begin
+
+  SourceIndex:=fLastWrittenIndex;
+
+  // Copy the enqueued sources into the buffer of this in-flight frame and reset the queue
+  fEnqueuedLock.Acquire;
+  try
+   CountSources:=Min(fEnqueuedSourceCounts[TargetIndex],MaxSourcesLimit);
+   MappedPtr:=fSourceBuffers[TargetIndex].Memory.MapMemory;
+   if assigned(MappedPtr) then begin
+    try
+     BufferPtr:=PGrassTrampleSourceBuffer(MappedPtr);
+     BufferPtr^.Header.Count:=TpvUInt32(CountSources);
+     BufferPtr^.Header.Pad0:=0;
+     BufferPtr^.Header.Pad1:=0;
+     BufferPtr^.Header.Pad2:=0;
+     if CountSources>0 then begin
+      Move(fEnqueuedSources[TargetIndex,0],BufferPtr^.Items[0],CountSources*SizeOf(TGrassTrampleSource));
+     end;
+     fSourceBuffers[TargetIndex].Flush(MappedPtr,0,SizeOf(TGrassTrampleSourceBufferHeader)+(TVkDeviceSize(CountSources)*SizeOf(TGrassTrampleSource)));
+    finally
+     fSourceBuffers[TargetIndex].Memory.UnmapMemory;
+    end;
+   end else begin
+    CountSources:=0;
+   end;
+   fEnqueuedSourceCounts[TargetIndex]:=0;
+  finally
+   fEnqueuedLock.Release;
+  end;
+
+  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                         0,
+                                                         1,
+                                                         0,
+                                                         1);
+
+  // The previous state was written by the pass of an earlier frame, and the image of this frame may still be
+  // sampled by the grass of the frame that used this in-flight slot before
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fImages[TargetIndex].VulkanImage.Handle,
+                                                       ImageSubresourceRange);
+  ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fImages[SourceIndex].VulkanImage.Handle,
+                                                       ImageSubresourceRange);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    IfThen(SourceIndex<>TargetIndex,2,1),@ImageMemoryBarriers[0]);
+
+  fPushConstants.Resolution:=fResolution;
+  fPushConstants.CountSources:=CountSources;
+  fPushConstants.DeltaTime:=aDeltaTime;
+  fPushConstants.PressRate:=Max(fPlanet.fGrassTramplePressRate,0.0);
+  fPushConstants.RecoveryRate:=Max(fPlanet.fGrassTrampleRecoveryRate,0.0);
+  fPushConstants.MaximumFactor:=Max(fPlanet.fGrassTrampleMaximumFactor,1.0);
+  fPushConstants.VelocityDirectionWeight:=fPlanet.fGrassTrampleVelocityDirectionWeight;
+  fPushConstants.InnerRadiusFactor:=fPlanet.fGrassTrampleInnerRadiusFactor;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fDescriptorSets[SourceIndex,TargetIndex].Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TPushConstants),
+                                  @fPushConstants);
+
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'GrassTrampleMapUpdate');
+  end;
+  aCommandBuffer.CmdDispatch((fResolution+15) shr 4,
+                             (fResolution+15) shr 4,
+                             1);
+  if assigned(fVulkanDevice.BreadcrumbBuffer) then begin
+   fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+  end;
+
+  // For the grass stages of this frame and for the pass of the next one
+  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       VK_QUEUE_FAMILY_IGNORED,
+                                                       fImages[TargetIndex].VulkanImage.Handle,
+                                                       ImageSubresourceRange);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarriers[0]);
+
+  fLastWrittenIndex:=TargetIndex;
+
+  fDirtyImageMask:=fDirtyImageMask or (TpvUInt32(1) shl TargetIndex);
+
+ end else if (fDirtyImageMask and (TpvUInt32(1) shl TargetIndex))<>0 then begin
+
+  // Everything has faded out, so the image of this frame goes back to the clean state once, after which the
+  // pass is skipped for it until something presses on the grass again
+  ClearImages(aCommandBuffer,TpvUInt32(1) shl TargetIndex);
+
+  fDirtyImageMask:=fDirtyImageMask and not (TpvUInt32(1) shl TargetIndex);
+
+  fLastWrittenIndex:=TargetIndex;
+
+ end;
+
+ fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -34700,6 +35313,32 @@ begin
 
  fGrassFlagsMapFlagsUpdate:=TGrassFlagsMapFlagsUpdate.Create(self);
 
+ // Grass trampling defaults. At 1024 texels the trample map has about a quarter meter per texel on a planet
+ // of 80 meters radius, which is fine for whole bodies and wheels, while staying at 8 MB per in-flight image.
+ fGrassTrampleActive:=true;
+
+ fGrassTrampleMapResolution:=Min(1024,fHeightMapResolution);
+
+ fGrassTrampleStrength:=1.0;
+
+ fGrassTrampledHeightFactor:=0.12;
+
+ fGrassTrampleWindFactor:=0.1;
+
+ // About a fifth of a second to go down
+ fGrassTramplePressRate:=8.0;
+
+ // About seven seconds of time constant to stand up again, after a hold time of ln(1.6)/0.15 = 3 seconds
+ fGrassTrampleRecoveryRate:=0.15;
+
+ fGrassTrampleMaximumFactor:=1.6;
+
+ fGrassTrampleVelocityDirectionWeight:=0.75;
+
+ fGrassTrampleInnerRadiusFactor:=0.5;
+
+ fGrassTrampleMapUpdate:=TGrassTrampleMapUpdate.Create(self);
+
  fGrassGrowthDuration:=300.0;
 
  fGrassDecayRate:=0.1;
@@ -34905,6 +35544,9 @@ begin
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                            TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle, // Slot 31: water activity map (stays in GENERAL layout, read-write by the activity pass)
                                                          fData.fWaterActivityMapImage.VulkanImageView.Handle,
+                                                         VK_IMAGE_LAYOUT_GENERAL),
+                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle, // Slot 32: grass trample map of this in-flight frame (stays in GENERAL layout, written by the trample pass)
+                                                         fGrassTrampleMapUpdate.Images[InFlightFrameIndex].VulkanImageView.Handle,
                                                          VK_IMAGE_LAYOUT_GENERAL)];
 
    // Better a clear exception here than an out-of-bounds read inside the Vulkan driver later on
@@ -35200,6 +35842,8 @@ begin
  FreeAndNil(fGrassAgeMapSandboxGrowth);
 
  FreeAndNil(fGrassFlagsMapFlagsUpdate);
+
+ FreeAndNil(fGrassTrampleMapUpdate);
 
  FreeAndNil(fGrassFlagsMapModification);
 
@@ -35969,7 +36613,7 @@ begin
  // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture + 16 smoothed brushes + 2 water ripple ping-pong images + water minimap + grass age map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   CountPlanetTextureDescriptors, // 31 planet textures + water activity map (slot 31)
+                   CountPlanetTextureDescriptors, // 31 planet textures + water activity map (slot 31) + grass trample map (slot 32)
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -38170,9 +38814,18 @@ begin
    fPlanetData.GrassBladeParams0.y:=fGrassWindSpeed;
    fPlanetData.GrassBladeParams0.z:=fGrassHeightRandomMinimum;
    fPlanetData.GrassBladeParams0.w:=fGrassMowedHeightFactor;
-   fPlanetData.GrassBladeParams1.x:=0.0;
-   fPlanetData.GrassBladeParams1.y:=0.0;
-   fPlanetData.GrassBladeParams1.z:=0.0;
+   // The grass stage samples the trample map only while the strength is above zero, which stays at zero until
+   // the initial clear of the trample images has been recorded, so that their undefined content is never seen.
+   if fGrassTrampleActive and
+      assigned(fGrassTrampleMapUpdate) and
+      assigned(fGrassTrampleMapUpdate.Images[0]) and
+      (not fGrassTrampleMapUpdate.InitialClearPending) then begin
+    fPlanetData.GrassBladeParams1.x:=Min(Max(fGrassTrampleStrength,0.0),1.0);
+   end else begin
+    fPlanetData.GrassBladeParams1.x:=0.0;
+   end;
+   fPlanetData.GrassBladeParams1.y:=fGrassTrampledHeightFactor;
+   fPlanetData.GrassBladeParams1.z:=fGrassTrampleWindFactor;
    fPlanetData.GrassBladeParams1.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
@@ -38753,6 +39406,20 @@ begin
  end;
 end;
 
+procedure TpvScene3DPlanet.EnqueueGrassTrample(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius:TpvFloat;const aVelocity:TpvVector3;const aStrength:TpvFloat);
+begin
+ if fGrassTrampleActive and assigned(fGrassTrampleMapUpdate) then begin
+  fGrassTrampleMapUpdate.EnqueueSource(aInFlightFrameIndex,aPosition,aRadius,aVelocity,aStrength);
+ end;
+end;
+
+procedure TpvScene3DPlanet.ProcessGrassTrampleMapUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) and assigned(fGrassTrampleMapUpdate) then begin
+  fGrassTrampleMapUpdate.Execute(aCommandBuffer,TpvScene3D(fScene3D).DeltaTimes^[aInFlightFrameIndex],aInFlightFrameIndex);
+ end;
+end;
+
 {$ifdef PasVulkanPlanetGrassAgeMapSyncConsolidate}
 procedure TpvScene3DPlanet.RecordGrassAgeMapSimulationsOnUpdateQueue(const aInFlightFrameIndex:TpvSizeInt);
 begin
@@ -39032,6 +39699,19 @@ begin
     fGrassWindStrength:=TPasJSON.GetNumber(JSONWindObject.Properties['strength'],fGrassWindStrength);
     fGrassWindSpeed:=TPasJSON.GetNumber(JSONWindObject.Properties['speed'],fGrassWindSpeed);
    end;
+  end;
+  JSONItem:=JSONGrassObject.Properties['trample'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONSubObject:=TPasJSONItemObject(JSONItem);
+   fGrassTrampleActive:=TPasJSON.GetBoolean(JSONSubObject.Properties['active'],fGrassTrampleActive);
+   fGrassTrampleStrength:=TPasJSON.GetNumber(JSONSubObject.Properties['strength'],fGrassTrampleStrength);
+   fGrassTrampledHeightFactor:=TPasJSON.GetNumber(JSONSubObject.Properties['trampledheightfactor'],fGrassTrampledHeightFactor);
+   fGrassTrampleWindFactor:=TPasJSON.GetNumber(JSONSubObject.Properties['windfactor'],fGrassTrampleWindFactor);
+   fGrassTramplePressRate:=TPasJSON.GetNumber(JSONSubObject.Properties['pressrate'],fGrassTramplePressRate);
+   fGrassTrampleRecoveryRate:=TPasJSON.GetNumber(JSONSubObject.Properties['recoveryrate'],fGrassTrampleRecoveryRate);
+   fGrassTrampleMaximumFactor:=TPasJSON.GetNumber(JSONSubObject.Properties['maximumfactor'],fGrassTrampleMaximumFactor);
+   fGrassTrampleVelocityDirectionWeight:=TPasJSON.GetNumber(JSONSubObject.Properties['velocitydirectionweight'],fGrassTrampleVelocityDirectionWeight);
+   fGrassTrampleInnerRadiusFactor:=TPasJSON.GetNumber(JSONSubObject.Properties['innerradiusfactor'],fGrassTrampleInnerRadiusFactor);
   end;
  end;
 end;

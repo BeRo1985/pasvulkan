@@ -5235,6 +5235,8 @@ type EpvScene3D=class(Exception);
                                                                    const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessPlanetGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                        const aInFlightFrameIndex:TpvSizeInt);
+       procedure ProcessPlanetGrassTrampleMapUpdates(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                     const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessAtmosphereSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                               const aInFlightFrameIndex:TpvSizeInt;
                                               const aQueueFamilyIndex:TpvInt32=-1);
@@ -42551,6 +42553,10 @@ begin
 
    end;
 
+   // The grass trample maps are per in-flight frame and never leave the universal queue, on which the grass is
+   // drawn as well, so they are updated here in either buffer mode.
+   ProcessPlanetGrassTrampleMapUpdates(CommandBuffer,aInFlightFrameIndex);
+
 // fVulkanDevice.WaitIdle; //123
 
    // Clear lodNeeded + LODLevel buffers for current IFF before mesh_cull.comp writes to them
@@ -44685,6 +44691,24 @@ begin
    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
    if Planet.Ready then begin
     Planet.ProcessGrassFlagsMapFlagsUpdate(aCommandBuffer,aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
+ end;
+end;
+
+procedure TpvScene3D.ProcessPlanetGrassTrampleMapUpdates(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                         const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+begin
+ TpvScene3DPlanets(fPlanets).Lock.AcquireRead;
+ try
+  for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+   if Planet.Ready then begin
+    Planet.ProcessGrassTrampleMapUpdate(aCommandBuffer,aInFlightFrameIndex);
    end;
   end;
  finally

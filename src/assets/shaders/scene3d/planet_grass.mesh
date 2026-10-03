@@ -463,6 +463,11 @@ void main() {
   const vec2 grassWindStrengthSpeed = unpackHalf2x16(planetData.grassBladeParams.x);
   const vec2 grassHeightRandomMinimumMowedFactor = unpackHalf2x16(planetData.grassBladeParams.y);
 
+  // Trampling: x = strength (0 = trample map off), y = height of a flattened blade relative to its length,
+  // and the share of the wind that still moves a flattened blade
+  const vec2 grassTrampleStrengthHeightFactor = unpackHalf2x16(planetData.grassBladeParams.z);
+  const float grassTrampleWindFactor = unpackHalf2x16(planetData.grassBladeParams.w).x;
+
   ////////////////////////////////////////////////////////////////////////////
 
   vec4 boundingSphere = vec4(
@@ -680,10 +685,36 @@ void main() {
       vec3 p0 = bladeOffset;
 #endif
       vec3 p1 = p0 + vec2(0.0, bladeHeight).xxy;
-      vec3 p2 = fma(bladeDirection, vec3(bladeHeight * bladeLeaning), p1);      
+      vec3 p2 = fma(bladeDirection, vec3(bladeHeight * bladeLeaning), p1);
+
+      // Trampling: the trample map holds per spot how flat the grass is pressed and into which direction, as a
+      // planet-local vector. The blade is bent down along that direction, and the length correction further below
+      // keeps it at its full length, so that it lies on the ground instead of shrinking.
+      float trampleFactor = 0.0;
+      if(grassTrampleStrengthHeightFactor.x > 0.0){
+        const vec4 trample = textureLod(uPlanetTextures[PLANET_TEXTURE_GRASSTRAMPLEMAP], octPlanetUnsignedEncode(normalize(patchPosition)), 0.0);
+        // The stored factor can run above one for the hold time, see planet_grass_trample.comp. Some blades
+        // resist a bit more than others, so that a footprint does not look stamped.
+        trampleFactor = clamp(clamp(trample.w, 0.0, 1.0) * grassTrampleStrengthHeightFactor.x * mix(0.75, 1.15, randomFloatData[1].z), 0.0, 1.0);
+        if(trampleFactor > 1e-3){
+          // Into the tangent space of the blade, where z is up. The basis is orthonormal, so its transpose is its inverse.
+          vec2 trampleDirection = (transpose(patchTangentSpaceBasis) * trample.xyz).xy;
+          const float trampleDirectionLength = length(trampleDirection);
+          trampleDirection = (trampleDirectionLength > 1e-4) ? (trampleDirection / trampleDirectionLength) : bladeDirection.xy;
+          // Not every blade lies exactly the same way
+          const vec2 trampleSinCos = sin(vec2((randomFloatData[1].w - 0.5) * 1.2) + vec2(0.0, 1.57079632679)); // x = sin, y = cos
+          trampleDirection = vec2((trampleDirection.x * trampleSinCos.y) - (trampleDirection.y * trampleSinCos.x),
+                                  (trampleDirection.x * trampleSinCos.x) + (trampleDirection.y * trampleSinCos.y));
+          const float trampledHeight = bladeHeight * grassTrampleStrengthHeightFactor.y;
+          p1 = mix(p1, p0 + vec3(trampleDirection * (bladeHeight * 0.5), trampledHeight), trampleFactor);
+          p2 = mix(p2, p0 + vec3(trampleDirection * bladeHeight, trampledHeight * 0.35), trampleFactor);
+        }
+      }
+      const float trampleWindScale = mix(1.0, grassTrampleWindFactor, trampleFactor);
+
 #ifdef VELOCITY
       vec3 previousP2 = p2;
-#endif      
+#endif
 
       // Add some wind effect to the grass blade 
       {
@@ -713,10 +744,10 @@ void main() {
           ) * vec2(0.5, 1.0)
         ) * vec2(2.0, 1.0) * windStrength;
 
-        previousP2 += vec3(previousWindOffset, 0.0);
-#endif 
+        previousP2 += vec3(previousWindOffset * trampleWindScale, 0.0);
+#endif
 
-        p2 += vec3(windOffset, 0.0);
+        p2 += vec3(windOffset * trampleWindScale, 0.0);
 
       }
       
