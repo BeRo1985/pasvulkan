@@ -1671,7 +1671,7 @@ end;
 begin
  result:='$'+IntToHex(TpvPtrUInt(aAddress),SizeOf(TpvPointer) shl 1);
 end;
-{$endif}
+{$ifend}
 
 {$if defined(fpc) and (defined(Linux) or defined(Android))}
 // Called once per frame by the unwinder. Only collects, so that nothing which
