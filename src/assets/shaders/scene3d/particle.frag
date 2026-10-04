@@ -93,6 +93,17 @@ layout(std140, set = 1, binding = 0) uniform uboViews {
 
 /* clang-format on */
 
+#if !defined(VOXELIZATION)
+// Particles never go down to the tiny mip levels: a far away particle covers only a few pixels, and at 4x4 or 2x2
+// texels a round sprite like a glow has become a uniformly lit square, which shows as an angular dot. So the level
+// is kept at 32x32 texels or above, where the round shape is still there.
+vec4 sampleParticleTexture2D(const in uint aIndex, const in vec2 aUV){
+  float maximumLod = max(0.0, float(textureQueryLevels(u2DTextures[nonuniformEXT(aIndex)])) - 6.0);
+  float lod = clamp(textureQueryLod(u2DTextures[nonuniformEXT(aIndex)], aUV).y, 0.0, maximumLod);
+  return textureLod(u2DTextures[nonuniformEXT(aIndex)], aUV, lod);
+}
+#endif
+
 #if defined(VOXELIZATION)
   #include "rgb9e5.glsl"
 #else
@@ -137,14 +148,14 @@ void main() {
   float alpha = (any(lessThan(inTexCoord.xy, vec2(0.0))) || any(greaterThan(inTexCoord.xy, vec2(1.0)))) ? 0.0 : 
                   ((((inTextureID & 0x40000000u) != 0) ? 
                     texture(u3DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xyz).w :
-                    texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xy ).w) * inColor.w);  
+                    sampleParticleTexture2D(uint(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1)), inTexCoord.xy).w) * inColor.w);
 #endif
 #else
  vec4 finalColor = (any(lessThan(inTexCoord.xy, vec2(0.0))) || any(greaterThan(inTexCoord.xy, vec2(1.0)))) ? vec4(0.0) : 
                     ((((inTextureID & 0x40000000u) != 0) ? 
                       texture(u3DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xyz) :
-                      texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord.xy )) * inColor);
-  float alpha = finalColor.w; 
+                      sampleParticleTexture2D(uint(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1)), inTexCoord.xy)) * inColor);
+  float alpha = finalColor.w;
 #if !(defined(WBOIT) || defined(MBOIT))
 #ifndef BLEND 
   outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);
