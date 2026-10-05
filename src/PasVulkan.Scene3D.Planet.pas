@@ -1859,9 +1859,8 @@ type TpvScene3DPlanets=class;
                    end;
                    PMaxAbsDiffReducePushConstants=^TMaxAbsDiffReducePushConstants;
                    TActivityPushConstants=packed record
-                    WaterHeightMapResolution:TpvUInt32;
                     ActivityMapResolution:TpvUInt32;
-                    ActivityMapShift:TpvUInt32;
+                    WorkGroupResolution:TpvUInt32; // Workgroups per axis of the water height pass, which is the grid its per workgroup maxima live on
                     DecayFactor:TpvFloat;
                    end;
                    PActivityPushConstants=^TActivityPushConstants;
@@ -2029,7 +2028,7 @@ type TpvScene3DPlanets=class;
               fMetricBakeDescriptorSet:TpvVulkanDescriptorSet;
               fActivityDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fActivityDescriptorPool:TpvVulkanDescriptorPool;
-              fActivityDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Ping-pong, selected by the current water buffer index
+              fActivityDescriptorSet:TpvVulkanDescriptorSet; // Single set: the per workgroup maxima buffer it reads is not ping-ponged
               fFlowDownsampleDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fFlowDownsampleDescriptorPool:TpvVulkanDescriptorPool;
               fFlowDownsampleDescriptorSet:TpvVulkanDescriptorSet; // Single set: the flow buffer is not ping-ponged
@@ -20255,19 +20254,13 @@ begin
   fActivityComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fActivityComputeShaderModule,'main');
 
   fActivityDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
-  fActivityDescriptorSetLayout.AddBinding(0, // InWaterHeightMapPrevious
+  fActivityDescriptorSetLayout.AddBinding(0, // InWaterMaxHeightDifferencePerWorkGroup
                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                           1,
                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                           [],
                                           0);
-  fActivityDescriptorSetLayout.AddBinding(1, // InWaterHeightMapCurrent
-                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                          1,
-                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                          [],
-                                          0);
-  fActivityDescriptorSetLayout.AddBinding(2, // uImageWaterActivityMap
+  fActivityDescriptorSetLayout.AddBinding(1, // uImageWaterActivityMap
                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                           1,
                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -20284,43 +20277,33 @@ begin
 
   fActivityDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                          2);
-  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2*2);
-  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1*2);
+                                                          1);
+  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fActivityDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fActivityDescriptorPool.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorPool');
 
-  for Index:=0 to 1 do begin
-   fActivityDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fActivityDescriptorPool,fActivityDescriptorSetLayout);
-   fActivityDescriptorSets[Index].WriteToDescriptorSet(0, // Previous height = the other ping-pong buffer
-                                                       0,
-                                                       1,
-                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                       [],
-                                                       [fPlanet.fData.fWaterHeightMapBuffers[(Index+1) and 1].DescriptorBufferInfo],
-                                                       [],
-                                                       false);
-   fActivityDescriptorSets[Index].WriteToDescriptorSet(1, // Current height = the buffer selected by the water buffer index
-                                                       0,
-                                                       1,
-                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                       [],
-                                                       [fPlanet.fData.fWaterHeightMapBuffers[Index].DescriptorBufferInfo],
-                                                       [],
-                                                       false);
-   fActivityDescriptorSets[Index].WriteToDescriptorSet(2, // uImageWaterActivityMap
-                                                       0,
-                                                       1,
-                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                      fPlanet.fData.fWaterActivityMapImage.VulkanImageView.Handle,
-                                                                                      VK_IMAGE_LAYOUT_GENERAL)],
-                                                       [],
-                                                       [],
-                                                       false);
-   fActivityDescriptorSets[Index].Flush;
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorSets['+IntToStr(Index)+']');
-  end;
+  fActivityDescriptorSet:=TpvVulkanDescriptorSet.Create(fActivityDescriptorPool,fActivityDescriptorSetLayout);
+  fActivityDescriptorSet.WriteToDescriptorSet(0, // InWaterMaxHeightDifferencePerWorkGroup, the maxima the water height pass already produced
+                                              0,
+                                              1,
+                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                              [],
+                                              [fPlanet.fData.fWaterMaxAbsHeightDiffPerWorkgroupBuffer.DescriptorBufferInfo],
+                                              [],
+                                              false);
+  fActivityDescriptorSet.WriteToDescriptorSet(1, // uImageWaterActivityMap
+                                              0,
+                                              1,
+                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                             fPlanet.fData.fWaterActivityMapImage.VulkanImageView.Handle,
+                                                                             VK_IMAGE_LAYOUT_GENERAL)],
+                                              [],
+                                              [],
+                                              false);
+  fActivityDescriptorSet.Flush;
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fActivityDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fActivityDescriptorSet');
 
   fActivityPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
                                                      pvApplication.VulkanPipelineCache,
@@ -20525,8 +20508,7 @@ begin
  FreeAndNil(fMaxAbsDiffReduceComputeShaderModule);
 
  FreeAndNil(fActivityPipeline);
- FreeAndNil(fActivityDescriptorSets[1]);
- FreeAndNil(fActivityDescriptorSets[0]);
+ FreeAndNil(fActivityDescriptorSet);
  FreeAndNil(fActivityDescriptorPool);
  FreeAndNil(fActivityPipelineLayout);
  FreeAndNil(fActivityDescriptorSetLayout);
@@ -21262,17 +21244,9 @@ begin
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterActivity',[0.5,0.5,0.5,1.0]);
 
-  SourceBufferIndex:=fPlanet.fData.fWaterBufferIndex and 1;
-
-  // The simulation just wrote the current height buffer; make it visible to the activity pass, and order the
-  // activity image read-modify-write against the previous frame's write.
-  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
-                                                         0,
-                                                         VK_WHOLE_SIZE);
+  // The per workgroup maxima this pass reads were written by the water height pass and already made visible for
+  // the reduce pass above, which only reads them too, so no further buffer barrier is needed here. What does
+  // need ordering is the activity image read-modify-write against the previous frame's write of it.
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                    VK_IMAGE_LAYOUT_GENERAL,
@@ -21285,12 +21259,12 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
-                                    1,@BufferMemoryBarriers[0],
+                                    0,nil,
                                     1,@ImageMemoryBarrier);
 
-  fActivityPushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
   fActivityPushConstants.ActivityMapResolution:=fPlanet.fWaterMiniMapResolution;
-  fActivityPushConstants.ActivityMapShift:=fPlanet.fWaterMiniMapResolutionShift;
+  // Same workgroup count the water height dispatch uses, which is the grid its per workgroup maxima live on.
+  fActivityPushConstants.WorkGroupResolution:=(fPlanet.fWaterMapResolution+15) shr 4;
   fActivityPushConstants.DecayFactor:=0.9;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fActivityPipeline.Handle);
@@ -21299,7 +21273,7 @@ begin
                                        fActivityPipelineLayout.Handle,
                                        0,
                                        1,
-                                       @fActivityDescriptorSets[SourceBufferIndex].Handle,
+                                       @fActivityDescriptorSet.Handle,
                                        0,
                                        nil);
 

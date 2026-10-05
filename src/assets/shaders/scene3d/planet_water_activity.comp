@@ -10,14 +10,21 @@
 // toward the radial normal only where the water is actually at rest, the fragment shader needs a per-region
 // "how active is the water here" signal. That signal is dH/dt: the per-step change of the simulated water height.
 //
-// This pass builds a small downsampled activity map from the two water height ping-pong buffers. For each
-// downsampled cell it takes the maximum absolute height change over the corresponding full-resolution block
-// (so local sloshing is captured even where the net change cancels) and combines it with a decayed previous
-// value, so the activity fades out smoothly once the water calms down. Regional resolution is intentional: rest
-// is a regional phenomenon and a soft, low-frequency calm factor avoids hard per-texel seams in the blend.
+// That maximum is NOT recomputed here. planet_water_simulation_waterheight.comp already forms the per cell
+// absolute height difference and reduces it to a per workgroup maximum with subgroup operations, and it writes
+// that maximum into its own slot of the per workgroup buffer for the settle detection. Its workgroups are
+// 16x16, so for the usual activity map shift of 4 that per workgroup grid IS the activity grid, cell for cell
+// and quantity for quantity. This pass therefore only reads one value per activity texel and folds it into the
+// decayed previous activity, instead of walking both full resolution height buffers again. For a 4096 water map
+// that is 65536 reads instead of 33.5 million, fully coalesced, and the result is identical rather than
+// approximated.
 //
-// When the simulation is frozen the two height buffers stop changing, so the max difference settles at the last
-// (low) residual pump level, which maps to "calm" and thus to the radial normal. No explicit clear on freeze is
+// Shifts below 4 make the activity map finer than the workgroup grid, in which case several activity texels
+// share one workgroup maximum. That is a resolution the source simply does not have; the calm factor is a
+// deliberately regional, low-frequency signal, so sharing is the honest answer rather than a loss.
+//
+// When the simulation is frozen the height buffers stop changing, so the maximum settles at the last (low)
+// residual pump level, which maps to "calm" and thus to the radial normal. No explicit clear on freeze is
 // needed. The activity image is kept in VK_IMAGE_LAYOUT_GENERAL (like the ripple images) so this pass can read
 // and write it while the fragment stage samples it, without layout transitions.
 
@@ -33,21 +40,16 @@
 layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
-  uint waterHeightMapResolution; // Full resolution of the water height ping-pong buffers
   uint activityMapResolution; // Resolution of the downsampled activity image
-  uint activityMapShift; // log2(waterHeightMapResolution / activityMapResolution)
+  uint workGroupResolution; // Workgroups per axis of the water height pass, which is also the per workgroup maximum grid
   float decayFactor; // Per-update decay of the previous activity value (0..1)
 } pushConstants;
 
-layout(set = 0, binding = 0, std430) readonly buffer InWaterHeightMapPrevious {
-  float values[];
-} inWaterHeightMapPrevious;
+layout(set = 0, binding = 0, std430) readonly buffer InWaterMaxHeightDifferencePerWorkGroup {
+  uint values[]; // One slot per water height workgroup, written by planet_water_simulation_waterheight.comp as floatBitsToUint of its workgroup maximum
+} inWaterMaxHeightDifferencePerWorkGroup;
 
-layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapCurrent {
-  float values[];
-} inWaterHeightMapCurrent;
-
-layout(set = 0, binding = 2, r32f) uniform image2D uImageWaterActivityMap;
+layout(set = 0, binding = 1, r32f) uniform image2D uImageWaterActivityMap;
 
 /* clang-format on */
 
@@ -58,31 +60,24 @@ void main(){
 
   const ivec2 activityTexel = ivec2(gl_GlobalInvocationID.xy);
 
-  if(any(greaterThanEqual(activityTexel, ivec2(int(pushConstants.activityMapResolution))))){
+  const int activityResolution = int(pushConstants.activityMapResolution);
+
+  if(any(greaterThanEqual(activityTexel, ivec2(activityResolution)))){
     return;
   }
 
-  const int blockSize = 1 << int(pushConstants.activityMapShift);
-  const ivec2 blockOrigin = activityTexel * blockSize;
-  const int resolution = int(pushConstants.waterHeightMapResolution);
+  // Map the activity texel onto the per workgroup grid. The two are identical at the usual shift of 4; at finer
+  // shifts several activity texels fall onto the same workgroup, which is handled by the integer scaling alone.
+  const int workGroupResolution = int(pushConstants.workGroupResolution);
+  const ivec2 workGroupXY = clamp((activityTexel * workGroupResolution) / max(activityResolution, 1),
+                                  ivec2(0),
+                                  ivec2(workGroupResolution - 1));
 
-  // Maximum absolute per-step height change over the full-resolution block that maps to this activity cell.
-  float maximumDelta = 0.0;
-  for(int dy = 0; dy < blockSize; dy++){
-    const int y = blockOrigin.y + dy;
-    if(y >= resolution){
-      break;
-    }
-    for(int dx = 0; dx < blockSize; dx++){
-      const int x = blockOrigin.x + dx;
-      if(x >= resolution){
-        break;
-      }
-      const uint index = (uint(y) * uint(resolution)) + uint(x);
-      const float delta = abs(inWaterHeightMapCurrent.values[index] - inWaterHeightMapPrevious.values[index]);
-      maximumDelta = max(maximumDelta, delta);
-    }
-  }
+  // floatBitsToUint of a non-negative float preserves ordering, which is why the producing pass can store the
+  // maximum as a raw uint in the first place; decoding is the plain inverse.
+  const float maximumDelta = clamp(uintBitsToFloat(inWaterMaxHeightDifferencePerWorkGroup.values[(workGroupXY.y * workGroupResolution) + workGroupXY.x]),
+                                   0.0,
+                                   ACTIVITY_MAX);
 
   // Combine with the decayed previous activity so the signal fades out smoothly once the water calms down. The
   // previous value is clamped so an uninitialized image cannot leave a permanently high activity behind.
