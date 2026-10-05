@@ -432,29 +432,14 @@ vec2 getSphereHeightData(vec3 n){
   );
 }
 
-// The getSphereHeight* functions below deliberately stay on the RAW column, without the levelling that
-// getSphereHeightData applies. They are the per-fragment paths: getWaterNormal samples nine of them per
-// fragment for its stencil, and mapNormal walks them per raymarch step, so putting the levelling's extra
-// eight taps in here would multiply out to seventy-two taps per water pixel. It would also buy nothing: with
-// PLANET_WATER_FLAG_COARSE_SIM_NORMAL the stencil already averages over a far wider area than the standing
-// bumps, so the normal has no trace of them left either way. The levelling belongs where it is actually
-// visible, which is the geometry, and that goes through getSphereHeightData once per vertex.
 float getSphereHeight(vec3 n, int i){
-  return mix(
-           planetBottomRadius,
-           planetTopRadius,
-           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], n).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-         ) +
-         getWaterHeightData(n);
+  vec2 heightData = getSphereHeightData(n);
+  return heightData.x + heightData.y;
 }
 
 float getSphereHeight(vec2 uv){
-  return mix(
-           planetBottomRadius,
-           planetTopRadius,
-           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-         ) +
-         getWaterHeightData(uv);
+  vec2 heightData = getSphereHeightData(uv);
+  return heightData.x + heightData.y;
 }
 
 float getSphereHeight(vec3 n){
@@ -463,14 +448,11 @@ float getSphereHeight(vec3 n){
 
 float getSphereHeightEx(vec2 uv){
   float h = getWaterHeightData(uv); // Bicubic water height + additive GPU ripple contribution
-  return (h > 1e-7)
-          ? (mix(
-              planetBottomRadius,
-              planetTopRadius,
-              texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-             ) +
-             h)
-          : -1.0;
+  if(h <= 1e-7){
+    return -1.0; // The gate stays on the RAW column, so whether a cell counts as wet is unaffected by the levelling
+  }
+  float terrainRadius = getTerrainRadius(uv);
+  return terrainRadius + getWaterLevelledColumn(uv, terrainRadius, h);
 }
 
 float mapHeight(vec3 p, float h){
