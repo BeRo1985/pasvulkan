@@ -393,6 +393,75 @@ vec3 applyWaterRainSplashNormal(vec3 n, vec3 baseNormal){
 #endif
 }
 
+// Procedural small-scale ripple height for the surface detail normal. Three gradient-noise octaves, each
+// drifting in its own direction and at its own rate, so they interfere and the pattern reads as moving
+// water instead of a static bumpy field. The domain is planet-local meters, which keeps it seam-free on
+// the sphere and locked to the surface rather than to the screen.
+float waterDetailHeight(vec3 p, float t){
+  float h = planetGradientNoise(p + (vec3(1.00, 0.31, -0.57) * t));
+  h += planetGradientNoise((p * 2.17) + (vec3(-0.63, 0.88, 0.24) * (t * 1.37))) * 0.5;
+  h += planetGradientNoise((p * 4.63) + (vec3(0.29, -0.47, 0.84) * (t * 0.79))) * 0.25;
+  return h;
+}
+
+// Slope of waterDetailHeight along the two given sphere-tangent directions, by forward differences in
+// the noise domain. Deliberately NOT sampled through the height map stencil: that stencil is one texel
+// wide at best and four with PLANET_WATER_FLAG_COARSE_SIM_NORMAL, far too coarse for this scale, so
+// routing the detail through it would alias instead of ripple.
+vec2 getWaterDetailSlope(vec3 position, vec3 tangent, vec3 bitangent, float scale, float t){
+  const float eps = 0.1; // in noise-domain units, small against the unit period of planetGradientNoise
+  vec3 p = position * scale;
+  float h0 = waterDetailHeight(p, t);
+  float hu = waterDetailHeight(p + (tangent * eps), t);
+  float hv = waterDetailHeight(p + (bitangent * eps), t);
+  return vec2(hu - h0, hv - h0) * (1.0 / eps);
+}
+
+// Adds the procedural ripple detail on top of an already computed water normal. Mirrors
+// applyWaterRainSplashNormal: same sphere-tangent basis, same tangent-space perturbation, masked by the
+// local water depth so shores and puddles stay calm, and additionally faded out with camera distance so
+// the detail does not turn into shimmer where a pixel covers many ripples.
+vec3 applyWaterDetailNormal(vec3 n, vec3 baseNormal, vec3 position){
+#ifdef PLANET_DATA_GLSL
+  vec4 detail0 = vec4(unpackHalf2x16(planetData.waterDetailParams.x), unpackHalf2x16(planetData.waterDetailParams.y));
+  vec4 detail1 = vec4(unpackHalf2x16(planetData.waterDetailParams.z), unpackHalf2x16(planetData.waterDetailParams.w));
+  float strength = detail0.x;
+  if(strength <= 0.0){
+    return baseNormal;
+  }
+  float scale = max(detail0.y, 1e-6);
+  float fadeStart = detail0.w;
+  float fadeEnd = max(detail1.x, fadeStart + 1e-6);
+  float distanceFade = 1.0 - smoothstep(fadeStart, fadeEnd, length(inCameraRelativePosition));
+  if(distanceFade <= 0.0){
+    return baseNormal;
+  }
+  vec2 euv = octPlanetUnsignedEncode(n);
+  float waterDepth = getSphereHeightData(euv).y;
+  float depthFade = smoothstep(detail1.y, max(detail1.z, detail1.y + 1e-6), waterDepth);
+  if(depthFade <= 0.0){
+    return baseNormal;
+  }
+  // Same sphere-tangent basis construction as applyWaterRainSplashNormal, so both perturbations live in
+  // one frame and follow the planet curvature instead of assuming a flat world.
+  vec2 duv = vec2(1.0) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy);
+  vec3 pu = octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv + vec2(duv.x, 0.0))) -
+            octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv - vec2(duv.x, 0.0)));
+  vec3 pv = octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv + vec2(0.0, duv.y))) -
+            octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv - vec2(0.0, duv.y)));
+  vec3 tangent = normalize(pu - (n * dot(n, pu)));
+  vec3 bitangent = normalize(pv - (n * dot(n, pv)) - (tangent * dot(tangent, pv)));
+  vec2 slope = getWaterDetailSlope(position, tangent, bitangent, scale, pushConstants.time * detail0.z) *
+               (strength * distanceFade * depthFade);
+  if(dot(slope, slope) <= 1e-12){
+    return baseNormal;
+  }
+  return normalize(baseNormal - (tangent * slope.x) - (bitangent * slope.y));
+#else
+  return baseNormal;
+#endif
+}
+
 vec3 getWaterNormal(vec3 position){
 
   vec3 n = normalize(position);
@@ -490,7 +559,7 @@ vec3 getWaterNormal(vec3 position){
 
   }
 
-  return applyWaterRainSplashNormal(n, normal);
+  return applyWaterDetailNormal(n, applyWaterRainSplashNormal(n, normal), position);
 #else
 
   const vec2 uvOfs = vec2(1.0 / 4096.0, 0.0);
@@ -525,7 +594,7 @@ vec3 getWaterNormal(vec3 position){
                           ? normalize(cross(normalize(p01 - p00), p)) 
                           : normalize(p - p10));
 
-  return applyWaterRainSplashNormal(n, normalize(cross(tangent, bitangent)));
+  return applyWaterDetailNormal(n, applyWaterRainSplashNormal(n, normalize(cross(tangent, bitangent))), position);
 #endif
 }
 

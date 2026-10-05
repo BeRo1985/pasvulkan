@@ -220,6 +220,9 @@ type TpvScene3DPlanets=class;
              WaterRainSplashParams2:TpvHalfFloatVector4; // x=normalStrength, y=depthThresholdLow, z=depthThresholdHigh, w=unused
              WaterRainSplashParams3:TpvHalfFloatVector4; // padding (fills second uvec4 of waterRainSplashParams2)
 
+             WaterDetailParams0:TpvHalfFloatVector4; // x=detailStrength (0=off), y=detailScale (cycles per meter), z=detailSpeed, w=detailFadeStart (camera distance in meters where the detail starts fading out)
+             WaterDetailParams1:TpvHalfFloatVector4; // x=detailFadeEnd (camera distance where it is gone), y=detailDepthThresholdLow, z=detailDepthThresholdHigh, w=unused
+
              GrassColorParams0:TpvHalfFloatVector4; // xyz = grass base color (linear), w = fake self shadowing floor at the blade base
              GrassColorParams1:TpvHalfFloatVector4; // x = roughness, y = occlusion, z = blade roundness fake angle in degrees, w = blade leaning factor
 
@@ -3500,6 +3503,13 @@ type TpvScene3DPlanets=class;
        fAirIOR:TpvFloat;                           // Air index of refraction (e.g. 1.0).
        fWaterIORBasedFadeAmount:TpvFloat;          // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
        fWaterSurfaceRoughness:TpvFloat;            // Perceptual roughness of the water surface (packed into WaterIORs.z). 0 = perfect mirror, the historical hard-wired value; around 0.03..0.1 spreads the sun into a glitter path.
+       fWaterDetailStrength:TpvFloat;              // Strength of the procedural ripple detail normal on the water surface. 0 = off, which is the state before this existed.
+       fWaterDetailScale:TpvFloat;                 // Spatial frequency of the ripple detail in cycles per meter of planet-local position. Higher = finer ripples.
+       fWaterDetailSpeed:TpvFloat;                 // Drift rate of the ripple octaves. 0 freezes the pattern.
+       fWaterDetailFadeStart:TpvFloat;             // Camera distance (m) at which the ripple detail starts fading out.
+       fWaterDetailFadeEnd:TpvFloat;               // Camera distance (m) at which the ripple detail is gone; beyond this a pixel covers many ripples and keeping them would only shimmer.
+       fWaterDetailDepthThresholdLow:TpvFloat;     // Water depth (m) below which the ripple detail is fully suppressed, so shores and puddles stay calm.
+       fWaterDetailDepthThresholdHigh:TpvFloat;    // Water depth (m) at which the ripple detail reaches full strength.
        fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat;         // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
@@ -3991,6 +4001,13 @@ type TpvScene3DPlanets=class;
        property AirIOR:TpvFloat read fAirIOR write fAirIOR;
        property WaterIORBasedFadeAmount:TpvFloat read fWaterIORBasedFadeAmount write fWaterIORBasedFadeAmount;
        property WaterSurfaceRoughness:TpvFloat read fWaterSurfaceRoughness write fWaterSurfaceRoughness;
+       property WaterDetailStrength:TpvFloat read fWaterDetailStrength write fWaterDetailStrength;
+       property WaterDetailScale:TpvFloat read fWaterDetailScale write fWaterDetailScale;
+       property WaterDetailSpeed:TpvFloat read fWaterDetailSpeed write fWaterDetailSpeed;
+       property WaterDetailFadeStart:TpvFloat read fWaterDetailFadeStart write fWaterDetailFadeStart;
+       property WaterDetailFadeEnd:TpvFloat read fWaterDetailFadeEnd write fWaterDetailFadeEnd;
+       property WaterDetailDepthThresholdLow:TpvFloat read fWaterDetailDepthThresholdLow write fWaterDetailDepthThresholdLow;
+       property WaterDetailDepthThresholdHigh:TpvFloat read fWaterDetailDepthThresholdHigh write fWaterDetailDepthThresholdHigh;
        property WaterNormalizedDownwelling:Boolean read fWaterNormalizedDownwelling write fWaterNormalizedDownwelling;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
@@ -34735,6 +34752,13 @@ begin
  fAirIOR:=1.0;
  fWaterIORBasedFadeAmount:=0.0; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending
  fWaterSurfaceRoughness:=0.0; // 0 = perfect mirror, which is what the shader had hard-wired before this became configurable
+ fWaterDetailStrength:=0.0; // off by default, so a planet without the setting looks exactly as before
+ fWaterDetailScale:=2.0; // about one ripple every half meter
+ fWaterDetailSpeed:=0.35;
+ fWaterDetailFadeStart:=24.0;
+ fWaterDetailFadeEnd:=96.0;
+ fWaterDetailDepthThresholdLow:=0.05;
+ fWaterDetailDepthThresholdHigh:=0.4;
  fWaterNormalizedDownwelling:=false; // off reproduces the historical unnormalized direct downwelling irradiance
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
@@ -38803,6 +38827,14 @@ begin
    fPlanetData.WaterRainSplashParams3.y:=0.0;
    fPlanetData.WaterRainSplashParams3.z:=0.0;
    fPlanetData.WaterRainSplashParams3.w:=0.0;
+   fPlanetData.WaterDetailParams0.x:=fWaterDetailStrength;
+   fPlanetData.WaterDetailParams0.y:=fWaterDetailScale;
+   fPlanetData.WaterDetailParams0.z:=fWaterDetailSpeed;
+   fPlanetData.WaterDetailParams0.w:=fWaterDetailFadeStart;
+   fPlanetData.WaterDetailParams1.x:=fWaterDetailFadeEnd;
+   fPlanetData.WaterDetailParams1.y:=fWaterDetailDepthThresholdLow;
+   fPlanetData.WaterDetailParams1.z:=fWaterDetailDepthThresholdHigh;
+   fPlanetData.WaterDetailParams1.w:=0.0;
    fPlanetData.GrassColorParams0.x:=fGrassBaseColor.x;
    fPlanetData.GrassColorParams0.y:=fGrassBaseColor.y;
    fPlanetData.GrassColorParams0.z:=fGrassBaseColor.z;
@@ -39508,7 +39540,7 @@ end;
 
 procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
 var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject,JSONCausticObject,JSONRainSplashObject,
-    JSONSimulationObject:TPasJSONItemObject;
+    JSONSimulationObject,JSONDetailObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
@@ -39537,6 +39569,17 @@ begin
   fAirIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['airior'],fAirIOR);
   fWaterIORBasedFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['iorbasedfadeamount'],fWaterIORBasedFadeAmount);
   fWaterSurfaceRoughness:=TPasJSON.GetNumber(JSONWaterObject.Properties['roughness'],fWaterSurfaceRoughness);
+  JSONItem:=JSONWaterObject.Properties['detail'];
+  if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+   JSONDetailObject:=TPasJSONItemObject(JSONItem);
+   fWaterDetailStrength:=TPasJSON.GetNumber(JSONDetailObject.Properties['strength'],fWaterDetailStrength);
+   fWaterDetailScale:=TPasJSON.GetNumber(JSONDetailObject.Properties['scale'],fWaterDetailScale);
+   fWaterDetailSpeed:=TPasJSON.GetNumber(JSONDetailObject.Properties['speed'],fWaterDetailSpeed);
+   fWaterDetailFadeStart:=TPasJSON.GetNumber(JSONDetailObject.Properties['fadestart'],fWaterDetailFadeStart);
+   fWaterDetailFadeEnd:=TPasJSON.GetNumber(JSONDetailObject.Properties['fadeend'],fWaterDetailFadeEnd);
+   fWaterDetailDepthThresholdLow:=TPasJSON.GetNumber(JSONDetailObject.Properties['depththresholdlow'],fWaterDetailDepthThresholdLow);
+   fWaterDetailDepthThresholdHigh:=TPasJSON.GetNumber(JSONDetailObject.Properties['depththresholdhigh'],fWaterDetailDepthThresholdHigh);
+  end;
   fWaterNormalizedDownwelling:=TPasJSON.GetBoolean(JSONWaterObject.Properties['normalizeddownwelling'],fWaterNormalizedDownwelling);
   JSONItem:=JSONWaterObject.Properties['shore'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
