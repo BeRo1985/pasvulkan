@@ -1,0 +1,130 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water surface levelling bake for the planet water rendering.
+//
+// The rendered water surface is levelled by averaging the surface radius over a sparse 3x3 stencil, because the
+// pipe solver's equilibrium on the distorted octahedral grid is not a constant radius and leaves standing bumps
+// that follow the terrain. Done straight in the fragment shader that costs eight extra samples per height
+// lookup, and getWaterNormal performs nine height lookups per fragment, so it ends up at seventy-two bicubic
+// samples per water pixel. Each of those is nine bilinear fetches inside
+// textureBicubicPlanetOctahedralMap, which measured out at around five milliseconds.
+//
+// This pass precomputes the average once per texel so the fragment shader needs a single sample instead.
+// The result is not an approximation of the inline computation, it is the same value:
+//
+//   Catmull-Rom is a linear filter whose weights depend only on the fractional part of the texel coordinate.
+//   Every stencil offset is a whole number of texels, so all nine samples share the same weights, and summing
+//   therefore commutes with filtering:  sum_k bicubic(W, uv + d_k) == bicubic(sum_k W[. + d_k], uv).
+//   Catmull-Rom at a texel centre returns the texel value exactly (the sampler computes uv * size - 0.5, which
+//   makes the fractional part zero and the weights 0/1/0/0), so this pass can read with plain texelFetch and
+//   still land on the values the fragment shader would have interpolated.
+//
+// Two preconditions for that equality, both checked rather than assumed:
+//
+//   Rain splashes must contribute nothing. getWaterRainSplashHeight returns a hard 0.0 for an amplitude at or
+//   below 1e-6, which is the configured state; its contribution is analytic per frame rather than per
+//   simulation step, so it could not be baked faithfully if it were switched on. The Pascal side skips the
+//   bake and leaves the fragment shader on its inline path whenever the amplitude is non-zero.
+//
+//   The ripple contribution must be stable across the step. It is: the ripple field is written by the ripple
+//   simulation once per simulation step, so a bake scheduled after it captures exactly the state the fragment
+//   shader would read.
+//
+// Only wet neighbours contribute, matching the inline version, so a shoreline does not drag the level down
+// towards the dry land beside it. That mask is the one non-linear part of the computation, so along a shoreline
+// the baked and the inline result can differ by the width of the interpolation footprint. The level is clamped
+// against the terrain there anyway, which is what keeps banks in place.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  float bottomRadius;
+  float topRadius;
+  uint resolution; // Water map resolution, which is also the resolution of the baked image
+  int levelStep; // Stencil spacing in texels; the inline path uses the same value
+  uint rippleResolution; // 0 when the ripple subsystem is off, matching getWaterRippleHeight's gate
+  uint rippleReadIndex; // 0 or 1, selects the current ripple ping-pong image
+} pushConstants;
+
+layout(set = 0, binding = 0) uniform sampler2D uTextureHeightMap;
+layout(set = 0, binding = 1) uniform sampler2D uTextureWaterMap;
+layout(set = 0, binding = 2) uniform sampler2D uTextureRippleMaps[2];
+layout(set = 0, binding = 3, r32f) uniform writeonly image2D uImageWaterLevelMap;
+
+/* clang-format on */
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+
+// Same ring the inline getWaterLevelledColumn walks, in stencil units before the step width is applied.
+const ivec2 waterLevelStencilOffsets[8] = ivec2[8](
+  ivec2(-1, -1), ivec2(0, -1), ivec2(1, -1),
+  ivec2(-1,  0),               ivec2(1,  0),
+  ivec2(-1,  1), ivec2(0,  1), ivec2(1,  1)
+);
+
+float getColumnAt(ivec2 texel){
+  float column = texelFetch(uTextureWaterMap, texel, 0).x;
+  // Mirrors getWaterHeightData: the ripple contribution is added on top of the simulated column, and it is
+  // silently zero while the ripple subsystem is off. The rain splash term is zero by precondition, see above.
+  if(pushConstants.rippleResolution != 0u){
+    column += texelFetch(uTextureRippleMaps[pushConstants.rippleReadIndex & 1u], texel, 0).x;
+  }
+  return column;
+}
+
+float getTerrainRadiusAt(ivec2 texel){
+  return mix(pushConstants.bottomRadius, pushConstants.topRadius, texelFetch(uTextureHeightMap, texel, 0).x);
+}
+
+void main(){
+
+  const ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+  const ivec2 texSize = ivec2(int(pushConstants.resolution));
+
+  if(any(greaterThanEqual(texel, texSize))){
+    return;
+  }
+
+  const float centerColumn = getColumnAt(texel);
+
+  float surfaceSum = 0.0;
+  float surfaceCount = 0.0;
+
+  // The centre only contributes while it is wet, which is what the inline path does too.
+  if(centerColumn > 1e-7){
+    surfaceSum += getTerrainRadiusAt(texel) + centerColumn;
+    surfaceCount += 1.0;
+  }
+
+  for(int index = 0; index < 8; index++){
+    const ivec2 neighbourTexel = wrapOctahedralTexelCoordinates(texel + (waterLevelStencilOffsets[index] * pushConstants.levelStep), texSize);
+    const float neighbourColumn = getColumnAt(neighbourTexel);
+    if(neighbourColumn > 1e-7){
+      surfaceSum += getTerrainRadiusAt(neighbourTexel) + neighbourColumn;
+      surfaceCount += 1.0;
+    }
+  }
+
+  // Dry texels deliberately keep a value as long as any of their neighbours is wet. The fragment shader reads
+  // this image with a bicubic filter, whose footprint reaches two texels past the sample position, so a water
+  // body needs a halo of valid levels around it; storing a zero there would be averaged in along the shoreline
+  // and would collapse the level, which is the one way this could visibly undercut the inline computation.
+  // The stencil spacing makes that halo several texels wide, comfortably more than the footprint needs.
+  // Only where nothing within the whole stencil is wet does a zero go in, and no bicubic footprint that is
+  // anywhere near water can reach those.
+  imageStore(uImageWaterLevelMap, texel, vec4((surfaceCount > 0.0) ? (surfaceSum / surfaceCount) : 0.0, 0.0, 0.0, 0.0));
+
+}
