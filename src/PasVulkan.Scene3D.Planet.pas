@@ -188,7 +188,7 @@ type TpvScene3DPlanets=class;
              WaterDeepColor:TpvHalfFloatVector4; // xyz = deep water scattering color (linear), w = unused
 
              WaterBaseColorIORs:TpvHalfFloatVector4; // xyz = water base color (linear), w = unused
-             WaterIORs:TpvHalfFloatVector4; // x = waterIOR (e.g. 1.3325), y = airIOR (e.g. 1.0), zw = unused
+             WaterIORs:TpvHalfFloatVector4; // x = waterIOR (e.g. 1.3325), y = airIOR (e.g. 1.0), z = water surface perceptual roughness (0 = mirror), w = unused
 
              WaterShoreFoam0:TpvHalfFloatVector4; // xyz = foam color (linear), w = foam depth start in meters (deeper cutoff; foam visible where waterDepth < start)
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
@@ -3499,6 +3499,8 @@ type TpvScene3DPlanets=class;
        fWaterIOR:TpvFloat;                         // Water index of refraction (e.g. 1.3325 for typical seawater).
        fAirIOR:TpvFloat;                           // Air index of refraction (e.g. 1.0).
        fWaterIORBasedFadeAmount:TpvFloat;          // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
+       fWaterSurfaceRoughness:TpvFloat;            // Perceptual roughness of the water surface (packed into WaterIORs.z). 0 = perfect mirror, the historical hard-wired value; around 0.03..0.1 spreads the sun into a glitter path.
+       fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat;         // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
        fWaterShoreFoamDepthEnd:TpvFloat;           // Water depth (m) at which foam is fully visible (inner edge, near waterline).
@@ -3988,6 +3990,8 @@ type TpvScene3DPlanets=class;
        property WaterIOR:TpvFloat read fWaterIOR write fWaterIOR;
        property AirIOR:TpvFloat read fAirIOR write fAirIOR;
        property WaterIORBasedFadeAmount:TpvFloat read fWaterIORBasedFadeAmount write fWaterIORBasedFadeAmount;
+       property WaterSurfaceRoughness:TpvFloat read fWaterSurfaceRoughness write fWaterSurfaceRoughness;
+       property WaterNormalizedDownwelling:Boolean read fWaterNormalizedDownwelling write fWaterNormalizedDownwelling;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
        property WaterShoreFoamPatternScale:TpvFloat read fWaterShoreFoamPatternScale write fWaterShoreFoamPatternScale;
@@ -34730,6 +34734,8 @@ begin
  fWaterIOR:=1.3325; // typical sea water
  fAirIOR:=1.0;
  fWaterIORBasedFadeAmount:=0.0; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending
+ fWaterSurfaceRoughness:=0.0; // 0 = perfect mirror, which is what the shader had hard-wired before this became configurable
+ fWaterNormalizedDownwelling:=false; // off reproduces the historical unnormalized direct downwelling irradiance
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
  fWaterShoreFoamDepthEnd:=0.0; // full foam at the waterline
@@ -38660,6 +38666,9 @@ begin
    if fGrassGroundLayerUnderLayers then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 5); // PLANET_FLAG_GRASS_UNDER_LAYERS
    end;
+   if fWaterNormalizedDownwelling then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 6); // PLANET_WATER_FLAG_NORMALIZED_DOWNWELLING
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
    fPlanetData.DecalGroupMask:=fDecalGroupMask;
@@ -38701,7 +38710,7 @@ begin
    fPlanetData.WaterBaseColorIORs.w:=0.0;
    fPlanetData.WaterIORs.x:=fWaterIOR;
    fPlanetData.WaterIORs.y:=fAirIOR;
-   fPlanetData.WaterIORs.z:=0.0;
+   fPlanetData.WaterIORs.z:=fWaterSurfaceRoughness;
    fPlanetData.WaterIORs.w:=0.0;
    fPlanetData.WaterShoreFoam0.x:=fWaterShoreFoamColor.x;
    fPlanetData.WaterShoreFoam0.y:=fWaterShoreFoamColor.y;
@@ -39527,6 +39536,8 @@ begin
   fWaterIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['waterior'],fWaterIOR);
   fAirIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['airior'],fAirIOR);
   fWaterIORBasedFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['iorbasedfadeamount'],fWaterIORBasedFadeAmount);
+  fWaterSurfaceRoughness:=TPasJSON.GetNumber(JSONWaterObject.Properties['roughness'],fWaterSurfaceRoughness);
+  fWaterNormalizedDownwelling:=TPasJSON.GetBoolean(JSONWaterObject.Properties['normalizeddownwelling'],fWaterNormalizedDownwelling);
   JSONItem:=JSONWaterObject.Properties['shore'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONShoreObject:=TPasJSONItemObject(JSONItem);

@@ -15,6 +15,13 @@
 #define PLANET_WATER_FLAG_COARSE_SIM_NORMAL (1u << 3u) // Sample the simulated height with a wider stencil so the high-frequency wobble averages out
 #define PLANET_WATER_FLAG_CALM_SURFACE_NORMAL (1u << 4u) // Blend the surface normal toward the radial normal where the water is calm (uses the activity map)
 
+// Bit 5 is PLANET_FLAG_GRASS_UNDER_LAYERS, not a water flag.
+// Apply the Lambertian OneOverPI of pbr.glsl to the direct downwelling irradiance accumulated in
+// planet_water.frag's processLight, so it meets waterDiffuseAmbient in the same "ready to multiply by
+// albedo" convention. Off reproduces the historical unnormalized sum, where the direct part outweighed
+// the ambient one by a factor of PI. Affects the deep-water color, the shore foam and the whitecaps.
+#define PLANET_WATER_FLAG_NORMALIZED_DOWNWELLING (1u << 6u)
+
 // Stencil widening factor for the coarse simulated-normal step (tuning knob, overridable at compile time).
 #ifndef PLANET_WATER_COARSE_SIM_NORMAL_STEP
 #define PLANET_WATER_COARSE_SIM_NORMAL_STEP 4.0

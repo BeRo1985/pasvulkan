@@ -582,6 +582,14 @@ vec3 waterSubscattering = vec3(0.0);
 // scattering color so the volume stays dark at night / in shadow and bright at day.
 vec3 waterDownwellingIrradiance = vec3(0.0);
 
+// Scale applied to the direct downwelling irradiance in processLight, set in main() from
+// PLANET_WATER_FLAG_NORMALIZED_DOWNWELLING: OneOverPI when the flag is set, 1.0 otherwise.
+float waterDownwellingNormalization = 1.0;
+
+// Perceptual roughness of the water surface, unpacked in main() from the per-planet water settings.
+// 0.0 is the historical hard-wired value and renders the surface as a perfect mirror.
+float waterSurfaceRoughness = 0.0;
+
 vec3 waterColor; //vec3(0.090195, 0.115685, 0.12745);
 
 float waterDepth;
@@ -597,7 +605,10 @@ void processLight(const in vec3 lightColor,
   // Downwelling irradiance onto the water surface from above (shadow/visibility-aware via
   // lightLit from the caller, which carries the per-light lightAttenuation including shadows).
   // Above/below water sign flipping is already handled by the caller via workNormal.
-  waterDownwellingIrradiance += lightColor * lightLit * max(0.0, dot(workNormal, lightDirection));
+  // waterDownwellingNormalization carries the Lambertian BRDF factor of pbr.glsl:220 when the
+  // per-planet flag asks for it, so that this meets waterDiffuseAmbient in one convention instead
+  // of outweighing it by PI. It is 1.0 by default, which is the historical behaviour.
+  waterDownwellingIrradiance += lightColor * lightLit * max(0.0, dot(workNormal, lightDirection)) * waterDownwellingNormalization;
 
 //waterSubscattering += HenyeyGreenstein(mu, 0.5) * waterColor * lightColor * max(0.0, waterDepth * 0.01);
 
@@ -777,7 +788,9 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   vec4 albedo = vec4(1.0);  
   vec3 baseColor = vec3(1.0);
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.9, 0.0);
+  // y is the perceptual roughness of the water surface. It used to be hard-wired to 0.0, which the
+  // clamp below lifts to 1e-3, so the surface was a perfect mirror with no sun glitter at all.
+  vec4 occlusionRoughnessMetallic = vec4(1.0, waterSurfaceRoughness, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -1107,9 +1120,11 @@ void main(){
     waterBaseColor = baseColor4.xyz;
     waterIOR = (iors4.x > 0.0) ? iors4.x : 1.3325;
     airIOR = (iors4.y > 0.0) ? iors4.y : 1.0;
+    waterSurfaceRoughness = clamp(iors4.z, 0.0, 1.0);
     float f0 = IOR_TO_F0(waterIOR);
     waterF0 = f0 * f0;
     ior = waterIOR / airIOR;
+    waterDownwellingNormalization = ((planetData.flagsResolutions.x & PLANET_WATER_FLAG_NORMALIZED_DOWNWELLING) != 0u) ? OneOverPI : 1.0;
   }
   {
     // Unpack wave parameters for Gerstner swell displacement (tese/mesh + frag normal correction).
