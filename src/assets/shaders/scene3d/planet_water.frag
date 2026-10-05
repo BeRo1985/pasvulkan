@@ -368,7 +368,7 @@ vec3 applyWaterRainSplashNormal(vec3 n, vec3 baseNormal){
     return baseNormal;
   }
   vec2 euv = octPlanetUnsignedEncode(n);
-  float waterDepth = getSphereHeightData(euv).y;
+  float waterDepth = getWaterHeightData(euv); // Raw column: this only feeds a fade threshold, which the levelling would not change, and it saves the levelling's taps per fragment
   vec2 splashDepthThresh = unpackHalf2x16(planetData.waterRainSplashParams2.y); // depthThresholdLow, depthThresholdHigh
   float fade = smoothstep(splashDepthThresh.x, max(splashDepthThresh.y, splashDepthThresh.x + 1e-6), waterDepth);
   if(fade <= 0.0){
@@ -437,7 +437,7 @@ vec3 applyWaterDetailNormal(vec3 n, vec3 baseNormal, vec3 position){
     return baseNormal;
   }
   vec2 euv = octPlanetUnsignedEncode(n);
-  float waterDepth = getSphereHeightData(euv).y;
+  float waterDepth = getWaterHeightData(euv); // Raw column, same reasoning as in applyWaterRainSplashNormal
   float depthFade = smoothstep(detail1.y, max(detail1.z, detail1.y + 1e-6), waterDepth);
   if(depthFade <= 0.0){
     return baseNormal;
@@ -526,7 +526,7 @@ vec3 getWaterNormal(vec3 position){
     // Combines UV chop (computeWaveDisplacement) and Gerstner swell (computeGerstnerDisplacement).
     // Uses center water depth for smoothstep (approximation; avoids 8 extra texture reads).
     if((waveDisplaceAmplitude > 0.0) || (waveAmplitude > 0.0)){
-      float centerWaterDepth = getSphereHeightData(euv).y;
+      float centerWaterDepth = getWaterHeightData(euv); // Raw column: only the smoothstep of the displacement fade reads it
       float displacementFactor = smoothstep(displaceHeightLowThreshold, displaceHeightHighThreshold, centerWaterDepth) * displaceHeightFactor;
       if(displacementFactor > 0.0){
         float disT = pushConstants.time;
