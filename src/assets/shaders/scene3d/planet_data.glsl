@@ -79,6 +79,8 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 waterDetailParams; // xy = half4(detailStrength, detailScale, detailSpeed, detailFadeStart), zw = half4(detailFadeEnd, detailDepthThresholdLow, detailDepthThresholdHigh, coarseSimNormalStep override, 0 = keep the shader default)
 
+  uvec4 waterDetailParams2; // xy = half4(detailFlowFactor, detailFlowAdvection, detailFlowReference, unused), zw = padding
+
   // Grass appearance, all of it linear color and plain factors, fed from the planet's grass settings.
   // The fragment stage takes the two color blocks, the mesh stage the blade block plus the leaning
   // factor that shares the first block's tail.

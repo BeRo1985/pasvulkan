@@ -837,6 +837,8 @@ compileshaderarguments=(
   "-V planet_water_metric_bake.comp -o ${tempPath}/planet_water_metric_bake_comp.spv"
   "-V planet_water_maxabsdiff_reduce.comp --target-env vulkan1.2 -o ${tempPath}/planet_water_maxabsdiff_reduce_comp.spv"
   "-V planet_water_activity.comp -o ${tempPath}/planet_water_activity_comp.spv"
+  "-V planet_water_flow_downsample.comp --target-env vulkan1.2 -o ${tempPath}/planet_water_flow_downsample_comp.spv"
+  "-V planet_water_flow_downsample.comp --target-env vulkan1.2 -DUSE_FP16 -o ${tempPath}/planet_water_flow_downsample_fp16_comp.spv"
   "-V planet_water_simulation_rainfall.comp -o ${tempPath}/planet_water_simulation_rainfall_comp.spv"
 
   "-V planet_water_interpolation.comp -DOUTFLOW -o ${tempPath}/planet_water_interpolation_comp.spv"

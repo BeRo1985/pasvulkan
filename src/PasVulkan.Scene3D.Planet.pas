@@ -127,7 +127,7 @@ type TpvScene3DPlanets=class;
              // Descriptor count of binding 0 of the planet descriptor set layout: 11 planet textures +
              // BrushSmoothLevels smoothed brush textures + 6 water and grass textures. Must match the
              // array size in the shaders and the number of the actually written descriptor image infos.
-             CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+6;
+             CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+7;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -222,6 +222,9 @@ type TpvScene3DPlanets=class;
 
              WaterDetailParams0:TpvHalfFloatVector4; // x=detailStrength (0=off), y=detailScale (cycles per meter), z=detailSpeed, w=detailFadeStart (camera distance in meters where the detail starts fading out)
              WaterDetailParams1:TpvHalfFloatVector4; // x=detailFadeEnd (camera distance where it is gone), y=detailDepthThresholdLow, z=detailDepthThresholdHigh, w=coarse sim normal stencil width override (0 = keep the shader default)
+
+             WaterDetailParams2:TpvHalfFloatVector4; // x=detailFlowFactor (how much the flow drives the ripple amplitude, 0 = ignore the flow), y=detailFlowAdvection (how far the flow carries the pattern), z=detailFlowReference (flow magnitude that counts as full strength), w=unused
+             WaterDetailParams3:TpvHalfFloatVector4; // padding (fills uvec4 waterDetailParams2 zw)
 
              GrassColorParams0:TpvHalfFloatVector4; // xyz = grass base color (linear), w = fake self shadowing floor at the blade base
              GrassColorParams1:TpvHalfFloatVector4; // x = roughness, y = occlusion, z = blade roundness fake angle in degrees, w = blade leaning factor
@@ -514,6 +517,7 @@ type TpvScene3DPlanets=class;
               fWaterMiniMapHostBuffer:TpvVulkanBuffer; // host-visible, persistent-mapped readback copy of fWaterMiniMapBuffer for the CPU puddle detection (filled by one contiguous device->host CmdCopyBuffer)
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
               fWaterActivityMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled water activity map (dH/dt), GENERAL layout, read-write by the activity pass, sampled for the calm-surface normal blend
+              fWaterFlowMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT downsampled water flow map (net pipe velocity in the local octahedral UV frame), GENERAL layout, written by the flow downsample pass, sampled for the flow driven ripple detail
               fWaterMaxAbsoluteHeightDifferenceBuffer:TpvVulkanBuffer;
               fWaterMaxAbsHeightDiffPerWorkgroupBuffer:TpvVulkanBuffer; // one uint slot per water height workgroup: atomic free per workgroup maxima (binding 4 of the water height pass), reduced by the two pass reduce shader
               fWaterMaxAbsHeightDiffPartialsBuffer:TpvVulkanBuffer; // intermediate partials (one uint per 256 element block) for the two pass reduction
@@ -1861,6 +1865,13 @@ type TpvScene3DPlanets=class;
                     DecayFactor:TpvFloat;
                    end;
                    PActivityPushConstants=^TActivityPushConstants;
+                   TFlowDownsamplePushConstants=packed record
+                    WaterHeightMapResolution:TpvUInt32;
+                    WaterHeightMapBorder:TpvUInt32;
+                    FlowMapResolution:TpvUInt32;
+                    FlowMapShift:TpvUInt32;
+                   end;
+                   PFlowDownsamplePushConstants=^TFlowDownsamplePushConstants;
                    { TWaterRipplesSimulation (nested) }
                    // GPU water ripple subsystem integrated into the water simulation so that
                    // timestep-sync and queue-family ownership of the ripple ping-pong images
@@ -1995,6 +2006,9 @@ type TpvScene3DPlanets=class;
               fActivityComputeShaderModule:TpvVulkanShaderModule; // Water activity map pass (feeds the calm-surface normal blend)
               fActivityComputeShaderStage:TpvVulkanPipelineShaderStage;
               fActivityPipeline:TpvVulkanComputePipeline;
+              fFlowDownsampleComputeShaderModule:TpvVulkanShaderModule; // Water flow map pass (feeds the flow driven ripple detail)
+              fFlowDownsampleComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fFlowDownsamplePipeline:TpvVulkanComputePipeline;
               fWaterDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fWaterDescriptorPool:TpvVulkanDescriptorPool;
               fWaterDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Double-buffered
@@ -2016,6 +2030,9 @@ type TpvScene3DPlanets=class;
               fActivityDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fActivityDescriptorPool:TpvVulkanDescriptorPool;
               fActivityDescriptorSets:array[0..1] of TpvVulkanDescriptorSet; // Ping-pong, selected by the current water buffer index
+              fFlowDownsampleDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fFlowDownsampleDescriptorPool:TpvVulkanDescriptorPool;
+              fFlowDownsampleDescriptorSet:TpvVulkanDescriptorSet; // Single set: the flow buffer is not ping-ponged
               fPipelineLayout:TpvVulkanPipelineLayout;
               fRainfallPipelineLayout:TpvVulkanPipelineLayout;
               fInterpolationPipelineLayout:TpvVulkanPipelineLayout;
@@ -2023,6 +2040,7 @@ type TpvScene3DPlanets=class;
               fDownsamplePipelineLayout:TpvVulkanPipelineLayout;
               fMetricBakePipelineLayout:TpvVulkanPipelineLayout; // Only created when the metric aware compensation is enabled
               fActivityPipelineLayout:TpvVulkanPipelineLayout;
+              fFlowDownsamplePipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
               fRainfallPushConstants:TRainfallPushConstants;
               fInterpolationPushConstants:TInterpolationPushConstants;
@@ -2039,6 +2057,7 @@ type TpvScene3DPlanets=class;
               fMaxAbsDiffReducePipelineLayout:TpvVulkanPipelineLayout;
               fMaxAbsDiffReducePushConstants:TMaxAbsDiffReducePushConstants;
               fActivityPushConstants:TActivityPushConstants;
+              fFlowDownsamplePushConstants:TFlowDownsamplePushConstants;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
               fTimeAccumulator:TpvDouble;
@@ -3510,6 +3529,9 @@ type TpvScene3DPlanets=class;
        fWaterDetailFadeEnd:TpvFloat;               // Camera distance (m) at which the ripple detail is gone; beyond this a pixel covers many ripples and keeping them would only shimmer.
        fWaterDetailDepthThresholdLow:TpvFloat;     // Water depth (m) below which the ripple detail is fully suppressed, so shores and puddles stay calm.
        fWaterDetailDepthThresholdHigh:TpvFloat;    // Water depth (m) at which the ripple detail reaches full strength.
+       fWaterDetailFlowFactor:TpvFloat;            // How much the simulated flow drives the ripple amplitude. 0 ignores the flow and the detail keeps its base strength everywhere; 1 means a still surface stays smooth and only moving water gets its structure. Also gates the flow downsample pass.
+       fWaterDetailFlowAdvection:TpvFloat;         // How far the flow carries the ripple pattern along with it. 0 keeps the pattern on its own drift, higher values make the ripples stream with the current.
+       fWaterDetailFlowReference:TpvFloat;         // Flow magnitude that counts as full strength for the two above, so the coupling does not depend on the absolute scale of the solver's outflow values.
        fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat;         // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
@@ -4009,6 +4031,9 @@ type TpvScene3DPlanets=class;
        property WaterDetailFadeEnd:TpvFloat read fWaterDetailFadeEnd write fWaterDetailFadeEnd;
        property WaterDetailDepthThresholdLow:TpvFloat read fWaterDetailDepthThresholdLow write fWaterDetailDepthThresholdLow;
        property WaterDetailDepthThresholdHigh:TpvFloat read fWaterDetailDepthThresholdHigh write fWaterDetailDepthThresholdHigh;
+       property WaterDetailFlowFactor:TpvFloat read fWaterDetailFlowFactor write fWaterDetailFlowFactor;
+       property WaterDetailFlowAdvection:TpvFloat read fWaterDetailFlowAdvection write fWaterDetailFlowAdvection;
+       property WaterDetailFlowReference:TpvFloat read fWaterDetailFlowReference write fWaterDetailFlowReference;
        property WaterNormalizedDownwelling:Boolean read fWaterNormalizedDownwelling write fWaterNormalizedDownwelling;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
@@ -5717,6 +5742,23 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterActivityMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterActivityMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterActivityMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterActivityMapImage.ImageView');
 
+   // Downsampled water flow map for the flow driven ripple detail. Two channels, the net velocity of the pipe
+   // solver in the local octahedral UV frame. Stays in GENERAL layout for the same reason as the activity map:
+   // the flow downsample pass writes it while the fragment stage samples it, so no layout transition is needed.
+   fWaterFlowMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                        fPlanet.fWaterMiniMapResolution,
+                                                        fPlanet.fWaterMiniMapResolution,
+                                                        VK_FORMAT_R16G16_SFLOAT,
+                                                        true, // aStorage: written as a VK_DESCRIPTOR_TYPE_STORAGE_IMAGE by the flow downsample pass, so it needs VK_IMAGE_USAGE_STORAGE_BIT
+                                                        VK_SAMPLE_COUNT_1_BIT,
+                                                        VK_IMAGE_LAYOUT_GENERAL,
+                                                        WaterHeightMapImageSharingMode,
+                                                        WaterHeightMapImageQueueFamilyIndices,
+                                                        pvAllocationGroupIDScene3DPlanetStatic,
+                                                        'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMapImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMapImage.ImageView');
+
    fHeightMiniMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                 fPlanet.fHeightMiniMapResolution*fPlanet.fHeightMiniMapResolution*SizeOf(TpvFloat),
                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -6408,6 +6450,8 @@ begin
  FreeAndNil(fWaterMiniMapImage);
 
  FreeAndNil(fWaterActivityMapImage);
+
+ FreeAndNil(fWaterFlowMapImage);
 
  FreeAndNil(fHeightMiniMapBuffer);
 
@@ -20282,6 +20326,82 @@ begin
                                                      nil,
                                                      0);
 
+  // Water flow map pass: turns the per cell outflow of the pipe solver into a small two channel velocity image for
+  // the flow driven ripple detail. Always created (the image is tiny); the dispatch only runs when the detail asks
+  // for it. The shader variant has to match the storage type the simulation writes, see fUse16Bit.
+  if fPlanet.fUse16Bit then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_flow_downsample_fp16_comp.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_water_flow_downsample_comp.spv');
+  end;
+  try
+   fFlowDownsampleComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleComputeShaderModule');
+  fFlowDownsampleComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fFlowDownsampleComputeShaderModule,'main');
+
+  fFlowDownsampleDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fFlowDownsampleDescriptorSetLayout.AddBinding(0, // InWaterFlowMap
+                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                [],
+                                                0);
+  fFlowDownsampleDescriptorSetLayout.AddBinding(1, // uImageWaterFlowMap
+                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                [],
+                                                0);
+  fFlowDownsampleDescriptorSetLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleDescriptorSetLayout');
+
+  fFlowDownsamplePipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fFlowDownsamplePipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TFlowDownsamplePushConstants));
+  fFlowDownsamplePipelineLayout.AddDescriptorSetLayout(fFlowDownsampleDescriptorSetLayout);
+  fFlowDownsamplePipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsamplePipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsamplePipelineLayout');
+
+  fFlowDownsampleDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                1);
+  fFlowDownsampleDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fFlowDownsampleDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fFlowDownsampleDescriptorPool.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleDescriptorPool');
+
+  fFlowDownsampleDescriptorSet:=TpvVulkanDescriptorSet.Create(fFlowDownsampleDescriptorPool,fFlowDownsampleDescriptorSetLayout);
+  fFlowDownsampleDescriptorSet.WriteToDescriptorSet(0, // InWaterFlowMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMapBuffer.DescriptorBufferInfo],
+                                                    [],
+                                                    false);
+  fFlowDownsampleDescriptorSet.WriteToDescriptorSet(1, // uImageWaterFlowMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                    [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                   fPlanet.fData.fWaterFlowMapImage.VulkanImageView.Handle,
+                                                                                   VK_IMAGE_LAYOUT_GENERAL)],
+                                                    [],
+                                                    [],
+                                                    false);
+  fFlowDownsampleDescriptorSet.Flush;
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleDescriptorSet');
+
+  fFlowDownsamplePipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                           pvApplication.VulkanPipelineCache,
+                                                           TVkPipelineCreateFlags(0),
+                                                           fFlowDownsampleComputeShaderStage,
+                                                           fFlowDownsamplePipelineLayout,
+                                                           nil,
+                                                           0);
+
 { fPushConstants.Attenuation:=0.995;
   fPushConstants.Strength:=0.25;
   fPushConstants.MinTotalFlow:=-1e-4; //1e-4;
@@ -20408,6 +20528,14 @@ begin
  FreeAndNil(fActivityDescriptorSetLayout);
  FreeAndNil(fActivityComputeShaderStage);
  FreeAndNil(fActivityComputeShaderModule);
+
+ FreeAndNil(fFlowDownsamplePipeline);
+ FreeAndNil(fFlowDownsampleDescriptorSet);
+ FreeAndNil(fFlowDownsampleDescriptorPool);
+ FreeAndNil(fFlowDownsamplePipelineLayout);
+ FreeAndNil(fFlowDownsampleDescriptorSetLayout);
+ FreeAndNil(fFlowDownsampleComputeShaderStage);
+ FreeAndNil(fFlowDownsampleComputeShaderModule);
 
  FreeAndNil(fDownsamplePipeline);
 
@@ -21193,6 +21321,93 @@ begin
   // On the parallel water simulation queue (compute-only), the FRAGMENT_SHADER dst stage is invalid and
   // unnecessary: the fragment-shader visibility of this image is established on the universal queue side
   // (AcquireWaterOnUniversalQueue) plus the queue semaphore, so restrict the dst stage to compute here.
+  if TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationUseParallelQueue then begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end else begin
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
+  end;
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+ end;
+
+ // Update the water flow map for the flow driven ripple detail, when the detail asks for it and the simulation
+ // actually ran this frame. A frozen simulation keeps its last flow, which is the settled (near zero) one, so a
+ // still body of water keeps its mirror surface without any further update.
+ if (fPlanet.fWaterDetailStrength>0.0) and (fPlanet.fWaterDetailFlowFactor>0.0) and DoDownsample then begin
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterFlowDownsample',[0.5,0.5,0.5,1.0]);
+
+  // The outflow pass just wrote the flow buffer; make it visible to this pass, and order the flow image write
+  // against the previous frame's write of it.
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterFlowMapBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterFlowMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    1,@ImageMemoryBarrier);
+
+  fFlowDownsamplePushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
+  fFlowDownsamplePushConstants.WaterHeightMapBorder:=fPlanet.fWaterMapBorder;
+  fFlowDownsamplePushConstants.FlowMapResolution:=fPlanet.fWaterMiniMapResolution;
+  fFlowDownsamplePushConstants.FlowMapShift:=fPlanet.fWaterMiniMapResolutionShift;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fFlowDownsamplePipeline.Handle);
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fFlowDownsamplePipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fFlowDownsampleDescriptorSet.Handle,
+                                       0,
+                                       nil);
+
+  aCommandBuffer.CmdPushConstants(fFlowDownsamplePipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TFlowDownsamplePushConstants),
+                                  @fFlowDownsamplePushConstants);
+
+  aCommandBuffer.CmdDispatch((fPlanet.fWaterMiniMapResolution+15) shr 4,
+                             (fPlanet.fWaterMiniMapResolution+15) shr 4,
+                             1);
+
+  // Make the updated flow image visible to the fragment stage that samples it for the ripple advection. Same
+  // parallel-queue caveat as the activity image above: a compute-only queue cannot name the FRAGMENT_SHADER
+  // destination stage, the fragment visibility is established on the universal queue side instead.
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_IMAGE_LAYOUT_GENERAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fWaterFlowMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
   if TpvScene3D(fPlanet.fScene3D).PlanetWaterSimulationUseParallelQueue then begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -34761,6 +34976,9 @@ begin
  fWaterDetailFadeEnd:=96.0;
  fWaterDetailDepthThresholdLow:=0.05;
  fWaterDetailDepthThresholdHigh:=0.4;
+ fWaterDetailFlowFactor:=0.0; // off by default, so the detail behaves exactly as before the flow map existed
+ fWaterDetailFlowAdvection:=1.0;
+ fWaterDetailFlowReference:=0.05;
  fWaterNormalizedDownwelling:=false; // off reproduces the historical unnormalized direct downwelling irradiance
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
@@ -35580,6 +35798,9 @@ begin
                                                          VK_IMAGE_LAYOUT_GENERAL),
                            TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle, // Slot 32: grass trample map of this in-flight frame (stays in GENERAL layout, written by the trample pass)
                                                          fGrassTrampleMapUpdate.Images[InFlightFrameIndex].VulkanImageView.Handle,
+                                                         VK_IMAGE_LAYOUT_GENERAL),
+                           TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle, // Slot 33: downsampled water flow map (stays in GENERAL layout, written by the flow downsample pass)
+                                                         fData.fWaterFlowMapImage.VulkanImageView.Handle,
                                                          VK_IMAGE_LAYOUT_GENERAL)];
 
    // Better a clear exception here than an out-of-bounds read inside the Vulkan driver later on
@@ -36646,7 +36867,7 @@ begin
  // Height map + normal map + blend map + grass map + water map + brushes + precipitation map + atmosphere map + rain texture + rain normal texture + 16 smoothed brushes + 2 water ripple ping-pong images + water minimap + grass age map
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                   CountPlanetTextureDescriptors, // 31 planet textures + water activity map (slot 31) + grass trample map (slot 32)
+                   CountPlanetTextureDescriptors, // 31 planet textures + water activity map (slot 31) + grass trample map (slot 32) + water flow map (slot 33)
                    ShaderStageFlags,
                    [],
                    TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT));
@@ -38838,6 +39059,14 @@ begin
    fPlanetData.WaterDetailParams1.y:=fWaterDetailDepthThresholdLow;
    fPlanetData.WaterDetailParams1.z:=fWaterDetailDepthThresholdHigh;
    fPlanetData.WaterDetailParams1.w:=fWaterCoarseSimNormalStep;
+   fPlanetData.WaterDetailParams2.x:=fWaterDetailFlowFactor;
+   fPlanetData.WaterDetailParams2.y:=fWaterDetailFlowAdvection;
+   fPlanetData.WaterDetailParams2.z:=fWaterDetailFlowReference;
+   fPlanetData.WaterDetailParams2.w:=0.0;
+   fPlanetData.WaterDetailParams3.x:=0.0;
+   fPlanetData.WaterDetailParams3.y:=0.0;
+   fPlanetData.WaterDetailParams3.z:=0.0;
+   fPlanetData.WaterDetailParams3.w:=0.0;
    fPlanetData.GrassColorParams0.x:=fGrassBaseColor.x;
    fPlanetData.GrassColorParams0.y:=fGrassBaseColor.y;
    fPlanetData.GrassColorParams0.z:=fGrassBaseColor.z;
@@ -39583,6 +39812,9 @@ begin
    fWaterDetailFadeEnd:=TPasJSON.GetNumber(JSONDetailObject.Properties['fadeend'],fWaterDetailFadeEnd);
    fWaterDetailDepthThresholdLow:=TPasJSON.GetNumber(JSONDetailObject.Properties['depththresholdlow'],fWaterDetailDepthThresholdLow);
    fWaterDetailDepthThresholdHigh:=TPasJSON.GetNumber(JSONDetailObject.Properties['depththresholdhigh'],fWaterDetailDepthThresholdHigh);
+   fWaterDetailFlowFactor:=TPasJSON.GetNumber(JSONDetailObject.Properties['flowfactor'],fWaterDetailFlowFactor);
+   fWaterDetailFlowAdvection:=TPasJSON.GetNumber(JSONDetailObject.Properties['flowadvection'],fWaterDetailFlowAdvection);
+   fWaterDetailFlowReference:=TPasJSON.GetNumber(JSONDetailObject.Properties['flowreference'],fWaterDetailFlowReference);
   end;
   fWaterNormalizedDownwelling:=TPasJSON.GetBoolean(JSONWaterObject.Properties['normalizeddownwelling'],fWaterNormalizedDownwelling);
   JSONItem:=JSONWaterObject.Properties['shore'];

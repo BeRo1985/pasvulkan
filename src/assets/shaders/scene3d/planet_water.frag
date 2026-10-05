@@ -451,8 +451,26 @@ vec3 applyWaterDetailNormal(vec3 n, vec3 baseNormal, vec3 position){
             octPlanetUnsignedDecode(wrapOctahedralCoordinates(euv - vec2(0.0, duv.y)));
   vec3 tangent = normalize(pu - (n * dot(n, pu)));
   vec3 bitangent = normalize(pv - (n * dot(n, pv)) - (tangent * dot(tangent, pv)));
-  vec2 slope = getWaterDetailSlope(position, tangent, bitangent, scale, pushConstants.time * detail0.z) *
-               (strength * distanceFade * depthFade);
+  // Flow coupling. The simulated flow is a two channel velocity in this very octahedral UV frame, so its two
+  // components map straight onto the tangent and the bitangent built above, with no conversion.
+  vec4 detail2 = vec4(unpackHalf2x16(planetData.waterDetailParams2.x), unpackHalf2x16(planetData.waterDetailParams2.y));
+  float flowFactor = detail2.x;
+  float flowAmount = 0.0;
+  vec3 flowOffset = vec3(0.0);
+  if(flowFactor > 0.0){
+    vec2 flow = textureLod(uPlanetTextures[PLANET_TEXTURE_WATERFLOWMAP], euv, 0.0).xy;
+    // Normalized against a reference magnitude, so the coupling does not depend on the absolute scale of the
+    // solver's outflow values, which carry the time step and the pipe area in them.
+    flowAmount = clamp(length(flow) / max(detail2.z, 1e-6), 0.0, 1.0);
+    // Carry the noise domain along with the current. One directional offset is enough here because the pattern
+    // keeps its own drift as well, so it never degenerates into a frozen smear the way a pure advection would.
+    flowOffset = ((tangent * flow.x) + (bitangent * flow.y)) * (detail2.y * pushConstants.time);
+  }
+  // A still surface keeps the base strength, moving water gets more of it. With flowFactor at 1 the ripples are
+  // purely flow driven, which leaves a settled lake as the smooth mirror it should be.
+  float flowStrength = mix(1.0, flowAmount, clamp(flowFactor, 0.0, 1.0));
+  vec2 slope = getWaterDetailSlope(position + flowOffset, tangent, bitangent, scale, pushConstants.time * detail0.z) *
+               (strength * flowStrength * distanceFade * depthFade);
   if(dot(slope, slope) <= 1e-12){
     return baseNormal;
   }

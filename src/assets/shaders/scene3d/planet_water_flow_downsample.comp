@@ -1,0 +1,109 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+// Water flow map for the flow-driven surface ripple detail of the planet water rendering.
+//
+// The pipe simulation already produces everything needed to know where the water is moving: for every cell it
+// stores the outflow towards its four neighbours. What it stores is not directly usable by the water fragment
+// shader though. The buffer carries a one cell border and its element type follows the device (f16vec4 where
+// 16-bit storage is available, vec4 otherwise), it is bound to the simulation descriptor set rather than to the
+// render one, and reading raw cells gives no filtering at all.
+//
+// This pass turns that buffer into a small two channel velocity image once per simulation step. Per destination
+// texel it averages the net velocity over the corresponding full resolution block, which both smooths out the
+// per cell grid noise of the pipe solver and keeps the image small. Flow is a low frequency quantity, so the
+// downsampled resolution is plenty and the fragment shader gets bilinear filtering for free, which is exactly
+// what an advection of the ripple pattern wants.
+//
+// Component convention of the flow buffer, read off planet_water_simulation_waterheight.comp where the
+// neighbours contribute their return flow: x = east, y = south, z = west, w = north. The net velocity of a cell
+// is therefore (east - west, south - north), in the local octahedral UV frame. Only the cell's own four values
+// are involved, never a neighbour's, so the octahedral seam handling (applyOctaCheckerboardFlip, which exists
+// solely for the compact vector layout) is not needed here.
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#ifdef USE_FP16
+// 16-bit floats, matching the storage type the simulation writes on devices with 16-bit storage support
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#endif
+
+/* clang-format off */
+
+#define WORKGROUP_SIZE 16
+
+layout(local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
+
+#ifdef USE_FP16
+#define _vec4 f16vec4
+#else
+#define _vec4 vec4
+#endif
+
+layout(push_constant) uniform PushConstants {
+  uint waterHeightMapResolution; // Full resolution of the water simulation grid
+  uint waterHeightMapBorder; // Border cells the flow buffer carries on each side
+  uint flowMapResolution; // Resolution of the downsampled flow image
+  uint flowMapShift; // log2(waterHeightMapResolution / flowMapResolution)
+} pushConstants;
+
+layout(set = 0, binding = 0, std430) readonly buffer InWaterFlowMap {
+  _vec4 values[];
+} inWaterFlowMap;
+
+layout(set = 0, binding = 1, rg16f) uniform writeonly image2D uImageWaterFlowMap;
+
+/* clang-format on */
+
+// Same indexing as getFlowMapIndex in planet_water_simulation.glsl: shift by the border, then wrap inside the
+// bordered grid. Kept local so this pass does not have to pull in the whole simulation header.
+uint getFlowMapIndex(ivec2 position){
+  const int resolutionWithBorder = int(pushConstants.waterHeightMapResolution + (pushConstants.waterHeightMapBorder * 2u));
+  position = (((position + ivec2(int(pushConstants.waterHeightMapBorder))) % ivec2(resolutionWithBorder)) + ivec2(resolutionWithBorder)) % ivec2(resolutionWithBorder);
+  return uint((position.y * resolutionWithBorder) + position.x);
+}
+
+void main(){
+
+  const ivec2 flowTexel = ivec2(gl_GlobalInvocationID.xy);
+
+  if(any(greaterThanEqual(flowTexel, ivec2(int(pushConstants.flowMapResolution))))){
+    return;
+  }
+
+  const int blockSize = 1 << int(pushConstants.flowMapShift);
+  const ivec2 blockOrigin = flowTexel * blockSize;
+  const int resolution = int(pushConstants.waterHeightMapResolution);
+
+  // Average the net velocity over the full resolution block that maps to this flow texel. Averaging rather than
+  // taking a maximum is deliberate: opposing flows inside a block really do cancel, and a block where the water
+  // only sloshes back and forth carries no net transport for the ripples to follow.
+  vec2 flowSum = vec2(0.0);
+  float flowCount = 0.0;
+  for(int dy = 0; dy < blockSize; dy++){
+    const int y = blockOrigin.y + dy;
+    if(y >= resolution){
+      break;
+    }
+    for(int dx = 0; dx < blockSize; dx++){
+      const int x = blockOrigin.x + dx;
+      if(x >= resolution){
+        break;
+      }
+      const vec4 outFlow = vec4(inWaterFlowMap.values[getFlowMapIndex(ivec2(x, y))]);
+      flowSum += vec2(outFlow.x - outFlow.z, outFlow.y - outFlow.w);
+      flowCount += 1.0;
+    }
+  }
+
+  const vec2 flow = (flowCount > 0.0) ? (flowSum / flowCount) : vec2(0.0);
+
+  imageStore(uImageWaterFlowMap, flowTexel, vec4(flow, 0.0, 0.0));
+
+}
