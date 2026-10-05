@@ -424,11 +424,24 @@ float map(vec3 p){
   return mapEx(p, 12);
 }
 
+// Width of the coarse normal stencil. The per-planet water settings can override the compile-time
+// default; a value of zero means "not configured" and keeps the default, so existing content is
+// unaffected. Widening this past the default only makes sense once something else supplies the fine
+// surface structure (the procedural detail normal), because the wider stencil averages that away too.
+float getWaterCoarseSimNormalStep(){
+#ifdef PLANET_DATA_GLSL
+  float configuredStep = unpackHalf2x16(planetData.waterDetailParams.w).y;
+  return (configuredStep > 0.0) ? configuredStep : PLANET_WATER_COARSE_SIM_NORMAL_STEP;
+#else
+  return PLANET_WATER_COARSE_SIM_NORMAL_STEP;
+#endif
+}
+
 vec3 mapNormal(vec3 p){
   float eps = 1e-2; // 0.01 meters base epsilon for the normal calculation
 #ifdef PLANET_DATA_GLSL
   if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_COARSE_SIM_NORMAL) != 0u){
-    eps *= PLANET_WATER_COARSE_SIM_NORMAL_STEP; // Wider stencil averages out the high-frequency simulation wobble
+    eps *= getWaterCoarseSimNormalStep(); // Wider stencil averages out the high-frequency simulation wobble
   }
 #endif
   vec2 e = vec2(eps, 0.0);

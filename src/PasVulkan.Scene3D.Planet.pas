@@ -221,7 +221,7 @@ type TpvScene3DPlanets=class;
              WaterRainSplashParams3:TpvHalfFloatVector4; // padding (fills second uvec4 of waterRainSplashParams2)
 
              WaterDetailParams0:TpvHalfFloatVector4; // x=detailStrength (0=off), y=detailScale (cycles per meter), z=detailSpeed, w=detailFadeStart (camera distance in meters where the detail starts fading out)
-             WaterDetailParams1:TpvHalfFloatVector4; // x=detailFadeEnd (camera distance where it is gone), y=detailDepthThresholdLow, z=detailDepthThresholdHigh, w=unused
+             WaterDetailParams1:TpvHalfFloatVector4; // x=detailFadeEnd (camera distance where it is gone), y=detailDepthThresholdLow, z=detailDepthThresholdHigh, w=coarse sim normal stencil width override (0 = keep the shader default)
 
              GrassColorParams0:TpvHalfFloatVector4; // xyz = grass base color (linear), w = fake self shadowing floor at the blade base
              GrassColorParams1:TpvHalfFloatVector4; // x = roughness, y = occlusion, z = blade roundness fake angle in degrees, w = blade leaning factor
@@ -3556,6 +3556,7 @@ type TpvScene3DPlanets=class;
        // Render-side water surface normal toggle: sample the simulated water height with a wider normal stencil so
        // the static octahedral wobble on still water averages out of the specular normal. Live switchable for A/B.
        fWaterCoarseSimNormal:LongBool;
+       fWaterCoarseSimNormalStep:TpvFloat;         // Stencil width of the coarse simulated-normal sampling. 0 keeps the PLANET_WATER_COARSE_SIM_NORMAL_STEP shader default. Only worth widening past that once the procedural detail normal supplies the fine structure the wider stencil averages away.
        // Render-side water surface normal toggle: blend the normal toward the radial normal where the water is calm
        // (uses the downsampled activity map), so still water renders as the smooth equipotential surface it is.
        fWaterCalmSurfaceNormal:LongBool;
@@ -4035,6 +4036,7 @@ type TpvScene3DPlanets=class;
        property WaterSimulationEnabled:LongBool read fWaterSimulationEnabled write fWaterSimulationEnabled;
        property WaterSimulationMetricCompensation:LongBool read fWaterSimulationMetricCompensation write fWaterSimulationMetricCompensation;
        property WaterCoarseSimNormal:LongBool read fWaterCoarseSimNormal write fWaterCoarseSimNormal;
+       property WaterCoarseSimNormalStep:TpvFloat read fWaterCoarseSimNormalStep write fWaterCoarseSimNormalStep;
        property WaterCalmSurfaceNormal:LongBool read fWaterCalmSurfaceNormal write fWaterCalmSurfaceNormal;
        property WaterWaveDisplaceAmplitude:TpvFloat read fWaterWaveDisplaceAmplitude write fWaterWaveDisplaceAmplitude;
        property WaterDisplaceHeightLowThreshold:TpvFloat read fWaterDisplaceHeightLowThreshold write fWaterDisplaceHeightLowThreshold;
@@ -34793,6 +34795,7 @@ begin
  fWaterSimulationMetricCompensation:=aWaterMetricCompensation;
 
  fWaterCoarseSimNormal:=false; // Render-side normal toggle, default off, switched live or via JSON "water"."coarsesimnormal"
+ fWaterCoarseSimNormalStep:=0.0; // 0 = keep the shader-side default of PLANET_WATER_COARSE_SIM_NORMAL_STEP
 
  fWaterCalmSurfaceNormal:=false; // Render-side normal toggle, default off, switched live or via JSON "water"."calmsurfacenormal"
  fWaterWaveDisplaceAmplitude:=0.0; // disabled by default; enable via JSON "waves"."displace"
@@ -38834,7 +38837,7 @@ begin
    fPlanetData.WaterDetailParams1.x:=fWaterDetailFadeEnd;
    fPlanetData.WaterDetailParams1.y:=fWaterDetailDepthThresholdLow;
    fPlanetData.WaterDetailParams1.z:=fWaterDetailDepthThresholdHigh;
-   fPlanetData.WaterDetailParams1.w:=0.0;
+   fPlanetData.WaterDetailParams1.w:=fWaterCoarseSimNormalStep;
    fPlanetData.GrassColorParams0.x:=fGrassBaseColor.x;
    fPlanetData.GrassColorParams0.y:=fGrassBaseColor.y;
    fPlanetData.GrassColorParams0.z:=fGrassBaseColor.z;
@@ -39561,6 +39564,7 @@ begin
    fWaterSimulationMetricCompensation:=TPasJSON.GetBoolean(JSONSimulationObject.Properties['metriccompensation'],fWaterSimulationMetricCompensation);
   end;
   fWaterCoarseSimNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['coarsesimnormal'],fWaterCoarseSimNormal);
+  fWaterCoarseSimNormalStep:=TPasJSON.GetNumber(JSONWaterObject.Properties['coarsesimnormalstep'],fWaterCoarseSimNormalStep);
   fWaterCalmSurfaceNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['calmsurfacenormal'],fWaterCalmSurfaceNormal);
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);

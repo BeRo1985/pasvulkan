@@ -469,7 +469,7 @@ vec3 getWaterNormal(vec3 position){
 #if 1
   float texScale = 1.0 / 4096.0;
   if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_COARSE_SIM_NORMAL) != 0u){
-    texScale *= PLANET_WATER_COARSE_SIM_NORMAL_STEP; // Wider stencil averages out the high-frequency simulation wobble
+    texScale *= getWaterCoarseSimNormalStep(); // Wider stencil averages out the high-frequency simulation wobble
   }
 
   vec3 normal;
