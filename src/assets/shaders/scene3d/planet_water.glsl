@@ -22,6 +22,12 @@
 // the ambient one by a factor of PI. Affects the deep-water color, the shore foam and the whitecaps.
 #define PLANET_WATER_FLAG_NORMALIZED_DOWNWELLING (1u << 6u)
 
+// The surface levelling average is available precomputed in PLANET_TEXTURE_WATERLEVELMAP, so one sample can
+// replace the inline stencil. The Pascal side only sets this once the bake has actually run and while its
+// preconditions hold (see planet_water_level_bake.comp); when it is clear the inline path is used instead, so
+// the two always produce a result, never a missing one.
+#define PLANET_WATER_FLAG_BAKED_SURFACE_LEVEL (1u << 7u)
+
 // Stencil widening factor for the coarse simulated-normal step (tuning knob, overridable at compile time).
 #ifndef PLANET_WATER_COARSE_SIM_NORMAL_STEP
 #define PLANET_WATER_COARSE_SIM_NORMAL_STEP 4.0
@@ -396,19 +402,29 @@ float getWaterLevelledColumn(vec2 uv, float terrainRadius, float rawColumn){
   if(levelStep <= 0.0){
     return rawColumn;
   }
-  vec2 texelStep = vec2(levelStep) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy);
   float rawSurface = terrainRadius + rawColumn;
-  float surfaceSum = rawSurface;
-  float surfaceCount = 1.0;
-  for(int index = 0; index < 8; index++){
-    vec2 neighbourUV = wrapOctahedralCoordinates(uv + (waterLevelStencilOffsets[index] * texelStep));
-    float neighbourColumn = getWaterHeightData(neighbourUV);
-    if(neighbourColumn > 1e-7){
-      surfaceSum += getTerrainRadius(neighbourUV) + neighbourColumn;
-      surfaceCount += 1.0;
+  float averagedSurface;
+  if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_BAKED_SURFACE_LEVEL) != 0u){
+    // One sample of the precomputed average instead of the stencil below. Not an approximation of it: the
+    // stencil offsets are whole texels, Catmull-Rom weights depend only on the fractional part of the texel
+    // coordinate, so summing and filtering commute and this reads back the very value the loop would form.
+    // See planet_water_level_bake.comp for the derivation and for the two preconditions the Pascal side checks.
+    averagedSurface = textureBicubicPlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_WATERLEVELMAP], uv).x;
+  }else{
+    vec2 texelStep = vec2(levelStep) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy);
+    float surfaceSum = rawSurface;
+    float surfaceCount = 1.0;
+    for(int index = 0; index < 8; index++){
+      vec2 neighbourUV = wrapOctahedralCoordinates(uv + (waterLevelStencilOffsets[index] * texelStep));
+      float neighbourColumn = getWaterHeightData(neighbourUV);
+      if(neighbourColumn > 1e-7){
+        surfaceSum += getTerrainRadius(neighbourUV) + neighbourColumn;
+        surfaceCount += 1.0;
+      }
     }
+    averagedSurface = surfaceSum / surfaceCount;
   }
-  float levelledSurface = mix(rawSurface, surfaceSum / surfaceCount, levelAmount);
+  float levelledSurface = mix(rawSurface, averagedSurface, levelAmount);
   return max(0.0, levelledSurface - terrainRadius);
 #else
   return rawColumn;
