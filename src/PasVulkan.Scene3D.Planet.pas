@@ -223,8 +223,8 @@ type TpvScene3DPlanets=class;
              WaterDetailParams0:TpvHalfFloatVector4; // x=detailStrength (0=off), y=detailScale (cycles per meter), z=detailSpeed, w=detailFadeStart (camera distance in meters where the detail starts fading out)
              WaterDetailParams1:TpvHalfFloatVector4; // x=detailFadeEnd (camera distance where it is gone), y=detailDepthThresholdLow, z=detailDepthThresholdHigh, w=coarse sim normal stencil width override (0 = keep the shader default)
 
-             WaterDetailParams2:TpvHalfFloatVector4; // x=detailFlowFactor (how much the flow drives the ripple amplitude, 0 = ignore the flow), y=detailFlowAdvection (how far the flow carries the pattern), z=detailFlowReference (flow magnitude that counts as full strength), w=unused
-             WaterDetailParams3:TpvHalfFloatVector4; // padding (fills uvec4 waterDetailParams2 zw)
+             WaterDetailParams2:TpvHalfFloatVector4; // x=detailFlowFactor (how much the flow drives the ripple amplitude, 0 = ignore the flow), y=detailFlowAdvection (how far the flow carries the pattern), z=detailFlowReference (flow magnitude that counts as full strength), w=surface level amount (0 = raw simulated column, 1 = fully levelled rendered surface)
+             WaterDetailParams3:TpvHalfFloatVector4; // x=surface level stencil width in height map texels (0 = levelling off), yzw=unused
 
              GrassColorParams0:TpvHalfFloatVector4; // xyz = grass base color (linear), w = fake self shadowing floor at the blade base
              GrassColorParams1:TpvHalfFloatVector4; // x = roughness, y = occlusion, z = blade roundness fake angle in degrees, w = blade leaning factor
@@ -3532,6 +3532,8 @@ type TpvScene3DPlanets=class;
        fWaterDetailFlowFactor:TpvFloat;            // How much the simulated flow drives the ripple amplitude. 0 ignores the flow and the detail keeps its base strength everywhere; 1 means a still surface stays smooth and only moving water gets its structure. Also gates the flow downsample pass.
        fWaterDetailFlowAdvection:TpvFloat;         // How far the flow carries the ripple pattern along with it. 0 keeps the pattern on its own drift, higher values make the ripples stream with the current.
        fWaterDetailFlowReference:TpvFloat;         // Flow magnitude that counts as full strength for the two above, so the coupling does not depend on the absolute scale of the solver's outflow values.
+       fWaterSurfaceLevelAmount:TpvFloat;          // Blends the RENDERED water surface from the raw simulated column (0) toward a levelled one (1). Still water is an equipotential surface, but the pipe solver's equilibrium on the distorted octahedral grid is not, which leaves standing bumps following the terrain. The simulation itself is untouched, only what is drawn.
+       fWaterSurfaceLevelStep:TpvFloat;            // Stencil width in height map texels over which the rendered surface is averaged. 0 disables the levelling. Too wide and the level runs over shallow banks, so this is the counterpart of the bump removal.
        fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
        fWaterShoreFoamDepthStart:TpvFloat;         // Water depth (m) at which foam starts fading in (outer edge, deeper boundary).
@@ -4034,6 +4036,8 @@ type TpvScene3DPlanets=class;
        property WaterDetailFlowFactor:TpvFloat read fWaterDetailFlowFactor write fWaterDetailFlowFactor;
        property WaterDetailFlowAdvection:TpvFloat read fWaterDetailFlowAdvection write fWaterDetailFlowAdvection;
        property WaterDetailFlowReference:TpvFloat read fWaterDetailFlowReference write fWaterDetailFlowReference;
+       property WaterSurfaceLevelAmount:TpvFloat read fWaterSurfaceLevelAmount write fWaterSurfaceLevelAmount;
+       property WaterSurfaceLevelStep:TpvFloat read fWaterSurfaceLevelStep write fWaterSurfaceLevelStep;
        property WaterNormalizedDownwelling:Boolean read fWaterNormalizedDownwelling write fWaterNormalizedDownwelling;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
@@ -34979,6 +34983,8 @@ begin
  fWaterDetailFlowFactor:=0.0; // off by default, so the detail behaves exactly as before the flow map existed
  fWaterDetailFlowAdvection:=1.0;
  fWaterDetailFlowReference:=0.05;
+ fWaterSurfaceLevelAmount:=0.0; // off by default, so the rendered surface stays the raw simulated one
+ fWaterSurfaceLevelStep:=8.0;
  fWaterNormalizedDownwelling:=false; // off reproduces the historical unnormalized direct downwelling irradiance
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
  fWaterShoreFoamDepthStart:=0.8; // foam fades out beyond ~0.8 m water depth
@@ -39062,8 +39068,8 @@ begin
    fPlanetData.WaterDetailParams2.x:=fWaterDetailFlowFactor;
    fPlanetData.WaterDetailParams2.y:=fWaterDetailFlowAdvection;
    fPlanetData.WaterDetailParams2.z:=fWaterDetailFlowReference;
-   fPlanetData.WaterDetailParams2.w:=0.0;
-   fPlanetData.WaterDetailParams3.x:=0.0;
+   fPlanetData.WaterDetailParams2.w:=fWaterSurfaceLevelAmount;
+   fPlanetData.WaterDetailParams3.x:=fWaterSurfaceLevelStep;
    fPlanetData.WaterDetailParams3.y:=0.0;
    fPlanetData.WaterDetailParams3.z:=0.0;
    fPlanetData.WaterDetailParams3.w:=0.0;
@@ -39794,6 +39800,8 @@ begin
   end;
   fWaterCoarseSimNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['coarsesimnormal'],fWaterCoarseSimNormal);
   fWaterCoarseSimNormalStep:=TPasJSON.GetNumber(JSONWaterObject.Properties['coarsesimnormalstep'],fWaterCoarseSimNormalStep);
+  fWaterSurfaceLevelAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['surfacelevelamount'],fWaterSurfaceLevelAmount);
+  fWaterSurfaceLevelStep:=TPasJSON.GetNumber(JSONWaterObject.Properties['surfacelevelstep'],fWaterSurfaceLevelStep);
   fWaterCalmSurfaceNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['calmsurfacenormal'],fWaterCalmSurfaceNormal);
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);

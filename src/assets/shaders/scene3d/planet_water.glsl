@@ -355,45 +355,91 @@ float getWaterHeightData(vec3 n){
   return getWaterHeightData(octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy)));
 }
 
+float getTerrainRadius(vec2 uv){
+  return mix(
+           planetBottomRadius,
+           planetTopRadius,
+           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
+         );
+}
+
+// Ring of the eight neighbours of a 3x3 stencil, in octahedral UV units before the step width is applied.
+const vec2 waterLevelStencilOffsets[8] = vec2[8](
+  vec2(-1.0, -1.0), vec2(0.0, -1.0), vec2(1.0, -1.0),
+  vec2(-1.0,  0.0),                  vec2(1.0,  0.0),
+  vec2(-1.0,  1.0), vec2(0.0,  1.0), vec2(1.0,  1.0)
+);
+
+// Levelled water column for the RENDERED surface.
+//
+// Still water is an equipotential surface, so the surface of a body of water should sit at a constant radius.
+// The pipe solver's equilibrium on the distorted octahedral grid is not that constant radius though, which
+// leaves standing bumps in the column that follow the terrain underneath. Widening the normal stencil hides
+// them in the shading, but the geometry still carries them and a flat viewing angle shows them.
+//
+// So the rendered surface radius is averaged over a wide stencil and the column is rebuilt from it. This is the
+// height domain twin of PLANET_WATER_FLAG_COARSE_SIM_NORMAL, and like that one it does not touch the simulation:
+// the physics keeps reading the raw column through getWaterHeightData.
+//
+// Only wet neighbours contribute, otherwise a shoreline would drag the level down towards the dry land next to
+// it and the water would visibly sink away from its own bank. The result is clamped against the terrain, so
+// where the levelled surface would fall below the ground the column simply goes to zero and the existing shore
+// handling takes over from there.
+float getWaterLevelledColumn(vec2 uv, float terrainRadius, float rawColumn){
+#ifdef PLANET_DATA_GLSL
+  vec4 detail3 = vec4(unpackHalf2x16(planetData.waterDetailParams2.z), unpackHalf2x16(planetData.waterDetailParams2.w));
+  float levelAmount = clamp(unpackHalf2x16(planetData.waterDetailParams2.y).y, 0.0, 1.0);
+  if((levelAmount <= 0.0) || (rawColumn <= 1e-7)){
+    return rawColumn;
+  }
+  float levelStep = detail3.x;
+  if(levelStep <= 0.0){
+    return rawColumn;
+  }
+  vec2 texelStep = vec2(levelStep) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy);
+  float rawSurface = terrainRadius + rawColumn;
+  float surfaceSum = rawSurface;
+  float surfaceCount = 1.0;
+  for(int index = 0; index < 8; index++){
+    vec2 neighbourUV = wrapOctahedralCoordinates(uv + (waterLevelStencilOffsets[index] * texelStep));
+    float neighbourColumn = getWaterHeightData(neighbourUV);
+    if(neighbourColumn > 1e-7){
+      surfaceSum += getTerrainRadius(neighbourUV) + neighbourColumn;
+      surfaceCount += 1.0;
+    }
+  }
+  float levelledSurface = mix(rawSurface, surfaceSum / surfaceCount, levelAmount);
+  return max(0.0, levelledSurface - terrainRadius);
+#else
+  return rawColumn;
+#endif
+}
+
 vec2 getSphereHeightData(vec2 uv){
+  float terrainRadius = getTerrainRadius(uv);
   return vec2(
-    mix(
-      planetBottomRadius,
-      planetTopRadius,
-      texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-    ),
-    getWaterHeightData(uv) // But for the water map, we use bicubic interpolation to get a smoother water surface, and it already adds the ripple contribution
+    terrainRadius,
+    getWaterLevelledColumn(uv, terrainRadius, getWaterHeightData(uv)) // Bicubic water height plus the ripple contribution, levelled for the rendered surface
   );
 }
 
 vec2 getSphereHeightData(vec3 n){
   vec2 uv = octPlanetUnsignedEncode(n) + (vec2(0.5) / vec2(textureSize(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], 0).xy));
+  float terrainRadius = getTerrainRadius(uv);
   return vec2(
-    mix(
-      planetBottomRadius,
-      planetTopRadius,
-      texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-    ),
-    getWaterHeightData(uv)
+    terrainRadius,
+    getWaterLevelledColumn(uv, terrainRadius, getWaterHeightData(uv))
   );
 }
 
 float getSphereHeight(vec3 n, int i){
-  return mix(
-           planetBottomRadius,
-           planetTopRadius,
-           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], n).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-         ) +
-         getWaterHeightData(n);
+  vec2 heightData = getSphereHeightData(n);
+  return heightData.x + heightData.y;
 }
 
 float getSphereHeight(vec2 uv){
-  return mix(
-           planetBottomRadius,
-           planetTopRadius,
-           texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-         ) +
-         getWaterHeightData(uv);
+  vec2 heightData = getSphereHeightData(uv);
+  return heightData.x + heightData.y;
 }
 
 float getSphereHeight(vec3 n){
@@ -402,14 +448,11 @@ float getSphereHeight(vec3 n){
 
 float getSphereHeightEx(vec2 uv){
   float h = getWaterHeightData(uv); // Bicubic water height + additive GPU ripple contribution
-  return (h > 1e-7)
-          ? (mix(
-              planetBottomRadius,
-              planetTopRadius,
-              texturePlanetOctahedralMap(uPlanetTextures[PLANET_TEXTURE_HEIGHTMAP], uv).x  // Linear interpolation of the heightmap for to match the vertex-based rendering
-             ) +
-             h)
-          : -1.0;
+  if(h <= 1e-7){
+    return -1.0; // The gate stays on the RAW column, so whether a cell counts as wet is unaffected by the levelling
+  }
+  float terrainRadius = getTerrainRadius(uv);
+  return terrainRadius + getWaterLevelledColumn(uv, terrainRadius, h);
 }
 
 float mapHeight(vec3 p, float h){
