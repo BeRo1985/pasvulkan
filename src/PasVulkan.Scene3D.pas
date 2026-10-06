@@ -2898,6 +2898,11 @@ type EpvScene3D=class(Exception);
                      fTranslation:TpvVector3;
                      fRotation:TpvQuaternion;
                      fScale:TpvVector3;
+                     // Scale*Rotation*Translation, and that times fMatrix, from the node's own default transform.
+                     // Precomputed, so instance nodes without effective overwrites don't rebuild it every frame.
+                     fDefaultTRSMatrix:TpvMatrix4x4;
+                     fDefaultLocalMatrix:TpvMatrix4x4;
+                     fDefaultLocalMatrixGeneration:TpvUInt32;
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
@@ -2908,6 +2913,10 @@ type EpvScene3D=class(Exception);
                      fLODScreenCoverages:TpvFloatDynamicArray;
                      fIsLODVariant:Boolean;
                      fLODPrimaryNodeIndex:TpvSizeInt;
+                     procedure SetTranslation(const aTranslation:TpvVector3);
+                     procedure SetRotation(const aRotation:TpvQuaternion);
+                     procedure SetScale(const aScale:TpvVector3);
+                     procedure SetMatrix(const aMatrix:TpvMatrix4x4);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
@@ -2916,12 +2925,14 @@ type EpvScene3D=class(Exception);
                      procedure SaveToStream(const aStream:TStream);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                      procedure Finish;
+                     procedure UpdateDefaultLocalMatrices;
                     public
                      property LODNodeIndices:TpvScene3D.TSizeIntDynamicArray read fLODNodeIndices;
-                     property Translation:TpvVector3 read fTranslation write fTranslation;
-                     property Rotation:TpvQuaternion read fRotation write fRotation;
-                     property Scale:TpvVector3 read fScale write fScale;
-                     property Matrix:TpvMatrix4x4 read fMatrix write fMatrix;
+                     property Translation:TpvVector3 read fTranslation write SetTranslation;
+                     property Rotation:TpvQuaternion read fRotation write SetRotation;
+                     property Scale:TpvVector3 read fScale write SetScale;
+                     property Matrix:TpvMatrix4x4 read fMatrix write SetMatrix;
+                     property DefaultLocalMatrix:TpvMatrix4x4 read fDefaultLocalMatrix;
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Flags:TNodeFlags read fFlags write fFlags;
@@ -3113,6 +3124,11 @@ type EpvScene3D=class(Exception);
                             fOverwriteWeightsAdditiveSum:TpvDoubleDynamicArray;
                             fWorkWeights:TpvFloatDynamicArray;
                             fWorkMatrix:TpvMatrix4x4;
+                            // fGroupNode.fDefaultLocalMatrixGeneration the cached fWorkMatrix was built from, when
+                            // it came from the node's default local matrix; 0 when it came from overwrites or
+                            // OnNodeMatrixPre/Post. Lets ProcessNode keep fWorkMatrix while nothing changed.
+                            fWorkMatrixDefaultGeneration:TpvUInt32;
+                            fInverseFrontFacesValid:Boolean;
                             fLight:TpvScene3D.TLight;
 //                          fWorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
@@ -18788,6 +18804,10 @@ begin
 
  fScale:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
+ fDefaultLocalMatrixGeneration:=0;
+
+ UpdateDefaultLocalMatrices;
+
  fRaytracingMask:=$ff;
 
  fCastingShadows:=true;
@@ -18926,6 +18946,8 @@ begin
   fRotation:=StreamIO.ReadQuaternion;
 
   fScale:=StreamIO.ReadVector3;
+
+  UpdateDefaultLocalMatrices;
 
   Count:=StreamIO.ReadInt64;
   fWeights.Resize(Count);
@@ -19215,6 +19237,46 @@ begin
   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
  end;
 
+ UpdateDefaultLocalMatrices;
+
+end;
+
+procedure TpvScene3D.TGroup.TNode.UpdateDefaultLocalMatrices;
+begin
+ // Same operation order as in TpvScene3D.TGroup.TInstance.ProcessNode, so the results are bit-identical
+ fDefaultTRSMatrix:=TpvMatrix4x4.CreateScale(fScale)*
+                    (TpvMatrix4x4.CreateFromQuaternion(fRotation)*
+                     TpvMatrix4x4.CreateTranslation(fTranslation));
+ fDefaultLocalMatrix:=fDefaultTRSMatrix*fMatrix;
+ // Never 0, because 0 marks an instance node work matrix as not built from the defaults
+ inc(fDefaultLocalMatrixGeneration);
+ if fDefaultLocalMatrixGeneration=0 then begin
+  fDefaultLocalMatrixGeneration:=1;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TNode.SetTranslation(const aTranslation:TpvVector3);
+begin
+ fTranslation:=aTranslation;
+ UpdateDefaultLocalMatrices;
+end;
+
+procedure TpvScene3D.TGroup.TNode.SetRotation(const aRotation:TpvQuaternion);
+begin
+ fRotation:=aRotation;
+ UpdateDefaultLocalMatrices;
+end;
+
+procedure TpvScene3D.TGroup.TNode.SetScale(const aScale:TpvVector3);
+begin
+ fScale:=aScale;
+ UpdateDefaultLocalMatrices;
+end;
+
+procedure TpvScene3D.TGroup.TNode.SetMatrix(const aMatrix:TpvMatrix4x4);
+begin
+ fMatrix:=aMatrix;
+ UpdateDefaultLocalMatrices;
 end;
 
 procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
@@ -19298,6 +19360,8 @@ begin
  fRotation:=TpvQuaternion(pointer(@aSourceNode.Rotation)^);
 
  fScale:=TpvVector3(pointer(@aSourceNode.Scale)^);
+
+ UpdateDefaultLocalMatrices;
 
  fWeights.Resize(aSourceNode.Weights.Count);
  for WeightIndex:=0 to fWeights.Count-1 do begin
@@ -24497,6 +24561,7 @@ var FBXScene:TpvFBXScene;
     aFBXNode.LclRotation.z);
    Node.fScale:=TpvVector3.InlineableCreate(aFBXNode.LclScaling.x,aFBXNode.LclScaling.y,aFBXNode.LclScaling.z);
    Node.fMatrix:=TpvMatrix4x4.Identity;
+   Node.UpdateDefaultLocalMatrices;
    Node.fVisible:=aFBXNode.Visibility;
    // Link connected mesh, camera, light (NOT skin — done in LinkSkins)
    // FBX OO connections: DstObject.ConnectTo(SrcObject), so ConnectedTo has children
@@ -25252,6 +25317,7 @@ var DAEMaterialMap:TDAEObjectIndexMap;
     Node.fScale:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
    end;
    Node.fMatrix:=TpvMatrix4x4.Identity;
+   Node.UpdateDefaultLocalMatrices;
    Node.fVisible:=aDAENode.Visible;
    // Link geometries
    for GeometryIndex:=0 to aDAENode.Geometries.Count-1 do begin
@@ -27844,6 +27910,8 @@ begin
    Node:=fGroup.fNodes[Index];
    InstanceNode.fProcessed:=false;
    InstanceNode.fFlags:=[];
+   InstanceNode.fWorkMatrixDefaultGeneration:=0;
+   InstanceNode.fInverseFrontFacesValid:=false;
    SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwriteWeightsAdditiveSum,Node.fWeights.Count);
@@ -31437,7 +31505,7 @@ var Index,OtherIndex,RotationCounter:TpvSizeInt;
     WeightedRotationFactorSum,
     WeightsFactorSum:TpvDouble;
     Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-    FirstWeights,{SkinUsed,}Dirty,MatrixDirty,Additive,HasAdditiveRotation,DoCostlyUpdates{$ifdef SubTreeInFlightFramesUpdates},SubtreeClean{$endif}:boolean;
+    FirstWeights,{SkinUsed,}Dirty,MatrixDirty,MatrixChanged,Additive,HasAdditiveRotation,DoCostlyUpdates{$ifdef SubTreeInFlightFramesUpdates},SubtreeClean{$endif}:boolean;
     OwnVisible,EffectiveVisible:boolean;
     Light:TpvScene3D.TLight;
     InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
@@ -31500,22 +31568,22 @@ begin
 {$endif}
  Dirty:=aDirty;
  MatrixDirty:=aMatrixDirty;
+ MatrixChanged:=false;
  DoCostlyUpdates:=false;
- if aMatrixDirty or
-    (InstanceNode.fCountOverwrites>0) or
+ // Overwrites only take effect on nodes with animated elements, on all others they always resolve to the
+ // node's own default transform, so these get the precomputed default local matrix instead.
+ if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
+  for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
+   if not IsZero(InstanceNode.fOverwrites[Index].Factor) then begin
+    DoCostlyUpdates:=true;
+    break;
+   end;
+  end;
+ end;
+ if DoCostlyUpdates or
     assigned(fOnNodeMatrixPre) or
     assigned(fOnNodeMatrixPost) then begin
-  if (InstanceNode.fCountOverwrites>0) and (Node.Flags<>[]) then begin
-   for Index:=0 to InstanceNode.fCountOverwrites-1 do begin
-    if not IsZero(InstanceNode.fOverwrites[Index].Factor) then begin
-     DoCostlyUpdates:=true;
-     break;
-    end;
-   end;
-  end else begin
-   // Fast path: parent matrix unchanged, no overwrites, no callbacks
-   // => reuse cached fWorkMatrix, skip expensive matrix construction
-  end;
+  InstanceNode.fWorkMatrixDefaultGeneration:=0;
   if DoCostlyUpdates then begin
    Dirty:=true;
    TranslationSum.Clear;
@@ -31641,17 +31709,15 @@ begin
      end;
     end;
    end;
+   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
+           (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
+            TpvMatrix4x4.CreateTranslation(Translation));
   end else begin
-   Translation:=Node.fTranslation;
-   Scale:=Node.fScale;
-   WeightedRotation:=Node.fRotation;
    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
    end;
+   Matrix:=Node.fDefaultTRSMatrix;
   end;
-  Matrix:=TpvMatrix4x4.CreateScale(Scale)*
-          (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
-           TpvMatrix4x4.CreateTranslation(Translation));
   if assigned(fOnNodeMatrixPre) then begin
    if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
     Dirty:=true;
@@ -31666,9 +31732,27 @@ begin
   Matrix:=Matrix*aMatrix;
   if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
    MatrixDirty:=true;
+   MatrixChanged:=true;
    InstanceNode.fWorkMatrix:=Matrix;
   end;
+ end else if aMatrixDirty or
+             (InstanceNode.fWorkMatrixDefaultGeneration<>Node.fDefaultLocalMatrixGeneration) then begin
+  // Default transform: only the parent matrix can make a difference here, or a work matrix which wasn't
+  // built from the current default local matrix (initial state, previously overwritten or modified by
+  // OnNodeMatrixPre/Post callbacks, or changed node defaults)
+  for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
+   InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
+  end;
+  Matrix:=Node.fDefaultLocalMatrix*aMatrix;
+  if InstanceNode.fWorkMatrix.NotEquals(Matrix) then begin
+   MatrixDirty:=true;
+   MatrixChanged:=true;
+   InstanceNode.fWorkMatrix:=Matrix;
+  end;
+  InstanceNode.fWorkMatrixDefaultGeneration:=Node.fDefaultLocalMatrixGeneration;
  end else begin
+  // Fast path: parent matrix unchanged and work matrix already built from the current default local
+  // matrix => reuse cached fWorkMatrix
   Matrix:=InstanceNode.fWorkMatrix;
   for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
@@ -31676,10 +31760,14 @@ begin
  end;
 //InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
  if assigned(Node.fMesh) then begin
-  if Matrix.Determinant<0.0 then begin
-   Include(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
-  end else begin
-   Exclude(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+  // The determinant sign can only change together with the work matrix
+  if MatrixChanged or not InstanceNode.fInverseFrontFacesValid then begin
+   if Matrix.Determinant<0.0 then begin
+    Include(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+   end else begin
+    Exclude(InstanceNode.fFlags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
+   end;
+   InstanceNode.fInverseFrontFacesValid:=true;
   end;
   if {SkinUsed and} assigned(Node.fSkin) then begin
    fSkins[Node.fSkin.Index].Used:=true;
