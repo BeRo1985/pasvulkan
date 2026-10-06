@@ -138,11 +138,11 @@ inherited Create(aFrameGraph);
 
  if fTransparencyDepth then begin
   Name:='TransparencyDepthRenderPass';
-  fSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
  end else begin
   Name:='DepthPrepassRenderPass';
-  fSampleCountFlagBits:=fInstance.Renderer.SurfaceSampleCountFlagBits;
  end;
+
+ fSampleCountFlagBits:=fInstance.Renderer.SurfaceSampleCountFlagBits;
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
@@ -156,17 +156,28 @@ inherited Create(aFrameGraph);
 
  if fTransparencyDepth then begin
 
-  // The depth of the transparency on its own, in a buffer of its own and always single sampled, since both
-  // that read it - the water and its caustics - do so once per pixel. Nothing opaque is in it: what is in
-  // front is told by the readers from it and the opaque depth together, so the transparency needs no depth
-  // test against the opaque here, and the depth the rest of the frame works with stays as it is.
-  fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'resource_transparency_depth',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
+  // The depth of the transparency on its own, in a buffer of its own. Nothing opaque is in it: what is in
+  // front is told by the readers - the water and its caustics - from it and the opaque depth together, so
+  // the transparency needs no depth test against the opaque here, and the depth the rest of the frame works
+  // with stays as it is. Multisampled with a multisampled surface, since at the edge of a transparent
+  // surface only some of the samples of a pixel are its own, and the readers decide per sample.
+  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+                                       'resource_transparency_depth',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );
+  end else begin
+   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+                                       'resource_transparency_msaa_depth',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );
+  end;
 
  end else if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 

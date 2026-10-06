@@ -163,10 +163,17 @@ begin
 
  // The depth of the transparency: where a transparent surface that covers most of what is behind it is in
  // front, that surface is what is seen there and not the ground under the water, so no caustics go there
- fResourceTransparencyDepth:=AddImageInput('resourcetype_depth',
-                                           'resource_transparency_depth',
-                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                           []);
+ if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fResourceTransparencyDepth:=AddImageInput('resourcetype_depth',
+                                            'resource_transparency_depth',
+                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                            []);
+ end else begin
+  fResourceTransparencyDepth:=AddImageInput('resourcetype_msaa_depth',
+                                            'resource_transparency_msaa_depth',
+                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                            []);
+ end;
 
 end;
 

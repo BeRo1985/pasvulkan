@@ -63,6 +63,14 @@ vec3 cameraRelativePosition;
 // frustum cluster grid at bindings 6-8)
 #include "mesh_rendering_pass_descriptorset.glsl"
 
+// The depth of the transparency, multisampled with a multisampled surface. A binding of its own and not one
+// more of the pass textures, since those are all single sampled.
+#ifdef MSAA
+layout(set = 1, binding = 10) uniform sampler2DMSArray uTransparencyDepthTexture;
+#else
+layout(set = 1, binding = 10) uniform sampler2DArray uTransparencyDepthTexture;
+#endif
+
 #ifdef FRUSTUMCLUSTERGRID
 layout(set = 1, binding = 6, std140) readonly uniform FrustumClusterGridGlobals {
   uvec4 tileSizeZNearZFar;
@@ -170,15 +178,9 @@ void main(){
   // Propagate view index so that cluster-grid indexing in lighting.glsl works.
   inViewIndex = viewLocalIndex;
 
-  // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass, and the depth of the
-  // transparency, and take whichever is in front. A transparent surface that covers most of what is behind
-  // it is what is seen there, and not the ground under the water - and being above the water, it gets no
-  // caustics below. The transparency depth holds only the transparent and masked surfaces, which the depth
-  // prepass leaves out, and is cleared to the far plane where there are none.
+  // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass.
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
   float rawDepth = texelFetch(uPassTextures[2], ivec3(px, viewLocalIndex), 0).x;
-  float transparencyDepth = texelFetch(uPassTextures[4], ivec3(px, viewLocalIndex), 0).x;
-  rawDepth = reversedZ ? max(rawDepth, transparencyDepth) : min(rawDepth, transparencyDepth);
 #ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: px=%d,%d ext=%d,%d rawDepth=%f\n", px.x, px.y, imageExtent.x, imageExtent.y, rawDepth);
@@ -226,6 +228,47 @@ void main(){
     discard; // not underwater at this pixel
   }
   float waterDepth = waterHeight - groundHeight;
+
+  // Not where a transparent surface that covers most of what is behind it (alpha of at least 0.5, or the
+  // cutoff of a masked one) is in front of the ground and above the water: that surface is what is seen
+  // there, and the caustics on the ground behind it would only show through it. One below the water is
+  // left alone, since the ground behind it is lit by the caustics all the same. The depth of the
+  // transparency holds only the transparent and masked surfaces, which the depth prepass leaves out, and is
+  // cleared to the far plane where there are none. With a multisampled surface it is multisampled as well,
+  // and decided per sample, since at the edge of such a surface only some of the samples are its own.
+  {
+#ifdef MSAA
+    int countSamples = textureSamples(uTransparencyDepthTexture);
+#else
+    const int countSamples = 1;
+#endif
+    int keptSampleMask = 0;
+    for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){
+#ifdef MSAA
+      float transparencyDepth = texelFetch(uTransparencyDepthTexture, ivec3(px, viewLocalIndex), sampleIndex).x;
+#else
+      float transparencyDepth = texelFetch(uTransparencyDepthTexture, ivec3(px, viewLocalIndex), 0).x;
+#endif
+      bool keep = true;
+      if(reversedZ ? (transparencyDepth > rawDepth) : (transparencyDepth < rawDepth)){
+        vec4 transparencyViewPosition = inverseProjectionMatrix * vec4(clipXY, transparencyDepth, 1.0);
+        transparencyViewPosition /= transparencyViewPosition.w;
+        vec3 transparencyPlanetPosition = (planetInverseModelMatrix * vec4((inverseViewMatrix * transparencyViewPosition).xyz, 1.0)).xyz;
+        keep = length(transparencyPlanetPosition) < waterHeight;
+      }
+      if(keep){
+        keptSampleMask |= 1 << sampleIndex;
+      }
+    }
+#ifdef MSAA
+    gl_SampleMask[0] = gl_SampleMaskIn[0] & keptSampleMask;
+    if((gl_SampleMaskIn[0] & keptSampleMask) == 0){
+#else
+    if(keptSampleMask == 0){
+#endif
+      discard;
+    }
+  }
 
   // Caustic parameters packed as half-floats in waterCausticParams.
   vec2 cp0 = unpackHalf2x16(planetData.waterCausticParams.x); // x=intensity, y=scale

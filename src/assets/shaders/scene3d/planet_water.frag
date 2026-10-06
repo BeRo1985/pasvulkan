@@ -98,6 +98,16 @@ vec3 cameraRelativePosition;
 // Pass descriptor set
 
 #include "mesh_rendering_pass_descriptorset.glsl"
+
+#if defined(TESSELLATION)
+// The depth of the transparency, multisampled with a multisampled surface. A binding of its own and not one
+// more of the pass textures, since those are all single sampled.
+#if defined(MSAA)
+layout(set = 1, binding = 10) uniform sampler2DMSArray uTransparencyDepthTexture;
+#else
+layout(set = 1, binding = 10) uniform sampler2DArray uTransparencyDepthTexture;
+#endif
+#endif
   
 /*layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
@@ -1275,9 +1285,29 @@ void main(){
   // The depth of the water is written all the same, by the early fragment tests, which is as it should be,
   // since it still hides what is under the water from the transparency drawn later.
   {
-    float transparencyDepth = texelFetch(uPassTextures[4], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
     bool reversedZ = projectionMatrix[2][3] < -1e-7;
+#if defined(MSAA)
+    // Decided per sample, since at the edge of such a surface only some of the samples of a pixel are its own:
+    // the water keeps the others, and only those, through the sample mask. With the water not multisampled
+    // (MSAA_FAST) there is no mask to keep them with, so it is left out only where all are covered.
+    int countSamples = textureSamples(uTransparencyDepthTexture);
+    int keptSampleMask = 0;
+    for(int sampleIndex = 0; sampleIndex < countSamples; sampleIndex++){
+      float transparencyDepth = texelFetch(uTransparencyDepthTexture, ivec3(gl_FragCoord.xy, gl_ViewIndex), sampleIndex).x;
+      if(!(reversedZ ? (transparencyDepth > gl_FragCoord.z) : (transparencyDepth < gl_FragCoord.z))){
+        keptSampleMask |= 1 << sampleIndex;
+      }
+    }
+#if defined(MSAA_FAST)
+    if(keptSampleMask == 0){
+#else
+    gl_SampleMask[0] = gl_SampleMaskIn[0] & keptSampleMask;
+    if((gl_SampleMaskIn[0] & keptSampleMask) == 0){
+#endif
+#else
+    float transparencyDepth = texelFetch(uTransparencyDepthTexture, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
     if(reversedZ ? (transparencyDepth > gl_FragCoord.z) : (transparencyDepth < gl_FragCoord.z)){
+#endif
 #if defined(USEDEMOTE)
       demote;
 #else

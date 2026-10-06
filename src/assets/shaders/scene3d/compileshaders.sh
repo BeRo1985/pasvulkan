@@ -710,6 +710,8 @@ compileshaderarguments=(
   # colour. The compute variants are kept beside them for now.
   "-V planet_water_caustics.frag -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_water_caustics_bufref_frag.spv"
   "-V planet_water_caustics.frag -DRAYTRACING -o ${tempPath}/planet_water_caustics_raytracing_frag.spv"
+  "-V planet_water_caustics.frag -DUSE_BUFFER_REFERENCE -DMSAA -o ${tempPath}/planet_water_caustics_bufref_msaa_frag.spv"
+  "-V planet_water_caustics.frag -DRAYTRACING -DMSAA -o ${tempPath}/planet_water_caustics_raytracing_msaa_frag.spv"
 
   "-V planet_blendmap_downsample.comp -o ${tempPath}/planet_blendmap_downsample_comp.spv"
 
