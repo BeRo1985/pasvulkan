@@ -2512,6 +2512,16 @@ type EpvScene3D=class(Exception);
                                    Step,
                                    CubicSpline
                                   );
+                                 // The key pair dependent part of TpvQuaternion.Slerp for one key segment of a linear
+                                 // rotation channel, so that the per frame slerp only needs the two sines left
+                                 TRotationSlerpSegment=record
+                                  Omega:TpvScalar;
+                                  SinOmega:TpvScalar;
+                                  Sign:TpvScalar;
+                                  Linear:Boolean;
+                                 end;
+                                 PRotationSlerpSegment=^TRotationSlerpSegment;
+                                 TRotationSlerpSegments=array of TRotationSlerpSegment;
                             const MaterialTargets:TTargetSet=
                                    [
                                     TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
@@ -2586,6 +2596,10 @@ type EpvScene3D=class(Exception);
                             fOutputVector2Array:TpvVector2DynamicArray;
                             fOutputVector3Array:TpvVector3DynamicArray;
                             fOutputVector4Array:TpvVector4DynamicArray;
+                            // Only valid while fRotationSlerpSegmentsSource is still the very fOutputVector4Array
+                            // they were computed from, see PrecomputeRotationSlerpSegments
+                            fRotationSlerpSegments:TRotationSlerpSegments;
+                            fRotationSlerpSegmentsSource:Pointer;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -2593,6 +2607,7 @@ type EpvScene3D=class(Exception);
                             procedure SetInterpolation(const aInterpolation:TpvUTF8String);
                             procedure LoadFromStream(const aStream:TStream);
                             procedure SaveToStream(const aStream:TStream);
+                            procedure PrecomputeRotationSlerpSegments;
                            published
                             property Name:TpvUTF8String read fName write fName;
                             property Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget read fTarget write fTarget;
@@ -2903,6 +2918,7 @@ type EpvScene3D=class(Exception);
                      fDefaultTRSMatrix:TpvMatrix4x4;
                      fDefaultLocalMatrix:TpvMatrix4x4;
                      fDefaultLocalMatrixGeneration:TpvUInt32;
+                     fMatrixIsIdentity:Boolean; // fMatrix is bit-exactly the identity matrix
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
@@ -4141,6 +4157,13 @@ type EpvScene3D=class(Exception);
               fNewImages:TpvScene3D.TImages;
               fNewSamplers:TpvScene3D.TSamplers;
               fNewTextures:TpvScene3D.TTextures;
+{$ifdef UpdateProfilingTimes}
+              // Per group sums over the non-skipped instance updates, fetched and reset by FetchAndResetProfileTicks
+              fProfileUpdateTicks:TPasMPInt64;
+              fProfileAnimationTicks:TPasMPInt64;
+              fProfileProcessNodesTicks:TPasMPInt64;
+              fProfileCountUpdates:TPasMPInt64;
+{$endif}
               procedure CollectMeshlets;
               procedure PostProcessSkins;
               procedure PostProcessNodes;
@@ -4257,6 +4280,10 @@ type EpvScene3D=class(Exception);
               property NodeByName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByName;
               property NodeByIgnoreCaseName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByIgnoreCaseName;
               property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
+             public
+              // Sums of the non-skipped instance updates of this group since the last call, in timer ticks,
+              // all zero without UpdateProfilingTimes
+              procedure FetchAndResetProfileTicks(out aUpdateTicks,aAnimationTicks,aProcessNodesTicks,aCountUpdates:TpvInt64);
              published
               property Culling:boolean read fCulling write fCulling;
               property DynamicAABBTreeCulling:boolean read fDynamicAABBTreeCulling write fDynamicAABBTreeCulling;
@@ -5664,6 +5691,9 @@ type EpvScene3D=class(Exception);
       public
        // An array of records cannot be published, so this one sits in a public section of its own
        property UploadFrameCPUTimes:TUploadFrameCPUTimesArray read fUploadFrameCPUTimes;
+       // Access to the group list only with GroupListLock held
+       property Groups:TGroups read fGroups;
+       property GroupListLock:TPasMPCriticalSection read fGroupListLock;
       published
        property DynamicBufferFreeMode:TDynamicBufferFreeMode read fDynamicBufferFreeMode write fDynamicBufferFreeMode;
        property SkipInactiveInstancesInGraph:Boolean read fSkipInactiveInstancesInGraph write SetSkipInactiveInstancesInGraph;
@@ -14780,6 +14810,8 @@ begin
  fOutputVector2Array:=nil;
  fOutputVector3Array:=nil;
  fOutputVector4Array:=nil;
+ fRotationSlerpSegments:=nil;
+ fRotationSlerpSegmentsSource:=nil;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.TChannel.Destroy;
@@ -14789,7 +14821,50 @@ begin
  fOutputVector2Array:=nil;
  fOutputVector3Array:=nil;
  fOutputVector4Array:=nil;
+ fRotationSlerpSegments:=nil;
+ fRotationSlerpSegmentsSource:=nil;
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.TChannel.PrecomputeRotationSlerpSegments;
+var Index,Count:TpvSizeInt;
+    FromQuaternion,ToQuaternion:TpvQuaternion;
+    co:TpvScalar;
+    Segment:PRotationSlerpSegment;
+begin
+ // Same computations as the key pair dependent part of TpvQuaternion.Slerp, with the same types, so the
+ // per frame part in ProcessAnimation gives bit-identical results
+ fRotationSlerpSegments:=nil;
+ fRotationSlerpSegmentsSource:=nil;
+ if (fInterpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear) and
+    (fTarget in [TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+                 TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation]) and
+    (length(fOutputVector4Array)>=2) then begin
+  Count:=length(fOutputVector4Array)-1;
+  SetLength(fRotationSlerpSegments,Count);
+  for Index:=0 to Count-1 do begin
+   Segment:=@fRotationSlerpSegments[Index];
+   FromQuaternion:=TpvQuaternion.Create(fOutputVector4Array[Index]);
+   ToQuaternion:=TpvQuaternion.Create(fOutputVector4Array[Index+1]);
+   co:=FromQuaternion.Dot(ToQuaternion);
+   if co<0.0 then begin
+    co:=-co;
+    Segment^.Sign:=-1.0;
+   end else begin
+    Segment^.Sign:=1.0;
+   end;
+   if (1.0-co)>EPSILON then begin
+    Segment^.Omega:=ArcCos(co);
+    Segment^.SinOmega:=sin(Segment^.Omega);
+    Segment^.Linear:=false;
+   end else begin
+    Segment^.Omega:=0.0;
+    Segment^.SinOmega:=0.0;
+    Segment^.Linear:=true;
+   end;
+  end;
+  fRotationSlerpSegmentsSource:=Pointer(fOutputVector4Array);
+ end;
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.TChannel.SetTarget(const aTargetPath:TpvUTF8String;const aTargetNode:TpvSizeInt);
@@ -15259,6 +15334,9 @@ begin
  finally
   FreeAndNil(StreamIO);
  end;
+
+ // Groups loaded from a stream don't go through PostProcessAnimations
+ PrecomputeRotationSlerpSegments;
 
 end;
 
@@ -19242,7 +19320,10 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TNode.UpdateDefaultLocalMatrices;
+var IdentityMatrix:TpvMatrix4x4;
 begin
+ IdentityMatrix:=TpvMatrix4x4.Identity;
+ fMatrixIsIdentity:=CompareMem(@fMatrix,@IdentityMatrix,SizeOf(TpvMatrix4x4));
  // Same operation order as in TpvScene3D.TGroup.TInstance.ProcessNode, so the results are bit-identical
  fDefaultTRSMatrix:=TpvMatrix4x4.CreateScale(fScale)*
                     (TpvMatrix4x4.CreateFromQuaternion(fRotation)*
@@ -20580,6 +20661,7 @@ begin
        Animation:=fAnimations[Index];
        for ChannelIndex:=0 to Animation.fChannels.Count-1 do begin
         Channel:=Animation.fChannels[ChannelIndex];
+        Channel.PrecomputeRotationSlerpSegments;
         Channel.fTargetInstanceIndex:=-1;
         case Channel.fTarget of
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
@@ -21794,6 +21876,21 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.TGroup.FetchAndResetProfileTicks(out aUpdateTicks,aAnimationTicks,aProcessNodesTicks,aCountUpdates:TpvInt64);
+begin
+{$ifdef UpdateProfilingTimes}
+ aUpdateTicks:=TPasMPInterlocked.Exchange(fProfileUpdateTicks,0);
+ aAnimationTicks:=TPasMPInterlocked.Exchange(fProfileAnimationTicks,0);
+ aProcessNodesTicks:=TPasMPInterlocked.Exchange(fProfileProcessNodesTicks,0);
+ aCountUpdates:=TPasMPInterlocked.Exchange(fProfileCountUpdates,0);
+{$else}
+ aUpdateTicks:=0;
+ aAnimationTicks:=0;
+ aProcessNodesTicks:=0;
+ aCountUpdates:=0;
+{$endif}
 end;
 
 procedure TpvScene3D.TGroup.Finish;
@@ -29917,12 +30014,35 @@ procedure TpvScene3D.TGroup.TInstance.ProcessAnimation(const aAnimationIndex:Tpv
                           const aFactor:TpvDouble;
                           const aRotation:boolean);
  var SqrFactor,CubeFactor:TpvDouble;
+     Segment:TpvScene3D.TGroup.TAnimation.TChannel.PRotationSlerpSegment;
+     SlerpTime,s0,s1:TpvScalar;
+     FromQuaternion,ToQuaternion:TpvQuaternion;
  begin
   case aAnimationChannel.fInterpolation of
    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
     if aRotation then begin
 //    aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0].Slerp(aAnimationChannel.fOutputVector4Array[aTimeIndex1],aFactor);
-     aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
+     if (aTimeIndex0>=0) and
+        (aTimeIndex1=(aTimeIndex0+1)) and
+        (aAnimationChannel.fRotationSlerpSegmentsSource=Pointer(aAnimationChannel.fOutputVector4Array)) and
+        (aTimeIndex0<length(aAnimationChannel.fRotationSlerpSegments)) then begin
+      // Exactly TpvQuaternion.Slerp, with its key pair dependent part (ArcCos and the divisor sine) taken
+      // from the precomputed segment
+      Segment:=@aAnimationChannel.fRotationSlerpSegments[aTimeIndex0];
+      SlerpTime:=aFactor;
+      if Segment^.Linear then begin
+       s0:=1.0-SlerpTime;
+       s1:=SlerpTime;
+      end else begin
+       s0:=sin((1.0-SlerpTime)*Segment^.Omega)/Segment^.SinOmega;
+       s1:=sin(SlerpTime*Segment^.Omega)/Segment^.SinOmega;
+      end;
+      FromQuaternion:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]);
+      ToQuaternion:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]);
+      aVector4:=((s0*FromQuaternion)+(ToQuaternion*(s1*Segment^.Sign))).Vector;
+     end else begin
+      aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
+     end;
     end else begin
      aVector4:=(aAnimationChannel.fOutputVector4Array[aTimeIndex0]*(1.0-aFactor))+
                (aAnimationChannel.fOutputVector4Array[aTimeIndex1]*aFactor);
@@ -31709,9 +31829,23 @@ begin
      end;
     end;
    end;
-   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
-           (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
-            TpvMatrix4x4.CreateTranslation(Translation));
+   // Directly what TpvMatrix4x4.CreateScale(Scale)*(TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
+   // TpvMatrix4x4.CreateTranslation(Translation)) gives, without the two full matrix multiplications:
+   // all other terms of these are products with exactly 0 or 1, so the values are the same, apart from
+   // the sign of zero entries
+   Matrix:=TpvMatrix4x4.CreateFromQuaternion(WeightedRotation);
+   Matrix.RawComponents[0,0]:=Scale.x*Matrix.RawComponents[0,0];
+   Matrix.RawComponents[0,1]:=Scale.x*Matrix.RawComponents[0,1];
+   Matrix.RawComponents[0,2]:=Scale.x*Matrix.RawComponents[0,2];
+   Matrix.RawComponents[1,0]:=Scale.y*Matrix.RawComponents[1,0];
+   Matrix.RawComponents[1,1]:=Scale.y*Matrix.RawComponents[1,1];
+   Matrix.RawComponents[1,2]:=Scale.y*Matrix.RawComponents[1,2];
+   Matrix.RawComponents[2,0]:=Scale.z*Matrix.RawComponents[2,0];
+   Matrix.RawComponents[2,1]:=Scale.z*Matrix.RawComponents[2,1];
+   Matrix.RawComponents[2,2]:=Scale.z*Matrix.RawComponents[2,2];
+   Matrix.RawComponents[3,0]:=Translation.x;
+   Matrix.RawComponents[3,1]:=Translation.y;
+   Matrix.RawComponents[3,2]:=Translation.z;
   end else begin
    for Index:=0 to Min(length(InstanceNode.fWorkWeights),Node.fWeights.Count)-1 do begin
     InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
@@ -31723,7 +31857,10 @@ begin
     Dirty:=true;
    end;
   end;
-  Matrix:=Matrix*Node.fMatrix;
+  if not Node.fMatrixIsIdentity then begin
+   // A multiplication with an exact identity matrix wouldn't change any value
+   Matrix:=Matrix*Node.fMatrix;
+  end;
   if assigned(fOnNodeMatrixPost) then begin
    if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
     Dirty:=true;
@@ -32583,6 +32720,7 @@ begin
 {$ifdef UpdateProfilingTimes}
    EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
    TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeAnimationTicks,EndCPUTime-StartCPUTime);
+   TPasMPInterlocked.Add(fGroup.fProfileAnimationTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
   end;
@@ -32685,6 +32823,7 @@ begin
 {$ifdef UpdateProfilingTimes}
   EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
   TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeProcessNodesTicks,EndCPUTime-StartCPUTime);
+  TPasMPInterlocked.Add(fGroup.fProfileProcessNodesTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
   if aInFlightFrameIndex>=0 then begin
@@ -33092,6 +33231,9 @@ var Index,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
     MeshObjectID:TpvUInt32;
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     CurrentDrawInfo:PGPUDrawInfo;
+{$ifdef UpdateProfilingTimes}
+    ProfileStartCPUTime,ProfileEndCPUTime:TpvHighResolutionTime;
+{$endif}
 begin
 
 {$ifdef InstanceUpdateDirtySkip}
@@ -33180,6 +33322,7 @@ begin
 
 {$ifdef UpdateProfilingTimes}
    TPasMPInterlocked.Increment(fSceneInstance.fCountNonSkippedInstances);
+   ProfileStartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 {$endif}
 
    if InstanceUpdateDirtySkipped then begin
@@ -33241,6 +33384,12 @@ begin
    {$ifdef FlatParallelRenderInstanceUpdates}if not fUseRenderInstances then{$endif}begin
     UpdateBoundingVolumes(aInFlightFrameIndex,false);
    end;
+
+{$ifdef UpdateProfilingTimes}
+   ProfileEndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
+   TPasMPInterlocked.Add(fGroup.fProfileUpdateTicks,ProfileEndCPUTime-ProfileStartCPUTime);
+   TPasMPInterlocked.Increment(fGroup.fProfileCountUpdates);
+{$endif}
 
 {$ifdef InstanceUpdateDirtySkip}
   end; // if not InstanceUpdateDirtySkipped
@@ -33604,6 +33753,7 @@ begin
 {$ifdef UpdateProfilingTimes}
      EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
      TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeAnimationTicks,EndCPUTime-StartCPUTime);
+     TPasMPInterlocked.Add(fGroup.fProfileAnimationTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     end;
@@ -33667,6 +33817,7 @@ begin
 {$ifdef UpdateProfilingTimes}
     EndCPUTime:=pvApplication.HighResolutionTimer.GetTime;
     TPasMPInterlocked.Add(fSceneInstance.fInstanceTimeProcessNodesTicks,EndCPUTime-StartCPUTime);
+    TPasMPInterlocked.Add(fGroup.fProfileProcessNodesTicks,EndCPUTime-StartCPUTime);
 {$endif}
 
     if aInFlightFrameIndex>=0 then begin
