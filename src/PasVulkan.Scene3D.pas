@@ -92,6 +92,10 @@ unit PasVulkan.Scene3D;
 // this, the fat instance's ~5000-RI population stays single-threaded in Phase 2. Toggle off to A/B.
 {$define FlatParallelPhase1Populate}
 
+// Staged software prefetching in ProcessAnimation and ProcessNode against the cache misses on the per channel and
+// per node objects. Off by default.
+{-$define Scene3DAnimationPrefetch}
+
 {$undef SubTreeInFlightFramesUpdates}
 
 // Decouple per-render-instance DrawInfo writes from the matrix/generation bump: when a render instance only moves
@@ -2621,6 +2625,8 @@ type EpvScene3D=class(Exception);
                             property OutputScalarArray:TpvFloatDynamicArray read fOutputScalarArray write fOutputScalarArray;
                             property OutputVector2Array:TpvVector2DynamicArray read fOutputVector2Array write fOutputVector2Array;
                             property OutputVector3Array:TpvVector3DynamicArray read fOutputVector3Array write fOutputVector3Array;
+                            // Replacing the array is detected by the precomputed rotation slerp segments, changing rotation
+                            // keys in place after loading isn't, call PrecomputeRotationSlerpSegments again after that
                             property OutputVector4Array:TpvVector4DynamicArray read fOutputVector4Array write fOutputVector4Array;
                           end;
                           TChannels=TpvObjectGenericList<TChannel>;
@@ -3132,20 +3138,29 @@ type EpvScene3D=class(Exception);
                             fGroup:TpvScene3D.TGroup;
                             fGroupNode:TpvScene3D.TGroup.TNode;
                             fGroupInstance:TpvScene3D.TGroup.TInstance;
+                            // The fields ProcessAnimation and ProcessNode touch on every update come first and
+                            // together, so that they share as few cache lines as possible, as these per node
+                            // objects are spread over the heap and their first touches are cache misses.
                             fProcessed:LongBool;
                             fFlags:TInstanceNodeFlags;
-                            fOverwrites:TNodeOverwrites;
+                            fInverseFrontFacesValid:Boolean;
                             fCountOverwrites:TpvSizeInt;
-                            fOverwriteWeightsSum:TpvDoubleDynamicArray;
-                            fOverwriteWeightsAdditiveSum:TpvDoubleDynamicArray;
+                            fOverwrites:TNodeOverwrites;
                             fWorkWeights:TpvFloatDynamicArray;
-                            fWorkMatrix:TpvMatrix4x4;
                             // fGroupNode.fDefaultLocalMatrixGeneration the cached fWorkMatrix was built from, when
                             // it came from the node's default local matrix; 0 when it came from overwrites or
                             // OnNodeMatrixPre/Post. Lets ProcessNode keep fWorkMatrix while nothing changed.
                             fWorkMatrixDefaultGeneration:TpvUInt32;
-                            fInverseFrontFacesValid:Boolean;
+                            fCacheVerticesDirtyCounter:TpvUInt32;
+                            fInFlightFrameVisible:array[0..MaxInFlightFrames-1] of Boolean;
                             fLight:TpvScene3D.TLight;
+                            fCacheMatrixGeneration:TpvUInt64;
+                            fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                            fInFlightFrameActiveLODLevel:array[0..MaxInFlightFrames-1] of TpvInt32;
+                            fInFlightFrameScreenCoverage:array[0..MaxInFlightFrames-1] of TpvFloat;
+                            fWorkMatrix:TpvMatrix4x4;
+                            fOverwriteWeightsSum:TpvDoubleDynamicArray;
+                            fOverwriteWeightsAdditiveSum:TpvDoubleDynamicArray;
 //                          fWorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             fBoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
@@ -3154,9 +3169,6 @@ type EpvScene3D=class(Exception);
                             fBoundingSphereID:TpvID;
                             fCacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             fCacheVerticesGeneration:TpvUInt64;
-                            fCacheVerticesDirtyCounter:TpvUInt32;
-                            fCacheMatrixGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-                            fCacheMatrixGeneration:TpvUInt64;
 {$ifdef SubTreeInFlightFramesUpdates}
                             fSubtreeCleanGeneration:TpvUInt64;
                             fSubtreeCleanInFlightFrameGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -3170,9 +3182,6 @@ type EpvScene3D=class(Exception);
                             fVisible:Boolean;
                             fInFlightFrameRaytracingMasks:array[0..MaxInFlightFrames-1] of TpvUInt32;
                             fInFlightFrameCastingShadows:array[0..MaxInFlightFrames-1] of Boolean;
-                            fInFlightFrameVisible:array[0..MaxInFlightFrames-1] of Boolean;
-                            fInFlightFrameActiveLODLevel:array[0..MaxInFlightFrames-1] of TpvInt32;
-                            fInFlightFrameScreenCoverage:array[0..MaxInFlightFrames-1] of TpvFloat;
                             fActiveRenderPasses:TpvScene3DRendererRenderPasses;
                             procedure SetActiveRenderPasses(const aActiveRenderPasses:TpvScene3DRendererRenderPasses);
                            public
@@ -5778,6 +5787,19 @@ const FlushUpdateData=false;
 type TAnimationChannelTargetOverwriteGroupMap=array[TpvScene3D.TGroup.TAnimation.TChannel.TTarget] of TpvUInt64;
 
 var AnimationChannelTargetOverwriteGroupMap:TAnimationChannelTargetOverwriteGroupMap;
+
+{$ifdef Scene3DAnimationPrefetch}
+// Software prefetch hint for memory needed shortly, a no-op where the compiler has no prefetch intrinsic.
+// Used where per node and per channel objects spread over the heap make the first touch a cache miss.
+procedure PrefetchMemory(const aPointer:Pointer); {$ifdef fpc}inline;{$endif}
+begin
+{$ifdef fpc}
+ if assigned(aPointer) then begin
+  prefetch(PByte(aPointer)^);
+ end;
+{$endif}
+end;
+{$endif}
 
 function Matrix4x4ToGPUDrawInfoMatrix(const aMatrix:TpvMatrix4x4):TpvScene3D.TGPUDrawInfoMatrix;
 begin
@@ -14833,7 +14855,10 @@ var Index,Count:TpvSizeInt;
     Segment:PRotationSlerpSegment;
 begin
  // Same computations as the key pair dependent part of TpvQuaternion.Slerp, with the same types, so the
- // per frame part in ProcessAnimation gives bit-identical results
+ // per frame part in ProcessAnimation gives bit-identical results.
+ // The segments stay bound to the fOutputVector4Array they were computed from: ProcessAnimation falls back
+ // to the plain slerp as soon as that array gets replaced, but it can't notice rotation keys being changed
+ // in place within the same array. Whoever does that after loading must call this method again.
  fRotationSlerpSegments:=nil;
  fRotationSlerpSegmentsSource:=nil;
  if (fInterpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear) and
@@ -30149,6 +30174,22 @@ var ChannelIndex,
     CameraOverwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
     Material:TpvScene3D.TGroup.TInstance.TMaterial;
     MaterialOverwrite:TpvScene3D.TGroup.TInstance.TMaterial.PMaterialOverwrite;
+{$ifdef Scene3DAnimationPrefetch}
+    PrefetchChannel:TpvScene3D.TGroup.TAnimation.TChannel;
+    PrefetchKeyIndex:TpvSizeInt;
+const NodeChannelTargets:TpvScene3D.TGroup.TAnimation.TChannel.TTargetSet=
+       [
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights,
+        TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeExtensionsKHRNodeVisibilityVisible
+       ];
+{$endif}
 begin
 
  Animation:=fGroup.fAnimations[aAnimationIndex];
@@ -30167,6 +30208,42 @@ begin
  CountInstanceChannels:=0;
 
  for ChannelIndex:=0 to Animation.fChannels.Count-1 do begin
+
+{$ifdef Scene3DAnimationPrefetch}
+  // Staged prefetching for the channels ahead, as profiling showed this loop to be bound by cache misses on
+  // the chain channel object -> key arrays -> target instance node -> its overwrites: three channels ahead the
+  // channel object, two ahead its key data around the last key index and the target instance node, and one
+  // ahead the overwrites array of that node. Every stage only dereferences what the stage before prefetched.
+  if (ChannelIndex+3)<Animation.fChannels.Count then begin
+   PrefetchMemory(Pointer(Animation.fChannels.RawItems[ChannelIndex+3]));
+  end;
+  if (ChannelIndex+2)<Animation.fChannels.Count then begin
+   PrefetchChannel:=Animation.fChannels.RawItems[ChannelIndex+2];
+   PrefetchKeyIndex:=Max(InstanceAnimation.fLastIndices[ChannelIndex+2]-1,0);
+   if PrefetchKeyIndex<length(PrefetchChannel.fInputTimeArray) then begin
+    PrefetchMemory(@PrefetchChannel.fInputTimeArray[PrefetchKeyIndex]);
+   end;
+   if PrefetchKeyIndex<length(PrefetchChannel.fOutputVector4Array) then begin
+    PrefetchMemory(@PrefetchChannel.fOutputVector4Array[PrefetchKeyIndex]);
+   end;
+   if PrefetchKeyIndex<length(PrefetchChannel.fOutputVector3Array) then begin
+    PrefetchMemory(@PrefetchChannel.fOutputVector3Array[PrefetchKeyIndex]);
+   end;
+   if (PrefetchChannel.fTarget in NodeChannelTargets) and
+      (PrefetchChannel.fTargetIndex>=0) and
+      (PrefetchChannel.fTargetIndex<fNodes.Count) then begin
+    PrefetchMemory(Pointer(fNodes.RawItems[PrefetchChannel.fTargetIndex]));
+   end;
+  end;
+  if (ChannelIndex+1)<Animation.fChannels.Count then begin
+   PrefetchChannel:=Animation.fChannels.RawItems[ChannelIndex+1];
+   if (PrefetchChannel.fTarget in NodeChannelTargets) and
+      (PrefetchChannel.fTargetIndex>=0) and
+      (PrefetchChannel.fTargetIndex<fNodes.Count) then begin
+    PrefetchMemory(Pointer(fNodes.RawItems[PrefetchChannel.fTargetIndex].fOverwrites));
+   end;
+  end;
+{$endif}
 
   AnimationChannel:=Animation.fChannels[ChannelIndex];
 
@@ -31674,6 +31751,14 @@ begin
  //SkinUsed:=false;
  InstanceNode:=fNodes.RawItems[aNodeIndex];
  Node:=fGroup.fNodes[aNodeIndex];
+{$ifdef Scene3DAnimationPrefetch}
+ // Profiling showed this to be bound by cache misses on the per node objects, so the group nodes of the
+ // children are already requested now, while this node is being worked on, and their instance nodes right
+ // before the recursion below
+ for Index:=0 to Node.fChildren.Count-1 do begin
+  PrefetchMemory(Pointer(Node.fChildren.RawItems[Index]));
+ end;
+{$endif}
  InstanceNode.fProcessed:=true;
 {$ifdef SubTreeInFlightFramesUpdates}
  if (aInFlightFrameIndex>=0) and
@@ -32026,6 +32111,11 @@ begin
   InstanceNode.fInFlightFrameActiveLODLevel[aInFlightFrameIndex]:=0;
   InstanceNode.fInFlightFrameScreenCoverage[aInFlightFrameIndex]:=1.0;
  end;
+{$ifdef Scene3DAnimationPrefetch}
+ for Index:=0 to Node.fChildren.Count-1 do begin
+  PrefetchMemory(Pointer(fNodes.RawItems[Node.fChildren.RawItems[Index].fIndex]));
+ end;
+{$endif}
  for Index:=0 to Node.Children.Count-1 do begin
   ProcessNode(aInFlightFrameIndex,Node.Children[Index].Index,Matrix,Dirty,MatrixDirty,EffectiveVisible);
  end;
