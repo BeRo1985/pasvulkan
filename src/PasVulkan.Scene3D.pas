@@ -3733,6 +3733,12 @@ type EpvScene3D=class(Exception);
                      fCountActiveVirtualRenderInstances:TpvSizeInt;
                      fInstanceUpdateDirtySkippable:Boolean;
                      fIsNewInstance:TPasMPBool32;
+                     // Animation level of detail, see the AnimationUpdateInterval property
+                     fAnimationUpdateInterval:TpvInt32;
+                     fAnimationUpdateCountdown:TpvInt32;
+                     fAnimationPoseInFlightFrameIndex:TpvSizeInt; // In-flight frame slot of the last full pose evaluation, -1 if there is none
+                     fAnimationPoseScene:TpvScene3D.TGroup.TScene;
+                     fAnimationPoseVirtualInstance:TInstance; // The assigned virtual instance at the last full pose evaluation
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
                      fDuplicatedMaterials:TpvScene3D.TMaterials;
@@ -3914,6 +3920,8 @@ type EpvScene3D=class(Exception);
                      procedure UpdateCameras(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateMaterials(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateNodes(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
+                     procedure UpdateNodesKeepingPose(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+                     function KeepAnimationPose(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene):boolean;
                      procedure UpdateSkins(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateNodeBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
                      procedure UpdateInstanceBounds(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene;const aInstanceUpdateDirtySkipped:Boolean);
@@ -3976,6 +3984,12 @@ type EpvScene3D=class(Exception);
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property UseSortedRenderInstances:boolean read fUseSortedRenderInstances write fUseSortedRenderInstances;
                      property InstanceUpdateDirtySkippable:boolean read fInstanceUpdateDirtySkippable write fInstanceUpdateDirtySkippable;
+                     // Animation level of detail. With a value of N>1, the evaluation of the animations, the node hierarchy and
+                     // the skins only runs on every N-th update of this instance (staggered between the instances), while the
+                     // updates in between keep the last pose. The placement through the model matrix is still followed on every
+                     // update. Instances with lights, cameras or node matrix callbacks always get the full evaluation. 1, the
+                     // default, means every update.
+                     property AnimationUpdateInterval:TpvInt32 read fAnimationUpdateInterval write fAnimationUpdateInterval;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
@@ -27874,6 +27888,13 @@ begin
 
  fInstanceUpdateDirtySkippable:=true;
 
+ fAnimationUpdateInterval:=1;
+ // Spreads the full pose evaluations of instances with the same interval over the updates
+ fAnimationUpdateCountdown:=TpvInt32((TpvPtrUInt(self) shr 6) and 255);
+ fAnimationPoseInFlightFrameIndex:=-1;
+ fAnimationPoseScene:=nil;
+ fAnimationPoseVirtualInstance:=nil;
+
  fPreviousActive:=false;
 
  fUploaded:=false;
@@ -32972,6 +32993,99 @@ begin
 
 end;
 
+function TpvScene3D.TGroup.TInstance.KeepAnimationPose(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene):boolean;
+begin
+ // Decides for one update, whether it keeps the last pose instead of evaluating a new one, see AnimationUpdateInterval.
+ // The countdown runs on regardless of the other conditions, so that the staggering between the instances stays.
+ result:=false;
+ if fAnimationUpdateInterval>1 then begin
+  if fAnimationUpdateCountdown>=fAnimationUpdateInterval then begin
+   fAnimationUpdateCountdown:=fAnimationUpdateCountdown mod fAnimationUpdateInterval;
+  end;
+  if fAnimationUpdateCountdown>0 then begin
+   dec(fAnimationUpdateCountdown);
+   result:=(aInFlightFrameIndex>=0) and
+           fPreviousActive and
+           (not fIsNewInstance) and
+           (fAnimationPoseInFlightFrameIndex>=0) and
+           (fAnimationPoseScene=aScene) and
+           (fAnimationPoseVirtualInstance=fAssignedVirtualInstance) and
+           (fLights.Count=0) and
+           (fCameras.Count=0) and
+           (not assigned(fOnNodeMatrixPre)) and
+           (not assigned(fOnNodeMatrixPost));
+  end else begin
+   fAnimationUpdateCountdown:=fAnimationUpdateInterval-1;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.UpdateNodesKeepingPose(const aInFlightFrameIndex:TpvSizeInt;const aScene:TpvScene3D.TGroup.TScene);
+var Index,Count:TpvSizeInt;
+    Dirty,Visible:boolean;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+begin
+
+ // The counterpart of UpdateAnimationAndOverwrites, UpdateNodes and UpdateSkins for an update without a new pose
+ // (see AnimationUpdateInterval): the node, joint and morph target weight data of the last full pose evaluation
+ // are carried over into this in-flight frame slot, and per node only the bookkeeping of ProcessNode is done,
+ // without its animation blending and matrix work.
+
+ if (aInFlightFrameIndex<0) or
+    (fAnimationPoseInFlightFrameIndex<0) or
+    (fAnimationPoseInFlightFrameIndex>=fSceneInstance.fCountInFlightFrames) then begin
+  exit;
+ end;
+
+ if fActiveScenes[aInFlightFrameIndex]<>aScene then begin
+  fActiveScenes[aInFlightFrameIndex]:=aScene;
+ end;
+
+ Dirty:=fDirtyCounter>0;
+ if Dirty then begin
+  dec(fDirtyCounter);
+ end;
+
+ if fAnimationPoseInFlightFrameIndex<>aInFlightFrameIndex then begin
+  Count:=Min(length(fNodeMatricesArray[aInFlightFrameIndex]),length(fNodeMatricesArray[fAnimationPoseInFlightFrameIndex]));
+  if Count>1 then begin
+   Move(fNodeMatricesArray[fAnimationPoseInFlightFrameIndex][1],
+        fNodeMatricesArray[aInFlightFrameIndex][1],
+        (Count-1)*SizeOf(TpvMatrix4x4));
+  end;
+  Count:=Min(length(fMorphTargetVertexWeightsArray[aInFlightFrameIndex]),length(fMorphTargetVertexWeightsArray[fAnimationPoseInFlightFrameIndex]));
+  if Count>0 then begin
+   Move(fMorphTargetVertexWeightsArray[fAnimationPoseInFlightFrameIndex][0],
+        fMorphTargetVertexWeightsArray[aInFlightFrameIndex][0],
+        Count*SizeOf(TpvFloat));
+  end;
+ end;
+ if length(fNodeMatricesArray[aInFlightFrameIndex])>0 then begin
+  fNodeMatricesArray[aInFlightFrameIndex][0]:=fWorkModelMatrix;
+ end;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  if Dirty then begin
+   // The cached vertices are in world space, so a changed model matrix needs them anew, just as in ProcessNode
+   if fUpdateDynamic and (InstanceNode.fCacheVerticesDirtyCounter<fSceneInstance.fCountInFlightFrames) then begin
+    InstanceNode.fCacheVerticesDirtyCounter:=fSceneInstance.fCountInFlightFrames;
+   end;
+   InstanceNode.NewCacheMatrixGeneration;
+  end;
+  InstanceNode.fCacheMatrixGenerations[aInFlightFrameIndex]:=InstanceNode.fCacheMatrixGeneration;
+  Visible:=InstanceNode.fInFlightFrameVisible[fAnimationPoseInFlightFrameIndex];
+  if InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]<>Visible then begin
+   // Same as in ProcessNode, node visibility changes invalidate the cached indirect draw commands
+   TPasMPInterlocked.Increment(fGroup.fSceneInstance.fDrawDataGeneration);
+   InstanceNode.fInFlightFrameVisible[aInFlightFrameIndex]:=Visible;
+  end;
+  InstanceNode.fInFlightFrameActiveLODLevel[aInFlightFrameIndex]:=InstanceNode.fInFlightFrameActiveLODLevel[fAnimationPoseInFlightFrameIndex];
+  InstanceNode.fInFlightFrameScreenCoverage[aInFlightFrameIndex]:=InstanceNode.fInFlightFrameScreenCoverage[fAnimationPoseInFlightFrameIndex];
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.TInstance.UpdateSkins(const aInFlightFrameIndex:TpvSizeInt;const aInstanceUpdateDirtySkipped:Boolean);
 var Index:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
@@ -33170,6 +33284,9 @@ var Index:TpvSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
 
+ // A reactivated instance has to start with a full pose evaluation again
+ fAnimationPoseInFlightFrameIndex:=-1;
+
  if aInFlightFrameIndex>=0 then begin
   fActiveScenes[aInFlightFrameIndex]:=nil;
  end;
@@ -33352,6 +33469,7 @@ var Index,MeshNodeArrayIndex,NodeIndex:TpvSizeInt;
 {$ifdef UpdateProfilingTimes}
     ProfileStartCPUTime,ProfileEndCPUTime:TpvHighResolutionTime;
 {$endif}
+    KeepPose:boolean;
 begin
 
 {$ifdef InstanceUpdateDirtySkip}
@@ -33409,6 +33527,9 @@ begin
   Scene:=GetScene;
   ActiveAnimationProcessing:=fUpdateDynamic;
 
+  // Animation level of detail, see AnimationUpdateInterval
+  KeepPose:=KeepAnimationPose(aInFlightFrameIndex,Scene);
+
 {$ifdef InstanceUpdateDirtySkip}
 
   InstanceUpdateDirtySkipped:=fInstanceUpdateDirtySkippable and
@@ -33451,8 +33572,9 @@ begin
     fInstanceUpdateDirtyCounter:=MaxInFlightFrames;
    end;
 
-   // Store current animation state for next frame's dirty check
-   if ActiveAnimationProcessing then begin
+   // Store current animation state for next frame's dirty check. Not for a kept pose, which belongs to the animation
+   // state of the last full evaluation, so that the dirty check can't settle on a pose that lags behind.
+   if ActiveAnimationProcessing and not KeepPose then begin
     for Index:=-1 to length(fAnimations)-2 do begin
      Animation:=fAnimations[Index+1];
      Animation.fPreviousUpdateFactor:=Animation.fFactor;
@@ -33462,14 +33584,30 @@ begin
 
 {$endif}
 
-   UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
+   if KeepPose then begin
 
-   UpdateLights(aInFlightFrameIndex,false);
-   UpdateCameras(aInFlightFrameIndex,false);
-   UpdateMaterials(aInFlightFrameIndex,false);
+    UpdateMaterials(aInFlightFrameIndex,false);
 
-   UpdateNodes(aInFlightFrameIndex,Scene,false);
-   UpdateSkins(aInFlightFrameIndex,false);
+    UpdateNodesKeepingPose(aInFlightFrameIndex,Scene);
+
+   end else begin
+
+    UpdateAnimationAndOverwrites(aInFlightFrameIndex,Scene,false);
+
+    UpdateLights(aInFlightFrameIndex,false);
+    UpdateCameras(aInFlightFrameIndex,false);
+    UpdateMaterials(aInFlightFrameIndex,false);
+
+    UpdateNodes(aInFlightFrameIndex,Scene,false);
+    UpdateSkins(aInFlightFrameIndex,false);
+
+    if aInFlightFrameIndex>=0 then begin
+     fAnimationPoseInFlightFrameIndex:=aInFlightFrameIndex;
+     fAnimationPoseScene:=Scene;
+     fAnimationPoseVirtualInstance:=fAssignedVirtualInstance;
+    end;
+
+   end;
 
    UpdateNodeBounds(aInFlightFrameIndex,Scene,false);
 
@@ -47029,6 +47167,7 @@ begin
     end;
     NonVirtualInstance.fScene:=VirtualInstance.fScene;
     NonVirtualInstance.fRaytracingMask:=VirtualInstance.fRaytracingMask;
+    NonVirtualInstance.fAnimationUpdateInterval:=VirtualInstance.fAnimationUpdateInterval;
     NonVirtualInstance.fActive:=true;
 
     // Copy animation states
