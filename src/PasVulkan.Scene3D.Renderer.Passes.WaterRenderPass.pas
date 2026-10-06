@@ -94,7 +94,6 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
-       fResourceTransparencyDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -173,22 +172,6 @@ inherited Create(aFrameGraph);
                                          );
  end else begin
   fResourceCloudsShadowMap:=nil;
- end;
-
- // The depth of the transparency: the water is not drawn where a transparent surface that covers most of what
- // is behind it is in front of it. Multisampled with a multisampled surface, and then decided per sample.
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  fResourceTransparencyDepth:=AddImageInput('resourcetype_depth',
-                                            'resource_transparency_depth',
-                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            []
-                                           );
- end else begin
-  fResourceTransparencyDepth:=AddImageInput('resourcetype_msaa_depth',
-                                            'resource_transparency_msaa_depth',
-                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            []
-                                           );
  end;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
@@ -400,16 +383,10 @@ begin
                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                             []);
  end;}
- // Depth of the transparency, multisampled with a multisampled surface
- fPassVulkanDescriptorSetLayout.AddBinding(10,
-                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                           1,
-                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                           []);
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,15*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,14*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*fInstance.Renderer.CountInFlightFrames);
@@ -526,16 +503,6 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
                                                                        [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
-  fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                      fResourceTransparencyDepth.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceTransparencyDepth.ResourceTransition.Layout)],
-                                                                       [],
                                                                        [],
                                                                        false);
 { if assigned(fResourceDepth) then begin

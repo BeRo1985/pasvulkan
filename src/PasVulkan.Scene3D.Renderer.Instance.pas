@@ -7239,8 +7239,9 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    fWaterExternalWaitingOnSemaphore:=nil;
   end;
 
-  // The depth of the transparency, so that the water and its caustics are not put behind transparent surfaces
-  // that cover most of what is behind them. Both read it as a resource of the graph, which orders them after it.
+  // The depth of the transparency, so that the caustics are not put behind transparent surfaces that cover most
+  // of what is behind them. The water itself stays there, since it is what shows through such a surface at its
+  // edges. The caustics read it as a resource of the graph, which orders them after it.
   TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass:=TpvScene3DRendererPassesDepthPrepassRenderPass.Create(fFrameGraph,self,true);
   TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
 

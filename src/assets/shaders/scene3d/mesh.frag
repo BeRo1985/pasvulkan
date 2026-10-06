@@ -1169,7 +1169,7 @@ void main() {
   #endif
   #if defined(TRANSPARENTDEPTH)
   // The depth of the transparency, for what is drawn behind it before the transparency itself is: the water
-  // and its caustics. Blended surfaces have no cutoff of their own, so a fixed one stands in for it, and
+  // caustics. Blended surfaces have no cutoff of their own, so a fixed one stands in for it, and
   // only the parts that cover at least half of what is behind them count as being in front of it. Masked
   // surfaces drawn as transparent (bit 4) keep their own cutoff.
   if (alpha < (((flags & (1u << 4u)) != 0u) ? uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x) : 0.5)) {

@@ -157,10 +157,10 @@ inherited Create(aFrameGraph);
  if fTransparencyDepth then begin
 
   // The depth of the transparency on its own, in a buffer of its own. Nothing opaque is in it: what is in
-  // front is told by the readers - the water and its caustics - from it and the opaque depth together, so
-  // the transparency needs no depth test against the opaque here, and the depth the rest of the frame works
+  // front is told by the reader - the water caustics - from it and the opaque depth together, so the
+  // transparency needs no depth test against the opaque here, and the depth the rest of the frame works
   // with stays as it is. Multisampled with a multisampled surface, since at the edge of a transparent
-  // surface only some of the samples of a pixel are its own, and the readers decide per sample.
+  // surface only some of the samples of a pixel are its own, and the reader decides per sample.
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
    fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
                                        'resource_transparency_depth',
