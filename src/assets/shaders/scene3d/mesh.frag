@@ -1167,7 +1167,15 @@ void main() {
   #if defined(NODISCARD)
     float fragDepth;
   #endif
+  #if defined(TRANSPARENTDEPTH)
+  // The depth of the transparency, for what is drawn behind it before the transparency itself is: the water
+  // and its caustics. Blended surfaces have no cutoff of their own, so a fixed one stands in for it, and
+  // only the parts that cover at least half of what is behind them count as being in front of it. Masked
+  // surfaces drawn as transparent (bit 4) keep their own cutoff.
+  if (alpha < (((flags & (1u << 4u)) != 0u) ? uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x) : 0.5)) {
+  #else
   if (alpha < uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x)) {
+  #endif
   #if defined(WBOIT) || defined(LOCKOIT) || defined(DFAOIT) || defined(LOCKOIT_PASS2)
     finalColor = vec4(alpha = 0.0);
   #elif defined(LOCKOIT_PASS1)

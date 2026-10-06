@@ -3403,6 +3403,8 @@ type TpvScene3DPlanets=class;
                                           const aCascadedShadowMapLayout:TVkImageLayout;
                                           const aSSAOViews:TpvVulkanImageViewDynamicArray;
                                           const aSSAOLayout:TVkImageLayout;
+                                          const aTransparencyDepthViews:TpvVulkanImageViewDynamicArray;
+                                          const aTransparencyDepthLayout:TVkImageLayout;
                                           const aCountSurfaceViews:TpvInt32;
                                           const aWidth,aHeight:TpvInt32);
               procedure ReleaseResources;
@@ -32860,6 +32862,8 @@ procedure TpvScene3DPlanet.TWaterCaustics.AllocateResources(const aRenderPass:Tp
                                                             const aCascadedShadowMapLayout:TVkImageLayout;
                                                             const aSSAOViews:TpvVulkanImageViewDynamicArray;
                                                             const aSSAOLayout:TVkImageLayout;
+                                                            const aTransparencyDepthViews:TpvVulkanImageViewDynamicArray;
+                                                            const aTransparencyDepthLayout:TVkImageLayout;
                                                             const aCountSurfaceViews:TpvInt32;
                                                             const aWidth,aHeight:TpvInt32);
 var InFlightFrameIndex:TpvSizeInt;
@@ -32902,9 +32906,9 @@ begin
                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
- fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip + clouds shadow map (uPassTextures[3], sampled by lighting.glsl)
+ fPassDescriptorSetLayout.AddBinding(5, // SSAO + scene mip + depth mip + clouds shadow map (uPassTextures[3], sampled by lighting.glsl) + transparency depth
                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                     4,
+                                     5,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      [],
                                      0);
@@ -32935,7 +32939,7 @@ begin
  fPassDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                      TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                      CountInFlightFrames);
- fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,14*CountInFlightFrames);
+ fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,15*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*CountInFlightFrames);
  fPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*CountInFlightFrames);
  fPassDescriptorPool.Initialize;
@@ -33005,7 +33009,7 @@ begin
 
   fPassDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                0,
-                                                               4,
+                                                               5,
                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                [TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).AmbientOcclusionSampler.Handle,
                                                                                               aSSAOViews[InFlightFrameIndex].Handle,
@@ -33021,7 +33025,11 @@ begin
                                                                 // runtime guard in applyCloudShadowMapAttenuation (cloudsShadowMapBDA == 0) skips the sample anyway.
                                                                 TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).AmbientOcclusionSampler.Handle,
                                                                                               aSSAOViews[InFlightFrameIndex].Handle,
-                                                                                              aSSAOLayout)],
+                                                                                              aSSAOLayout),
+                                                                // index 4 = depth of the transparency (uPassTextures[4])
+                                                                TVkDescriptorImageInfo.Create(TpvScene3DRenderer(fRenderer).ClampedNearestSampler.Handle,
+                                                                                              aTransparencyDepthViews[InFlightFrameIndex].Handle,
+                                                                                              aTransparencyDepthLayout)],
                                                                [],
                                                                [],
                                                                false);

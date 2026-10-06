@@ -89,17 +89,21 @@ type { TpvScene3DRendererPassesDepthPrepassRenderPass }
                                           const aInFlightFrameIndex:TpvSizeInt);
       private
        fInstance:TpvScene3DRendererInstance;
+       fTransparencyDepth:boolean;
+       fSampleCountFlagBits:TVkSampleCountFlagBits;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
+       fMeshDepthTransparentFragmentShaderModule:TpvVulkanShaderModule;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthMaskedFragment:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageMeshDepthTransparentFragment:TpvVulkanPipelineShaderStage;
        fMeshTaskShaderModule:TpvVulkanShaderModule;
        fMeshMeshShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageMeshTask:TpvVulkanPipelineShaderStage;
@@ -110,7 +114,7 @@ type { TpvScene3DRendererPassesDepthPrepassRenderPass }
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fPlanetDepthPrePass:TpvScene3DPlanet.TRenderPass;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aTransparencyDepth:boolean=false); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -124,13 +128,21 @@ implementation
 
 { TpvScene3DRendererPassesDepthPrepassRenderPass }
 
-constructor TpvScene3DRendererPassesDepthPrepassRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesDepthPrepassRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aTransparencyDepth:boolean);
 begin
 inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='DepthPrepassRenderPass';
+ fTransparencyDepth:=aTransparencyDepth;
+
+ if fTransparencyDepth then begin
+  Name:='TransparencyDepthRenderPass';
+  fSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+ end else begin
+  Name:='DepthPrepassRenderPass';
+  fSampleCountFlagBits:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+ end;
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
@@ -142,7 +154,21 @@ inherited Create(aFrameGraph);
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+ if fTransparencyDepth then begin
+
+  // The depth of the transparency on its own, in a buffer of its own and always single sampled, since both
+  // that read it - the water and its caustics - do so once per pixel. Nothing opaque is in it: what is in
+  // front is told by the readers from it and the opaque depth together, so the transparency needs no depth
+  // test against the opaque here, and the depth the rest of the frame works with stays as it is.
+  fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+                                      'resource_transparency_depth',
+                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                   TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+
+ end else if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
@@ -209,12 +235,35 @@ begin
   Stream.Free;
  end;
 
+ if fTransparencyDepth then begin
+  if fInstance.Renderer.UseDemote then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'transparentdepth_alphatest_demote_frag.spv');
+  end else if fInstance.Renderer.UseNoDiscard then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'transparentdepth_alphatest_nodiscard_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'transparentdepth_alphatest_frag.spv');
+  end;
+  try
+   fMeshDepthTransparentFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+ end else begin
+  fMeshDepthTransparentFragmentShaderModule:=nil;
+ end;
+
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
 
  fVulkanPipelineShaderStageMeshDepthFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthFragment);
 
  fVulkanPipelineShaderStageMeshDepthMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthMaskedFragmentShaderModule,'main');
+
+ if assigned(fMeshDepthTransparentFragmentShaderModule) then begin
+  fVulkanPipelineShaderStageMeshDepthTransparentFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthTransparentFragmentShaderModule,'main');
+ end else begin
+  fVulkanPipelineShaderStageMeshDepthTransparentFragment:=nil;
+ end;
 
  if fMeshShader then begin
 
@@ -253,12 +302,21 @@ begin
 
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
 
- fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                          fInstance,
-                                                          fInstance.Renderer.Scene3D,
-                                                          TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
-                                                          nil,
-                                                          nil);
+ if assigned(fVulkanPipelineShaderStageMeshDepthTransparentFragment) then begin
+  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthTransparentFragment);
+ end;
+
+ // The planet is opaque and so has no place in the depth of the transparency
+ if fTransparencyDepth then begin
+  fPlanetDepthPrePass:=nil;
+ end else begin
+  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                                                           nil,
+                                                           nil);
+ end;
 
 end;
 
@@ -273,11 +331,15 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
 
+ FreeAndNil(fVulkanPipelineShaderStageMeshDepthTransparentFragment);
+
  FreeAndNil(fMeshVertexShaderModule);
 
  FreeAndNil(fMeshDepthFragmentShaderModule);
 
  FreeAndNil(fMeshDepthMaskedFragmentShaderModule);
+
+ FreeAndNil(fMeshDepthTransparentFragmentShaderModule);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshTask);
  FreeAndNil(fVulkanPipelineShaderStageMeshMesh);
@@ -381,6 +443,8 @@ begin
      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
      if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
+     end else if (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) and assigned(fVulkanPipelineShaderStageMeshDepthTransparentFragment) then begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthTransparentFragment);
      end else begin
       //VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);
      end;
@@ -416,7 +480,7 @@ begin
      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
-     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fSampleCountFlagBits;
      begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
@@ -449,7 +513,7 @@ begin
                                                                          0);
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=fTransparencyDepth or (AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend);
      if fInstance.ZFar<0.0 then begin
       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
       end else begin
@@ -504,6 +568,8 @@ begin
      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshMesh);
      if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
+     end else if (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend) and assigned(fVulkanPipelineShaderStageMeshDepthTransparentFragment) then begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthTransparentFragment);
      end;
 
      VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -537,7 +603,7 @@ begin
      VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
      VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
 
-     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fInstance.Renderer.SurfaceSampleCountFlagBits;
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=fSampleCountFlagBits;
      begin
       VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
       VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
@@ -570,7 +636,7 @@ begin
                                                                          0);
 
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=fTransparencyDepth or (AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend);
      if fInstance.ZFar<0.0 then begin
       VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
       end else begin
@@ -593,10 +659,12 @@ begin
 
  end;
 
- fPlanetDepthPrePass.AllocateResources(fVulkanRenderPass,
-                                       fInstance.ScaledWidth,
-                                       fInstance.ScaledHeight,
-                                       fInstance.Renderer.SurfaceSampleCountFlagBits);
+ if assigned(fPlanetDepthPrePass) then begin
+  fPlanetDepthPrePass.AllocateResources(fVulkanRenderPass,
+                                        fInstance.ScaledWidth,
+                                        fInstance.ScaledHeight,
+                                        fInstance.Renderer.SurfaceSampleCountFlagBits);
+ end;
 
 end;
 
@@ -606,7 +674,9 @@ var Index:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
- fPlanetDepthPrePass.ReleaseResources;
+ if assigned(fPlanetDepthPrePass) then begin
+  fPlanetDepthPrePass.ReleaseResources;
+ end;
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -667,6 +737,64 @@ begin
   fOnSetRenderPassResourcesDone:=false;
 
   if fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
+
+  end else if fTransparencyDepth then begin
+
+   // The masked surfaces with their own cutoff: the depth prepass leaves them out, so the depth pyramid the
+   // caustics read has never had them, and with an alpha tested transparency they are drawn with it anyway
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   TpvScene3DRendererRenderPass.View,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountFinalViews,
+                                   FrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   @InFlightFrameState^.Jitter,
+                                   false,
+                                   false,
+                                   @fMeshShaderGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask]);
+
+   // The blended surfaces, with the fixed cutoff of the transparent depth variant
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   TpvScene3DRendererRenderPass.View,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountFinalViews,
+                                   FrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                   @InFlightFrameState^.Jitter,
+                                   false,
+                                   false,
+                                   @fMeshShaderGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend]);
+
+   // And the opaque and masked surfaces that are drawn as transparent for the time being (OIT promotion), as
+   // the transparency passes draw them, with the pipelines of the blended ones
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                   -1,
+                                   aInFlightFrameIndex,
+                                   TpvScene3DRendererRenderPass.View,
+                                   InFlightFrameState^.FinalViewIndex,
+                                   InFlightFrameState^.CountFinalViews,
+                                   FrameGraph.DrawFrameIndex,
+                                   aCommandBuffer,
+                                   fVulkanPipelineLayout,
+                                   OnSetRenderPassResources,
+                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   @InFlightFrameState^.Jitter,
+                                   false,
+                                   true,
+                                   @fMeshShaderGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend]);
 
   end else begin
 

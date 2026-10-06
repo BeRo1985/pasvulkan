@@ -170,15 +170,24 @@ void main(){
   // Propagate view index so that cluster-grid indexing in lighting.glsl works.
   inViewIndex = viewLocalIndex;
 
-  // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass.
+  // Read the opaque terrain depth written by the earlier depth-prepass / mipmap pass, and the depth of the
+  // transparency, and take whichever is in front. A transparent surface that covers most of what is behind
+  // it is what is seen there, and not the ground under the water - and being above the water, it gets no
+  // caustics below. The transparency depth holds only the transparent and masked surfaces, which the depth
+  // prepass leaves out, and is cleared to the far plane where there are none.
+  bool reversedZ = projectionMatrix[2][3] < -1e-7;
   float rawDepth = texelFetch(uPassTextures[2], ivec3(px, viewLocalIndex), 0).x;
+  float transparencyDepth = texelFetch(uPassTextures[4], ivec3(px, viewLocalIndex), 0).x;
+  rawDepth = reversedZ ? max(rawDepth, transparencyDepth) : min(rawDepth, transparencyDepth);
 #ifdef DEBUG
   if((viewLocalIndex == 0) && all(equal(px, imageExtent / 2))){
     debugPrintfEXT("caustics: px=%d,%d ext=%d,%d rawDepth=%f\n", px.x, px.y, imageExtent.x, imageExtent.y, rawDepth);
   }
 #endif
-  if(rawDepth >= 1.0){
-    discard; // sky / far plane
+  // Sky / far plane, which is 0.0 with a reversed depth (with an infinite far plane the back projection of
+  // it would divide by a w of zero) and 1.0 without
+  if(reversedZ ? (rawDepth <= 0.0) : (rawDepth >= 1.0)){
+    discard;
   }
 
   // Reconstruct view-space and world-space positions from the hardware depth.

@@ -84,6 +84,7 @@ type { TpvScene3DRendererPassesPlanetWaterCausticsRenderPass }
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceTransparencyDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fWaterCaustics:TpvScene3DPlanet.TWaterCaustics;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -160,6 +161,13 @@ begin
 
  end;
 
+ // The depth of the transparency: where a transparent surface that covers most of what is behind it is in
+ // front, that surface is what is seen there and not the ground under the water, so no caustics go there
+ fResourceTransparencyDepth:=AddImageInput('resourcetype_depth',
+                                           'resource_transparency_depth',
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           []);
+
 end;
 
 destructor TpvScene3DRendererPassesPlanetWaterCausticsRenderPass.Destroy;
@@ -187,15 +195,18 @@ var InFlightFrameIndex:TpvSizeInt;
     CascadedShadowMapViews:TpvVulkanImageViewDynamicArray;
     SSAOViews:TpvVulkanImageViewDynamicArray;
     SSAOLayout:TVkImageLayout;
+    TransparencyDepthViews:TpvVulkanImageViewDynamicArray;
 begin
 
  inherited AcquireVolatileResources;
 
  SetLength(CascadedShadowMapViews,FrameGraph.CountInFlightFrames);
  SetLength(SSAOViews,FrameGraph.CountInFlightFrames);
+ SetLength(TransparencyDepthViews,FrameGraph.CountInFlightFrames);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   CascadedShadowMapViews[InFlightFrameIndex]:=fResourceCascadedShadowMap.VulkanImageViews[InFlightFrameIndex];
+  TransparencyDepthViews[InFlightFrameIndex]:=fResourceTransparencyDepth.VulkanImageViews[InFlightFrameIndex];
   if assigned(fResourceSSAO) then begin
    SSAOViews[InFlightFrameIndex]:=fResourceSSAO.VulkanImageViews[InFlightFrameIndex];
   end else begin
@@ -215,6 +226,8 @@ begin
                                   fResourceCascadedShadowMap.ResourceTransition.Layout,
                                   SSAOViews,
                                   SSAOLayout,
+                                  TransparencyDepthViews,
+                                  fResourceTransparencyDepth.ResourceTransition.Layout,
                                   fInstance.CountSurfaceViews,
                                   fInstance.Width,
                                   fInstance.Height);

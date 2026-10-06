@@ -94,6 +94,7 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceTransparencyDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -173,6 +174,14 @@ inherited Create(aFrameGraph);
  end else begin
   fResourceCloudsShadowMap:=nil;
  end;
+
+ // The depth of the transparency, single sampled in every case: the water is not drawn where a transparent
+ // surface that covers most of what is behind it is in front of it
+ fResourceTransparencyDepth:=AddImageInput('resourcetype_depth',
+                                           'resource_transparency_depth',
+                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                           []
+                                          );
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
@@ -342,7 +351,7 @@ begin
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                           4,
+                                           5,
                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
@@ -386,7 +395,7 @@ begin
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,14*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,15*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*fInstance.Renderer.CountInFlightFrames);
@@ -446,8 +455,8 @@ begin
                                                                        false);
   DescriptorImageInfos:=nil;
   try
-   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map
-   SetLength(DescriptorImageInfos,4);
+   // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer, 3 = Clouds shadow map, 4 = Transparency depth buffer
+   SetLength(DescriptorImageInfos,5);
    if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
     DescriptorImageInfos[0]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
                                                            fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
@@ -470,6 +479,9 @@ begin
    end else begin
     DescriptorImageInfos[3]:=DescriptorImageInfos[0]; // Dummy fallback
    end;
+   DescriptorImageInfos[4]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                          fResourceTransparencyDepth.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                          fResourceTransparencyDepth.ResourceTransition.Layout);
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                       0,
                                                                       Length(DescriptorImageInfos),

@@ -1500,6 +1500,9 @@ addMeshFragmentPassTargetVariants(){
   # Depth only stuff
   addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"
 
+  # Depth of the transparency (blended surfaces with an alpha of at least 0.5), for the water and its caustics
+  addMeshFragmentDepthOnlyVariants "${1}_transparentdepth" "$2 -DDEPTHONLY -DTRANSPARENTDEPTH"
+
   # Object-selection outline mask: rides on DEPTHONLY (minimal vertex outputs + alpha test); the frag additionally writes the
   # uvec2 selection mask (objectID + depth). Pairs with the existing _depth mesh.vert (identical vertex<->frag interface).
   addMeshFragmentDepthOnlyVariants "${1}_selectionmask" "$2 -DDEPTHONLY -DSELECTIONMASK"

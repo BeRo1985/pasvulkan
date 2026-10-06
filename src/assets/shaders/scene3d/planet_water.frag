@@ -1269,7 +1269,23 @@ void main(){
   }
 
 #if defined(TESSELLATION)
- 
+
+  // Not behind a transparent surface that covers most of what is behind it (alpha of at least 0.5, or the
+  // cutoff of a masked one): there the surface is what is seen, and the water would only show through it.
+  // The depth of the water is written all the same, by the early fragment tests, which is as it should be,
+  // since it still hides what is under the water from the transparency drawn later.
+  {
+    float transparencyDepth = texelFetch(uPassTextures[4], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+    bool reversedZ = projectionMatrix[2][3] < -1e-7;
+    if(reversedZ ? (transparencyDepth > gl_FragCoord.z) : (transparencyDepth < gl_FragCoord.z)){
+#if defined(USEDEMOTE)
+      demote;
+#else
+      discard;
+#endif
+    }
+  }
+
   workNormal = normalize((planetModelMatrix * vec4(getWaterNormal(inBlock.position), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 //workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 

@@ -2281,6 +2281,7 @@ type TpvScene3DRendererInstancePasses=class
        fCullDepthPyramidComputePass:TpvScene3DRendererPassesCullDepthPyramidComputePass;
        fMeshCullPass1ComputePass:TpvScene3DRendererPassesMeshCullPass1ComputePass;
        fDepthPrepassRenderPass:TpvScene3DRendererPassesDepthPrepassRenderPass;
+       fTransparencyDepthRenderPass:TpvScene3DRendererPassesDepthPrepassRenderPass;
        fDepthMipMapComputePass:TpvScene3DRendererPassesDepthMipMapComputePass;
        fDepthOfFieldAutoFocusComputePass:TpvScene3DRendererPassesDepthOfFieldAutoFocusComputePass;
        fFrustumClusterGridBuildComputePass:TpvScene3DRendererPassesFrustumClusterGridBuildComputePass;
@@ -7238,6 +7239,11 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    fWaterExternalWaitingOnSemaphore:=nil;
   end;
 
+  // The depth of the transparency, so that the water and its caustics are not put behind transparent surfaces
+  // that cover most of what is behind them. Both read it as a resource of the graph, which orders them after it.
+  TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass:=TpvScene3DRendererPassesDepthPrepassRenderPass.Create(fFrameGraph,self,true);
+  TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
+
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=TpvScene3DRendererPassesWaterRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass);
@@ -7259,10 +7265,18 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    TpvScene3DRendererInstancePasses(fPasses).fForwardResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass);
   end;
 
+  // The water refracts the scene mip pyramid, so it has to wait for it to be built. The pyramid is an image of
+  // the instance and not a resource of the graph, so nothing else says so, and the order used to come out right
+  // by chance only. With the water drawn first it reads what was left in the pyramid from the previous frame,
+  // which without resolution scaling is the lens chain's bloom of the finished picture - fed back into the water
+  // every frame until everything behind it is white.
+  TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass);
+
  end else begin
 
   TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass:=nil;
   fWaterExternalWaitingOnSemaphore:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass:=nil;
 
