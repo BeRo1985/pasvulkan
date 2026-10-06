@@ -1774,8 +1774,8 @@ static void build_dct_quant_matrix_chroma(int *step, int width, int height, int 
   build_dct_quant_matrix_table(step, width, height, base_quality, JPEG_CHROMA_QUANT);
 }
 
-// Spatial-transform dispatch. This fork defaults to the block DCT; g_spatial_dct = 0 falls back to the
-// original wavelet, kept reachable for in-binary A/B during bring-up. The Q0 integer path stays on the
+// Spatial-transform dispatch. This fork defaults to the block DCT; g_spatial_dct = 0 selects the
+// wavelet transform as the alternative. The Q0 integer path stays on the
 // reversible 5/3 wavelet until the integer/lifting DCT is in (a later stage), so forward/inverse_spatial_int
 // do not yet branch on the flag.
 static int g_spatial_dct = 1;
@@ -9711,7 +9711,7 @@ int main(int argc, char **argv) {
       g_deblock = 1;
     } else if (strncmp(argv[a], "--qt-lambda", 11) == 0) {
       g_qt_lambda = (argv[a][11] == '=') ? atof(argv[a] + 12) : 0.15;
-    } else if (strcmp(argv[a], "--dwt") == 0) {   // force the original wavelet transform + bit-plane entropy (DCT-vs-DWT A/B in one binary)
+    } else if (strcmp(argv[a], "--dwt") == 0) {   // select the wavelet transform + bit-plane entropy instead of the default DCT
       g_spatial_dct = 0;
     } else if (strncmp(argv[a], "--rdoq", 6) == 0) {   // --rdoq[=scale]: RD-optimal quantization (DCT, encoder-only); default scale 0.1
       g_rdoq_lambda = (argv[a][6] == '=') ? atof(argv[a] + 7) : 0.1;

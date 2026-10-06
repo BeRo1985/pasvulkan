@@ -203,7 +203,7 @@ type { TpvScene3DRendererInstance }
              );
             TRaytracingFlags=set of TRaytracingFlag;
             // Atmosphere-independent distance fog colour source. None (default) means the fog pass
-            // is not even created, so projects that never enable it (e.g. planetgame1) are unaffected.
+            // is not even created, so projects that never enable it are unaffected.
             TFogMode=
              (
               None,
@@ -1115,8 +1115,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationDebugShadingMode:TpvUInt32; // derived GI/IBL/direct-light isolation channel pushed to the surface shaders (matches global_illumination_debug.glsl GI_DEBUG_DISPLAY_*)
        fGlobalIlluminationDebugRawOutput:Boolean; // true when the active debug shading channel is a raw data value (probe-influence heatmap), not radiance, so the post effects (auto-exposure, bloom, tonemapping, depth of field) must be bypassed like the voxel debug visualization
        fGlobalIlluminationDUGIUseRSMSplat:Boolean; // non-raytraced DUGI producer choice (read in Prepare): false = the RSM backend of the trace shader (albedo RSM), true = the standalone RSM VPL splat (flux RSM)
-       fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime A/B toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
-       fGlobalIlluminationDUGIEmptyProbeSample:Boolean; // runtime A/B toggle: when true the classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes, so the shading gather keeps sampling their last valid data (anti through-slab leak); compute-side they stay frozen either way
+       fGlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean; // runtime toggle: when false the classification keeps every probe ACTIVE -> the inactive-probe early-out in the trace/update/sampling is effectively off
+       fGlobalIlluminationDUGIEmptyProbeSample:Boolean; // runtime toggle: when true the classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes, so the shading gather keeps sampling their last valid data (anti through-slab leak); compute-side they stay frozen either way
        fGlobalIlluminationInitialCellSize:TpvVector3; // per-axis probe spacing of the innermost GI probe cascade (RTXGI probeSpacing-style, world units; consumed per frame by the DUGI cascaded-volume update, so it is runtime-tunable — changing it re-snaps the field and the probes reconverge through the warmup)
        fGlobalIlluminationCellSizeMultiplicationFactor:TpvVector3; // per-axis per-cascade spacing growth (the last cascade stays at the scene-covering maximum); the vertical default is denser than the horizontal one so stacked floor/ceiling decks stay separable across more cascades
        fDebugDrawMeshletBoundingSpheres:Boolean;
@@ -1455,7 +1455,7 @@ type { TpvScene3DRendererInstance }
        // stops - a step into the light covers most of it in the first frame while the same step back takes
        // the better part of a second - which is why the exposure could feel as if it snapped. True smooths
        // in log2 space with a speed per direction, so a frame is the same fraction of the remaining stops
-       // either way. Runtime-toggleable (A/B).
+       // either way. Runtime-toggleable.
        property LuminanceAdaptationLogarithmic:Boolean read fLuminanceAdaptationLogarithmic write fLuminanceAdaptationLogarithmic;
        // The two speeds, in 1/s, as the exponential rate of 1-exp(-speed*dt) - the same unit the fixed
        // 2*Pi was. Brighter = the scene got brighter and the picture stops down (the eye is fast here),
@@ -1613,8 +1613,8 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationDebugShadingMode:TpvUInt32 read fGlobalIlluminationDebugShadingMode;
        property GlobalIlluminationDebugRawOutput:Boolean read fGlobalIlluminationDebugRawOutput; // post effects bypass these raw debug channels (see ApplyGlobalIlluminationDebugMode)
        property GlobalIlluminationDUGIUseRSMSplat:Boolean read fGlobalIlluminationDUGIUseRSMSplat write fGlobalIlluminationDUGIUseRSMSplat; // set before Prepare; only consulted for DUGI without hardware ray query
-       property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable (A/B); false = keep all probes active (no inactive-probe early-out)
-       property GlobalIlluminationDUGIEmptyProbeSample:Boolean read fGlobalIlluminationDUGIEmptyProbeSample write fGlobalIlluminationDUGIEmptyProbeSample; // runtime-toggleable (A/B); true = no-nearby-geometry probes stay sampleable in the shading gather (EMPTY state instead of INACTIVE)
+       property GlobalIlluminationDUGIInactiveProbeEarlyOut:Boolean read fGlobalIlluminationDUGIInactiveProbeEarlyOut write fGlobalIlluminationDUGIInactiveProbeEarlyOut; // runtime-toggleable; false = keep all probes active (no inactive-probe early-out)
+       property GlobalIlluminationDUGIEmptyProbeSample:Boolean read fGlobalIlluminationDUGIEmptyProbeSample write fGlobalIlluminationDUGIEmptyProbeSample; // runtime-toggleable; true = no-nearby-geometry probes stay sampleable in the shading gather (EMPTY state instead of INACTIVE)
        property GlobalIlluminationInitialCellSize:TpvVector3 read fGlobalIlluminationInitialCellSize write fGlobalIlluminationInitialCellSize; // runtime-tunable per-axis probe spacing of GI cascade 0 (currently consumed by the DUGI probe field)
        property GlobalIlluminationCellSizeMultiplicationFactor:TpvVector3 read fGlobalIlluminationCellSizeMultiplicationFactor write fGlobalIlluminationCellSizeMultiplicationFactor; // runtime-tunable per-axis per-cascade spacing growth (currently consumed by the DUGI probe field; (4,4,4) restores the old isotropic progression)
        property DebugDrawMeshletBoundingSpheres:Boolean read fDebugDrawMeshletBoundingSpheres write fDebugDrawMeshletBoundingSpheres;
@@ -3041,7 +3041,7 @@ begin
  fGlobalIlluminationDebugRawOutput:=false;
 
  fGlobalIlluminationDUGIUseRSMSplat:=true; // true = standalone flux RSM VPL splat producer; false = RSM backend of the trace shader (albedo)
- fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime for A/B
+ fGlobalIlluminationDUGIInactiveProbeEarlyOut:=true; // default on (inactive-probe early-out / RTXGI-style lifecycle); Ctrl+Shift+G toggles it at runtime
  fGlobalIlluminationDUGIEmptyProbeSample:=true; // default on: empty-space probes keep their last valid data sampleable in the shading gather (anti through-slab leak); false = old behavior (skipped like inside-geometry probes)
  fGlobalIlluminationInitialCellSize:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // cascade-0 probe spacing (world units, per axis)
  fGlobalIlluminationCellSizeMultiplicationFactor:=TpvVector3.InlineableCreate(4.0,2.0,4.0); // vertical grows only x2 per cascade (RTXGI keeps the vertical probe spacing ~2x denser than the horizontal, e.g. Sponza 1.02/0.5/0.45, Tunnel 5/2.5/5), so stacked track decks stay separable; (4,4,4) = old isotropic progression
@@ -6564,7 +6564,7 @@ begin
   // flicker (it reproduces with parallel queues OFF once the selection passes exist). Forcing the
   // selection chain to start only after MeshCullPass1 removes that interleaving. The selection list
   // reads the pre-occlusion INPUT commands, which are ready well before Pass1, so this is legal.
-  // A/B-test by toggling the define ({.$define} = off, {$define} = on).
+  // Switched by the define ({.$define} = off, {$define} = on).
   // RESULT (tested): with this ON the flicker STILL occurs -> it is NOT the GPU pass
   // interleaving/placement of the selection passes. Left here OFF as a documented experiment.
   {.$define SELECTION_PASSES_AFTER_CULL_CHAIN}

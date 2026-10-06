@@ -134,8 +134,8 @@ vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
 
 // SH-storage glossy toggle (mesh.frag): when defined (together with GI_DUGI_GLOSSY_RADIANCE), the SH shading path adds the
 // directional glossy prefiltered-radiance atlas, crossfaded by roughness against the dominant directional light — low
-// roughness takes the sharp atlas, high roughness the broad dominant-light specular (see mesh.frag). Comment out for an A/B
-// comparison against the dominant-light-only specular. Default ON. Octahedral storage and the diffuse term are unaffected.
+// roughness takes the sharp atlas, high roughness the broad dominant-light specular (see mesh.frag). Comment out for
+// the dominant-light-only specular. Default ON. Octahedral storage and the diffuse term are unaffected.
 #define GI_DUGI_GLOSSY_RESIDUAL
 
 // --- Probe field dimensions -------------------------------------------------------------------------------------------
@@ -291,9 +291,9 @@ vec3 dugiDecodeIrradiance(const in vec3 encodedValue){
 
 // Bit flags for the per-pass `flags` push-constant field (set on the Pascal side). Defined here, in the shared core, so both
 // the compute push block (global_illumination_dugi_pushconstants.glsl) and the probe debug-draw shaders (their own push block) can reference them.
-#define GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT 1u  // trace/update passes skip inactive probes; clear = process every probe (runtime A/B toggle)
+#define GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT 1u  // trace/update passes skip inactive probes; clear = process every probe (runtime toggle)
 #define GI_DUGI_FLAG_FIXED_RAY_GEOMETRY_VALID 2u  // real per-ray geometry distances available (hardware ray-traced producer); clear = RSM fallback -> classification skips its nearby-geometry test
-#define GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE       4u  // classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes -> they stay sampleable in the shading gather (runtime A/B toggle)
+#define GI_DUGI_FLAG_EMPTY_PROBE_SAMPLE       4u  // classification writes EMPTY (0.5) instead of INACTIVE (0.0) for no-nearby-geometry probes -> they stay sampleable in the shading gather (runtime toggle)
 
 // Per-probe convergence warmup (always on). Each probe ramps its temporal hysteresis from GI_DUGI_WARMUP_START_HYSTERESIS up
 // to GI_DUGI_STEADY_HYSTERESIS over its first GI_DUGI_WARMUP_FRAMES frames of life, so a freshly-initialized or toroidally-

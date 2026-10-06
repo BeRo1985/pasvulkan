@@ -1,7 +1,7 @@
 (*******************************************************************************
  *                                 PasVulkan                                   *
  *******************************************************************************
- * A/B fix toggle for the cross-queue SYNC-HAZARD-WRITE-RACING-WRITE on the    *
+ * Fix toggle for the cross-queue SYNC-HAZARD-WRITE-RACING-WRITE on the        *
  * master grass age map (TpvScene3DPlanet.TData[-1].fGrassAgeMapImage).        *
  *=============================================================================*
  *                                                                             *
@@ -15,7 +15,7 @@
  * queue-family-ownership-transfer problem (a QFOT within one family is a      *
  * no-op and would not resolve it).                                            *
  *                                                                             *
- * Choose exactly ONE of the two approaches below for A/B comparison (comment  *
+ * Choose exactly ONE of the two approaches below (comment                     *
  * one, uncomment the other):                                                  *
  *                                                                             *
  *  PasVulkanPlanetGrassAgeMapSyncSemaphore (B, default):                      *

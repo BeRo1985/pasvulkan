@@ -335,7 +335,7 @@ void main(){
     // scrolled-in slot (its state is for the old world cell — keep tracing it until classification re-evaluates), which keeps
     // this in lockstep with the update passes' identical guard.
     if(((pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u) && (probeData.w < GI_DUGI_PROBE_STATE_TRACE_MIN) && !dugiRayIsFixed(rayIndex) && !dugiProbeScrolledIn(probeCoord, cascadeIndex)){
-      return; // early-out gated by the runtime A/B flag; when clear, every probe is traced in full
+      return; // early-out gated by the runtime flag; when clear, every probe is traced in full
     }
   }
 #endif

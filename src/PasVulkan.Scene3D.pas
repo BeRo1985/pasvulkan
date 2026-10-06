@@ -89,7 +89,7 @@ unit PasVulkan.Scene3D;
 
 // Populate each instance's PerInFlightFrameRenderInstances IN Phase 1 (parallel, atomic-append into a pre-sized
 // Items array) instead of the sequential Phase 2. Phase 2 then only does BB-combine + UpdateBoundingVolumes. Without
-// this, the fat instance's ~5000-RI population stays single-threaded in Phase 2. Toggle off to A/B.
+// this, the fat instance's ~5000-RI population stays single-threaded in Phase 2.
 {$define FlatParallelPhase1Populate}
 
 // Staged software prefetching in ProcessAnimation and ProcessNode against the cache misses on the per channel and
@@ -97,8 +97,8 @@ unit PasVulkan.Scene3D;
 {-$define Scene3DAnimationPrefetch}
 
 // Precomputed key pair dependent part of the rotation slerp (ArcCos and the divisor sine) per key segment of linear
-// rotation channels, bit-identical to TpvQuaternion.Slerp. Off by default.
-{-$define Scene3DPrecomputedRotationSlerp}
+// rotation channels, bit-identical to TpvQuaternion.Slerp.
+{$define Scene3DPrecomputedRotationSlerp}
 
 {$undef SubTreeInFlightFramesUpdates}
 
@@ -107,7 +107,7 @@ unit PasVulkan.Scene3D;
 // we recompute them into a local and only write+Mark the master DrawInfo (and thus trigger the per-IFF GPU re-upload)
 // when the bytes actually differ. The MatrixPair is still refreshed on every matrix change. Safe across in-flight
 // frames because a single master write Mark()s the index and every IFF's ProcessDrawInfoDirtyQueue SyncFrom()s it.
-// Toggle off to A/B against the old always-rewrite behaviour.
+// Toggle off for the old always-rewrite behaviour.
 {$define DecoupleDrawInfoFromMatrix}
 
 // Batch the per-render-instance MatrixPair dirty-marking. The hot per-RI cost in UpdateRenderInstances is NOT the
@@ -116,7 +116,7 @@ unit PasVulkan.Scene3D;
 // (this is why parallelizing the loop got SLOWER, not faster). Instead, write the master MatrixPair without marking
 // and remember the touched MatrixID range, then Mark the whole [min..max] range ONCE per instance via MarkRange:
 // 1 atomic + ~log(N) CAS. Assumes an instance's RI MatrixIDs are roughly contiguous (true for a block allocated at
-// load); gaps only cause harmless extra re-copies in ProcessMatrixPairDirtyQueue, never wrong data. Toggle for A/B.
+// load); gaps only cause harmless extra re-copies in ProcessMatrixPairDirtyQueue, never wrong data.
 {$define BatchMatrixPairDirtyMark}
 
 // Say so whenever a defragmentation actually moves something, and how much.

@@ -108,7 +108,7 @@ void main(){
   outActive = probeActive;
 
   // The inactive cull is tied to the inactive-probe early-out: when that optimization is disabled (flag clear), every probe
-  // is updated, so show all of them (A/B) — keep the inactive ones, the fragment shader still dims them by outActive.
+  // is updated, so show all of them — keep the inactive ones, the fragment shader still dims them by outActive.
   bool earlyOut = (pushConstants.flags & GI_DUGI_FLAG_INACTIVE_PROBE_EARLY_OUT) != 0u;
 
   if(earlyOut && (probeActive < 0.5)){

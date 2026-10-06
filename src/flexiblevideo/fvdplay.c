@@ -2750,7 +2750,7 @@ int main(int argc, char **argv) {
       } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_g)) {
         composite_bg_mode ^= 1;   // toggle the alpha composite background: checkerboard <-> solid color
       } else if ((event.type == SDL_KEYDOWN) && (event.key.keysym.sym == SDLK_d)) {
-        dering ^= 1;   // 'D' = live-toggle the smartblur dering/edge-sharpen post-pass (lossy SDR), for an eyeball A/B
+        dering ^= 1;   // 'D' = live-toggle the smartblur dering/edge-sharpen post-pass (lossy SDR)
         printf("dering: %s\n", dering ? "ON" : "OFF");
         fflush(stdout);
       }

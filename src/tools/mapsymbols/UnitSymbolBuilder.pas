@@ -647,7 +647,7 @@ end;
 // Where they are, they answer the question outright: if the last row of this
 // unit which stands for an instruction lies before the next unit begins, then
 // nothing of this unit is in the disputed bytes but its end marker, however far
-// that marker reaches. A Win64 build of planetgame1 had eight such overlaps between
+// that marker reaches. A larger Win64 build had eight such overlaps between
 // 69 and 260 bytes long, every one of them without a single row of the unit in
 // front inside it, and a fixed limit of a few dozen bytes refused all of them.
 // Trimming there gives up nothing of this unit, the enclosed case included,

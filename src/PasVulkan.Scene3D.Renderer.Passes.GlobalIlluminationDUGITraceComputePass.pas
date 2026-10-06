@@ -376,7 +376,7 @@ begin
  PushConstants.ParticleBVH.z:=TpvUInt32(ParticleNodeAddress and TpvUInt64($ffffffff));
  PushConstants.ParticleBVH.w:=TpvUInt32(ParticleNodeAddress shr 32);
 
- PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1); // bit0 = inactive-probe early-out (runtime A/B toggle); other bits unused by the trace
+ PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1); // bit0 = inactive-probe early-out (runtime toggle); other bits unused by the trace
 
  // Cross-frame WAR: the probe field is now a single shared resource (one history), no longer per-in-flight. Before this frame's
  // DUGI compute overwrites it, the previous frame's reads of it must complete — the fragment shaders that sampled the field, and

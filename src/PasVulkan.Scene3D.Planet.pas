@@ -3573,7 +3573,7 @@ type TpvScene3DPlanets=class;
        fWaterDetailFlowReference:TpvFloat;         // Flow magnitude that counts as full strength for the two above, so the coupling does not depend on the absolute scale of the solver's outflow values.
        fWaterSurfaceLevelAmount:TpvFloat;          // Blends the RENDERED water surface from the raw simulated column (0) toward a levelled one (1). Still water is an equipotential surface, but the pipe solver's equilibrium on the distorted octahedral grid is not, which leaves standing bumps following the terrain. The simulation itself is untouched, only what is drawn.
        fWaterSurfaceLevelStep:TpvFloat;            // Stencil width in height map texels over which the rendered surface is averaged. 0 disables the levelling. Too wide and the level runs over shallow banks, so this is the counterpart of the bump removal.
-       fWaterSurfaceLevelActivityGating:Boolean;   // Lets the level bake skip regions whose water did not move, see TWaterSimulation.LevelBakeActivityThreshold. Only off for A/B measurements.
+       fWaterSurfaceLevelActivityGating:Boolean;   // Lets the level bake skip regions whose water did not move, see TWaterSimulation.LevelBakeActivityThreshold. Runtime switch, on by default.
        fWaterSurfaceLevelBaked:Boolean;            // Set by the level bake pass once the image holds a current bake and its preconditions hold; gates the fragment shader onto the one-sample path instead of the inline stencil. Never persisted, it is re-established every time the bake runs.
        fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
@@ -3608,18 +3608,18 @@ type TpvScene3DPlanets=class;
        fWaterSimulationSettleFrames:TpvSizeInt;
        // Manual master switch for the whole water flow simulation stepping. When false the pipe model step loop is
        // skipped entirely (the water surface freezes in place but keeps rendering), so the expensive per-frame water
-       // simulation compute cost drops to near zero. Independent of the auto-pause settle logic above; meant to be
-       // toggled live (e.g. via a debug hotkey) for A/B comparison and for GPUs where the flat-grid pipe model is
+       // simulation compute cost drops to near zero. Independent of the auto-pause settle logic above; a runtime switch
+       // that can be toggled live (e.g. via a hotkey), useful for GPUs where the flat-grid pipe model is
        // disproportionally slow. Default is on.
        fWaterSimulationEnabled:LongBool;
        // Metric aware octahedral compensation of the pipe simulation. The flat grid pipe model assumes uniform
        // cells; on the distorted octahedral sphere grid the equilibrium is not an exact equal radius surface, so
        // still water keeps oscillating on the mm scale. When enabled, a baked metric field reweights the flow so
        // the equilibrium matches the real cell shapes. The initial value comes from the constructor (it decides
-       // whether the metric buffer is allocated at all); the property can be toggled live for A/B comparison.
+       // whether the metric buffer is allocated at all); the property is a runtime switch that can be toggled live.
        fWaterSimulationMetricCompensation:LongBool;
        // Render-side water surface normal toggle: sample the simulated water height with a wider normal stencil so
-       // the static octahedral wobble on still water averages out of the specular normal. Live switchable for A/B.
+       // the static octahedral wobble on still water averages out of the specular normal. Live switchable.
        fWaterCoarseSimNormal:LongBool;
        fWaterCoarseSimNormalStep:TpvFloat;         // Stencil width of the coarse simulated-normal sampling. 0 keeps the PLANET_WATER_COARSE_SIM_NORMAL_STEP shader default. Only worth widening past that once the procedural detail normal supplies the fine structure the wider stencil averages away.
        // Render-side water surface normal toggle: blend the normal toward the radial normal where the water is calm
@@ -20901,7 +20901,7 @@ begin
  fPushConstants.Scale:=fPlanet.fWaterRainSettings.fScale;
  fPushConstants.TimeScale:=fPlanet.fWaterRainSettings.fTimeScale;
  // Enable the metric aware compensation only when it was requested and the metric buffer actually exists. It can
- // be toggled live via the WaterSimulationMetricCompensation property for A/B comparison once the buffer is there.
+ // be toggled live via the WaterSimulationMetricCompensation property once the buffer is there.
  if assigned(fPlanet.fData.fWaterMetricMapBuffer) and fPlanet.fWaterSimulationMetricCompensation then begin
   fPushConstants.MetricCompensationEnabled:=1;
  end else begin
@@ -35369,7 +35369,7 @@ begin
  fWaterSimulationSettleThreshold:=1e-6; // legacy engine default; override via JSON "water"."simulation"."settlethreshold"
  fWaterSimulationSettleFrames:=64;
 
- fWaterSimulationEnabled:=true; // Master water simulation stepping switch, default on; toggled live for A/B / perf debugging
+ fWaterSimulationEnabled:=true; // Master water simulation stepping switch, default on; runtime switch, can be toggled live
 
  // Set from the constructor so it is known before the data resources are created, so that the metric buffer is
  // only allocated when the metric aware compensation is actually requested (zero cost when disabled).
@@ -40157,7 +40157,7 @@ begin
    JSONSimulationObject:=TPasJSONItemObject(JSONItem);
    fWaterSimulationSettleThreshold:=TPasJSON.GetNumber(JSONSimulationObject.Properties['settlethreshold'],fWaterSimulationSettleThreshold);
    fWaterSimulationSettleFrames:=Round(TPasJSON.GetNumber(JSONSimulationObject.Properties['settleframes'],fWaterSimulationSettleFrames));
-   // Live A/B toggle state of the metric aware compensation. Whether the metric buffer actually exists is decided
+   // Live toggle state of the metric aware compensation. Whether the metric buffer actually exists is decided
    // at construction time (the app preparses this same flag and passes it down), so this only affects the toggle.
    fWaterSimulationMetricCompensation:=TPasJSON.GetBoolean(JSONSimulationObject.Properties['metriccompensation'],fWaterSimulationMetricCompensation);
   end;

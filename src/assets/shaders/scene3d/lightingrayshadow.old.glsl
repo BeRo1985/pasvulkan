@@ -1,4 +1,4 @@
-#if 0 // Old variants kept for A/B testing
+#if 0 // Old variants kept for reference
 
 // ============================================================================
 // Variant 1: Simple area light sampling without adaptive early-out

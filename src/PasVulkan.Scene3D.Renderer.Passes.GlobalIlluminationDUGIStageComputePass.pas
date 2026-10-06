@@ -345,9 +345,9 @@ begin
  // The ray-data was published by the trace pass and each previous stage by its barrier below (+ the frame-graph ordering).
  DescriptorSet:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,fPipelineLayout.Handle,1,1,@DescriptorSet,0,nil); // bind set 1 only (set 0 unused)
- // bit0 = inactive-probe early-out (renderer property, A/B toggle); bit1 = fixed-ray geometry valid (hardware ray-traced producer ->
+ // bit0 = inactive-probe early-out (renderer property, runtime toggle); bit1 = fixed-ray geometry valid (hardware ray-traced producer ->
  // classification applies its nearby-geometry test; clear for the RSM fallback so it keeps all probes active); bit2 = empty-probe
- // sample (renderer property, A/B toggle: classification writes EMPTY instead of INACTIVE for no-nearby-geometry probes, so the
+ // sample (renderer property, runtime toggle: classification writes EMPTY instead of INACTIVE for no-nearby-geometry probes, so the
  // shading gather keeps sampling their last valid data - anti through-slab leak).
  PushConstants.Flags:=TpvUInt32(ord(fInstance.GlobalIlluminationDUGIInactiveProbeEarlyOut) and 1) or (TpvUInt32(ord(fInstance.Scene3D.RaytracingActive) and 1) shl 1) or (TpvUInt32(ord(fInstance.GlobalIlluminationDUGIEmptyProbeSample) and 1) shl 2);
 
