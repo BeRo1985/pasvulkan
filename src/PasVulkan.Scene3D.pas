@@ -96,6 +96,10 @@ unit PasVulkan.Scene3D;
 // per node objects. Off by default.
 {-$define Scene3DAnimationPrefetch}
 
+// Precomputed key pair dependent part of the rotation slerp (ArcCos and the divisor sine) per key segment of linear
+// rotation channels, bit-identical to TpvQuaternion.Slerp. Off by default.
+{-$define Scene3DPrecomputedRotationSlerp}
+
 {$undef SubTreeInFlightFramesUpdates}
 
 // Decouple per-render-instance DrawInfo writes from the matrix/generation bump: when a render instance only moves
@@ -2516,6 +2520,7 @@ type EpvScene3D=class(Exception);
                                    Step,
                                    CubicSpline
                                   );
+{$ifdef Scene3DPrecomputedRotationSlerp}
                                  // The key pair dependent part of TpvQuaternion.Slerp for one key segment of a linear
                                  // rotation channel, so that the per frame slerp only needs the two sines left
                                  TRotationSlerpSegment=record
@@ -2526,6 +2531,7 @@ type EpvScene3D=class(Exception);
                                  end;
                                  PRotationSlerpSegment=^TRotationSlerpSegment;
                                  TRotationSlerpSegments=array of TRotationSlerpSegment;
+{$endif}
                             const MaterialTargets:TTargetSet=
                                    [
                                     TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
@@ -2600,10 +2606,12 @@ type EpvScene3D=class(Exception);
                             fOutputVector2Array:TpvVector2DynamicArray;
                             fOutputVector3Array:TpvVector3DynamicArray;
                             fOutputVector4Array:TpvVector4DynamicArray;
+{$ifdef Scene3DPrecomputedRotationSlerp}
                             // Only valid while fRotationSlerpSegmentsSource is still the very fOutputVector4Array
                             // they were computed from, see PrecomputeRotationSlerpSegments
                             fRotationSlerpSegments:TRotationSlerpSegments;
                             fRotationSlerpSegmentsSource:Pointer;
+{$endif}
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -2611,7 +2619,9 @@ type EpvScene3D=class(Exception);
                             procedure SetInterpolation(const aInterpolation:TpvUTF8String);
                             procedure LoadFromStream(const aStream:TStream);
                             procedure SaveToStream(const aStream:TStream);
+{$ifdef Scene3DPrecomputedRotationSlerp}
                             procedure PrecomputeRotationSlerpSegments;
+{$endif}
                            published
                             property Name:TpvUTF8String read fName write fName;
                             property Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget read fTarget write fTarget;
@@ -2625,8 +2635,10 @@ type EpvScene3D=class(Exception);
                             property OutputScalarArray:TpvFloatDynamicArray read fOutputScalarArray write fOutputScalarArray;
                             property OutputVector2Array:TpvVector2DynamicArray read fOutputVector2Array write fOutputVector2Array;
                             property OutputVector3Array:TpvVector3DynamicArray read fOutputVector3Array write fOutputVector3Array;
+{$ifdef Scene3DPrecomputedRotationSlerp}
                             // Replacing the array is detected by the precomputed rotation slerp segments, changing rotation
                             // keys in place after loading isn't, call PrecomputeRotationSlerpSegments again after that
+{$endif}
                             property OutputVector4Array:TpvVector4DynamicArray read fOutputVector4Array write fOutputVector4Array;
                           end;
                           TChannels=TpvObjectGenericList<TChannel>;
@@ -14832,8 +14844,10 @@ begin
  fOutputVector2Array:=nil;
  fOutputVector3Array:=nil;
  fOutputVector4Array:=nil;
+{$ifdef Scene3DPrecomputedRotationSlerp}
  fRotationSlerpSegments:=nil;
  fRotationSlerpSegmentsSource:=nil;
+{$endif}
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.TChannel.Destroy;
@@ -14843,11 +14857,14 @@ begin
  fOutputVector2Array:=nil;
  fOutputVector3Array:=nil;
  fOutputVector4Array:=nil;
+{$ifdef Scene3DPrecomputedRotationSlerp}
  fRotationSlerpSegments:=nil;
  fRotationSlerpSegmentsSource:=nil;
+{$endif}
  inherited Destroy;
 end;
 
+{$ifdef Scene3DPrecomputedRotationSlerp}
 procedure TpvScene3D.TGroup.TAnimation.TChannel.PrecomputeRotationSlerpSegments;
 var Index,Count:TpvSizeInt;
     FromQuaternion,ToQuaternion:TpvQuaternion;
@@ -14891,6 +14908,7 @@ begin
   fRotationSlerpSegmentsSource:=Pointer(fOutputVector4Array);
  end;
 end;
+{$endif}
 
 procedure TpvScene3D.TGroup.TAnimation.TChannel.SetTarget(const aTargetPath:TpvUTF8String;const aTargetNode:TpvSizeInt);
 var StringPosition,StartStringPosition:TpvSizeInt;
@@ -15360,8 +15378,10 @@ begin
   FreeAndNil(StreamIO);
  end;
 
+{$ifdef Scene3DPrecomputedRotationSlerp}
  // Groups loaded from a stream don't go through PostProcessAnimations
  PrecomputeRotationSlerpSegments;
+{$endif}
 
 end;
 
@@ -20686,7 +20706,9 @@ begin
        Animation:=fAnimations[Index];
        for ChannelIndex:=0 to Animation.fChannels.Count-1 do begin
         Channel:=Animation.fChannels[ChannelIndex];
+{$ifdef Scene3DPrecomputedRotationSlerp}
         Channel.PrecomputeRotationSlerpSegments;
+{$endif}
         Channel.fTargetInstanceIndex:=-1;
         case Channel.fTarget of
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor,
@@ -30039,14 +30061,17 @@ procedure TpvScene3D.TGroup.TInstance.ProcessAnimation(const aAnimationIndex:Tpv
                           const aFactor:TpvDouble;
                           const aRotation:boolean);
  var SqrFactor,CubeFactor:TpvDouble;
+{$ifdef Scene3DPrecomputedRotationSlerp}
      Segment:TpvScene3D.TGroup.TAnimation.TChannel.PRotationSlerpSegment;
      SlerpTime,s0,s1:TpvScalar;
      FromQuaternion,ToQuaternion:TpvQuaternion;
+{$endif}
  begin
   case aAnimationChannel.fInterpolation of
    TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.Linear:begin
     if aRotation then begin
 //    aVector4:=aAnimationChannel.fOutputVector4Array[aTimeIndex0].Slerp(aAnimationChannel.fOutputVector4Array[aTimeIndex1],aFactor);
+{$ifdef Scene3DPrecomputedRotationSlerp}
      if (aTimeIndex0>=0) and
         (aTimeIndex1=(aTimeIndex0+1)) and
         (aAnimationChannel.fRotationSlerpSegmentsSource=Pointer(aAnimationChannel.fOutputVector4Array)) and
@@ -30068,6 +30093,9 @@ procedure TpvScene3D.TGroup.TInstance.ProcessAnimation(const aAnimationIndex:Tpv
      end else begin
       aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
      end;
+{$else}
+     aVector4:=TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex0]).Slerp(TpvQuaternion.Create(aAnimationChannel.fOutputVector4Array[aTimeIndex1]),aFactor).Vector;
+{$endif}
     end else begin
      aVector4:=(aAnimationChannel.fOutputVector4Array[aTimeIndex0]*(1.0-aFactor))+
                (aAnimationChannel.fOutputVector4Array[aTimeIndex1]*aFactor);
