@@ -62,6 +62,7 @@ layout(push_constant) uniform PushConstants {
   int windowCenterY;
 } pushConstants;
 
+#define OCTAHEDRAL_WRAP_INSIDE_FAST_PATH // see wrapOctahedralTexelCoordinates in octahedral.glsl
 #include "octahedral.glsl"
 
 // Additive Gaussian contribution of one source at a texel direction. sigma ~ angularRadius/2, so t=2 is about

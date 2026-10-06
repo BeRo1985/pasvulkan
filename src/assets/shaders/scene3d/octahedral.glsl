@@ -34,6 +34,15 @@ vec2 wrapOctahedralCoordinates(vec2 uv){
 }
 
 ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
+#ifdef OCTAHEDRAL_WRAP_INSIDE_FAST_PATH
+  // Texels inside the map come out unchanged anyway, and in a compute pass that wraps every sample they are nearly
+  // all of them, while the modulo arithmetic below is expensive integer work that dominated whole water passes.
+  // Opt-in per shader: in fragment shaders, which only wrap on their rare edge paths, the extra code measured
+  // slower (WaterRenderPass +0.2 ms on an RX 9070 XT).
+  if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
+    return texel;
+  }
+#endif
   ivec2 tiledSize = texSize * 2; 
   ivec2 tiledWrapped = ((texel % tiledSize) + tiledSize) % tiledSize;
   ivec2 isWrapped = ivec2(greaterThanEqual(tiledWrapped, texSize));

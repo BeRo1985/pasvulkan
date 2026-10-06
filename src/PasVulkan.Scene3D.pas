@@ -5043,6 +5043,11 @@ type EpvScene3D=class(Exception);
        fProcessFrameTimerQueryMeshBoundsComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshletBoundsComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
+       // Splitting the 'Planet Water Simulation' timer around single passes inside it, see
+       // BeginPlanetWaterSimulationSubTimer. Timer queries cannot nest, so the outer one is stopped and resumed.
+       fPlanetWaterSimulationTimerQueue:TpvVulkanQueue; // Queue the outer water simulation timer runs on, nil while it is not running
+       fPlanetWaterSimulationSubTimerIndex:TpvSizeInt;
+       fPlanetWaterSimulationSubTimerBeginTime:TpvHighResolutionTime;
        fSceneTimes:TSceneTimes;
        fPointerToSceneTimes:PSceneTimes;
        fDeltaTimes:TDeltaTimes;
@@ -5229,6 +5234,11 @@ type EpvScene3D=class(Exception);
                                          const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessPlanetWaterSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                const aInFlightFrameIndex:TpvSizeInt);
+       procedure BeginPlanetWaterSimulationSubTimer(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                    const aInFlightFrameIndex:TpvSizeInt;
+                                                    const aName:TpvUTF8String);
+       procedure EndPlanetWaterSimulationSubTimer(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessPlanetGrassAgeMapUpdateSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                               const aInFlightFrameIndex:TpvSizeInt);
        procedure ProcessPlanetGrassAgeMapSandboxGrowthSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -35781,7 +35791,8 @@ begin
 
    begin
 
-    Count:=6+IfThen(fMeshShaders,1,0)+IfThen(fRaytracingActive,1,0);
+    // +2 for one pass split out of the water simulation timer: its own entry plus the resumed remainder
+    Count:=6+2+IfThen(fMeshShaders,1,0)+IfThen(fRaytracingActive,1,0);
 
     for Index:=0 to fCountInFlightFrames-1 do begin
      fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
@@ -35795,6 +35806,9 @@ begin
     fProcessFrameTimerQueryMeshBoundsComputeIndex:=-1;
     fProcessFrameTimerQueryMeshletBoundsComputeIndex:=-1;
     fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
+
+    fPlanetWaterSimulationTimerQueue:=nil;
+    fPlanetWaterSimulationSubTimerIndex:=-1;
 
     fLastProcessFrameTimerQueryResults:=nil;
 
@@ -42435,10 +42449,16 @@ begin
 
     fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    if fProcessFrameTimerQueryPlanetSimulationIndex>=0 then begin
+     fPlanetWaterSimulationTimerQueue:=fPlanetWaterSimulationQueue;
+    end;
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(PlanetWaterSimulationCommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
     ProcessPlanetWaterSimulations(PlanetWaterSimulationCommandBuffer,aInFlightFrameIndex);
     fVulkanDevice.DebugUtils.CmdBufLabelEnd(PlanetWaterSimulationCommandBuffer);
-    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fPlanetWaterSimulationTimerQueue:=nil;
+    if fProcessFrameTimerQueryPlanetSimulationIndex>=0 then begin
+     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    end;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationQueue,PlanetWaterSimulationCommandBuffer);
 
     // Approach B / default: grass-age-map update runs on the parallel water
@@ -42520,10 +42540,16 @@ begin
 
     fProcessFrameTimerQueryPlanetSimulationIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Planet Water Simulation');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+    if fProcessFrameTimerQueryPlanetSimulationIndex>=0 then begin
+     fPlanetWaterSimulationTimerQueue:=fVulkanProcessFrameQueue;
+    end;
     fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet Water Simulation',[0.25,1.0,0.5,1.0]);
     ProcessPlanetWaterSimulations(CommandBuffer,aInFlightFrameIndex);
     fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
-    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fPlanetWaterSimulationTimerQueue:=nil;
+    if fProcessFrameTimerQueryPlanetSimulationIndex>=0 then begin
+     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryPlanetSimulationIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    end;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    end;
@@ -44642,6 +44668,35 @@ begin
  finally
   TpvScene3DPlanets(fPlanets).Lock.ReleaseRead;
  end;
+end;
+
+// Gives a single pass inside the water simulation its own GPU timer. Timer queries cannot nest, so the running
+// 'Planet Water Simulation' timer is stopped here and resumed as 'Planet Water Simulation (cont.)' by
+// EndPlanetWaterSimulationSubTimer; the water simulation total is then the sum of all these entries. Does
+// nothing when the water simulation timer is not running, for example when there are no free timer slots.
+procedure TpvScene3D.BeginPlanetWaterSimulationSubTimer(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                        const aInFlightFrameIndex:TpvSizeInt;
+                                                        const aName:TpvUTF8String);
+begin
+ fPlanetWaterSimulationSubTimerIndex:=-1;
+ if assigned(fPlanetWaterSimulationTimerQueue) then begin
+  fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationTimerQueue,aCommandBuffer);
+  fPlanetWaterSimulationSubTimerIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationTimerQueue,aCommandBuffer,aName);
+  fPlanetWaterSimulationSubTimerBeginTime:=pvApplication.HighResolutionTimer.GetTime;
+ end;
+end;
+
+procedure TpvScene3D.EndPlanetWaterSimulationSubTimer(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                      const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if assigned(fPlanetWaterSimulationTimerQueue) then begin
+  if fPlanetWaterSimulationSubTimerIndex>=0 then begin
+   fLastProcessFrameCPUTimeValues[fPlanetWaterSimulationSubTimerIndex]:=pvApplication.HighResolutionTimer.GetTime-fPlanetWaterSimulationSubTimerBeginTime;
+  end;
+  fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fPlanetWaterSimulationTimerQueue,aCommandBuffer);
+  fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fPlanetWaterSimulationTimerQueue,aCommandBuffer,'Planet Water Simulation (cont.)');
+ end;
+ fPlanetWaterSimulationSubTimerIndex:=-1;
 end;
 
 procedure TpvScene3D.ProcessPlanetGrassAgeMapUpdateSimulations(const aCommandBuffer:TpvVulkanCommandBuffer;

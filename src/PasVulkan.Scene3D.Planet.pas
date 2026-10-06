@@ -1785,6 +1785,18 @@ type TpvScene3DPlanets=class;
             { TWaterSimulation }
             TWaterSimulation=class
              public
+              const // Activity gating of the surface levelling bake, all in one place
+                    // A bake workgroup is skipped when the water activity (per step max |dH| in metres, decayed by
+                    // 0.9 per update) stays below this everywhere its stencil reaches. Deliberately an order of
+                    // magnitude more conservative than the calm-surface constants PLANET_WATER_CALM_ACTIVITY_LOW/HIGH.
+                    LevelBakeActivityThreshold=1e-4;
+                    // Every this many bakes each workgroup is rebaked regardless of the activity, one band of
+                    // workgroup rows per bake. Bounds how long slow changes below the threshold can go stale.
+                    LevelBakeRefreshPeriod=32;
+                    // Number of ungated full bakes after something the activity map cannot see invalidated the
+                    // whole image: a height map change, a new stencil width, or the first bake. More than one,
+                    // because the height map image the bake reads is per in flight frame and catches up later.
+                    LevelBakeFullBakesAfterChange=8;
               type TPushConstants=packed record
 
                     Attenuation:TpvFloat; // The attenuation factor for the water flow, used to scale the water flow based on the height difference
@@ -1879,6 +1891,10 @@ type TpvScene3DPlanets=class;
                     LevelStep:TpvInt32;
                     RippleResolution:TpvUInt32;
                     RippleReadIndex:TpvUInt32;
+                    ActivityResolution:TpvUInt32;
+                    ActivityThreshold:TpvFloat; // 0 = no gating, every workgroup bakes
+                    RefreshPeriod:TpvUInt32;
+                    RefreshPhase:TpvUInt32;
                    end;
                    PLevelBakePushConstants=^TLevelBakePushConstants;
                    { TWaterRipplesSimulation (nested) }
@@ -2075,6 +2091,10 @@ type TpvScene3DPlanets=class;
               fActivityPushConstants:TActivityPushConstants;
               fFlowDownsamplePushConstants:TFlowDownsamplePushConstants;
               fLevelBakePushConstants:TLevelBakePushConstants;
+              fLevelBakeFullBakes:TpvSizeInt; // Remaining ungated full bakes, see LevelBakeFullBakesAfterChange
+              fLevelBakeHeightMapGeneration:TpvUInt64; // Height map generation the standing bake was made against
+              fLevelBakeLevelStep:TpvInt32; // Stencil width the standing bake was made with
+              fLevelBakeRefreshPhase:TpvUInt32;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
               fTimeAccumulator:TpvDouble;
@@ -3551,6 +3571,7 @@ type TpvScene3DPlanets=class;
        fWaterDetailFlowReference:TpvFloat;         // Flow magnitude that counts as full strength for the two above, so the coupling does not depend on the absolute scale of the solver's outflow values.
        fWaterSurfaceLevelAmount:TpvFloat;          // Blends the RENDERED water surface from the raw simulated column (0) toward a levelled one (1). Still water is an equipotential surface, but the pipe solver's equilibrium on the distorted octahedral grid is not, which leaves standing bumps following the terrain. The simulation itself is untouched, only what is drawn.
        fWaterSurfaceLevelStep:TpvFloat;            // Stencil width in height map texels over which the rendered surface is averaged. 0 disables the levelling. Too wide and the level runs over shallow banks, so this is the counterpart of the bump removal.
+       fWaterSurfaceLevelActivityGating:Boolean;   // Lets the level bake skip regions whose water did not move, see TWaterSimulation.LevelBakeActivityThreshold. Only off for A/B measurements.
        fWaterSurfaceLevelBaked:Boolean;            // Set by the level bake pass once the image holds a current bake and its preconditions hold; gates the fragment shader onto the one-sample path instead of the inline stencil. Never persisted, it is re-established every time the bake runs.
        fWaterNormalizedDownwelling:Boolean;        // When true the direct downwelling irradiance carries the Lambertian OneOverPI, so it meets the ambient term in one convention instead of outweighing it by PI. Off reproduces the historical look. Affects deep water color, shore foam and whitecaps.
        fWaterShoreFoamColor:TpvVector3;            // Linear color of the shore foam overlay.
@@ -4056,6 +4077,7 @@ type TpvScene3DPlanets=class;
        property WaterDetailFlowReference:TpvFloat read fWaterDetailFlowReference write fWaterDetailFlowReference;
        property WaterSurfaceLevelAmount:TpvFloat read fWaterSurfaceLevelAmount write fWaterSurfaceLevelAmount;
        property WaterSurfaceLevelStep:TpvFloat read fWaterSurfaceLevelStep write fWaterSurfaceLevelStep;
+       property WaterSurfaceLevelActivityGating:Boolean read fWaterSurfaceLevelActivityGating write fWaterSurfaceLevelActivityGating;
        property WaterNormalizedDownwelling:Boolean read fWaterNormalizedDownwelling write fWaterNormalizedDownwelling;
        property WaterShoreFoamDepthStart:TpvFloat read fWaterShoreFoamDepthStart write fWaterShoreFoamDepthStart;
        property WaterShoreFoamDepthEnd:TpvFloat read fWaterShoreFoamDepthEnd write fWaterShoreFoamDepthEnd;
@@ -20466,6 +20488,12 @@ begin
                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                            [],
                                            0);
+  fLevelBakeDescriptorSetLayout.AddBinding(4, // uImageWaterActivityMap, read only, for skipping workgroups whose region did not change
+                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                           1,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                           [],
+                                           0);
   fLevelBakeDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fLevelBakeDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fLevelBakeDescriptorSetLayout');
 
@@ -20479,7 +20507,7 @@ begin
                                                            TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                            TpvScene3D(fPlanet.fScene3D).CountInFlightFrames);
   fLevelBakeDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),4*TpvScene3D(fPlanet.fScene3D).CountInFlightFrames);
-  fLevelBakeDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1*TpvScene3D(fPlanet.fScene3D).CountInFlightFrames);
+  fLevelBakeDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),2*TpvScene3D(fPlanet.fScene3D).CountInFlightFrames);
   fLevelBakeDescriptorPool.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fLevelBakeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fLevelBakeDescriptorPool');
 
@@ -20524,6 +20552,16 @@ begin
                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                         [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                                        fPlanet.fData.fWaterLevelMapImage.VulkanImageView.Handle,
+                                                                                       VK_IMAGE_LAYOUT_GENERAL)],
+                                                        [],
+                                                        [],
+                                                        false);
+   fLevelBakeDescriptorSets[Index].WriteToDescriptorSet(4, // uImageWaterActivityMap
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                        [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                       fPlanet.fData.fWaterActivityMapImage.VulkanImageView.Handle,
                                                                                        VK_IMAGE_LAYOUT_GENERAL)],
                                                         [],
                                                         [],
@@ -20631,6 +20669,11 @@ begin
  fLastTimeAccumulator:=-1.0;
 
  fRippleTimeAccumulator:=0.0;
+
+ fLevelBakeFullBakes:=LevelBakeFullBakesAfterChange;
+ fLevelBakeHeightMapGeneration:=High(TpvUInt64);
+ fLevelBakeLevelStep:=0;
+ fLevelBakeRefreshPhase:=0;
 
  fWaterRipplesSimulation:=TWaterRipplesSimulation.Create(self);
 
@@ -20819,11 +20862,13 @@ end;
 procedure TpvScene3DPlanet.TWaterSimulation.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble;const aInFlightFrameIndex:TpvSizeInt);
 var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    LevelBakeImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     WaterMiniMapBufferCopy:TVkBufferCopy;
     WaterModificationItem:PWaterModificationItem;
-    DoDownsample,DoInterpolate,First:Boolean;
+    DoDownsample,DoInterpolate,First,LevelBakeGated:Boolean;
+    LevelBakeLevelStep:TpvInt32;
     MaximumTimeAccumulator:TpvDouble;
 begin
 
@@ -21572,40 +21617,86 @@ begin
  // frame. A frozen simulation leaves the image standing, which is correct: its inputs are frozen with it.
  // The rain splash precondition is checked here rather than in the shader: its contribution is analytic per
  // frame, so a per step bake could not carry it, and the fragment shader stays on its inline path instead.
+ //
+ // Most of the map does not change between two steps, so the bake is gated per workgroup on the water activity
+ // map, see LevelBakeActivityThreshold. Whatever invalidates the image without showing up as water activity
+ // forces a few ungated full bakes instead, and those run even while the simulation is frozen.
  if (fPlanet.fWaterSurfaceLevelAmount>0.0) and
     (fPlanet.fWaterSurfaceLevelStep>0.0) and
-    (abs(fPlanet.fWaterRainSplashAmplitude)<=1e-6) and
-    DoDownsample then begin
+    (abs(fPlanet.fWaterRainSplashAmplitude)<=1e-6) then begin
+  LevelBakeLevelStep:=Max(1,Round(fPlanet.fWaterSurfaceLevelStep));
+  if (not fPlanet.fWaterSurfaceLevelBaked) or
+     (fLevelBakeHeightMapGeneration<>fPlanet.fData.fHeightMapGeneration) or
+     (fLevelBakeLevelStep<>LevelBakeLevelStep) then begin
+   // Terrain edits change the terrain radius the average is formed from, but not the water activity
+   fLevelBakeHeightMapGeneration:=fPlanet.fData.fHeightMapGeneration;
+   fLevelBakeLevelStep:=LevelBakeLevelStep;
+   fLevelBakeFullBakes:=LevelBakeFullBakesAfterChange;
+  end;
+ end else begin
+  LevelBakeLevelStep:=0;
+ end;
+ if (LevelBakeLevelStep>0) and (DoDownsample or (fLevelBakeFullBakes>0)) then begin
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterLevelBake',[0.5,0.5,0.5,1.0]);
 
+  TpvScene3D(fPlanet.fScene3D).BeginPlanetWaterSimulationSubTimer(aCommandBuffer,aInFlightFrameIndex,'Planet Water Level Bake');
+
+  // The gate needs the activity map of this very step, and it is only kept up to date while the calm-surface
+  // normal uses it. Ripples are not part of the activity at all, so they would go stale behind the gate.
+  LevelBakeGated:=(fLevelBakeFullBakes<=0) and
+                  fPlanet.fWaterSurfaceLevelActivityGating and
+                  fPlanet.fWaterCalmSurfaceNormal and
+                  not (fPlanet.fWaterRipplesActive and (fPlanet.fWaterRippleMapResolution>0));
+  if fLevelBakeFullBakes>0 then begin
+   dec(fLevelBakeFullBakes);
+  end;
+
   // Order this against the water map image the interpolation pass writes and against the previous frame's
-  // write of the level image.
-  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                   TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                   VK_IMAGE_LAYOUT_GENERAL,
-                                                   VK_IMAGE_LAYOUT_GENERAL,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   VK_QUEUE_FAMILY_IGNORED,
-                                                   fPlanet.fData.fWaterLevelMapImage.VulkanImage.Handle,
-                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  // write of the level image, and the activity read against the activity pass of this frame, whose own
+  // barrier only targets the fragment stage when the simulation runs on the universal queue.
+  LevelBakeImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                fPlanet.fData.fWaterLevelMapImage.VulkanImage.Handle,
+                                                                TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  LevelBakeImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                fPlanet.fData.fWaterActivityMapImage.VulkanImage.Handle,
+                                                                TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
                                     0,nil,
-                                    1,@ImageMemoryBarrier);
+                                    2,@LevelBakeImageMemoryBarriers[0]);
 
   fLevelBakePushConstants.BottomRadius:=fPlanet.fBottomRadius;
   fLevelBakePushConstants.TopRadius:=fPlanet.fTopRadius;
   fLevelBakePushConstants.Resolution:=fPlanet.fWaterMapResolution;
-  fLevelBakePushConstants.LevelStep:=Max(1,Round(fPlanet.fWaterSurfaceLevelStep));
+  fLevelBakePushConstants.LevelStep:=LevelBakeLevelStep;
   if fPlanet.fWaterRipplesActive and (fPlanet.fWaterRippleMapResolution>0) then begin
    fLevelBakePushConstants.RippleResolution:=fPlanet.fWaterRippleMapResolution;
   end else begin
    fLevelBakePushConstants.RippleResolution:=0;
   end;
   fLevelBakePushConstants.RippleReadIndex:=fPlanet.fData.fWaterRippleBufferIndex and 1;
+  fLevelBakePushConstants.ActivityResolution:=fPlanet.fWaterMiniMapResolution;
+  if LevelBakeGated then begin
+   fLevelBakePushConstants.ActivityThreshold:=LevelBakeActivityThreshold;
+  end else begin
+   fLevelBakePushConstants.ActivityThreshold:=0.0;
+  end;
+  fLevelBakePushConstants.RefreshPeriod:=LevelBakeRefreshPeriod;
+  fLevelBakePushConstants.RefreshPhase:=fLevelBakeRefreshPhase;
+  fLevelBakeRefreshPhase:=(fLevelBakeRefreshPhase+1) mod LevelBakeRefreshPeriod;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fLevelBakePipeline.Handle);
 
@@ -21652,14 +21743,15 @@ begin
                                      1,@ImageMemoryBarrier);
   end;
 
-  // Only now may the fragment shader take the one-sample path: the image holds a current bake.
+  // Only now may the fragment shader take the one-sample path: the image holds a current bake. A gated bake
+  // never gets here with the flag still false, since a missing bake forces full ones first.
   fPlanet.fWaterSurfaceLevelBaked:=true;
+
+  TpvScene3D(fPlanet.fScene3D).EndPlanetWaterSimulationSubTimer(aCommandBuffer,aInFlightFrameIndex);
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
- end else if (fPlanet.fWaterSurfaceLevelAmount<=0.0) or
-             (fPlanet.fWaterSurfaceLevelStep<=0.0) or
-             (abs(fPlanet.fWaterRainSplashAmplitude)>1e-6) then begin
+ end else if LevelBakeLevelStep<=0 then begin
   // Preconditions gone, so the standing image must not be trusted any more and the inline path takes over.
   fPlanet.fWaterSurfaceLevelBaked:=false;
  end;
@@ -35217,6 +35309,7 @@ begin
  fWaterDetailFlowReference:=0.05;
  fWaterSurfaceLevelAmount:=0.0; // off by default, so the rendered surface stays the raw simulated one
  fWaterSurfaceLevelStep:=8.0;
+ fWaterSurfaceLevelActivityGating:=true;
  fWaterSurfaceLevelBaked:=false; // Nothing baked yet, so the inline path is used until the first bake has run
  fWaterNormalizedDownwelling:=false; // off reproduces the historical unnormalized direct downwelling irradiance
  fWaterShoreFoamColor:=TpvVector3.InlineableCreate(1.0,1.0,1.0); // neutral white foam
@@ -40041,6 +40134,7 @@ begin
   fWaterCoarseSimNormalStep:=TPasJSON.GetNumber(JSONWaterObject.Properties['coarsesimnormalstep'],fWaterCoarseSimNormalStep);
   fWaterSurfaceLevelAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['surfacelevelamount'],fWaterSurfaceLevelAmount);
   fWaterSurfaceLevelStep:=TPasJSON.GetNumber(JSONWaterObject.Properties['surfacelevelstep'],fWaterSurfaceLevelStep);
+  fWaterSurfaceLevelActivityGating:=TPasJSON.GetBoolean(JSONWaterObject.Properties['surfacelevelactivitygating'],fWaterSurfaceLevelActivityGating);
   fWaterCalmSurfaceNormal:=TPasJSON.GetBoolean(JSONWaterObject.Properties['calmsurfacenormal'],fWaterCalmSurfaceNormal);
   fWaterAbsorption:=JSONToVector3(JSONWaterObject.Properties['absorption'],fWaterAbsorption);
   fWaterDeepColor:=JSONToVector3(JSONWaterObject.Properties['deepcolor'],fWaterDeepColor);

@@ -55,15 +55,21 @@ layout(push_constant) uniform PushConstants {
   int levelStep; // Stencil spacing in texels; the inline path uses the same value
   uint rippleResolution; // 0 when the ripple subsystem is off, matching getWaterRippleHeight's gate
   uint rippleReadIndex; // 0 or 1, selects the current ripple ping-pong image
+  uint activityResolution; // Resolution of the water activity map
+  float activityThreshold; // Workgroups whose whole stencil reach stays below this activity keep their old bake; 0 bakes everything
+  uint refreshPeriod; // Every refreshPeriod-th band of workgroup rows bakes regardless of the activity ...
+  uint refreshPhase; // ... namely the band this selects, which advances by one per bake
 } pushConstants;
 
 layout(set = 0, binding = 0) uniform sampler2D uTextureHeightMap;
 layout(set = 0, binding = 1) uniform sampler2D uTextureWaterMap;
 layout(set = 0, binding = 2) uniform sampler2D uTextureRippleMaps[2];
 layout(set = 0, binding = 3, r32f) uniform writeonly image2D uImageWaterLevelMap;
+layout(set = 0, binding = 4, r32f) uniform readonly image2D uImageWaterActivityMap;
 
 /* clang-format on */
 
+#define OCTAHEDRAL_WRAP_INSIDE_FAST_PATH // see wrapOctahedralTexelCoordinates in octahedral.glsl, it dominated the cost of this pass
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 
@@ -88,7 +94,53 @@ float getTerrainRadiusAt(ivec2 texel){
   return mix(pushConstants.bottomRadius, pushConstants.topRadius, texelFetch(uTextureHeightMap, texel, 0).x);
 }
 
+// Whether this workgroup's region may have changed since its last bake. The water activity map holds the
+// decayed per step maximum of |dH| per 16x16 block of the water simulation, which at the usual activity shift
+// of 4 is exactly one of these workgroups. Checking only the own block is not enough: the stencil reaches
+// levelStep texels past the workgroup edge into the neighbouring blocks, and a change there changes the average
+// here too. So every activity texel the stencil can reach is checked, wrapped the same way the stencil itself
+// wraps. Terrain changes are not in the activity map; the Pascal side forces full bakes for them.
+//
+// The decision is made once per workgroup, with each of those activity texels read by its own invocation. Done
+// per invocation, or serially by one invocation, the check costs about as much as the bake it is meant to save.
+
+shared bool sharedWorkGroupNeedsBake;
+
+bool workGroupNeedsBake(){
+  const uint localIndex = gl_LocalInvocationIndex;
+  const ivec2 workGroup = ivec2(gl_WorkGroupID.xy);
+  if(localIndex == 0u){
+    sharedWorkGroupNeedsBake = (pushConstants.activityThreshold <= 0.0) ||
+                               ((uint(workGroup.y) % max(pushConstants.refreshPeriod, 1u)) == pushConstants.refreshPhase);
+  }
+  memoryBarrierShared();
+  barrier();
+  if(!sharedWorkGroupNeedsBake){
+    const int activityResolution = int(pushConstants.activityResolution);
+    const float activityScale = float(activityResolution) / float(int(pushConstants.resolution));
+    const ivec2 firstTexel = (workGroup * WORKGROUP_SIZE) - ivec2(pushConstants.levelStep);
+    const ivec2 lastTexel = (workGroup * WORKGROUP_SIZE) + ivec2((WORKGROUP_SIZE - 1) + pushConstants.levelStep);
+    const ivec2 firstActivityTexel = ivec2(floor(vec2(firstTexel) * activityScale));
+    // Bounded to what one workgroup can read in one go, should a huge stencil ever be configured
+    const ivec2 countActivityTexels = clamp((ivec2(floor(vec2(lastTexel) * activityScale)) - firstActivityTexel) + ivec2(1), ivec2(1), ivec2(WORKGROUP_SIZE));
+    if(localIndex < uint(countActivityTexels.x * countActivityTexels.y)){
+      const ivec2 activityTexel = firstActivityTexel + ivec2(int(localIndex) % countActivityTexels.x, int(localIndex) / countActivityTexels.x);
+      if(imageLoad(uImageWaterActivityMap, wrapOctahedralTexelCoordinates(activityTexel, ivec2(activityResolution))).x >= pushConstants.activityThreshold){
+        sharedWorkGroupNeedsBake = true; // Several invocations may store this at once, all with the same value
+      }
+    }
+    memoryBarrierShared();
+    barrier();
+  }
+  return sharedWorkGroupNeedsBake;
+}
+
 void main(){
+
+  // Nothing within reach moved, so the standing value is still the right one.
+  if(!workGroupNeedsBake()){
+    return;
+  }
 
   const ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 

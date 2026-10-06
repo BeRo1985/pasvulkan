@@ -35,6 +35,7 @@ layout(set = 0, binding = 1, std430) readonly buffer InWaterHeightMapB {
 
 layout(set = 0, binding = 2, r32f) writeonly uniform image2D uImageWaterMap;  
 
+#define OCTAHEDRAL_WRAP_INSIDE_FAST_PATH // see wrapOctahedralTexelCoordinates in octahedral.glsl
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 

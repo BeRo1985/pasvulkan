@@ -99,6 +99,7 @@ layout(set = 0, binding = 6, std430) readonly buffer WaterMetricMap {
   float values[]; // Five factors per texel: areaScale, kEast, kSouth, kWest, kNorth
 } waterMetricMap;
 
+#define OCTAHEDRAL_WRAP_INSIDE_FAST_PATH // see wrapOctahedralTexelCoordinates in octahedral.glsl
 #include "pcg.glsl"
 
 #include "octahedral.glsl"

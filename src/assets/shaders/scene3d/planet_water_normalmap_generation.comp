@@ -21,6 +21,7 @@ layout(push_constant) uniform PushConstants {
   float topRadius;
 } pushConstants;
 
+#define OCTAHEDRAL_WRAP_INSIDE_FAST_PATH // see wrapOctahedralTexelCoordinates in octahedral.glsl
 #include "octahedralmap.glsl"
 #include "octahedral.glsl"
 
