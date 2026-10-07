@@ -175,6 +175,7 @@ type TpvScene3DRenderer=class;
        fOptimizedCubeMapFormat:TVkFormat;
        fFastSky:boolean;
        fFastAerialPerspective:boolean;
+       fWaterAerialPerspectiveMode:TpvScene3DRendererWaterAerialPerspectiveMode; // What the player chose; the planet caps it, see TpvScene3DPlanet.WaterAerialPerspectiveMaxMode
        fAtmosphereBlueNoise:boolean;
        fAtmosphereShadows:boolean;
        fUseDepthPrepass:boolean;
@@ -305,6 +306,7 @@ type TpvScene3DRenderer=class;
        property OptimizedCubeMapFormat:TVkFormat read fOptimizedCubeMapFormat;
        property FastSky:boolean read fFastSky write fFastSky;
        property FastAerialPerspective:boolean read fFastAerialPerspective write fFastAerialPerspective;
+       property WaterAerialPerspectiveMode:TpvScene3DRendererWaterAerialPerspectiveMode read fWaterAerialPerspectiveMode write fWaterAerialPerspectiveMode;
        property AtmosphereBlueNoise:boolean read fAtmosphereBlueNoise write fAtmosphereBlueNoise;
        property AtmosphereShadows:boolean read fAtmosphereShadows write fAtmosphereShadows;
        property UseDepthPrepass:boolean read fUseDepthPrepass;
@@ -543,6 +545,7 @@ begin
 
  fFastSky:=false;
  fFastAerialPerspective:=false;
+ fWaterAerialPerspectiveMode:=TpvScene3DRendererWaterAerialPerspectiveMode.CameraVolume; // the cheap stage as the default, since the full one costs about as much as a second atmosphere
  fAtmosphereBlueNoise:=true;
  fAtmosphereShadows:=true;
 

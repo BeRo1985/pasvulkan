@@ -142,6 +142,7 @@ type TpvScene3DAtmosphere=class;
              FrameIndex:TpvUInt32;
              Flags:TpvUInt32;
              CountSamples:TpvUInt32;
+             RadianceWeightMaskScale:TpvFloat; // Strength of the weighted aerial perspective, only read by the shader variants which use the radiance weight mask
             end;
             PRaymarchingPushConstants=^TRaymarchingPushConstants;
             TCloudWeatherMapPushConstants=packed record
@@ -822,6 +823,7 @@ type TpvScene3DAtmosphere=class;
               fRaymarchingPassCloudsTransmittanceImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
               fRaymarchingPassCloudsDepthImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
               fRaymarchingPassCloudsShadowMapImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
+              fRaymarchingPassRadianceWeightMaskImageViews:array[0..MaxInFlightFrames-1] of TVkImageView;
               fRaymarchingPassDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fRaymarchingPassDescriptorSetFirsts:array[0..MaxInFlightFrames-1] of boolean;
               fGlobalDescriptorPool:TpvVulkanDescriptorPool;
@@ -846,7 +848,8 @@ type TpvScene3DAtmosphere=class;
                                       const aCloudsInscatteringImageView:TVkImageView;
                                       const aCloudsTransmittanceImageView:TVkImageView;
                                       const aCloudsDepthImageView:TVkImageView;
-                                      const aCloudsShadowMapImageView:TVkImageView);
+                                      const aCloudsShadowMapImageView:TVkImageView;
+                                      const aRadianceWeightMaskImageView:TVkImageView=VK_NULL_HANDLE);
               procedure Setup(const aRenderPass:TpvVulkanRenderPass;
                               const aRenderPassSubpassIndex:TpvSizeInt;
                               const aSampleCount:TVkSampleCountFlagBits;
@@ -869,6 +872,7 @@ type TpvScene3DAtmosphere=class;
                              const aCloudsTransmittanceImageView:TVkImageView;
                              const aCloudsDepthImageView:TVkImageView;
                              const aCloudsShadowMapImageView:TVkImageView;
+                             const aRadianceWeightMaskImageView:TVkImageView;
                              var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
              published
               property Atmosphere:TpvScene3DAtmosphere read fAtmosphere;
@@ -992,6 +996,7 @@ type TpvScene3DAtmosphere=class;
                       const aCloudsTransmittanceImageView:TVkImageView;
                       const aCloudsDepthImageView:TVkImageView;
                       const aCloudsShadowMapImageView:TVkImageView;
+                      const aRadianceWeightMaskImageView:TVkImageView;
                       const aRendererInstance:TObject;
                       var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       public
@@ -1043,6 +1048,7 @@ type TpvScene3DAtmosphere=class;
                       const aCloudsTransmittanceImageView:TVkImageView;
                       const aCloudsDepthImageView:TVkImageView;
                       const aCloudsShadowMapImageView:TVkImageView;
+                      const aRadianceWeightMaskImageView:TVkImageView;
                       const aRendererInstance:TObject;
                       var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
       published
@@ -3067,7 +3073,7 @@ begin
                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*4);
- fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*8);
+ fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*9); // 9 instead of 8 since the radiance weight mask of binding 15 came along
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*2);
  fRaymarchingPassDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,TpvScene3D(fAtmosphere.fScene3D).CountInFlightFrames*1);
  fRaymarchingPassDescriptorPool.Initialize;
@@ -3448,15 +3454,28 @@ procedure TpvScene3DAtmosphere.TRendererInstance.SetImageViews(const aInFlightFr
                                                                const aCloudsInscatteringImageView:TVkImageView;
                                                                const aCloudsTransmittanceImageView:TVkImageView;
                                                                const aCloudsDepthImageView:TVkImageView;
-                                                               const aCloudsShadowMapImageView:TVkImageView);
+                                                               const aCloudsShadowMapImageView:TVkImageView;
+                                                               const aRadianceWeightMaskImageView:TVkImageView);
+var RadianceWeightMaskImageView:TVkImageView;
 begin
+
+ // Only the shader variants which were built for a separately composited destination read the radiance
+ // weight mask, so when nobody hands one in, the binding just needs to hold something valid of the same
+ // kind. The clouds shadow map is a two dimensional array as well and is always there, so it stands in as
+ // that placeholder, which no shader ever reads in this case.
+ if aRadianceWeightMaskImageView<>VK_NULL_HANDLE then begin
+  RadianceWeightMaskImageView:=aRadianceWeightMaskImageView;
+ end else begin
+  RadianceWeightMaskImageView:=aCloudsShadowMapImageView;
+ end;
 
  if (fRaymarchingPassDepthImageViews[aInFlightFrameIndex]<>aDepthImageView) or
     (fRaymarchingPassCascadedShadowMapImageViews[aInFlightFrameIndex]<>aCascadedShadowMapImageView) or
     (fRaymarchingPassCloudsInscatteringImageViews[aInFlightFrameIndex]<>aCloudsInscatteringImageView) or
     (fRaymarchingPassCloudsTransmittanceImageViews[aInFlightFrameIndex]<>aCloudsTransmittanceImageView) or
     (fRaymarchingPassCloudsDepthImageViews[aInFlightFrameIndex]<>aCloudsDepthImageView) or
-    (fRaymarchingPassCloudsShadowMapImageViews[aInFlightFrameIndex]<>aCloudsShadowMapImageView) then begin
+    (fRaymarchingPassCloudsShadowMapImageViews[aInFlightFrameIndex]<>aCloudsShadowMapImageView) or
+    (fRaymarchingPassRadianceWeightMaskImageViews[aInFlightFrameIndex]<>RadianceWeightMaskImageView) then begin
 
   if fRaymarchingPassDepthImageViews[aInFlightFrameIndex]<>aDepthImageView then begin
 
@@ -3560,7 +3579,24 @@ begin
 
   end;
 
-  if fRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex] then begin 
+  if fRaymarchingPassRadianceWeightMaskImageViews[aInFlightFrameIndex]<>RadianceWeightMaskImageView then begin
+
+   fRaymarchingPassRadianceWeightMaskImageViews[aInFlightFrameIndex]:=RadianceWeightMaskImageView;
+
+   fRaymarchingPassDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(15,
+                                                                            0,
+                                                                            1,
+                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                            [TVkDescriptorImageInfo.Create(TpvScene3DRendererInstance(fRendererInstance).Renderer.ClampedSampler.Handle,
+                                                                                                           RadianceWeightMaskImageView,
+                                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                            [],
+                                                                            [],
+                                                                            not fRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex]);
+
+  end;
+
+  if fRaymarchingPassDescriptorSetFirsts[aInFlightFrameIndex] then begin
    fRaymarchingPassDescriptorSets[aInFlightFrameIndex].Flush;
   end;
 
@@ -3979,7 +4015,11 @@ begin
 
  end;
 
- if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective then begin
+ // The precomputed camera volume is needed not only by the fast aerial perspective of the scene itself, but
+ // also by anyone who asked for the cheap stage of a separately composited layer, which reads the very same
+ // volume. One 32x32x32 dispatch, against a full second ray marching pass.
+ if TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).FastAerialPerspective or
+    (TpvScene3DRenderer(TpvScene3DRendererInstance(fRendererInstance).Renderer).WaterAerialPerspectiveMode=TpvScene3DRendererWaterAerialPerspectiveMode.CameraVolume) then begin
 
   // Camera volume
 
@@ -4274,13 +4314,14 @@ procedure TpvScene3DAtmosphere.TRendererInstance.Draw(const aInFlightFrameIndex:
                                                       const aCloudsTransmittanceImageView:TVkImageView;
                                                       const aCloudsDepthImageView:TVkImageView;
                                                       const aCloudsShadowMapImageView:TVkImageView;
+                                                      const aRadianceWeightMaskImageView:TVkImageView;
                                                       var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var DescriptorSets:array[0..2] of TVkDescriptorSet;
 begin
 
  TpvScene3D(fAtmosphere.fScene3D).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Atmosphere.Draw',[1.0,0.0,0.0,1.0]);
 
- SetImageViews(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView);
+ SetImageViews(aInFlightFrameIndex,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView,aRadianceWeightMaskImageView);
 
  aCommandBuffer.CmdPushConstants(TpvScene3DAtmosphereGlobals(TpvScene3D(fAtmosphere.fScene3D).AtmosphereGlobals).RaymarchingPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -5545,6 +5586,7 @@ procedure TpvScene3DAtmosphere.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                     const aCloudsTransmittanceImageView:TVkImageView;
                                     const aCloudsDepthImageView:TVkImageView;
                                     const aCloudsShadowMapImageView:TVkImageView;
+                                    const aRadianceWeightMaskImageView:TVkImageView;
                                     const aRendererInstance:TObject;
                                     var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var AtmosphereRendererInstance:TpvScene3DAtmosphere.TRendererInstance;
@@ -5555,7 +5597,7 @@ begin
   AtmosphereRendererInstance:=GetRenderInstance(aRendererInstance);
 
   if assigned(AtmosphereRendererInstance) then begin
-   AtmosphereRendererInstance.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView,aPushConstants);
+   AtmosphereRendererInstance.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView,aRadianceWeightMaskImageView,aPushConstants);
   end;
 
  end;
@@ -5639,6 +5681,7 @@ procedure TpvScene3DAtmospheres.Draw(const aInFlightFrameIndex:TpvSizeInt;
                                      const aCloudsTransmittanceImageView:TVkImageView;
                                      const aCloudsDepthImageView:TVkImageView;
                                      const aCloudsShadowMapImageView:TVkImageView;
+                                     const aRadianceWeightMaskImageView:TVkImageView;
                                      const aRendererInstance:TObject;
                                      var aPushConstants:TpvScene3DAtmosphereGlobals.TRaymarchingPushConstants);
 var Index:TpvSizeInt;
@@ -5652,7 +5695,7 @@ begin
    for Index:=0 to Count-1 do begin
     Atmosphere:=Items[Index];
     if assigned(Atmosphere) then begin
-     Atmosphere.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView,aRendererInstance,aPushConstants);
+     Atmosphere.Draw(aInFlightFrameIndex,aCommandBuffer,aDepthImageView,aCascadedShadowMapImageView,aCloudsInscatteringImageView,aCloudsTransmittanceImageView,aCloudsDepthImageView,aCloudsShadowMapImageView,aRadianceWeightMaskImageView,aRendererInstance,aPushConstants);
     end;
    end;
 
@@ -6182,6 +6225,17 @@ begin
 
   // Cloud shadow map texture
   fRaymarchingPassDescriptorSetLayout.AddBinding(14,
+                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 1,
+                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                 []);
+
+  // Per pixel fraction of the destination which is radiance of its own, as opposed to light it received from
+  // something further away, which carries the atmosphere of that longer path already. Only shader variants
+  // which were built for a separately composited destination read it, the others leave the binding alone, so
+  // it is fed with a neutral dummy whenever nobody hands a real mask in. Nothing about it is specific to what
+  // that destination is.
+  fRaymarchingPassDescriptorSetLayout.AddBinding(15,
                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),

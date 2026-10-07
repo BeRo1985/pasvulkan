@@ -41,6 +41,12 @@
 // Exists next to the metalness value itself so that the two looks can be compared without editing the value.
 #define PLANET_WATER_FLAG_DIELECTRIC_SURFACE (1u << 8u)
 
+// Show the own radiance fraction which the water surface hands to the aerial perspective pass as grey on the
+// water itself, instead of the water color. Near one means that the surface is almost purely its own light,
+// which is what it should be at the limb, where it is a mirror; lower means that background light shines or
+// refracts through it, which is what shallow water should show.
+#define PLANET_WATER_FLAG_DEBUG_OWN_RADIANCE_WEIGHT (1u << 9u)
+
 // Stencil widening factor for the coarse simulated-normal step (tuning knob, overridable at compile time).
 #ifndef PLANET_WATER_COARSE_SIM_NORMAL_STEP
 #define PLANET_WATER_COARSE_SIM_NORMAL_STEP 4.0

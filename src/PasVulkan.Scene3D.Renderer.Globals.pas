@@ -101,6 +101,20 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererShadowMode=^TpvScene3DRendererShadowMode;
 
+     // How the water layer, which is composited separately and which the atmosphere pass over the scene
+     // therefore never reaches, gets its aerial perspective. Off leaves it as it was before this existed,
+     // with unhazed water standing next to fully hazed terrain. CameraVolume takes the precomputed volume,
+     // which is nearly free but coarser than what the terrain next to it gets. Full runs the same ray
+     // marching as the terrain, which is the only one that matches it exactly, and the most expensive by far.
+     TpvScene3DRendererWaterAerialPerspectiveMode=
+      (
+       Off=0,
+       CameraVolume=1,
+       Full=2
+      );
+
+     PpvScene3DRendererWaterAerialPerspectiveMode=^TpvScene3DRendererWaterAerialPerspectiveMode;
+
      TpvScene3DRendererTransparencyMode=
       (
        Auto=0,

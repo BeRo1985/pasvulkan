@@ -60,6 +60,23 @@ layout(location = 0) out vec4 outFragColor;
   layout(location = 1) out vec2 outVelocity;
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
   layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
+#elif !(defined(UNDERWATER) || defined(WATER_CAUSTICS))
+  // The fraction of the written radiance which is the water's own, so its reflection, its volume scattering
+  // and its foam, as opposed to the background light which shines or refracts through the surface and which
+  // already carries the atmosphere of its own, far longer path. The aerial perspective of the short path
+  // from the camera to the water surface may only be applied to this fraction, otherwise the background part
+  // would end up fogged twice. The underwater and the caustics variants deliberately do not write it: the
+  // first one is background light throughout and the second one only adds on top of what already stands
+  // there, so both leave the cleared zero of their pixels alone through a zero write mask on their side.
+#ifdef MSAA
+  // Multisampled configurations hand the water surface depth over in a second channel as well, because the
+  // pass which applies the aerial perspective works on the resolved colour while the only depth buffer that
+  // holds this surface is the multisampled one. Resolving along with the weight costs a channel; resolving
+  // the depth separately would cost a pass.
+  layout(location = 1) out vec2 outFragWaterOwnRadianceWeight;
+#else
+  layout(location = 1) out float outFragWaterOwnRadianceWeight;
+#endif
 #endif
 
 #if !(defined(TESSELLATION) || defined(UNDERWATER) || defined(WATER_CAUSTICS))
@@ -697,6 +714,10 @@ vec3 waterColor; //vec3(0.090195, 0.115685, 0.12745);
 
 float waterDepth;
 
+// The fraction of the color written by doShade which is the water's own radiance, see the declaration of
+// outFragWaterOwnRadianceWeight above. Carried as a global for the same reason as waterDepth is.
+float waterOwnRadianceWeight = 0.0;
+
 // True when there is no opaque geometry behind the water fragment at all, so that the depth buffer still
 // holds its clear value there and the linearized distance to it is infinite. Set in main() for the paths
 // which read that depth buffer directly; the ray marching path clamps its distance against the water shell
@@ -1174,13 +1195,32 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
                      mix(refraction, vec3(waterF0), clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0)),
                      clamp(waterAbsorption.w, 0.0, 1.0));
 
+    // How much of the refraction above is the water's own light rather than the background's. The two mixes
+    // fade the background transmission toward the deep water scattering color and toward the volume look of
+    // the index of refraction, and both of those targets are light of the water itself, so their combined
+    // weight is exactly the own share. The per channel Beer-Lambert weight is averaged down to one number,
+    // because a single channel is all that the aerial perspective pass can be told.
+    float refractionOwnShare = mix(dot(clamp(vec3(1.0) - exp(-waterDepth * waterAbsorption.xyz), vec3(0.0), vec3(1.0)), vec3(1.0 / 3.0)),
+                                   clamp(1.0 - exp(-waterDepth * 1.0), 0.0, 1.0),
+                                   clamp(waterAbsorption.w, 0.0, 1.0));
+
     vec3 waterShade = mix(refraction * waterColor, reflection * waterColor, fresnel) + waterSubscattering;
+
+    // The same sum, but carrying only the own part: the reflection branch is own light throughout, of the
+    // refraction branch only the share computed above is, and the subscattering is own by definition.
+    vec3 waterOwnShade = mix(refraction * waterColor * refractionOwnShare, reflection * waterColor, fresnel) + waterSubscattering;
 #if defined(TESSELLATION)
     // Shore foam overlay: fades in where the water becomes shallow and saturates near the
     // waterline. Pattern is a cheap 3D FBM sampled in planet-space (see applyShoreFoam).
+    vec3 waterShadeBeforeFoam = waterShade;
     waterShade = applyShoreFoam(waterShade, inBlock.position, waterDepth);
     // Whitecap foam on wave crests, driven by waveAmplitude*waveSteepness threshold.
     waterShade = applyWhitecaps(waterShade, inBlock.position);
+    // Foam is lit by sky and sun and is therefore own light as well. Rather than running both of the foam
+    // patterns a second time on the own sum, which would mean evaluating their noise twice, whatever the
+    // foam added is credited to the own side. That is exact where the foam only brightens, and slightly
+    // under-credits it where it replaces darker water, which costs a little haze on foam and nothing else.
+    waterOwnShade += max(waterShade - waterShadeBeforeFoam, vec3(0.0));
 #endif
 
     // Thickness which decides how much of the water is painted over the background behind it. With opaque
@@ -1200,12 +1240,25 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     }
 #endif
 
+    float waterGate = clamp(1.0 - exp(-waterGateThickness * 6.0), 0.0, 1.0);
+
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
       waterShade,
-      clamp(1.0 - exp(-waterGateThickness * 6.0), 0.0, 1.0)
+      waterGate
       //clamp(1.0 - exp(-mix(waterHeight, waterDepth, max(0.0, dot(normal, viewDirection))) * 6.0), 0.0, 1.0)
     );
+
+    // Everything that the blend above let through from the background is background light as well, so the
+    // own share of the written color is the own part of the water shade, weighted by the same gate, over the
+    // whole of what was written. Measured as luminance, since the aerial perspective pass can only be given
+    // a single number and the haze does not care about the hue of what it is applied to.
+    {
+      const vec3 luminanceWeights = vec3(0.2125, 0.7154, 0.0721);
+      float ownLuminance = dot(max(waterOwnShade * waterGate, vec3(0.0)), luminanceWeights);
+      float totalLuminance = dot(max(color.xyz, vec3(0.0)), luminanceWeights);
+      waterOwnRadianceWeight = clamp(ownLuminance / max(totalLuminance, 1e-6), 0.0, 1.0);
+    }
 
     // GI debug cycle (Ctrl+Shift+F): replace the blended water colour with the single selected indirect / direct channel.
     if(giDebugDisplay != 0u){
@@ -1365,6 +1418,19 @@ void main(){
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+#ifdef MSAA
+  outFragWaterOwnRadianceWeight = vec2(waterOwnRadianceWeight, gl_FragCoord.z);
+#else
+  outFragWaterOwnRadianceWeight = waterOwnRadianceWeight;
+#endif
+
+  // Debug view of that weight, as grey on the water itself, so it can be judged where it matters without a
+  // second render target to look at. It should sit near one at the limb, where the surface is almost purely
+  // a mirror, and fall off in shallow and in strongly refracting water.
+  if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_DEBUG_OWN_RADIANCE_WEIGHT) != 0u){
+    outFragColor = vec4(vec3(waterOwnRadianceWeight), 1.0);
+  }
 
   if((inBlock.meshletID & 0x80000000u) != 0u) {
     outFragColor = vec4(meshletDebugColor(inBlock.meshletID & 0x7fffffffu), 1.0);
@@ -1612,5 +1678,16 @@ void main(){
   }
 
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
+
+#ifdef MSAA
+  outFragWaterOwnRadianceWeight = vec2(waterOwnRadianceWeight, gl_FragCoord.z);
+#else
+  outFragWaterOwnRadianceWeight = waterOwnRadianceWeight;
 #endif
-} 
+
+  // Debug view of that weight, see the tessellation path above.
+  if((planetData.flagsResolutions.x & PLANET_WATER_FLAG_DEBUG_OWN_RADIANCE_WEIGHT) != 0u){
+    outFragColor = vec4(vec3(waterOwnRadianceWeight), 1.0);
+  }
+#endif
+}

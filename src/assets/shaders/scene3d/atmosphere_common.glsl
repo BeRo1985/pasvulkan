@@ -19,6 +19,7 @@
 #define FLAGS_USE_FAST_AERIAL_PERSPECTIVE 2u
 #define FLAGS_USE_BLUE_NOISE 4u
 #define FLAGS_SHADOWS 8u
+#define FLAGS_RADIANCE_WEIGHT_MASK_DEPTH 16u // The radiance weight mask carries its layer's own surface depth in the second channel, which is then the distance to cover
 #define PUSH_CONSTANT_FLAG_REVERSE_DEPTH 65536u
 
 #include "math.glsl"

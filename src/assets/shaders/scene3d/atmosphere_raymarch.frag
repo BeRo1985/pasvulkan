@@ -36,6 +36,7 @@ layout(push_constant, std140) uniform PushConstants {
   int frameIndex;
   uint flags;
   uint countSamples;
+  float radianceWeightMaskScale; // Strength of the weighted aerial perspective, only read when RADIANCEWEIGHTMASK is defined
 } pushConstants;
 
 #include "globaldescriptorset.glsl"
@@ -161,6 +162,15 @@ layout(set = 2, binding = 8, std430) buffer AtmosphereParametersBuffer {
   AtmosphereParameters atmosphereParameters;
 } uAtmosphereParameters;
 
+#ifdef RADIANCEWEIGHTMASK
+// Per pixel fraction of the destination which is radiance of its own, as opposed to light it received from
+// something further away, which already carries the atmosphere of that longer path. Only that own fraction
+// may be given this aerial perspective, otherwise the rest would end up with its atmosphere counted twice.
+// Deliberately kept general: any layer which is composited separately can hand such a mask in, the atmosphere
+// does not need to know what that layer is.
+layout(set = 2, binding = 15) uniform sampler2DArray uRadianceWeightMask;
+#endif
+
 #include "projectsphere.glsl"
 
 #include "textureutils.glsl"
@@ -213,6 +223,22 @@ void main() {
   vec2 uv = pixPos / pushConstants.resolution;*/
 
   vec2 uv = inTexCoord;
+
+#ifdef RADIANCEWEIGHTMASK
+  // Nothing of this pixel is radiance of its own, so there is nothing here which this aerial perspective may
+  // be applied to. Leaving early saves the whole ray march for it, which is what keeps a separately
+  // composited layer from costing a second full screen worth of atmosphere.
+  // The atmosphere's own aerial perspective strength is the base here, and the push constant scales on top of
+  // it, so whoever hands the mask in can dial its layer separately without losing the global setting.
+  vec2 radianceWeightMaskValue = texelFetch(uRadianceWeightMask, ivec3(ivec2(gl_FragCoord.xy), int(gl_ViewIndex)), 0).xy;
+  float radianceWeight = radianceWeightMaskValue.x *
+                         pushConstants.radianceWeightMaskScale *
+                         clamp(uAtmosphereParameters.atmosphereParameters.aerialPerspectiveScale, 0.0, 1.0);
+  if(!(radianceWeight > 1e-4)){
+    discard;
+  }
+  radianceWeight = clamp(radianceWeight, 0.0, 1.0);
+#endif
 
   if((pushConstants.flags & FLAGS_USE_BLUE_NOISE) != 0u){
     seedSampleSeedT(uBlueNoise, ivec2(gl_FragCoord.xy), pushConstants.frameIndex);
@@ -301,6 +327,17 @@ void main() {
 #endif
 #endif
 
+#endif
+
+#ifdef RADIANCEWEIGHTMASK
+  // Where the mask carries the surface depth of its own layer in the second channel, that is the distance
+  // this aerial perspective has to cover, and not whatever the depth buffer happens to hold. Multisampled
+  // configurations need it, because the layer is treated after its own resolve while the depth buffer which
+  // holds its surface is still multisampled. Resolved along with the weight it costs one channel, resolved
+  // on its own it would cost a pass.
+  if((pushConstants.flags & FLAGS_RADIANCE_WEIGHT_MASK_DEPTH) != 0u){
+    depthBufferValue = radianceWeightMaskValue.y;
+  }
 #endif
 
   bool atmosphereVisible;
@@ -808,6 +845,14 @@ void main() {
       inscattering = mix(vec3(0.0), inscattering, atmosphereCullingFactor);
       transmittance = mix(vec3(1.0), transmittance, atmosphereCullingFactor);
     }
+
+#ifdef RADIANCEWEIGHTMASK
+    // Scale this aerial perspective down to the fraction of the destination which is its own radiance, in
+    // exactly the same shape as the culling factor above does it. The rest of the destination is light from
+    // further away which brought its own atmosphere along already.
+    inscattering = mix(vec3(0.0), inscattering, radianceWeight);
+    transmittance = mix(vec3(1.0), transmittance, radianceWeight);
+#endif
 
 #ifdef DUALBLEND
     outInscattering = vec4(clamp(inscattering, vec3(0.0), vec3(65504.0)), 1.0 - clamp(dot(transmittance, vec3(1.0 / 3.0)), 0.0, 1.0)); // clamp to 16-bit floating point range, alpha = 1.0 - transmittance sine it is applied directly to the actual content, where alpha is used in its usual normal way and not as monochromatic transmittance

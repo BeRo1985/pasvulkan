@@ -585,6 +585,10 @@ begin
  end;
  fPushConstants.CountSamples:=TpvScene3DRenderer(TpvScene3DRendererInstance(fInstance).Renderer).CountSurfaceMSAASamples;
 
+ // This pass writes the scene itself, which is not composited separately, so there is no radiance weight mask
+ // for it and the shader variants used here do not read one either.
+ fPushConstants.RadianceWeightMaskScale:=1.0;
+
  TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
@@ -593,6 +597,7 @@ begin
                                                            fResourceCloudsTransmittance.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCloudsShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,
+                                                           VK_NULL_HANDLE,
                                                            fInstance,
                                                            fPushConstants);
 

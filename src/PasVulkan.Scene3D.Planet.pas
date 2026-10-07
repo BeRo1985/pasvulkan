@@ -3563,6 +3563,9 @@ type TpvScene3DPlanets=class;
        fWaterSurfaceRoughness:TpvFloat;            // Perceptual roughness of the water surface (packed into WaterIORs.z). 0 = perfect mirror, the historical hard-wired value; around 0.03..0.1 spreads the sun into a glitter path.
        fWaterSurfaceMetallic:TpvFloat;             // Metalness of the water surface (packed into WaterIORs.w). 0.9 is the historical hard-wired value, where the metal branch with its base color F0 of 1.0 returns the environment radiance almost undamped; 0 is the physically correct value for water.
        fWaterDielectricSurface:Boolean;            // Override the metalness above with the physically correct zero, so that both looks can be compared without editing the value itself.
+       fWaterDebugOwnRadianceWeight:Boolean;       // Show the own radiance fraction which the water hands to the aerial perspective pass as grey on the water, instead of the water color.
+       fWaterAerialPerspectiveMaxMode:TpvScene3DRendererWaterAerialPerspectiveMode; // Highest stage of the water aerial perspective which this planet offers at all. The player's choice is capped by it, so a world which cannot carry the expensive stage simply never hands it out.
+       fWaterAerialPerspectiveScale:TpvFloat;      // Strength of that aerial perspective on top of the atmosphere's own "aerialperspectivescale", which the shader multiplies in as the base.
        fWaterDetailStrength:TpvFloat;              // Strength of the procedural ripple detail normal on the water surface. 0 = off, which is the state before this existed.
        fWaterDetailScale:TpvFloat;                 // Spatial frequency of the ripple detail in cycles per meter of planet-local position. Higher = finer ripples.
        fWaterDetailSpeed:TpvFloat;                 // Drift rate of the ripple octaves. 0 freezes the pattern.
@@ -4071,6 +4074,9 @@ type TpvScene3DPlanets=class;
        property WaterSurfaceRoughness:TpvFloat read fWaterSurfaceRoughness write fWaterSurfaceRoughness;
        property WaterSurfaceMetallic:TpvFloat read fWaterSurfaceMetallic write fWaterSurfaceMetallic;
        property WaterDielectricSurface:Boolean read fWaterDielectricSurface write fWaterDielectricSurface;
+       property WaterDebugOwnRadianceWeight:Boolean read fWaterDebugOwnRadianceWeight write fWaterDebugOwnRadianceWeight;
+       property WaterAerialPerspectiveMaxMode:TpvScene3DRendererWaterAerialPerspectiveMode read fWaterAerialPerspectiveMaxMode write fWaterAerialPerspectiveMaxMode;
+       property WaterAerialPerspectiveScale:TpvFloat read fWaterAerialPerspectiveScale write fWaterAerialPerspectiveScale;
        property WaterDetailStrength:TpvFloat read fWaterDetailStrength write fWaterDetailStrength;
        property WaterDetailScale:TpvFloat read fWaterDetailScale write fWaterDetailScale;
        property WaterDetailSpeed:TpvFloat read fWaterDetailSpeed write fWaterDetailSpeed;
@@ -33759,6 +33765,18 @@ begin
                                                                    TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                    TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
+  // Second attachment: the own radiance fraction. The underwater view is the scene behind the water tinted
+  // by the water color, so it is background light throughout and carries its atmosphere already. Its shader
+  // writes nothing there and the write mask keeps it that way, leaving the cleared zero standing.
+  fUnderwaterPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                   VK_BLEND_FACTOR_ONE,
+                                                                   VK_BLEND_FACTOR_ZERO,
+                                                                   VK_BLEND_OP_ADD,
+                                                                   VK_BLEND_FACTOR_ONE,
+                                                                   VK_BLEND_FACTOR_ZERO,
+                                                                   VK_BLEND_OP_ADD,
+                                                                   TVkColorComponentFlags(0));
+
   fUnderwaterPipeline.DepthStencilState.DepthTestEnable:=false;
   fUnderwaterPipeline.DepthStencilState.DepthWriteEnable:=false;
   if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
@@ -33839,6 +33857,17 @@ begin
                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
+  // Second attachment: the own radiance fraction. This overlay only adds light on top of what the water
+  // surface already wrote, so it leaves the fraction of that surface alone, via the zero write mask.
+  fCausticsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                 VK_BLEND_FACTOR_ONE,
+                                                                 VK_BLEND_FACTOR_ZERO,
+                                                                 VK_BLEND_OP_ADD,
+                                                                 VK_BLEND_FACTOR_ONE,
+                                                                 VK_BLEND_FACTOR_ZERO,
+                                                                 VK_BLEND_OP_ADD,
+                                                                 TVkColorComponentFlags(0));
+
   fCausticsPipeline.DepthStencilState.DepthTestEnable:=false;
   fCausticsPipeline.DepthStencilState.DepthWriteEnable:=false;
   fCausticsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
@@ -33914,6 +33943,18 @@ begin
                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+  // Second attachment: the fraction of the output radiance which is the water's own, for the aerial
+  // perspective pass which follows. Only the red channel exists there, and no blending, since the water
+  // surface simply replaces whatever the clear left behind.
+  fWaterPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                              VK_BLEND_FACTOR_ONE,
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_OP_ADD,
+                                                              VK_BLEND_FACTOR_ONE,
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_OP_ADD,
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT));
 
   fWaterPipeline.DepthStencilState.DepthTestEnable:=true;
   fWaterPipeline.DepthStencilState.DepthWriteEnable:=true;
@@ -34008,6 +34049,16 @@ begin
                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                   TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+  // Second attachment: the own radiance fraction, see the tessellation variant above.
+  fWaterMeshPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                  VK_BLEND_FACTOR_ONE,
+                                                                  VK_BLEND_FACTOR_ZERO,
+                                                                  VK_BLEND_OP_ADD,
+                                                                  VK_BLEND_FACTOR_ONE,
+                                                                  VK_BLEND_FACTOR_ZERO,
+                                                                  VK_BLEND_OP_ADD,
+                                                                  TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT));
 
   fWaterMeshPipeline.DepthStencilState.DepthTestEnable:=true;
   fWaterMeshPipeline.DepthStencilState.DepthWriteEnable:=true;
@@ -35334,6 +35385,9 @@ begin
  fWaterSurfaceRoughness:=0.0; // 0 = perfect mirror, which is what the shader had hard-wired before this became configurable
  fWaterSurfaceMetallic:=0.9; // 0.9 is what the shader had hard-wired before this became configurable, 0.0 would be physically correct for water
  fWaterDielectricSurface:=false; // off by default, so a planet without the setting looks exactly as before
+ fWaterDebugOwnRadianceWeight:=false; // debug view, off by default
+ fWaterAerialPerspectiveMaxMode:=TpvScene3DRendererWaterAerialPerspectiveMode.Full; // a planet offers every stage unless it says otherwise
+ fWaterAerialPerspectiveScale:=1.0; // full strength on top of the atmosphere's own setting
  fWaterDetailStrength:=0.0; // off by default, so a planet without the setting looks exactly as before
  fWaterDetailScale:=2.0; // about one ripple every half meter
  fWaterDetailSpeed:=0.35;
@@ -39295,6 +39349,9 @@ begin
    if fWaterDielectricSurface then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 8); // PLANET_WATER_FLAG_DIELECTRIC_SURFACE
    end;
+   if fWaterDebugOwnRadianceWeight then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 9); // PLANET_WATER_FLAG_DEBUG_OWN_RADIANCE_WEIGHT
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
    fPlanetData.DecalGroupMask:=fDecalGroupMask;
@@ -40152,6 +40209,7 @@ procedure TpvScene3DPlanet.LoadWaterSettings(const aJSONItem:TPasJSONItem);
 var JSONRootObject,JSONWaterObject,JSONShoreObject,JSONWavesObject,JSONWhitecapObject,JSONCausticObject,JSONRainSplashObject,
     JSONSimulationObject,JSONDetailObject:TPasJSONItemObject;
     JSONItem:TPasJSONItem;
+    JSONString:TpvUTF8String;
 begin
  if assigned(aJSONItem) and (aJSONItem is TPasJSONItemObject) then begin
   JSONRootObject:=TPasJSONItemObject(aJSONItem);
@@ -40185,6 +40243,25 @@ begin
   fWaterSurfaceRoughness:=TPasJSON.GetNumber(JSONWaterObject.Properties['roughness'],fWaterSurfaceRoughness);
   fWaterSurfaceMetallic:=TPasJSON.GetNumber(JSONWaterObject.Properties['metallic'],fWaterSurfaceMetallic);
   fWaterDielectricSurface:=TPasJSON.GetBoolean(JSONWaterObject.Properties['dielectricsurface'],fWaterDielectricSurface);
+  fWaterDebugOwnRadianceWeight:=TPasJSON.GetBoolean(JSONWaterObject.Properties['debugownradianceweight'],fWaterDebugOwnRadianceWeight);
+  begin
+   // Highest stage this planet offers, by name rather than by number, so the file stays readable.
+   JSONString:=TPasJSON.GetString(JSONWaterObject.Properties['aerialperspectivemaxmode'],'');
+   if length(JSONString)>0 then begin
+    if JSONString='off' then begin
+     fWaterAerialPerspectiveMaxMode:=TpvScene3DRendererWaterAerialPerspectiveMode.Off;
+    end else if JSONString='cameravolume' then begin
+     fWaterAerialPerspectiveMaxMode:=TpvScene3DRendererWaterAerialPerspectiveMode.CameraVolume;
+    end else if JSONString='full' then begin
+     fWaterAerialPerspectiveMaxMode:=TpvScene3DRendererWaterAerialPerspectiveMode.Full;
+    end else begin
+     // Nothing to do here in this case
+    end;
+   end else begin
+    // Nothing to do here in this case
+   end;
+  end;
+  fWaterAerialPerspectiveScale:=TPasJSON.GetNumber(JSONWaterObject.Properties['aerialperspectivescale'],fWaterAerialPerspectiveScale);
   JSONItem:=JSONWaterObject.Properties['detail'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONDetailObject:=TPasJSONItemObject(JSONItem);

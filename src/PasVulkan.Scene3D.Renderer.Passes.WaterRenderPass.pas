@@ -96,6 +96,7 @@ type { TpvScene3DRendererPassesWaterRenderPass }
        fResourceCloudsShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceOwnRadianceWeight:TpvFrameGraph.TPass.TUsedImageResource; // Fraction of the output which is the water's own radiance, for the aerial perspective pass which follows
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -196,6 +197,14 @@ inherited Create(aFrameGraph);
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
 
+  fResourceOwnRadianceWeight:=AddImageOutput('resourcetype_water_own_radiance_weight',
+                                             'resource_water_own_radiance_weight',
+                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                             TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                          TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                             [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                            );
+
  end else begin
 
   fMSAA:=fInstance.Renderer.SupersampleWaterWhenMSAA;
@@ -228,6 +237,26 @@ inherited Create(aFrameGraph);
                                          [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                         );
 
+   // Two channels in full precision here, since this configuration also has to hand the water surface depth
+   // over: the pass which applies the aerial perspective works on the resolved colour, and the only depth
+   // buffer which holds that surface is the multisampled one.
+   fResourceOwnRadianceWeight:=AddImageOutput('resourcetype_msaa_water_own_radiance_weight_depth',
+                                              'resource_water_msaa_own_radiance_weight',
+                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                              TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                           TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                              [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                             );
+
+   fResourceOwnRadianceWeight:=AddImageResolveOutput('resourcetype_water_own_radiance_weight_depth',
+                                                     'resource_water_own_radiance_weight',
+                                                     'resource_water_msaa_own_radiance_weight',
+                                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                                    );
+
   end else begin
 
    fResourceDepth:=nil;
@@ -239,6 +268,14 @@ inherited Create(aFrameGraph);
                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                  );
+
+   fResourceOwnRadianceWeight:=AddImageOutput('resourcetype_water_own_radiance_weight',
+                                              'resource_water_own_radiance_weight',
+                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                              TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                           TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                              [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                             );
 
   end;
 

@@ -2175,6 +2175,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.WaterWaitCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.WaterAerialPerspectiveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.PlanetWaterCausticsRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DirectTransparencyResolveRenderPass,
@@ -2334,6 +2335,7 @@ type TpvScene3DRendererInstancePasses=class
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fWaterWaitCustomPass:TpvScene3DRendererPassesWaterWaitCustomPass;
        fWaterRenderPass:TpvScene3DRendererPassesWaterRenderPass;
+       fWaterAerialPerspectiveRenderPass:TpvScene3DRendererPassesWaterAerialPerspectiveRenderPass;
        fPlanetWaterCausticsRenderPass:TpvScene3DRendererPassesPlanetWaterCausticsRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
        fDirectTransparencyRenderPass:TpvScene3DRendererPassesDirectTransparencyRenderPass;
@@ -5654,6 +5656,43 @@ begin
                                   1
                                  );
 
+ // Multisampled configurations carry the water surface depth in a second channel alongside the weight, in
+ // full precision. The reason is that the aerial perspective pass needs the distance to the water surface,
+ // and the only place that distance exists is the depth buffer the water pass writes, which is multisampled
+ // there while the pass itself works on the resolved colour. Letting the water hand it over here costs one
+ // channel and resolves along with the weight, where a separate resolve of the depth would cost a pass.
+ fFrameGraph.AddImageResourceType('resourcetype_water_own_radiance_weight_depth',
+                                  false,
+                                  VK_FORMAT_R32G32_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_water_own_radiance_weight_depth',
+                                  false,
+                                  VK_FORMAT_R32G32_SFLOAT,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ // Multisampled twin of resourcetype_water_own_radiance_weight, for the configurations in which the water is
+ // supersampled along with the rest of the scene.
+ fFrameGraph.AddImageResourceType('resourcetype_msaa_water_own_radiance_weight',
+                                  false,
+                                  VK_FORMAT_R16_SFLOAT,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_msaa_wetnessmap',
                                   false,
                                   VK_FORMAT_R8G8B8A8_UINT,
@@ -6014,6 +6053,21 @@ begin
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                  1
+                                 );
+
+ // The fraction of the water layer's output radiance which is the water's own, so the reflection, the
+ // subscattering and the foam, as opposed to the background light which shines or refracts through it and
+ // which carries the atmosphere of its own, much longer path already. The aerial perspective of the short
+ // path from the camera to the water surface must only be applied to that own fraction, otherwise the
+ // background part would be fogged twice over.
+ fFrameGraph.AddImageResourceType('resourcetype_water_own_radiance_weight',
+                                  false,
+                                  VK_FORMAT_R16_SFLOAT,
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
 
@@ -7307,6 +7361,13 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   // every frame until everything behind it is white.
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass);
 
+  // The atmosphere over the water layer, which the atmosphere pass itself never reaches, since that one runs
+  // over the scene long before the water is drawn and the water is composited only in the transparency
+  // resolve. It works on the resolved water colour in every configuration; where the depth it needs is only
+  // available multisampled, the water hands it over in its weight mask instead.
+  TpvScene3DRendererInstancePasses(fPasses).fWaterAerialPerspectiveRenderPass:=TpvScene3DRendererPassesWaterAerialPerspectiveRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fWaterAerialPerspectiveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass);
+
  end else begin
 
   TpvScene3DRendererInstancePasses(fPasses).fWaterWaitCustomPass:=nil;
@@ -7314,6 +7375,7 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fTransparencyDepthRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fWaterRenderPass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterCausticsRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fWaterAerialPerspectiveRenderPass:=nil;
 
  end;
 
@@ -7465,6 +7527,18 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    Assert(false);
   end;
 
+ end;
+
+ // The aerial perspective over the water has to be stated from this end, and it is not optional: the pass
+ // writes the water colour through an input marked as the explicit output attachment, which does not make it
+ // the producer of that resource as far as the dependency search is concerned, and nothing else names it
+ // either. Without this it is simply never reached from the root pass, gets sorted out, and then keeps a
+ // topological index of zero while still carrying its resource transitions - whereupon its shader read of the
+ // cascaded shadow map wins the "earliest access" search of the alias groups and the frame graph aborts with
+ // an invalid frame buffer attachment, far away from the actual cause. The atmosphere pass over the scene
+ // stands on exactly the same construct and is only reached because the forward mip map pass names it.
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fWaterAerialPerspectiveRenderPass) and assigned(LastPass) then begin
+  LastPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterAerialPerspectiveRenderPass);
  end;
 
  if //(not Renderer.Scene3D.MeshShaders) and
