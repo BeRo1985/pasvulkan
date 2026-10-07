@@ -14532,7 +14532,7 @@ begin
                                 aMemoryChunkFlags,
                                 aMemoryDedicatedAllocateInfo);
 
-   if fMemoryManager.fCountAllocations>=TpvSizeInt(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount) then begin
+   if TpvUInt64(fMemoryManager.fCountAllocations)>=TpvUInt64(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount) then begin
     LastResultCode:=VK_ERROR_TOO_MANY_OBJECTS;
     if aRaiseExceptions then begin
      raise EpvVulkanMemoryAllocationException.Create('Maximum Vulkan device memory allocation count reached');
@@ -17054,7 +17054,7 @@ begin
            // Protection against creating each allocation as dedicated when we reach or exceed heap size/budget,
            // which can quickly deplete maxMemoryAllocationCount: Don't prefer dedicated allocations when above
            // 3/4 of the maximum allocation count.
-           (fCountAllocations<=((fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount*3) shr 2))
+           (TpvUInt64(fCountAllocations)<=TpvUInt64((TpvUInt64(fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount)*3) shr 2))
           )
          ) and
          (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
