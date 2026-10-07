@@ -498,7 +498,11 @@ begin
  // multiplies in as the base.
  fPushConstants.RadianceWeightMaskScale:=Scale;
 
- TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
+ // Consumer 1 of the ray marching. Its own descriptor set, so that the views handed over here do not land
+ // in the set the scene pass has already bound into its recorded draw. Getting that wrong painted the mask
+ // into the scene pass's depth slot, which washed everything that was not water in sky inscattering.
+ TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(1,
+                                                           aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            DepthImageView,
                                                            fResourceCascadedShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,

@@ -589,7 +589,11 @@ begin
  // for it and the shader variants used here do not read one either.
  fPushConstants.RadianceWeightMaskScale:=1.0;
 
- TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(aInFlightFrameIndex,
+ // Consumer 0 of the ray marching, which is the scene itself. Every consumer gets its own descriptor set,
+ // because two of them write different image views into the same set within one frame otherwise, and the
+ // draw recorded first would then run with the views of the one recorded last.
+ TpvScene3DAtmospheres(fInstance.Scene3D.Atmospheres).Draw(0,
+                                                           aInFlightFrameIndex,
                                                            aCommandBuffer,
                                                            fResourceDepth.VulkanImageViews[aInFlightFrameIndex].Handle,
                                                            fResourceCascadedShadowMap.VulkanImageViews[aInFlightFrameIndex].Handle,
