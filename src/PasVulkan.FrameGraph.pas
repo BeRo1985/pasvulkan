@@ -855,6 +855,7 @@ type EpvFrameGraph=class(Exception);
               procedure ReleaseVolatileResources; virtual;
               procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); virtual;
+              procedure ExecuteSynchronizationOnly(const aCommandBuffer:TpvVulkanCommandBuffer);
             end;
             TPhysicalComputePass=class(TPhysicalPass)
              private
@@ -3985,6 +3986,20 @@ end;
 procedure TpvFrameGraph.TPhysicalPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
 
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.ExecuteSynchronizationOnly(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ // For a pass which is switched off at runtime. The barriers were computed once for the whole graph, each one
+ // from the previous user of a resource to the next, so the barriers of a switched off pass are links in the
+ // chains of the passes around it: they carry the layout transitions which the following passes take for
+ // granted, and they are what orders the following passes after the writes of the preceding ones. Leaving
+ // them out together with the pass breaks those chains for everyone downstream. So only the work itself and
+ // its markers are skipped here, while the barriers and the events which other passes may wait on are kept.
+ fEventPipelineBarrierGroups.Execute(aCommandBuffer);
+ fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
+ fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
 end;
 
 { TpvFrameGraph.TPhysicalComputePass }
@@ -7954,20 +7969,27 @@ begin
       fVulkanDevice.Commands.CmdSetCheckpointNV(VulkanCommandBuffer.Handle,PAnsiChar(PhysicalPassClassName));
      end;
     end;
+    // A pass which is switched off still runs its barriers, see TPhysicalPass.ExecuteSynchronizationOnly
     if PhysicalPass is TPhysicalComputePass then begin
      PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
      if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalComputePass.Execute(VulkanCommandBuffer);
+     end else begin
+      PhysicalComputePass.ExecuteSynchronizationOnly(VulkanCommandBuffer);
      end;
     end else if PhysicalPass is TPhysicalTransferPass then begin
      PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
      if PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalTransferPass.Execute(VulkanCommandBuffer);
+     end else begin
+      PhysicalTransferPass.ExecuteSynchronizationOnly(VulkanCommandBuffer);
      end;
     end else if PhysicalPass is TPhysicalCustomPass then begin
      PhysicalCustomPass:=TPhysicalCustomPass(PhysicalPass);
      if PhysicalCustomPass.fCustomPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalCustomPass.Execute(VulkanCommandBuffer);
+     end else begin
+      PhysicalCustomPass.ExecuteSynchronizationOnly(VulkanCommandBuffer);
      end;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -7981,6 +8003,8 @@ begin
      end;
      if Used then begin
       PhysicalRenderPass.Execute(VulkanCommandBuffer);
+     end else begin
+      PhysicalRenderPass.ExecuteSynchronizationOnly(VulkanCommandBuffer);
      end;
     end;
    end;
