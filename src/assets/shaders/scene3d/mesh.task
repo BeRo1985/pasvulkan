@@ -49,6 +49,10 @@
 #define VOXELIZATION_TASK_PAYLOAD_EXPAND
 #if defined(VOXELIZATION) && defined(VOXELIZATION_TASK_PAYLOAD_EXPAND)
 #define TASK_PAYLOAD_CAPACITY (TASK_GROUP_SIZE * 8 * MAX_VOXEL_PRIM_CHUNKS)
+#elif defined(USE_LAYER_ROUTING)
+// Layer routing emits one (meshlet, view) entry per view, which a meshlet touches, so up to TASK_GROUP_SIZE × (max 8 views)
+// entries, with only TASK_GROUP_SIZE capacity the entries beyond it were silently dropped (missing shadow casters)
+#define TASK_PAYLOAD_CAPACITY (TASK_GROUP_SIZE * 8)
 #else
 #define TASK_PAYLOAD_CAPACITY TASK_GROUP_SIZE
 #endif
