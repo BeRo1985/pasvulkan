@@ -188,7 +188,7 @@ type TpvScene3DPlanets=class;
              WaterDeepColor:TpvHalfFloatVector4; // xyz = deep water scattering color (linear), w = unused
 
              WaterBaseColorIORs:TpvHalfFloatVector4; // xyz = water base color (linear), w = unused
-             WaterIORs:TpvHalfFloatVector4; // x = waterIOR (e.g. 1.3325), y = airIOR (e.g. 1.0), z = water surface perceptual roughness (0 = mirror), w = unused
+             WaterIORs:TpvHalfFloatVector4; // x = waterIOR (e.g. 1.3325), y = airIOR (e.g. 1.0), z = water surface perceptual roughness (0 = mirror), w = water surface metalness (0.9 = historical, 0 = physically correct dielectric water)
 
              WaterShoreFoam0:TpvHalfFloatVector4; // xyz = foam color (linear), w = foam depth start in meters (deeper cutoff; foam visible where waterDepth < start)
              WaterShoreFoam1:TpvHalfFloatVector4; // x = foam depth end (shallow; full foam for waterDepth <= end), y = pattern scale (1/unit along inBlock.position), z = scroll speed, w = overall foam intensity (0 = off)
@@ -3561,6 +3561,8 @@ type TpvScene3DPlanets=class;
        fAirIOR:TpvFloat;                           // Air index of refraction (e.g. 1.0).
        fWaterIORBasedFadeAmount:TpvFloat;          // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending (packed into WaterAbsorption.w).
        fWaterSurfaceRoughness:TpvFloat;            // Perceptual roughness of the water surface (packed into WaterIORs.z). 0 = perfect mirror, the historical hard-wired value; around 0.03..0.1 spreads the sun into a glitter path.
+       fWaterSurfaceMetallic:TpvFloat;             // Metalness of the water surface (packed into WaterIORs.w). 0.9 is the historical hard-wired value, where the metal branch with its base color F0 of 1.0 returns the environment radiance almost undamped; 0 is the physically correct value for water.
+       fWaterDielectricSurface:Boolean;            // Override the metalness above with the physically correct zero, so that both looks can be compared without editing the value itself.
        fWaterDetailStrength:TpvFloat;              // Strength of the procedural ripple detail normal on the water surface. 0 = off, which is the state before this existed.
        fWaterDetailScale:TpvFloat;                 // Spatial frequency of the ripple detail in cycles per meter of planet-local position. Higher = finer ripples.
        fWaterDetailSpeed:TpvFloat;                 // Drift rate of the ripple octaves. 0 freezes the pattern.
@@ -4067,6 +4069,8 @@ type TpvScene3DPlanets=class;
        property AirIOR:TpvFloat read fAirIOR write fAirIOR;
        property WaterIORBasedFadeAmount:TpvFloat read fWaterIORBasedFadeAmount write fWaterIORBasedFadeAmount;
        property WaterSurfaceRoughness:TpvFloat read fWaterSurfaceRoughness write fWaterSurfaceRoughness;
+       property WaterSurfaceMetallic:TpvFloat read fWaterSurfaceMetallic write fWaterSurfaceMetallic;
+       property WaterDielectricSurface:Boolean read fWaterDielectricSurface write fWaterDielectricSurface;
        property WaterDetailStrength:TpvFloat read fWaterDetailStrength write fWaterDetailStrength;
        property WaterDetailScale:TpvFloat read fWaterDetailScale write fWaterDetailScale;
        property WaterDetailSpeed:TpvFloat read fWaterDetailSpeed write fWaterDetailSpeed;
@@ -35328,6 +35332,8 @@ begin
  fAirIOR:=1.0;
  fWaterIORBasedFadeAmount:=0.0; // 0 = pure Beer-Lambert absorption, 1 = PBR-correct IOR-based waterF0 blending
  fWaterSurfaceRoughness:=0.0; // 0 = perfect mirror, which is what the shader had hard-wired before this became configurable
+ fWaterSurfaceMetallic:=0.9; // 0.9 is what the shader had hard-wired before this became configurable, 0.0 would be physically correct for water
+ fWaterDielectricSurface:=false; // off by default, so a planet without the setting looks exactly as before
  fWaterDetailStrength:=0.0; // off by default, so a planet without the setting looks exactly as before
  fWaterDetailScale:=2.0; // about one ripple every half meter
  fWaterDetailSpeed:=0.35;
@@ -39286,6 +39292,9 @@ begin
    if fWaterSurfaceLevelBaked then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 7); // PLANET_WATER_FLAG_BAKED_SURFACE_LEVEL
    end;
+   if fWaterDielectricSurface then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 8); // PLANET_WATER_FLAG_DIELECTRIC_SURFACE
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.WaterMapResolution:=fWaterMapResolution;
    fPlanetData.DecalGroupMask:=fDecalGroupMask;
@@ -39328,7 +39337,7 @@ begin
    fPlanetData.WaterIORs.x:=fWaterIOR;
    fPlanetData.WaterIORs.y:=fAirIOR;
    fPlanetData.WaterIORs.z:=fWaterSurfaceRoughness;
-   fPlanetData.WaterIORs.w:=0.0;
+   fPlanetData.WaterIORs.w:=fWaterSurfaceMetallic;
    fPlanetData.WaterShoreFoam0.x:=fWaterShoreFoamColor.x;
    fPlanetData.WaterShoreFoam0.y:=fWaterShoreFoamColor.y;
    fPlanetData.WaterShoreFoam0.z:=fWaterShoreFoamColor.z;
@@ -40174,6 +40183,8 @@ begin
   fAirIOR:=TPasJSON.GetNumber(JSONWaterObject.Properties['airior'],fAirIOR);
   fWaterIORBasedFadeAmount:=TPasJSON.GetNumber(JSONWaterObject.Properties['iorbasedfadeamount'],fWaterIORBasedFadeAmount);
   fWaterSurfaceRoughness:=TPasJSON.GetNumber(JSONWaterObject.Properties['roughness'],fWaterSurfaceRoughness);
+  fWaterSurfaceMetallic:=TPasJSON.GetNumber(JSONWaterObject.Properties['metallic'],fWaterSurfaceMetallic);
+  fWaterDielectricSurface:=TPasJSON.GetBoolean(JSONWaterObject.Properties['dielectricsurface'],fWaterDielectricSurface);
   JSONItem:=JSONWaterObject.Properties['detail'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
    JSONDetailObject:=TPasJSONItemObject(JSONItem);

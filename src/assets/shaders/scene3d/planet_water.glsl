@@ -9,6 +9,13 @@
 // 1 = sample the water column map with the SAME bilinear basis as the terrain height map instead of bicubic.
 #define PLANET_WATER_BILINEAR_WATERMAP 0
 
+// Second, coarser gate against water beyond the terrain silhouette. The water sphere is convex, so it reaches
+// past the terrain horizon, and the vertex stages already know whether there is any water over the ground at
+// that sphere direction, which they hand over as waterOverSurface (see planet_water.tese / planet_water.mesh).
+// 1 = use it where no opaque geometry stands behind the fragment, 0 = rely on the simulated water column
+// there alone. Only the tessellation and mesh shader paths have that value, the ray marching one does not.
+#define PLANET_WATER_OVER_SURFACE_GATE 1
+
 // Water surface normal handling toggles, driven by planetData.flagsResolutions.x (per-planet render state). The
 // pipe simulation cannot reach an exact constant-radius equilibrium on the distorted octahedral grid, so still
 // water keeps a static high-frequency wobble in the simulated column that shows up on the specular surface.
@@ -27,6 +34,12 @@
 // preconditions hold (see planet_water_level_bake.comp); when it is clear the inline path is used instead, so
 // the two always produce a result, never a missing one.
 #define PLANET_WATER_FLAG_BAKED_SURFACE_LEVEL (1u << 7u)
+
+// Render the water surface as the dielectric it physically is, which overrides the configured metalness with
+// zero, so that the reflection runs through the dielectric branch of the image based lighting and the Fresnel
+// term of the configured index of refraction, instead of through the metal branch whose F0 is the base color.
+// Exists next to the metalness value itself so that the two looks can be compared without editing the value.
+#define PLANET_WATER_FLAG_DIELECTRIC_SURFACE (1u << 8u)
 
 // Stencil widening factor for the coarse simulated-normal step (tuning knob, overridable at compile time).
 #ifndef PLANET_WATER_COARSE_SIM_NORMAL_STEP

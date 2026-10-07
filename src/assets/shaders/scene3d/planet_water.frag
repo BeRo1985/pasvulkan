@@ -76,14 +76,17 @@ layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uO
 #define inViewSpacePosition inBlock.viewSpacePosition
 #define inWorldSpacePosition inBlock.worldSpacePosition
 #define inCameraRelativePosition inBlock.cameraRelativePosition
+#define inLocalPosition inBlock.localPosition
 #else
 vec3 viewSpacePosition;
 vec3 worldSpacePosition;
 vec3 cameraRelativePosition;
+vec3 localPosition;
 
 #define inViewSpacePosition viewSpacePosition
 #define inWorldSpacePosition worldSpacePosition
 #define inCameraRelativePosition cameraRelativePosition
+#define inLocalPosition localPosition
 #endif
 
 // Global descriptor set
@@ -199,6 +202,12 @@ vec3 imageLightBasedLightDirection = vec3(0.0, 1.0, 0.0);// imageBasedSphericalH
 vec3 viewDirection;
 
 vec3 workNormal;
+
+// The geometric normal of the water surface, which is the radial sphere normal of the planet, without any of
+// the simulated, procedural or wave perturbations that workNormal carries. It is what tells the difference
+// between the curvature of the sphere itself and the structure on its surface, so the horizon occlusion and
+// the specular antialiasing kernel below can use it to stay out of each other's way.
+vec3 workGeometricNormal;
 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
@@ -677,9 +686,22 @@ float waterDownwellingNormalization = 1.0;
 // 0.0 is the historical hard-wired value and renders the surface as a perfect mirror.
 float waterSurfaceRoughness = 0.0;
 
+// Metalness of the water surface, unpacked in main() from the per-planet water settings as well. 0.9 is the
+// historical hard-wired value, which lets the metal branch of the image based lighting dominate, and since
+// its F0 is the base color of 1.0 there, the environment radiance comes back almost undamped. 0.0 is the
+// physically correct value for water, which routes the reflection through the dielectric branch and the
+// Fresnel term of the configured index of refraction instead.
+float waterSurfaceMetallic = 0.9;
+
 vec3 waterColor; //vec3(0.090195, 0.115685, 0.12745);
 
 float waterDepth;
+
+// True when there is no opaque geometry behind the water fragment at all, so that the depth buffer still
+// holds its clear value there and the linearized distance to it is infinite. Set in main() for the paths
+// which read that depth buffer directly; the ray marching path clamps its distance against the water shell
+// itself and therefore never sees an infinite one.
+bool noOpaqueBehindWater = false;
 
 void processLight(const in vec3 lightColor, 
                   const in vec3 lightLit, 
@@ -877,7 +899,8 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
   vec3 baseColor = vec3(1.0);
   // y is the perceptual roughness of the water surface. It used to be hard-wired to 0.0, which the
   // clamp below lifts to 1e-3, so the surface was a perfect mirror with no sun glitter at all.
-  vec4 occlusionRoughnessMetallic = vec4(1.0, waterSurfaceRoughness, 0.9, 0.0);
+  // z is the metalness, which used to be hard-wired to 0.9 and is configurable per planet now as well.
+  vec4 occlusionRoughnessMetallic = vec4(1.0, waterSurfaceRoughness, waterSurfaceMetallic, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -909,22 +932,33 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
   float kernelRoughness;
   {
-    const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
-    vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
+    const float SIGMA2 = 0.15915494, KAPPA = 0.18;
+    // The specular antialiasing kernel widens the lobe where the normal varies quickly within one pixel, so
+    // that sub-pixel structure does not alias into a sparkling mess. The curvature of the planet itself
+    // varies the normal as well though, and it does so fastest exactly at the limb, where a pixel covers the
+    // most of the sphere turning away. That is geometry, not sub-pixel structure, and widening the lobe for
+    // it pulls in the average brightness of the whole environment instead of reflecting the sky which is
+    // actually there, as a bright band along the limb. Measuring the detail against the geometric normal
+    // leaves the antialiasing for real surface structure intact and takes the curvature back out of it.
+    vec3 detailNormal = workNormal - workGeometricNormal;
+    vec3 dx = dFdx(detailNormal), dy = dFdy(detailNormal);
     kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
     perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
-  }  
+  }
 
   float alphaRoughness = perceptualRoughness * perceptualRoughness;
 
   diffuseOcclusion = occlusion * ambientOcclusion;
   specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), diffuseOcclusion, alphaRoughness);
 
-  // Horizon specular occlusion
+  // Horizon specular occlusion, which damps reflections whose direction points below the real surface, where
+  // there is nothing to reflect. It has to be measured against the geometric normal: against the shading
+  // normal the dot product is identical to NdotV, which getViewClampedNormal has already clamped to be
+  // non-negative above, so the whole term collapsed to exactly one and did nothing at all.
   {
     vec3 reflectedVector = reflect(-viewDirection, normal);
-    float horizon = min(1.0 + dot(reflectedVector, normal), 1.0);
-    specularOcclusion *= horizon * horizon;         
+    float horizon = min(1.0 + dot(reflectedVector, workGeometricNormal), 1.0);
+    specularOcclusion *= horizon * horizon;
   }
 
   const vec3 sheenColor = vec3(0.0);
@@ -1011,7 +1045,10 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
 
     waterDepth = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));*/
     
-    float waterHeight = getWaterHeightData(octPlanetUnsignedEncode(normalize(inWorldSpacePosition)));
+    // The water column map is indexed by the planet space sphere direction, so the planet space position has
+    // to be used here and not the world space one, which only agrees with it as long as the planet's model
+    // matrix is the identity.
+    float waterHeight = getWaterHeightData(octPlanetUnsignedEncode(normalize(inLocalPosition)));
 
 // waterColor = pow(vec3(0.6862, 0.8823, 0.9411), vec3(2.2));//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
     waterColor = waterBaseColor;//pow(waterBaseColor, vec3(mix(1.0, 2.0, clamp(waterDepth * 0.1, 0.0, 1.0))));
@@ -1146,10 +1183,27 @@ vec4 doShade(float opaqueDepth, float surfaceDepth, bool underWater){
     waterShade = applyWhitecaps(waterShade, inBlock.position);
 #endif
 
+    // Thickness which decides how much of the water is painted over the background behind it. With opaque
+    // geometry behind the fragment the distance to it is the longer path through the water at grazing angles,
+    // hence the maximum of the two. Without any geometry behind it there is no such path at all, and the
+    // infinite distance from the cleared depth buffer would pin this to one, which paints water over the
+    // planet limb, where the water sphere reaches past the terrain silhouette because it is convex, although
+    // the water column map says that there is no water there. The simulated column alone is the right
+    // measure in that case.
+    float waterGateThickness = noOpaqueBehindWater ? waterHeight : max(waterHeight, waterDepth);
+#if defined(TESSELLATION) && PLANET_WATER_OVER_SURFACE_GATE
+    // Coarser second gate from the vertex stage, which already knows whether there is any water over the
+    // ground at that sphere direction. Only applied where nothing stands behind the fragment, so that shore
+    // lines over real ground keep their unchanged blend.
+    if(noOpaqueBehindWater){
+      waterGateThickness *= clamp(inBlock.waterOverSurface, 0.0, 1.0);
+    }
+#endif
+
     color.xyz = mix(
       texelFetch(uPassTextures[1], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).xyz,
       waterShade,
-      clamp(1.0 - exp(-max(waterHeight, waterDepth) * 6.0), 0.0, 1.0)
+      clamp(1.0 - exp(-waterGateThickness * 6.0), 0.0, 1.0)
       //clamp(1.0 - exp(-mix(waterHeight, waterDepth, max(0.0, dot(normal, viewDirection))) * 6.0), 0.0, 1.0)
     );
 
@@ -1208,6 +1262,9 @@ void main(){
     waterIOR = (iors4.x > 0.0) ? iors4.x : 1.3325;
     airIOR = (iors4.y > 0.0) ? iors4.y : 1.0;
     waterSurfaceRoughness = clamp(iors4.z, 0.0, 1.0);
+    // The dielectric surface flag overrides the configured metalness with the physically correct zero, so the
+    // two can be compared against each other without having to edit the value itself.
+    waterSurfaceMetallic = ((planetData.flagsResolutions.x & PLANET_WATER_FLAG_DIELECTRIC_SURFACE) != 0u) ? 0.0 : clamp(iors4.w, 0.0, 1.0);
     float f0 = IOR_TO_F0(waterIOR);
     waterF0 = f0 * f0;
     ior = waterIOR / airIOR;
@@ -1271,11 +1328,20 @@ void main(){
 #if defined(TESSELLATION)
 
   workNormal = normalize((planetModelMatrix * vec4(getWaterNormal(inBlock.position), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
+
+  workGeometricNormal = normalize((planetModelMatrix * vec4(inBlock.sphereNormal, 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 //workNormal = normalize((planetModelMatrix * vec4(mapNormal(inBlock.localPosition), 0.0)).xyz) * ((inBlock.underWater > 0.0) ? -1.0 : 1.0);
 
   viewDirection = normalize(-inCameraRelativePosition);
 
   float opaqueDepth = texelFetch(uPassTextures[2], ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
+
+  // A depth value which is still the clear value of the depth buffer means that nothing opaque was drawn
+  // behind this water fragment, so the linearization below turns it into an infinite distance. The clear
+  // value depends on the projection, since a reversed Z projection clears to zero instead of to one, which
+  // is detected here in the same way as the caustics path below and as atmosphere_common.glsl does.
+  noOpaqueBehindWater = (projectionMatrix[2][3] < -1e-7) ? (opaqueDepth <= 0.0) : (opaqueDepth >= 1.0);
+
   {
 #if 0
     vec2 uv = (vec2(gl_FragCoord.xy) + vec2(0.5)) / vec2(textureSize(uPassTextures[2], 0).xy);
@@ -1489,6 +1555,8 @@ void main(){
 
       hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
+      localPosition = hitPoint;
+
       worldSpacePosition = (planetModelMatrix * vec4(hitPoint, 1.0)).xyz;
 
       viewSpacePosition = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
@@ -1510,6 +1578,8 @@ void main(){
         waterNormal = normalize(mix(waterNormal, radialNormal, calm));
       }
       workNormal = normalize((planetModelMatrix * vec4(waterNormal, 0.0)).xyz) * (underWater ? -1.0 : 1.0);
+
+      workGeometricNormal = normalize((planetModelMatrix * vec4(normalize(hitPoint), 0.0)).xyz) * (underWater ? -1.0 : 1.0);
 
       cameraRelativePosition = worldSpacePosition - cameraPosition.xyz;
 
