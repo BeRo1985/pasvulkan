@@ -3480,6 +3480,16 @@ end;
 function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var c,b,a,h:TpvVectorPathVector;
     t,s,q:TpvDouble;
+ function GetCurveParameter(const aNumerator,aDenominator:TpvDouble):TpvDouble;
+ begin
+  if IsZero(aDenominator) then begin
+   // There is no root in this case, so just return a curve parameter value outside of the 0.0 .. 1.0
+   // range, so that the caller skips it, instead of dividing by zero here.
+   result:=-1.0;
+  end else begin
+   result:=aNumerator/aDenominator;
+  end;
+ end;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fCachedBoundingBoxLock);
  try
@@ -3510,50 +3520,50 @@ begin
      h:=(b*b)-(c*a);
      if h.x>0.0 then begin
       h.x:=sqrt(h.x);
-      t:=c.x/((-b.x)-h.x);
+      t:=GetCurveParameter(c.x,(-b.x)-h.x);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-       if result.Min.x<q then begin
+       if result.Min.x>q then begin
         result.Min.x:=q;
        end;
-       if result.Max.x>q then begin
+       if result.Max.x<q then begin
         result.Max.x:=q;
        end;
       end;
-      t:=c.x/((-b.x)+h.x);
+      t:=GetCurveParameter(c.x,(-b.x)+h.x);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-       if result.Min.x<q then begin
+       if result.Min.x>q then begin
         result.Min.x:=q;
        end;
-       if result.Max.x>q then begin
+       if result.Max.x<q then begin
         result.Max.x:=q;
        end;
       end;
      end;
      if h.y>0.0 then begin
       h.y:=sqrt(h.y);
-      t:=c.y/((-b.y)-h.y);
+      t:=GetCurveParameter(c.y,(-b.y)-h.y);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-       if result.Min.y<q then begin
+       if result.Min.y>q then begin
         result.Min.y:=q;
        end;
-       if result.Max.y>q then begin
+       if result.Max.y<q then begin
         result.Max.y:=q;
        end;
       end;
-      t:=c.y/((-b.y)+h.y);
+      t:=GetCurveParameter(c.y,(-b.y)+h.y);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-       if result.Min.y<q then begin
+       if result.Min.y>q then begin
         result.Min.y:=q;
        end;
-       if result.Max.y>q then begin
+       if result.Max.y<q then begin
         result.Max.y:=q;
        end;
       end;
@@ -4552,10 +4562,12 @@ begin
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
-var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
+var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     lx,ly,lcx,lcy,x0,y0,x1,y1,x2,y2,lmx,lmy,rx,ry,x_axis_rotation,x,y:TpvDouble;
     Src:TpvRawByteString;
     Command,LastCommand:AnsiChar;
+    StartCommandCount:TpvSizeInt;
+    MissingNumber:boolean;
  procedure SkipBlank;
  begin
   while (SrcPos<=SrcLen) and (Src[SrcPos] in [#0..#32]) do begin
@@ -4563,20 +4575,23 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   end;
  end;
  function GetFloat:TpvDouble;
- var StartPos:TpvInt32;
+ var StartPos,CountDigits:TpvInt32;
  begin
   SkipBlank;
   StartPos:=SrcPos;
+  CountDigits:=0;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
    inc(SrcPos);
   end;
   while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
    inc(SrcPos);
+   inc(CountDigits);
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['.']) then begin
    inc(SrcPos);
    while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
     inc(SrcPos);
+    inc(CountDigits);
    end;
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['e','E']) then begin
@@ -4588,18 +4603,23 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     inc(SrcPos);
    end;
   end;
-  if StartPos<SrcPos then begin
+  if CountDigits>0 then begin
    result:=ConvertStringToDouble(TpvRawByteString(copy(String(Src),StartPos,SrcPos-StartPos)),rmNearest,nil,-1);
   end else begin
+   // There is no number at all at this position, not even a single digit, so the whole current command
+   // is incomplete and must be dropped again by the caller.
    result:=0.0;
+   MissingNumber:=true;
   end;
   SkipBlank;
  end;
  function GetInt:TpvInt32;
- var s:TpvRawByteString;
+ var CountDigits:TpvInt32;
+     s:TpvRawByteString;
  begin
   SkipBlank;
   s:='';
+  CountDigits:=0;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
    s:=s+Src[SrcPos];
    inc(SrcPos);
@@ -4607,6 +4627,7 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
    s:=s+Src[SrcPos];
    inc(SrcPos);
+   inc(CountDigits);
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['.']) then begin
    inc(SrcPos);
@@ -4624,6 +4645,13 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
    end;
   end;
   SkipBlank;
+  if CountDigits=0 then begin
+   // There is no number at all at this position, so the arc flag is missing and the whole current
+   // command is incomplete and must be dropped again by the caller.
+   MissingNumber:=true;
+  end else begin
+   // Nothing to do here in this case
+  end;
   result:=Trunc(ConvertStringToDouble(s,rmNearest,nil,-1));
  end;
  procedure ConvertArcToCubicCurves(rx,ry,x_axis_rotation:TpvDouble;large_arc_flag,sweep_flag:TpvInt32;x,y:TpvDouble);
@@ -4732,6 +4760,9 @@ begin
  while SrcPos<=SrcLen do begin
   SkipBlank;
   if SrcPos<=SrcLen then begin
+   StartSrcPos:=SrcPos;
+   StartCommandCount:=fCommands.Count;
+   MissingNumber:=false;
    if Src[SrcPos] in ['A'..'Z','a'..'z'] then begin
     Command:=Src[SrcPos];
     inc(SrcPos);
@@ -4742,6 +4773,10 @@ begin
      Close;
      lx:=lmx;
      ly:=lmy;
+     // A close path command has no parameters at all and therefore cannot be repeated implicitly, so
+     // forget it here, so that any directly following coordinates do end the whole parsing instead of
+     // emitting further close path commands.
+     Command:=#0;
     end;
     'H':begin
      lx:=GetFloat;
@@ -4916,6 +4951,23 @@ begin
     else begin
      break;
     end;
+   end;
+   if MissingNumber then begin
+    // At least one coordinate of the current command was missing, so the path data is malformed from
+    // here on. Drop the incompletely parsed command again and stop, so that everything up to the error
+    // stays, like the SVG specification demands it for erroneous path data.
+    while fCommands.Count>StartCommandCount do begin
+     fCommands.Delete(fCommands.Count-1);
+    end;
+    fStartPointSeen:=fCommands.Count>0;
+    break;
+   end;
+   LastCommand:=Command;
+   if SrcPos=StartSrcPos then begin
+    // Nothing was consumed in this iteration at all, which happens only when the remaining input is
+    // malformed, for example at a character which is neither a command nor a part of a number, so the
+    // loop must stop here, because it would never terminate otherwise.
+    break;
    end;
   end else begin
    break;
