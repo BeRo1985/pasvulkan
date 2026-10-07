@@ -6430,7 +6430,11 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;');
    OutputPAS.Add('begin');
-   OutputPAS.Add(' LibVulkan:=vkLoadLibrary(LibraryName);');
+   OutputPAS.Add(' // Load the library only once: every TpvVulkanInstance.Create calls this, and finalization frees it only once.');
+   OutputPAS.Add(' // A different LibraryName on a later call is ignored while a library is loaded.');
+   OutputPAS.Add(' if not assigned(LibVulkan) then begin');
+   OutputPAS.Add('  LibVulkan:=vkLoadLibrary(LibraryName);');
+   OutputPAS.Add(' end;');
    OutputPAS.Add(' result:=assigned(LibVulkan);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('  vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,''vkGetInstanceProcAddr'');');

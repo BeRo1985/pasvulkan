@@ -48974,7 +48974,11 @@ end;
 
 function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;
 begin
- LibVulkan:=vkLoadLibrary(LibraryName);
+ // Load the library only once: every TpvVulkanInstance.Create calls this, and finalization frees it only once.
+ // A different LibraryName on a later call is ignored while a library is loaded.
+ if not assigned(LibVulkan) then begin
+  LibVulkan:=vkLoadLibrary(LibraryName);
+ end;
  result:=assigned(LibVulkan);
  if result then begin
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
