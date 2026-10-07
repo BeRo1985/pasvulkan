@@ -143,6 +143,7 @@ type TpvScene3DRenderer=class;
        fUseMeshletExpand:Boolean;
        fUseMeshletCulling:Boolean;
        fUseMeshShaderLayerRouting:Boolean;
+       fCascadedShadowMapCullDepthLayerRouting:Boolean;
        fWetnessMapActive:Boolean;
        fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
@@ -260,6 +261,13 @@ type TpvScene3DRenderer=class;
        property UseMeshletExpand:Boolean read fUseMeshletExpand write fUseMeshletExpand;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
+       // Route the meshes of the cascaded shadow map passes (the cull depth phase 0 pass, which renders the bulk of the
+       // shadow map, and the disocclusion pass after it) per cascade by the mesh shader layer routing, instead of
+       // broadcasting every draw into all cascades by multiview. Each of both passes is split then, into a multiview
+       // part for the planet and the non-triangle ranges, since these select their cascade by gl_ViewIndex, and the
+       // layer routed meshes part after it. Only effective together with mesh shaders and shaderOutputLayer support,
+       // it is cleared in Prepare otherwise. Set before Prepare.
+       property CascadedShadowMapCullDepthLayerRouting:Boolean read fCascadedShadowMapCullDepthLayerRouting write fCascadedShadowMapCullDepthLayerRouting;
        property WetnessMapActive:Boolean read fWetnessMapActive write fWetnessMapActive;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
@@ -442,6 +450,8 @@ begin
  fUseMeshletExpand:=true;
 
  fUseMeshletCulling:=true;
+
+ fCascadedShadowMapCullDepthLayerRouting:=false;
 
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
@@ -738,6 +748,8 @@ begin
 
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaders and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
+
+ fCascadedShadowMapCullDepthLayerRouting:=fCascadedShadowMapCullDepthLayerRouting and fUseMeshShaderLayerRouting;
 
  if fShadowMapSize=0 then begin
   fShadowMapSize:=512;

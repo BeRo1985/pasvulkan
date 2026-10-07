@@ -80,6 +80,13 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
      TpvScene3DRendererPassesCascadedShadowMapRenderPass=class(TpvFrameGraph.TRenderPass)
+      public
+       type TPart=
+             (
+              All,               // Planet and meshes, by multiview
+              Planet,            // Only the planet (and the non-triangle mesh ranges), by multiview, in front of the MeshesLayerRouting part
+              MeshesLayerRouting // Only the triangle meshes, routed per cascade by the mesh shader layer routing without multiview
+             );
       private
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -91,6 +98,7 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
+       fPart:TPart;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
@@ -113,10 +121,11 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
        fVulkanPipelineShaderStageLayerRoutingMesh:TpvVulkanPipelineShaderStage;
        fLayerRoutingGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
+       fNoGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fPlanetShadowMapPass:TpvScene3DPlanet.TRenderPass;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aPart:TPart=TPart.All); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -130,16 +139,32 @@ implementation
 
 { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
 
-constructor TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aPart:TPart);
 var Index:TpvSizeInt;
 begin
 inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='CascadedShadowMapRenderPass';
+ fPart:=aPart;
 
- if fInstance.Renderer.UseMeshShaderLayerRouting then begin
+ FillChar(fNoGraphicsPipelines,SizeOf(TpvScene3D.TGraphicsPipelines),#0);
+
+ case fPart of
+  TPart.Planet:begin
+   Name:='CascadedShadowMapPlanetRenderPass';
+  end;
+  TPart.MeshesLayerRouting:begin
+   Name:='CascadedShadowMapLayerRoutingRenderPass';
+  end;
+  else begin
+   Name:='CascadedShadowMapRenderPass';
+  end;
+ end;
+
+ // Only the MeshesLayerRouting part runs without multiview, since only the layer routing mesh shaders write gl_Layer
+ // themselves, whereas the planet and the vertex pipelines select their cascade by gl_ViewIndex
+ if fPart=TPart.MeshesLayerRouting then begin
   MultiviewMask:=0;
  end else begin
   MultiviewMask:=0;
@@ -297,7 +322,7 @@ begin
   fVulkanPipelineShaderStageMeshMesh:=nil;
  end;
 
- if fMeshShader and fInstance.Renderer.UseMeshShaderLayerRouting then begin
+ if fMeshShader and (fPart=TPart.MeshesLayerRouting) then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_layerrouting_task_pass0.spv');
   try
@@ -325,7 +350,10 @@ begin
  end;
 
 
- if fInstance.Renderer.RaytracingActive then begin
+ if fPart=TPart.MeshesLayerRouting then begin
+  // The planet is drawn by the Planet part, since its pipelines need multiview
+  fPlanetShadowMapPass:=nil;
+ end else if fInstance.Renderer.RaytracingActive then begin
   fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                             fInstance,
                                                             fInstance.Renderer.Scene3D,
@@ -577,7 +605,9 @@ begin
 
  end;
 
- if (MultiviewMask=0) and fMeshShader and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
+ // Also with multiview, as in the cull depth pass, since otherwise the triangle ranges would fall back to the non-culled
+ // vertex path in ExecuteDraw
+ if fMeshShader and assigned(fVulkanPipelineShaderStageMeshMesh) then begin
 
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
@@ -837,10 +867,12 @@ begin
 
  end;
 
- fPlanetShadowMapPass.AllocateResources(fVulkanRenderPass,
-                                        fInstance.CascadedShadowMapWidth,
-                                        fInstance.CascadedShadowMapHeight,
-                                        fInstance.Renderer.ShadowMapSampleCountFlagBits);
+ if assigned(fPlanetShadowMapPass) then begin
+  fPlanetShadowMapPass.AllocateResources(fVulkanRenderPass,
+                                         fInstance.CascadedShadowMapWidth,
+                                         fInstance.CascadedShadowMapHeight,
+                                         fInstance.Renderer.ShadowMapSampleCountFlagBits);
+ end;
 
 end;
 
@@ -850,7 +882,9 @@ var Index:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
- fPlanetShadowMapPass.ReleaseResources;
+ if assigned(fPlanetShadowMapPass) then begin
+  fPlanetShadowMapPass.ReleaseResources;
+ end;
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -908,8 +942,10 @@ end;
 procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                            const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    MeshShaderPipelinesOpaque:TpvScene3D.PGraphicsPipelines;
-    MeshShaderPipelinesMask:TpvScene3D.PGraphicsPipelines;
+    AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    FaceCullingMode:TpvScene3D.TFaceCullingMode;
+    GraphicsPipelines:TpvScene3D.TGraphicsPipelines;
+    MeshShaderGraphicsPipelines:TpvScene3D.PGraphicsPipelines;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -919,58 +955,61 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fInstance.Renderer.UseMeshShaderLayerRouting then begin
-   MeshShaderPipelinesOpaque:=@fLayerRoutingGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque];
-   MeshShaderPipelinesMask:=@fLayerRoutingGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask];
-  end else begin
-   MeshShaderPipelinesOpaque:=@fMeshShaderGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque];
-   MeshShaderPipelinesMask:=@fMeshShaderGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask];
-  end;
-
   if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
 
    if not fInstance.Renderer.Scene3D.RaytracingActive then begin
 
-    fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
-                              aFrameIndex,
-                              TpvScene3DRendererRenderPass.CascadedShadowMap,
-                              InFlightFrameState^.CascadedShadowMapViewIndex,
-                              InFlightFrameState^.CountCascadedShadowMapViews,
-                              aCommandBuffer);
+    if assigned(fPlanetShadowMapPass) then begin
+     fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
+                               aFrameIndex,
+                               TpvScene3DRendererRenderPass.CascadedShadowMap,
+                               InFlightFrameState^.CascadedShadowMapViewIndex,
+                               InFlightFrameState^.CountCascadedShadowMapViews,
+                               aCommandBuffer);
+    end;
 
-    fInstance.Renderer.Scene3D.Draw(fInstance,
-                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                    -1,
-                                    aInFlightFrameIndex,
-                                    TpvScene3DRendererRenderPass.CascadedShadowMap,
-                                    InFlightFrameState^.CascadedShadowMapViewIndex,
-                                    InFlightFrameState^.CountCascadedShadowMapViews,
-                                    FrameGraph.DrawFrameIndex,
-                                    aCommandBuffer,
-                                    fVulkanPipelineLayout,
-                                    OnSetRenderPassResources,
-                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                    nil,
-                                    not fInstance.Renderer.RaytracingActive,
-                                    false,
-                                    MeshShaderPipelinesOpaque);
+    for AlphaMode:=TpvScene3D.TMaterial.TAlphaMode.Opaque to TpvScene3D.TMaterial.TAlphaMode.Mask do begin
 
-    fInstance.Renderer.Scene3D.Draw(fInstance,
-                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                    -1,
-                                    aInFlightFrameIndex,
-                                    TpvScene3DRendererRenderPass.CascadedShadowMap,
-                                    InFlightFrameState^.CascadedShadowMapViewIndex,
-                                    InFlightFrameState^.CountCascadedShadowMapViews,
-                                    FrameGraph.DrawFrameIndex,
-                                    aCommandBuffer,
-                                    fVulkanPipelineLayout,
-                                    OnSetRenderPassResources,
-                                    [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                    nil,
-                                    not fInstance.Renderer.RaytracingActive,
-                                    false,
-                                    MeshShaderPipelinesMask);
+     case fPart of
+      TPart.Planet:begin
+       // Only the non-triangle (points/lines) ranges here, which the triangle meshlet based layer routing can't express,
+       // so that these still reach all cascades by multiview. The triangle ranges get the MeshesLayerRouting part, so
+       // with no mesh shader pipelines and no triangle vertex pipelines they are skipped here.
+       GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];
+       for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
+        GraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=nil;
+       end;
+       MeshShaderGraphicsPipelines:=@fNoGraphicsPipelines;
+      end;
+      TPart.MeshesLayerRouting:begin
+       // Only the triangle ranges, the non-triangle ranges are skipped by the missing vertex pipelines
+       GraphicsPipelines:=fNoGraphicsPipelines;
+       MeshShaderGraphicsPipelines:=@fLayerRoutingGraphicsPipelines[AlphaMode];
+      end;
+      else begin
+       GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];
+       MeshShaderGraphicsPipelines:=@fMeshShaderGraphicsPipelines[AlphaMode];
+      end;
+     end;
+
+     fInstance.Renderer.Scene3D.Draw(fInstance,
+                                     GraphicsPipelines,
+                                     -1,
+                                     aInFlightFrameIndex,
+                                     TpvScene3DRendererRenderPass.CascadedShadowMap,
+                                     InFlightFrameState^.CascadedShadowMapViewIndex,
+                                     InFlightFrameState^.CountCascadedShadowMapViews,
+                                     FrameGraph.DrawFrameIndex,
+                                     aCommandBuffer,
+                                     fVulkanPipelineLayout,
+                                     OnSetRenderPassResources,
+                                     [AlphaMode],
+                                     nil,
+                                     not fInstance.Renderer.RaytracingActive,
+                                     false,
+                                     MeshShaderGraphicsPipelines);
+
+    end;
 
   { fInstance.Renderer.Scene3D.Draw(fInstance,
                                     fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
