@@ -722,6 +722,9 @@ begin
 
     if fCullRenderPass=TpvScene3DRendererCullRenderPass.CascadedShadowMap then begin
      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 4); // FLAG_SHADOW_PASS
+     if fInstance.Renderer.CascadedShadowMapCullDepthLayerRouting and not (fInstance.Renderer.Scene3D.MeshShaders and assigned(fMeshShaderPipeline)) then begin
+      PushConstants.Flags:=PushConstants.Flags or TpvUInt32(1 shl 7); // FLAG_LAYER_ROUTING (vertex path, the mesh shader path routes per meshlet in the task shader)
+     end;
     end;
 
     if fInstance.KeepPass0ForRendering then begin

@@ -219,6 +219,14 @@ layout(set = 2, binding = 0, std430) readonly buffer BoundingSpheres {
   vec4 boundingSpheres[];
 } boundingSphereBuffer;
 
+#ifndef MESH_SHADER_PATH
+#include "frustum.glsl"
+
+// Only for FLAG_LAYER_ROUTING, for the per-view frustum tests of the cascade mask
+shared mat4 viewMatrices[8];
+shared Frustum frustums[8];
+#endif
+
 #else // PASS == 1
 
 layout(push_constant) uniform PushConstants {
@@ -447,6 +455,10 @@ const uint FLAG_KEEP_PASS0_IN_PASS1 = 1u << 6;      // DIAGNOSTIC ONLY -- BREAKS
                                                     // bitmap, so once-visible/in-frustum geometry is never occlusion-culled
                                                     // again (growing overdraw).
 
+const uint FLAG_LAYER_ROUTING = 1u << 7;            // Vertex path cascade layer routing (cascaded shadow maps without multiview): write
+                                                    // per object only the cascades (views), which it touches, as instances, see
+                                                    // encodeLayerRouting below and LAYER_ROUTING in mesh.vert
+
 const uint DRAW_CMD_FLAG_MATERIAL_CASTS_SHADOW = 1u << 2; // Per-command: material casts shadows (bit 2 of cmd1.w)
 const uint DRAW_INFO_FLAG_NODE_CASTS_SHADOW = 1u << 7;    // Per-node: node casts shadows (bit 7 of DrawInfo.flags)
 
@@ -531,6 +543,27 @@ void applyLOD(inout uvec4 cmd0, uint lodInfoIndex, uint boundingSphereIndex, uin
   }
 
 }
+
+#ifndef MESH_SHADER_PATH
+// Vertex path cascade layer routing: the render pass runs without multiview, so the vertex shader (mesh.vert with LAYER_ROUTING)
+// selects the cascade by the instance index and writes gl_Layer itself. Must match the decoding in mesh.vert. Two encodings,
+// distinguished by bit 31 of firstInstance:
+// - Single instance draws (instanceCount == 1, the culled ones): one instance per cascade in viewMask, so
+//   instanceCount = bitCount(viewMask) and firstInstance = 0x80000000 | (meshObjectID << 6) | (viewMask << 2), and the instance
+//   offset (0..3) in the two lowest bits selects the n-th set bit of viewMask. So max. 4 views and meshObjectID < 2^25.
+// - Multi instance draws (GPU instancing, which are never culled, since their bounding sphere isn't valid for all instances):
+//   all 4 cascades for each instance, so instanceCount = instanceCount * 4 and firstInstance = meshObjectID << 2, since the
+//   instances of such a draw have consecutive mesh object IDs, the instance index then decodes to ((meshObjectID + k) << 2) | cascade.
+void encodeLayerRouting(inout uvec4 cmd0, inout uvec4 cmd1, const in uint viewMask){
+  if(cmd0.y == 1u){
+    cmd0.y = uint(bitCount(viewMask & 0xfu));
+    cmd1.x = 0x80000000u | (cmd1.x << 6u) | ((viewMask & 0xfu) << 2u);
+  }else{
+    cmd0.y *= 4u;
+    cmd1.x <<= 2u;
+  }
+}
+#endif
 
 #ifdef MESH_SHADER_PATH
 // Submit draw commands for the meshlets of a visible object, either as one command with the
@@ -829,6 +862,22 @@ void main(){
 
   // In the first pass, just draw the previous frame visible stuff as against-cull-data (HiZ depth buffer) for the next pass
 
+#ifndef MESH_SHADER_PATH
+  // The per-view frustum data for the cascade mask of FLAG_LAYER_ROUTING, before any early return, since all invocations must
+  // reach the barrier
+  if((pushConstants.flags & FLAG_LAYER_ROUTING) != 0u){
+    uint localInvocationIndex = gl_LocalInvocationID.x;
+    if(localInvocationIndex < min(pushConstants.countViews, 8u)){
+      uint viewIndex = pushConstants.baseViewIndex + localInvocationIndex;
+      viewMatrices[localInvocationIndex] = uView.views[viewIndex].viewMatrix;
+      frustumSetup(frustums[localInvocationIndex], uView.views[viewIndex].projectionMatrix);
+    }
+    memoryBarrierShared();
+    groupMemoryBarrier();
+    barrier();
+  }
+#endif
+
   uint rangeIndex;
   uint localIndex;
 
@@ -929,6 +978,34 @@ void main(){
   uint selectedLOD;
   applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
 
+#ifndef MESH_SHADER_PATH
+  // Layer routing: the cascades, which the previous frame visible object touches now. With the same conditions as the culling in
+  // the second pass, otherwise all cascades (for example for multi instance draws, whose bounding sphere isn't valid for all
+  // instances).
+  uvec4 outputCmd0 = cmd0;
+  uvec4 outputCmd1 = cmd1;
+  if((pushConstants.flags & FLAG_LAYER_ROUTING) != 0u){
+    uint viewMask = 0xfu;
+    vec4 boundingSphere = boundingSphereBuffer.boundingSpheres[cmd1.y];
+    if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u) && (cmd0.y == 1u)){
+      MatrixPairBuffer matrixPairBuffer = MatrixPairBuffer(globalBDAPointers.matrixPairBDA);
+      boundingSphere = sphereTransform(boundingSphere, matrixPairBuffer.pairs[drawInfoItems[meshObjectID].matrixID].modelMatrix);
+      viewMask = 0u;
+      uint countViews = min(pushConstants.countViews, 4u);
+      for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+        if(frustumCullingSphereTest(frustums[viewIndex], vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w))){
+          viewMask |= 1u << viewIndex;
+        }
+      }
+      if(viewMask == 0u){
+        // In no cascade anymore, so not drawn here and also not marked as added, the second pass decides about it then
+        return;
+      }
+    }
+    encodeLayerRouting(outputCmd0, outputCmd1, viewMask);
+  }
+#endif
+
   {
     // Check for instance effects (dissolve/dithered transparency) by reading directly from InstanceData SSBO
     // instead of relying on CPU-baked flags. This allows the commands to be persistent/cached.
@@ -951,8 +1028,8 @@ void main(){
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = outputCmd0;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = outputCmd1;
           }
 #endif
         }
@@ -982,11 +1059,12 @@ void main(){
 #endif
                         meshObjectID, cmd1.y, cmd1.z, selectedLOD, cmd1.w);
 #else
+  outputCmd1.w = cmd1.w; // with the added mark
   uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
   if(destinationIndex < countCommands){
     destinationIndex += baseCommandIndex;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = outputCmd0;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = outputCmd1;
   }
 #endif
 
@@ -1065,6 +1143,11 @@ void main(){
   uint sourceIndex = (baseCommandIndex - pushConstants.outputCommandSlotOffset) + localIndex;
 
   bool isDrawIndexedIndirectCommandVisible = false;
+
+  // For FLAG_LAYER_ROUTING: the views (cascades), in which the object is visible, and in which it is at least in the frustum (for the
+  // PASS0-committed objects, which FLAG_KEEP_PASS0_FOR_RENDERING keeps despite HiZ)
+  uint visibleViewMask = 0u;
+  uint frustumViewMask = 0u;
 
   uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
 
@@ -1165,6 +1248,9 @@ void main(){
         lastCullReason = 5u;
       }
 #endif
+      if(visible){
+        frustumViewMask |= 1u << viewIndex;
+      }
 /*    vec4 frustum = fastFrustums[viewIndex];
       bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
@@ -1280,8 +1366,12 @@ void main(){
 
         isDrawIndexedIndirectCommandVisible = true;
 
-        // No need to check also the other views in this case
-        break;
+        visibleViewMask |= 1u << viewIndex;
+
+        // No need to check also the other views in this case, except for the layer routing, which needs all views, in which it is visible
+        if((pushConstants.flags & FLAG_LAYER_ROUTING) == 0u){
+          break;
+        }
 
       }
 
@@ -1300,6 +1390,9 @@ void main(){
     // Always visible, if there is no bounding sphere, or if culling is disabled, or if there are more than one instance, since in this case
     // the bounding sphere is not valid for all instances, or always invisible, when instanceCount is zero.
     isDrawIndexedIndirectCommandVisible = (cmd0.y != 0u);
+
+    // And then in all views
+    visibleViewMask = frustumViewMask = 0xfu;
 
   }
 
@@ -1320,6 +1413,16 @@ void main(){
   // LOD selection: rewrite command geometry based on screen coverage
   uint selectedLOD;
   applyLOD(cmd0, cmd1.z, cmd1.y, meshObjectID, selectedLOD);
+
+#ifndef MESH_SHADER_PATH
+  // Layer routing: only the views, in which it is visible, or, when it is only kept for rendering as PASS0-committed object
+  // despite HiZ, the views, in which it is at least in the frustum
+  uvec4 outputCmd0 = cmd0;
+  uvec4 outputCmd1 = cmd1;
+  if((pushConstants.flags & FLAG_LAYER_ROUTING) != 0u){
+    encodeLayerRouting(outputCmd0, outputCmd1, (visibleViewMask != 0u) ? visibleViewMask : frustumViewMask);
+  }
+#endif
 
   // Mark as visible in any case, independently of being already added in the previous pass.
   // Variante (a): with FLAG_KEEP_PASS0_FOR_RENDERING, drive the bitmap from the TRUE HiZ result only,
@@ -1354,8 +1457,8 @@ void main(){
           uint oitDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDrawCallIndex], 1u);
           if(oitDestIndex < countCommands){
             uint destIdx = oitBaseCommandIndex + oitDestIndex;
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = cmd0;
-            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = cmd1;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd0 = outputCmd0;
+            outputDrawIndexedIndirectCommands.commands[destIdx].cmd1 = outputCmd1;
           }
 #endif
           // Route to OIT disocclusion output
@@ -1373,8 +1476,8 @@ void main(){
             uint oitDisocDestIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[oitDisocDrawCallIndex], 1u);
             if(oitDisocDestIndex < countCommandsForDisocclusions){
               uint destIdx2 = oitDisocBaseCommandIndex + oitDisocDestIndex;
-              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0 = cmd0;
-              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = cmd1;
+              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd0 = outputCmd0;
+              outputDrawIndexedIndirectCommands.commands[destIdx2].cmd1 = outputCmd1;
             }
 #endif
           }
@@ -1398,8 +1501,8 @@ void main(){
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndex], 1u);
     if(destinationIndex < countCommands){
       destinationIndex += baseCommandIndex;
-      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = outputCmd0;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = outputCmd1;
     }
 #endif
 
@@ -1421,8 +1524,8 @@ void main(){
     uint destinationIndex = atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[drawCallIndexForDisocclusions], 1u);
     if(destinationIndex < countCommandsForDisocclusions){
       destinationIndex += baseCommandIndexForDisocclusions;
-      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = outputCmd0;
+      outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = outputCmd1;
     }
 #endif
 

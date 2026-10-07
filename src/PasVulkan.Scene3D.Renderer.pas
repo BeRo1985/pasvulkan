@@ -262,11 +262,13 @@ type TpvScene3DRenderer=class;
        property UseMeshletCulling:Boolean read fUseMeshletCulling write fUseMeshletCulling;
        property UseMeshShaderLayerRouting:Boolean read fUseMeshShaderLayerRouting write fUseMeshShaderLayerRouting;
        // Route the meshes of the cascaded shadow map passes (the cull depth phase 0 pass, which renders the bulk of the
-       // shadow map, and the disocclusion pass after it) per cascade by the mesh shader layer routing, instead of
-       // broadcasting every draw into all cascades by multiview. Each of both passes is split then, into a multiview
-       // part for the planet and the non-triangle ranges, since these select their cascade by gl_ViewIndex, and the
-       // layer routed meshes part after it. Only effective together with mesh shaders and shaderOutputLayer support,
-       // it is cleared in Prepare otherwise. Set before Prepare.
+       // shadow map, and the disocclusion pass after it) per cascade, instead of broadcasting every draw into all
+       // cascades by multiview. With mesh shaders by the mesh shader layer routing (per meshlet), otherwise by the vertex
+       // path layer routing, where the cull compute shader writes one instance per touched cascade per object and the
+       // vertex shader writes gl_Layer. Each of both passes is split then, into a multiview part for the planet (and with
+       // mesh shaders also the non-triangle ranges), since these select their cascade by gl_ViewIndex, and the layer
+       // routed meshes part after it. Needs shaderOutputLayer support, it is cleared in Prepare otherwise. Set before
+       // Prepare.
        property CascadedShadowMapCullDepthLayerRouting:Boolean read fCascadedShadowMapCullDepthLayerRouting write fCascadedShadowMapCullDepthLayerRouting;
        property WetnessMapActive:Boolean read fWetnessMapActive write fWetnessMapActive;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
@@ -749,7 +751,10 @@ begin
  fUseMeshShaderLayerRouting:=fScene3D.MeshShaders and
                              (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
 
- fCascadedShadowMapCullDepthLayerRouting:=fCascadedShadowMapCullDepthLayerRouting and fUseMeshShaderLayerRouting;
+ // With mesh shaders the mesh shader layer routing, otherwise the vertex path layer routing, both need gl_Layer from a
+ // pre-rasterization shader stage
+ fCascadedShadowMapCullDepthLayerRouting:=fCascadedShadowMapCullDepthLayerRouting and
+                                          (fScene3D.VulkanDevice.PhysicalDevice.Vulkan12Features.shaderOutputLayer<>VK_FALSE);
 
  if fShadowMapSize=0 then begin
   fShadowMapSize:=512;

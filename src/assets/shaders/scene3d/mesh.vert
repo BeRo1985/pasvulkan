@@ -2,7 +2,10 @@
 
 //#define SHADERDEBUG
 
-#ifndef VOXELIZATION
+#if defined(LAYER_ROUTING)
+// Cascade layer routing without multiview: gl_Layer from the vertex shader (Vulkan 1.2 shaderOutputLayer)
+#extension GL_ARB_shader_viewport_layer_array : enable
+#elif !defined(VOXELIZATION)
 #extension GL_EXT_multiview : enable
 #endif
 #extension GL_ARB_separate_shader_objects : enable
@@ -84,6 +87,29 @@ out gl_PerVertex {
 
 void main() {
 
+#if defined(LAYER_ROUTING)
+  // The cull shader (mesh_cull.comp with FLAG_LAYER_ROUTING, see encodeLayerRouting there) encodes the mesh object ID and the
+  // cascades into the instance index, one instance per cascade, which the object touches
+  uint meshObjectID;
+  uint layerIndex;
+  {
+    uint instanceIndex = uint(gl_InstanceIndex);
+    if((instanceIndex & 0x80000000u) != 0u){
+      // Single instance draw: the instance offset in the lowest two bits selects the n-th set bit of the cascade mask
+      meshObjectID = (instanceIndex >> 6u) & 0x1ffffffu;
+      uint viewMask = (instanceIndex >> 2u) & 0xfu;
+      for(uint skip = instanceIndex & 3u; skip > 0u; skip--){
+        viewMask &= viewMask - 1u; // clear the lowest set bit
+      }
+      layerIndex = uint(findLSB(viewMask));
+    }else{
+      // Multi instance draw: all cascades for each instance with consecutive mesh object IDs
+      meshObjectID = instanceIndex >> 2u;
+      layerIndex = instanceIndex & 3u;
+    }
+  }
+  uint viewIndex = pushConstants.viewBaseIndex + layerIndex;
+#else
 #ifdef VOXELIZATION
   uint viewIndex = pushConstants.viewBaseIndex;
 #else
@@ -92,6 +118,7 @@ void main() {
 
   // meshObjectID is passed via firstInstance field of the draw command
   const uint meshObjectID = uint(gl_InstanceIndex);
+#endif
   DrawInfo drawInfo = drawInfoItems[meshObjectID];
 
   // Vertex index for vertex pulling, it matches the vertex index used in the CPU-side mesh compaction and 
@@ -250,6 +277,14 @@ void main() {
   // A vertex whose data was out of range above carries whatever vertex zero holds, which is not this
   // vertex - so it is put behind the near plane rather than drawn somewhere wrong.
   gl_Position = vertexInRange ? clipSpacePosition : vec4(0.0, 0.0, -1.0, 0.0);
+
+#if defined(LAYER_ROUTING)
+  // A cascade beyond the views of this pass (never for valid encodings) is dropped as well
+  if(layerIndex >= pushConstants.countViews){
+    gl_Position = vec4(0.0, 0.0, -1.0, 0.0);
+  }
+  gl_Layer = int(layerIndex);
+#endif
 
 #endif
 

@@ -254,7 +254,13 @@ begin
 
  fMeshShader:=fInstance.Renderer.Scene3D.MeshShaders;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
+ if (fPart=TPart.MeshesLayerRouting) and not fMeshShader then begin
+  // Vertex path layer routing: the cascade from the instance index, which the cull compute shader encodes, and gl_Layer from the
+  // vertex shader
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_layerrouting_vert.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
+ end;
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -972,19 +978,30 @@ begin
 
      case fPart of
       TPart.Planet:begin
-       // Only the non-triangle (points/lines) ranges here, which the triangle meshlet based layer routing can't express,
-       // so that these still reach all cascades by multiview. The triangle ranges get the MeshesLayerRouting part, so
-       // with no mesh shader pipelines and no triangle vertex pipelines they are skipped here.
-       GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];
-       for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
-        GraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=nil;
+       if fMeshShader then begin
+        // Only the non-triangle (points/lines) ranges here, which the triangle meshlet based layer routing can't express,
+        // so that these still reach all cascades by multiview. The triangle ranges get the MeshesLayerRouting part, so
+        // with no mesh shader pipelines and no triangle vertex pipelines they are skipped here.
+        GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];
+        for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
+         GraphicsPipelines[TpvScene3D.TPrimitiveTopology.Triangles,FaceCullingMode]:=nil;
+        end;
+        MeshShaderGraphicsPipelines:=@fNoGraphicsPipelines;
+       end else begin
+        // The vertex path layer routing handles all topologies, so no meshes here
+        continue;
        end;
-       MeshShaderGraphicsPipelines:=@fNoGraphicsPipelines;
       end;
       TPart.MeshesLayerRouting:begin
-       // Only the triangle ranges, the non-triangle ranges are skipped by the missing vertex pipelines
-       GraphicsPipelines:=fNoGraphicsPipelines;
-       MeshShaderGraphicsPipelines:=@fLayerRoutingGraphicsPipelines[AlphaMode];
+       if fMeshShader then begin
+        // Only the triangle ranges, the non-triangle ranges are skipped by the missing vertex pipelines
+        GraphicsPipelines:=fNoGraphicsPipelines;
+        MeshShaderGraphicsPipelines:=@fLayerRoutingGraphicsPipelines[AlphaMode];
+       end else begin
+        // All ranges by the layer routing vertex pipelines
+        GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];
+        MeshShaderGraphicsPipelines:=@fNoGraphicsPipelines;
+       end;
       end;
       else begin
        GraphicsPipelines:=fVulkanGraphicsPipelines[AlphaMode];

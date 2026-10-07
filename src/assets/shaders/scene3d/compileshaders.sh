@@ -332,6 +332,7 @@ compileshaderarguments=(
   "-V mesh.vert --target-env vulkan1.2 -DPICKING -o ${tempPath}/mesh_picking_vert.spv" # object picking: same as above, but the flat output carries the mesh object id
   "-V mesh.vert --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert --target-env vulkan1.2 -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
+  "-V mesh.vert --target-env vulkan1.2 -DLAYER_ROUTING -o ${tempPath}/mesh_layerrouting_vert.spv" # cascaded shadow map layer routing without multiview: cascade by instance index, gl_Layer from the vertex shader
 
   "-V global_illumination_voxel_occlusion_transfer.comp ${VOXEL_CONTENT_FP16_DEFINE} -o ${tempPath}/global_illumination_voxel_occlusion_transfer_comp.spv"
   "-V global_illumination_voxel_occlusion_mipmap.comp -o ${tempPath}/global_illumination_voxel_occlusion_mipmap_comp.spv"
