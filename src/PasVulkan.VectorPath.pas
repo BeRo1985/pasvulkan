@@ -4566,6 +4566,8 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     lx,ly,lcx,lcy,x0,y0,x1,y1,x2,y2,lmx,lmy,rx,ry,x_axis_rotation,x,y:TpvDouble;
     Src:TpvRawByteString;
     Command,LastCommand:AnsiChar;
+    StartCommandCount:TpvSizeInt;
+    MissingNumber:boolean;
  procedure SkipBlank;
  begin
   while (SrcPos<=SrcLen) and (Src[SrcPos] in [#0..#32]) do begin
@@ -4573,20 +4575,23 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   end;
  end;
  function GetFloat:TpvDouble;
- var StartPos:TpvInt32;
+ var StartPos,CountDigits:TpvInt32;
  begin
   SkipBlank;
   StartPos:=SrcPos;
+  CountDigits:=0;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
    inc(SrcPos);
   end;
   while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
    inc(SrcPos);
+   inc(CountDigits);
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['.']) then begin
    inc(SrcPos);
    while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
     inc(SrcPos);
+    inc(CountDigits);
    end;
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['e','E']) then begin
@@ -4598,18 +4603,23 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     inc(SrcPos);
    end;
   end;
-  if StartPos<SrcPos then begin
+  if CountDigits>0 then begin
    result:=ConvertStringToDouble(TpvRawByteString(copy(String(Src),StartPos,SrcPos-StartPos)),rmNearest,nil,-1);
   end else begin
+   // There is no number at all at this position, not even a single digit, so the whole current command
+   // is incomplete and must be dropped again by the caller.
    result:=0.0;
+   MissingNumber:=true;
   end;
   SkipBlank;
  end;
  function GetInt:TpvInt32;
- var s:TpvRawByteString;
+ var CountDigits:TpvInt32;
+     s:TpvRawByteString;
  begin
   SkipBlank;
   s:='';
+  CountDigits:=0;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
    s:=s+Src[SrcPos];
    inc(SrcPos);
@@ -4617,6 +4627,7 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
    s:=s+Src[SrcPos];
    inc(SrcPos);
+   inc(CountDigits);
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['.']) then begin
    inc(SrcPos);
@@ -4634,6 +4645,13 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
    end;
   end;
   SkipBlank;
+  if CountDigits=0 then begin
+   // There is no number at all at this position, so the arc flag is missing and the whole current
+   // command is incomplete and must be dropped again by the caller.
+   MissingNumber:=true;
+  end else begin
+   // Nothing to do here in this case
+  end;
   result:=Trunc(ConvertStringToDouble(s,rmNearest,nil,-1));
  end;
  procedure ConvertArcToCubicCurves(rx,ry,x_axis_rotation:TpvDouble;large_arc_flag,sweep_flag:TpvInt32;x,y:TpvDouble);
@@ -4743,6 +4761,8 @@ begin
   SkipBlank;
   if SrcPos<=SrcLen then begin
    StartSrcPos:=SrcPos;
+   StartCommandCount:=fCommands.Count;
+   MissingNumber:=false;
    if Src[SrcPos] in ['A'..'Z','a'..'z'] then begin
     Command:=Src[SrcPos];
     inc(SrcPos);
@@ -4931,6 +4951,16 @@ begin
     else begin
      break;
     end;
+   end;
+   if MissingNumber then begin
+    // At least one coordinate of the current command was missing, so the path data is malformed from
+    // here on. Drop the incompletely parsed command again and stop, so that everything up to the error
+    // stays, like the SVG specification demands it for erroneous path data.
+    while fCommands.Count>StartCommandCount do begin
+     fCommands.Delete(fCommands.Count-1);
+    end;
+    fStartPointSeen:=fCommands.Count>0;
+    break;
    end;
    LastCommand:=Command;
    if SrcPos=StartSrcPos then begin
