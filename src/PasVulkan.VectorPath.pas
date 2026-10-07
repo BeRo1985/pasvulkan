@@ -3514,10 +3514,10 @@ begin
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-       if result.Min.x<q then begin
+       if result.Min.x>q then begin
         result.Min.x:=q;
        end;
-       if result.Max.x>q then begin
+       if result.Max.x<q then begin
         result.Max.x:=q;
        end;
       end;
@@ -3525,10 +3525,10 @@ begin
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
-       if result.Min.x<q then begin
+       if result.Min.x>q then begin
         result.Min.x:=q;
        end;
-       if result.Max.x>q then begin
+       if result.Max.x<q then begin
         result.Max.x:=q;
        end;
       end;
@@ -3539,10 +3539,10 @@ begin
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-       if result.Min.y<q then begin
+       if result.Min.y>q then begin
         result.Min.y:=q;
        end;
-       if result.Max.y>q then begin
+       if result.Max.y<q then begin
         result.Max.y:=q;
        end;
       end;
@@ -3550,10 +3550,10 @@ begin
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
-       if result.Min.y<q then begin
+       if result.Min.y>q then begin
         result.Min.y:=q;
        end;
-       if result.Max.y>q then begin
+       if result.Max.y<q then begin
         result.Max.y:=q;
        end;
       end;
@@ -4917,6 +4917,7 @@ begin
      break;
     end;
    end;
+   LastCommand:=Command;
   end else begin
    break;
   end;
