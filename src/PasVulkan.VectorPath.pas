@@ -3480,6 +3480,16 @@ end;
 function TpvVectorPathSegmentCubicCurve.GetBoundingBox:TpvVectorPathBoundingBox;
 var c,b,a,h:TpvVectorPathVector;
     t,s,q:TpvDouble;
+ function GetCurveParameter(const aNumerator,aDenominator:TpvDouble):TpvDouble;
+ begin
+  if IsZero(aDenominator) then begin
+   // There is no root in this case, so just return a curve parameter value outside of the 0.0 .. 1.0
+   // range, so that the caller skips it, instead of dividing by zero here.
+   result:=-1.0;
+  end else begin
+   result:=aNumerator/aDenominator;
+  end;
+ end;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fCachedBoundingBoxLock);
  try
@@ -3510,7 +3520,7 @@ begin
      h:=(b*b)-(c*a);
      if h.x>0.0 then begin
       h.x:=sqrt(h.x);
-      t:=c.x/((-b.x)-h.x);
+      t:=GetCurveParameter(c.x,(-b.x)-h.x);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
@@ -3521,7 +3531,7 @@ begin
         result.Max.x:=q;
        end;
       end;
-      t:=c.x/((-b.x)+h.x);
+      t:=GetCurveParameter(c.x,(-b.x)+h.x);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
@@ -3535,7 +3545,7 @@ begin
      end;
      if h.y>0.0 then begin
       h.y:=sqrt(h.y);
-      t:=c.y/((-b.y)-h.y);
+      t:=GetCurveParameter(c.y,(-b.y)-h.y);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
@@ -3546,7 +3556,7 @@ begin
         result.Max.y:=q;
        end;
       end;
-      t:=c.y/((-b.y)+h.y);
+      t:=GetCurveParameter(c.y,(-b.y)+h.y);
       if (t>0.0) and (t<1.0) then begin
        s:=1.0-t;
        q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
@@ -4552,7 +4562,7 @@ begin
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
-var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
+var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     lx,ly,lcx,lcy,x0,y0,x1,y1,x2,y2,lmx,lmy,rx,ry,x_axis_rotation,x,y:TpvDouble;
     Src:TpvRawByteString;
     Command,LastCommand:AnsiChar;
@@ -4732,6 +4742,7 @@ begin
  while SrcPos<=SrcLen do begin
   SkipBlank;
   if SrcPos<=SrcLen then begin
+   StartSrcPos:=SrcPos;
    if Src[SrcPos] in ['A'..'Z','a'..'z'] then begin
     Command:=Src[SrcPos];
     inc(SrcPos);
@@ -4742,6 +4753,10 @@ begin
      Close;
      lx:=lmx;
      ly:=lmy;
+     // A close path command has no parameters at all and therefore cannot be repeated implicitly, so
+     // forget it here, so that any directly following coordinates do end the whole parsing instead of
+     // emitting further close path commands.
+     Command:=#0;
     end;
     'H':begin
      lx:=GetFloat;
@@ -4918,6 +4933,12 @@ begin
     end;
    end;
    LastCommand:=Command;
+   if SrcPos=StartSrcPos then begin
+    // Nothing was consumed in this iteration at all, which happens only when the remaining input is
+    // malformed, for example at a character which is neither a command nor a part of a number, so the
+    // loop must stop here, because it would never terminate otherwise.
+    break;
+   end;
   end else begin
    break;
   end;
