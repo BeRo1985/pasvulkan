@@ -48974,7 +48974,9 @@ end;
 
 function LoadVulkanLibrary(const LibraryName:string=VK_DEFAULT_LIB_NAME):boolean;
 begin
- LibVulkan:=vkLoadLibrary(LibraryName);
+ if not assigned(LibVulkan) then begin
+  LibVulkan:=vkLoadLibrary(LibraryName);
+ end;
  result:=assigned(LibVulkan);
  if result then begin
   vkGetInstanceProcAddr:=vkGetProcAddress(LibVulkan,'vkGetInstanceProcAddr');
