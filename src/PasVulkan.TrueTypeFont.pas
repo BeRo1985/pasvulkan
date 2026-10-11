@@ -9531,10 +9531,17 @@ var Position,Tag,CheckSum,Offset,Size,Next:TpvUInt32;
    result:=0;
    Mask:=1;
    while (Mask<=$8000) and (Mask<=ValueFormat) do begin
-    Value:=ToSMALLINT(fFontData[Offset+0],fFontData[Offset+1]);
-    inc(Offset,2);
-    if Mask=TargetMask then begin
-     result:=Value;
+    // A value record holds one 16-bit field per flag which its value format has set, and nothing
+    // at all for the flags which are clear, so only a set flag may consume two bytes here. Walking
+    // over the clear ones as well would read every following field from the wrong place and would
+    // also make the record count as longer than it is, so whatever comes after it in the enclosing
+    // table would be misread too.
+    if (ValueFormat and Mask)<>0 then begin
+     Value:=ToSMALLINT(fFontData[Offset+0],fFontData[Offset+1]);
+     inc(Offset,2);
+     if Mask=TargetMask then begin
+      result:=Value;
+     end;
     end;
     Mask:=Mask shl 1;
    end;

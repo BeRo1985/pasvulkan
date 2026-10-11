@@ -840,10 +840,13 @@ begin
           end;
           KerningPairHashMap.Add(KerningPairDoubleIndex,KerningPairIndex);
           KerningPair:=@fKerningPairs[KerningPairIndex];
-          KerningPair^.Left:=TrueTypeFontKerningPair^.Left;
-          KerningPair^.Right:=TrueTypeFontKerningPair^.Right;
-          KerningPair^.Horizontal:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,true);
-          KerningPair^.Vertical:=aTrueTypeFont.GetKerning(KerningPair^.Left,KerningPair^.Right,false);
+          // A pair is named by the glyph numbers of this font, since those are what a text walk
+          // has at hand when it asks for one. The TrueType font keeps its own numbering, so it is
+          // the untranslated pair which the kerning amount is fetched with.
+          KerningPair^.Left:=GlyphIndex;
+          KerningPair^.Right:=OtherGlyphIndex;
+          KerningPair^.Horizontal:=aTrueTypeFont.GetKerning(TrueTypeFontKerningPair^.Left,TrueTypeFontKerningPair^.Right,true);
+          KerningPair^.Vertical:=aTrueTypeFont.GetKerning(TrueTypeFontKerningPair^.Left,TrueTypeFontKerningPair^.Right,false);
          end;
         end;
        end;
