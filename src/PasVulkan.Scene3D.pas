@@ -41123,7 +41123,7 @@ begin
       RenderInstance.fInstanceDataIndices[InFlightFrameIndex]:=RenderInstance.fInstanceDataIndex;
 {$ifdef FlatParallelPhase1Populate}
       // TPasMPInterlocked.Add is fetch-and-add (returns the OLD value) => that IS our slot (cf. the work-list reserve above).
-      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count,TpvSizeInt(1));
+      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add({$ifdef cpu64}TpvInt64{$else}TpvInt32{$endif}(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count),1);
       PerInFlightFrameRenderInstance:=@Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
       PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
       PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -41261,7 +41261,7 @@ begin
       RenderInstance.fLastModelMatrices[InFlightFrameIndex]:=RenderInstance.fModelMatrix;
 {$ifdef FlatParallelPhase1Populate}
       // TPasMPInterlocked.Add is fetch-and-add (returns the OLD value) => that IS our slot (cf. the work-list reserve above).
-      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count,TpvSizeInt(1));
+      PerInFlightFrameRenderInstanceIndex:=TPasMPInterlocked.Add({$ifdef cpu64}TpvInt64{$else}TpvInt32{$endif}(Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Count),1);
       PerInFlightFrameRenderInstance:=@Instance.fPerInFlightFrameRenderInstances[InFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
       PerInFlightFrameRenderInstance^.RenderInstance:=RenderInstance;
       PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
