@@ -227,7 +227,20 @@ type EpvFont=class(Exception);
        fSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant;
        fMonospaceSize:TpvVector2;
        fHasMonospaceSize:boolean;
+       // Where a code point is missing here, the glyph is taken from this font. Not owned.
+       fFallback:TpvFont;
+       // What a borrowed glyph has to be drawn at, in this font's reckoning: its picture is a
+       // number of pixels in the atlas, and those pixels belong to the other font's raster and
+       // em. One entry per glyph, and only as long as there are borrowed ones at all.
+       fGlyphRenderScales:array of TpvFloat;
+       function GlyphRenderScale(const aGlyph:TpvInt32):TpvFloat; inline;
        procedure CalculateMonospaceSize;
+       // The glyph of a code point, or -1 when there is none. A code point this font does not
+       // have and the fallback does is borrowed: a copy of the other font's glyph, with its
+       // measurements brought into this font's units, is appended to the glyphs of this one and
+       // entered into the map. Everything which walks a text by glyph numbers then takes it like
+       // any other glyph of this font.
+       function GetCodePointGlyph(const aCodePoint:TpvUInt32):TpvInt32;
        procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32;const aSDFVariant:TpvSignedDistanceField2DVariant);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
@@ -256,6 +269,15 @@ type EpvFont=class(Exception);
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
+      public
+       // A font whose glyphs stand in for the ones this font has not got: a menu face drawn for
+       // a game carries its letters and little else, while an arrow or a quotation mark of
+       // another shape is wanted in the middle of a sentence all the same. Set it before any
+       // text is drawn; it is not owned, and it has to outlive this font. Both fonts drawing
+       // into the same sprite atlas keeps a borrowed glyph from costing an extra texture change.
+       property Fallback:TpvFont read fFallback write fFallback;
+       property UnitsPerEm:TpvInt32 read fUnitsPerEm;
+       property BaseScaleFactor:TpvFloat read fBaseScaleFactor;
       published
        property HorizontalAscender:TpvInt32 read fHorizontalAscender;
        property HorizontalDescender:TpvInt32 read fHorizontalDescender;
@@ -330,6 +352,8 @@ begin
  inherited Create;
 
  fSpriteAtlas:=aSpriteAtlas;
+
+ fFallback:=nil;
 
  fTargetPPI:=aTargetPPI;
 
@@ -1313,6 +1337,101 @@ begin
  end;
 end;
 
+function TpvFont.GlyphRenderScale(const aGlyph:TpvInt32):TpvFloat;
+begin
+ if (aGlyph>=0) and (aGlyph<length(fGlyphRenderScales)) then begin
+  result:=fGlyphRenderScales[aGlyph];
+ end else begin
+  result:=1.0;
+ end;
+end;
+
+function TpvFont.GetCodePointGlyph(const aCodePoint:TpvUInt32):TpvInt32;
+var CodePointMapMainIndex,CodePointMapSubIndex,BorrowedGlyph,Index:TpvInt32;
+    MetricScale,RenderScale:TpvFloat;
+    Source,Target:PpvFontGlyph;
+begin
+
+ result:=-1;
+
+ CodePointMapMainIndex:=aCodePoint shr 10;
+ CodePointMapSubIndex:=aCodePoint and $3ff;
+
+ if (CodePointMapMainIndex<Low(TpvFontCodePointToGlyphMap)) or
+    (CodePointMapMainIndex>High(TpvFontCodePointToGlyphMap)) then begin
+  exit;
+ end;
+
+ if assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+  result:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+  if (result>=0) and (result<length(fGlyphs)) then begin
+   exit;
+  end;
+  result:=-1;
+ end;
+
+ // Not here, so the fallback is asked. Everything below a space is left alone: a line break or a
+ // tabulator is not something to draw a glyph for, whoever has one.
+ if (aCodePoint<$20) or not assigned(fFallback) then begin
+  exit;
+ end;
+
+ BorrowedGlyph:=fFallback.GetCodePointGlyph(aCodePoint);
+ if (BorrowedGlyph<0) or (BorrowedGlyph>=length(fFallback.fGlyphs)) or (fFallback.fUnitsPerEm<=0) then begin
+  exit;
+ end;
+
+ // What the glyph measures in the units of its own font, said in the units of this one: the
+ // advance and the bounds are a matter of the em alone. The picture is not scaled here - its
+ // size is the piece of the atlas which is read, and that piece belongs to the other font's
+ // raster - so what it has to be drawn at is kept beside it instead, and the base scale of both
+ // fonts goes into that.
+ MetricScale:=fUnitsPerEm/fFallback.fUnitsPerEm;
+ RenderScale:=MetricScale;
+ if not IsZero(fFallback.fBaseScaleFactor) then begin
+  RenderScale:=RenderScale*(fBaseScaleFactor/fFallback.fBaseScaleFactor);
+ end;
+
+ result:=length(fGlyphs);
+ SetLength(fGlyphs,result+1);
+
+ Source:=@fFallback.fGlyphs[BorrowedGlyph];
+ Target:=@fGlyphs[result];
+
+ Target^.Advance:=Source^.Advance*MetricScale;
+ Target^.Bounds:=TpvRect.CreateAbsolute(Source^.Bounds.Left*MetricScale,
+                                        Source^.Bounds.Top*MetricScale,
+                                        Source^.Bounds.Right*MetricScale,
+                                        Source^.Bounds.Bottom*MetricScale);
+ Target^.SideBearings.LeftTop:=Source^.SideBearings.LeftTop*MetricScale;
+ Target^.SideBearings.RightBottom:=Source^.SideBearings.RightBottom*MetricScale;
+ Target^.Rect:=Source^.Rect;
+ Target^.Offset:=Source^.Offset;
+ Target^.Size:=Source^.Size;
+ Target^.Width:=Source^.Width;
+ Target^.Height:=Source^.Height;
+ Target^.Sprite:=Source^.Sprite;
+
+ // Everything the font brought itself is drawn as it is, so the list is only as long as it has
+ // to be and starts out as ones
+ Index:=length(fGlyphRenderScales);
+ if Index<=result then begin
+  SetLength(fGlyphRenderScales,result+1);
+  while Index<result do begin
+   fGlyphRenderScales[Index]:=1.0;
+   inc(Index);
+  end;
+ end;
+ fGlyphRenderScales[result]:=RenderScale;
+
+ if not assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+  GetMem(fCodePointToGlyphMap[CodePointMapMainIndex],SizeOf(TpvFontCodePointToGlyphSubMap));
+  FillChar(fCodePointToGlyphMap[CodePointMapMainIndex]^,SizeOf(TpvFontCodePointToGlyphSubMap),$ff);
+ end;
+ fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex]:=result;
+
+end;
+
 function TpvFont.GetScaleFactor(const aSize:TpvFloat):TpvFloat;
 begin
  if aSize<0.0 then begin
@@ -1423,8 +1542,7 @@ begin
 end;
 
 function TpvFont.TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
-var TextIndex,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Width:TpvFloat;
     Int64Value:TpvInt64;
@@ -1436,24 +1554,16 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     result:=result+fKerningPairs[Int64Value].Horizontal;
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    Width:=Maximum(Width,result+Glyph^.Bounds.Right);
-    result:=result+Glyph^.Advance.x;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    result:=result+fKerningPairs[Int64Value].Horizontal;
    end;
-  end else begin
-   CurrentGlyph:=0;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   Width:=Maximum(Width,result+Glyph^.Bounds.Right);
+   result:=result+Glyph^.Advance.x;
   end;
   LastGlyph:=CurrentGlyph;
  end;
@@ -1469,8 +1579,7 @@ begin
 end;
 
 function TpvFont.TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
-var TextIndex,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Height:TpvFloat;
     Int64Value:TpvInt64;
@@ -1482,24 +1591,16 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     result:=result+fKerningPairs[Int64Value].Vertical;
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    Height:=Maximum(Height,result+Glyph^.Bounds.Bottom);
-    result:=result+Glyph^.Advance.y;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    result:=result+fKerningPairs[Int64Value].Vertical;
    end;
-  end else begin
-   CurrentGlyph:=0;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   Height:=Maximum(Height,result+Glyph^.Bounds.Bottom);
+   result:=result+Glyph^.Advance.y;
   end;
   LastGlyph:=CurrentGlyph;
  end;
@@ -1515,8 +1616,7 @@ begin
 end;
 
 function TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
-var TextIndex,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Size:TpvVector2;
     Int64Value:TpvInt64;
@@ -1528,24 +1628,16 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     result:=result+fKerningPairVectors[Int64Value];
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
-    result:=result+Glyph^.Advance;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    result:=result+fKerningPairVectors[Int64Value];
    end;
-  end else begin
-   CurrentGlyph:=0;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
+   result:=result+Glyph^.Advance;
   end;
   LastGlyph:=CurrentGlyph;
  end;
@@ -1561,23 +1653,17 @@ begin
 end;
 
 function TpvFont.CodePointWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
-var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var CurrentGlyph:TpvInt32;
     Width:TpvFloat;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
  Width:=0.0;
- CodePointMapMainIndex:=aTextCodePoint shr 10;
- CodePointMapSubIndex:=aTextCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   Width:=Glyph^.Bounds.Right;
-   result:=Glyph^.Advance.x;
-  end;
+ CurrentGlyph:=GetCodePointGlyph(aTextCodePoint);
+ if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+  Glyph:=@fGlyphs[CurrentGlyph];
+  Width:=Glyph^.Bounds.Right;
+  result:=Glyph^.Advance.x;
  end;
  if IsZero(result) then begin
   result:=fMaxX-fMinX;
@@ -1589,23 +1675,17 @@ begin
 end;
 
 function TpvFont.CodePointHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
-var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var CurrentGlyph:TpvInt32;
     Height:TpvFloat;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
  Height:=0.0;
- CodePointMapMainIndex:=aTextCodePoint shr 10;
- CodePointMapSubIndex:=aTextCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   Height:=Glyph^.Bounds.Bottom;
-   result:=Glyph^.Advance.y;
-  end;
+ CurrentGlyph:=GetCodePointGlyph(aTextCodePoint);
+ if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+  Glyph:=@fGlyphs[CurrentGlyph];
+  Height:=Glyph^.Bounds.Bottom;
+  result:=Glyph^.Advance.y;
  end;
  if IsZero(result) then begin
   result:=fMaxY-fMinY;
@@ -1617,24 +1697,17 @@ begin
 end;
 
 function TpvFont.CodePointSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2;
-var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+var CurrentGlyph:TpvInt32;
     Size:TpvVector2;
-    Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
 begin
  result:=TpvVector2.Null;
  Size:=TpvVector2.Null;
- CodePointMapMainIndex:=aTextCodePoint shr 10;
- CodePointMapSubIndex:=aTextCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
-   result:=result+Glyph^.Advance;
-  end;
+ CurrentGlyph:=GetCodePointGlyph(aTextCodePoint);
+ if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+  Glyph:=@fGlyphs[CurrentGlyph];
+  Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
+  result:=result+Glyph^.Advance;
  end;
  if IsZero(result.x) then begin
   result.x:=fMaxX-fMinX;
@@ -1671,9 +1744,8 @@ begin
 end;
 
 procedure TpvFont.GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+    ScaleFactor,RescaleFactor,GlyphScale:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     Position:TpvVector2;
@@ -1686,38 +1758,30 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     Position:=Position+fKerningPairVectors[Int64Value];
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    if length(aRects)<=aCountRects then begin
-     SetLength(aRects,(aCountRects+1)*2);
-    end;
-    aRects[aCountRects]:=TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                                Glyph^.Size*RescaleFactor);
-    inc(aCountRects);
-    Position:=Position+Glyph^.Advance;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    Position:=Position+fKerningPairVectors[Int64Value];
    end;
-  end else begin
-   CurrentGlyph:=0;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   GlyphScale:=RescaleFactor*GlyphRenderScale(CurrentGlyph);
+   if length(aRects)<=aCountRects then begin
+    SetLength(aRects,(aCountRects+1)*2);
+   end;
+   aRects[aCountRects]:=TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*GlyphScale),
+                                               Glyph^.Size*GlyphScale);
+   inc(aCountRects);
+   Position:=Position+Glyph^.Advance;
   end;
   LastGlyph:=CurrentGlyph;
  end;
 end;
 
 procedure TpvFont.GetTextGlyphInfos(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aTextGlyphInfos:TpvFontTextGlyphInfoArray;out aCountTextGlyphInfos:TpvInt32);
-var LastTextIndex,TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
+var LastTextIndex,TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+    ScaleFactor,RescaleFactor,GlyphScale:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     Position:TpvVector2;
@@ -1733,41 +1797,34 @@ begin
  while TextIndex<=length(aText) do begin
   LastTextIndex:=TextIndex;
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   ValidGlyph:=false;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if length(aTextGlyphInfos)<=aCountTextGlyphInfos then begin
-     SetLength(aTextGlyphInfos,(aCountTextGlyphInfos+1)*2);
-    end;
-    TextGlyphInfo:=@aTextGlyphInfos[aCountTextGlyphInfos];
-    inc(aCountTextGlyphInfos);
-    TextGlyphInfo^.TextIndex:=LastTextIndex;
-    TextGlyphInfo^.CodePoint:=CurrentCodePoint;
-    TextGlyphInfo^.LastGlyph:=LastGlyph;
-    TextGlyphInfo^.Glyph:=CurrentGlyph;
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     Position:=Position+fKerningPairVectors[Int64Value];
-     TextGlyphInfo^.Kerning:=fKerningPairVectors[Int64Value]*ScaleFactor;
-    end else begin
-     TextGlyphInfo^.Kerning:=TpvVector2.Null;
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    TextGlyphInfo^.Advance:=Glyph^.Advance*ScaleFactor;
-    TextGlyphInfo^.Offset:=Glyph^.Offset*RescaleFactor;
-    TextGlyphInfo^.Position:=aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor);
-    TextGlyphInfo^.Size:=Glyph^.Size*RescaleFactor;
-    Position:=Position+Glyph^.Advance;
-    ValidGlyph:=true;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if length(aTextGlyphInfos)<=aCountTextGlyphInfos then begin
+    SetLength(aTextGlyphInfos,(aCountTextGlyphInfos+1)*2);
    end;
-  end else begin
-   CurrentGlyph:=0;
+   TextGlyphInfo:=@aTextGlyphInfos[aCountTextGlyphInfos];
+   inc(aCountTextGlyphInfos);
+   TextGlyphInfo^.TextIndex:=LastTextIndex;
+   TextGlyphInfo^.CodePoint:=CurrentCodePoint;
+   TextGlyphInfo^.LastGlyph:=LastGlyph;
+   TextGlyphInfo^.Glyph:=CurrentGlyph;
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    Position:=Position+fKerningPairVectors[Int64Value];
+    TextGlyphInfo^.Kerning:=fKerningPairVectors[Int64Value]*ScaleFactor;
+   end else begin
+    TextGlyphInfo^.Kerning:=TpvVector2.Null;
+   end;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   GlyphScale:=RescaleFactor*GlyphRenderScale(CurrentGlyph);
+   TextGlyphInfo^.Advance:=Glyph^.Advance*ScaleFactor;
+   TextGlyphInfo^.Offset:=Glyph^.Offset*GlyphScale;
+   TextGlyphInfo^.Position:=aPosition+(Position*ScaleFactor)+(Glyph^.Offset*GlyphScale);
+   TextGlyphInfo^.Size:=Glyph^.Size*GlyphScale;
+   Position:=Position+Glyph^.Advance;
+   ValidGlyph:=true;
   end;
   if not ValidGlyph then begin
    if length(aTextGlyphInfos)<=aCountTextGlyphInfos then begin
@@ -1790,9 +1847,8 @@ begin
 end;
 
 procedure TpvFont.Draw(const aDrawSprite:TpvFontDrawSprite;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+    ScaleFactor,RescaleFactor,GlyphScale:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
     Position:TpvVector2;
@@ -1804,30 +1860,25 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     Position:=Position+fKerningPairVectors[Int64Value];
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    if assigned(Glyph^.Sprite) then begin
-     aDrawSprite(Glyph^.Sprite,
-                 TpvRect.CreateRelative(TpvVector2.Null,
-                                        Glyph^.Size),
-                 TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                        Glyph^.Size*RescaleFactor));
-     Position:=Position+Glyph^.Advance;
-    end;
+  CurrentGlyph:=GetCodePointGlyph(CurrentCodePoint);
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+   if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+      (length(fKerningPairs)>0) and
+      fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+    Position:=Position+fKerningPairVectors[Int64Value];
    end;
-  end else begin
-   CurrentGlyph:=0;
+   Glyph:=@fGlyphs[CurrentGlyph];
+   if assigned(Glyph^.Sprite) then begin
+    // The piece of the atlas which is read is the picture as it lies there; what it is drawn at
+    // carries the scale of a borrowed glyph
+    GlyphScale:=RescaleFactor*GlyphRenderScale(CurrentGlyph);
+    aDrawSprite(Glyph^.Sprite,
+                TpvRect.CreateRelative(TpvVector2.Null,
+                                       Glyph^.Size),
+                TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*GlyphScale),
+                                       Glyph^.Size*GlyphScale));
+    Position:=Position+Glyph^.Advance;
+   end;
   end;
   LastGlyph:=CurrentGlyph;
  end;
@@ -1839,31 +1890,24 @@ begin
 end;
 
 procedure TpvFont.DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
-var CurrentCodePoint,CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
-    Int64Value:TpvInt64;
+var CurrentGlyph:TpvInt32;
+    ScaleFactor,RescaleFactor,GlyphScale:TpvFloat;
     Glyph:PpvFontGlyph;
     Position:TpvVector2;
 begin
  Position:=TpvVector2.Null;
  ScaleFactor:=GetScaleFactor(aSize);
  RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
- CurrentCodePoint:=aTextCodePoint;
- CodePointMapMainIndex:=CurrentCodePoint shr 10;
- CodePointMapSubIndex:=CurrentCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   if assigned(Glyph^.Sprite) then begin
-    aDrawSprite(Glyph^.Sprite,
-                TpvRect.CreateRelative(TpvVector2.Null,
-                                       Glyph^.Size),
-                TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                       Glyph^.Size*RescaleFactor));
-   end;
+ CurrentGlyph:=GetCodePointGlyph(aTextCodePoint);
+ if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+  Glyph:=@fGlyphs[CurrentGlyph];
+  if assigned(Glyph^.Sprite) then begin
+   GlyphScale:=RescaleFactor*GlyphRenderScale(CurrentGlyph);
+   aDrawSprite(Glyph^.Sprite,
+               TpvRect.CreateRelative(TpvVector2.Null,
+                                      Glyph^.Size),
+               TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*GlyphScale),
+                                      Glyph^.Size*GlyphScale));
   end;
  end;
 end;
