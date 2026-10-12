@@ -264,20 +264,30 @@ type EpvVectorGraphicsCanvas=class(Exception);
                                    const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                    const aTransferFence:TpvVulkanFence);
        // Records aDocument at the given point in time. aMatrix is the space the shapes end up in,
-       // so the identity keeps them in the units of the document and the canvas model matrix is
-       // then free to place and scale them. Returns whether the document really fits through this
+       // so the identity keeps them in the units of the document while a view box matrix puts
+       // them straight into target pixels. Returns whether the document really fits through this
        // route; when it does not, nothing is kept and the caller falls back to the texture route.
+       //
+       // The space matters for more than placement: curves are turned into quadratic ones within
+       // aCurveTolerance of the shape's own units, and the stroker flattens its outlines at the
+       // scale of aMatrix. Building in target pixels and leaving the tolerance at one therefore
+       // gives the right amount of detail. Drawing the result much larger than that through the
+       // canvas model matrix still stays sharp along the filled edges, because those are curves
+       // the shader resolves, but the stroked ones eventually show their line segments, so a big
+       // zoom is worth another Build.
        function Build(const aDocument:TpvVectorGraphicsDocument;
                       const aMatrix:TpvVectorPathMatrix;
                       const aTick:TpvInt64=0;
-                      const aTickFraction:TpvDouble=0.0):boolean;
+                      const aTickFraction:TpvDouble=0.0;
+                      const aCurveTolerance:TpvDouble=1.0):boolean;
        // Same for a single object or subtree out of the document, by id. Returns false both when
        // no object carries that id and when the subtree does not fit through this route.
        function BuildObjectByID(const aDocument:TpvVectorGraphicsDocument;
                                 const aID:TpvUTF8String;
                                 const aMatrix:TpvVectorPathMatrix;
                                 const aTick:TpvInt64=0;
-                                const aTickFraction:TpvDouble=0.0):boolean;
+                                const aTickFraction:TpvDouble=0.0;
+                                const aCurveTolerance:TpvDouble=1.0):boolean;
        // Throws the recorded shapes away and releases them from the pool.
        procedure Clear;
        // Draws what Build recorded. The canvas has to have this object's pool set as its
@@ -888,7 +898,8 @@ end;
 function TpvVectorGraphicsCanvasShapes.Build(const aDocument:TpvVectorGraphicsDocument;
                                              const aMatrix:TpvVectorPathMatrix;
                                              const aTick:TpvInt64;
-                                             const aTickFraction:TpvDouble):boolean;
+                                             const aTickFraction:TpvDouble;
+                                             const aCurveTolerance:TpvDouble):boolean;
 begin
 
  Clear;
@@ -899,6 +910,7 @@ begin
   exit;
  end;
 
+ fRecorder.CubicToQuadraticTolerance:=aCurveTolerance;
  fRecorder.ClearRecords;
 
  aDocument.Update;
@@ -927,7 +939,8 @@ function TpvVectorGraphicsCanvasShapes.BuildObjectByID(const aDocument:TpvVector
                                                        const aID:TpvUTF8String;
                                                        const aMatrix:TpvVectorPathMatrix;
                                                        const aTick:TpvInt64;
-                                                       const aTickFraction:TpvDouble):boolean;
+                                                       const aTickFraction:TpvDouble;
+                                                       const aCurveTolerance:TpvDouble):boolean;
 begin
 
  Clear;
@@ -938,6 +951,7 @@ begin
   exit;
  end;
 
+ fRecorder.CubicToQuadraticTolerance:=aCurveTolerance;
  fRecorder.ClearRecords;
 
  aDocument.Update;

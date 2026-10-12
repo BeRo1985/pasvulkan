@@ -17,6 +17,7 @@ The extensions are grouped as follows:
 * *Math types* — Vector2, Vector3, Vector4, Quaternion, Matrix3x3, Matrix4x4
 * *Graphics types* — Sprite, SpriteAtlas, Texture, Font, CanvasFont, CanvasShape
 * *`+engine.canvas+`* — hardware accelerated 2D drawing with shapes, text, sprites and paths
+* *`+VectorGraphics+`* — SVG documents onto a canvas, either through the vector path shader or through a software rasterized texture
 * *`+engine.input+`* — keyboard, mouse and pointer event handling
 * *Audio* — sound effects with polyphony and 3D spatialization, background music playback
 * *`+engine.scene3d+`* — 3D scene-graph access: images, samplers, textures, materials, groups, meshes, primitives, nodes and scenes
@@ -5364,6 +5365,62 @@ canvas.drawSpritePosition(sprite, 50, 100);
 
 '''''
 
+==== drawVectorGraphicsShapes(shapes)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawVectorGraphicsShapes(shapes);
+----
+
+* *Description:* Draws a recorded set of vector graphics shapes through the vector path shader, which resolves every outline per pixel. The shapes are drawn in the space they were recorded in, so the model matrix of the canvas is what places, scales and rotates them, and changing it costs nothing. The color of the canvas is not used: every outline carries the color or the gradient it was recorded with. Draws nothing when the last `+build()+` did not succeed. See <<VectorGraphics>>.
+* *Parameters:*
+** `+shapes+` (VectorGraphicsShapes): The shapes to draw.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.push();
+canvas.setModelMatrix(Matrix4x4.createScale(zoom, zoom, 1.0) *
+                      Matrix4x4.createTranslation(x, y, 0.0));
+canvas.drawVectorGraphicsShapes(shapes);
+canvas.pop();
+----
+
+'''''
+
+==== drawVectorGraphicsTexture(texture, x, y, width, height)
+
+*Usage:*
+
+[source,js]
+----
+canvas.drawVectorGraphicsTexture(texture, x, y);
+// or
+canvas.drawVectorGraphicsTexture(texture, x, y, width, height);
+----
+
+* *Description:* Draws what the last `+update()+` of a vector graphics texture rasterized. Without a size the picture is drawn at the size it was rasterized at, which is the one case where it ends up pixel for pixel what the rasterizer produced; with a size it is stretched to fit. See <<VectorGraphics>>.
+* *Parameters:*
+** `+texture+` (VectorGraphicsTexture): The texture to draw.
+** `+x+` (number): The X coordinate of the top left corner (default: 0).
+** `+y+` (number): The Y coordinate of the top left corner (default: 0).
+** `+width+` (number): Optional width to stretch to.
+** `+height+` (number): Optional height to stretch to.
+* *Return Value:* The canvas itself.
+* *Example:*
++
+[source,js]
+----
+canvas.drawVectorGraphicsTexture(texture,
+                                 (canvas.getWidth() - texture.getWidth()) * 0.5,
+                                 (canvas.getHeight() - texture.getHeight()) * 0.5);
+----
+
+'''''
+
 === Canvas Text Drawing
 
 ==== drawText(text, position)
@@ -7560,6 +7617,604 @@ SDF rendering variants for advanced text and shape rendering:
 ----
 // SDF variants are typically set at the system level
 // and used internally for high-quality text rendering
+----
+
+'''''
+
+== VectorGraphics
+
+=== Overview
+
+The VectorGraphics API loads SVG documents and draws them onto a Canvas. It covers the whole of SVG as the engine implements it: shapes, paths, text, gradients, patterns, images, clip paths, masks, `+mix-blend-mode+`, the seventeen filter primitives and SMIL animation.
+
+It consists of the global `+VectorGraphics+` object, which loads documents and creates the two kinds of drawable out of them, three object types, and the two Canvas functions <<drawVectorGraphicsShapes(shapes)>> and <<_drawvectorgraphicstexturetexture_x_y_width_height,drawVectorGraphicsTexture()>>.
+
+None of these objects is garbage collected, because each of them owns resources on the GPU. Every one of them has a `+destroy()+` that has to be called when it is no longer needed, and a document has to outlive everything made out of it. A script that survives a code reload is best off keeping them in its data object, so that a reload does not load and record everything again.
+
+`+projects/svgexample+` is a working example of everything described here.
+
+'''''
+
+=== Choosing a Route
+
+A document can be drawn in two ways, and which one fits depends on the document.
+
+*VectorGraphicsShapes* hands the outlines to the vector path fragment shader of the canvas, which resolves them per pixel. The result stays sharp at any zoom, and moving, scaling or rotating it costs nothing but a different model matrix. Plain colors and both kinds of SVG gradient arrive this way, with as many stops as they like. A pattern, an image fill, a mask, a clip path, a blend mode, a filter and a group opacity do not, because the shader has nothing but the coverage of an outline and one color to work with. `+build()+` says whether the document really fits.
+
+*VectorGraphicsTexture* rasterizes the document in software and hands the result to a texture. Everything a document can hold arrives this way, because it is the same renderer the reference comparison against librsvg is run with. The price is a fixed resolution: drawing it larger than it was rasterized at stretches the pixels, and a different size means rasterizing again.
+
+The usual arrangement is to try the shapes first and fall back to the texture when `+build()+` returns false.
+
+One more thing is worth knowing about the shapes route. The *filled* outlines stay sharp however far the canvas model matrix scales them, because the shader resolves their curves. The *stroked* ones are polygons that the stroker built at the scale they were recorded at, so a big zoom eventually shows their line segments, and `+build()+` has to be called again at the new size to get them back. That is the one thing the resolution independent route still trades away.
+
+'''''
+
+=== Global VectorGraphics Object
+
+==== VectorGraphics.loadSVG(fileName)
+
+*Usage:*
+
+[source,js]
+----
+let document = VectorGraphics.loadSVG("svg/tiger.svg");
+----
+
+* *Description:* Loads an SVG document out of the assets of the application and brings it up to date, so it is ready to be recorded or rasterized. Raises a runtime error when the asset does not exist or cannot be parsed as SVG.
+* *Parameters:*
+** `+fileName+` (string): The asset path of the SVG file.
+* *Return Value:* A new VectorGraphicsDocument object.
+* *Example:*
++
+[source,js]
+----
+let document = VectorGraphics.loadSVG("svg/tiger.svg");
+puts("size: " ~ document.getWidth() ~ "x" ~ document.getHeight());
+----
+
+'''''
+
+==== VectorGraphics.parseSVG(text)
+
+*Usage:*
+
+[source,js]
+----
+let document = VectorGraphics.parseSVG(markup);
+----
+
+* *Description:* The same for an SVG document that is already in a string, which is what a script that builds its own markup or receives it from elsewhere needs.
+* *Parameters:*
+** `+text+` (string): The SVG document as text.
+* *Return Value:* A new VectorGraphicsDocument object.
+* *Example:*
++
+[source,js]
+----
+let markup = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\">" ~
+             "<circle cx=\"16\" cy=\"16\" r=\"14\" fill=\"#ff8000\"/></svg>";
+let document = VectorGraphics.parseSVG(markup);
+----
+
+'''''
+
+==== VectorGraphics.createShapes()
+
+*Usage:*
+
+[source,js]
+----
+let shapes = VectorGraphics.createShapes();
+----
+
+* *Description:* Creates an empty set of GPU vector path shapes. It is filled by `+build()+` or `+buildObject()+` and drawn with <<drawVectorGraphicsShapes(shapes)>>. Every set created this way shares one buffer pool per POCA instance, so several of them end up in the same GPU buffers and the canvas does not have to swap descriptor sets between them.
+* *Parameters:* None.
+* *Return Value:* A new VectorGraphicsShapes object.
+* *Example:*
++
+[source,js]
+----
+let shapes = VectorGraphics.createShapes();
+if (shapes.build(document)) {
+  shapes.update();
+}
+----
+
+'''''
+
+==== VectorGraphics.createTexture(document, width, height, srgb)
+
+*Usage:*
+
+[source,js]
+----
+let texture = VectorGraphics.createTexture(document);
+----
+
+* *Description:* Creates a texture that the given document gets rasterized into. Nothing happens on the GPU until `+update()+` is called, because that needs the transfer objects of the frame. The document is not taken over, so the script stays free to make a second texture or a set of shapes out of it, and has to keep it alive for as long as the texture exists.
+* *Parameters:*
+** `+document+` (VectorGraphicsDocument): The document to rasterize.
+** `+width+` (number): Optional width in pixels. Zero or left out takes the size the document itself states.
+** `+height+` (number): Optional height in pixels.
+** `+srgb+` (boolean): Whether to give the texture an sRGB format, so that the GPU converts on every fetch, which is right when the canvas draws into a linear target (default: false).
+* *Return Value:* A new VectorGraphicsTexture object.
+* *Example:*
++
+[source,js]
+----
+let texture = VectorGraphics.createTexture(document, 512, 512);
+texture.update();
+----
+
+'''''
+
+=== VectorGraphicsDocument Methods
+
+==== getWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = document.getWidth();
+----
+
+* *Description:* Returns the width the document states, in its own units.
+* *Parameters:* None.
+* *Return Value:* The width as a number.
+
+'''''
+
+==== getHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = document.getHeight();
+----
+
+* *Description:* Returns the height the document states, in its own units.
+* *Parameters:* None.
+* *Return Value:* The height as a number.
+
+'''''
+
+==== update()
+
+*Usage:*
+
+[source,js]
+----
+document.update();
+----
+
+* *Description:* Brings the document up to date after something in it changed. `+VectorGraphics.loadSVG()+` and `+VectorGraphics.parseSVG()+` already do this, so a script normally never needs it.
+* *Parameters:* None.
+* *Return Value:* The document itself (for method chaining).
+
+'''''
+
+==== existObject(id)
+
+*Usage:*
+
+[source,js]
+----
+if (document.existObject("head")) {
+  shapes.buildObject(document, "head");
+}
+----
+
+* *Description:* Returns whether the document carries an element with that id, which is what to ask before building a single part of it.
+* *Parameters:*
+** `+id+` (string): The id to look for.
+* *Return Value:* 1 when it exists, 0 when it does not.
+
+'''''
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+document.destroy();
+----
+
+* *Description:* Explicitly destroys the document and frees its resources. Everything made out of it, so any VectorGraphicsShapes and VectorGraphicsTexture, has to be destroyed before this or must not be used afterwards.
+* *Parameters:* None.
+* *Return Value:* None.
+
+'''''
+
+=== VectorGraphicsShapes Methods
+
+==== build(document, width, height, tick, curveTolerance)
+
+*Usage:*
+
+[source,js]
+----
+let fits = shapes.build(document);
+// or
+let fits = shapes.build(document, width, height, tick, curveTolerance);
+----
+
+* *Description:* Records the whole document as GPU vector path shapes and returns whether it really fits through the shader. When it does not, nothing is kept, `+isSupported()+` stays false and the document has to be drawn through a VectorGraphicsTexture instead. `+update()+` has to be called after this, before the first draw.
++
+`+width+` and `+height+` are the size the shapes are recorded at. Left out, or zero, they take the size of the document, so one unit of the document becomes one unit of the shapes. Recording at the size the shapes will actually be drawn at is what gives curves and strokes the right amount of detail, see <<Choosing a Route>>.
+* *Parameters:*
+** `+document+` (VectorGraphicsDocument): The document to record.
+** `+width+` (number): Optional width to record at.
+** `+height+` (number): Optional height to record at.
+** `+tick+` (number): Optional point in time in milliseconds, for a document with a SMIL timeline. A fractional value is used to interpolate between two whole ticks (default: 0).
+** `+curveTolerance+` (number): Optional, how far a quadratic curve may stray from the cubic one it replaces, in the units the shapes end up in. One unit is right whenever one unit is about one pixel on screen (default: 1).
+* *Return Value:* 1 when the document fits through the shader, 0 when it does not.
+* *Example:*
++
+[source,js]
+----
+if (!shapes.build(document, 800.0, 800.0)) {
+  puts("this document needs the texture route");
+}
+shapes.update();
+----
+
+'''''
+
+==== buildObject(document, id, width, height, tick, curveTolerance)
+
+*Usage:*
+
+[source,js]
+----
+let fits = shapes.buildObject(document, "left-ear");
+----
+
+* *Description:* The same for a single element or subtree of the document, picked by its id, which is what a user interface wants when it takes one icon out of a sheet. The part is placed where it sits in the whole picture, because the matrix of every ancestor is applied.
+* *Parameters:* As `+build()+`, with the id as the second one.
+* *Return Value:* 1 on success, 0 when the id is unknown or the subtree does not fit through the shader.
+
+'''''
+
+==== update()
+
+*Usage:*
+
+[source,js]
+----
+shapes.update();
+----
+
+* *Description:* Uploads the gradient ramps that the recorded document needs. Does nothing when there is no gradient and nothing when nothing changed, so calling it every frame is fine. It has to be called outside of drawing, because it transfers to the GPU; the update callback of the canvas is the right place.
+* *Parameters:* None.
+* *Return Value:* The shapes themselves (for method chaining).
+
+'''''
+
+==== isSupported()
+
+*Usage:*
+
+[source,js]
+----
+if (shapes.isSupported()) {
+  canvas.drawVectorGraphicsShapes(shapes);
+}
+----
+
+* *Description:* Returns whether the last `+build()+` or `+buildObject()+` succeeded, so whether there is anything to draw.
+* *Parameters:* None.
+* *Return Value:* 1 or 0.
+
+'''''
+
+==== getCountShapes()
+
+*Usage:*
+
+[source,js]
+----
+let count = shapes.getCountShapes();
+----
+
+* *Description:* Returns how many outlines were recorded, which is one per fill and one per stroke of every element, and therefore a good measure of how much work a draw is.
+* *Parameters:* None.
+* *Return Value:* The count as a number.
+
+'''''
+
+==== getCountGradients()
+
+*Usage:*
+
+[source,js]
+----
+let count = shapes.getCountGradients();
+----
+
+* *Description:* Returns how many distinct gradient ramps the recorded document uses. Shapes sharing one gradient share its ramp, so this counts the rows of the ramp atlas rather than the elements.
+* *Parameters:* None.
+* *Return Value:* The count as a number.
+
+'''''
+
+==== getBoundingBox()
+
+*Usage:*
+
+[source,js]
+----
+let box = shapes.getBoundingBox();
+----
+
+* *Description:* Returns the union of the bounding boxes of everything recorded, in the space the shapes were recorded in.
+* *Parameters:* None.
+* *Return Value:* A hash with `+leftTop+` and `+widthHeight+`, both Vector2.
+* *Example:*
++
+[source,js]
+----
+let box = shapes.getBoundingBox();
+puts("content starts at " ~ box.leftTop.x ~ ", " ~ box.leftTop.y);
+----
+
+'''''
+
+==== clear()
+
+*Usage:*
+
+[source,js]
+----
+shapes.clear();
+----
+
+* *Description:* Throws the recorded shapes away and releases them from the buffer pool, which is what frees their GPU memory without destroying the object itself.
+* *Parameters:* None.
+* *Return Value:* The shapes themselves (for method chaining).
+
+'''''
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+shapes.destroy();
+----
+
+* *Description:* Explicitly destroys the shapes and releases everything they hold in the buffer pool.
+* *Parameters:* None.
+* *Return Value:* None.
+
+'''''
+
+=== VectorGraphicsTexture Methods
+
+==== update()
+
+*Usage:*
+
+[source,js]
+----
+texture.update();
+----
+
+* *Description:* Rasterizes the document again when anything changed and uploads the result, creating the texture on the first call. Doing nothing when nothing changed is the whole point, so calling it every frame is fine. Like the `+update()+` of the shapes it transfers to the GPU and therefore belongs outside of drawing.
+* *Parameters:* None.
+* *Return Value:* The texture itself (for method chaining).
+
+'''''
+
+==== resize(width, height)
+
+*Usage:*
+
+[source,js]
+----
+texture.resize(1024, 1024);
+----
+
+* *Description:* Gives the picture another size and marks it as needing a new rasterization. The old texture is thrown away, because the size of a texture is fixed once it exists, so the next `+update()+` creates a new one.
+* *Parameters:*
+** `+width+` (number): The new width in pixels.
+** `+height+` (number): The new height in pixels.
+* *Return Value:* The texture itself (for method chaining).
+
+'''''
+
+==== getWidth()
+
+*Usage:*
+
+[source,js]
+----
+let width = texture.getWidth();
+----
+
+* *Description:* Returns the width in pixels the document is rasterized at.
+* *Parameters:* None.
+* *Return Value:* The width as a number.
+
+'''''
+
+==== getHeight()
+
+*Usage:*
+
+[source,js]
+----
+let height = texture.getHeight();
+----
+
+* *Description:* Returns the height in pixels the document is rasterized at.
+* *Parameters:* None.
+* *Return Value:* The height as a number.
+
+'''''
+
+==== getTick()
+
+*Usage:*
+
+[source,js]
+----
+let tick = texture.getTick();
+----
+
+* *Description:* Returns where the playhead of the SMIL timeline stands, in milliseconds, including the fraction between two whole ticks.
+* *Parameters:* None.
+* *Return Value:* The position as a number.
+
+'''''
+
+==== setTick(tick)
+
+*Usage:*
+
+[source,js]
+----
+texture.setTick(time * 1000.0);
+----
+
+* *Description:* Moves the playhead of the SMIL timeline, in milliseconds. A fractional value is used to interpolate between two whole ticks. This only marks the picture as needing a new rasterization, it does not run one, so several changes before the next `+update()+` cost only one.
+* *Parameters:*
+** `+tick+` (number): The new position in milliseconds.
+* *Return Value:* The texture itself (for method chaining).
+* *Example:*
++
+[source,js]
+----
+updateCanvas: function(deltaTime, width, height, nativeWidth, nativeHeight) {
+  this.data.time += deltaTime;
+  this.data.texture.setTick(this.data.time * 1000.0);
+  this.data.texture.update();
+}
+----
+
+'''''
+
+==== setDirty()
+
+*Usage:*
+
+[source,js]
+----
+texture.setDirty();
+----
+
+* *Description:* Marks the picture as needing a new rasterization, which is what to call after changing the document itself, since nothing here can notice that on its own.
+* *Parameters:* None.
+* *Return Value:* The texture itself (for method chaining).
+
+'''''
+
+==== destroy()
+
+*Usage:*
+
+[source,js]
+----
+texture.destroy();
+----
+
+* *Description:* Explicitly destroys the texture and its rasterizer.
+* *Parameters:* None.
+* *Return Value:* None.
+
+'''''
+
+=== Complete Example
+
+[source,js]
+----
+var application = {
+
+  data: null,
+
+  create: function() {
+    if (this.data && !this.data.initialized) {
+      this.data.initialized = true;
+      this.data.document = null;
+      this.data.shapes = null;
+      this.data.texture = null;
+      this.data.useShapes = true;
+    }
+  },
+
+  destroy: function() {
+    // None of these is garbage collected, so they are freed by hand, and in this order.
+    if (this.data.shapes) {
+      this.data.shapes.destroy();
+      this.data.shapes = null;
+    }
+    if (this.data.texture) {
+      this.data.texture.destroy();
+      this.data.texture = null;
+    }
+    if (this.data.document) {
+      this.data.document.destroy();
+      this.data.document = null;
+    }
+    this.data.initialized = false;
+  },
+
+  // Loading and recording transfer to the GPU, so they belong to the update rather than to the
+  // draw, which is in the middle of putting a frame together.
+  updateCanvas: function(deltaTime, width, height, nativeWidth, nativeHeight) {
+
+    let data = this.data;
+
+    if (!data.document) {
+
+      data.document = VectorGraphics.loadSVG("svg/tiger.svg");
+
+      data.shapes = VectorGraphics.createShapes();
+      if (!data.shapes.build(data.document)) {
+        // Something in there needs the software renderer, so the texture route takes over.
+        data.useShapes = false;
+      }
+      data.shapes.update();
+
+      data.texture = VectorGraphics.createTexture(data.document);
+      data.texture.update();
+
+    }
+
+  },
+
+  drawCanvas: function(canvas, width, height, nativeWidth, nativeHeight) {
+
+    let data = this.data;
+    if (!data.document) {
+      return;
+    }
+
+    if (data.useShapes) {
+
+      canvas.push();
+      canvas.setModelMatrix(Matrix4x4.createTranslation((width - data.document.getWidth()) * 0.5,
+                                                        (height - data.document.getHeight()) * 0.5,
+                                                        0.0));
+      canvas.drawVectorGraphicsShapes(data.shapes);
+      canvas.pop();
+
+    } else {
+
+      canvas.drawVectorGraphicsTexture(data.texture,
+                                       (width - data.texture.getWidth()) * 0.5,
+                                       (height - data.texture.getHeight()) * 0.5);
+
+    }
+
+  }
+
+};
+
+return application;
 ----
 
 '''''

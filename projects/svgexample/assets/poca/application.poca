@@ -1,0 +1,369 @@
+
+// Shows the two routes an SVG document can take onto a canvas, side by side in time: the vector
+// path shader, which resolves the outlines per pixel and therefore stays sharp at any zoom, and
+// the software rasterizer, which produces a texture of a fixed size.
+//
+// Keys:
+//   G  switch between the two routes
+//   R  turn the rotation on and off
+//   W  zoom in, S zoom out, or use the mouse wheel
+//   N  record the shapes again at the size they are currently drawn at
+//   Space  back to the starting view
+
+var application = {
+
+  data: null,
+
+  // The document and the two ways of drawing it, kept across code reloads in this.data, because
+  // loading and recording them again on every F5 would be wasteful.
+  create: function() {
+
+    print("SVG example: create\n");
+
+    if (this.data && !this.data.initialized) {
+
+      this.data.initialized = true;
+
+      this.data.document = null;
+      this.data.shapes = null;
+      this.data.texture = null;
+      this.data.font = null;
+
+      this.data.useShapes = true;   // the vector path route is the interesting one, so it starts
+      this.data.rotate = false;
+      this.data.zoom = 1.0;
+      this.data.angle = 0.0;
+      this.data.time = 0.0;
+
+      // The input API reports key events rather than key states, so holding a key down is kept
+      // track of here and acted on in update, which also makes the zoom speed independent of the
+      // repeat rate of the keyboard.
+      this.data.zoomInHeld = false;
+      this.data.zoomOutHeld = false;
+
+      this.data.rebuildRequested = false;
+
+      // At what zoom the shapes were last recorded, which is what N updates and what tells us
+      // whether the stroked outlines still have enough line segments for the current view.
+      this.data.builtZoom = 1.0;
+
+      this.data.status = "";
+
+    }
+
+  },
+
+  destroy: function() {
+
+    print("SVG example: destroy\n");
+
+    // The natives are not garbage collected, so they go here rather than being left to the
+    // collector. The data object survives a code reload, so this only runs on a real shutdown.
+    if (this.data) {
+      if (this.data.shapes) {
+        this.data.shapes.destroy();
+        this.data.shapes = null;
+      }
+      if (this.data.texture) {
+        this.data.texture.destroy();
+        this.data.texture = null;
+      }
+      if (this.data.document) {
+        this.data.document.destroy();
+        this.data.document = null;
+      }
+      this.data.initialized = false;
+    }
+
+  },
+
+  show: function() {
+  },
+
+  hide: function() {
+  },
+
+  resume: function() {
+  },
+
+  pause: function() {
+  },
+
+  resize: function(width, height) {
+  },
+
+  afterCreateSwapChain: function() {
+  },
+
+  beforeDestroySwapChain: function() {
+  },
+
+  check: function(deltaTime) {
+  },
+
+  update: function(deltaTime) {
+
+    let data = this.data;
+
+    data.time += deltaTime;
+
+    if (data.rotate) {
+      data.angle += deltaTime * 20.0;
+      while (data.angle >= 360.0) {
+        data.angle -= 360.0;
+      }
+    }
+
+    // A factor per second, so the zoom moves at the same rate whatever the frame rate is.
+    if (data.zoomInHeld) {
+      this.zoomBy(Math.exp(deltaTime * 1.5));
+    }
+    if (data.zoomOutHeld) {
+      this.zoomBy(Math.exp(-deltaTime * 1.5));
+    }
+
+  },
+
+  // Loads the document and records it once. This belongs to the update rather than to the draw,
+  // because recording uploads the shapes and the ramps to the GPU, and the draw is in the middle
+  // of putting a frame together.
+  ensureLoaded: function() {
+
+    let data = this.data;
+
+    if (!data.document) {
+
+      data.document = VectorGraphics.loadSVG("svg/tiger.svg");
+
+      print("SVG example: loaded svg/tiger.svg, ",
+            data.document.getWidth(), "x", data.document.getHeight(), "\n");
+
+    }
+
+    if (!data.shapes) {
+
+      data.shapes = VectorGraphics.createShapes();
+
+      // Recorded at the size of the document itself, so one unit is one pixel at a zoom of one.
+      let supported = data.shapes.build(data.document);
+      data.shapes.update();
+      data.builtZoom = 1.0;
+
+      print("SVG example: ", data.shapes.getCountShapes(), " shapes, ",
+            data.shapes.getCountGradients(), " gradient ramps, vector path route ",
+            supported ? "available" : "NOT available", "\n");
+
+      if (!supported) {
+        // The document needs something the shader cannot do, so the texture route is the only
+        // one that shows it correctly.
+        data.useShapes = false;
+      }
+
+    }
+
+    if (!data.texture) {
+      data.texture = VectorGraphics.createTexture(data.document);
+      data.texture.update();
+    }
+
+  },
+
+  onInputEvent: function(event) {
+
+    let data = this.data;
+
+    if (event.EventType === Input.EventTypes.EVENT_KEY) {
+
+      if (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN) {
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_G) {
+          if (data.shapes && data.shapes.isSupported()) {
+            data.useShapes = !data.useShapes;
+          }
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_R) {
+          data.rotate = !data.rotate;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_N) {
+          // Recording uploads, so it is left to the update rather than being done from here.
+          data.rebuildRequested = true;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_SPACE) {
+          data.zoom = 1.0;
+          data.angle = 0.0;
+          data.rotate = false;
+          return true;
+        }
+
+      }
+
+      // W and S are held rather than tapped, so only the state is noted here and update does the
+      // zooming.
+      if ((event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN) ||
+          (event.KeyEventType === Input.KeyEventTypes.KEYEVENT_UP)) {
+
+        let held = event.KeyEventType === Input.KeyEventTypes.KEYEVENT_DOWN;
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_W) {
+          data.zoomInHeld = held;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_S) {
+          data.zoomOutHeld = held;
+          return true;
+        }
+
+      }
+
+    }
+
+    if (event.EventType === Input.EventTypes.EVENT_SCROLLED) {
+      this.zoomBy(event.RelativeAmount.y > 0.0 ? 1.15 : (1.0 / 1.15));
+      return true;
+    }
+
+    return false;
+
+  },
+
+  zoomBy: function(factor) {
+    this.data.zoom = Math.max(0.05, Math.min(this.data.zoom * factor, 200.0));
+  },
+
+  // Records the shapes again at the size they are drawn at right now. The filled outlines would
+  // stay sharp without this, because the shader resolves their curves, but the stroked ones are
+  // polygons the stroker built at the scale of the last recording, so a big zoom shows their
+  // line segments until this runs.
+  rebuild: function() {
+
+    let data = this.data;
+    if (!(data.document && data.shapes)) {
+      return;
+    }
+
+    let width = data.document.getWidth() * data.zoom;
+    let height = data.document.getHeight() * data.zoom;
+
+    data.shapes.build(data.document, width, height);
+    data.shapes.update();
+    data.builtZoom = data.zoom;
+
+    print("SVG example: recorded again at ", width, "x", height, ", ",
+          data.shapes.getCountShapes(), " shapes\n");
+
+  },
+
+  createCanvas: function(nativeCanvas) {
+    this.data.font = nativeCanvas.createCanvasFontFromGlobal("vga");
+  },
+
+  destroyCanvas: function(nativeCanvas) {
+    this.data.font = null;
+  },
+
+  updateCanvas: function(deltaTime, width, height, nativeWidth, nativeHeight) {
+
+    this.ensureLoaded();
+
+    if (this.data.rebuildRequested) {
+      this.data.rebuildRequested = false;
+      this.rebuild();
+    }
+
+  },
+
+  drawCanvas: function(nativeCanvas, width, height, nativeWidth, nativeHeight) {
+
+    let canvas = nativeCanvas;
+    let data = this.data;
+
+    if (!(data.document && data.shapes && data.texture)) {
+      return;
+    }
+
+    // A dark background, because the tiger is drawn in its own colors and has white in it.
+    canvas.setColor(0.13, 0.14, 0.16, 1.0);
+    canvas.drawFilledRectangle(0.0, 0.0, width, height);
+
+    canvas.setColor(1.0, 1.0, 1.0, 1.0);
+
+    let documentWidth = data.document.getWidth();
+    let documentHeight = data.document.getHeight();
+
+    if (data.useShapes) {
+
+      // The shapes were recorded in the units of the document, so the model matrix is what puts
+      // them on the screen: the recorded size out of the way of the center, then the zoom and the
+      // rotation, then into the middle of the window. Nothing of this costs a new recording,
+      // which is the whole point of this route.
+      let scale = data.zoom / data.builtZoom;
+      let matrix = Matrix4x4.createTranslation(-documentWidth * 0.5, -documentHeight * 0.5, 0.0) *
+                   Matrix4x4.createScale(scale, scale, 1.0) *
+                   Matrix4x4.createRotateZ(data.angle * (Math.PI / 180.0)) *
+                   Matrix4x4.createTranslation(width * 0.5, height * 0.5, 0.0);
+
+      canvas.push();
+      canvas.setModelMatrix(matrix);
+      canvas.drawVectorGraphicsShapes(data.shapes);
+      canvas.pop();
+
+    } else {
+
+      // The texture route has its own fixed size, so zooming it means stretching the picture.
+      let drawWidth = documentWidth * data.zoom;
+      let drawHeight = documentHeight * data.zoom;
+
+      canvas.drawVectorGraphicsTexture(data.texture,
+                                       (width - drawWidth) * 0.5,
+                                       (height - drawHeight) * 0.5,
+                                       drawWidth,
+                                       drawHeight);
+
+    }
+
+    this.drawStatus(canvas, width, height);
+
+  },
+
+  drawStatus: function(canvas, width, height) {
+
+    let data = this.data;
+    if (!data.font) {
+      return;
+    }
+
+    canvas.setFont(data.font);
+    canvas.setFontSize(16.0);
+    canvas.setTextHorizontalAlignment(Canvas.TextHorizontalAlignment.Leading);
+    canvas.setTextVerticalAlignment(Canvas.TextVerticalAlignment.Leading);
+
+    let route = data.useShapes ? "vector path shader" : "software texture";
+    let lines = [
+      "route: " ~ route ~ "   (G switches)",
+      "zoom: " ~ Math.round(data.zoom * 100.0) ~ "%   (W / S or the mouse wheel)",
+      "shapes: " ~ data.shapes.getCountShapes() ~ "   gradients: " ~ data.shapes.getCountGradients(),
+      "recorded at: " ~ Math.round(data.builtZoom * 100.0) ~ "%   (N records again)",
+      "rotation: " ~ (data.rotate ? "on" : "off") ~ "   (R toggles, Space resets)"
+    ];
+
+    let y = 8.0;
+    for (let index = 0; index < lines.length; index++) {
+      canvas.setColor(0.0, 0.0, 0.0, 0.6);
+      canvas.drawText(lines[index], 9.0, y + 1.0);
+      canvas.setColor(1.0, 1.0, 1.0, 1.0);
+      canvas.drawText(lines[index], 8.0, y);
+      y += 18.0;
+    }
+
+  }
+
+};
+
+return application;

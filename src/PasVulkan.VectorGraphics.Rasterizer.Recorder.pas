@@ -188,6 +188,7 @@ type { TpvVectorGraphicsRasterizerRecorder }
        fStartPosition:TpvVectorPathVector;
        fFlushEmptyRecords:boolean;
        fFullyRecorded:boolean;
+       fCubicToQuadraticTolerance:TpvDouble;
        // The buffer that was in effect when this recorder was created, which is the one that
        // stands for the page itself.
        fBasePixelBuffer:TpvVectorGraphicsPixelBuffer;
@@ -233,6 +234,10 @@ type { TpvVectorGraphicsRasterizerRecorder }
        // When set, a Render that produced no geometry still appends an empty record, which keeps
        // the record indices lined up with the draw calls for callers that rely on that.
        property FlushEmptyRecords:boolean read fFlushEmptyRecords write fFlushEmptyRecords;
+       // Handed to every recorded shape, which carries it on to the GPU side, where it decides
+       // how closely a quadratic curve has to follow the cubic one it replaces. One unit of the
+       // shape is the default, which is right whenever one unit is about one pixel on screen.
+       property CubicToQuadraticTolerance:TpvDouble read fCubicToQuadraticTolerance write fCubicToQuadraticTolerance;
        // True while the records describe everything that was drawn, which is the case as long as
        // every area was filled with a plain color or with one of the two gradients, with no
        // pattern or image paint, no coverage mask, no blend mode and no texture record among
@@ -300,6 +305,7 @@ begin
  fHasCurrentPosition:=false;
  fFlushEmptyRecords:=false;
  fFullyRecorded:=true;
+ fCubicToQuadraticTolerance:=1.0;
  fBasePixelBuffer:=fPixelBuffer;
  fInForeignPixelBuffer:=false;
 
@@ -614,6 +620,7 @@ begin
  fCurrentShape:=TpvVectorPathShape.Create;
  fCurrentShape.Assign(aShape);
  fCurrentShape.Transform(aMatrix);
+ fCurrentShape.CubicToQuadraticTolerance:=fCubicToQuadraticTolerance;
 
  Render;
 

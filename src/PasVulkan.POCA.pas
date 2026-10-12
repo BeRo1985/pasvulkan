@@ -78,6 +78,10 @@ uses SysUtils,
      PasVulkan.VectorPath,
      PasVulkan.SignedDistanceField2D,
      PasVulkan.Canvas,
+     PasVulkan.VectorGraphics.Rasterizer,
+     PasVulkan.VectorGraphics,
+     PasVulkan.VectorGraphics.SVG,
+     PasVulkan.VectorGraphics.Canvas,
      PasVulkan.Sprites,
      PasVulkan.TrueTypeFont,
      PasVulkan.Font,
@@ -136,6 +140,20 @@ type TpvPOCAAudio=class;
 
       CanvasHash:TPOCAValue;
       CanvasHashEvents:TPOCAValue;
+
+      VectorGraphicsDocumentHash:TPOCAValue;
+      VectorGraphicsDocumentHashEvents:TPOCAValue;
+
+      VectorGraphicsShapesHash:TPOCAValue;
+      VectorGraphicsShapesHashEvents:TPOCAValue;
+
+      VectorGraphicsTextureHash:TPOCAValue;
+      VectorGraphicsTextureHashEvents:TPOCAValue;
+
+      // One pool for every set of shapes of this instance, so that they all end up in the same
+      // buffers and the canvas does not have to swap its descriptor set between them. Created on
+      // the first set of shapes that needs it.
+      VectorGraphicsBufferPool:TpvVectorPathGPUBufferPool;
 
      end;
      PPOCAHostData=^TPOCAHostData;
@@ -291,6 +309,9 @@ var POCAVector2GhostPointer:PPOCAGhostType=nil;
     POCACanvasFontGhostPointer:PPOCAGhostType=nil;
     POCACanvasShapeGhostPointer:PPOCAGhostType=nil;
     POCACanvasGhostPointer:PPOCAGhostType=nil;
+    POCAVectorGraphicsDocumentGhostPointer:PPOCAGhostType=nil;
+    POCAVectorGraphicsShapesGhostPointer:PPOCAGhostType=nil;
+    POCAVectorGraphicsTextureGhostPointer:PPOCAGhostType=nil;
 
 function POCAGetHostData(const aContext:PPOCAContext):PPOCAHostData; //inline;
 procedure POCASetHostData(const aContext:PPOCAContext;const aHostData:PPOCAHostData); //inline;
@@ -357,6 +378,15 @@ function POCAGetCanvasShapeValue(const aValue:TPOCAValue):TpvCanvasShape;
 
 function POCANewCanvas(const aContext:PPOCAContext;const aCanvas:TpvCanvas):TPOCAValue;
 function POCAGetCanvasValue(const aValue:TPOCAValue):TpvCanvas;
+
+function POCANewVectorGraphicsDocument(const aContext:PPOCAContext;const aDocument:TpvVectorGraphicsDocument):TPOCAValue;
+function POCAGetVectorGraphicsDocumentValue(const aValue:TPOCAValue):TpvVectorGraphicsDocument;
+
+function POCANewVectorGraphicsShapes(const aContext:PPOCAContext;const aShapes:TpvVectorGraphicsCanvasShapes):TPOCAValue;
+function POCAGetVectorGraphicsShapesValue(const aValue:TPOCAValue):TpvVectorGraphicsCanvasShapes;
+
+function POCANewVectorGraphicsTexture(const aContext:PPOCAContext;const aTexture:TpvVectorGraphicsCanvasTexture):TPOCAValue;
+function POCAGetVectorGraphicsTextureValue(const aValue:TPOCAValue):TpvVectorGraphicsCanvasTexture;
 
 function POCANewInputEventHash(const aContext:PPOCAContext):TPOCAValue;
 function POCASetInputEventHashNone(const aContext:PPOCAContext;const aHash:TPOCAValue):TPOCAValue;
@@ -11981,7 +12011,888 @@ begin
 end;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Input 
+// VectorGraphicsDocument
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCAVectorGraphicsDocumentGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'VectorGraphicsDocument'
+       );
+
+function POCANewVectorGraphicsDocument(const aContext:PPOCAContext;const aDocument:TpvVectorGraphicsDocument):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAVectorGraphicsDocumentGhost,aDocument,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.VectorGraphicsDocumentHash);
+end;
+
+function POCAGetVectorGraphicsDocumentValue(const aValue:TPOCAValue):TpvVectorGraphicsDocument;
+begin
+ if POCAGhostGetType(aValue)=@POCAVectorGraphicsDocumentGhost then begin
+  result:=TpvVectorGraphicsDocument(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function POCAVectorGraphicsFunctionLOADSVG(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+    FileName:TpvUTF8String;
+    Stream:TStream;
+begin
+
+ if aCountArguments>0 then begin
+  FileName:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if not pvApplication.Assets.ExistAsset(String(FileName)) then begin
+  POCARuntimeError(aContext,'Asset "'+FileName+'" not found');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Document:=nil;
+
+ Stream:=pvApplication.Assets.GetAssetStream(String(FileName));
+ try
+  Document:=pvVectorGraphicsLoadSVGFromStream(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'Could not load "'+FileName+'" as SVG');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Document.Update;
+
+ result:=POCANewVectorGraphicsDocument(aContext,Document);
+
+end;
+
+function POCAVectorGraphicsFunctionPARSESVG(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+    Text:TpvUTF8String;
+begin
+
+ if aCountArguments>0 then begin
+  Text:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Document:=pvVectorGraphicsLoadSVGFromString(TpvRawByteString(Text));
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'Could not parse the given text as SVG');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Document.Update;
+
+ result:=POCANewVectorGraphicsDocument(aContext,Document);
+
+end;
+
+function POCAVectorGraphicsDocumentFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+begin
+ if POCAGhostGetType(aThis)=@POCAVectorGraphicsDocumentGhost then begin
+  Document:=TpvVectorGraphicsDocument(POCAGhostFastGetPointer(aThis));
+  if assigned(Document) then begin
+   Document.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+function POCAVectorGraphicsDocumentFunctionGETWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+begin
+
+ Document:=POCAGetVectorGraphicsDocumentValue(aThis);
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Document.Width);
+
+end;
+
+function POCAVectorGraphicsDocumentFunctionGETHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+begin
+
+ Document:=POCAGetVectorGraphicsDocumentValue(aThis);
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Document.Height);
+
+end;
+
+function POCAVectorGraphicsDocumentFunctionUPDATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+begin
+
+ Document:=POCAGetVectorGraphicsDocumentValue(aThis);
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Document.Update;
+
+ result:=aThis;
+
+end;
+
+function POCAVectorGraphicsDocumentFunctionEXISTOBJECT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Document:TpvVectorGraphicsDocument;
+    ID:TpvUTF8String;
+begin
+
+ Document:=POCAGetVectorGraphicsDocumentValue(aThis);
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  ID:=POCAGetStringValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,ord(assigned(Document.FindByID(ID))) and 1);
+
+end;
+
+procedure POCAInitVectorGraphicsDocumentHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.VectorGraphicsDocumentHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.VectorGraphicsDocumentHash);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsDocumentHash,'destroy',POCAVectorGraphicsDocumentFunctionDESTROY);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsDocumentHash,'getWidth',POCAVectorGraphicsDocumentFunctionGETWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsDocumentHash,'getHeight',POCAVectorGraphicsDocumentFunctionGETHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsDocumentHash,'update',POCAVectorGraphicsDocumentFunctionUPDATE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsDocumentHash,'existObject',POCAVectorGraphicsDocumentFunctionEXISTOBJECT);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VectorGraphicsShapes
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCAVectorGraphicsShapesGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'VectorGraphicsShapes'
+       );
+
+function POCANewVectorGraphicsShapes(const aContext:PPOCAContext;const aShapes:TpvVectorGraphicsCanvasShapes):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAVectorGraphicsShapesGhost,aShapes,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.VectorGraphicsShapesHash);
+end;
+
+function POCAGetVectorGraphicsShapesValue(const aValue:TPOCAValue):TpvVectorGraphicsCanvasShapes;
+begin
+ if POCAGhostGetType(aValue)=@POCAVectorGraphicsShapesGhost then begin
+  result:=TpvVectorGraphicsCanvasShapes(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+// The one pool of this POCA instance, created on first use, so that every set of shapes lands in
+// the same buffers and the canvas keeps one descriptor set for all of them.
+function POCAGetVectorGraphicsBufferPool(const aContext:PPOCAContext):TpvVectorPathGPUBufferPool;
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ if not assigned(HostData^.VectorGraphicsBufferPool) then begin
+  HostData^.VectorGraphicsBufferPool:=TpvVectorPathGPUBufferPool.Create(pvApplication.VulkanDevice);
+ end;
+ result:=HostData^.VectorGraphicsBufferPool;
+end;
+
+function POCAVectorGraphicsFunctionCREATESHAPES(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=TpvVectorGraphicsCanvasShapes.Create(pvApplication.VulkanDevice,
+                                              POCAGetVectorGraphicsBufferPool(aContext));
+
+ result:=POCANewVectorGraphicsShapes(aContext,Shapes);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+ if POCAGhostGetType(aThis)=@POCAVectorGraphicsShapesGhost then begin
+  Shapes:=TpvVectorGraphicsCanvasShapes(POCAGhostFastGetPointer(aThis));
+  if assigned(Shapes) then begin
+   Shapes.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+// Shared by build and buildObject: picks up the arguments both of them have in common, which are
+// the target size, the point in time and the curve tolerance.
+procedure POCAVectorGraphicsShapesGetBuildArguments(const aContext:PPOCAContext;
+                                                    const aArguments:PPOCAValues;
+                                                    const aCountArguments:TPOCAInt32;
+                                                    const aFirstArgument:TPOCAInt32;
+                                                    const aDocument:TpvVectorGraphicsDocument;
+                                                    out aMatrix:TpvVectorPathMatrix;
+                                                    out aTick:TpvInt64;
+                                                    out aTickFraction:TpvDouble;
+                                                    out aCurveTolerance:TpvDouble);
+var Width,Height,Tick:TpvDouble;
+begin
+
+ // A size of zero on either axis means the document is taken at its own size, which is what keeps
+ // the shapes in the units the document was authored in.
+ if aCountArguments>aFirstArgument then begin
+  Width:=POCAGetNumberValue(aContext,aArguments^[aFirstArgument]);
+ end else begin
+  Width:=0.0;
+ end;
+
+ if aCountArguments>(aFirstArgument+1) then begin
+  Height:=POCAGetNumberValue(aContext,aArguments^[aFirstArgument+1]);
+ end else begin
+  Height:=0.0;
+ end;
+
+ if (Width<=0.0) or (Height<=0.0) then begin
+  Width:=aDocument.Width;
+  Height:=aDocument.Height;
+ end;
+
+ aMatrix:=aDocument.GetViewBoxMatrix(Width,Height);
+
+ if aCountArguments>(aFirstArgument+2) then begin
+  Tick:=POCAGetNumberValue(aContext,aArguments^[aFirstArgument+2]);
+ end else begin
+  Tick:=0.0;
+ end;
+
+ // A fractional tick is handed over as the fraction between two whole ones, which is what the
+ // timeline interpolates with.
+ aTick:=trunc(Tick);
+ aTickFraction:=Tick-aTick;
+
+ if aCountArguments>(aFirstArgument+3) then begin
+  aCurveTolerance:=POCAGetNumberValue(aContext,aArguments^[aFirstArgument+3]);
+ end else begin
+  aCurveTolerance:=1.0;
+ end;
+
+end;
+
+function POCAVectorGraphicsShapesFunctionBUILD(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    Document:TpvVectorGraphicsDocument;
+    Matrix:TpvVectorPathMatrix;
+    Tick:TpvInt64;
+    TickFraction,CurveTolerance:TpvDouble;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Document:=POCAGetVectorGraphicsDocumentValue(aArguments^[0]);
+ end else begin
+  Document:=nil;
+ end;
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ POCAVectorGraphicsShapesGetBuildArguments(aContext,aArguments,aCountArguments,1,Document,
+                                           Matrix,Tick,TickFraction,CurveTolerance);
+
+ result:=POCANewNumber(aContext,ord(Shapes.Build(Document,Matrix,Tick,TickFraction,CurveTolerance)) and 1);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionBUILDOBJECT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    Document:TpvVectorGraphicsDocument;
+    ID:TpvUTF8String;
+    Matrix:TpvVectorPathMatrix;
+    Tick:TpvInt64;
+    TickFraction,CurveTolerance:TpvDouble;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Document:=POCAGetVectorGraphicsDocumentValue(aArguments^[0]);
+ end else begin
+  Document:=nil;
+ end;
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  ID:=POCAGetStringValue(aContext,aArguments^[1]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ POCAVectorGraphicsShapesGetBuildArguments(aContext,aArguments,aCountArguments,2,Document,
+                                           Matrix,Tick,TickFraction,CurveTolerance);
+
+ result:=POCANewNumber(aContext,ord(Shapes.BuildObjectByID(Document,ID,Matrix,Tick,TickFraction,CurveTolerance)) and 1);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionUPDATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    HostData:PPOCAHostData;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ HostData:=POCAGetHostData(aContext);
+ if not (assigned(HostData^.GraphicsQueue) and assigned(HostData^.TransferQueue)) then begin
+  POCARuntimeError(aContext,'No transfer objects available in this context');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Shapes.UpdateRampTexture(HostData^.GraphicsQueue,HostData^.GraphicsCommandBuffer,HostData^.GraphicsCommandBufferFence,
+                          HostData^.TransferQueue,HostData^.TransferCommandBuffer,HostData^.TransferCommandBufferFence);
+
+ result:=aThis;
+
+end;
+
+function POCAVectorGraphicsShapesFunctionISSUPPORTED(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,ord(Shapes.Supported) and 1);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionGETCOUNTSHAPES(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Shapes.CountShapes);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionGETCOUNTGRADIENTS(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Shapes.CountRampRows);
+
+end;
+
+function POCAVectorGraphicsShapesFunctionGETBOUNDINGBOX(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    BoundingBox:TpvVectorPathBoundingBox;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ BoundingBox:=Shapes.BoundingBox;
+
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'leftTop',POCANewVector2(aContext,BoundingBox.Min.x,BoundingBox.Min.y));
+ POCAHashSetString(aContext,result,'widthHeight',POCANewVector2(aContext,BoundingBox.Max.x-BoundingBox.Min.x,
+                                                                        BoundingBox.Max.y-BoundingBox.Min.y));
+
+end;
+
+function POCAVectorGraphicsShapesFunctionCLEAR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Shapes.Clear;
+
+ result:=aThis;
+
+end;
+
+procedure POCAInitVectorGraphicsShapesHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.VectorGraphicsShapesHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.VectorGraphicsShapesHash);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'destroy',POCAVectorGraphicsShapesFunctionDESTROY);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'build',POCAVectorGraphicsShapesFunctionBUILD);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'buildObject',POCAVectorGraphicsShapesFunctionBUILDOBJECT);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'update',POCAVectorGraphicsShapesFunctionUPDATE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'isSupported',POCAVectorGraphicsShapesFunctionISSUPPORTED);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCountShapes',POCAVectorGraphicsShapesFunctionGETCOUNTSHAPES);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCountGradients',POCAVectorGraphicsShapesFunctionGETCOUNTGRADIENTS);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getBoundingBox',POCAVectorGraphicsShapesFunctionGETBOUNDINGBOX);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'clear',POCAVectorGraphicsShapesFunctionCLEAR);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VectorGraphicsTexture
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const POCAVectorGraphicsTextureGhost:TPOCAGhostType=
+       (
+        Destroy:nil;
+        CanDestroy:nil;
+        Mark:nil;
+        ExistKey:nil;
+        GetKey:nil;
+        SetKey:nil;
+        Name:'VectorGraphicsTexture'
+       );
+
+function POCANewVectorGraphicsTexture(const aContext:PPOCAContext;const aTexture:TpvVectorGraphicsCanvasTexture):TPOCAValue;
+begin
+ result:=POCANewGhost(aContext,@POCAVectorGraphicsTextureGhost,aTexture,nil,pgptRAW);
+ POCATemporarySave(aContext,result);
+ POCAGhostSetHashValue(result,POCAGetHostData(aContext)^.VectorGraphicsTextureHash);
+end;
+
+function POCAGetVectorGraphicsTextureValue(const aValue:TPOCAValue):TpvVectorGraphicsCanvasTexture;
+begin
+ if POCAGhostGetType(aValue)=@POCAVectorGraphicsTextureGhost then begin
+  result:=TpvVectorGraphicsCanvasTexture(POCAGhostFastGetPointer(aValue));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function POCAVectorGraphicsFunctionCREATETEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+    Document:TpvVectorGraphicsDocument;
+    Width,Height:TpvInt32;
+    SRGB:boolean;
+begin
+
+ if aCountArguments>0 then begin
+  Document:=POCAGetVectorGraphicsDocumentValue(aArguments^[0]);
+ end else begin
+  Document:=nil;
+ end;
+ if not assigned(Document) then begin
+  POCARuntimeError(aContext,'VectorGraphicsDocument expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ // A size of zero takes the one the document states.
+ if aCountArguments>1 then begin
+  Width:=trunc(POCAGetNumberValue(aContext,aArguments^[1]));
+ end else begin
+  Width:=0;
+ end;
+
+ if aCountArguments>2 then begin
+  Height:=trunc(POCAGetNumberValue(aContext,aArguments^[2]));
+ end else begin
+  Height:=0;
+ end;
+
+ if aCountArguments>3 then begin
+  SRGB:=POCAGetBooleanValue(aContext,aArguments^[3]);
+ end else begin
+  SRGB:=false;
+ end;
+
+ // The document stays with the script, which may well want to make a second texture or a set of
+ // shapes out of it, so this texture does not take it over.
+ Texture:=TpvVectorGraphicsCanvasTexture.Create(pvApplication.VulkanDevice,Document,Width,Height,false,SRGB);
+
+ result:=POCANewVectorGraphicsTexture(aContext,Texture);
+
+end;
+
+function POCAVectorGraphicsTextureFunctionDESTROY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+begin
+ if POCAGhostGetType(aThis)=@POCAVectorGraphicsTextureGhost then begin
+  Texture:=TpvVectorGraphicsCanvasTexture(POCAGhostFastGetPointer(aThis));
+  if assigned(Texture) then begin
+   Texture.Free;
+   PPOCAGhost(POCAGetValueReferencePointer(aThis))^.Ptr:=nil; // For to avoid double free
+  end;
+ end;
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+end;
+
+function POCAVectorGraphicsTextureFunctionRESIZE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+    Width,Height:TpvInt32;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>1 then begin
+  Width:=trunc(POCAGetNumberValue(aContext,aArguments^[0]));
+  Height:=trunc(POCAGetNumberValue(aContext,aArguments^[1]));
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Texture.Resize(Width,Height);
+
+ result:=aThis;
+
+end;
+
+function POCAVectorGraphicsTextureFunctionGETWIDTH(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Texture.Rasterizer.Width);
+
+end;
+
+function POCAVectorGraphicsTextureFunctionGETHEIGHT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Texture.Rasterizer.Height);
+
+end;
+
+function POCAVectorGraphicsTextureFunctionGETTICK(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Texture.Tick+Texture.TickFraction);
+
+end;
+
+function POCAVectorGraphicsTextureFunctionSETTICK(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+    Tick:TpvDouble;
+    WholeTick:TpvInt64;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Tick:=POCAGetNumberValue(aContext,aArguments^[0]);
+ end else begin
+  POCARuntimeError(aContext,'Invalid arguments');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ // A tick is a millisecond, and the fraction between two of them is what the timeline
+ // interpolates with, so a fractional value is split rather than rounded away.
+ WholeTick:=trunc(Tick);
+ Texture.Tick:=WholeTick;
+ Texture.TickFraction:=Tick-WholeTick;
+
+ result:=aThis;
+
+end;
+
+function POCAVectorGraphicsTextureFunctionSETDIRTY(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Texture.Dirty:=true;
+
+ result:=aThis;
+
+end;
+
+function POCAVectorGraphicsTextureFunctionUPDATE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Texture:TpvVectorGraphicsCanvasTexture;
+    HostData:PPOCAHostData;
+begin
+
+ Texture:=POCAGetVectorGraphicsTextureValue(aThis);
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ HostData:=POCAGetHostData(aContext);
+ if not (assigned(HostData^.GraphicsQueue) and assigned(HostData^.TransferQueue)) then begin
+  POCARuntimeError(aContext,'No transfer objects available in this context');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Texture.Update(HostData^.GraphicsQueue,HostData^.GraphicsCommandBuffer,HostData^.GraphicsCommandBufferFence,
+                HostData^.TransferQueue,HostData^.TransferCommandBuffer,HostData^.TransferCommandBufferFence);
+
+ result:=aThis;
+
+end;
+
+procedure POCAInitVectorGraphicsTextureHash(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+ HostData:=POCAGetHostData(aContext);
+ HostData^.VectorGraphicsTextureHash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,HostData^.VectorGraphicsTextureHash);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'destroy',POCAVectorGraphicsTextureFunctionDESTROY);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'resize',POCAVectorGraphicsTextureFunctionRESIZE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'getWidth',POCAVectorGraphicsTextureFunctionGETWIDTH);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'getHeight',POCAVectorGraphicsTextureFunctionGETHEIGHT);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'getTick',POCAVectorGraphicsTextureFunctionGETTICK);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'setTick',POCAVectorGraphicsTextureFunctionSETTICK);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'setDirty',POCAVectorGraphicsTextureFunctionSETDIRTY);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsTextureHash,'update',POCAVectorGraphicsTextureFunctionUPDATE);
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Canvas functions for vector graphics
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function POCACanvasFunctionDRAWVECTORGRAPHICSSHAPES(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Canvas:=POCAGetCanvasValue(aThis);
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Shapes:=POCAGetVectorGraphicsShapesValue(aArguments^[0]);
+ end else begin
+  Shapes:=nil;
+ end;
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Shapes.Draw(Canvas);
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionDRAWVECTORGRAPHICSTEXTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    Texture:TpvVectorGraphicsCanvasTexture;
+    x,y,Width,Height:TpvDouble;
+begin
+
+ Canvas:=POCAGetCanvasValue(aThis);
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Texture:=POCAGetVectorGraphicsTextureValue(aArguments^[0]);
+ end else begin
+  Texture:=nil;
+ end;
+ if not assigned(Texture) then begin
+  POCARuntimeError(aContext,'VectorGraphicsTexture expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>2 then begin
+  x:=POCAGetNumberValue(aContext,aArguments^[1]);
+  y:=POCAGetNumberValue(aContext,aArguments^[2]);
+ end else begin
+  x:=0.0;
+  y:=0.0;
+ end;
+
+ // Without a size the picture is drawn at the size it was rasterized at, which is the one case
+ // where it stays pixel for pixel what the rasterizer produced.
+ if aCountArguments>4 then begin
+  Width:=POCAGetNumberValue(aContext,aArguments^[3]);
+  Height:=POCAGetNumberValue(aContext,aArguments^[4]);
+  Texture.Draw(Canvas,TpvRect.CreateRelative(x,y,Width,Height));
+ end else begin
+  Texture.Draw(Canvas,TpvVector2.InlineableCreate(x,y));
+ end;
+
+ result:=aThis;
+
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VectorGraphics namespace
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+procedure POCAInitVectorGraphicsNamespace(aContext:PPOCAContext);
+var Hash:TPOCAValue;
+begin
+ Hash:=POCANewHash(aContext);
+ POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
+ POCAAddNativeFunction(aContext,Hash,'loadSVG',POCAVectorGraphicsFunctionLOADSVG);
+ POCAAddNativeFunction(aContext,Hash,'parseSVG',POCAVectorGraphicsFunctionPARSESVG);
+ POCAAddNativeFunction(aContext,Hash,'createShapes',POCAVectorGraphicsFunctionCREATESHAPES);
+ POCAAddNativeFunction(aContext,Hash,'createTexture',POCAVectorGraphicsFunctionCREATETEXTURE);
+ POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'VectorGraphics',Hash);
+end;
+
+procedure POCAInitVectorGraphics(aContext:PPOCAContext);
+var HostData:PPOCAHostData;
+begin
+
+ POCAInitVectorGraphicsDocumentHash(aContext);
+ POCAInitVectorGraphicsShapesHash(aContext);
+ POCAInitVectorGraphicsTextureHash(aContext);
+ POCAInitVectorGraphicsNamespace(aContext);
+
+ // The two drawing functions belong to the canvas rather than to this namespace, and they are
+ // registered from here because that is where the types they take are known. The canvas hash
+ // already exists, because POCAInitCanvas runs before this.
+ HostData:=POCAGetHostData(aContext);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawVectorGraphicsShapes',POCACanvasFunctionDRAWVECTORGRAPHICSSHAPES);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'drawVectorGraphicsTexture',POCACanvasFunctionDRAWVECTORGRAPHICSTEXTURE);
+
+end;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Input
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function POCAInitInputEventTypes(aContext:PPOCAContext):TPOCAValue;
@@ -14888,6 +15799,8 @@ begin
 
  POCAInitCanvas(aContext);
 
+ POCAInitVectorGraphics(aContext);
+
  POCAInitInput(aContext);
 
 end;
@@ -14902,10 +15815,16 @@ begin
  HostData:=aContext^.Instance^.Globals.HostData;
  if Assigned(HostData) then begin
   try
-   FreeMem(HostData);
+   // The shared vector path buffer pool belongs to the instance, so it goes with it. Everything
+   // else in here is a POCA value and is collected by the garbage collector.
+   FreeAndNil(HostData^.VectorGraphicsBufferPool);
   finally
-   aContext^.Instance^.Globals.HostData:=nil;
-  end; 
+   try
+    FreeMem(HostData);
+   finally
+    aContext^.Instance^.Globals.HostData:=nil;
+   end;
+  end;
  end;
 end;
 
@@ -14923,6 +15842,9 @@ initialization
  POCACanvasFontGhostPointer:=@POCACanvasFontGhost;
  POCACanvasShapeGhostPointer:=@POCACanvasShapeGhost;
  POCACanvasGhostPointer:=@POCACanvasGhost;
+ POCAVectorGraphicsDocumentGhostPointer:=@POCAVectorGraphicsDocumentGhost;
+ POCAVectorGraphicsShapesGhostPointer:=@POCAVectorGraphicsShapesGhost;
+ POCAVectorGraphicsTextureGhostPointer:=@POCAVectorGraphicsTextureGhost;
  InitializePOCADataPools;
 finalization
  FinalizePOCADataPools;

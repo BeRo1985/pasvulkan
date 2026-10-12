@@ -537,6 +537,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fContours:TpvVectorPathContours;
        fResolution:TpvInt32;
        fBoundingBoxExtent:TpvDouble;
+       fCubicToQuadraticTolerance:TpvDouble;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
@@ -557,6 +558,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        property Contours:TpvVectorPathContours read fContours;
        property Resolution:TpvInt32 read fResolution write fResolution;
        property BoundingBoxExtent:TpvDouble read fBoundingBoxExtent write fBoundingBoxExtent;
+       // How far a quadratic curve may stray from the cubic one it replaces when this shape goes
+       // to the GPU, in the units of the shape itself. One unit is right whenever one unit is
+       // about one pixel on screen; a shape whose units are much smaller than a pixel, which is
+       // what a viewBox of a few units gives, needs a correspondingly smaller value.
+       property CubicToQuadraticTolerance:TpvDouble read fCubicToQuadraticTolerance write fCubicToQuadraticTolerance;
      end;
 
      { TpvVectorPath }
@@ -4218,6 +4224,7 @@ begin
  fContours.OwnsObjects:=true;
  fResolution:=32;
  fBoundingBoxExtent:=4.0;
+ fCubicToQuadraticTolerance:=1.0;
 end;
 
 constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
@@ -4258,6 +4265,7 @@ begin
  end;
  fResolution:=aVectorPathShape.fResolution;
  fBoundingBoxExtent:=aVectorPathShape.fBoundingBoxExtent;
+ fCubicToQuadraticTolerance:=aVectorPathShape.fCubicToQuadraticTolerance;
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
@@ -6938,9 +6946,10 @@ begin
 
  fVectorPathShape:=TpvVectorPathShape.Create(fSourceVectorPathShape);
 
- // Convert cubic Bezier curves to quadratic Bezier curves with a maximum error of 1.0 units
- // so that the GPU shader can handle them more easily just using quadratic curves
- fVectorPathShape.ConvertCubicCurvesToQuadraticCurves(1.0); 
+ // Convert cubic Bezier curves to quadratic Bezier curves, so that the GPU shader can handle them
+ // more easily just using quadratic curves. The tolerance comes from the shape, because how much
+ // a unit of it is worth on screen is something only its owner knows.
+ fVectorPathShape.ConvertCubicCurvesToQuadraticCurves(fVectorPathShape.CubicToQuadraticTolerance);
 
  fBoundingBox:=fVectorPathShape.GetBoundingBox;
  fBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(fBoundingBoxExtent,fBoundingBoxExtent);
