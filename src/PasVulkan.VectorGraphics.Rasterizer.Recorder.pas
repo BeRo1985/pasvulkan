@@ -72,7 +72,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.VectorPath,
-     PasVulkan.VectorGraphics.Rasterizer;
+     PasVulkan.VectorGraphics.Rasterizer,
+     PasVulkan.VectorGraphics.Filters;
 
 type { TpvVectorGraphicsRasterizerRecorder }
 
@@ -86,28 +87,55 @@ type { TpvVectorGraphicsRasterizerRecorder }
      // both the software and the GPU path, and only the backend differs.
      TpvVectorGraphicsRasterizerRecorder=class(TpvVectorGraphicsRasterizer)
       public
-       type { TRecord_ }
+       type { TRecordKind }
+
+            // What one entry of the recording stands for. A shape is drawn outright, while a
+            // texture marks a part of the picture that cannot be expressed as shapes at all and
+            // has to be rendered on its own and then put through a filter chain.
+            TRecordKind=
+             (
+              Shape=0,
+              Texture
+             );
+
+            { TRecord_ }
             TRecord_=class
              private
+              fKind:TRecordKind;
               fShape:TpvVectorPathShape;
               fColor:TpvVectorGraphicsColor;
               fFillRule:TpvVectorPathFillRule;
               fBlendMode:TpvVectorGraphicsBlendMode;
               fBoundingBox:TpvVectorPathBoundingBox;
+              fFilter:TpvVectorGraphicsFilter;
+              fFilterContext:TpvVectorGraphicsFilterContext;
+              fAlpha:TpvUInt8;
+              fFirstChildIndex:TpvSizeInt;
+              fCountChildren:TpvSizeInt;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
              public
               property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
+              // What the filter needs to know about where the subtree sits, handed over with it.
+              property FilterContext:TpvVectorGraphicsFilterContext read fFilterContext write fFilterContext;
              published
+              property Kind:TRecordKind read fKind;
               // The outline in device space, made of line segments only, ready to be fed to
-              // TpvVectorPathGPUShape or to be triangulated.
+              // TpvVectorPathGPUShape or to be triangulated. Only a shape record has one.
               property Shape:TpvVectorPathShape read fShape;
               property Color:TpvVectorGraphicsColor read fColor;
               property FillRule:TpvVectorPathFillRule read fFillRule;
-              // How this shape is meant to combine with what is already there. The GPU side has
+              // How this entry is meant to combine with what is already there. The GPU side has
               // to honour it, since the recorder itself composites nothing.
               property BlendMode:TpvVectorGraphicsBlendMode read fBlendMode;
+              // For a texture record: the filter to run over the rendered subtree, the opacity
+              // the outcome is composited with, and which of the records that follow make up the
+              // subtree. The filter belongs to the document, not to the record.
+              property Filter:TpvVectorGraphicsFilter read fFilter;
+              property Alpha:TpvUInt8 read fAlpha;
+              property FirstChildIndex:TpvSizeInt read fFirstChildIndex;
+              property CountChildren:TpvSizeInt read fCountChildren;
             end;
             TRecords=TpvObjectGenericList<TRecord_>;
       private
@@ -127,6 +155,16 @@ type { TpvVectorGraphicsRasterizerRecorder }
        procedure LineTo(const aX,aY:TpvInt32); override;
        procedure Close; override;
        procedure Render; override;
+       // Opens a texture record and returns its index. Everything recorded until the matching
+       // EndTexture belongs to it, which is how a filtered subtree reaches the GPU side: render
+       // those entries into a texture of their own, run the filter chain over it, then composite
+       // the outcome with the given opacity and blend mode.
+       function BeginTexture(const aFilter:TpvVectorGraphicsFilter;
+                             const aFilterContext:TpvVectorGraphicsFilterContext;
+                             const aAlpha:TpvUInt8;
+                             const aBlendMode:TpvVectorGraphicsBlendMode):TpvSizeInt;
+       // Closes the texture record that aIndex opened.
+       procedure EndTexture(const aIndex:TpvSizeInt);
        // Throws away everything recorded so far.
        procedure ClearRecords;
        // Hands the records over to the caller, who then owns them, and starts an empty list.
@@ -149,10 +187,17 @@ begin
 
  inherited Create;
 
+ fKind:=TRecordKind.Shape;
  fShape:=TpvVectorPathShape.Create;
  fColor:=0;
  fFillRule:=TpvVectorPathFillRule.NonZero;
  fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+
+ // Only a texture record uses these.
+ fFilter:=nil;
+ fAlpha:=255;
+ fFirstChildIndex:=0;
+ fCountChildren:=0;
 
  // The inverted bounds of an empty box, so that the first point set on it decides all four sides.
  fBoundingBox:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
@@ -198,6 +243,49 @@ const OneOverPixelFactor=1.0/pvVectorGraphicsPixelFactor;
 begin
  result.x:=aX*OneOverPixelFactor;
  result.y:=aY*OneOverPixelFactor;
+end;
+
+function TpvVectorGraphicsRasterizerRecorder.BeginTexture(const aFilter:TpvVectorGraphicsFilter;
+                                                          const aFilterContext:TpvVectorGraphicsFilterContext;
+                                                          const aAlpha:TpvUInt8;
+                                                          const aBlendMode:TpvVectorGraphicsBlendMode):TpvSizeInt;
+var CurrentRecord:TRecord_;
+begin
+
+ // Anything half drawn belongs before the texture, not inside it.
+ Render;
+
+ CurrentRecord:=TRecord_.Create;
+ CurrentRecord.fKind:=TRecordKind.Texture;
+ CurrentRecord.fFilter:=aFilter;
+ CurrentRecord.fFilterContext:=aFilterContext;
+ CurrentRecord.fAlpha:=aAlpha;
+ CurrentRecord.fBlendMode:=aBlendMode;
+
+ // The subtree starts right after this entry, and how long it is only becomes known at the end.
+ result:=fRecords.Add(CurrentRecord);
+ CurrentRecord.fFirstChildIndex:=result+1;
+ CurrentRecord.fCountChildren:=0;
+
+end;
+
+procedure TpvVectorGraphicsRasterizerRecorder.EndTexture(const aIndex:TpvSizeInt);
+var CurrentRecord:TRecord_;
+begin
+
+ if (aIndex<0) or (aIndex>=fRecords.Count) then begin
+  exit;
+ end;
+
+ Render;
+
+ CurrentRecord:=fRecords[aIndex];
+ if CurrentRecord.fKind<>TRecordKind.Texture then begin
+  exit;
+ end;
+
+ CurrentRecord.fCountChildren:=fRecords.Count-CurrentRecord.fFirstChildIndex;
+
 end;
 
 procedure TpvVectorGraphicsRasterizerRecorder.ClearRecords;

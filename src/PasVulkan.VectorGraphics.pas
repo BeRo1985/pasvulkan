@@ -75,7 +75,9 @@ uses SysUtils,
      PasVulkan.TrueTypeFont,
      PasVulkan.VectorPath,
      PasVulkan.VectorGraphics.Rasterizer,
-     PasVulkan.VectorGraphics.Paints;
+     PasVulkan.VectorGraphics.Paints,
+     PasVulkan.VectorGraphics.Filters,
+     PasVulkan.VectorGraphics.Rasterizer.Recorder;
 
 const // Nesting depth beyond which a group that contains itself, directly or through a use
       // element, stops recursing instead of running out of stack.
@@ -403,6 +405,9 @@ type EpvVectorGraphics=class(Exception);
        fMaskMode:TpvVectorGraphicsMaskMode;
        fBlendMode:TpvVectorGraphicsBlendMode;
        fIsolate:boolean;
+       // The filter this object is drawn through, owned by the document rather than by the
+       // object, since several objects may share one.
+       fFilter:TpvVectorGraphicsFilter;
        fTimeLine:TpvVectorGraphicsTimeLine;
        fBoundingBox:TpvVectorGraphicsBoundingBox;
        fCurrentMatrix:TpvVectorPathMatrix;
@@ -411,6 +416,9 @@ type EpvVectorGraphics=class(Exception);
        // The buffer this object composites itself through, kept around between frames because it
        // is the size of the whole target. Created on first use, which most objects never reach.
        fOffImageBuffer:TpvVectorGraphicsPixelBuffer;
+       // The texture record a recording backend opened for this object, or minus one when there
+       // is none, which is the case for every backend that draws.
+       fTextureRecordIndex:TpvSizeInt;
        procedure SetID(const aID:TpvUTF8String);
        // Sets up fCurrentMatrix, its inverse and fCurrentAlpha, which every subclass needs before
        // it draws anything.
@@ -422,6 +430,13 @@ type EpvVectorGraphics=class(Exception);
        // keeps a semi transparent object over existing content blending correctly.
        function BeginOffImage(var aContext:TpvVectorGraphicsRenderContext;
                               const aIsolated:boolean):TpvVectorGraphicsPixelBuffer;
+       // Runs the filter of this object over the off-image buffer. The bounding box it needs is
+       // taken at the current tick, in the device space the object was just drawn in.
+       procedure ApplyFilter(var aContext:TpvVectorGraphicsRenderContext);
+       // Works out where the object sits and how large a user unit is on screen, which is what a
+       // filter needs whether it runs here or later on the GPU.
+       function GetFilterContext(var aContext:TpvVectorGraphicsRenderContext;
+                                 out aFilterContext:TpvVectorGraphicsFilterContext):boolean;
        // Puts aOldBuffer back and composites into it what was drawn in the meantime.
        procedure EndOffImage(var aContext:TpvVectorGraphicsRenderContext;
                              const aOldBuffer:TpvVectorGraphicsPixelBuffer;
@@ -491,6 +506,10 @@ type EpvVectorGraphics=class(Exception);
        // Keeps the blend modes of the children inside, which is what isolation:isolate asks for
        // and what every stacking context implies anyway.
        property Isolate:boolean read fIsolate write fIsolate;
+       // The filter the object is drawn through. Setting one makes the object go into a buffer
+       // of its own, exactly as a blend mode does, since a filter needs the element on its own
+       // before it can do anything with it. The document owns the filter.
+       property Filter:TpvVectorGraphicsFilter read fFilter write fFilter;
        property CurrentAlpha:TpvUInt8 read fCurrentAlpha;
      end;
 
@@ -806,6 +825,8 @@ type EpvVectorGraphics=class(Exception);
        fRoot:TpvVectorGraphicsGroup;
        fDefs:TpvVectorGraphicsGroup;
        fImages:TpvVectorGraphicsImageResourceList;
+       // The filters of the document, owned here because several objects may share one.
+       fFilters:TpvVectorGraphicsFilterList;
        fIDHashMap:TpvVectorGraphicsIDHashMap;
        fImageIDCounter:TpvInt32;
        fDrawBackground:boolean;
@@ -851,6 +872,10 @@ type EpvVectorGraphics=class(Exception);
        procedure RegisterID(const aID:TpvUTF8String;const aObject:TpvVectorGraphicsObject);
        procedure UnregisterID(const aID:TpvUTF8String);
        function NewImage:TpvVectorGraphicsImageResource;
+       // Creates a filter that belongs to this document and hands it back. Looking one up by its
+       // identifier is what the loader does once it resolves a filter reference.
+       function NewFilter(const aID:TpvUTF8String):TpvVectorGraphicsFilter;
+       function FindFilter(const aID:TpvUTF8String):TpvVectorGraphicsFilter;
        // Sets the provider that text elements of this document resolve their fonts through. The
        // document does not take ownership.
        procedure SetFontProvider(const aFontProvider:TpvVectorGraphicsFontProvider);
@@ -875,6 +900,7 @@ type EpvVectorGraphics=class(Exception);
        property Root:TpvVectorGraphicsGroup read fRoot;
        property Defs:TpvVectorGraphicsGroup read fDefs;
        property Images:TpvVectorGraphicsImageResourceList read fImages;
+       property Filters:TpvVectorGraphicsFilterList read fFilters;
        property FontProvider:TpvVectorGraphicsFontProvider read fFontProvider write fFontProvider;
        property DrawBackground:boolean read fDrawBackground write fDrawBackground;
        property HasViewBox:boolean read fHasViewBox write fHasViewBox;
@@ -1405,6 +1431,7 @@ begin
  // with no buffer of its own.
  fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
  fIsolate:=false;
+ fFilter:=nil;
 
  fTimeLine:=nil;
 
@@ -1415,6 +1442,7 @@ begin
  fCurrentAlpha:=255;
 
  fOffImageBuffer:=nil;
+ fTextureRecordIndex:=-1;
 
 end;
 
@@ -1479,6 +1507,7 @@ begin
  fMaskMode:=aFrom.fMaskMode;
  fBlendMode:=aFrom.fBlendMode;
  fIsolate:=aFrom.fIsolate;
+ fFilter:=aFrom.fFilter;
 
  // The identifier is deliberately left out, since it has to stay unique within the document.
  fName:=aFrom.fName;
@@ -1770,15 +1799,36 @@ begin
   aBlendMode:=TpvVectorGraphicsBlendMode.Normal;
   aIsolated:=false;
  end else begin
+  // A filter needs the element on its own before it can do anything with it, which is the same
+  // buffer a blend mode or an isolation asks for.
   aBlendMode:=fBlendMode;
-  aIsolated:=(aBlendMode<>TpvVectorGraphicsBlendMode.Normal) or fIsolate;
+  aIsolated:=(aBlendMode<>TpvVectorGraphicsBlendMode.Normal) or fIsolate or assigned(fFilter);
  end;
 
 end;
 
 function TpvVectorGraphicsObject.BeginOffImage(var aContext:TpvVectorGraphicsRenderContext;
                                                const aIsolated:boolean):TpvVectorGraphicsPixelBuffer;
+var FilterContext:TpvVectorGraphicsFilterContext;
+    BlendMode:TpvVectorGraphicsBlendMode;
+    Dummy:boolean;
 begin
+
+ fTextureRecordIndex:=-1;
+
+ // A backend that records instead of drawing has no pixels to composite, so what it gets is a
+ // marker around the subtree: render these entries into a texture of their own, run the filter
+ // over it, then composite that. Nothing else happens here for it.
+ if aContext.Rasterizer is TpvVectorGraphicsRasterizerRecorder then begin
+  ResolveBlending(aContext,BlendMode,Dummy);
+  GetFilterContext(aContext,FilterContext);
+  fTextureRecordIndex:=TpvVectorGraphicsRasterizerRecorder(aContext.Rasterizer).BeginTexture(fFilter,
+                                                                                            FilterContext,
+                                                                                            fCurrentAlpha,
+                                                                                            BlendMode);
+  result:=nil;
+  exit;
+ end;
 
  // The buffer covers the whole target, so it is only rebuilt when that changes size.
  if (not assigned(fOffImageBuffer)) or
@@ -1800,6 +1850,53 @@ begin
 
 end;
 
+function TpvVectorGraphicsObject.GetFilterContext(var aContext:TpvVectorGraphicsRenderContext;
+                                                  out aFilterContext:TpvVectorGraphicsFilterContext):boolean;
+var BoundingBox:TpvVectorGraphicsBoundingBox;
+    Scale:TpvDouble;
+begin
+
+ // The box has to be the one in the device space the element is drawn in, so it is taken again
+ // here rather than read off fBoundingBox, which belongs to whatever the last full bounding box
+ // pass left behind. The parent matrix goes in, because the object's own one is applied inside.
+ CalculateBoundingBox(aContext.Tick,aContext.ParentMatrix);
+ BoundingBox:=fBoundingBox;
+
+ result:=not BoundingBox.IsEmpty;
+ if not result then begin
+  aFilterContext:=TpvVectorGraphicsFilterContext.Create(0.0,0.0,0.0,0.0,1.0,1.0);
+  exit;
+ end;
+
+ // How many device pixels one user unit covers, which is what turns the lengths of the filter
+ // into something the pixel loops can work with.
+ Scale:=fCurrentMatrix.ExpansionFactor;
+ if Scale<=1e-12 then begin
+  Scale:=1.0;
+ end;
+
+ aFilterContext:=TpvVectorGraphicsFilterContext.Create(BoundingBox.x1,BoundingBox.y1,
+                                                       BoundingBox.Width,BoundingBox.Height,
+                                                       Scale,Scale);
+
+end;
+
+procedure TpvVectorGraphicsObject.ApplyFilter(var aContext:TpvVectorGraphicsRenderContext);
+var FilterContext:TpvVectorGraphicsFilterContext;
+begin
+
+ if not (assigned(fFilter) and assigned(fOffImageBuffer)) then begin
+  exit;
+ end;
+
+ if not GetFilterContext(aContext,FilterContext) then begin
+  exit;
+ end;
+
+ pvVectorGraphicsApplyFilter(fFilter,fOffImageBuffer,FilterContext);
+
+end;
+
 procedure TpvVectorGraphicsObject.EndOffImage(var aContext:TpvVectorGraphicsRenderContext;
                                               const aOldBuffer:TpvVectorGraphicsPixelBuffer;
                                               const aAlpha:TpvUInt8;
@@ -1807,11 +1904,25 @@ procedure TpvVectorGraphicsObject.EndOffImage(var aContext:TpvVectorGraphicsRend
                                               const aIsolated:boolean);
 begin
 
+ // A recording backend only needs the marker closed again.
+ if fTextureRecordIndex>=0 then begin
+  if aContext.Rasterizer is TpvVectorGraphicsRasterizerRecorder then begin
+   TpvVectorGraphicsRasterizerRecorder(aContext.Rasterizer).EndTexture(fTextureRecordIndex);
+  end;
+  fTextureRecordIndex:=-1;
+  exit;
+ end;
+
  if not (assigned(aOldBuffer) and assigned(fOffImageBuffer)) then begin
   exit;
  end;
 
  aContext.Rasterizer.ReplacePixelBuffer(aOldBuffer);
+
+ // The filter runs on what the element drew, before any of it reaches the page.
+ if assigned(fFilter) and aIsolated and not aContext.MaskPass then begin
+  ApplyFilter(aContext);
+ end;
 
  // An isolated buffer is transparent where nothing was drawn, so it has to be composited rather
  // than copied, and that is also where a blend mode gets applied.
@@ -3293,7 +3404,9 @@ begin
    end;
   end;
 
-  if UseOffImage and assigned(OldBuffer) then begin
+  // Not guarded on the buffer, because a recording backend has none and still needs the marker
+  // around the subtree closed again.
+  if UseOffImage then begin
    EndOffImage(aContext,OldBuffer,fCurrentAlpha,BlendMode,UseIsolation);
    OldBuffer:=nil;
   end;
@@ -3464,7 +3577,7 @@ begin
 
  finally
 
-  if assigned(OldBuffer) then begin
+  if UseIsolation then begin
    EndOffImage(aContext,OldBuffer,fCurrentAlpha,BlendMode,true);
   end;
 
@@ -3486,6 +3599,9 @@ begin
  fImages:=TpvVectorGraphicsImageResourceList.Create;
  fImages.OwnsObjects:=true;
  fImageIDCounter:=0;
+
+ fFilters:=TpvVectorGraphicsFilterList.Create;
+ fFilters.OwnsObjects:=true;
 
  fRoot:=TpvVectorGraphicsGroup.Create(self,nil);
  fDefs:=TpvVectorGraphicsGroup.Create(self,nil);
@@ -3516,6 +3632,7 @@ begin
  FreeAndNil(fDefs);
 
  FreeAndNil(fImages);
+ FreeAndNil(fFilters);
  FreeAndNil(fIDHashMap);
 
  inherited Destroy;
@@ -3592,6 +3709,28 @@ begin
  inc(fImageIDCounter);
 
  fImages.Add(result);
+
+end;
+
+function TpvVectorGraphicsDocument.NewFilter(const aID:TpvUTF8String):TpvVectorGraphicsFilter;
+begin
+ result:=TpvVectorGraphicsFilter.Create;
+ result.ID:=aID;
+ fFilters.Add(result);
+end;
+
+function TpvVectorGraphicsDocument.FindFilter(const aID:TpvUTF8String):TpvVectorGraphicsFilter;
+var Index:TpvSizeInt;
+begin
+
+ // A linear walk, since a document with enough filters for this to matter does not exist.
+ result:=nil;
+ for Index:=0 to fFilters.Count-1 do begin
+  if fFilters[Index].ID=aID then begin
+   result:=fFilters[Index];
+   exit;
+  end;
+ end;
 
 end;
 

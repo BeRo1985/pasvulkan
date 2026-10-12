@@ -79,6 +79,7 @@ uses SysUtils,
      PasVulkan.VectorPath,
      PasVulkan.VectorGraphics.Rasterizer,
      PasVulkan.VectorGraphics.Paints,
+     PasVulkan.VectorGraphics.Filters,
      PasVulkan.VectorGraphics;
 
 type EpvVectorGraphicsSVG=class(Exception);
@@ -127,6 +128,7 @@ type EpvVectorGraphicsSVG=class(Exception);
               MarkerStartID:TpvUTF8String;
               MarkerMidID:TpvUTF8String;
               MarkerEndID:TpvUTF8String;
+              FilterID:TpvUTF8String;
               Display:boolean;
               // Neither of these two inherits in CSS, so unlike everything else in this record
               // they are reset for every element rather than passed down.
@@ -307,6 +309,11 @@ type EpvVectorGraphicsSVG=class(Exception);
        // An SMIL clock value in ticks, so "2s", "250ms", "1.5" or a full "01:02:33.5". Returns
        // false for "indefinite" and for anything it cannot make sense of.
        function ParseClockValue(const aValue:TpvUTF8String;out aTicks:TpvInt64):boolean;
+       // Reads a filter element and everything below it into a filter of the document.
+       procedure CollectFilter(const aTag:TpvXMLTag;const aState:TState);
+       // The pixels behind an image reference as a buffer of their own, which is what feImage
+       // needs, since the filter unit knows nothing about the image resources of the document.
+       function LoadImageBuffer(const aReference:TpvUTF8String):TpvVectorGraphicsPixelBuffer;
        // Whether an element carries animation children, which decides whether its transform goes
        // into its geometry or stays on the object, since an animated length or rotation is given
        // in the element's own user space and only works out there.
@@ -634,6 +641,7 @@ begin
  result.MarkerStartID:='';
  result.MarkerMidID:='';
  result.MarkerEndID:='';
+ result.FilterID:='';
  result.Display:=true;
  result.BlendMode:=TpvVectorGraphicsBlendMode.Normal;
  result.Isolate:=false;
@@ -1219,6 +1227,8 @@ begin
    aState.ClipPathID:=ParsePaintReference(Value);
   end else if Name='mask' then begin
    aState.MaskID:=ParsePaintReference(Value);
+  end else if Name='filter' then begin
+   aState.FilterID:=ParsePaintReference(Value);
   end else if Name='marker-start' then begin
    aState.MarkerStartID:=ParsePaintReference(Value);
   end else if Name='marker-mid' then begin
@@ -1378,6 +1388,7 @@ begin
  Collect('text-anchor');
  Collect('clip-path');
  Collect('mask');
+ Collect('filter');
  Collect('marker-start');
  Collect('marker-mid');
  Collect('marker-end');
@@ -2216,6 +2227,8 @@ begin
     CollectGradient(Tag);
    end else if TagName='pattern' then begin
     CollectPattern(Tag,aState);
+   end else if TagName='filter' then begin
+    CollectFilter(Tag,aState);
    end else if (TagName='clippath') or (TagName='mask') or (TagName='marker') or (TagName='symbol') then begin
     CollectGroupDefinition(Tag,aState,TagName);
    end else begin
@@ -2965,6 +2978,11 @@ begin
   // object itself rather than on a wrapper, so they are read before the clipping below.
   ProcessAnimations(aTag,result,State);
 
+  // The filters were all collected before the tree was built, so the reference resolves here.
+  if Length(State.FilterID)>0 then begin
+   result.Filter:=fDocument.FindFilter(State.FilterID);
+  end;
+
   // Markers go alongside the shape, so they have to be placed before the whole thing possibly
   // moves into a clipping wrapper.
   if result is TpvVectorGraphicsGraphic then begin
@@ -3258,6 +3276,610 @@ begin
  end;
 
  aTicks:=round(Seconds*pvVectorGraphicsTicksPerSecond);
+
+end;
+
+function TpvVectorGraphicsSVGLoader.LoadImageBuffer(const aReference:TpvUTF8String):TpvVectorGraphicsPixelBuffer;
+var Resource:TpvVectorGraphicsImageResource;
+    x,y:TpvInt32;
+    Pixels:PpvVectorGraphicsRawColorArray;
+begin
+
+ result:=nil;
+
+ Resource:=LoadImageReference(aReference);
+ if (not assigned(Resource)) or (Resource.Width<=0) or (Resource.Height<=0) then begin
+  exit;
+ end;
+
+ // A copy rather than a view, because the primitive owns what it is handed and the resource
+ // belongs to the document.
+ result:=TpvVectorGraphicsPixelBuffer.Create(Resource.Width,Resource.Height,
+                                             TpvVectorGraphicsColorSpaceMode.Integer);
+ Pixels:=Resource.GetPixelPointer;
+ if assigned(Pixels) then begin
+  for y:=0 to Resource.Height-1 do begin
+   for x:=0 to Resource.Width-1 do begin
+    result.SetPixel(x,y,Pixels^[(TpvSizeInt(y)*TpvSizeInt(Resource.Width))+TpvSizeInt(x)]);
+   end;
+  end;
+ end;
+
+end;
+
+procedure TpvVectorGraphicsSVGLoader.CollectFilter(const aTag:TpvXMLTag;const aState:TState);
+var Filter:TpvVectorGraphicsFilter;
+    Index,SubIndex,ValueIndex:TpvSizeInt;
+    SubTag,FunctionTag:TpvXMLTag;
+    Value,TagName,Text,Token:TpvUTF8String;
+    Primitive:TpvVectorGraphicsFilterPrimitive;
+    Kind:TpvVectorGraphicsFilterPrimitiveKind;
+    IsNone:boolean;
+    Numbers:array of TpvDouble;
+    CountNumbers:TpvSizeInt;
+    Saturation,Angle,Cosine,Sine:TpvDouble;
+    TransferFunction:TpvVectorGraphicsFilterTransferFunction;
+
+ // The two numbers that most of the frequency and deviation attributes carry, where a single one
+ // stands for both axes.
+ procedure ParsePair(const aText:TpvUTF8String;out aX,aY:TpvDouble);
+ var Rest,Part:TpvUTF8String;
+     Count:TpvSizeInt;
+     Values:array[0..1] of TpvDouble;
+ begin
+  Rest:=TrimText(aText);
+  Count:=0;
+  while (Length(Rest)>0) and (Count<2) do begin
+   Part:=TrimText(ParseToken(Rest,#9#10#13' ,'));
+   if Length(Part)=0 then begin
+    continue;
+   end;
+   Values[Count]:=ParseValue(Part);
+   inc(Count);
+  end;
+  if Count=0 then begin
+   aX:=0.0;
+   aY:=0.0;
+  end else if Count=1 then begin
+   aX:=Values[0];
+   aY:=Values[0];
+  end else begin
+   aX:=Values[0];
+   aY:=Values[1];
+  end;
+ end;
+
+ // A whitespace or comma separated list of numbers, which several primitives carry.
+ procedure ParseNumberList(const aText:TpvUTF8String);
+ var Rest,Part:TpvUTF8String;
+ begin
+  Numbers:=nil;
+  CountNumbers:=0;
+  Rest:=TrimText(aText);
+  while Length(Rest)>0 do begin
+   Part:=TrimText(ParseToken(Rest,#9#10#13' ,'));
+   if Length(Part)=0 then begin
+    continue;
+   end;
+   SetLength(Numbers,CountNumbers+1);
+   Numbers[CountNumbers]:=ParseValue(Part);
+   inc(CountNumbers);
+  end;
+ end;
+
+ // The four optional numbers of a subregion, which every primitive may carry. In bounding box
+ // units a percentage is a fraction of the box rather than of the viewport, which is why the
+ // base a percentage resolves against depends on the units.
+ procedure ParseSubregion(const aPrimitiveTag:TpvXMLTag;const aPrimitive:TpvVectorGraphicsFilterPrimitive);
+ var BaseX,BaseY:TpvDouble;
+ begin
+
+  if Filter.PrimitiveUnits=TpvVectorGraphicsFilterUnits.ObjectBoundingBox then begin
+   BaseX:=1.0;
+   BaseY:=1.0;
+  end else begin
+   BaseX:=fViewportWidth;
+   BaseY:=fViewportHeight;
+  end;
+
+  Text:=TrimText(TpvUTF8String(aPrimitiveTag.GetParameter('x','')));
+  if Length(Text)>0 then begin
+   aPrimitive.HasX:=true;
+   aPrimitive.x:=ParseValue(Text,BaseX);
+  end;
+
+  Text:=TrimText(TpvUTF8String(aPrimitiveTag.GetParameter('y','')));
+  if Length(Text)>0 then begin
+   aPrimitive.HasY:=true;
+   aPrimitive.y:=ParseValue(Text,BaseY);
+  end;
+
+  Text:=TrimText(TpvUTF8String(aPrimitiveTag.GetParameter('width','')));
+  if Length(Text)>0 then begin
+   aPrimitive.HasWidth:=true;
+   aPrimitive.Width:=ParseValue(Text,BaseX);
+  end;
+
+  Text:=TrimText(TpvUTF8String(aPrimitiveTag.GetParameter('height','')));
+  if Length(Text)>0 then begin
+   aPrimitive.HasHeight:=true;
+   aPrimitive.Height:=ParseValue(Text,BaseY);
+  end;
+
+ end;
+
+ // One of the four transfer functions of an feComponentTransfer.
+ procedure ParseTransferFunction(const aFunctionTag:TpvXMLTag;out aFunction:TpvVectorGraphicsFilterTransferFunction);
+ var FunctionType:TpvUTF8String;
+     ListIndex:TpvSizeInt;
+ begin
+
+  aFunction:=TpvVectorGraphicsFilterTransferFunction.CreateDefault;
+
+  FunctionType:=TpvUTF8String(LowerCase(Trim(String(aFunctionTag.GetParameter('type','identity')))));
+  if FunctionType='table' then begin
+   aFunction.Kind:=TpvVectorGraphicsFilterTransferKind.Table;
+  end else if FunctionType='discrete' then begin
+   aFunction.Kind:=TpvVectorGraphicsFilterTransferKind.Discrete;
+  end else if FunctionType='linear' then begin
+   aFunction.Kind:=TpvVectorGraphicsFilterTransferKind.Linear;
+  end else if FunctionType='gamma' then begin
+   aFunction.Kind:=TpvVectorGraphicsFilterTransferKind.Gamma;
+  end;
+
+  ParseNumberList(TpvUTF8String(aFunctionTag.GetParameter('tableValues','')));
+  SetLength(aFunction.TableValues,CountNumbers);
+  for ListIndex:=0 to CountNumbers-1 do begin
+   aFunction.TableValues[ListIndex]:=Numbers[ListIndex];
+  end;
+
+  aFunction.Slope:=ParseValue(TpvUTF8String(aFunctionTag.GetParameter('slope','1')),1.0);
+  aFunction.Intercept:=ParseValue(TpvUTF8String(aFunctionTag.GetParameter('intercept','0')),1.0);
+  aFunction.Amplitude:=ParseValue(TpvUTF8String(aFunctionTag.GetParameter('amplitude','1')),1.0);
+  aFunction.Exponent:=ParseValue(TpvUTF8String(aFunctionTag.GetParameter('exponent','1')),1.0);
+  aFunction.Offset:=ParseValue(TpvUTF8String(aFunctionTag.GetParameter('offset','0')),1.0);
+
+ end;
+
+ // The light source of one of the two lighting primitives, which is a child element rather than
+ // an attribute.
+ procedure ParseLight(const aPrimitiveTag:TpvXMLTag;const aPrimitive:TpvVectorGraphicsFilterPrimitive);
+ var LightIndex:TpvSizeInt;
+     LightTag:TpvXMLTag;
+     LightName:TpvUTF8String;
+ begin
+
+  for LightIndex:=0 to aPrimitiveTag.Items.Count-1 do begin
+
+   if not (aPrimitiveTag.Items[LightIndex] is TpvXMLTag) then begin
+    continue;
+   end;
+
+   LightTag:=TpvXMLTag(aPrimitiveTag.Items[LightIndex]);
+   LightName:=TpvUTF8String(LowerCase(String(LightTag.Name)));
+
+   if LightName='fedistantlight' then begin
+
+    aPrimitive.LightKind:=TpvVectorGraphicsFilterLightKind.Distant;
+    aPrimitive.LightAzimuth:=ParseValue(TpvUTF8String(LightTag.GetParameter('azimuth','0')));
+    aPrimitive.LightElevation:=ParseValue(TpvUTF8String(LightTag.GetParameter('elevation','0')));
+    break;
+
+   end else if LightName='fepointlight' then begin
+
+    aPrimitive.LightKind:=TpvVectorGraphicsFilterLightKind.Point;
+    aPrimitive.LightX:=ParseValue(TpvUTF8String(LightTag.GetParameter('x','0')),fViewportWidth);
+    aPrimitive.LightY:=ParseValue(TpvUTF8String(LightTag.GetParameter('y','0')),fViewportHeight);
+    aPrimitive.LightZ:=ParseValue(TpvUTF8String(LightTag.GetParameter('z','0')),fViewportWidth);
+    break;
+
+   end else if LightName='fespotlight' then begin
+
+    aPrimitive.LightKind:=TpvVectorGraphicsFilterLightKind.Spot;
+    aPrimitive.LightX:=ParseValue(TpvUTF8String(LightTag.GetParameter('x','0')),fViewportWidth);
+    aPrimitive.LightY:=ParseValue(TpvUTF8String(LightTag.GetParameter('y','0')),fViewportHeight);
+    aPrimitive.LightZ:=ParseValue(TpvUTF8String(LightTag.GetParameter('z','0')),fViewportWidth);
+    aPrimitive.LightPointsAtX:=ParseValue(TpvUTF8String(LightTag.GetParameter('pointsAtX','0')),fViewportWidth);
+    aPrimitive.LightPointsAtY:=ParseValue(TpvUTF8String(LightTag.GetParameter('pointsAtY','0')),fViewportHeight);
+    aPrimitive.LightPointsAtZ:=ParseValue(TpvUTF8String(LightTag.GetParameter('pointsAtZ','0')),fViewportWidth);
+    aPrimitive.SpecularExponent:=ParseValue(TpvUTF8String(LightTag.GetParameter('specularExponent','1')),1.0);
+    Text:=TrimText(TpvUTF8String(LightTag.GetParameter('limitingConeAngle','')));
+    if Length(Text)>0 then begin
+     aPrimitive.HasLightLimitingConeAngle:=true;
+     aPrimitive.LightLimitingConeAngle:=ParseValue(Text);
+    end;
+    break;
+
+   end;
+
+  end;
+
+ end;
+
+begin
+
+ Value:=TpvUTF8String(aTag.GetParameter('id',''));
+ if Length(Value)=0 then begin
+  exit;
+ end;
+
+ Filter:=fDocument.NewFilter(Value);
+
+ if LowerCase(String(aTag.GetParameter('filterUnits','objectBoundingBox')))='userspaceonuse' then begin
+  Filter.FilterUnits:=TpvVectorGraphicsFilterUnits.UserSpaceOnUse;
+ end;
+
+ if LowerCase(String(aTag.GetParameter('primitiveUnits','userSpaceOnUse')))='objectboundingbox' then begin
+  Filter.PrimitiveUnits:=TpvVectorGraphicsFilterUnits.ObjectBoundingBox;
+ end;
+
+ // The working space defaults to linear light, which is the single most common reason a filter
+ // comes out looking different from what a browser shows.
+ if LowerCase(Trim(String(aTag.GetParameter('color-interpolation-filters','linearRGB'))))='srgb' then begin
+  Filter.ColorSpace:=TpvVectorGraphicsFilterColorSpace.SRGB;
+ end;
+
+ // In bounding box units the four numbers of the region are fractions of the box, so a percentage
+ // there resolves against one and not against the viewport.
+ if Filter.FilterUnits=TpvVectorGraphicsFilterUnits.ObjectBoundingBox then begin
+  Saturation:=1.0;
+  Angle:=1.0;
+ end else begin
+  Saturation:=fViewportWidth;
+  Angle:=fViewportHeight;
+ end;
+
+ Text:=TrimText(TpvUTF8String(aTag.GetParameter('x','')));
+ if Length(Text)>0 then begin
+  Filter.x:=ParseValue(Text,Saturation);
+ end;
+ Text:=TrimText(TpvUTF8String(aTag.GetParameter('y','')));
+ if Length(Text)>0 then begin
+  Filter.y:=ParseValue(Text,Angle);
+ end;
+ Text:=TrimText(TpvUTF8String(aTag.GetParameter('width','')));
+ if Length(Text)>0 then begin
+  Filter.Width:=ParseValue(Text,Saturation);
+ end;
+ Text:=TrimText(TpvUTF8String(aTag.GetParameter('height','')));
+ if Length(Text)>0 then begin
+  Filter.Height:=ParseValue(Text,Angle);
+ end;
+
+ for Index:=0 to aTag.Items.Count-1 do begin
+
+  if not (aTag.Items[Index] is TpvXMLTag) then begin
+   continue;
+  end;
+
+  SubTag:=TpvXMLTag(aTag.Items[Index]);
+  TagName:=TpvUTF8String(LowerCase(String(SubTag.Name)));
+
+  if TagName='feblend' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Blend;
+  end else if TagName='fecolormatrix' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.ColorMatrix;
+  end else if TagName='fecomponenttransfer' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.ComponentTransfer;
+  end else if TagName='fecomposite' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Composite;
+  end else if TagName='feconvolvematrix' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.ConvolveMatrix;
+  end else if TagName='fediffuselighting' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.DiffuseLighting;
+  end else if TagName='fedisplacementmap' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.DisplacementMap;
+  end else if TagName='fedropshadow' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.DropShadow;
+  end else if TagName='feflood' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Flood;
+  end else if TagName='fegaussianblur' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.GaussianBlur;
+  end else if TagName='feimage' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Image;
+  end else if TagName='femerge' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Merge;
+  end else if TagName='femorphology' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Morphology;
+  end else if TagName='feoffset' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Offset;
+  end else if TagName='fespecularlighting' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.SpecularLighting;
+  end else if TagName='fetile' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Tile;
+  end else if TagName='feturbulence' then begin
+   Kind:=TpvVectorGraphicsFilterPrimitiveKind.Turbulence;
+  end else begin
+   continue;
+  end;
+
+  Primitive:=TpvVectorGraphicsFilterPrimitive.Create(Kind);
+  Filter.Primitives.Add(Primitive);
+
+  Primitive.Input1:=TrimText(TpvUTF8String(SubTag.GetParameter('in','')));
+  Primitive.Input2:=TrimText(TpvUTF8String(SubTag.GetParameter('in2','')));
+  Primitive.ResultName:=TrimText(TpvUTF8String(SubTag.GetParameter('result','')));
+
+  ParseSubregion(SubTag,Primitive);
+
+  case Kind of
+
+   TpvVectorGraphicsFilterPrimitiveKind.Blend:begin
+    Primitive.BlendMode:=ParseBlendMode(TpvUTF8String(SubTag.GetParameter('mode','normal')));
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.ColorMatrix:begin
+
+    Text:=TpvUTF8String(LowerCase(Trim(String(SubTag.GetParameter('type','matrix')))));
+    ParseNumberList(TpvUTF8String(SubTag.GetParameter('values','')));
+
+    if Text='saturate' then begin
+
+     // The specification gives the matrix of a saturation outright, so it is filled in here and
+     // the primitive itself only ever sees a plain matrix.
+     if CountNumbers>0 then begin
+      Saturation:=Numbers[0];
+     end else begin
+      Saturation:=1.0;
+     end;
+     for ValueIndex:=0 to 19 do begin
+      Primitive.SetColorMatrixValue(ValueIndex,0.0);
+     end;
+     Primitive.SetColorMatrixValue(0,0.213+(0.787*Saturation));
+     Primitive.SetColorMatrixValue(1,0.715-(0.715*Saturation));
+     Primitive.SetColorMatrixValue(2,0.072-(0.072*Saturation));
+     Primitive.SetColorMatrixValue(5,0.213-(0.213*Saturation));
+     Primitive.SetColorMatrixValue(6,0.715+(0.285*Saturation));
+     Primitive.SetColorMatrixValue(7,0.072-(0.072*Saturation));
+     Primitive.SetColorMatrixValue(10,0.213-(0.213*Saturation));
+     Primitive.SetColorMatrixValue(11,0.715-(0.715*Saturation));
+     Primitive.SetColorMatrixValue(12,0.072+(0.928*Saturation));
+     Primitive.SetColorMatrixValue(18,1.0);
+
+    end else if Text='huerotate' then begin
+
+     if CountNumbers>0 then begin
+      Angle:=Numbers[0]*(PI/180.0);
+     end else begin
+      Angle:=0.0;
+     end;
+     Cosine:=cos(Angle);
+     Sine:=sin(Angle);
+     for ValueIndex:=0 to 19 do begin
+      Primitive.SetColorMatrixValue(ValueIndex,0.0);
+     end;
+     Primitive.SetColorMatrixValue(0,0.213+(Cosine*0.787)-(Sine*0.213));
+     Primitive.SetColorMatrixValue(1,0.715-(Cosine*0.715)-(Sine*0.715));
+     Primitive.SetColorMatrixValue(2,0.072-(Cosine*0.072)+(Sine*0.928));
+     Primitive.SetColorMatrixValue(5,0.213-(Cosine*0.213)+(Sine*0.143));
+     Primitive.SetColorMatrixValue(6,0.715+(Cosine*0.285)+(Sine*0.140));
+     Primitive.SetColorMatrixValue(7,0.072-(Cosine*0.072)-(Sine*0.283));
+     Primitive.SetColorMatrixValue(10,0.213-(Cosine*0.213)-(Sine*0.787));
+     Primitive.SetColorMatrixValue(11,0.715-(Cosine*0.715)+(Sine*0.715));
+     Primitive.SetColorMatrixValue(12,0.072+(Cosine*0.928)+(Sine*0.072));
+     Primitive.SetColorMatrixValue(18,1.0);
+
+    end else if Text='luminancetoalpha' then begin
+
+     for ValueIndex:=0 to 19 do begin
+      Primitive.SetColorMatrixValue(ValueIndex,0.0);
+     end;
+     Primitive.SetColorMatrixValue(15,0.2125);
+     Primitive.SetColorMatrixValue(16,0.7154);
+     Primitive.SetColorMatrixValue(17,0.0721);
+
+    end else if CountNumbers>=20 then begin
+
+     for ValueIndex:=0 to 19 do begin
+      Primitive.SetColorMatrixValue(ValueIndex,Numbers[ValueIndex]);
+     end;
+
+    end;
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.ComponentTransfer:begin
+
+    for SubIndex:=0 to SubTag.Items.Count-1 do begin
+     if SubTag.Items[SubIndex] is TpvXMLTag then begin
+      FunctionTag:=TpvXMLTag(SubTag.Items[SubIndex]);
+      Token:=TpvUTF8String(LowerCase(String(FunctionTag.Name)));
+      if Token='fefuncr' then begin
+       ParseTransferFunction(FunctionTag,TransferFunction);
+       Primitive.SetTransferFunction(0,TransferFunction);
+      end else if Token='fefuncg' then begin
+       ParseTransferFunction(FunctionTag,TransferFunction);
+       Primitive.SetTransferFunction(1,TransferFunction);
+      end else if Token='fefuncb' then begin
+       ParseTransferFunction(FunctionTag,TransferFunction);
+       Primitive.SetTransferFunction(2,TransferFunction);
+      end else if Token='fefunca' then begin
+       ParseTransferFunction(FunctionTag,TransferFunction);
+       Primitive.SetTransferFunction(3,TransferFunction);
+      end;
+     end;
+    end;
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Composite:begin
+
+    Text:=TpvUTF8String(LowerCase(Trim(String(SubTag.GetParameter('operator','over')))));
+    if Text='in' then begin
+     Primitive.CompositeOperator:=TpvVectorGraphicsFilterCompositeOperator.In_;
+    end else if Text='out' then begin
+     Primitive.CompositeOperator:=TpvVectorGraphicsFilterCompositeOperator.Out_;
+    end else if Text='atop' then begin
+     Primitive.CompositeOperator:=TpvVectorGraphicsFilterCompositeOperator.Atop;
+    end else if Text='xor' then begin
+     Primitive.CompositeOperator:=TpvVectorGraphicsFilterCompositeOperator.Xor_;
+    end else if Text='arithmetic' then begin
+     Primitive.CompositeOperator:=TpvVectorGraphicsFilterCompositeOperator.Arithmetic;
+    end;
+
+    Primitive.K1:=ParseValue(TpvUTF8String(SubTag.GetParameter('k1','0')),1.0);
+    Primitive.K2:=ParseValue(TpvUTF8String(SubTag.GetParameter('k2','0')),1.0);
+    Primitive.K3:=ParseValue(TpvUTF8String(SubTag.GetParameter('k3','0')),1.0);
+    Primitive.K4:=ParseValue(TpvUTF8String(SubTag.GetParameter('k4','0')),1.0);
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.ConvolveMatrix:begin
+
+    ParsePair(TpvUTF8String(SubTag.GetParameter('order','3')),Saturation,Angle);
+    Primitive.OrderX:=Max(1,round(Saturation));
+    Primitive.OrderY:=Max(1,round(Angle));
+
+    ParseNumberList(TpvUTF8String(SubTag.GetParameter('kernelMatrix','')));
+    SetLength(Numbers,CountNumbers);
+    Primitive.SetKernel(Numbers);
+
+    Primitive.Divisor:=ParseValue(TpvUTF8String(SubTag.GetParameter('divisor','0')),1.0);
+    Primitive.Bias:=ParseValue(TpvUTF8String(SubTag.GetParameter('bias','0')),1.0);
+
+    // A missing target sits in the middle of the kernel.
+    Text:=TrimText(TpvUTF8String(SubTag.GetParameter('targetX','')));
+    if Length(Text)>0 then begin
+     Primitive.TargetX:=round(ParseValue(Text));
+    end else begin
+     Primitive.TargetX:=Primitive.OrderX div 2;
+    end;
+    Text:=TrimText(TpvUTF8String(SubTag.GetParameter('targetY','')));
+    if Length(Text)>0 then begin
+     Primitive.TargetY:=round(ParseValue(Text));
+    end else begin
+     Primitive.TargetY:=Primitive.OrderY div 2;
+    end;
+
+    Text:=TpvUTF8String(LowerCase(Trim(String(SubTag.GetParameter('edgeMode','duplicate')))));
+    if Text='wrap' then begin
+     Primitive.EdgeMode:=TpvVectorGraphicsFilterEdgeMode.Wrap;
+    end else if Text='none' then begin
+     Primitive.EdgeMode:=TpvVectorGraphicsFilterEdgeMode.NoneEdge;
+    end;
+
+    Primitive.PreserveAlpha:=LowerCase(Trim(String(SubTag.GetParameter('preserveAlpha','false'))))='true';
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.DiffuseLighting,
+   TpvVectorGraphicsFilterPrimitiveKind.SpecularLighting:begin
+
+    Primitive.SurfaceScale:=ParseValue(TpvUTF8String(SubTag.GetParameter('surfaceScale','1')),1.0);
+    Primitive.DiffuseConstant:=ParseValue(TpvUTF8String(SubTag.GetParameter('diffuseConstant','1')),1.0);
+    Primitive.SpecularConstant:=ParseValue(TpvUTF8String(SubTag.GetParameter('specularConstant','1')),1.0);
+    Primitive.SpecularExponent:=ParseValue(TpvUTF8String(SubTag.GetParameter('specularExponent','1')),1.0);
+    Primitive.LightColor:=ParseColor(TpvUTF8String(SubTag.GetParameter('lighting-color','white')),aState.CurrentColor,IsNone);
+    ParseLight(SubTag,Primitive);
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.DisplacementMap:begin
+
+    Primitive.Scale:=ParseValue(TpvUTF8String(SubTag.GetParameter('scale','0')),1.0);
+
+    Text:=TpvUTF8String(UpperCase(Trim(String(SubTag.GetParameter('xChannelSelector','A')))));
+    if Text='R' then begin
+     Primitive.ChannelSelectorX:=TpvVectorGraphicsFilterChannel.ChannelR;
+    end else if Text='G' then begin
+     Primitive.ChannelSelectorX:=TpvVectorGraphicsFilterChannel.ChannelG;
+    end else if Text='B' then begin
+     Primitive.ChannelSelectorX:=TpvVectorGraphicsFilterChannel.ChannelB;
+    end;
+
+    Text:=TpvUTF8String(UpperCase(Trim(String(SubTag.GetParameter('yChannelSelector','A')))));
+    if Text='R' then begin
+     Primitive.ChannelSelectorY:=TpvVectorGraphicsFilterChannel.ChannelR;
+    end else if Text='G' then begin
+     Primitive.ChannelSelectorY:=TpvVectorGraphicsFilterChannel.ChannelG;
+    end else if Text='B' then begin
+     Primitive.ChannelSelectorY:=TpvVectorGraphicsFilterChannel.ChannelB;
+    end;
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.DropShadow:begin
+
+    ParsePair(TpvUTF8String(SubTag.GetParameter('stdDeviation','2')),Saturation,Angle);
+    Primitive.StandardDeviationX:=Saturation;
+    Primitive.StandardDeviationY:=Angle;
+    Primitive.DeltaX:=ParseValue(TpvUTF8String(SubTag.GetParameter('dx','2')),1.0);
+    Primitive.DeltaY:=ParseValue(TpvUTF8String(SubTag.GetParameter('dy','2')),1.0);
+    Primitive.FloodColor:=ParseColor(TpvUTF8String(SubTag.GetParameter('flood-color','black')),aState.CurrentColor,IsNone);
+    Primitive.FloodOpacity:=ParseValue(TpvUTF8String(SubTag.GetParameter('flood-opacity','1')),1.0);
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Flood:begin
+
+    Primitive.FloodColor:=ParseColor(TpvUTF8String(SubTag.GetParameter('flood-color','black')),aState.CurrentColor,IsNone);
+    if IsNone then begin
+     Primitive.FloodColor:=0;
+    end;
+    Primitive.FloodOpacity:=ParseValue(TpvUTF8String(SubTag.GetParameter('flood-opacity','1')),1.0);
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.GaussianBlur:begin
+    ParsePair(TpvUTF8String(SubTag.GetParameter('stdDeviation','0')),Saturation,Angle);
+    Primitive.StandardDeviationX:=Saturation;
+    Primitive.StandardDeviationY:=Angle;
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Image:begin
+    // The image is loaded through the same path an image element takes, and the pixels are kept
+    // in a buffer of their own because the filter unit knows nothing about the document.
+    Text:=TpvUTF8String(SubTag.GetParameter('xlink:href',TpvRawByteString(SubTag.GetParameter('href',''))));
+    Primitive.Image:=LoadImageBuffer(Text);
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Merge:begin
+
+    for SubIndex:=0 to SubTag.Items.Count-1 do begin
+     if SubTag.Items[SubIndex] is TpvXMLTag then begin
+      FunctionTag:=TpvXMLTag(SubTag.Items[SubIndex]);
+      if LowerCase(String(FunctionTag.Name))='femergenode' then begin
+       Primitive.AddMergeInput(TpvUTF8String(FunctionTag.GetParameter('in','')));
+      end;
+     end;
+    end;
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Morphology:begin
+
+    if LowerCase(Trim(String(SubTag.GetParameter('operator','erode'))))='dilate' then begin
+     Primitive.MorphologyOperator:=TpvVectorGraphicsFilterMorphologyOperator.Dilate;
+    end;
+    ParsePair(TpvUTF8String(SubTag.GetParameter('radius','0')),Saturation,Angle);
+    Primitive.RadiusX:=Saturation;
+    Primitive.RadiusY:=Angle;
+
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Offset:begin
+    Primitive.DeltaX:=ParseValue(TpvUTF8String(SubTag.GetParameter('dx','0')),1.0);
+    Primitive.DeltaY:=ParseValue(TpvUTF8String(SubTag.GetParameter('dy','0')),1.0);
+   end;
+
+   TpvVectorGraphicsFilterPrimitiveKind.Turbulence:begin
+
+    ParsePair(TpvUTF8String(SubTag.GetParameter('baseFrequency','0')),Saturation,Angle);
+    Primitive.BaseFrequencyX:=Saturation;
+    Primitive.BaseFrequencyY:=Angle;
+    Primitive.NumOctaves:=Max(1,round(ParseValue(TpvUTF8String(SubTag.GetParameter('numOctaves','1')))));
+    Primitive.Seed:=round(ParseValue(TpvUTF8String(SubTag.GetParameter('seed','0'))));
+    Primitive.StitchTiles:=LowerCase(Trim(String(SubTag.GetParameter('stitchTiles','noStitch'))))='stitch';
+    Primitive.FractalNoise:=LowerCase(Trim(String(SubTag.GetParameter('type','turbulence'))))='fractalnoise';
+
+   end;
+
+   else begin
+   end;
+
+  end;
+
+ end;
 
 end;
 
