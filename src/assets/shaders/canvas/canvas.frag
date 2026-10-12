@@ -1230,18 +1230,30 @@ float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
 // How much of the pixel the shape covers, by whichever of the three ways the fill matrix push
 // constant asks for. Every fragment of a draw reads the same mode out of it, so the branch is one
 // the whole quad takes together and the derivatives inside the modes still mean what they should.
+//
+// What comes out is then raised by the share [3].w asks for. Two shapes that share an edge each
+// cover half of the row the edge runs along, and drawing them one over the other leaves a quarter
+// of the background showing through, which is a visible seam wherever the two are the same color
+// and meant to look like one. Raising the coverage pushes both edges outwards until they overlap
+// and the row is covered. Nothing is raised where nothing was covered, so the shape stays where it
+// is everywhere the question does not arise.
 float sampleVectorPathShape(const vec3 shapeCoord, const mat4 fillMatrix){
+  float coverage;
   switch(int(fillMatrix[3].y + 0.5)){
     case 1:{
-      return sampleVectorPathShapeAnalytical(shapeCoord);
+      coverage = sampleVectorPathShapeAnalytical(shapeCoord);
+      break;
     }
     case 2:{
-      return sampleVectorPathShapeSupersampled(shapeCoord, clamp(int(fillMatrix[3].z + 0.5), 1, 16));
+      coverage = sampleVectorPathShapeSupersampled(shapeCoord, clamp(int(fillMatrix[3].z + 0.5), 1, 16));
+      break;
     }
     default:{
-      return sampleVectorPathShapeEstimated(shapeCoord);
+      coverage = sampleVectorPathShapeEstimated(shapeCoord);
+      break;
     }
   }
+  return clamp(coverage * (1.0 + fillMatrix[3].w), 0.0, 1.0);
 }
 
 // Looks the gradient color up for a point in shape space. The gradient is described entirely by
@@ -1260,6 +1272,8 @@ float sampleVectorPathShape(const vec3 shapeCoord, const mat4 fillMatrix){
 //
 //   [3].y             how the coverage is worked out: 0 estimates, 1 accumulates areas, 2 samples
 //   [3].z             how many samples that last one takes
+//   [3].w             by what share the coverage is raised, to close the seam between two shapes
+//                     that share an edge
 //
 // The ramp has 256 entries and is sampled with nearest filtering, and the half texel offset puts
 // the sample in the middle of the entry the software rasterizer would have picked, so that both

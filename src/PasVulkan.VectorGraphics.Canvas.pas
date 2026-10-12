@@ -229,6 +229,30 @@ type EpvVectorGraphicsCanvas=class(Exception);
        property DilateTransparentColors:boolean read fDilateTransparentColors write fDilateTransparentColors;
      end;
 
+     // What is done about the seam two shapes leave between them where they share an edge. Each of
+     // the two covers half of the pixel row the edge runs along, and drawing them one over the
+     // other leaves a quarter of the background showing through. Every renderer has this, since it
+     // follows from drawing each shape on its own with antialiasing, but it only catches the eye
+     // where the canvas blends in linear light: a quarter of the background is then the value 137
+     // of 255 rather than 64, and what looks like a hairline crack appears between two shapes that
+     // were meant to read as one. librsvg, Inkscape and the software rasterizer of this very unit
+     // all blend in sRGB and all show the same seam, only far fainter.
+     PpvVectorGraphicsCanvasSeamMode=^TpvVectorGraphicsCanvasSeamMode;
+     TpvVectorGraphicsCanvasSeamMode=
+      (
+       // Nothing, which is right wherever the document has no two shapes sharing an edge, and
+       // which is the only one that leaves both the geometry and the blending exactly as they are.
+       None=0,
+       // Raise the coverage of every outline a little, which pushes its edge outwards until two
+       // shapes that share one overlap instead. Costs nothing and works whatever the colors are,
+       // and in return every outline thinner than a pixel is drawn by the same share too solid.
+       WidenedCoverage=1,
+       // Draw the whole document into a buffer of its own that blends in sRGB, then put that over
+       // the canvas in one go. The seam is then exactly as faint as in every other renderer, and
+       // no geometry is touched. Costs a buffer and a render pass of its own.
+       SRGBCompositingBuffer=2
+      );
+
      { TpvVectorGraphicsCanvasShapes }
 
      // A document turned into GPU vector path shapes, which the canvas then draws through its
@@ -258,6 +282,10 @@ type EpvVectorGraphicsCanvas=class(Exception);
        fRecordRampRows:array of TpvSizeInt;
        fRampTexture:TpvVulkanTexture;
        fRampTextureDirty:boolean;
+       // What is done about the seam between two shapes that share an edge, and how far the
+       // coverage is raised when that is what was chosen.
+       fSeamMode:TpvVectorGraphicsCanvasSeamMode;
+       fSeamCoverageWidening:TpvFloat;
        // Takes every shape out of the pool again before the records that own them go away, so
        // that the pool is not left with entries pointing at freed shapes.
        procedure ReleaseRecords;
@@ -331,6 +359,13 @@ type EpvVectorGraphicsCanvas=class(Exception);
        property CountShapes:TpvSizeInt read GetCountShapes;
        // How many distinct gradient ramps the recorded document uses.
        property CountRampRows:TpvSizeInt read fCountRampRows;
+       // What is done about the seam two shapes leave between them where they share an edge. None
+       // by default, so that a document without such a pair draws exactly as it did before.
+       property SeamMode:TpvVectorGraphicsCanvasSeamMode read fSeamMode write fSeamMode;
+       // By what share the coverage is raised when SeamMode asks for that. A half pushes every
+       // edge a quarter of a pixel outwards, which closes most of the seam, and a one closes it
+       // completely at the price of drawing everything thinner than a pixel twice as solid.
+       property SeamCoverageWidening:TpvFloat read fSeamCoverageWidening write fSeamCoverageWidening;
      end;
 
 // The short way for the common case: an SVG from a file, a stream or a string, straight into a
@@ -761,6 +796,9 @@ begin
  fRampTexture:=nil;
  fRampTextureDirty:=false;
 
+ fSeamMode:=TpvVectorGraphicsCanvasSeamMode.None;
+ fSeamCoverageWidening:=0.5;
+
 end;
 
 destructor TpvVectorGraphicsCanvasShapes.Destroy;
@@ -1071,6 +1109,7 @@ var Index:TpvSizeInt;
     OldColor:TpvVector4;
     OldTexture:TObject;
     OldBufferPool:TpvVectorPathGPUBufferPool;
+    OldCoverageWidening:TpvFloat;
     GradientKind:TpvCanvasVectorPathGradientKind;
     GradientSpreadMode:TpvCanvasVectorPathGradientSpreadMode;
     RampRow:TpvFloat;
@@ -1083,9 +1122,18 @@ begin
  OldColor:=aCanvas.Color;
  OldTexture:=aCanvas.Texture;
  OldBufferPool:=aCanvas.VectorPathBufferPool;
+ OldCoverageWidening:=aCanvas.VectorPathCoverageWidening;
  try
 
   aCanvas.VectorPathBufferPool:=fBufferPool;
+
+  // Widening the coverage is the one of the three that the shader does by itself, so it is nothing
+  // but a number handed over here.
+  if fSeamMode=TpvVectorGraphicsCanvasSeamMode.WidenedCoverage then begin
+   aCanvas.VectorPathCoverageWidening:=fSeamCoverageWidening;
+  end else begin
+   aCanvas.VectorPathCoverageWidening:=0.0;
+  end;
 
   // The ramp atlas is what the shader samples a gradient out of, and it is bound the ordinary
   // way, as the texture of the canvas.
@@ -1167,6 +1215,7 @@ begin
   aCanvas.Color:=OldColor;
   aCanvas.Texture:=OldTexture;
   aCanvas.VectorPathBufferPool:=OldBufferPool;
+  aCanvas.VectorPathCoverageWidening:=OldCoverageWidening;
 
  end;
 

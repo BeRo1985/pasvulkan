@@ -757,6 +757,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        // How many samples Supersampling takes inside a pixel. Four means the rotated grid, any
        // other count means that many rooks on an n by n grid.
        fVectorPathCoverageSampleCount:TpvInt32;
+       // By how much the coverage of an outline is raised, which pushes its edge outwards so that
+       // two shapes meeting along one edge overlap instead of sharing it. Zero leaves the coverage
+       // as it is. See SetVectorPathCoverageWidening for what the number means.
+       fVectorPathCoverageWidening:TpvFloat;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
@@ -801,6 +805,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function GetVectorPathMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetVectorPathMode(const aVectorPathMode:boolean);
        procedure SetVectorPathCoverageSampleCount(const aVectorPathCoverageSampleCount:TpvInt32);
+       procedure SetVectorPathCoverageWidening(const aVectorPathCoverageWidening:TpvFloat);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetZPosition:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1053,6 +1058,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property VectorPathBufferPool:TpvVectorPathGPUBufferPool read fVectorPathBufferPool write fVectorPathBufferPool;
        property VectorPathCoverageMode:TpvCanvasVectorPathCoverageMode read fVectorPathCoverageMode write fVectorPathCoverageMode;
        property VectorPathCoverageSampleCount:TpvInt32 read fVectorPathCoverageSampleCount write SetVectorPathCoverageSampleCount;
+       property VectorPathCoverageWidening:TpvFloat read fVectorPathCoverageWidening write SetVectorPathCoverageWidening;
        property State:TpvCanvasState read fState;
        property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
        property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
@@ -3873,6 +3879,8 @@ begin
 
  fVectorPathCoverageSampleCount:=4;
 
+ fVectorPathCoverageWidening:=0.0;
+
  fShape:=TpvCanvasShape.Create;
 
  fState:=TpvCanvasState.Create;
@@ -4981,6 +4989,17 @@ begin
  // Clamped to what the sampling loop in the shader is willing to run, so that a count out of
  // range costs frames rather than producing nothing at all.
  fVectorPathCoverageSampleCount:=Min(Max(aVectorPathCoverageSampleCount,1),pvCanvasVectorPathMaximalCoverageSampleCount);
+end;
+
+procedure TpvCanvas.SetVectorPathCoverageWidening(const aVectorPathCoverageWidening:TpvFloat);
+begin
+ // The shader raises the coverage it worked out by this share of itself, which for an edge running
+ // along one of the two axes is the same as moving that edge half as far outwards, measured in
+ // pixels. So a half widens an outline by a quarter of a pixel all round, and a one by half a
+ // pixel, which is as far as it is worth going: two shapes that share an edge then cover the row
+ // between them completely and nothing of the background is left to show through. The price is
+ // that an outline thinner than a pixel is drawn by the same share too solid.
+ fVectorPathCoverageWidening:=Min(Max(aVectorPathCoverageWidening,0.0),1.0);
 end;
 
 procedure TpvCanvas.SetScissor(const aScissor:TVkRect2D);
@@ -8437,6 +8456,7 @@ begin
  FillMatrix.RawComponents[3,0]:=TpvUInt32(aGradientSpreadMode);
  FillMatrix.RawComponents[3,1]:=TpvUInt32(fVectorPathCoverageMode);
  FillMatrix.RawComponents[3,2]:=fVectorPathCoverageSampleCount;
+ FillMatrix.RawComponents[3,3]:=fVectorPathCoverageWidening;
  if fVectorPathFillMatrix<>FillMatrix then begin
   Flush;
   fVectorPathFillMatrix:=FillMatrix;

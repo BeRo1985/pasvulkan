@@ -9,6 +9,7 @@
 //   V  switch how many samples the supersampling coverage mode takes
 //   R  turn the rotation on and off
 //   W  zoom in, S zoom out, or use the mouse wheel
+//   M  switch what is done about the seam between two shapes that share an edge
 //   N  record the shapes again at the size they are currently drawn at
 //   Space  back to the starting view
 
@@ -62,6 +63,15 @@ var application = {
       this.data.coverageModeIndex = 1;
       this.data.coverageSampleCounts = [2, 4, 8, 16];
       this.data.coverageSampleCountIndex = 1;
+
+      // What is done about the seam two shapes leave between them where they share an edge, which
+      // M walks through. The tiger has 48 rows of it, most visibly where two black shapes meet.
+      this.data.seamModes = [VectorGraphics.SeamMode.None,
+                             VectorGraphics.SeamMode.WidenedCoverage,
+                             VectorGraphics.SeamMode.SRGBCompositingBuffer];
+      this.data.seamModeNames = ["none", "widened coverage", "srgb buffer"];
+      this.data.seamModeIndex = 0;
+      this.data.seamWidening = 0.5;
 
       this.data.status = "";
 
@@ -209,6 +219,11 @@ var application = {
           return true;
         }
 
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_M) {
+          data.seamModeIndex = (data.seamModeIndex + 1) % data.seamModes.length;
+          return true;
+        }
+
         if (event.KeyCode === Input.KeyCodes.KEYCODE_R) {
           data.rotate = !data.rotate;
           return true;
@@ -349,6 +364,10 @@ var application = {
       canvas.setVectorPathCoverageMode(data.coverageModes[data.coverageModeIndex]);
       canvas.setVectorPathCoverageSampleCount(data.coverageSampleCounts[data.coverageSampleCountIndex]);
 
+      // This one belongs to the shapes rather than to the canvas, since two of the three ways of
+      // dealing with the seam are about how the whole set is drawn and not about one outline.
+      data.shapes.setSeamMode(data.seamModes[data.seamModeIndex], data.seamWidening);
+
       // A frame around the area the shapes say they cover, drawn under the very same model
       // matrix, so that it is visible at a glance whether the placement or the shapes themselves
       // are at fault when nothing shows up.
@@ -400,6 +419,8 @@ var application = {
       "coverage: " ~ data.coverageModeNames[data.coverageModeIndex] ~
         (data.coverageModeIndex === 2 ? ", " ~ canvas.getVectorPathCoverageSampleCount() ~ " samples   (C, V switch)"
                                       : "   (C switches)"),
+      "seam: " ~ data.seamModeNames[data.seamModeIndex] ~
+        (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)"),
       "zoom: " ~ Math.round(data.zoom * 100.0) ~ "%   (W / S or the mouse wheel)",
       "shapes: " ~ data.shapes.getCountShapes() ~ "   gradients: " ~ data.shapes.getCountGradients(),
       "bounds: " ~ Math.round(box.leftTop.x) ~ ", " ~ Math.round(box.leftTop.y) ~

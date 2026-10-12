@@ -18,6 +18,7 @@ program keeps running.
 | `G` | switch between the vector path shader and the software texture |
 | `C` | switch how the shader works out how much of a pixel an outline covers |
 | `V` | switch how many samples the supersampling coverage mode takes |
+| `M` | switch what is done about the seam between two shapes that share an edge |
 | `R` | turn the rotation on and off |
 | `W` / `S` | zoom in and out, as does the mouse wheel |
 | `N` | record the shapes again at the size they are currently drawn at |

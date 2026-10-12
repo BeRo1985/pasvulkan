@@ -7754,6 +7754,23 @@ One more thing is worth knowing about the shapes route. The *filled* outlines st
 
 '''''
 
+=== VectorGraphics.SeamMode
+
+What is done about the seam two shapes leave between them where they share an edge. Each of the two covers half of the pixel row the edge runs along, and drawing them one over the other leaves a quarter of the background showing through. Every renderer has this, since it follows from drawing each shape on its own with antialiasing, but it only catches the eye where the canvas blends in linear light.
+
+* `+None+`: Nothing, which is right wherever the document has no two shapes sharing an edge, and the only one that leaves both the geometry and the blending exactly as they are.
+* `+WidenedCoverage+`: Raise the coverage of every outline a little, which pushes its edge outwards until two shapes that share one overlap instead. Costs nothing and works whatever the colors are. In return every outline thinner than a pixel is drawn by the same share too solid, and where a light shape sits between two dark ones it is widened along with them.
+* `+SRGBCompositingBuffer+`: Draw the whole document into a buffer of its own that blends in sRGB, then put that over the canvas in one go. The seam is then exactly as faint as in every other renderer, and no geometry is touched.
+
+*Example:*
+
+[source,js]
+----
+shapes.setSeamMode(VectorGraphics.SeamMode.WidenedCoverage, 0.5);
+----
+
+'''''
+
 === Global VectorGraphics Object
 
 ==== VectorGraphics.loadSVG(fileName)
@@ -8043,6 +8060,45 @@ let count = shapes.getCountGradients();
 * *Description:* Returns how many distinct gradient ramps the recorded document uses. Shapes sharing one gradient share its ramp, so this counts the rows of the ramp atlas rather than the elements.
 * *Parameters:* None.
 * *Return Value:* The count as a number.
+
+'''''
+
+==== getSeamMode()
+
+*Usage:*
+
+[source,js]
+----
+let mode = shapes.getSeamMode();
+----
+
+* *Description:* Returns what is done about the seam two shapes leave between them where they share an edge.
+* *Parameters:* None.
+* *Return Value:* Number representing the seam mode (see VectorGraphics.SeamMode).
+
+'''''
+
+==== setSeamMode()
+
+*Usage:*
+
+[source,js]
+----
+shapes.setSeamMode(mode);
+shapes.setSeamMode(mode, widening);
+----
+
+* *Description:* Sets what is done about the seam two shapes leave between them where they share an edge. Each of the two covers half of the pixel row the edge runs along, so drawing them one over the other leaves a quarter of the background showing through. Every renderer has this, but it only catches the eye where the canvas blends in linear light: a quarter of the background is then the value 137 of 255 rather than 64. See VectorGraphics.SeamMode for what the three ways do.
+* *Parameters:*
+** `+mode+` (number): Seam mode (use VectorGraphics.SeamMode constants)
+** `+widening+` (number): Optional, by what share the coverage is raised when `+WidenedCoverage+` was asked for. A half pushes every edge a quarter of a pixel outwards, a one half a pixel. Left out, whatever was set before stays.
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+shapes.setSeamMode(VectorGraphics.SeamMode.WidenedCoverage, 0.5);
+----
 
 '''''
 
