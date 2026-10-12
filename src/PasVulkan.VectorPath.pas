@@ -574,6 +574,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        destructor Destroy; override;
        procedure Assign(const aFrom:TpvVectorPath); overload;
        procedure Assign(const aShape:TpvVectorPathShape); overload;
+       // Blends between two paths, which only works when both are made of the same sequence of
+       // commands. Where they are not, the result jumps from one to the other halfway through,
+       // since there is no sensible way to grow or drop a command. Returns whether it could
+       // really interpolate, so that a caller can tell the two cases apart.
+       function InterpolateFrom(const aFrom,aTo:TpvVectorPath;const aFactor:TpvDouble):boolean;
        function MoveTo(const aX,aY:TpvDouble):TpvVectorPath; overload;
        function MoveTo(const aPosition:TpvVectorPathVector):TpvVectorPath; overload;
        function LineTo(const aX,aY:TpvDouble):TpvVectorPath; overload;
@@ -5411,6 +5416,66 @@ begin
  end;
  fFillRule:=aFrom.fFillRule;
  fStartPointSeen:=Index>0;
+end;
+
+function TpvVectorPath.InterpolateFrom(const aFrom,aTo:TpvVectorPath;const aFactor:TpvDouble):boolean;
+var Index:TpvSizeInt;
+    FromCommand,ToCommand:TpvVectorPathCommand;
+    Factor:TpvDouble;
+begin
+
+ if not (assigned(aFrom) and assigned(aTo)) then begin
+  result:=false;
+  exit;
+ end;
+
+ // The two have to agree on how many commands there are and on what each of them is, otherwise
+ // there is nothing to pair up.
+ result:=aFrom.fCommands.Count=aTo.fCommands.Count;
+ if result then begin
+  for Index:=0 to aFrom.fCommands.Count-1 do begin
+   if aFrom.fCommands[Index].fCommandType<>aTo.fCommands[Index].fCommandType then begin
+    result:=false;
+    break;
+   end;
+  end;
+ end;
+
+ // Mismatched paths simply swap over at the halfway point.
+ if not result then begin
+  if aFactor<0.5 then begin
+   Assign(aFrom);
+  end else begin
+   Assign(aTo);
+  end;
+  exit;
+ end;
+
+ Factor:=aFactor;
+ if Factor<0.0 then begin
+  Factor:=0.0;
+ end else if Factor>1.0 then begin
+  Factor:=1.0;
+ end;
+
+ // All six coordinates are blended whatever the command is, since the ones a command does not
+ // use are zero on both sides anyway.
+ fCommands.Clear;
+ for Index:=0 to aFrom.fCommands.Count-1 do begin
+  FromCommand:=aFrom.fCommands[Index];
+  ToCommand:=aTo.fCommands[Index];
+  fCommands.Add(TpvVectorPathCommand.Create(FromCommand.fCommandType,
+                                            FromCommand.fX0+((ToCommand.fX0-FromCommand.fX0)*Factor),
+                                            FromCommand.fY0+((ToCommand.fY0-FromCommand.fY0)*Factor),
+                                            FromCommand.fX1+((ToCommand.fX1-FromCommand.fX1)*Factor),
+                                            FromCommand.fY1+((ToCommand.fY1-FromCommand.fY1)*Factor),
+                                            FromCommand.fX2+((ToCommand.fX2-FromCommand.fX2)*Factor),
+                                            FromCommand.fY2+((ToCommand.fY2-FromCommand.fY2)*Factor)));
+ end;
+
+ fFillRule:=aFrom.fFillRule;
+ fStartPointSeen:=fCommands.Count>0;
+
 end;
 
 procedure TpvVectorPath.Assign(const aShape:TpvVectorPathShape);

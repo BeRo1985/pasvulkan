@@ -81,6 +81,12 @@ const // Nesting depth beyond which a group that contains itself, directly or th
       // element, stops recursing instead of running out of stack.
       pvVectorGraphicsMaximumNestingLevel=3;
 
+      // What one tick of the timeline is worth. The timeline itself counts in plain integers and
+      // does not care, but anything that comes with real times, such as the clock values of an
+      // SMIL animation, has to agree on a rate, and a millisecond is fine enough for that while
+      // leaving a 64 bit tick more range than any document will ever use.
+      pvVectorGraphicsTicksPerSecond=1000;
+
 type EpvVectorGraphics=class(Exception);
 
      TpvVectorGraphicsDocument=class;
@@ -120,7 +126,11 @@ type EpvVectorGraphics=class(Exception);
        Linear,
        Cosine,
        Cubic,
-       Hermite
+       Hermite,
+       // Linear in value, but with the time running through a cubic Bezier easing curve whose two
+       // control points the key carries. This is what the keySplines attribute of an SMIL
+       // animation asks for, and unlike the four above it needs those extra numbers.
+       CubicBezier
       );
 
      PpvVectorGraphicsFillMode=^TpvVectorGraphicsFillMode;
@@ -144,6 +154,18 @@ type EpvVectorGraphics=class(Exception);
        Mono,
        // The object is a mask, taken per color channel.
        Color
+      );
+
+     // Where a key stands at a point in time. Running also hands back how far into its span the
+     // time is, with any repeats already folded away; Frozen means it is over but keeps its
+     // target, and Gone means it is over and no longer has any say.
+     PpvVectorGraphicsTimeLineKeyState=^TpvVectorGraphicsTimeLineKeyState;
+     TpvVectorGraphicsTimeLineKeyState=
+      (
+       Before=0,
+       Running,
+       Frozen,
+       Gone
       );
 
      PpvVectorGraphicsTimeLineAction=^TpvVectorGraphicsTimeLineAction;
@@ -280,6 +302,28 @@ type EpvVectorGraphics=class(Exception);
        FillSimpleMatrix:TpvVectorGraphicsSimpleMatrix;
        HasStrokeFillSimpleMatrix:boolean;
        StrokeFillSimpleMatrix:TpvVectorGraphicsSimpleMatrix;
+       // A numeric parameter of the object addressed by name, which is how everything gets
+       // animated that has no field of its own in this record: the radii of an ellipse, the
+       // corners of a rectangle, the font size of a text run and so on. One key carries one of
+       // them, so animating two parameters takes two keys, which is also the shape an SMIL
+       // document has.
+       HasValue:boolean;
+       ValueName:TpvUTF8String;
+       Value:TpvDouble;
+       // The two control points of the easing curve, used by CubicBezier and ignored otherwise.
+       SplineControlPoints:array[0..3] of TpvDouble;
+       // How often the span runs again after the first time. Zero is the plain single run, and a
+       // negative value means without end, which is what an SMIL repeatCount of indefinite asks
+       // for and what a plain repeating key in an editor would want as well.
+       RepeatCount:TpvInt32;
+       // Where the cycle starts and how long it is. Several keys that belong to one sequence
+       // repeat together by sharing these two, which is what an animation with a list of values
+       // needs; left at zero the key repeats on its own span alone.
+       RepeatOrigin:TpvInt64;
+       RepeatPeriod:TpvInt64;
+       // Whether the key keeps its target once it is over. False lets the object fall back to
+       // whatever came before the key, which is what the SMIL fill of remove does.
+       Freeze:boolean;
        // For a morph, the shape the object has at EndTick.
        MorphPath:TpvVectorPath;
      end;
@@ -368,10 +412,6 @@ type EpvVectorGraphics=class(Exception);
        // is the size of the whole target. Created on first use, which most objects never reach.
        fOffImageBuffer:TpvVectorGraphicsPixelBuffer;
        procedure SetID(const aID:TpvUTF8String);
-       // Resolves the transform at a point in time, including whatever the timeline interpolates.
-       function GetMatrixAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathMatrix; virtual;
-       function GetAlphaAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvUInt8; virtual;
-       function GetVisibleAt(const aTick:TpvInt64):boolean; virtual;
        // Sets up fCurrentMatrix, its inverse and fCurrentAlpha, which every subclass needs before
        // it draws anything.
        procedure PrepareRender(var aContext:TpvVectorGraphicsRenderContext); virtual;
@@ -404,6 +444,27 @@ type EpvVectorGraphics=class(Exception);
        function FindByID(const aID:TpvUTF8String):TpvVectorGraphicsObject; virtual;
        // Collects self and, for a group, everything below it.
        procedure CollectObjects(const aList:TpvObjectGenericList<TpvVectorGraphicsObject>); virtual;
+      public
+       // What the timeline makes of the object at a point in time. These are public because an
+       // editor showing a playhead wants exactly the same answers the renderer works with.
+       //
+       // Resolves the transform, including whatever the timeline interpolates.
+       function GetMatrixAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathMatrix; virtual;
+       function GetAlphaAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvUInt8; virtual;
+       function GetVisibleAt(const aTick:TpvInt64):boolean; virtual;
+       // Works out where one key stands at a point in time, which is the one place that knows
+       // about repeats and about whether a key freezes, so that none of the getters has to.
+       function ResolveKey(const aItem:TpvVectorGraphicsTimeLineItem;
+                           const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                           out aFactor:TpvDouble):TpvVectorGraphicsTimeLineKeyState;
+       // Resolves a numeric parameter addressed by name. aDefault is what the object itself
+       // carries and is also what comes back when no key covers the tick, so the stored value
+       // stays the base the animation departs from and is never written over.
+       function GetValueAt(const aName:TpvUTF8String;const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                           const aDefault:TpvDouble):TpvDouble;
+       // Whether the timeline holds any numeric parameter key at all, which is what decides
+       // whether the geometry has to be rebuilt for every tick instead of being cached.
+       function HasAnimatedValues:boolean;
       public
        property BoundingBox:TpvVectorGraphicsBoundingBox read fBoundingBox write fBoundingBox;
        property SimpleMatrix:TpvVectorGraphicsSimpleMatrix read fSimpleMatrix write fSimpleMatrix;
@@ -453,15 +514,15 @@ type EpvVectorGraphics=class(Exception);
        fLinearGradientPaint:TpvVectorGraphicsLinearGradientPaint;
        fRadialGradientPaint:TpvVectorGraphicsRadialGradientPaint;
        fImagePaint:TpvVectorGraphicsImagePaint;
+       // Where a morph key blends fPath towards its target. Built on demand and only when the
+       // timeline actually carries one.
+       fMorphedPath:TpvVectorPath;
        // Rebuilds fPath from the parameters of the subclass. The base class does nothing, which
        // is right for the free form shape that owns its path outright.
-       procedure UpdatePath; virtual;
-       // Returns the shape flattened for the given scale, rebuilding it when the scale moved far
-       // enough for the old flattening to show.
-       function GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
-       function GetFillColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
-       function GetStrokeColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
-       function GetStrokeWidthAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvDouble;
+       // Rebuilds fPath for a point in time. A subclass that can be animated reads its parameters
+       // through GetValueAt rather than straight out of its fields, so that the stored ones stay
+       // the base and are not overwritten tick by tick.
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); virtual;
        // Picks and configures the paint for one pass. Returns nil when the pass draws nothing.
        function PreparePaint(const aFillData:TpvVectorGraphicsFillData;
                              const aColor:TpvVectorGraphicsColor;
@@ -481,6 +542,18 @@ type EpvVectorGraphics=class(Exception);
        // Marks the path as needing a rebuild, which any change to the subclass parameters has to
        // do.
        procedure MarkPathDirty;
+      public
+       // The same kind of answers the base class gives, only for what belongs to a graphic.
+       //
+       // The path as the morph keys of the timeline have it at a point in time, which is fPath
+       // itself whenever no morph is in play.
+       function GetMorphedPath(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPath;
+       // Returns the shape flattened for the given scale, rebuilding it when the scale moved far
+       // enough for the old flattening to show.
+       function GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
+       function GetFillColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
+       function GetStrokeColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
+       function GetStrokeWidthAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvDouble;
       public
        property Style:TpvVectorGraphicsStyle read fStyle write fStyle;
        property Path:TpvVectorPath read fPath;
@@ -504,7 +577,7 @@ type EpvVectorGraphics=class(Exception);
        fY2:TpvDouble;
        procedure SetCoordinate(const aIndex:TpvInt32;const aValue:TpvDouble);
       protected
-       procedure UpdatePath; override;
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); override;
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); override;
        procedure Assign(const aFrom:TpvVectorGraphicsObject); override;
@@ -526,7 +599,7 @@ type EpvVectorGraphics=class(Exception);
        fRadiusX:TpvDouble;
        fRadiusY:TpvDouble;
       protected
-       procedure UpdatePath; override;
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); override;
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); override;
        procedure Assign(const aFrom:TpvVectorGraphicsObject); override;
@@ -548,7 +621,7 @@ type EpvVectorGraphics=class(Exception);
        fRadiusX:TpvDouble;
        fRadiusY:TpvDouble;
       protected
-       procedure UpdatePath; override;
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); override;
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); override;
        procedure Assign(const aFrom:TpvVectorGraphicsObject); override;
@@ -607,7 +680,7 @@ type EpvVectorGraphics=class(Exception);
        fLetterSpacing:TpvDouble;
        fAdvanceWidth:TpvDouble;
       protected
-       procedure UpdatePath; override;
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); override;
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); override;
        procedure Assign(const aFrom:TpvVectorGraphicsObject); override;
@@ -637,7 +710,7 @@ type EpvVectorGraphics=class(Exception);
        fWidth:TpvDouble;
        fHeight:TpvDouble;
       protected
-       procedure UpdatePath; override;
+       procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); override;
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); override;
        procedure Assign(const aFrom:TpvVectorGraphicsObject); override;
@@ -848,11 +921,86 @@ begin
  result:=(((((c3*aX)+c2)*aX)+c1)*aX)+c0;
 end;
 
+// Solves the cubic Bezier easing curve of the keySplines attribute: the curve runs from the
+// origin to one one with the two given control points, aX is read off its x axis and the matching
+// y comes back. There is no closed form for that, so the parameter is found by Newton iteration
+// with the value itself as the starting guess, which is close enough that a handful of steps land
+// well inside a thousandth.
+function CubicBezierEasing(const aX1,aY1,aX2,aY2,aX:TpvDouble):TpvDouble;
+const Iterations=8;
+      Epsilon=1e-7;
+var Parameter,OneMinus,CurrentX,Derivative:TpvDouble;
+    Step:TpvInt32;
+begin
+
+ if aX<=0.0 then begin
+  result:=0.0;
+  exit;
+ end else if aX>=1.0 then begin
+  result:=1.0;
+  exit;
+ end;
+
+ Parameter:=aX;
+ for Step:=1 to Iterations do begin
+
+  OneMinus:=1.0-Parameter;
+  CurrentX:=(((3.0*OneMinus*OneMinus*Parameter)*aX1)+
+             ((3.0*OneMinus*Parameter*Parameter)*aX2))+
+            (Parameter*Parameter*Parameter);
+
+  if abs(CurrentX-aX)<Epsilon then begin
+   break;
+  end;
+
+  Derivative:=(((3.0*OneMinus*OneMinus)*aX1)+
+               ((6.0*OneMinus*Parameter)*(aX2-aX1)))+
+              ((3.0*Parameter*Parameter)*(1.0-aX2));
+
+  // A flat spot in the curve would send the step off to infinity, so it is left alone there.
+  if abs(Derivative)<Epsilon then begin
+   break;
+  end;
+
+  Parameter:=Parameter-((CurrentX-aX)/Derivative);
+  if Parameter<0.0 then begin
+   Parameter:=0.0;
+  end else if Parameter>1.0 then begin
+   Parameter:=1.0;
+  end;
+
+ end;
+
+ OneMinus:=1.0-Parameter;
+ result:=(((3.0*OneMinus*OneMinus*Parameter)*aY1)+
+          ((3.0*OneMinus*Parameter*Parameter)*aY2))+
+         (Parameter*Parameter*Parameter);
+
+end;
+
+// Runs the time of a span through the easing curve of its key. Only CubicBezier has one, so for
+// every other mode this hands the factor straight back.
+function ApplyEasing(const aItem:TpvVectorGraphicsTimeLineItem;const aFactor:TpvDouble):TpvDouble;
+begin
+
+ if aItem.InterpolationMode=TpvVectorGraphicsInterpolationMode.CubicBezier then begin
+  result:=CubicBezierEasing(aItem.SplineControlPoints[0],aItem.SplineControlPoints[1],
+                            aItem.SplineControlPoints[2],aItem.SplineControlPoints[3],
+                            aFactor);
+ end else begin
+  result:=aFactor;
+ end;
+
+end;
+
 function Interpolate(const aMode:TpvVectorGraphicsInterpolationMode;const aX,aY0,aY1,aY2,aY3:TpvDouble):TpvDouble;
 begin
 
  case aMode of
-  TpvVectorGraphicsInterpolationMode.Linear:begin
+  // CubicBezier lands here as well, because its easing was already applied to the time and what
+  // is left of it is a plain linear blend between the two keys.
+  TpvVectorGraphicsInterpolationMode.Linear,
+  TpvVectorGraphicsInterpolationMode.CubicBezier:begin
    result:=LinearInterpolate(aX,aY0,aY1,aY2,aY3);
   end;
   TpvVectorGraphicsInterpolationMode.Cosine:begin
@@ -1343,6 +1491,7 @@ var Current:TpvVectorGraphicsSimpleMatrix;
     Index,OtherIndex,ThirdIndex,ValueIndex:TpvSizeInt;
     Factor:TpvDouble;
     Mode:TpvVectorGraphicsInterpolationMode;
+    State:TpvVectorGraphicsTimeLineKeyState;
 begin
 
  Current:=fSimpleMatrix;
@@ -1353,15 +1502,14 @@ begin
    continue;
   end;
 
-  // Past the end of a span, or a span of no length at all, the target simply applies.
-  if (fTimeLine[Index].EndTick<=aTick) or
-     ((fTimeLine[Index].StartTick<=aTick) and
-      (fTimeLine[Index].EndTick=fTimeLine[Index].StartTick)) then begin
+  // Past the end of a span, or a span of no length at all, the target simply applies, and a key
+  // that has not started or no longer applies is skipped.
+  State:=ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor);
+  if State=TpvVectorGraphicsTimeLineKeyState.Frozen then begin
    Current:=fTimeLine[Index].TransformSimpleMatrix;
    continue;
   end;
-
-  if fTimeLine[Index].StartTick>aTick then begin
+  if State<>TpvVectorGraphicsTimeLineKeyState.Running then begin
    continue;
   end;
 
@@ -1395,7 +1543,6 @@ begin
 
   // Every part of the transform is interpolated on its own, which is the point of keeping them
   // apart instead of blending baked matrices.
-  Factor:=((aTick-fTimeLine[Index].StartTick)+aTickFraction)/(fTimeLine[Index].EndTick-fTimeLine[Index].StartTick);
   Mode:=fTimeLine[Index].InterpolationMode;
 
   for ValueIndex:=0 to 5 do begin
@@ -1434,21 +1581,16 @@ begin
 
   if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and fTimeLine[Index].HasAlpha then begin
 
-   if fTimeLine[Index].EndTick<=aTick then begin
-
-    Current:=fTimeLine[Index].Alpha;
-
-   end else if fTimeLine[Index].StartTick<=aTick then begin
-
-    // A span of no length is a jump, anything else blends from what came before towards the key.
-    if fTimeLine[Index].EndTick=fTimeLine[Index].StartTick then begin
+   case ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor) of
+    TpvVectorGraphicsTimeLineKeyState.Frozen:begin
      Current:=fTimeLine[Index].Alpha;
-    end else begin
+    end;
+    TpvVectorGraphicsTimeLineKeyState.Running:begin
      Target:=fTimeLine[Index].Alpha;
-     Factor:=((aTick-fTimeLine[Index].StartTick)+aTickFraction)/(fTimeLine[Index].EndTick-fTimeLine[Index].StartTick);
      Current:=round(Interpolate(fTimeLine[Index].InterpolationMode,Factor,Current,Current,Target,Target));
     end;
-
+    else begin
+    end;
    end;
 
   end;
@@ -1479,6 +1621,121 @@ begin
     else begin
     end;
    end;
+  end;
+ end;
+
+end;
+
+function TpvVectorGraphicsObject.ResolveKey(const aItem:TpvVectorGraphicsTimeLineItem;
+                                           const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                                           out aFactor:TpvDouble):TpvVectorGraphicsTimeLineKeyState;
+var LocalTick,Duration,Period,Origin,Elapsed,Cycles:TpvInt64;
+    PastEnd:boolean;
+begin
+
+ aFactor:=0.0;
+ LocalTick:=aTick;
+ PastEnd:=false;
+
+ // Several keys that belong to one sequence share an origin and a period, so that a repeat takes
+ // the whole sequence rather than each span on its own. Without one the key stands alone and its
+ // own span is the cycle.
+ Origin:=aItem.RepeatOrigin;
+ Period:=aItem.RepeatPeriod;
+ if Period<=0 then begin
+  Origin:=aItem.StartTick;
+  Period:=aItem.EndTick-aItem.StartTick;
+ end;
+
+ if Period>0 then begin
+  Elapsed:=aTick-Origin;
+  if Elapsed>=0 then begin
+   Cycles:=Elapsed div Period;
+   if (aItem.RepeatCount<0) or (Cycles<=aItem.RepeatCount) then begin
+    LocalTick:=Origin+(Elapsed mod Period);
+   end else begin
+    // Past the last cycle everything stands where the sequence left it, which the evaluation
+    // below then reads as every key being over.
+    LocalTick:=Origin+Period;
+    PastEnd:=true;
+   end;
+  end;
+ end;
+
+ if aItem.StartTick>LocalTick then begin
+  result:=TpvVectorGraphicsTimeLineKeyState.Before;
+  exit;
+ end;
+
+ Duration:=aItem.EndTick-aItem.StartTick;
+ Elapsed:=LocalTick-aItem.StartTick;
+
+ // A span of no length is a jump that lands the moment it is reached, and one that is over holds
+ // its target so that the spans after it depart from where it left off. Only once the whole
+ // sequence is over does it matter whether the key keeps its value or steps aside.
+ if (Duration<=0) or (Elapsed>=Duration) then begin
+  if PastEnd and not aItem.Freeze then begin
+   result:=TpvVectorGraphicsTimeLineKeyState.Gone;
+  end else begin
+   result:=TpvVectorGraphicsTimeLineKeyState.Frozen;
+  end;
+  exit;
+ end;
+
+ // The fraction can push the time past the end of the span, which would otherwise read as a
+ // factor slightly above one.
+ aFactor:=(Elapsed+aTickFraction)/Duration;
+ if aFactor<0.0 then begin
+  aFactor:=0.0;
+ end else if aFactor>1.0 then begin
+  aFactor:=1.0;
+ end;
+
+ aFactor:=ApplyEasing(aItem,aFactor);
+
+ result:=TpvVectorGraphicsTimeLineKeyState.Running;
+
+end;
+
+function TpvVectorGraphicsObject.GetValueAt(const aName:TpvUTF8String;const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                                            const aDefault:TpvDouble):TpvDouble;
+var Index:TpvSizeInt;
+    Factor:TpvDouble;
+begin
+
+ result:=aDefault;
+
+ // Same shape as the other getters: the keys are walked in order, a frozen one sets the value
+ // and a running one blends towards it.
+ for Index:=0 to length(fTimeLine)-1 do begin
+  if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and
+     fTimeLine[Index].HasValue and
+     (fTimeLine[Index].ValueName=aName) then begin
+   case ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor) of
+    TpvVectorGraphicsTimeLineKeyState.Frozen:begin
+     result:=fTimeLine[Index].Value;
+    end;
+    TpvVectorGraphicsTimeLineKeyState.Running:begin
+     result:=Interpolate(fTimeLine[Index].InterpolationMode,Factor,result,result,fTimeLine[Index].Value,fTimeLine[Index].Value);
+    end;
+    else begin
+    end;
+   end;
+  end;
+ end;
+
+end;
+
+function TpvVectorGraphicsObject.HasAnimatedValues:boolean;
+var Index:TpvSizeInt;
+begin
+
+ result:=false;
+
+ for Index:=0 to length(fTimeLine)-1 do begin
+  if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and fTimeLine[Index].HasValue then begin
+   result:=true;
+   exit;
   end;
  end;
 
@@ -1609,6 +1866,9 @@ begin
  fFlattenedShape:=nil;
  fFlattenedScale:=0.0;
 
+ // Only ever created when a morph key is actually there.
+ fMorphedPath:=nil;
+
  // The stroker and all paints but the solid one are created only when something actually needs
  // them, since most objects need none of them.
  fStroker:=nil;
@@ -1625,6 +1885,7 @@ destructor TpvVectorGraphicsGraphic.Destroy;
 begin
 
  FreeAndNil(fPath);
+ FreeAndNil(fMorphedPath);
  FreeAndNil(fFlattenedShape);
  FreeAndNil(fStroker);
 
@@ -1660,7 +1921,7 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsGraphic.UpdatePath;
+procedure TpvVectorGraphicsGraphic.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
 begin
 end;
 
@@ -1669,20 +1930,91 @@ begin
 
  inherited Update;
 
+ // Outside of rendering there is no point in time, so the base state is what gets built.
  if fPathDirty then begin
   fPathDirty:=false;
-  UpdatePath;
+  UpdatePath(0,0.0);
+ end;
+
+end;
+
+function TpvVectorGraphicsGraphic.GetMorphedPath(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPath;
+var Index:TpvSizeInt;
+    Factor:TpvDouble;
+    Source:TpvVectorPath;
+    State:TpvVectorGraphicsTimeLineKeyState;
+begin
+
+ result:=fPath;
+
+ // The keys are walked in order like everywhere else: a finished morph makes its target the new
+ // starting shape, and a running one blends from whatever that leaves towards its own target.
+ for Index:=0 to length(fTimeLine)-1 do begin
+
+  if (fTimeLine[Index].Action<>TpvVectorGraphicsTimeLineAction.Morph) or
+     (not assigned(fTimeLine[Index].MorphPath)) then begin
+   continue;
+  end;
+
+  State:=ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor);
+  if not (State in [TpvVectorGraphicsTimeLineKeyState.Running,
+                    TpvVectorGraphicsTimeLineKeyState.Frozen]) then begin
+   continue;
+  end;
+
+  if not assigned(fMorphedPath) then begin
+   fMorphedPath:=TpvVectorPath.Create;
+  end;
+
+  if State=TpvVectorGraphicsTimeLineKeyState.Frozen then begin
+
+   fMorphedPath.Assign(fTimeLine[Index].MorphPath);
+
+  end else begin
+
+   // Assigning from result into fMorphedPath would pull the ground out from under the source
+   // once result already is fMorphedPath, so the blend reads from a copy in that case.
+   if result=fMorphedPath then begin
+    Source:=TpvVectorPath.Create;
+    try
+     Source.Assign(fMorphedPath);
+     fMorphedPath.InterpolateFrom(Source,fTimeLine[Index].MorphPath,Factor);
+    finally
+     FreeAndNil(Source);
+    end;
+   end else begin
+    fMorphedPath.InterpolateFrom(result,fTimeLine[Index].MorphPath,Factor);
+   end;
+
+  end;
+
+  result:=fMorphedPath;
+
  end;
 
 end;
 
 function TpvVectorGraphicsGraphic.GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
 var Scale:TpvDouble;
+    Animated:boolean;
+    SourcePath:TpvVectorPath;
 begin
 
- if fPathDirty then begin
+ // A parameter that is animated makes the geometry depend on the tick, so it cannot be cached
+ // and has to be rebuilt every time.
+ Animated:=HasAnimatedValues;
+
+ if fPathDirty or Animated then begin
   fPathDirty:=false;
-  UpdatePath;
+  UpdatePath(aTick,aTickFraction);
+  fFlattenedScale:=0.0;
+ end;
+
+ // A morph changes the geometry per tick just as an animated parameter does, so the flattening
+ // cannot be kept either.
+ SourcePath:=GetMorphedPath(aTick,aTickFraction);
+ if SourcePath<>fPath then begin
+  Animated:=true;
   fFlattenedScale:=0.0;
  end;
 
@@ -1700,7 +2032,7 @@ begin
     (Scale<(fFlattenedScale*0.8)) then begin
 
   FreeAndNil(fFlattenedShape);
-  fFlattenedShape:=TpvVectorPathShape.Create(fPath);
+  fFlattenedShape:=TpvVectorPathShape.Create(SourcePath);
   fFlattenedShape.FillRule:=fStyle.FillData.FillRule;
   fFlattenedShape.ConvertCurvesToLines(1.0/Scale);
   fFlattenedScale:=Scale;
@@ -1723,18 +2055,18 @@ begin
 
  result:=fStyle.FillData.Color;
 
- // Same shape as GetAlphaAt: the keys are walked in order, a finished span sets the value, a
- // running one blends towards it, and a span of no length is a jump.
+ // Same shape as GetAlphaAt: the keys are walked in order, a frozen one sets the value and a
+ // running one blends towards it.
  for Index:=0 to length(fTimeLine)-1 do begin
   if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and fTimeLine[Index].HasFillColor then begin
-   if fTimeLine[Index].EndTick<=aTick then begin
-    result:=fTimeLine[Index].FillColor;
-   end else if fTimeLine[Index].StartTick<=aTick then begin
-    if fTimeLine[Index].EndTick=fTimeLine[Index].StartTick then begin
+   case ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor) of
+    TpvVectorGraphicsTimeLineKeyState.Frozen:begin
      result:=fTimeLine[Index].FillColor;
-    end else begin
-     Factor:=((aTick-fTimeLine[Index].StartTick)+aTickFraction)/(fTimeLine[Index].EndTick-fTimeLine[Index].StartTick);
+    end;
+    TpvVectorGraphicsTimeLineKeyState.Running:begin
      result:=InterpolateColor(fTimeLine[Index].InterpolationMode,Factor,result,fTimeLine[Index].FillColor);
+    end;
+    else begin
     end;
    end;
   end;
@@ -1751,14 +2083,14 @@ begin
 
  for Index:=0 to length(fTimeLine)-1 do begin
   if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and fTimeLine[Index].HasStrokeColor then begin
-   if fTimeLine[Index].EndTick<=aTick then begin
-    result:=fTimeLine[Index].StrokeColor;
-   end else if fTimeLine[Index].StartTick<=aTick then begin
-    if fTimeLine[Index].EndTick=fTimeLine[Index].StartTick then begin
+   case ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor) of
+    TpvVectorGraphicsTimeLineKeyState.Frozen:begin
      result:=fTimeLine[Index].StrokeColor;
-    end else begin
-     Factor:=((aTick-fTimeLine[Index].StartTick)+aTickFraction)/(fTimeLine[Index].EndTick-fTimeLine[Index].StartTick);
+    end;
+    TpvVectorGraphicsTimeLineKeyState.Running:begin
      result:=InterpolateColor(fTimeLine[Index].InterpolationMode,Factor,result,fTimeLine[Index].StrokeColor);
+    end;
+    else begin
     end;
    end;
   end;
@@ -1775,14 +2107,14 @@ begin
 
  for Index:=0 to length(fTimeLine)-1 do begin
   if (fTimeLine[Index].Action=TpvVectorGraphicsTimeLineAction.Move) and fTimeLine[Index].HasStrokeWidth then begin
-   if fTimeLine[Index].EndTick<=aTick then begin
-    result:=fTimeLine[Index].StrokeWidth;
-   end else if fTimeLine[Index].StartTick<=aTick then begin
-    if fTimeLine[Index].EndTick=fTimeLine[Index].StartTick then begin
+   case ResolveKey(fTimeLine[Index],aTick,aTickFraction,Factor) of
+    TpvVectorGraphicsTimeLineKeyState.Frozen:begin
      result:=fTimeLine[Index].StrokeWidth;
-    end else begin
-     Factor:=((aTick-fTimeLine[Index].StartTick)+aTickFraction)/(fTimeLine[Index].EndTick-fTimeLine[Index].StartTick);
+    end;
+    TpvVectorGraphicsTimeLineKeyState.Running:begin
      result:=Interpolate(fTimeLine[Index].InterpolationMode,Factor,result,result,fTimeLine[Index].StrokeWidth,fTimeLine[Index].StrokeWidth);
+    end;
+    else begin
     end;
    end;
   end;
@@ -2217,13 +2549,19 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsLine.UpdatePath;
+procedure TpvVectorGraphicsLine.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
+var x1,y1,x2,y2:TpvDouble;
 begin
+
+ x1:=GetValueAt('x1',aTick,aTickFraction,fX1);
+ y1:=GetValueAt('y1',aTick,aTickFraction,fY1);
+ x2:=GetValueAt('x2',aTick,aTickFraction,fX2);
+ y2:=GetValueAt('y2',aTick,aTickFraction,fY2);
 
  // Deliberately left open, since a closed contour would stroke the line twice.
  fPath.Commands.Clear;
- fPath.MoveTo(fX1,fY1);
- fPath.LineTo(fX2,fY2);
+ fPath.MoveTo(x1,y1);
+ fPath.LineTo(x2,y2);
 
 end;
 
@@ -2262,56 +2600,61 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsRectangle.UpdatePath;
+procedure TpvVectorGraphicsRectangle.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
 const KappaComplement=1.0-0.5522847498307933; // the usual four-arc circle approximation
-var RadiusX,RadiusY:TpvDouble;
+var x,y,Width_,Height_,RadiusX,RadiusY:TpvDouble;
 begin
 
  fPath.Commands.Clear;
 
+ x:=GetValueAt('x',aTick,aTickFraction,fX);
+ y:=GetValueAt('y',aTick,aTickFraction,fY);
+ Width_:=GetValueAt('width',aTick,aTickFraction,fWidth);
+ Height_:=GetValueAt('height',aTick,aTickFraction,fHeight);
+
  // SVG says a missing radius copies the other one, and that neither may exceed half the side.
- RadiusX:=fRadiusX;
- RadiusY:=fRadiusY;
+ RadiusX:=GetValueAt('rx',aTick,aTickFraction,fRadiusX);
+ RadiusY:=GetValueAt('ry',aTick,aTickFraction,fRadiusY);
  if (RadiusX<=0.0) and (RadiusY>0.0) then begin
   RadiusX:=RadiusY;
  end else if (RadiusY<=0.0) and (RadiusX>0.0) then begin
   RadiusY:=RadiusX;
  end;
- if RadiusX>(fWidth*0.5) then begin
-  RadiusX:=fWidth*0.5;
+ if RadiusX>(Width_*0.5) then begin
+  RadiusX:=Width_*0.5;
  end;
- if RadiusY>(fHeight*0.5) then begin
-  RadiusY:=fHeight*0.5;
+ if RadiusY>(Height_*0.5) then begin
+  RadiusY:=Height_*0.5;
  end;
 
  // Rounded: four sides with a quarter ellipse at each corner.
  if (RadiusX>0.0) and (RadiusY>0.0) then begin
 
-  fPath.MoveTo(fX+RadiusX,fY);
-  fPath.LineTo((fX+fWidth)-RadiusX,fY);
-  fPath.CubicCurveTo((fX+fWidth)-(RadiusX*KappaComplement),fY,
-                     fX+fWidth,fY+(RadiusY*KappaComplement),
-                     fX+fWidth,fY+RadiusY);
-  fPath.LineTo(fX+fWidth,(fY+fHeight)-RadiusY);
-  fPath.CubicCurveTo(fX+fWidth,(fY+fHeight)-(RadiusY*KappaComplement),
-                     (fX+fWidth)-(RadiusX*KappaComplement),fY+fHeight,
-                     (fX+fWidth)-RadiusX,fY+fHeight);
-  fPath.LineTo(fX+RadiusX,fY+fHeight);
-  fPath.CubicCurveTo(fX+(RadiusX*KappaComplement),fY+fHeight,
-                     fX,(fY+fHeight)-(RadiusY*KappaComplement),
-                     fX,(fY+fHeight)-RadiusY);
-  fPath.LineTo(fX,fY+RadiusY);
-  fPath.CubicCurveTo(fX,fY+(RadiusY*KappaComplement),
-                     fX+(RadiusX*KappaComplement),fY,
-                     fX+RadiusX,fY);
+  fPath.MoveTo(x+RadiusX,y);
+  fPath.LineTo((x+Width_)-RadiusX,y);
+  fPath.CubicCurveTo((x+Width_)-(RadiusX*KappaComplement),y,
+                     x+Width_,y+(RadiusY*KappaComplement),
+                     x+Width_,y+RadiusY);
+  fPath.LineTo(x+Width_,(y+Height_)-RadiusY);
+  fPath.CubicCurveTo(x+Width_,(y+Height_)-(RadiusY*KappaComplement),
+                     (x+Width_)-(RadiusX*KappaComplement),y+Height_,
+                     (x+Width_)-RadiusX,y+Height_);
+  fPath.LineTo(x+RadiusX,y+Height_);
+  fPath.CubicCurveTo(x+(RadiusX*KappaComplement),y+Height_,
+                     x,(y+Height_)-(RadiusY*KappaComplement),
+                     x,(y+Height_)-RadiusY);
+  fPath.LineTo(x,y+RadiusY);
+  fPath.CubicCurveTo(x,y+(RadiusY*KappaComplement),
+                     x+(RadiusX*KappaComplement),y,
+                     x+RadiusX,y);
   fPath.Close;
 
  end else begin
 
-  fPath.MoveTo(fX,fY);
-  fPath.LineTo(fX+fWidth,fY);
-  fPath.LineTo(fX+fWidth,fY+fHeight);
-  fPath.LineTo(fX,fY+fHeight);
+  fPath.MoveTo(x,y);
+  fPath.LineTo(x+Width_,y);
+  fPath.LineTo(x+Width_,y+Height_);
+  fPath.LineTo(x,y+Height_);
   fPath.Close;
 
  end;
@@ -2347,12 +2690,25 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsEllipse.UpdatePath;
+procedure TpvVectorGraphicsEllipse.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
+var CenterX,CenterY,RadiusX,RadiusY,Radius:TpvDouble;
 begin
+
+ CenterX:=GetValueAt('cx',aTick,aTickFraction,fCenterX);
+ CenterY:=GetValueAt('cy',aTick,aTickFraction,fCenterY);
+ RadiusX:=GetValueAt('rx',aTick,aTickFraction,fRadiusX);
+ RadiusY:=GetValueAt('ry',aTick,aTickFraction,fRadiusY);
+
+ // An SVG circle has one radius rather than two, so a key under that name moves both at once.
+ Radius:=GetValueAt('r',aTick,aTickFraction,-1.0);
+ if Radius>=0.0 then begin
+  RadiusX:=Radius;
+  RadiusY:=Radius;
+ end;
 
  // Circle, ellipse and the SVG circle element all end up here, only with different radii.
  fPath.Commands.Clear;
- fPath.Ellipse(fCenterX,fCenterY,fRadiusX,fRadiusY);
+ fPath.Ellipse(CenterX,CenterY,RadiusX,RadiusY);
 
 end;
 
@@ -2410,16 +2766,20 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsText.UpdatePath;
+procedure TpvVectorGraphicsText.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
 var Font:TpvTrueTypeFont;
     PolygonBuffer:TpvTrueTypeFontPolygonBuffer;
     Scale,OffsetX,OffsetY,Ascender,Descender:TpvDouble;
+    FontSize,LetterSpacing:TpvDouble;
     UnitsPerEm:TpvInt32;
     Matrix:TpvVectorPathMatrix;
 begin
 
  fPath.Commands.Clear;
  fAdvanceWidth:=0.0;
+
+ FontSize:=GetValueAt('font-size',aTick,aTickFraction,fFontSize);
+ LetterSpacing:=GetValueAt('letter-spacing',aTick,aTickFraction,fLetterSpacing);
 
  // Without a provider there is no font, and therefore no geometry at all.
  if (Length(fText)=0) or (not assigned(fDocument)) or (not assigned(fDocument.fFontProvider)) then begin
@@ -2453,17 +2813,17 @@ begin
   Font.ResetPolygonBuffer(PolygonBuffer);
  end;
 
- Scale:=fFontSize/UnitsPerEm;
+ Scale:=FontSize/UnitsPerEm;
  fAdvanceWidth:=Font.TextWidth(fText)*Scale;
 
  // The letter spacing is not fed into the font, so it only shows up in the advance width that
  // the anchor is computed from.
- if abs(fLetterSpacing)>1e-12 then begin
-  fAdvanceWidth:=fAdvanceWidth+(fLetterSpacing*Max(0,Length(fText)-1));
+ if abs(LetterSpacing)>1e-12 then begin
+  fAdvanceWidth:=fAdvanceWidth+(LetterSpacing*Max(0,Length(fText)-1));
  end;
 
  // The anchor shifts the whole run horizontally around the given position.
- OffsetX:=fX;
+ OffsetX:=GetValueAt('x',aTick,aTickFraction,fX);
  case fAnchor of
   TpvVectorGraphicsTextAnchor.Middle:begin
    OffsetX:=OffsetX-(fAdvanceWidth*0.5);
@@ -2481,7 +2841,7 @@ begin
  Descender:=Font.HorizontalDescender*Scale;
 
  // And the baseline shifts it vertically.
- OffsetY:=fY;
+ OffsetY:=GetValueAt('y',aTick,aTickFraction,fY);
  case fBaseline of
   TpvVectorGraphicsTextBaseline.Central,
   TpvVectorGraphicsTextBaseline.Middle:begin
@@ -2545,29 +2905,34 @@ begin
  fStyle.FillData.Mode:=TpvVectorGraphicsFillMode.Image;
 end;
 
-procedure TpvVectorGraphicsImageObject.UpdatePath;
-var ScaleX,ScaleY:TpvDouble;
+procedure TpvVectorGraphicsImageObject.UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble);
+var x,y,Width_,Height_,ScaleX,ScaleY:TpvDouble;
 begin
 
+ x:=GetValueAt('x',aTick,aTickFraction,fX);
+ y:=GetValueAt('y',aTick,aTickFraction,fY);
+ Width_:=GetValueAt('width',aTick,aTickFraction,fWidth);
+ Height_:=GetValueAt('height',aTick,aTickFraction,fHeight);
+
  fPath.Commands.Clear;
- fPath.MoveTo(fX,fY);
- fPath.LineTo(fX+fWidth,fY);
- fPath.LineTo(fX+fWidth,fY+fHeight);
- fPath.LineTo(fX,fY+fHeight);
+ fPath.MoveTo(x,y);
+ fPath.LineTo(x+Width_,y);
+ fPath.LineTo(x+Width_,y+Height_);
+ fPath.LineTo(x,y+Height_);
  fPath.Close;
 
  // The image paint samples in image pixels, so the fill matrix has to map the rectangle in user
  // units onto the pixel grid of the image.
- if assigned(fStyle.FillData.Image) and (fWidth>1e-12) and (fHeight>1e-12) then begin
-  ScaleX:=fStyle.FillData.Image.Width/fWidth;
-  ScaleY:=fStyle.FillData.Image.Height/fHeight;
+ if assigned(fStyle.FillData.Image) and (Width_>1e-12) and (Height_>1e-12) then begin
+  ScaleX:=fStyle.FillData.Image.Width/Width_;
+  ScaleY:=fStyle.FillData.Image.Height/Height_;
  end else begin
   ScaleX:=1.0;
   ScaleY:=1.0;
  end;
 
  fStyle.FillData.SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
- fStyle.FillData.SimpleMatrix.Matrix:=TpvVectorPathMatrix.CreateTranslate(-fX,-fY)*
+ fStyle.FillData.SimpleMatrix.Matrix:=TpvVectorPathMatrix.CreateTranslate(-x,-y)*
                                       TpvVectorPathMatrix.CreateScale(ScaleX,ScaleY);
 
 end;

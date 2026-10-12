@@ -588,6 +588,17 @@ var Index,Count:TpvSizeInt;
   Item^.HasStrokeWidth:=false;
   Item^.HasFillSimpleMatrix:=false;
   Item^.HasStrokeFillSimpleMatrix:=false;
+  Item^.HasValue:=false;
+  Item^.ValueName:='';
+  Item^.Value:=0.0;
+
+  // Two more extensions. Their defaults are what the original format meant without saying it:
+  // a span runs once and keeps its target afterwards.
+  Item^.RepeatCount:=ParseInteger(aItemTag.GetParameter('repeatcount','0'),0);
+  Item^.RepeatOrigin:=ParseInteger(aItemTag.GetParameter('repeatorigin','0'),0);
+  Item^.RepeatPeriod:=ParseInteger(aItemTag.GetParameter('repeatperiod','0'),0);
+  Item^.Freeze:=ParseBoolean(aItemTag.GetParameter('freeze','true'),true);
+
   Item^.MorphPath:=nil;
   Item^.TransformSimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
 
@@ -615,9 +626,18 @@ var Index,Count:TpvSizeInt;
    Item^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.Cubic;
   end else if ValueName='hermite' then begin
    Item^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.Hermite;
+  end else if ValueName='cubicbezier' then begin
+   Item^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.CubicBezier;
   end else begin
    Item^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.Nearest;
   end;
+
+  // An extension of the original format, which knew no easing curve. Without the attributes the
+  // control points come out as the diagonal, which is the same as plain linear.
+  Item^.SplineControlPoints[0]:=ParseFloat(aItemTag.GetParameter('splinex1','0'),0.0);
+  Item^.SplineControlPoints[1]:=ParseFloat(aItemTag.GetParameter('spliney1','0'),0.0);
+  Item^.SplineControlPoints[2]:=ParseFloat(aItemTag.GetParameter('splinex2','1'),1.0);
+  Item^.SplineControlPoints[3]:=ParseFloat(aItemTag.GetParameter('spliney2','1'),1.0);
 
   if Item^.Action=TpvVectorGraphicsTimeLineAction.Transform then begin
    ReadSimpleMatrix(aItemTag,Item^.TransformSimpleMatrix);
@@ -653,6 +673,12 @@ var Index,Count:TpvSizeInt;
    end else if ValueName='shapecommands' then begin
     Item^.MorphPath:=TpvVectorPath.Create;
     ReadPathCommands(SubValueTag,Item^.MorphPath);
+   end else if ValueName='value' then begin
+    // An extension of the original format: a numeric parameter of the object addressed by name,
+    // which is how everything gets animated that has no element of its own here.
+    Item^.HasValue:=ParseBoolean(SubValueTag.GetParameter('active','false'));
+    Item^.ValueName:=TpvUTF8String(SubValueTag.GetParameter('name',''));
+    Item^.Value:=ParseFloat(SubValueTag.GetParameter('value','0'),0.0);
    end;
 
   end;
@@ -1678,6 +1704,17 @@ begin
   ItemTag.AddParameter('starttick',TpvRawByteString(IntToStr(TimeLine[Index].StartTick)));
   ItemTag.AddParameter('endtick',TpvRawByteString(IntToStr(TimeLine[Index].EndTick)));
 
+  // Only written where they differ from what the original format implied, so that a document
+  // without repeats looks exactly as it did before.
+  if TimeLine[Index].RepeatCount<>0 then begin
+   ItemTag.AddParameter('repeatcount',TpvRawByteString(IntToStr(TimeLine[Index].RepeatCount)));
+   ItemTag.AddParameter('repeatorigin',TpvRawByteString(IntToStr(TimeLine[Index].RepeatOrigin)));
+   ItemTag.AddParameter('repeatperiod',TpvRawByteString(IntToStr(TimeLine[Index].RepeatPeriod)));
+  end;
+  if not TimeLine[Index].Freeze then begin
+   ItemTag.AddParameter('freeze',FormatBoolean(false));
+  end;
+
   case TimeLine[Index].Action of
    TpvVectorGraphicsTimeLineAction.Show:begin
     Name:='show';
@@ -1715,11 +1752,24 @@ begin
     TpvVectorGraphicsInterpolationMode.Hermite:begin
      Name:='hermite';
     end;
+    TpvVectorGraphicsInterpolationMode.CubicBezier:begin
+     Name:='cubicbezier';
+    end;
     else begin
      Name:='nearest';
     end;
    end;
    ItemTag.AddParameter('interpolationmode',Name);
+
+   // The control points of the easing curve only mean anything for that one mode, so they are
+   // written only there and an older reader never sees them.
+   if TimeLine[Index].InterpolationMode=TpvVectorGraphicsInterpolationMode.CubicBezier then begin
+    ItemTag.AddParameter('splinex1',FormatFloat_(TimeLine[Index].SplineControlPoints[0]));
+    ItemTag.AddParameter('spliney1',FormatFloat_(TimeLine[Index].SplineControlPoints[1]));
+    ItemTag.AddParameter('splinex2',FormatFloat_(TimeLine[Index].SplineControlPoints[2]));
+    ItemTag.AddParameter('spliney2',FormatFloat_(TimeLine[Index].SplineControlPoints[3]));
+   end;
+
   end;
 
   case TimeLine[Index].Action of
@@ -1748,6 +1798,17 @@ begin
     WriteSimpleMatrix(ValueTag,TimeLine[Index].FillSimpleMatrix);
 
     AddValue('alpha',TimeLine[Index].HasAlpha,TpvRawByteString(IntToStr(TimeLine[Index].Alpha)));
+
+    // An extension of the original format, written only where there is one, so that a document
+    // without animated parameters looks exactly as it did before.
+    if TimeLine[Index].HasValue then begin
+     ValueTag:=TpvXMLTag.Create;
+     ValueTag.Name:='value';
+     ItemTag.Add(ValueTag);
+     ValueTag.AddParameter('active',FormatBoolean(true));
+     ValueTag.AddParameter('name',TpvRawByteString(TimeLine[Index].ValueName));
+     ValueTag.AddParameter('value',FormatFloat_(TimeLine[Index].Value));
+    end;
 
    end;
 

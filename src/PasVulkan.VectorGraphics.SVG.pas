@@ -304,6 +304,19 @@ type EpvVectorGraphicsSVG=class(Exception);
        procedure ResolvePendingPaints;
        procedure ResolvePaint(const aObject:TpvVectorGraphicsObject;const aID:TpvUTF8String;const aStroke:boolean;
                               const aBakedMatrix:TpvVectorPathMatrix);
+       // An SMIL clock value in ticks, so "2s", "250ms", "1.5" or a full "01:02:33.5". Returns
+       // false for "indefinite" and for anything it cannot make sense of.
+       function ParseClockValue(const aValue:TpvUTF8String;out aTicks:TpvInt64):boolean;
+       // Whether an element carries animation children, which decides whether its transform goes
+       // into its geometry or stays on the object, since an animated length or rotation is given
+       // in the element's own user space and only works out there.
+       function HasAnimationChildren(const aTag:TpvXMLTag):boolean;
+       // Finishes a shape element: without animations the transform goes into the geometry as
+       // usual, with them it stays on the object instead.
+       procedure FinishGraphic(const aTag:TpvXMLTag;const aGraphic:TpvVectorGraphicsGraphic;const aState:TState);
+       // Turns the animation elements below aTag into timeline keys on aObject.
+       procedure ProcessAnimations(const aTag:TpvXMLTag;const aObject:TpvVectorGraphicsObject;
+                                   const aState:TState);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -2240,8 +2253,7 @@ begin
    FreeAndNil(ParsedPath);
   end;
 
-  Shape.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Shape,aState,aState.Matrix);
+  FinishGraphic(aTag,Shape,aState);
 
  except
   FreeAndNil(Shape);
@@ -2280,8 +2292,7 @@ begin
   // The element parameters stay in their own coordinate system, so the transform is baked into
   // the generated path instead, which keeps a later non-uniform scale from distorting the
   // corner radii differently than SVG would.
-  Rectangle.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Rectangle,aState,aState.Matrix);
+  FinishGraphic(aTag,Rectangle,aState);
 
  except
   FreeAndNil(Rectangle);
@@ -2318,8 +2329,7 @@ begin
   Ellipse.MarkPathDirty;
   Ellipse.Update;
 
-  Ellipse.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Ellipse,aState,aState.Matrix);
+  FinishGraphic(aTag,Ellipse,aState);
 
  except
   FreeAndNil(Ellipse);
@@ -2352,8 +2362,7 @@ begin
   Ellipse.MarkPathDirty;
   Ellipse.Update;
 
-  Ellipse.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Ellipse,aState,aState.Matrix);
+  FinishGraphic(aTag,Ellipse,aState);
 
  except
   FreeAndNil(Ellipse);
@@ -2381,8 +2390,7 @@ begin
   Line.MarkPathDirty;
   Line.Update;
 
-  Line.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Line,aState,aState.Matrix);
+  FinishGraphic(aTag,Line,aState);
 
  except
   FreeAndNil(Line);
@@ -2443,8 +2451,7 @@ begin
    Shape.Path.Close;
   end;
 
-  Shape.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Shape,aState,aState.Matrix);
+  FinishGraphic(aTag,Shape,aState);
 
  except
   FreeAndNil(Shape);
@@ -2733,6 +2740,7 @@ end;
 function TpvVectorGraphicsSVGLoader.ProcessGroup(const aTag:TpvXMLTag;const aGroup:TpvVectorGraphicsGroup;const aState:TState):TpvVectorGraphicsObject;
 var Group:TpvVectorGraphicsGroup;
     State:TState;
+    SimpleMatrix:TpvVectorGraphicsSimpleMatrix;
 begin
 
  Group:=TpvVectorGraphicsGroup.Create(fDocument,aGroup);
@@ -2763,6 +2771,16 @@ begin
  // And the two that do not inherit in the first place.
  State.BlendMode:=TpvVectorGraphicsBlendMode.Normal;
  State.Isolate:=false;
+
+ // A group with animations keeps its transform instead of passing it down into the geometry of
+ // its children, for the same reason a shape does: an animated transform is given in the group's
+ // own user space and only means the right thing there.
+ if HasAnimationChildren(aTag) then begin
+  SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
+  SimpleMatrix.Matrix:=aState.Matrix;
+  Group.SimpleMatrix:=SimpleMatrix;
+  State.Matrix:=TpvVectorPathMatrix.CreateIdentity;
+ end;
 
  ProcessChildren(aTag,Group,State);
 
@@ -2887,7 +2905,8 @@ begin
     (TagName='symbol') or (TagName='style') or (TagName='title') or (TagName='desc') or
     (TagName='metadata') or (TagName='script') or (TagName='filter') or
     (TagName='font') or (TagName='font-face') or (TagName='animate') or
-    (TagName='animatetransform') or (TagName='animatemotion') or (TagName='set') or
+    (TagName='animatecolor') or (TagName='animatetransform') or
+    (TagName='animatemotion') or (TagName='set') or
     // A tspan only has meaning inside a text element, which handles it itself.
     (TagName='tspan') or (TagName='textpath') then begin
   exit;
@@ -2941,6 +2960,10 @@ begin
   if Length(Value)>0 then begin
    result.ID:=Value;
   end;
+
+  // The animation elements sit as children of whatever they animate, and they belong on the
+  // object itself rather than on a wrapper, so they are read before the clipping below.
+  ProcessAnimations(aTag,result,State);
 
   // Markers go alongside the shape, so they have to be placed before the whole thing possibly
   // moves into a clipping wrapper.
@@ -3178,6 +3201,733 @@ begin
  end;
 
  Graphic.Style:=Style;
+
+end;
+
+function TpvVectorGraphicsSVGLoader.ParseClockValue(const aValue:TpvUTF8String;out aTicks:TpvInt64):boolean;
+var Text,Part:TpvUTF8String;
+    Seconds:TpvDouble;
+    Parts:array[0..2] of TpvDouble;
+    Count:TpvSizeInt;
+begin
+
+ aTicks:=0;
+
+ Text:=TpvUTF8String(LowerCase(Trim(String(aValue))));
+ if (Length(Text)=0) or (Text='indefinite') or (Text='media') then begin
+  result:=false;
+  exit;
+ end;
+
+ result:=true;
+
+ // The full clock form, so hours, minutes and seconds separated by colons, with the hours
+ // optional. Anything without a colon is a plain number with an optional unit.
+ if Pos(TpvUTF8String(':'),Text)>0 then begin
+
+  Count:=0;
+  while (Length(Text)>0) and (Count<3) do begin
+   Part:=TrimText(ParseToken(Text,':',false));
+   Parts[Count]:=ParseValue(Part);
+   inc(Count);
+  end;
+
+  if Count>=3 then begin
+   Seconds:=((Parts[0]*3600.0)+(Parts[1]*60.0))+Parts[2];
+  end else if Count=2 then begin
+   Seconds:=(Parts[0]*60.0)+Parts[1];
+  end else begin
+   Seconds:=Parts[0];
+  end;
+
+ end else begin
+
+  // The unit comes after the number, and seconds are what is meant when none is given.
+  if Copy(Text,Length(Text)-1,2)='ms' then begin
+   Seconds:=ParseValue(Copy(Text,1,Length(Text)-2))/1000.0;
+  end else if Copy(Text,Length(Text),1)='s' then begin
+   Seconds:=ParseValue(Copy(Text,1,Length(Text)-1));
+  end else if Copy(Text,Length(Text),1)='h' then begin
+   Seconds:=ParseValue(Copy(Text,1,Length(Text)-1))*3600.0;
+  end else if Copy(Text,Length(Text)-2,3)='min' then begin
+   Seconds:=ParseValue(Copy(Text,1,Length(Text)-3))*60.0;
+  end else begin
+   Seconds:=ParseValue(Text);
+  end;
+
+ end;
+
+ aTicks:=round(Seconds*pvVectorGraphicsTicksPerSecond);
+
+end;
+
+function TpvVectorGraphicsSVGLoader.HasAnimationChildren(const aTag:TpvXMLTag):boolean;
+var Index:TpvSizeInt;
+    TagName:TpvUTF8String;
+begin
+
+ result:=false;
+
+ for Index:=0 to aTag.Items.Count-1 do begin
+  if aTag.Items[Index] is TpvXMLTag then begin
+   TagName:=TpvUTF8String(LowerCase(String(TpvXMLTag(aTag.Items[Index]).Name)));
+   if (TagName='animate') or (TagName='animatecolor') or (TagName='animatetransform') or
+      (TagName='animatemotion') or (TagName='set') then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+
+end;
+
+procedure TpvVectorGraphicsSVGLoader.FinishGraphic(const aTag:TpvXMLTag;const aGraphic:TpvVectorGraphicsGraphic;
+                                                   const aState:TState);
+var SimpleMatrix:TpvVectorGraphicsSimpleMatrix;
+begin
+
+ if HasAnimationChildren(aTag) then begin
+
+  // The transform has to stay on the object here, because an animated translation or rotation is
+  // given in the element's own user space and would mean something else once the geometry had
+  // been moved into document space. ApplyStateToGraphic resets the matrix, so it goes on after.
+  ApplyStateToGraphic(aGraphic,aState,TpvVectorPathMatrix.CreateIdentity);
+  SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
+  SimpleMatrix.Matrix:=aState.Matrix;
+  aGraphic.SimpleMatrix:=SimpleMatrix;
+
+ end else begin
+
+  aGraphic.Path.Transform(aState.Matrix);
+  ApplyStateToGraphic(aGraphic,aState,aState.Matrix);
+
+ end;
+
+end;
+
+procedure TpvVectorGraphicsSVGLoader.ProcessAnimations(const aTag:TpvXMLTag;const aObject:TpvVectorGraphicsObject;
+                                                       const aState:TState);
+var Index:TpvSizeInt;
+    SubTag:TpvXMLTag;
+    TagName:TpvUTF8String;
+    TimeLine:TpvVectorGraphicsTimeLine;
+
+ // Appends a key and hands back a pointer to it, with everything that is not set afterwards
+ // already at the value that means "this key does not touch it".
+ function AddKey(const aAction:TpvVectorGraphicsTimeLineAction;
+                 const aStartTick,aEndTick:TpvInt64):PpvVectorGraphicsTimeLineItem;
+ var Count:TpvSizeInt;
+ begin
+  Count:=Length(TimeLine);
+  SetLength(TimeLine,Count+1);
+  result:=@TimeLine[Count];
+  result^.StartTick:=aStartTick;
+  result^.EndTick:=aEndTick;
+  result^.Action:=aAction;
+  result^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.Linear;
+  result^.TransformSimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
+  result^.HasAlpha:=false;
+  result^.Alpha:=255;
+  result^.HasFillColor:=false;
+  result^.FillColor:=0;
+  result^.HasStrokeColor:=false;
+  result^.StrokeColor:=0;
+  result^.HasStrokeWidth:=false;
+  result^.StrokeWidth:=0.0;
+  result^.HasFillSimpleMatrix:=false;
+  result^.FillSimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
+  result^.HasStrokeFillSimpleMatrix:=false;
+  result^.StrokeFillSimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
+  result^.HasValue:=false;
+  result^.ValueName:='';
+  result^.Value:=0.0;
+  result^.SplineControlPoints[0]:=0.0;
+  result^.SplineControlPoints[1]:=0.0;
+  result^.SplineControlPoints[2]:=1.0;
+  result^.SplineControlPoints[3]:=1.0;
+  result^.RepeatCount:=0;
+  result^.RepeatOrigin:=0;
+  result^.RepeatPeriod:=0;
+  result^.Freeze:=true;
+  result^.MorphPath:=nil;
+ end;
+
+ // One animation element, turned into however many keys its list of values needs.
+ procedure ProcessOne(const aAnimationTag:TpvXMLTag;const aKind:TpvUTF8String);
+ var AttributeName,TypeName,Text,Token,CalcMode:TpvUTF8String;
+     Values:array of TpvUTF8String;
+     KeyTimes,Splines:array of TpvDouble;
+     CountValues,CountKeyTimes,CountSplines,ValueIndex,SplineBase:TpvSizeInt;
+     BeginTick,DurationTicks,StartTick:TpvInt64;
+     RepeatCount:TpvInt32;
+     Freeze,IsColor,IsTransform:boolean;
+     Mode:TpvVectorGraphicsInterpolationMode;
+     Item:PpvVectorGraphicsTimeLineItem;
+
+  // Reads one of the transform forms into the parts of a simple matrix, since animateTransform
+  // names the kind rather than handing over a matrix.
+  procedure ApplyTransformValue(const aItem:PpvVectorGraphicsTimeLineItem;const aText:TpvUTF8String);
+  var Rest,Number:TpvUTF8String;
+      Numbers:array[0..2] of TpvDouble;
+      NumberCount:TpvSizeInt;
+  begin
+
+   Rest:=TrimText(aText);
+   NumberCount:=0;
+   while (Length(Rest)>0) and (NumberCount<3) do begin
+    Number:=TrimText(ParseToken(Rest,#9#10#13' ,'));
+    if Length(Number)=0 then begin
+     continue;
+    end;
+    Numbers[NumberCount]:=ParseValue(Number);
+    inc(NumberCount);
+   end;
+
+   if NumberCount=0 then begin
+    exit;
+   end;
+
+   // Keeping the parts of the transform apart is exactly what makes this work: a rotation
+   // interpolates as an angle rather than as six matrix entries.
+   if TypeName='scale' then begin
+    aItem^.TransformSimpleMatrix.ScaleX:=Numbers[0];
+    if NumberCount>=2 then begin
+     aItem^.TransformSimpleMatrix.ScaleY:=Numbers[1];
+    end else begin
+     aItem^.TransformSimpleMatrix.ScaleY:=Numbers[0];
+    end;
+   end else if TypeName='rotate' then begin
+    aItem^.TransformSimpleMatrix.RotationDegrees:=Numbers[0];
+    // The optional centre of rotation becomes the offset the parts turn around.
+    if NumberCount>=3 then begin
+     aObject.OffsetX:=Numbers[1];
+     aObject.OffsetY:=Numbers[2];
+    end;
+   end else if TypeName='skewx' then begin
+    aItem^.TransformSimpleMatrix.SkewX:=Numbers[0];
+   end else if TypeName='skewy' then begin
+    aItem^.TransformSimpleMatrix.SkewY:=Numbers[0];
+   end else begin
+    // translate, which is also what an unknown kind falls back to.
+    aItem^.TransformSimpleMatrix.TranslateX:=Numbers[0];
+    if NumberCount>=2 then begin
+     aItem^.TransformSimpleMatrix.TranslateY:=Numbers[1];
+    end;
+   end;
+
+  end;
+
+  // Writes one value of the list into a key, according to what is being animated.
+  procedure ApplyValue(const aItem:PpvVectorGraphicsTimeLineItem;const aText:TpvUTF8String);
+  var IsNone:boolean;
+  begin
+
+   if IsTransform then begin
+
+    ApplyTransformValue(aItem,aText);
+
+   end else if AttributeName='opacity' then begin
+
+    aItem^.HasAlpha:=true;
+    aItem^.Alpha:=Min(Max(round(ParseValue(aText,1.0)*255.0),0),255);
+
+   end else if AttributeName='fill' then begin
+
+    aItem^.HasFillColor:=true;
+    aItem^.FillColor:=ParseColor(aText,aState.CurrentColor,IsNone);
+    if IsNone then begin
+     aItem^.FillColor:=0;
+    end;
+
+   end else if AttributeName='stroke' then begin
+
+    aItem^.HasStrokeColor:=true;
+    aItem^.StrokeColor:=ParseColor(aText,aState.CurrentColor,IsNone);
+    if IsNone then begin
+     aItem^.StrokeColor:=0;
+    end;
+
+   end else if AttributeName='stroke-width' then begin
+
+    aItem^.HasStrokeWidth:=true;
+    aItem^.StrokeWidth:=ParseValue(aText,Max(fViewportWidth,fViewportHeight));
+
+   end else begin
+
+    // Everything else goes through the numeric parameter key, which the geometry reads back by
+    // name when it rebuilds itself.
+    aItem^.HasValue:=true;
+    aItem^.ValueName:=AttributeName;
+    aItem^.Value:=ParseValue(aText,Max(fViewportWidth,fViewportHeight));
+
+   end;
+
+  end;
+
+  // Sets everything that every key of this animation shares.
+  procedure ApplyTiming(const aItem:PpvVectorGraphicsTimeLineItem);
+  begin
+   if IsTransform then begin
+    aItem^.Action:=TpvVectorGraphicsTimeLineAction.Transform;
+    // A transform key replaces the whole simple matrix, so it has to start out as the one the
+    // object already carries, otherwise the inherited transform sitting in its matrix part
+    // would be dropped the moment the animation takes over.
+    aItem^.TransformSimpleMatrix:=aObject.SimpleMatrix;
+   end;
+   aItem^.Freeze:=Freeze;
+   aItem^.RepeatCount:=RepeatCount;
+   aItem^.RepeatOrigin:=StartTick;
+   aItem^.RepeatPeriod:=DurationTicks;
+  end;
+
+ begin
+
+  AttributeName:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('attributeName','')))));
+  TypeName:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('type','translate')))));
+  IsTransform:=aKind='animatetransform';
+  IsColor:=(AttributeName='fill') or (AttributeName='stroke');
+
+  // Without a name there is nothing to animate, except for a transform, which says what it
+  // changes through its type instead.
+  if (Length(AttributeName)=0) and not IsTransform then begin
+   exit;
+  end;
+
+  // Only the declarative form of begin is understood. An event or a syncbase reference means the
+  // animation never starts here, which is better than starting it at the wrong moment.
+  Text:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('begin','0')));
+  if Length(Text)=0 then begin
+   BeginTick:=0;
+  end else if not ParseClockValue(Text,BeginTick) then begin
+   exit;
+  end;
+
+  // A set element does not blend at all, it lands on its value and stays there, which is a span
+  // of no length whatever duration it may carry.
+  if (aKind='set') or
+     not ParseClockValue(TpvUTF8String(aAnimationTag.GetParameter('dur','')),DurationTicks) then begin
+   DurationTicks:=0;
+  end;
+  if DurationTicks<0 then begin
+   DurationTicks:=0;
+  end;
+
+  Text:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('repeatCount','1')))));
+  if Text='indefinite' then begin
+   RepeatCount:=-1;
+  end else begin
+   RepeatCount:=Max(1,round(ParseValue(Text)))-1;
+  end;
+
+  // A set element holds its value by nature, everything else drops it again unless told to
+  // freeze, which is what the SMIL default of remove means.
+  Freeze:=(aKind='set') or
+          (LowerCase(Trim(String(aAnimationTag.GetParameter('fill','remove'))))='freeze');
+
+  // additive="sum" would have to add to the base rather than replace it, which the timeline does
+  // not express, so such an animation is left out instead of being shown wrongly.
+  if LowerCase(Trim(String(aAnimationTag.GetParameter('additive','replace'))))='sum' then begin
+   exit;
+  end;
+
+  CalcMode:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('calcMode','linear')))));
+  if CalcMode='discrete' then begin
+   Mode:=TpvVectorGraphicsInterpolationMode.Nearest;
+  end else if CalcMode='spline' then begin
+   Mode:=TpvVectorGraphicsInterpolationMode.CubicBezier;
+  end else begin
+   // paced lands here as well: it only differs from linear for values with several components,
+   // and for the single numbers and colors handled here the two agree.
+   Mode:=TpvVectorGraphicsInterpolationMode.Linear;
+  end;
+
+  // The list of values, either given outright or built from the from, to and by attributes.
+  Values:=nil;
+  CountValues:=0;
+  Text:=TpvUTF8String(aAnimationTag.GetParameter('values',''));
+  if Length(TrimText(Text))>0 then begin
+
+   while Length(Text)>0 do begin
+    Token:=TrimText(ParseToken(Text,';',false));
+    if Length(Token)=0 then begin
+     continue;
+    end;
+    SetLength(Values,CountValues+1);
+    Values[CountValues]:=Token;
+    inc(CountValues);
+   end;
+
+  end else begin
+
+   Text:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('from','')));
+   if Length(Text)>0 then begin
+    SetLength(Values,CountValues+1);
+    Values[CountValues]:=Text;
+    inc(CountValues);
+   end;
+
+   Text:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('to','')));
+   if Length(Text)=0 then begin
+    // by is a relative offset, which only means anything for plain numbers, and there the value
+    // it departs from is already known at this point.
+    Token:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('by','')));
+    if (Length(Token)>0) and (CountValues>0) and not (IsColor or IsTransform) then begin
+     Text:=TpvUTF8String(FloatToStr(ParseValue(Values[0])+ParseValue(Token),pvVectorGraphicsSVGFormatSettings));
+    end;
+   end;
+   if Length(Text)>0 then begin
+    SetLength(Values,CountValues+1);
+    Values[CountValues]:=Text;
+    inc(CountValues);
+   end;
+
+  end;
+
+  if CountValues=0 then begin
+   exit;
+  end;
+
+  // The times the values sit at, as fractions of the duration, evenly spaced unless stated.
+  KeyTimes:=nil;
+  CountKeyTimes:=0;
+  Text:=TpvUTF8String(aAnimationTag.GetParameter('keyTimes',''));
+  while Length(Text)>0 do begin
+   Token:=TrimText(ParseToken(Text,';',false));
+   if Length(Token)=0 then begin
+    continue;
+   end;
+   SetLength(KeyTimes,CountKeyTimes+1);
+   KeyTimes[CountKeyTimes]:=ParseValue(Token);
+   inc(CountKeyTimes);
+  end;
+  if CountKeyTimes<>CountValues then begin
+   SetLength(KeyTimes,CountValues);
+   CountKeyTimes:=CountValues;
+   for ValueIndex:=0 to CountValues-1 do begin
+    if Mode=TpvVectorGraphicsInterpolationMode.Nearest then begin
+     // Discrete gives each value a slice of its own, so the values divide the duration rather
+     // than sitting at the ends of the spans between them.
+     KeyTimes[ValueIndex]:=ValueIndex/CountValues;
+    end else if CountValues>1 then begin
+     KeyTimes[ValueIndex]:=ValueIndex/(CountValues-1);
+    end else begin
+     KeyTimes[ValueIndex]:=0.0;
+    end;
+   end;
+  end;
+
+  // Four numbers per interval between two values, so one easing curve for each span. The
+  // semicolons between the groups are turned into plain separators, since the grouping is
+  // already given by there being four of them.
+  Splines:=nil;
+  CountSplines:=0;
+  Text:=TpvUTF8String(StringReplace(String(aAnimationTag.GetParameter('keySplines','')),';',' ',[rfReplaceAll]));
+  while Length(Text)>0 do begin
+   Token:=TrimText(ParseToken(Text,#9#10#13' ,'));
+   if Length(Token)=0 then begin
+    continue;
+   end;
+   SetLength(Splines,CountSplines+1);
+   Splines[CountSplines]:=ParseValue(Token);
+   inc(CountSplines);
+  end;
+
+  StartTick:=BeginTick;
+
+  // A single value is a jump to it, which is what a set element is and what an animation with
+  // only a to attribute comes down to as well.
+  if CountValues=1 then begin
+   Item:=AddKey(TpvVectorGraphicsTimeLineAction.Move,StartTick,StartTick+DurationTicks);
+   ApplyTiming(Item);
+   Item^.InterpolationMode:=Mode;
+   ApplyValue(Item,Values[0]);
+   exit;
+  end;
+
+  // Discrete does not blend, so every value becomes a jump of its own at the moment its slice
+  // begins, rather than one span reaching towards the next value.
+  if Mode=TpvVectorGraphicsInterpolationMode.Nearest then begin
+   for ValueIndex:=0 to CountValues-1 do begin
+    Item:=AddKey(TpvVectorGraphicsTimeLineAction.Move,
+                 StartTick+round(KeyTimes[ValueIndex]*DurationTicks),
+                 StartTick+round(KeyTimes[ValueIndex]*DurationTicks));
+    ApplyTiming(Item);
+    ApplyValue(Item,Values[ValueIndex]);
+   end;
+   exit;
+  end;
+
+  // The first value lands the moment the animation starts, so that it departs from there and not
+  // from whatever the object happens to carry.
+  Item:=AddKey(TpvVectorGraphicsTimeLineAction.Move,StartTick,StartTick);
+  ApplyTiming(Item);
+  ApplyValue(Item,Values[0]);
+
+  // And then one span per interval between two values. They all share the origin and the period,
+  // so that a repeat takes the whole sequence rather than each span on its own.
+  for ValueIndex:=1 to CountValues-1 do begin
+
+   Item:=AddKey(TpvVectorGraphicsTimeLineAction.Move,
+                StartTick+round(KeyTimes[ValueIndex-1]*DurationTicks),
+                StartTick+round(KeyTimes[ValueIndex]*DurationTicks));
+   ApplyTiming(Item);
+   Item^.InterpolationMode:=Mode;
+
+   // One easing curve per interval, with the first one standing in when there are too few.
+   if (Mode=TpvVectorGraphicsInterpolationMode.CubicBezier) and (CountSplines>=4) then begin
+    SplineBase:=(ValueIndex-1)*4;
+    if (SplineBase+3)>=CountSplines then begin
+     SplineBase:=0;
+    end;
+    Item^.SplineControlPoints[0]:=Splines[SplineBase];
+    Item^.SplineControlPoints[1]:=Splines[SplineBase+1];
+    Item^.SplineControlPoints[2]:=Splines[SplineBase+2];
+    Item^.SplineControlPoints[3]:=Splines[SplineBase+3];
+   end;
+
+   ApplyValue(Item,Values[ValueIndex]);
+
+  end;
+
+ end;
+
+ // An animateMotion moves the object along a path, which becomes a run of transform keys with the
+ // position sampled along it and, where asked for, the direction of travel as the rotation.
+ procedure ProcessMotion(const aAnimationTag:TpvXMLTag);
+ var PathData,Rotate,Reference,Text:TpvUTF8String;
+     Path:TpvVectorPath;
+     Shape:TpvVectorPathShape;
+     Contour:TpvVectorPathContour;
+     Segment:TpvVectorPathSegment;
+     SegmentLine:TpvVectorPathSegmentLine;
+     Points:array of TpvVectorPathVector;
+     Lengths:array of TpvDouble;
+     CountPoints,SampleCount,SampleIndex,PointIndex,SubIndex:TpvSizeInt;
+     TotalLength,Target,SegmentLength,Fraction,Angle:TpvDouble;
+     Position:TpvVectorPathVector;
+     BeginTick,DurationTicks,SampleTick,PreviousTick:TpvInt64;
+     RepeatCount:TpvInt32;
+     Freeze,AutoRotate,ReverseRotate:boolean;
+     Item:PpvVectorGraphicsTimeLineItem;
+     ReferencedObject:TpvVectorGraphicsObject;
+     SubTag:TpvXMLTag;
+
+  // Fills in one key from the sample at the given fraction along the path.
+  procedure PlaceSample(const aItem:PpvVectorGraphicsTimeLineItem;const aFraction:TpvDouble);
+  var Walked:TpvDouble;
+  begin
+
+   Target:=aFraction*TotalLength;
+
+   // Walk to the segment the sample falls on and place it along that one.
+   PointIndex:=1;
+   while (PointIndex<(CountPoints-1)) and (Lengths[PointIndex]<Target) do begin
+    inc(PointIndex);
+   end;
+
+   SegmentLength:=Lengths[PointIndex]-Lengths[PointIndex-1];
+   if SegmentLength>1e-12 then begin
+    Walked:=(Target-Lengths[PointIndex-1])/SegmentLength;
+   end else begin
+    Walked:=0.0;
+   end;
+
+   Position.x:=Points[PointIndex-1].x+((Points[PointIndex].x-Points[PointIndex-1].x)*Walked);
+   Position.y:=Points[PointIndex-1].y+((Points[PointIndex].y-Points[PointIndex-1].y)*Walked);
+
+   // The motion comes on top of whatever the object already carries, so the key starts out as
+   // its simple matrix and only the translation and the rotation are replaced.
+   aItem^.TransformSimpleMatrix:=aObject.SimpleMatrix;
+   aItem^.TransformSimpleMatrix.TranslateX:=Position.x;
+   aItem^.TransformSimpleMatrix.TranslateY:=Position.y;
+
+   if AutoRotate then begin
+    Angle:=ArcTan2(Points[PointIndex].y-Points[PointIndex-1].y,
+                   Points[PointIndex].x-Points[PointIndex-1].x)*(180.0/PI);
+    if ReverseRotate then begin
+     Angle:=Angle+180.0;
+    end;
+    aItem^.TransformSimpleMatrix.RotationDegrees:=Angle;
+   end else begin
+    aItem^.TransformSimpleMatrix.RotationDegrees:=ParseValue(Rotate);
+   end;
+
+   aItem^.Freeze:=Freeze;
+   aItem^.RepeatCount:=RepeatCount;
+   aItem^.RepeatOrigin:=BeginTick;
+   aItem^.RepeatPeriod:=DurationTicks;
+
+  end;
+
+ begin
+
+  // The path either stands on the element itself or is pointed at through an mpath child.
+  Path:=nil;
+  Shape:=nil;
+  try
+
+   PathData:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('path','')));
+   if Length(PathData)>0 then begin
+
+    Path:=TpvVectorPath.CreateFromSVGPath(TpvRawByteString(PathData));
+
+   end else begin
+
+    for SubIndex:=0 to aAnimationTag.Items.Count-1 do begin
+     if aAnimationTag.Items[SubIndex] is TpvXMLTag then begin
+      SubTag:=TpvXMLTag(aAnimationTag.Items[SubIndex]);
+      if LowerCase(String(SubTag.Name))='mpath' then begin
+       Reference:=TpvUTF8String(SubTag.GetParameter('xlink:href',TpvRawByteString(SubTag.GetParameter('href',''))));
+       if (Length(Reference)>0) and (Reference[1]='#') then begin
+        ReferencedObject:=fDocument.FindByID(Copy(Reference,2,Length(Reference)));
+        if ReferencedObject is TpvVectorGraphicsGraphic then begin
+         Path:=TpvVectorPath.Create;
+         Path.Assign(TpvVectorGraphicsGraphic(ReferencedObject).Path);
+        end;
+       end;
+       break;
+      end;
+     end;
+    end;
+
+   end;
+
+   if not assigned(Path) then begin
+    exit;
+   end;
+
+   // Everything below works on the flattened outline, so the sampling only has to walk straight
+   // segments and the distance along the path is a plain sum.
+   Shape:=TpvVectorPathShape.Create(Path);
+   Shape.ConvertCurvesToLines(0.25);
+
+   Points:=nil;
+   CountPoints:=0;
+   for Contour in Shape.Contours do begin
+    for Segment in Contour.Segments do begin
+     if Segment is TpvVectorPathSegmentLine then begin
+      SegmentLine:=TpvVectorPathSegmentLine(Segment);
+      if CountPoints=0 then begin
+       SetLength(Points,CountPoints+1);
+       Points[CountPoints]:=SegmentLine.Points[0];
+       inc(CountPoints);
+      end;
+      SetLength(Points,CountPoints+1);
+      Points[CountPoints]:=SegmentLine.Points[1];
+      inc(CountPoints);
+     end;
+    end;
+   end;
+
+   if CountPoints<2 then begin
+    exit;
+   end;
+
+   SetLength(Lengths,CountPoints);
+   Lengths[0]:=0.0;
+   TotalLength:=0.0;
+   for PointIndex:=1 to CountPoints-1 do begin
+    TotalLength:=TotalLength+sqrt(sqr(Points[PointIndex].x-Points[PointIndex-1].x)+
+                                  sqr(Points[PointIndex].y-Points[PointIndex-1].y));
+    Lengths[PointIndex]:=TotalLength;
+   end;
+
+   if TotalLength<=1e-12 then begin
+    exit;
+   end;
+
+   Text:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('begin','0')));
+   if Length(Text)=0 then begin
+    BeginTick:=0;
+   end else if not ParseClockValue(Text,BeginTick) then begin
+    exit;
+   end;
+
+   if not ParseClockValue(TpvUTF8String(aAnimationTag.GetParameter('dur','')),DurationTicks) then begin
+    DurationTicks:=0;
+   end;
+   if DurationTicks<=0 then begin
+    exit;
+   end;
+
+   Text:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('repeatCount','1')))));
+   if Text='indefinite' then begin
+    RepeatCount:=-1;
+   end else begin
+    RepeatCount:=Max(1,round(ParseValue(Text)))-1;
+   end;
+
+   Freeze:=LowerCase(Trim(String(aAnimationTag.GetParameter('fill','remove'))))='freeze';
+
+   Rotate:=TpvUTF8String(LowerCase(Trim(String(aAnimationTag.GetParameter('rotate','0')))));
+   AutoRotate:=(Rotate='auto') or (Rotate='auto-reverse');
+   ReverseRotate:=Rotate='auto-reverse';
+
+   // The path becomes a run of keys rather than something sampled at render time, since the
+   // timeline only knows how to blend between keys. Enough of them that the corners are kept,
+   // and not so many that a long path fills the timeline with noise.
+   SampleCount:=Min(256,Max(16,CountPoints));
+
+   // The first sample lands the moment the motion starts, the rest are spans that blend from one
+   // to the next, which is the same shape every other animation here has.
+   Item:=AddKey(TpvVectorGraphicsTimeLineAction.Transform,BeginTick,BeginTick);
+   PlaceSample(Item,0.0);
+
+   PreviousTick:=BeginTick;
+   for SampleIndex:=1 to SampleCount-1 do begin
+    Fraction:=SampleIndex/(SampleCount-1);
+    SampleTick:=BeginTick+round(Fraction*DurationTicks);
+    Item:=AddKey(TpvVectorGraphicsTimeLineAction.Transform,PreviousTick,SampleTick);
+    Item^.InterpolationMode:=TpvVectorGraphicsInterpolationMode.Linear;
+    PlaceSample(Item,Fraction);
+    PreviousTick:=SampleTick;
+   end;
+
+  finally
+   FreeAndNil(Shape);
+   FreeAndNil(Path);
+  end;
+
+ end;
+
+begin
+
+ if not assigned(aObject) then begin
+  exit;
+ end;
+
+ TimeLine:=aObject.TimeLine;
+
+ for Index:=0 to aTag.Items.Count-1 do begin
+
+  if not (aTag.Items[Index] is TpvXMLTag) then begin
+   continue;
+  end;
+
+  SubTag:=TpvXMLTag(aTag.Items[Index]);
+  TagName:=TpvUTF8String(LowerCase(String(SubTag.Name)));
+
+  // animateColor is the deprecated spelling of an animate on a paint attribute and behaves the
+  // same way, so it goes through the same path.
+  if (TagName='animate') or (TagName='animatecolor') or
+     (TagName='animatetransform') or (TagName='set') then begin
+   ProcessOne(SubTag,TagName);
+  end else if TagName='animatemotion' then begin
+   ProcessMotion(SubTag);
+  end;
+
+ end;
+
+ if Length(TimeLine)>0 then begin
+
+  aObject.TimeLine:=TimeLine;
+
+  // An animated parameter changes the geometry, so whatever was built before no longer stands.
+  if aObject is TpvVectorGraphicsGraphic then begin
+   TpvVectorGraphicsGraphic(aObject).MarkPathDirty;
+  end;
+
+ end;
 
 end;
 
