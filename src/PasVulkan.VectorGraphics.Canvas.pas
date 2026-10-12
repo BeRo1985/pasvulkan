@@ -172,12 +172,17 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // aWidth and aHeight of zero take the size the document itself states. The document is
        // taken over unless aOwnsDocument says otherwise. Nothing on the Vulkan side happens here,
        // because that needs the transfer objects, which only Update gets.
+       // aSRGB says that the bytes the rasterizer produces are sRGB values, which they always are:
+       // the rasterizer keeps its picture in eight bit sRGB whichever color space it blends in, and
+       // a linear run writes that back when it is done. Turning it off hands the bytes to the
+       // canvas as if they were linear light, which comes out visibly washed out, and is only
+       // right where the picture is not a picture at all but data, such as a mask.
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aDocument:TpvVectorGraphicsDocument;
                           const aWidth:TpvInt32=0;
                           const aHeight:TpvInt32=0;
                           const aOwnsDocument:boolean=true;
-                          const aSRGB:boolean=false); reintroduce;
+                          const aSRGB:boolean=true); reintroduce;
        destructor Destroy; override;
        // Another size for the picture, which marks it as needing a new rasterization. The texture
        // is thrown away, because its size is fixed once it exists.

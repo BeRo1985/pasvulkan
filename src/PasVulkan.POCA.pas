@@ -12718,10 +12718,12 @@ begin
   Height:=0;
  end;
 
+ // The bytes the rasterizer produces are sRGB values, so the texture has to say so, or the canvas
+ // takes them for linear light and the picture comes out washed out.
  if aCountArguments>3 then begin
   SRGB:=POCAGetBooleanValue(aContext,aArguments^[3]);
  end else begin
-  SRGB:=false;
+  SRGB:=true;
  end;
 
  // The document stays with the script, which may well want to make a second texture or a set of
