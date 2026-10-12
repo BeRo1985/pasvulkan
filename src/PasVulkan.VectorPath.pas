@@ -3138,7 +3138,9 @@ begin
  c0:=TpvVectorPathVector.Create(aSegment1.Points[0].x,aSegment1.Points[0].y);
  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
- Roots:=(TpvPolynomial.Create([n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl])).GetRoots;
+ // TpvPolynomial keeps its coefficients with the constant term first and the leading one last, so
+ // the powers go in ascending order.
+ Roots:=(TpvPolynomial.Create([n.Dot(c0)+cl,n.Dot(c1),n.Dot(c2)])).GetRoots;
  try
   CountRoots:=length(Roots);
  {a:=n.Dot(c0)+cl;
@@ -3188,7 +3190,7 @@ begin
  c3:=(p1*(-1.0))+((p2*3.0)+((p3*(-3.0))+p4));
  n:=TpvVectorPathVector.Create(aSegment0.Points[0].y-aSegment0.Points[1].y,aSegment0.Points[1].x-aSegment0.Points[0].x);
  cl:=(aSegment0.Points[0].x*aSegment0.Points[1].y)-(aSegment0.Points[1].x*aSegment0.Points[0].y);
- Roots:=(TpvPolynomial.Create([n.Dot(c3),n.Dot(c2),n.Dot(c1),n.Dot(c0)+cl])).GetRoots;
+ Roots:=(TpvPolynomial.Create([n.Dot(c0)+cl,n.Dot(c1),n.Dot(c2),n.Dot(c3)])).GetRoots;
  try
   CountRoots:=length(Roots);
  {a:=n.Dot(c0)+cl;
@@ -3250,11 +3252,11 @@ begin
   v1:=v0-(c11.x*c11.y);
   v2:=v0+v1;
   v3:=c11.y*c11.y;
-  Roots:=(TpvPolynomial.Create([c12.x*c22.y*c22.y,
-                               2.0*c12.x*c21.y*c22.y,
-                               (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
+  Roots:=(TpvPolynomial.Create([((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1),
                                (((-c21.x)*v3)-(c21.y*v0))-(c21.y*v1),
-                               ((c10.x-c20.x)*v3)+((c10.y-c20.y)*v1)])).GetRoots;
+                               (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
+                               2.0*c12.x*c21.y*c22.y,
+                               c12.x*c22.y*c22.y])).GetRoots;
 { CountRoots:=SolveQuartic(c12.x*c22.y*c22.y,
                            2.0*c12.x*c21.y*c22.y,
                            (((c12.x*c21.y*c21.y)-(c22.x*v3))-(c22.y*v0))-(c22.y*v1),
@@ -3272,11 +3274,11 @@ begin
   v4:=(c12.y*(c10.x-c20.x))-(c12.x*v3);
   v5:=((-c11.y)*v2)+(c12.y*v4);
   v6:=v2*v2;
-  Roots:=(TpvPolynomial.Create([sqr(v0),
-                                2.0*v0*v1,
-                                ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
+  Roots:=(TpvPolynomial.Create([((v3*v6)+(v4*v5))/c12.y,
                                 ((((-c21.y)*v6)+(c12.y*v1*v4))+(v1*v5))/c12.y,
-                                ((v3*v6)+(v4*v5))/c12.y])).GetRoots;
+                                ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
+                                2.0*v0*v1,
+                                sqr(v0)])).GetRoots;
 { CountRoots:=SolveQuartic(sqr(v0),
                            2.0*v0*v1,
                            ((((-c22.y)*v6)+(c12.y*v1*v1))+(c12.y*v0*v4)+(v0*v5))/c12.y,
@@ -3294,12 +3296,12 @@ begin
   for Index:=0 to CountRoots-1 do begin
    s:=Roots[Index];
    if (s>=0.0) and (s<=1.0) then begin
-    XRoots:=(TpvPolynomial.Create([c12.x,
+    XRoots:=(TpvPolynomial.Create([((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x),
                                    c11.x,
-                                   ((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x)])).GetRoots;
-    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c12.x])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y),
                                    c11.y,
-                                   ((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y)])).GetRoots;
+                                   c12.y])).GetRoots;
     CountXRoots:=length(XRoots);
     CountYRoots:=length(YRoots);
 {   CountXRoots:=SolveQuadratic(c12.x,
@@ -3380,7 +3382,8 @@ begin
  PolyCoefs[4]:=((((((((((((((2.0*c10.x*c12.x*c12.y*c22.y)+(2.0*c10.y*c12.x*c12.y*c22.x))+(c11.x*c11.y*c12.x*c22.y))+(c11.x*c11.y*c12.y*c22.x))-(2.0*c20.x*c12.x*c12.y*c22.y))-(2.0*c12.x*c20.y*c12.y*c22.x))-(2.0*c12.x*c21.x*c12.y*c21.y))-(2.0*c10.x*c12s.y*c22.x))-(2.0*c10.y*c12s.x*c22.y))+(2.0*c20.x*c12s.y*c22.x))-(c11s.y*c12.x*c22.x))-(c11s.x*c12.y*c22.y))+(c21s.x*c12s.y))+(c12s.x*((2.0*c20.y*c22.y)+c21s.y)));
  PolyCoefs[5]:=(((((((((((2.0*c10.x*c12.x*c12.y*c21.y)+(2.0*c10.y*c12.x*c21.x*c12.y))+(c11.x*c11.y*c12.x*c21.y))+(c11.x*c11.y*c21.x*c12.y)-(2.0*c20.x*c12.x*c12.y*c21.y))-(2.0*c12.x*c20.y*c21.x*c12.y))-(2.0*c10.x*c21.x*c12s.y))-(2.0*c10.y*c12s.x*c21.y))+(2.0*c20.x*c21.x*c12s.y))-(c11s.y*c12.x*c21.x))-(c11s.x*c12.y*c21.y))+(2.0*c12s.x*c20.y*c21.y));
  PolyCoefs[6]:=(((((((((((((((((((-2.0)*c10.x*c10.y*c12.x*c12.y)-(c10.x*c11.x*c11.y*c12.y))-(c10.y*c11.x*c11.y*c12.x))+(2.0*c10.x*c12.x*c20.y*c12.y))+(2.0*c10.y*c20.x*c12.x*c12.y))+(c11.x*c20.x*c11.y*c12.y))+(c11.x*c11.y*c12.x*c20.y))-(2.0*c20.x*c12.x*c20.y*c12.y))-(2.0*c10.x*c20.x*c12s.y))+(c10.x*c11s.y*c12.x))+(c10.y*c11s.x*c12.y))-(2.0*c10.y*c12s.x*c20.y))-(c20.x*c11s.y*c12.x))-(c11s.x*c20.y*c12.y))+(c10s.x*c12s.y))+(c10s.y*c12s.x))+(c20s.x*c12s.y))+(c12s.x*c20s.y));
- Roots:=(TpvPolynomial.Create([PolyCoefs[0],PolyCoefs[1],PolyCoefs[2],PolyCoefs[3],PolyCoefs[4],PolyCoefs[5],PolyCoefs[6]])).GetRootsInInterval(0.0,1.0);
+ // PolyCoefs runs from the highest power down, the polynomial wants it the other way round.
+ Roots:=(TpvPolynomial.Create([PolyCoefs[6],PolyCoefs[5],PolyCoefs[4],PolyCoefs[3],PolyCoefs[2],PolyCoefs[1],PolyCoefs[0]])).GetRootsInInterval(0.0,1.0);
 //Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
  XRoots:=nil;
  YRoots:=nil;
@@ -3388,12 +3391,12 @@ begin
   for Index:=0 to length(Roots)-1 do begin
    s:=Roots[Index];
    if (s>=0.0) and (s<=1.0) then begin
-    XRoots:=(TpvPolynomial.Create([c12.x,
+    XRoots:=(TpvPolynomial.Create([(((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
                                    c11.x,
-                                   (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x)])).GetRoots;
-    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c12.x])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([(((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
                                    c11.y,
-                                   (((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y)])).GetRoots;
+                                   c12.y])).GetRoots;
     CountXRoots:=length(XRoots);
     CountYRoots:=length(YRoots);
  {  CountXRoots:=SolveQuadratic(c12.x,
@@ -3504,7 +3507,8 @@ begin
                2*c10.x*c11.x*c11s.y*c13.x*c13.y+2*c10.x*c20.x*c12.x*c12s.y*c13.y+6*c10.x*c20.x*c20.y*c13.x*c13s.y-3*c10.x*c11.y*c20.y*c12.y*c13s.x+2*c10.x*c12.x*c20.y*c12s.y*c13.x+c10.x*c11s.y*c12.x*c12.y*c13.x+c10.y*c11.x*c11.y*c12s.x*c13.y+4*c10.y*c11.x*c20.y*c12.y*c13s.x-3*c10.y*c20.x*c11.y*c12.y*c13s.x+2*c10.y*c20.x*c12.x*c12s.y*c13.x+2*c10.y*c11.y*c12.x*c20.y*c13s.x+c11.x*c20.x*c11.y*c12s.y*c13.x-3*c11.x*c20.x*c12.x*c20.y*c13s.y-2*c10.x*c12s.x*c20.y*c12.y*c13.y-6*c10.y*c20.x*c20.y*c13s.x*c13.y-2*c10.y*c20.x*c12s.x*c12.y*c13.y-2*c10.y*c11s.x*c11.y*c13.x*c13.y-c10.y*c11s.x*c12.x*c12.y*c13.y-2*c10.y*c12s.x*c20.y*c12.y*c13.x-2*c11.x*c20.x*c11s.y*c13.x*c13.y-c11.x*c11.y*c12s.x*c20.y*c13.y+3*c20.x*c11.y*c20.y*c12.y*c13s.x-2*c20.x*c12.x*c20.y*c12s.y*c13.x-c20.x*c11s.y*c12.x*c12.y*c13.x+3*c10s.y*c11.x*c12.x*c13.x*c13.y+3*c11.x*c12.x*c20s.y*c13.x*c13.y+2*c20.x*c12s.x*c20.y*c12.y*c13.y-3*c10s.x*c11.y*c12.y*c13.x*c13.y+
                2*c11s.x*c11.y*c20.y*c13.x*c13.y+c11s.x*c12.x*c20.y*c12.y*c13.y-3*c20s.x*c11.y*c12.y*c13.x*c13.y-c10c.x*c13c.y+c10c.y*c13c.x+c20c.x*c13c.y-c20c.y*c13c.x-3*c10.x*c20s.x*c13c.y-c10.x*c11c.y*c13s.x+3*c10s.x*c20.x*c13c.y+c10.y*c11c.x*c13s.y+3*c10.y*c20s.y*c13c.x+c20.x*c11c.y*c13s.x+c10s.x*c12c.y*c13.x-3*c10s.y*c20.y*c13c.x-c10s.y*c12c.x*c13.y+c20s.x*c12c.y*c13.x-c11c.x*c20.y*c13s.y-c12c.x*c20s.y*c13.y-c10.x*c11s.x*c11.y*c13s.y+c10.y*c11.x*c11s.y*c13s.x-3*c10.x*c10s.y*c13s.x*c13.y-c10.x*c11s.y*c12s.x*c13.y+c10.y*c11s.x*c12s.y*c13.x-c11.x*c11s.y*c20.y*c13s.x+3*c10s.x*c10.y*c13.x*c13s.y+c10s.x*c11.x*c12.y*c13s.y+2*c10s.x*c11.y*c12.x*c13s.y-2*c10s.y*c11.x*c12.y*c13s.x-c10s.y*c11.y*c12.x*c13s.x+c11s.x*c20.x*c11.y*c13s.y-3*c10.x*c20s.y*c13s.x*c13.y+3*c10.y*c20s.x*c13.x*c13s.y+c11.x*c20s.x*c12.y*c13s.y-2*c11.x*c20s.y*c12.y*c13s.x+c20.x*c11s.y*c12s.x*c13.y-c11.y*c12.x*c20s.y*c13s.x-c10s.x*c12.x*c12s.y*c13.y-3*c10s.x*c20.y*c13.x*c13s.y+
                3*c10s.y*c20.x*c13s.x*c13.y+c10s.y*c12s.x*c12.y*c13.x-c11s.x*c20.y*c12s.y*c13.x+2*c20s.x*c11.y*c12.x*c13s.y+3*c20.x*c20s.y*c13s.x*c13.y-c20s.x*c12.x*c12s.y*c13.y-3*c20s.x*c20.y*c13.x*c13s.y+c12s.x*c20s.y*c12.y*c13.x;
- Roots:=(TpvPolynomial.Create([PolyCoefs[0],PolyCoefs[1],PolyCoefs[2],PolyCoefs[3],PolyCoefs[4],PolyCoefs[5],PolyCoefs[6],PolyCoefs[7],PolyCoefs[8],PolyCoefs[9]])).GetRootsInInterval(0.0,1.0);
+ // PolyCoefs runs from the highest power down, the polynomial wants it the other way round.
+ Roots:=(TpvPolynomial.Create([PolyCoefs[9],PolyCoefs[8],PolyCoefs[7],PolyCoefs[6],PolyCoefs[5],PolyCoefs[4],PolyCoefs[3],PolyCoefs[2],PolyCoefs[1],PolyCoefs[0]])).GetRootsInInterval(0.0,1.0);
 //Roots:=SolveRootsInInterval(PolyCoefs,0.0,1.0);
  XRoots:=nil;
  YRoots:=nil;
@@ -3512,12 +3516,12 @@ begin
   for Index:=0 to length(Roots)-1 do begin
    s:=Roots[Index];
    if (s>=0.0) and (s<=1.0) then begin
-    XRoots:=(TpvPolynomial.Create([c12.x,
+    XRoots:=(TpvPolynomial.Create([(((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x),
                                    c11.x,
-                                   (((c10.x-c20.x)-(s*c21.x))-(sqr(s)*c22.x))-((sqr(s)*s)*c23.x)])).GetRoots;
-    YRoots:=(TpvPolynomial.Create([c12.y,
+                                   c12.x])).GetRoots;
+    YRoots:=(TpvPolynomial.Create([(((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y),
                                    c11.y,
-                                   (((c10.y-c20.y)-(s*c21.y))-(sqr(s)*c22.y))-((sqr(s)*s)*c23.y)])).GetRoots;
+                                   c12.y])).GetRoots;
     CountXRoots:=length(XRoots);
     CountYRoots:=length(YRoots);
 {   CountXRoots:=SolveQuadratic(c12.x,
@@ -3766,7 +3770,7 @@ begin
 end;
 
 function TpvVectorPathSegmentQuadraticCurve.GetBoundingBox:TpvVectorPathBoundingBox;
-var t,s:TpvVectorPathVector;
+var t,s,Numerator,Denominator:TpvVectorPathVector;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fCachedBoundingBoxLock);
  try
@@ -3793,7 +3797,22 @@ begin
       // dp/dt = 2(t-1)*p0 + 2(1-2t)*p1 + 2t*p2 = t*(2*p0-4*p1+2*p2) + 2*(p1-p0)
       // dp/dt = 0 -> t*(p0-2*p1+p2) = (p0-p1);
       // Credits for the idea: Inigo Quilez
-      t:=(Points[0]-Points[1])/((Points[0]-(Points[1]*2.0))+Points[2]);
+      Numerator:=Points[0]-Points[1];
+      Denominator:=(Points[0]-(Points[1]*2.0))+Points[2];
+      // A second difference of zero on an axis means the curve runs straight along it, so its
+      // extremum there is one of the end points and there is no inner t to solve for. Dividing
+      // anyway would give an infinity, or a NaN where the numerator vanishes as well, and a NaN
+      // would survive the clamping below and poison the whole bounding box.
+      if IsZero(Denominator.x) then begin
+       t.x:=0.0;
+      end else begin
+       t.x:=Numerator.x/Denominator.x;
+      end;
+      if IsZero(Denominator.y) then begin
+       t.y:=0.0;
+      end else begin
+       t.y:=Numerator.y/Denominator.y;
+      end;
       if t.x<=0.0 then begin
        t.x:=0.0;
       end else if t.x>=1.0 then begin
@@ -7325,8 +7344,9 @@ begin
     CubicCoef2:=(P0*3.0)+((P1*(-6.0))+(P2*3.0));
     CubicCoef3:=(P0*(-1.0))+((P1*3.0)+((P2*(-3.0))+P3));
 
-    // Find all real roots where curve.y = aY
-    Roots:=TpvPolynomial.Create([CubicCoef3.y,CubicCoef2.y,CubicCoef1.y,CubicCoef0.y-aY]).GetRoots;
+    // Find all real roots where curve.y = aY, with the coefficients in ascending powers, which is
+    // the order the polynomial keeps them in.
+    Roots:=TpvPolynomial.Create([CubicCoef0.y-aY,CubicCoef1.y,CubicCoef2.y,CubicCoef3.y]).GetRoots;
     try
 
      for RootIndex:=0 to length(Roots)-1 do begin

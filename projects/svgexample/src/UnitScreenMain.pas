@@ -41,6 +41,8 @@ uses SysUtils,
      PasVulkan.Canvas,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont,
+     PasVulkan.FramebufferCapture,
+     PasVulkan.Image.PNG,
      POCA,
      PasVulkan.POCA,
      PasVulkan.Console;
@@ -107,6 +109,19 @@ type { TScreenMain }
        fPercentileXthFrameRate:TpvDouble;
        fMedianFrameTime:TpvDouble;
        fFrameTimeString:string;
+       // Where --screenshot wants its picture written, empty when it was not given.
+       fScreenshotFileName:string;
+       // How many frames to let pass before taking it, so that the picture shows a settled scene
+       // rather than whatever the first frame after the swap chain came up happened to hold.
+       fScreenshotDelayFrames:TpvSizeInt;
+       fFramebufferCapture:TpvFramebufferCapture;
+       fFramebufferCaptureImage:TpvFramebufferCapture.TImage;
+       fScreenshotTaken:boolean;
+       // Whether to end the application once the picture is written, which is what makes an
+       // unattended run end by itself.
+       fScreenshotAndExit:boolean;
+       procedure ParseScreenshotParameters;
+       procedure TakeScreenshot;
        procedure POCAInitialize;
        procedure POCAGarbageCollect;
        function POCAProcessInputKeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
@@ -150,6 +165,8 @@ type { TScreenMain }
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
+
+       procedure PostPresent(const aSwapChainImageIndex:TpvInt32); override;
 
      end;
 
@@ -297,6 +314,13 @@ begin
 
  fReady:=false;
 
+ fFramebufferCapture:=nil;
+ fFramebufferCaptureImage.Width:=0;
+ fFramebufferCaptureImage.Height:=0;
+ fFramebufferCaptureImage.Data:=nil;
+ fScreenshotTaken:=false;
+ ParseScreenshotParameters;
+
  fCriticalSection:=TPasMPCriticalSection.Create;
 
  fNextPOCAFullGarbageCollectTime:=pvApplication.HighResolutionTimer.GetTime+(pvApplication.HighResolutionTimer.SecondInterval*GarbageCollectorFullInterval);
@@ -372,9 +396,97 @@ begin
  FinalizeForPOCAContext(fPOCAContext);
  POCAContextDestroy(fPOCAContext);
  POCAInstanceDestroy(fPOCAInstance);
+ FreeAndNil(fFramebufferCapture);
+ fFramebufferCaptureImage.Data:=nil;
  FreeAndNil(fCriticalSection);
  ScreenMain:=nil;
  inherited Destroy;
+end;
+
+procedure TScreenMain.ParseScreenshotParameters;
+var Index:TpvSizeInt;
+    Parameter:string;
+begin
+
+ fScreenshotFileName:='';
+ fScreenshotDelayFrames:=30;
+ fScreenshotAndExit:=true;
+
+ Index:=1;
+ while Index<=ParamCount do begin
+
+  Parameter:=ParamStr(Index);
+
+  if (Parameter='--screenshot') and (Index<ParamCount) then begin
+   inc(Index);
+   fScreenshotFileName:=ParamStr(Index);
+  end else if (Parameter='--screenshot-delay') and (Index<ParamCount) then begin
+   inc(Index);
+   fScreenshotDelayFrames:=StrToIntDef(ParamStr(Index),fScreenshotDelayFrames);
+  end else if Parameter='--screenshot-keep-running' then begin
+   fScreenshotAndExit:=false;
+  end;
+
+  inc(Index);
+
+ end;
+
+end;
+
+procedure TScreenMain.TakeScreenshot;
+begin
+
+ // The swap chain can have been recreated since the last picture, so the capture is pointed at
+ // the current one rather than at whatever it was built with.
+ if not assigned(fFramebufferCapture) then begin
+  fFramebufferCapture:=TpvFramebufferCapture.Create(pvApplication.VulkanSwapChain);
+ end else begin
+  fFramebufferCapture.SwapChain:=pvApplication.VulkanSwapChain;
+ end;
+
+ fFramebufferCapture.Capture(fFramebufferCaptureImage);
+
+ if (fFramebufferCaptureImage.Width>0) and
+    (fFramebufferCaptureImage.Height>0) and
+    (length(fFramebufferCaptureImage.Data)>0) then begin
+
+  if SavePNGImageAsFile(@fFramebufferCaptureImage.Data[0],
+                        fFramebufferCaptureImage.Width,
+                        fFramebufferCaptureImage.Height,
+                        fScreenshotFileName) then begin
+   pvApplication.Log(LOG_INFO,'TScreenMain.TakeScreenshot',
+                     'Wrote '+IntToStr(fFramebufferCaptureImage.Width)+'x'+
+                     IntToStr(fFramebufferCaptureImage.Height)+' to "'+fScreenshotFileName+'"');
+  end else begin
+   pvApplication.Log(LOG_ERROR,'TScreenMain.TakeScreenshot',
+                     'Could not write "'+fScreenshotFileName+'"');
+  end;
+
+ end else begin
+  pvApplication.Log(LOG_ERROR,'TScreenMain.TakeScreenshot','Captured nothing');
+ end;
+
+end;
+
+procedure TScreenMain.PostPresent(const aSwapChainImageIndex:TpvInt32);
+begin
+
+ inherited PostPresent(aSwapChainImageIndex);
+
+ // Reading the frame buffer belongs after the present, which is what this hook is for, and the
+ // first frames are skipped so that the picture shows a settled scene.
+ if (length(fScreenshotFileName)>0) and not fScreenshotTaken then begin
+  if fScreenshotDelayFrames>0 then begin
+   dec(fScreenshotDelayFrames);
+  end else begin
+   fScreenshotTaken:=true;
+   TakeScreenshot;
+   if fScreenshotAndExit then begin
+    pvApplication.Terminate;
+   end;
+  end;
+ end;
+
 end;
 
 procedure TScreenMain.POCAInitialize;

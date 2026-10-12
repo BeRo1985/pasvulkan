@@ -21132,8 +21132,11 @@ end;
 function TpvPolynomial.Eval(const aValue:TpvDouble):TpvDouble;
 var Index:TpvSizeInt;
 begin
+ // Coefs[Index] is the coefficient of the Index-th power, which is what GetDegree, GetDerivative,
+ // SimplifyEquals and all four root solvers take it to be, so Horner's method has to run from the
+ // highest power downwards, which is the last element towards the first.
  result:=0.0;
- for Index:=0 to length(Coefs)-1 do begin
+ for Index:=length(Coefs)-1 downto 0 do begin
   result:=(result*aValue)+Coefs[Index];
  end;
 end;
@@ -21141,9 +21144,12 @@ end;
 procedure TpvPolynomial.SimplifyEquals(const aThreshold:TpvDouble=1e-12);
 var Index,NewLength:TpvSizeInt;
 begin
+ // The leading coefficients sit at the end, so dropping the ones that are zero within the
+ // threshold works from there backwards. The magnitude decides, because without it every negative
+ // coefficient would count as zero and the degree would collapse.
  NewLength:=length(Coefs);
  for Index:=length(Coefs)-1 downto 0 do begin
-  if Coefs[Index]<=aThreshold then begin
+  if abs(Coefs[Index])<=aThreshold then begin
    NewLength:=Index;
   end else begin
    break;
@@ -21174,22 +21180,31 @@ begin
 end;
 
 function TpvPolynomial.GetQuadraticRoots:TpvDoubleDynamicArray;
-var a,b,c,d:TpvDouble;
+var a,b,c,d,OneOverTwoA:TpvDouble;
 begin
  result:=nil;
  if GetDegree=2 then begin
   a:=Coefs[2];
   b:=Coefs[1];
   c:=Coefs[0];
-  d:=sqr(b)-(4.0*c);
+  // A leading coefficient of zero makes this a linear equation, not a quadratic one, and dividing
+  // by it below would give infinities instead of the one root it really has. The polynomial is
+  // shortened for the hand-over, because the solver for the lower degree checks the degree
+  // itself.
+  if IsZero(a) then begin
+   result:=TpvPolynomial.Create([Coefs[0],Coefs[1]]).GetLinearRoots;
+   exit;
+  end;
+  d:=sqr(b)-((4.0*a)*c);
+  OneOverTwoA:=1.0/(2.0*a);
   if IsZero(d) then begin
    SetLength(result,1);
-   result[0]:=(-0.5)*b;
+   result[0]:=(-b)*OneOverTwoA;
   end else if d>0.0 then begin
    d:=sqrt(d);
    SetLength(result,2);
-   result[0]:=((-b)+d)*0.5;
-   result[1]:=((-b)-d)*0.5;
+   result[0]:=((-b)+d)*OneOverTwoA;
+   result[1]:=((-b)-d)*OneOverTwoA;
   end;
  end;
 end;
@@ -21200,6 +21215,13 @@ begin
  result:=nil;
  if GetDegree=3 then begin
   c3:=Coefs[3];
+  // The same as in the quadratic case: without a cubic term this is a quadratic equation, and
+  // normalizing by zero below would turn every coefficient into an infinity and the discriminant
+  // into a NaN, which would then match none of the three branches and silently yield no roots.
+  if IsZero(c3) then begin
+   result:=TpvPolynomial.Create([Coefs[0],Coefs[1],Coefs[2]]).GetQuadraticRoots;
+   exit;
+  end;
   c2:=Coefs[2]/c3;
   c1:=Coefs[1]/c3;
   c0:=Coefs[0]/c3;
@@ -21254,11 +21276,27 @@ begin
  result:=nil;
  if GetDegree=4 then begin
   c4:=Coefs[4];
+  // Without a quartic term this is a cubic equation, see the same case in GetCubicRoots.
+  if IsZero(c4) then begin
+   result:=TpvPolynomial.Create([Coefs[0],Coefs[1],Coefs[2],Coefs[3]]).GetCubicRoots;
+   exit;
+  end;
   c3:=Coefs[3]/c4;
   c2:=Coefs[2]/c4;
   c1:=Coefs[1]/c4;
   c0:=Coefs[0]/c4;
-  ResolveRoots:=(TpvPolynomial.Create([1.0,-c2,(c3*c1)-(4.0*c0),((((-c3)*c3)*c0)+((4.0*c2)*c0))-sqr(c1)])).GetCubicRoots;
+  // The resolvent cubic of the Ferrari method, which is
+  // y^3 - c2*y^2 + (c3*c1 - 4*c0)*y + (4*c2*c0 - c3^2*c0 - c1^2), with its constant term first
+  // and its cubic one last, because that is the order the coefficients are kept in.
+  ResolveRoots:=(TpvPolynomial.Create([((((-c3)*c3)*c0)+((4.0*c2)*c0))-sqr(c1),
+                                       (c3*c1)-(4.0*c0),
+                                       -c2,
+                                       1.0])).GetCubicRoots;
+  // The resolvent has at least one real root in exact arithmetic, but a degenerate one can leave
+  // the solver with nothing to hand back, and there is no quartic root to be had from that.
+  if length(ResolveRoots)=0 then begin
+   exit;
+  end;
   y:=ResolveRoots[0];
   d:=((sqr(c3)*0.25)-c2)+y;
   if IsZero(abs(d)) then begin
@@ -21288,11 +21326,14 @@ begin
    d:=sqrt(d);
    t1:=((((3.0*c3)*c3)*0.25)-sqr(d))-(2.0*c2);
    t2:=((((4.0*c3)*c2)-(8.0*c1))-((c3*c3)*c3))/(4.0*d);
+   // Plus and Minus are the discriminants of the two quadratic factors the quartic splits into.
+   // Only a non-negative one has real roots, and the sign has to be asked rather than just the
+   // distance from zero, because a negative value would otherwise be handed to sqrt.
    Plus:=t1+t2;
    Minus:=t1-t2;
-   if not IsZero(Plus) then begin
+   if Plus>=0.0 then begin
     f:=sqrt(Plus);
-    if not IsZero(Minus) then begin
+    if Minus>=0.0 then begin
      SetLength(result,4);
      result[0]:=(c3*(-0.25))+((d+f)*0.5);
      result[1]:=(c3*(-0.25))+((d-f)*0.5);
@@ -21304,7 +21345,7 @@ begin
      result[0]:=(c3*(-0.25))+((d+f)*0.5);
      result[1]:=(c3*(-0.25))+((d-f)*0.5);
     end;
-   end else if not IsZero(Minus) then begin
+   end else if Minus>=0.0 then begin
     f:=sqrt(Minus);
     SetLength(result,2);
     result[0]:=(c3*(-0.25))+((f-d)*0.5);

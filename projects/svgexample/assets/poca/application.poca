@@ -43,6 +43,9 @@ var application = {
 
       this.data.rebuildRequested = false;
 
+      // B draws the area the shapes cover, which tells placement problems from drawing ones.
+      this.data.showBounds = false;
+
       // At what zoom the shapes were last recorded, which is what N updates and what tells us
       // whether the stroked outlines still have enough line segments for the current view.
       this.data.builtZoom = 1.0;
@@ -188,6 +191,11 @@ var application = {
           return true;
         }
 
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_B) {
+          data.showBounds = !data.showBounds;
+          return true;
+        }
+
         if (event.KeyCode === Input.KeyCodes.KEYCODE_N) {
           // Recording uploads, so it is left to the update rather than being done from here.
           data.rebuildRequested = true;
@@ -311,6 +319,18 @@ var application = {
 
       canvas.push();
       canvas.setModelMatrix(matrix);
+
+      // A frame around the area the shapes say they cover, drawn under the very same model
+      // matrix, so that it is visible at a glance whether the placement or the shapes themselves
+      // are at fault when nothing shows up.
+      if (data.showBounds) {
+        let box = data.shapes.getBoundingBox();
+        canvas.setColor(0.0, 0.8, 0.2, 0.25);
+        canvas.drawFilledRectangle(box.leftTop.x, box.leftTop.y,
+                                   box.widthHeight.x, box.widthHeight.y);
+        canvas.setColor(1.0, 1.0, 1.0, 1.0);
+      }
+
       canvas.drawVectorGraphicsShapes(data.shapes);
       canvas.pop();
 
@@ -345,10 +365,14 @@ var application = {
     canvas.setTextVerticalAlignment(Canvas.TextVerticalAlignment.Leading);
 
     let route = data.useShapes ? "vector path shader" : "software texture";
+    let box = data.shapes.getBoundingBox();
     let lines = [
       "route: " ~ route ~ "   (G switches)",
       "zoom: " ~ Math.round(data.zoom * 100.0) ~ "%   (W / S or the mouse wheel)",
       "shapes: " ~ data.shapes.getCountShapes() ~ "   gradients: " ~ data.shapes.getCountGradients(),
+      "bounds: " ~ Math.round(box.leftTop.x) ~ ", " ~ Math.round(box.leftTop.y) ~
+        "  size " ~ Math.round(box.widthHeight.x) ~ " x " ~ Math.round(box.widthHeight.y) ~
+        "   (B outlines it)",
       "recorded at: " ~ Math.round(data.builtZoom * 100.0) ~ "%   (N records again)",
       "rotation: " ~ (data.rotate ? "on" : "off") ~ "   (R toggles, Space resets)"
     ];

@@ -19,8 +19,27 @@ program keeps running.
 | `R` | turn the rotation on and off |
 | `W` / `S` | zoom in and out, as does the mouse wheel |
 | `N` | record the shapes again at the size they are currently drawn at |
+| `B` | outline the area the recorded shapes cover |
 | `Space` | back to the starting view |
 | `F5` | reload the script |
+
+## Command line
+
+| Option | What it does |
+|---|---|
+| `--screenshot <file>` | write the frame buffer to that PNG file and end the program |
+| `--screenshot-delay <n>` | how many frames to let pass first, 30 by default |
+| `--screenshot-keep-running` | take the picture but carry on instead of ending |
+
+`--screenshot` is what makes an unattended run useful: it ends by itself, so
+
+```
+./svgexample --screenshot /tmp/tiger.png
+```
+
+leaves a picture behind and needs nobody to close a window. It goes through
+`TpvFramebufferCapture` and `SavePNGImageAsFile`, so it captures what was really presented rather
+than what the window manager has on screen.
 
 ## What to look at
 

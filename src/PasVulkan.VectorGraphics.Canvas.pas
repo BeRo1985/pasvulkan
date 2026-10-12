@@ -1097,9 +1097,16 @@ begin
   end;
 
  finally
+
+  // The shapes collected above are only turned into a draw call on the next flush, and that
+  // reads the buffer pool of the canvas to find the descriptor set they are to be drawn with.
+  // Putting the old pool back first would leave them without one, so they go out now.
+  aCanvas.Flush;
+
   aCanvas.Color:=OldColor;
   aCanvas.Texture:=OldTexture;
   aCanvas.VectorPathBufferPool:=OldBufferPool;
+
  end;
 
 end;
