@@ -633,7 +633,11 @@ float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout i
   // polygon is oriented counter-clockwise) or -1 (if the polygon is oriented clockwise).  
   if(abs(lineSegment.y) > 1e-8){
     float t = -(A.y - pos.y) / lineSegment.y;
-    winding += ((t >= 0.0) && (t <= 1.0) && (mix(A.x, B.x, t) <= pos.x)) ?
+    // The parameter range is half open, so t of zero counts and t of one does not. Where two
+    // segments meet, the shared point would otherwise be counted twice and every point on that
+    // exact height would come out with a winding one too high. ComputeWindingAtPosition in
+    // PasVulkan.VectorPath.pas, which fills the meta winding setting lines, follows the same rule.
+    winding += ((t >= 0.0) && (t < 1.0) && (mix(A.x, B.x, t) <= pos.x)) ?
                  ((B.y < A.y) ? -1 : 1) :
                  0;
   }   
@@ -680,19 +684,20 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
       if (d > 0.0) {
         vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
         vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
-        winding += (((t.x >= 0.0) && (t.x <= 1.0)) && (h.x <= pos.x)) ?
-                    (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) : 
+        // Half open parameter range, see the note in getLineDistanceAndUpdateWinding.
+        winding += (((t.x >= 0.0) && (t.x < 1.0)) && (h.x <= pos.x)) ?
+                    (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) :
                     0;
-        winding += (((t.y >= 0.0) && (t.y <= 1.0)) && (h.y <= pos.x)) ? 
-                    (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) : 
+        winding += (((t.y >= 0.0) && (t.y < 1.0)) && (h.y <= pos.x)) ?
+                    (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) :
                     0;
       }          
     } else if (abs(b) > 1e-8) {
       // One root case
       float t = -c / b;
       float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);  
-      winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
-                  (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) : 
+      winding += ((t >= 0.0) && (t < 1.0) && (h <= pos.x)) ?
+                  (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) :
                    0;
     } else {
       // Otherwise treat as a horizontal line segment
@@ -700,9 +705,9 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
       if (abs(dy) > 1e-8) {
         float t = (pos.y - A.y) / dy;
         float h = mix(A.x, C.x, t);  
-        winding += ((t >= 0.0) && (t <= 1.0) && (h <= pos.x)) ? 
-                    ((dy < 0.0) ? -1 : 1) : 
-                    0;                    
+        winding += ((t >= 0.0) && (t < 1.0) && (h <= pos.x)) ?
+                    ((dy < 0.0) ? -1 : 1) :
+                    0;
       }
     }
   } 
@@ -874,11 +879,18 @@ float sampleVectorPathShape(const vec3 shapeCoord){
         }                         
       }
       signedDistance *= (((vectorPathGPUShape.flagsStartGridCellIndexGridSize.x & 1) != 0) ?
-                         ((winding & 1) != 0) /* even odd rule */ : 
+                         ((winding & 1) != 0) /* even odd rule */ :
                          (winding != 0) /* non-zero rule */
-                        ) ? -1.0 : 1.0;      
-    }       
+                        ) ? -1.0 : 1.0;
+    }
   }
+  // A cell holding no edge at all leaves the distance at its starting value, and a cell that is
+  // simply far from any edge gives a large one. Either way the step below only needs to know how
+  // fast the distance changes right at the outline, so it is capped at the radius within which a
+  // cell is guaranteed to carry every segment near it. Without the cap the screen space
+  // derivative across a cell border, where one side holds a real distance and the other does not,
+  // comes out enormous and smears whole cells.
+  signedDistance = clamp(signedDistance, -1.41421356, 1.41421356);
   float d = fwidth(signedDistance);
   return linearstep(d, 0.0, signedDistance);
 }

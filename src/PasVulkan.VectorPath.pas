@@ -807,6 +807,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
              public
               constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox); reintroduce;
               destructor Destroy; override;
+             public
+              // The segments a point inside this cell has to be tested against, which is what the
+              // shader walks, including the meta winding setting lines that carry the winding
+              // everything to the left of the cell contributes.
+              property Segments:TpvVectorPathSegments read fSegments;
+              property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
+              // The bounding box widened by the coordinate extents, which is the area a segment
+              // has to touch to be taken into this cell.
+              property ExtendedBoundingBox:TpvVectorPathBoundingBox read fExtendedBoundingBox;
             end;
             TGridCells=TpvObjectGenericList<TGridCell>;
       private
@@ -825,8 +834,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fShapeIndex:TpvInt32;
        fBoundingBoxExtent:TpvDouble;
       private
-       procedure ClearAndInvalidateBufferRanges; 
+       procedure ClearAndInvalidateBufferRanges;
        procedure UpdateBufferPool;
+      public
+       // The winding at a point, by casting a ray to the left and counting the crossings of the
+       // given segments. Public because it is the one definition of what the grid has to add up
+       // to, which is what makes it checkable from the outside.
        class function ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32; static;
       public
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
@@ -836,6 +849,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // The bounding box already widened by the extent, so a caller that draws a quad over it
        // covers the whole antialiased edge and not just the geometry.
        property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
+       // The grid the shader looks a point up in, row by row, and how many cells it has per axis.
+       property GridCells:TGridCells read fGridCells;
+       property Resolution:TpvInt32 read fResolution;
+       // The outline this shape was built from, after the cubic curves were turned into quadratic
+       // ones, which is what the cells hold their segments of.
+       property VectorPathShape:TpvVectorPathShape read fVectorPathShape;
        // The index into the shapes buffer, which is what a shader needs in order to find this
        // shape, and -1 as long as the shape has none.
        property ShapeIndex:TpvInt32 read fShapeIndex;
@@ -6790,11 +6809,14 @@ begin
     BoundingBox:=Segment.GetBoundingBox;
     if Segment.Type_<>TpvVectorPathSegmentType.MetaWindingSettingLine then begin
      if fExtendedBoundingBox.Intersect(BoundingBox) then begin
+      // A segment that reaches into this cell is evaluated inside it, point by point, so it must
+      // not also go into the starting winding below, which would count it a second time.
       fSegments.Add(Segment);
-     end;
-     if ((BoundingBox.MinMax[0].x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[0].x+TpvVectorPathBoundingBox.EPSILON)) and
-        ((BoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) and
-        ((fExtendedBoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(BoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) then begin
+     end else if ((BoundingBox.MinMax[0].x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[0].x+TpvVectorPathBoundingBox.EPSILON)) and
+                 ((BoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) and
+                 ((fExtendedBoundingBox.MinMax[0].y-TpvVectorPathBoundingBox.EPSILON)<=(BoundingBox.MinMax[1].y+TpvVectorPathBoundingBox.EPSILON)) then begin
+      // Everything else that lies to the left of the cell and spans its rows contributes a fixed
+      // amount to every point in it, which is what the meta winding setting lines carry.
       IntersectionSegments.Add(Segment);
      end;
     end;
@@ -6833,6 +6855,24 @@ begin
 
     YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
     try
+
+     // Where a segment to the left starts, ends or turns around in y, the number of times it
+     // crosses a scan line changes, so the starting winding has to change there too. The bounding
+     // box of a segment has exactly those two values on its y axis, extrema included, so it
+     // provides them without having to solve for them again.
+     for Segment in IntersectionSegments do begin
+      BoundingBox:=Segment.GetBoundingBox;
+      for PointIndex:=0 to 1 do begin
+       CurrentY:=BoundingBox.MinMax[PointIndex].y;
+       if (CurrentY>fExtendedBoundingBox.MinMax[0].y) and
+          (CurrentY<fExtendedBoundingBox.MinMax[1].y) and
+          not YCoordinateHashMap.ExistKey(CurrentY) then begin
+        YCoordinateHashMap.Add(CurrentY,true);
+        YCoordinates.Add(CurrentY);
+       end;
+      end;
+     end;
+
      for Vector in IntersectionPoints do begin
       //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
       if Vector.x<fExtendedBoundingBox.MinMax[0].x then begin
@@ -7170,6 +7210,10 @@ class function TpvVectorPathGPUShape.ComputeWindingAtPosition(const aSegments:Tp
 // - Increment winding for upward-crossing segments (dy > 0)
 // - Decrement winding for downward-crossing segments (dy < 0)
 // The winding number indicates how many times the path winds around the point.
+// The curve parameter is taken half open, so t of zero counts and t of one does not. Where two
+// segments meet, the shared point would otherwise be counted twice, which puts the winding of
+// every point on that exact height out by one and shows up as single wrong scan lines. The
+// winding code in canvas.frag follows the same rule, so that both sides agree.
 const EPSILON=1e-8;
 var SegmentIndex,RootIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
@@ -7201,7 +7245,7 @@ begin
 
      // Line is not horizontal, compute intersection parameter t
      ParamT:=(aY-P0.y)/LineDY;
-     if (ParamT>=0.0) and (ParamT<=1.0) then begin
+     if (ParamT>=0.0) and (ParamT<1.0) then begin
 
       // Intersection is within line segment bounds
       ParamX:=P0.x+((P1.x-P0.x)*ParamT);
@@ -7245,7 +7289,7 @@ begin
       ParamT1:=(-QuadB+QuadDisc)/(2.0*QuadA);
 
       // Check first root
-      if (ParamT0>=0.0) and (ParamT0<=1.0) then begin
+      if (ParamT0>=0.0) and (ParamT0<1.0) then begin
 
        // Evaluate curve x-coordinate at this y-intersection
        ParamX0:=(P0.x*((1.0-ParamT0)*(1.0-ParamT0)))+
@@ -7267,7 +7311,7 @@ begin
       end;
 
       // Check second root
-      if (ParamT1>=0.0) and (ParamT1<=1.0) then begin
+      if (ParamT1>=0.0) and (ParamT1<1.0) then begin
 
        // Evaluate curve x-coordinate at this y-intersection
        ParamX1:=(P0.x*((1.0-ParamT1)*(1.0-ParamT1)))+
@@ -7294,7 +7338,7 @@ begin
 
      // Linear in y: single root t = (aY - P0.y) / QuadB
      ParamT:=(aY-P0.y)/QuadB;
-     if (ParamT>=0.0) and (ParamT<=1.0) then begin
+     if (ParamT>=0.0) and (ParamT<1.0) then begin
       ParamX:=(P0.x*sqr(1.0-ParamT))+
               (P1.x*2.0*(1.0-ParamT)*ParamT)+
               (P2.x*sqr(ParamT));
@@ -7313,7 +7357,7 @@ begin
      LineDY:=P2.y-P0.y;
      if abs(LineDY)>EPSILON then begin
       ParamT:=(aY-P0.y)/LineDY;
-      if (ParamT>=0.0) and (ParamT<=1.0) then begin
+      if (ParamT>=0.0) and (ParamT<1.0) then begin
        ParamX:=P0.x+((P2.x-P0.x)*ParamT);
        if ParamX<=aX then begin
         if P2.y<P0.y then begin
@@ -7352,7 +7396,7 @@ begin
      for RootIndex:=0 to length(Roots)-1 do begin
 
       ParamT:=Roots[RootIndex];
-      if (ParamT>=0.0) and (ParamT<=1.0) then begin
+      if (ParamT>=0.0) and (ParamT<1.0) then begin
 
        // Root is within curve bounds, evaluate x-coordinate
        ParamX:=(((CubicCoef3.x*ParamT)+CubicCoef2.x)*ParamT+CubicCoef1.x)*ParamT+CubicCoef0.x;
