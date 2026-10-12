@@ -268,6 +268,24 @@ type EpvVectorGraphicsCanvas=class(Exception);
      // document through TpvVectorGraphicsCanvasTexture instead.
      TpvVectorGraphicsCanvasShapes=class
       private
+       type { TCompositingRingEntry }
+            // One slot of the ring the compositing buffer is drawn through. There is more than one
+            // of them because the submit is not waited for any more: while the GPU is still
+            // drawing one frame and the canvas is still sampling what came out of it, the next
+            // frame must have a texture, a command buffer and a fence that nobody else is on.
+            TCompositingRingEntry=record
+             Texture:TpvVulkanTexture;
+             ImageView:TpvVulkanImageView;
+             FrameBuffer:TpvVulkanFrameBuffer;
+             CommandBuffer:TpvVulkanCommandBuffer;
+             Fence:TpvVulkanFence;
+             // Whether a submit of this slot is still on its way, which is what says that the
+             // fence has to be waited for before the slot is taken again.
+             InFlight:boolean;
+            end;
+            PCompositingRingEntry=^TCompositingRingEntry;
+            TCompositingRingEntries=array of TCompositingRingEntry;
+      private
        fDevice:TpvVulkanDevice;
        fBufferPool:TpvVectorPathGPUBufferPool;
        fOwnsBufferPool:boolean;
@@ -296,14 +314,18 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // values the way every other 2D renderer does, and the hardware decodes again on the way
        // out. VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, which CreateSimple2DTarget sets whenever it is
        // given a second format, is what lets one image be seen as both.
-       fCompositingTexture:TpvVulkanTexture;
-       fCompositingImageView:TpvVulkanImageView;
+       // The render pass and the canvas are the same for every slot, since all slots carry the
+       // same format and size; only the attachment and what records into it go round.
        fCompositingRenderPass:TpvVulkanRenderPass;
-       fCompositingFrameBuffer:TpvVulkanFrameBuffer;
        fCompositingCanvas:TpvCanvas;
+       fCompositingCommandPool:TpvVulkanCommandPool;
+       fCompositingRing:TCompositingRingEntries;
+       fCompositingRingIndex:TpvSizeInt;
+       fCompositingRingLength:TpvSizeInt;
        fCompositingWidth:TpvInt32;
        fCompositingHeight:TpvInt32;
        procedure ReleaseCompositingBuffer;
+       procedure SetCompositingRingLength(const aCompositingRingLength:TpvSizeInt);
        function EnsureCompositingBuffer(const aGraphicsQueue:TpvVulkanQueue;
                                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                         const aGraphicsFence:TpvVulkanFence;
@@ -401,6 +423,11 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // edge a quarter of a pixel outwards, which closes most of the seam, and a one closes it
        // completely at the price of drawing everything thinner than a pixel twice as solid.
        property SeamCoverageWidening:TpvFloat read fSeamCoverageWidening write fSeamCoverageWidening;
+       // How many frames the SRGBCompositingBuffer mode keeps in the air at once. It needs to be
+       // at least as many as the application lets run before it waits, since the whole point of
+       // the ring is that nothing is overwritten while the GPU is still on it. Setting it throws
+       // the buffer away, so the next draw builds the ring anew.
+       property CompositingRingLength:TpvSizeInt read fCompositingRingLength write SetCompositingRingLength;
      end;
 
 // The short way for the common case: an SVG from a file, a stream or a string, straight into a
@@ -834,11 +861,14 @@ begin
  fSeamMode:=TpvVectorGraphicsCanvasSeamMode.None;
  fSeamCoverageWidening:=0.5;
 
- fCompositingTexture:=nil;
- fCompositingImageView:=nil;
  fCompositingRenderPass:=nil;
- fCompositingFrameBuffer:=nil;
  fCompositingCanvas:=nil;
+ fCompositingCommandPool:=nil;
+ fCompositingRing:=nil;
+ fCompositingRingIndex:=0;
+ // Three is what a swap chain usually keeps in the air, and one more than that costs only another
+ // texture while one less would put the wait back in.
+ fCompositingRingLength:=3;
  fCompositingWidth:=0;
  fCompositingHeight:=0;
 
@@ -901,14 +931,44 @@ begin
 end;
 
 procedure TpvVectorGraphicsCanvasShapes.ReleaseCompositingBuffer;
+var Index:TpvSizeInt;
+    Entry:PCompositingRingEntry;
 begin
+ // Nothing may be torn down while the GPU is still reading it, and since the submits are no
+ // longer waited for, that has to happen here.
+ for Index:=0 to length(fCompositingRing)-1 do begin
+  Entry:=@fCompositingRing[Index];
+  if Entry^.InFlight and assigned(Entry^.Fence) then begin
+   Entry^.Fence.WaitFor;
+   Entry^.Fence.Reset;
+  end;
+  Entry^.InFlight:=false;
+ end;
  FreeAndNil(fCompositingCanvas);
- FreeAndNil(fCompositingFrameBuffer);
+ for Index:=0 to length(fCompositingRing)-1 do begin
+  Entry:=@fCompositingRing[Index];
+  FreeAndNil(Entry^.FrameBuffer);
+  FreeAndNil(Entry^.ImageView);
+  FreeAndNil(Entry^.Texture);
+  FreeAndNil(Entry^.CommandBuffer);
+  FreeAndNil(Entry^.Fence);
+ end;
+ fCompositingRing:=nil;
+ fCompositingRingIndex:=0;
+ FreeAndNil(fCompositingCommandPool);
  FreeAndNil(fCompositingRenderPass);
- FreeAndNil(fCompositingImageView);
- FreeAndNil(fCompositingTexture);
  fCompositingWidth:=0;
  fCompositingHeight:=0;
+end;
+
+procedure TpvVectorGraphicsCanvasShapes.SetCompositingRingLength(const aCompositingRingLength:TpvSizeInt);
+var CompositingRingLength:TpvSizeInt;
+begin
+ CompositingRingLength:=Min(Max(aCompositingRingLength,1),16);
+ if fCompositingRingLength<>CompositingRingLength then begin
+  fCompositingRingLength:=CompositingRingLength;
+  ReleaseCompositingBuffer;
+ end;
 end;
 
 // Builds the buffer the document is drawn into, or keeps the one there is when it already has the
@@ -917,6 +977,8 @@ function TpvVectorGraphicsCanvasShapes.EnsureCompositingBuffer(const aGraphicsQu
                                                                const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                                                                const aGraphicsFence:TpvVulkanFence;
                                                                const aWidth,aHeight:TpvInt32):boolean;
+var Index:TpvSizeInt;
+    Entry:PCompositingRingEntry;
 begin
 
  if (aWidth<1) or (aHeight<1) then begin
@@ -932,45 +994,6 @@ begin
  ReleaseCompositingBuffer;
 
  try
-
-  // The sRGB format is the one the texture keeps and therefore the one the canvas samples it
-  // through. The plain view over the same memory comes right after, for the render pass to write
-  // into.
-  fCompositingTexture:=TpvVulkanTexture.CreateSimple2DTarget(fDevice,
-                                                             aGraphicsQueue,
-                                                             aGraphicsCommandBuffer,
-                                                             aGraphicsFence,
-                                                             true,
-                                                             VK_FORMAT_R8G8B8A8_SRGB,
-                                                             VK_FORMAT_R8G8B8A8_SRGB,
-                                                             aWidth,
-                                                             aHeight,
-                                                             [TpvVulkanTextureUsageFlag.ColorAttachment,
-                                                              TpvVulkanTextureUsageFlag.Sampled,
-                                                              TpvVulkanTextureUsageFlag.TransferDst],
-                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                             pvAllocationGroupIDCanvas,
-                                                             'TpvVectorGraphicsCanvasShapes.fCompositingTexture');
-
-  fCompositingTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
-  fCompositingTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
-  fCompositingTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
-  fCompositingTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-  fCompositingTexture.UpdateSampler;
-
-  fCompositingImageView:=TpvVulkanImageView.Create(fDevice,
-                                                   fCompositingTexture.Image,
-                                                   VK_IMAGE_VIEW_TYPE_2D,
-                                                   VK_FORMAT_R8G8B8A8_UNORM,
-                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                   0,
-                                                   1,
-                                                   0,
-                                                   1);
 
   // One attachment, cleared to nothing at the start and left in the layout the canvas samples it
   // from at the end, so that no barrier of its own is needed around it.
@@ -1012,23 +1035,89 @@ begin
   fCompositingRenderPass.ClearValues[0].color.float32[2]:=0.0;
   fCompositingRenderPass.ClearValues[0].color.float32[3]:=0.0;
 
-  fCompositingFrameBuffer:=TpvVulkanFrameBuffer.Create(fDevice,
-                                                       fCompositingRenderPass,
-                                                       aWidth,
-                                                       aHeight,
-                                                       1,
-                                                       [TpvVulkanFrameBufferAttachment.Create(fDevice,
-                                                                                              fCompositingTexture.Image,
-                                                                                              fCompositingImageView,
-                                                                                              aWidth,
-                                                                                              aHeight,
-                                                                                              VK_FORMAT_R8G8B8A8_UNORM,
-                                                                                              false)],
-                                                       true);
+  fCompositingCommandPool:=TpvVulkanCommandPool.Create(fDevice,
+                                                       aGraphicsQueue.QueueFamilyIndex,
+                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
-  // One buffer is enough, since what goes in is submitted and waited for before anything else
-  // touches it.
+  SetLength(fCompositingRing,fCompositingRingLength);
+  for Index:=0 to fCompositingRingLength-1 do begin
+   Entry:=@fCompositingRing[Index];
+   Entry^.Texture:=nil;
+   Entry^.ImageView:=nil;
+   Entry^.FrameBuffer:=nil;
+   Entry^.CommandBuffer:=nil;
+   Entry^.Fence:=nil;
+   Entry^.InFlight:=false;
+  end;
+
+  for Index:=0 to fCompositingRingLength-1 do begin
+
+   Entry:=@fCompositingRing[Index];
+
+   // The sRGB format is the one the texture keeps and therefore the one the canvas samples it
+   // through. The plain view over the same memory comes right after, for the render pass to write
+   // into.
+   Entry^.Texture:=TpvVulkanTexture.CreateSimple2DTarget(fDevice,
+                                                         aGraphicsQueue,
+                                                         aGraphicsCommandBuffer,
+                                                         aGraphicsFence,
+                                                         true,
+                                                         VK_FORMAT_R8G8B8A8_SRGB,
+                                                         VK_FORMAT_R8G8B8A8_SRGB,
+                                                         aWidth,
+                                                         aHeight,
+                                                         [TpvVulkanTextureUsageFlag.ColorAttachment,
+                                                          TpvVulkanTextureUsageFlag.Sampled,
+                                                          TpvVulkanTextureUsageFlag.TransferDst],
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         pvAllocationGroupIDCanvas,
+                                                         'TpvVectorGraphicsCanvasShapes.fCompositingRing.Texture');
+
+   Entry^.Texture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
+   Entry^.Texture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
+   Entry^.Texture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
+   Entry^.Texture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+   Entry^.Texture.UpdateSampler;
+
+   Entry^.ImageView:=TpvVulkanImageView.Create(fDevice,
+                                               Entry^.Texture.Image,
+                                               VK_IMAGE_VIEW_TYPE_2D,
+                                               VK_FORMAT_R8G8B8A8_UNORM,
+                                               VK_COMPONENT_SWIZZLE_IDENTITY,
+                                               VK_COMPONENT_SWIZZLE_IDENTITY,
+                                               VK_COMPONENT_SWIZZLE_IDENTITY,
+                                               VK_COMPONENT_SWIZZLE_IDENTITY,
+                                               TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                               0,
+                                               1,
+                                               0,
+                                               1);
+
+   Entry^.FrameBuffer:=TpvVulkanFrameBuffer.Create(fDevice,
+                                                   fCompositingRenderPass,
+                                                   aWidth,
+                                                   aHeight,
+                                                   1,
+                                                   [TpvVulkanFrameBufferAttachment.Create(fDevice,
+                                                                                          Entry^.Texture.Image,
+                                                                                          Entry^.ImageView,
+                                                                                          aWidth,
+                                                                                          aHeight,
+                                                                                          VK_FORMAT_R8G8B8A8_UNORM,
+                                                                                          false)],
+                                                   true);
+
+   Entry^.CommandBuffer:=TpvVulkanCommandBuffer.Create(fCompositingCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   Entry^.Fence:=TpvVulkanFence.Create(fDevice);
+
+  end;
+
   fCompositingCanvas:=TpvCanvas.Create(fDevice,nil,1);
+  // One buffer per slot of the ring, since the one a submit still reads must not be written into
+  // by the frame after it. This is the count Start, ExecuteUpload and ExecuteDraw index into, and
+  // it is not the count of processing buffers the constructor takes.
+  fCompositingCanvas.CountBuffers:=fCompositingRingLength;
   fCompositingCanvas.VulkanRenderPass:=fCompositingRenderPass;
   fCompositingCanvas.Resize(aWidth,aHeight);
   // The attachment stores plain numbers, so the shader encodes to sRGB itself and the hardware
@@ -1060,6 +1149,7 @@ var Width,Height:TpvInt32;
     MinX,MinY,MaxX,MaxY:TpvFloat;
     DestinationRect:TpvRect;
     OldTexturePremultipliedAlpha:boolean;
+    Entry:PCompositingRingEntry;
 begin
 
  Width:=aCanvas.Width;
@@ -1070,9 +1160,21 @@ begin
   exit;
  end;
 
+ Entry:=@fCompositingRing[fCompositingRingIndex];
+
+ // The slot comes round again only after the whole ring has been through, so by now the GPU is
+ // long done with it and this waits for nothing. It is still needed, because a ring that is
+ // shorter than what the application keeps in the air would otherwise overwrite what is being
+ // read.
+ if Entry^.InFlight then begin
+  Entry^.Fence.WaitFor;
+  Entry^.Fence.Reset;
+  Entry^.InFlight:=false;
+ end;
+
  // The buffer is the size of the canvas and shares its coordinate system, so everything the
  // drawing side set up carries over unchanged and what lands in the buffer lands where it belongs.
- fCompositingCanvas.Start(0);
+ fCompositingCanvas.Start(fCompositingRingIndex);
  try
   fCompositingCanvas.ViewMatrix:=aCanvas.ViewMatrix;
   fCompositingCanvas.ProjectionMatrix:=aCanvas.ProjectionMatrix;
@@ -1085,21 +1187,32 @@ begin
   fCompositingCanvas.Stop;
  end;
 
- fCompositingCanvas.ExecuteUpload(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,0);
+ fCompositingCanvas.ExecuteUpload(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,fCompositingRingIndex);
 
- aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
- aGraphicsCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
- fCompositingRenderPass.BeginRenderPass(aGraphicsCommandBuffer,
-                                        fCompositingFrameBuffer,
+ Entry^.CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ Entry^.CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+ fCompositingRenderPass.BeginRenderPass(Entry^.CommandBuffer,
+                                        Entry^.FrameBuffer,
                                         VK_SUBPASS_CONTENTS_INLINE,
                                         0,
                                         0,
                                         Width,
                                         Height);
- fCompositingCanvas.ExecuteDraw(aGraphicsCommandBuffer,0);
- fCompositingRenderPass.EndRenderPass(aGraphicsCommandBuffer);
- aGraphicsCommandBuffer.EndRecording;
- aGraphicsCommandBuffer.Execute(aGraphicsQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT),nil,nil,aGraphicsFence,true);
+ fCompositingCanvas.ExecuteDraw(Entry^.CommandBuffer,fCompositingRingIndex);
+ fCompositingRenderPass.EndRenderPass(Entry^.CommandBuffer);
+ Entry^.CommandBuffer.EndRecording;
+
+ // Submitted without waiting for it. What the canvas draws afterwards goes to the same queue and
+ // therefore runs after this, and the render pass already ends in the layout the canvas samples
+ // from with a dependency onto the fragment stage, so there is nothing left for the processor to
+ // stand around for. Waiting here is what used to cost three to four milliseconds a frame at a
+ // strong zoom: not more work, just the whole of the drawing done before anything else began.
+ Entry^.CommandBuffer.Execute(aGraphicsQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT),nil,nil,Entry^.Fence,false);
+ Entry^.InFlight:=true;
+
+ // On to the next slot right away, so that the way out below, where the document covers nothing of
+ // the canvas, leaves the ring turning as well.
+ fCompositingRingIndex:=(fCompositingRingIndex+1) mod fCompositingRingLength;
 
  // Where the document ended up on the canvas, which is the only part of the buffer worth putting
  // back. The bounding box is in the space the shapes were recorded in, so the model matrix of the
@@ -1145,7 +1258,7 @@ begin
    aCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
    aCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
    aCanvas.TexturePremultipliedAlpha:=true;
-   aCanvas.DrawTexturedRectangle(fCompositingTexture,DestinationRect);
+   aCanvas.DrawTexturedRectangle(Entry^.Texture,DestinationRect);
   finally
    aCanvas.Pop;
   end;
