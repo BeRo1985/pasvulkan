@@ -59,7 +59,7 @@ var application = {
                                  Canvas.VectorPathCoverageMode.AnalyticalAccumulation,
                                  Canvas.VectorPathCoverageMode.Supersampling];
       this.data.coverageModeNames = ["estimate", "analytical accumulation", "supersampling"];
-      this.data.coverageModeIndex = 0;
+      this.data.coverageModeIndex = 1;
       this.data.coverageSampleCounts = [2, 4, 8, 16];
       this.data.coverageSampleCountIndex = 1;
 

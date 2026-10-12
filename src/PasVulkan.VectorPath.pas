@@ -6819,7 +6819,7 @@ begin
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
 
- IntersectionPoints:=TpvVectorPathVectorList.Create;
+ // IntersectionPoints:=TpvVectorPathVectorList.Create; // <= nothing collects into it any more
  try
 
   IntersectionSegments:=TpvVectorPathSegments.Create;
@@ -6844,9 +6844,13 @@ begin
     end;
    end;
 
+   // The segments of the cell are sorted because that is the order they go to the buffers in, and
+   // one the shader walks from left to right reads them in the order it meets them.
    fSegments.SortHorizontal;
 
-   IntersectionSegments.SortHorizontal;
+   // The feeding ones are only ever added up, and a sum does not care in which order it is taken,
+   // so sorting them was work with nothing to show for it.
+   // IntersectionSegments.SortHorizontal;
 
    { Collected the heights at which the feeding segments cross each other and the left edge of the
      cell, and took those as places where the starting winding changes as well. Neither of them is
@@ -6884,8 +6888,12 @@ begin
    YCoordinates.Initialize;
    try
 
+    { A hash map kept the heights apart that two segments share, which is one allocation per cell
+      for something the sorted walk below does by itself: it skips a height that is the same as the
+      one before it, so a height collected twice costs one comparison and nothing else.
     YCoordinateHashMap:=TYCoordinateHashMap.Create(false);
     try
+    }
 
      // Where a segment to the left starts, ends or turns around in y, the number of times it
      // crosses a scan line changes, so the starting winding has to change there too.
@@ -6894,9 +6902,7 @@ begin
       for PointIndex:=0 to CountWindingChangeYCoordinates-1 do begin
        CurrentY:=WindingChangeYCoordinates[PointIndex];
        if (CurrentY>fExtendedBoundingBox.MinMax[0].y) and
-          (CurrentY<fExtendedBoundingBox.MinMax[1].y) and
-          not YCoordinateHashMap.ExistKey(CurrentY) then begin
-        YCoordinateHashMap.Add(CurrentY,true);
+          (CurrentY<fExtendedBoundingBox.MinMax[1].y) then begin
         YCoordinates.Add(CurrentY);
        end;
       end;
@@ -6914,9 +6920,9 @@ begin
       end;
      end;
      }
-    finally
+    {finally
      FreeAndNil(YCoordinateHashMap);
-    end;
+    end;}
 
     if YCoordinates.Count>=2 then begin
      TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc);
@@ -6961,7 +6967,7 @@ begin
   end;
 
  finally
-  FreeAndNil(IntersectionPoints);
+  // FreeAndNil(IntersectionPoints);
  end;
 
 end;
