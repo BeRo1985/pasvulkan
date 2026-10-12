@@ -1118,10 +1118,8 @@ float vectorPathCurveWindingArea(const vec2 a, const vec2 b, const vec2 c){
   return result;
 }
 
-// The share of the pixel whose shape space height is below the given one. The pixel maps to a
-// parallelogram in shape space, so the height across it is the sum of two values spread evenly
-// over the two sides of it, whose density is therefore the one box function folded into the other
-// and comes out as a trapezoid, and the share below a height is the integral of that.
+/* No longer needed now that the areas are worked out over an upright box, whose share below a
+   height is a plain ramp. It gave that share for the parallelogram the pixel really maps to.
 float vectorPathPixelShareBelowHeight(const float height, const float alongX, const float alongY){
   float wide = max(abs(alongX), abs(alongY)) * 0.5;
   float narrow = min(abs(alongX), abs(alongY)) * 0.5;
@@ -1149,26 +1147,33 @@ float vectorPathPixelShareBelowHeight(const float height, const float alongX, co
     return 1.0;
   }
 }
+*/
 
 // Adds up the area each edge of the outline cuts off the pixel, which is what a software
 // rasterizer does and is therefore right for a shape of any width, down to one far narrower than a
 // pixel. The grid cell only carries the segments near itself, so this holds as long as a pixel is
 // small against how far outside its own bounds a cell reaches, which it is at any scale that draws
-// a cell across several pixels. Where the mapping into pixel space has collapsed there is nothing
-// to measure an area against, and the estimate takes over.
+// a cell across several pixels. Where the pixel has no area to measure against there is nothing to
+// work out, and the estimate takes over.
 float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
   // The derivatives are taken out here, where every fragment of the quad is still on the same path
   // through the shader, since that is the only place they mean anything.
   vec2 shapePerPixelX = dFdx(shapeCoord.xy);
   vec2 shapePerPixelY = dFdy(shapeCoord.xy);
-  float areaScale = (shapePerPixelX.x * shapePerPixelY.y) - (shapePerPixelX.y * shapePerPixelY.x);
-  if(abs(areaScale) < 1e-20){
+  float pixelArea = abs((shapePerPixelX.x * shapePerPixelY.y) - (shapePerPixelX.y * shapePerPixelY.x));
+  // The pixel maps to a parallelogram in shape space, and the areas are worked out over an upright
+  // box instead: the one that reaches as far as the parallelogram does along both axes and covers
+  // the same area. Upright it has to be, because the winding of a point is defined by a ray that
+  // runs along the x axis of the shape, and the meta winding setting lines carry what everything
+  // to the left of the cell along that very axis contributes. Measuring to the left of the pixel
+  // instead points somewhere else entirely as soon as the shape is turned, and the two halves of
+  // the sum are then no longer about the same ray.
+  vec2 extent = abs(shapePerPixelX) + abs(shapePerPixelY);
+  float boxArea = extent.x * extent.y;
+  if((pixelArea < 1e-20) || (boxArea < 1e-20)){
     return sampleVectorPathShapeEstimated(shapeCoord);
   }
-  mat2 pixelFromShape = inverse(mat2(shapePerPixelX, shapePerPixelY));
-  // A mapping that turns the shape over turns every outline the other way round with it, so the
-  // areas come out with the sign the shape space winding would not have had.
-  float windingSign = (areaScale < 0.0) ? -1.0 : 1.0;
+  vec2 intoBox = 1.0 / (extent * sqrt(pixelArea / boxArea));
   float accumulatedWinding = 0.0;
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
   uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
@@ -1184,17 +1189,15 @@ float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
       switch(vectorPathGPUSegment.typeWindingPoint0.x){
         case 1u:{
           // Line
-          accumulatedWinding += windingSign *
-                                vectorPathEdgeWindingArea(pixelFromShape * (point0 - shapeCoord.xy),
-                                                          pixelFromShape * (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy));
+          accumulatedWinding += vectorPathEdgeWindingArea((point0 - shapeCoord.xy) * intoBox,
+                                                          (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy) * intoBox);
           break;
         }
         case 2u:{
           // Quadratic curve
-          accumulatedWinding += windingSign *
-                                vectorPathCurveWindingArea(pixelFromShape * (point0 - shapeCoord.xy),
-                                                           pixelFromShape * (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy),
-                                                           pixelFromShape * (vectorPathGPUSegment.point1Point2.zw - shapeCoord.xy));
+          accumulatedWinding += vectorPathCurveWindingArea((point0 - shapeCoord.xy) * intoBox,
+                                                           (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy) * intoBox,
+                                                           (vectorPathGPUSegment.point1Point2.zw - shapeCoord.xy) * intoBox);
           break;
         }
         case 3u:{
@@ -1202,11 +1205,10 @@ float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
           // rather than for an outline of its own, so what it applies to is not an area to one side
           // of an edge but the whole band of heights it spans, and the winding it carries is not
           // necessarily one.
-          float lower = min(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y;
-          float upper = max(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y;
+          float lower = (min(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y) * intoBox.y;
+          float upper = (max(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y) * intoBox.y;
           accumulatedWinding += float(int(vectorPathGPUSegment.typeWindingPoint0.y)) * // <= GLSL: int(uint) preserves bit pattern
-                                (vectorPathPixelShareBelowHeight(upper, shapePerPixelX.y, shapePerPixelY.y) -
-                                 vectorPathPixelShareBelowHeight(lower, shapePerPixelX.y, shapePerPixelY.y));
+                                (clamp(upper + 0.5, 0.0, 1.0) - clamp(lower + 0.5, 0.0, 1.0));
           break;
         }
         default:{
