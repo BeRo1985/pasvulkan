@@ -6848,6 +6848,14 @@ begin
 
    IntersectionSegments.SortHorizontal;
 
+   { Collected the heights at which the feeding segments cross each other and the left edge of the
+     cell, and took those as places where the starting winding changes as well. Neither of them is
+     one. Where two segments cross, both of them go on crossing the scan line, so the number of
+     crossings and with it the winding stays what it was. And a feeding segment lies wholly to the
+     left of the cell by the way it was picked, so it never reaches that left edge at all. The
+     heights that really matter are the ones GetWindingChangeYCoordinates gives below, and these
+     cost a pass over every pair of segments in every cell, which was most of the time the whole
+     grid took to build.
    DummyGridCellLeftSplitSegmentLine:=TpvVectorPathSegmentLine.Create(fExtendedBoundingBox.MinMax[0],TpvVectorPathVector.Create(fExtendedBoundingBox.MinMax[0].x,fExtendedBoundingBox.MinMax[1].y));
    try
 
@@ -6871,6 +6879,7 @@ begin
      IntersectionPoints.Delete(PointIndex);
     end;
    end;
+   }
 
    YCoordinates.Initialize;
    try
@@ -6893,6 +6902,7 @@ begin
       end;
      end;
 
+     { Went with the crossing points collected above, which are no longer collected.
      for Vector in IntersectionPoints do begin
       //if (Vector.x-TpvVectorPathBoundingBox.EPSILON)<=(fExtendedBoundingBox.MinMax[1].x+TpvVectorPathBoundingBox.EPSILON) then begin
       if Vector.x<fExtendedBoundingBox.MinMax[0].x then begin
@@ -6903,6 +6913,7 @@ begin
        end;
       end;
      end;
+     }
     finally
      FreeAndNil(YCoordinateHashMap);
     end;
@@ -7016,8 +7027,10 @@ var Contour:TpvVectorPathContour;
     Segment,NewSegment:TpvVectorPathSegment;
     IndexX,IndexY:TpvSizeInt;
     tx0,tx1,ty0,ty1:TpvDouble;
-    OutlineSegments:TpvVectorPathSegments;
+    OutlineSegments,RowSegments:TpvVectorPathSegments;
     ContourStart,ContourEnd:TpvVectorPathVector;
+    SegmentBoundingBox:TpvVectorPathBoundingBox;
+    RowMinY,RowMaxY:TpvDouble;
  // Where a contour begins and where it ends, which is what tells whether it comes back to where it
  // started.
  function ContourStartPoint(const aContour:TpvVectorPathContour):TpvVectorPathVector;
@@ -7127,6 +7140,7 @@ begin
 
  // The segments of the outline as they are right now, before any cell has added its meta winding
  // setting lines to the shape, which is what every cell is to be built from.
+ RowSegments:=nil;
  OutlineSegments:=TpvVectorPathSegments.Create;
  try
 
@@ -7135,14 +7149,32 @@ begin
    OutlineSegments.Add(Segment);
   end;
 
+  RowSegments:=TpvVectorPathSegments.Create;
+  RowSegments.OwnsObjects:=false;
+
   for IndexY:=0 to fResolution-1 do begin
    ty0:=IndexY/fResolution;
    ty1:=(IndexY+1)/fResolution;
+
+   // Both ways a segment can matter to a cell, reaching into it and feeding its starting winding
+   // from the left, need it to span some of the heights the cell covers. So the segments of a row
+   // of cells are picked out once here instead of every cell walking all of them, which is what
+   // makes the cost of a row depend on how much of the outline really runs through it.
+   RowMinY:=((fBoundingBox.MinMax[0].y*(1.0-ty0))+(fBoundingBox.MinMax[1].y*ty0))-(TpvVectorPathGPUShape.CoordinateExtents+TpvVectorPathBoundingBox.EPSILON);
+   RowMaxY:=((fBoundingBox.MinMax[0].y*(1.0-ty1))+(fBoundingBox.MinMax[1].y*ty1))+(TpvVectorPathGPUShape.CoordinateExtents+TpvVectorPathBoundingBox.EPSILON);
+   RowSegments.Clear;
+   for Segment in OutlineSegments do begin
+    SegmentBoundingBox:=Segment.GetBoundingBox;
+    if (SegmentBoundingBox.MinMax[0].y<=RowMaxY) and (SegmentBoundingBox.MinMax[1].y>=RowMinY) then begin
+     RowSegments.Add(Segment);
+    end;
+   end;
+
    for IndexX:=0 to fResolution-1 do begin
     tx0:=IndexX/fResolution;
     tx1:=(IndexX+1)/fResolution;
     fGridCells.Add(TGridCell.Create(self,
-                                    OutlineSegments,
+                                    RowSegments,
                                     TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx0))+(fBoundingBox.MinMax[1].x*tx0),
                                                                                                (fBoundingBox.MinMax[0].y*(1.0-ty0))+(fBoundingBox.MinMax[1].y*ty0)),
                                                                     TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx1))+(fBoundingBox.MinMax[1].x*tx1),
@@ -7151,6 +7183,7 @@ begin
   end;
 
  finally
+  FreeAndNil(RowSegments);
   FreeAndNil(OutlineSegments);
  end;
 
