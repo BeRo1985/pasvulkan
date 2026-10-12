@@ -6916,6 +6916,88 @@ canvas.setFillStyle(Canvas.FillStyle.Image);
 
 '''''
 
+==== getVectorPathCoverageMode()
+
+*Usage:*
+
+[source,js]
+----
+let mode = canvas.getVectorPathCoverageMode();
+----
+
+* *Description:* Returns how much of a pixel an outline covers is currently worked out for vector
+path shapes.
+* *Parameters:* None.
+* *Return Value:* Number representing the coverage mode (see Canvas.VectorPathCoverageMode).
+
+'''''
+
+==== setVectorPathCoverageMode()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setVectorPathCoverageMode(mode);
+----
+
+* *Description:* Sets how much of a pixel an outline covers is worked out for vector path shapes,
+which is what decides how a shape thinner than a pixel comes out. It applies to
+<<_drawvectorgraphicsshapesshapes,drawVectorGraphicsShapes()>> and to every other
+drawing that goes through the vector path shader, and not to the software rasterized texture route.
+* *Parameters:*
+** `+mode+` (number): Coverage mode (use Canvas.VectorPathCoverageMode constants)
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setVectorPathCoverageMode(Canvas.VectorPathCoverageMode.AnalyticalAccumulation);
+----
+
+'''''
+
+==== getVectorPathCoverageSampleCount()
+
+*Usage:*
+
+[source,js]
+----
+let count = canvas.getVectorPathCoverageSampleCount();
+----
+
+* *Description:* Returns how many samples the `+Supersampling+` coverage mode takes inside a pixel.
+* *Parameters:* None.
+* *Return Value:* Number of samples.
+
+'''''
+
+==== setVectorPathCoverageSampleCount()
+
+*Usage:*
+
+[source,js]
+----
+canvas.setVectorPathCoverageSampleCount(count);
+----
+
+* *Description:* Sets how many samples the `+Supersampling+` coverage mode takes inside a pixel.
+Four, which is the default, means the rotated grid, and any other count means that many samples on
+a grid that many cells wide, one per row and one per column. The count is clamped to between one
+and sixteen, which is what the shader will run. It has no effect on the other two coverage modes.
+* *Parameters:*
+** `+count+` (number): Number of samples, one to sixteen
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+canvas.setVectorPathCoverageMode(Canvas.VectorPathCoverageMode.Supersampling);
+canvas.setVectorPathCoverageSampleCount(8);
+----
+
+'''''
+
 ==== getColor()
 
 *Usage:*
@@ -7598,6 +7680,29 @@ Vector path fill rules:
 
 * `+NonZero+`: Non-zero winding rule
 * `+EvenOdd+`: Even-odd rule
+
+'''''
+
+==== Canvas.VectorPathCoverageMode
+
+How much of a pixel an outline covers, which is the one thing the vector path shader has to work
+out rather than know:
+
+* `+Estimate+`: From the distance to the nearest edge. One sample per pixel, and right wherever the
+outline is locally a straight edge, but a shape thinner than a pixel comes out too solid, because
+the distance alone cannot tell that there is a second edge just behind the first.
+* `+AnalyticalAccumulation+`: By adding up the area each edge cuts off the pixel, which is what a
+software rasterizer does and is therefore right for thin shapes as well.
+* `+Supersampling+`: By asking the `+Estimate+` question at several places inside the pixel and
+averaging. Four samples on a rotated grid by default, see
+<<_setvectorpathcoveragesamplecount,setVectorPathCoverageSampleCount()>>.
+
+*Example:*
+
+[source,js]
+----
+canvas.setVectorPathCoverageMode(Canvas.VectorPathCoverageMode.Supersampling);
+----
 
 '''''
 

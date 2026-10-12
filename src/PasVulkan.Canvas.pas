@@ -88,6 +88,11 @@ const pvcvsRenderingModeShift=0;
       pvcvsFillWrapModeShift=12;
       pvcvsSignedDistanceFieldVariantShift=14;
 
+      // The most samples the Supersampling coverage mode of the vector path shader takes inside
+      // one pixel. The same number is the loop bound in sampleVectorPathShapeSupersampled in
+      // canvas.frag, so the two have to agree.
+      pvCanvasVectorPathMaximalCoverageSampleCount=16;
+
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
       (
@@ -164,6 +169,27 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        Pad=0,
        WrappedRepeat=1,
        MirroredRepeat=2
+      );
+
+     // How much of a pixel an outline covers, which is the one thing the vector path shader has
+     // to estimate rather than know. Same note about the numbering.
+     PpvCanvasVectorPathCoverageMode=^TpvCanvasVectorPathCoverageMode;
+     TpvCanvasVectorPathCoverageMode=
+      (
+       // From the distance to the nearest edge, through the screen space derivative of it. One
+       // sample and one distance per pixel, which is as cheap as it gets and right wherever the
+       // outline is locally a straight edge. A shape thinner than a pixel comes out too solid,
+       // because the distance alone cannot tell that there is a second edge just behind the
+       // first.
+       Estimate=0,
+       // By adding up the area each edge cuts off the pixel, which is what a software rasterizer
+       // does and is therefore right for thin shapes as well. Costs a little more per edge and
+       // nothing per pixel.
+       AnalyticalAccumulation=1,
+       // By asking the Estimate question at several places inside the pixel and averaging. Four
+       // samples on a rotated grid by default, which is what breaks up the near horizontal and
+       // near vertical edges that plain grid sampling leaves ragged.
+       Supersampling=2
       );
 
      PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
@@ -714,11 +740,19 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        // The pool whose shapes DrawVectorPathShape draws. Set from outside and not owned here,
        // because one pool is meant to be shared by everything that draws vector path shapes.
        fVectorPathBufferPool:TpvVectorPathGPUBufferPool;
-       // The gradient a vector path shape is filled with, in the layout the comment above
-       // sampleVectorPathGradient in canvas.frag spells out. It takes the place of the fill
-       // matrix in the push constants of such a draw, so that the fill matrix of the state, which
-       // belongs to the caller, stays untouched.
-       fVectorPathGradient:TpvMatrix4x4;
+       // What a vector path shape is filled with and how its coverage is worked out, in the
+       // layout the comment above sampleVectorPathGradient in canvas.frag spells out. It takes
+       // the place of the fill matrix in the push constants of such a draw, so that the fill
+       // matrix of the state, which belongs to the caller, stays untouched.
+       fVectorPathFillMatrix:TpvMatrix4x4;
+       // How much of a pixel an outline covers is worked out. A quality setting rather than a
+       // drawing state, so it sits on the canvas next to the buffer pool instead of in the state
+       // that is pushed and popped. Changing it ends the current batch, since it rides along in
+       // the push constants.
+       fVectorPathCoverageMode:TpvCanvasVectorPathCoverageMode;
+       // How many samples Supersampling takes inside a pixel. Four means the rotated grid, any
+       // other count means that many rooks on an n by n grid.
+       fVectorPathCoverageSampleCount:TpvInt32;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
@@ -760,6 +794,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetGUIElementMode(const aGUIElementMode:boolean);
        function GetVectorPathMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetVectorPathMode(const aVectorPathMode:boolean);
+       procedure SetVectorPathCoverageSampleCount(const aVectorPathCoverageSampleCount:TpvInt32);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetZPosition:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1007,6 +1042,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property VectorPathMode:boolean read GetVectorPathMode write SetVectorPathMode;
        property VectorPathBufferPool:TpvVectorPathGPUBufferPool read fVectorPathBufferPool write fVectorPathBufferPool;
+       property VectorPathCoverageMode:TpvCanvasVectorPathCoverageMode read fVectorPathCoverageMode write fVectorPathCoverageMode;
+       property VectorPathCoverageSampleCount:TpvInt32 read fVectorPathCoverageSampleCount write SetVectorPathCoverageSampleCount;
        property State:TpvCanvasState read fState;
        property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
        property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
@@ -3819,7 +3856,11 @@ begin
 
  fVectorPathBufferPool:=nil;
 
- fVectorPathGradient:=TpvMatrix4x4.Null;
+ fVectorPathFillMatrix:=TpvMatrix4x4.Null;
+
+ fVectorPathCoverageMode:=TpvCanvasVectorPathCoverageMode.Estimate;
+
+ fVectorPathCoverageSampleCount:=4;
 
  fShape:=TpvCanvasShape.Create;
 
@@ -4911,6 +4952,13 @@ begin
  end;
 end;
 
+procedure TpvCanvas.SetVectorPathCoverageSampleCount(const aVectorPathCoverageSampleCount:TpvInt32);
+begin
+ // Clamped to what the sampling loop in the shader is willing to run, so that a count out of
+ // range costs frames rather than producing nothing at all.
+ fVectorPathCoverageSampleCount:=Min(Max(aVectorPathCoverageSampleCount,1),pvCanvasVectorPathMaximalCoverageSampleCount);
+end;
+
 procedure TpvCanvas.SetScissor(const aScissor:TVkRect2D);
 begin
  if (fState.fScissor.offset.x<>aScissor.offset.x) or
@@ -5550,8 +5598,9 @@ begin
    QueueItem^.Scissor:=fState.fScissor;
    QueueItem^.TransformMatrix:=fState.fViewMatrix*fState.fProjectionMatrix;
    if CurrentTextureMode=4 then begin
-    // A vector path draw puts its gradient where the fill matrix would otherwise go.
-    QueueItem^.FillMatrix:=fVectorPathGradient;
+    // A vector path draw puts its gradient and its coverage setting where the fill matrix would
+    // otherwise go.
+    QueueItem^.FillMatrix:=fVectorPathFillMatrix;
    end else begin
     QueueItem^.FillMatrix:=fState.fFillMatrix;
    end;
@@ -8328,7 +8377,7 @@ var GPUShape:TpvVectorPathGPUShape;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
-    GradientFillMatrix:TpvMatrix4x4;
+    FillMatrix:TpvMatrix4x4;
 begin
 
  result:=self;
@@ -8346,24 +8395,26 @@ begin
  SetVectorPathMode(true);
  SetAtlasTexture(nil);
 
- // The gradient rides along in the fill matrix push constant, in the layout the comment above
- // sampleVectorPathGradient in canvas.frag spells out. Setting it flushes whenever it really
- // changed, which is what keeps one gradient's shapes in one batch.
- GradientFillMatrix:=TpvMatrix4x4.Null;
- GradientFillMatrix.RawComponents[0,0]:=aGradientMatrix.m00;
- GradientFillMatrix.RawComponents[0,1]:=aGradientMatrix.m10;
- GradientFillMatrix.RawComponents[0,2]:=aGradientMatrix.m20;
- GradientFillMatrix.RawComponents[1,0]:=aGradientMatrix.m01;
- GradientFillMatrix.RawComponents[1,1]:=aGradientMatrix.m11;
- GradientFillMatrix.RawComponents[1,2]:=aGradientMatrix.m21;
- GradientFillMatrix.RawComponents[2,0]:=aGradientFocus.x;
- GradientFillMatrix.RawComponents[2,1]:=aGradientFocus.y;
- GradientFillMatrix.RawComponents[2,2]:=aGradientRampRow;
- GradientFillMatrix.RawComponents[2,3]:=TpvUInt32(aGradientKind);
- GradientFillMatrix.RawComponents[3,0]:=TpvUInt32(aGradientSpreadMode);
- if fVectorPathGradient<>GradientFillMatrix then begin
+ // The gradient and the coverage setting ride along in the fill matrix push constant, in the
+ // layout the comment above sampleVectorPathGradient in canvas.frag spells out. Setting it
+ // flushes whenever it really changed, which is what keeps one gradient's shapes in one batch.
+ FillMatrix:=TpvMatrix4x4.Null;
+ FillMatrix.RawComponents[0,0]:=aGradientMatrix.m00;
+ FillMatrix.RawComponents[0,1]:=aGradientMatrix.m10;
+ FillMatrix.RawComponents[0,2]:=aGradientMatrix.m20;
+ FillMatrix.RawComponents[1,0]:=aGradientMatrix.m01;
+ FillMatrix.RawComponents[1,1]:=aGradientMatrix.m11;
+ FillMatrix.RawComponents[1,2]:=aGradientMatrix.m21;
+ FillMatrix.RawComponents[2,0]:=aGradientFocus.x;
+ FillMatrix.RawComponents[2,1]:=aGradientFocus.y;
+ FillMatrix.RawComponents[2,2]:=aGradientRampRow;
+ FillMatrix.RawComponents[2,3]:=TpvUInt32(aGradientKind);
+ FillMatrix.RawComponents[3,0]:=TpvUInt32(aGradientSpreadMode);
+ FillMatrix.RawComponents[3,1]:=TpvUInt32(fVectorPathCoverageMode);
+ FillMatrix.RawComponents[3,2]:=fVectorPathCoverageSampleCount;
+ if fVectorPathFillMatrix<>FillMatrix then begin
   Flush;
-  fVectorPathGradient:=GradientFillMatrix;
+  fVectorPathFillMatrix:=FillMatrix;
  end;
 
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;

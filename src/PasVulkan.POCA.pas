@@ -7201,6 +7201,14 @@ begin
  POCAHashSetString(aContext,result,'EvenOdd',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathFillRule.EvenOdd)));
 end;
 
+function POCAInitCanvasVectorPathCoverageMode(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Estimate',POCANewNumber(aContext,TPOCAInt32(TpvCanvasVectorPathCoverageMode.Estimate)));
+ POCAHashSetString(aContext,result,'AnalyticalAccumulation',POCANewNumber(aContext,TPOCAInt32(TpvCanvasVectorPathCoverageMode.AnalyticalAccumulation)));
+ POCAHashSetString(aContext,result,'Supersampling',POCANewNumber(aContext,TPOCAInt32(TpvCanvasVectorPathCoverageMode.Supersampling)));
+end;
+
 function POCAInitCanvasSignedDistanceField2DVariant(aContext:PPOCAContext):TPOCAValue;
 begin
  result:=POCANewHash(aContext);
@@ -11110,6 +11118,122 @@ begin
 
 end;
 
+function POCACanvasFunctionGETVECTORPATHCOVERAGEMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+    VectorPathCoverageMode:TpvCanvasVectorPathCoverageMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ VectorPathCoverageMode:=Canvas.VectorPathCoverageMode;
+
+ result.Num:=TpvInt32(VectorPathCoverageMode);
+
+end;
+
+function POCACanvasFunctionSETVECTORPATHCOVERAGEMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    VectorPathCoverageMode:TpvCanvasVectorPathCoverageMode;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+
+ // Check for VectorPathCoverageMode
+ if ArgumentIndex<aCountArguments then begin
+  VectorPathCoverageMode:=TpvCanvasVectorPathCoverageMode(trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex])));
+  inc(ArgumentIndex);
+ end else begin
+  VectorPathCoverageMode:=TpvCanvasVectorPathCoverageMode.Estimate;
+ end;
+
+ Canvas.VectorPathCoverageMode:=VectorPathCoverageMode;
+
+ result:=aThis;
+
+end;
+
+function POCACanvasFunctionGETVECTORPATHCOVERAGESAMPLECOUNT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Canvas:TpvCanvas;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result.Num:=Canvas.VectorPathCoverageSampleCount;
+
+end;
+
+function POCACanvasFunctionSETVECTORPATHCOVERAGESAMPLECOUNT(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var ArgumentIndex:TPOCAInt32;
+    Canvas:TpvCanvas;
+    VectorPathCoverageSampleCount:TpvInt32;
+begin
+
+ if POCAGhostGetType(aThis)<>@POCACanvasGhost then begin
+  POCARuntimeError(aContext,'Canvas expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ Canvas:=TpvCanvas(POCAGhostFastGetPointer(aThis));
+ if not assigned(Canvas) then begin
+  POCARuntimeError(aContext,'Canvas is null');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ ArgumentIndex:=0;
+
+ // Check for VectorPathCoverageSampleCount
+ if ArgumentIndex<aCountArguments then begin
+  VectorPathCoverageSampleCount:=trunc(POCAGetNumberValue(aContext,aArguments^[ArgumentIndex]));
+  inc(ArgumentIndex);
+ end else begin
+  VectorPathCoverageSampleCount:=4;
+ end;
+
+ // The property clamps this to what the shader will run, so a count out of range is not an error.
+ Canvas.VectorPathCoverageSampleCount:=VectorPathCoverageSampleCount;
+
+ result:=aThis;
+
+end;
+
 function POCACanvasFunctionGETCOLOR(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Canvas:TpvCanvas;
     Color:TpvVector4;
@@ -11963,6 +12087,10 @@ begin
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillRule',POCACanvasFunctionSETFILLRULE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getFillWrapMode',POCACanvasFunctionGETFILLWRAPMODE);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setFillWrapMode',POCACanvasFunctionSETFILLWRAPMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getVectorPathCoverageMode',POCACanvasFunctionGETVECTORPATHCOVERAGEMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setVectorPathCoverageMode',POCACanvasFunctionSETVECTORPATHCOVERAGEMODE);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getVectorPathCoverageSampleCount',POCACanvasFunctionGETVECTORPATHCOVERAGESAMPLECOUNT);
+ POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setVectorPathCoverageSampleCount',POCACanvasFunctionSETVECTORPATHCOVERAGESAMPLECOUNT);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getColor',POCACanvasFunctionGETCOLOR);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'setColor',POCACanvasFunctionSETCOLOR);
  POCAAddNativeFunction(aContext,HostData^.CanvasHash,'getStartColor',POCACanvasFunctionGETSTARTCOLOR);
@@ -12000,6 +12128,7 @@ begin
  POCAHashSetString(aContext,Hash,'TextHorizontalAlignment',POCAInitCanvasTextHorizontalAlignment(aContext));
  POCAHashSetString(aContext,Hash,'TextVerticalAlignment',POCAInitCanvasTextVerticalAlignment(aContext));
  POCAHashSetString(aContext,Hash,'VectorPathFillRule',POCAInitCanvasVectorPathFillRule(aContext));
+ POCAHashSetString(aContext,Hash,'VectorPathCoverageMode',POCAInitCanvasVectorPathCoverageMode(aContext));
  POCAHashSetString(aContext,Hash,'SignedDistanceField2DVariant',POCAInitCanvasSignedDistanceField2DVariant(aContext));
  POCAHashSetString(aContext,aContext^.Instance^.Globals.Namespace,'Canvas',Hash);
 end;

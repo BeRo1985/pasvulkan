@@ -6902,10 +6902,15 @@ begin
       CurrentY:=fExtendedBoundingBox.MinMax[1].y;
      end;
      if not SameValue(CurrentY,LastY) then begin
+      // Asked at the left edge of the extended box, which is the very line the y values above
+      // were collected along and the one the cell takes its own segments from. Asking at the left
+      // edge of the plain box instead would put the question on a different line than the answer
+      // was prepared for: a segment crossing between the two edges changes its contribution
+      // somewhere inside a y span that is then taken as one constant value.
       SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
                                                                                        TpvVectorPathVector.Create(-Infinity,CurrentY),
                                                                                        TpvVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,
-                                                                                                                                      fBoundingBox.MinMax[0].x+EPSILON,
+                                                                                                                                      fExtendedBoundingBox.MinMax[0].x-EPSILON,
                                                                                                                                       LastY+((CurrentY-LastY)*0.5)));
       try
        fSegments.Add(SegmentMetaWindingSettingLine);

@@ -5,6 +5,8 @@
 //
 // Keys:
 //   G  switch between the two routes
+//   C  switch how the shader works out how much of a pixel an outline covers
+//   V  switch how many samples the supersampling coverage mode takes
 //   R  turn the rotation on and off
 //   W  zoom in, S zoom out, or use the mouse wheel
 //   N  record the shapes again at the size they are currently drawn at
@@ -49,6 +51,17 @@ var application = {
       // At what zoom the shapes were last recorded, which is what N updates and what tells us
       // whether the stroked outlines still have enough line segments for the current view.
       this.data.builtZoom = 1.0;
+
+      // How the shader works out how much of a pixel an outline covers, which is what C walks
+      // through and what the whisker outlines of the tiger, being a sixth of a pixel wide, show
+      // the difference of. The sample count only matters for the last of the three.
+      this.data.coverageModes = [Canvas.VectorPathCoverageMode.Estimate,
+                                 Canvas.VectorPathCoverageMode.AnalyticalAccumulation,
+                                 Canvas.VectorPathCoverageMode.Supersampling];
+      this.data.coverageModeNames = ["estimate", "analytical accumulation", "supersampling"];
+      this.data.coverageModeIndex = 0;
+      this.data.coverageSampleCounts = [2, 4, 8, 16];
+      this.data.coverageSampleCountIndex = 1;
 
       this.data.status = "";
 
@@ -186,6 +199,16 @@ var application = {
           return true;
         }
 
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_C) {
+          data.coverageModeIndex = (data.coverageModeIndex + 1) % data.coverageModes.length;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_V) {
+          data.coverageSampleCountIndex = (data.coverageSampleCountIndex + 1) % data.coverageSampleCounts.length;
+          return true;
+        }
+
         if (event.KeyCode === Input.KeyCodes.KEYCODE_R) {
           data.rotate = !data.rotate;
           return true;
@@ -320,6 +343,12 @@ var application = {
       canvas.push();
       canvas.setModelMatrix(matrix);
 
+      // A canvas wide setting rather than a part of the drawing state, so it is set here and not
+      // inside the push above, and the status text below reads it back from the canvas to show
+      // what really took effect.
+      canvas.setVectorPathCoverageMode(data.coverageModes[data.coverageModeIndex]);
+      canvas.setVectorPathCoverageSampleCount(data.coverageSampleCounts[data.coverageSampleCountIndex]);
+
       // A frame around the area the shapes say they cover, drawn under the very same model
       // matrix, so that it is visible at a glance whether the placement or the shapes themselves
       // are at fault when nothing shows up.
@@ -368,6 +397,9 @@ var application = {
     let box = data.shapes.getBoundingBox();
     let lines = [
       "route: " ~ route ~ "   (G switches)",
+      "coverage: " ~ data.coverageModeNames[data.coverageModeIndex] ~
+        (data.coverageModeIndex === 2 ? ", " ~ canvas.getVectorPathCoverageSampleCount() ~ " samples   (C, V switch)"
+                                      : "   (C switches)"),
       "zoom: " ~ Math.round(data.zoom * 100.0) ~ "%   (W / S or the mouse wheel)",
       "shapes: " ~ data.shapes.getCountShapes() ~ "   gradients: " ~ data.shapes.getCountGradients(),
       "bounds: " ~ Math.round(box.leftTop.x) ~ ", " ~ Math.round(box.leftTop.y) ~

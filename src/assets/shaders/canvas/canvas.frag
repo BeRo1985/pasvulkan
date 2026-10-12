@@ -816,11 +816,10 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 // lies on. The winding value is used to determine whether the point is inside or outside of the path based on the fill rule 
 // specified by the flagsStartGridCellIndexGridSize.x field of the vectorPathGPUShape. If the fill rule is the even-odd rule, the 
 // point is considered inside if the winding value is odd, and outside if it is even. If the fill rule is the non-zero rule, the 
-// point is considered inside if the winding value is non-zero, and outside if it is zero. The final signedDistance value is then 
-// multiplied by -1 if the point is inside the path according to the fill rule and 1 if it is outside. Finally, the function 
-// returns the result of a linear step function applied to the signedDistance value, which smooths out the transition between 
-// inside and outside values.
-// 
+// point is considered inside if the winding value is non-zero, and outside if it is zero. The final signedDistance value is then
+// multiplied by -1 if the point is inside the path according to the fill rule and 1 if it is outside, and that is what the
+// function returns. How much of a pixel the outline covers is worked out from it by the coverage modes further down.
+//
 // In this context, a "winding setting meta line" is a special type of line segment that is used to set the winding value for a 
 // particular simulated virtual scanline. The winding value is an integer that keeps track of the number of times the path 
 // crosses the horizontal line that a given point lies on. The winding value is used to determine whether the point is inside 
@@ -835,8 +834,8 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
 // a point on the simulated virtual scanline is inside or outside the path. The winding setting meta line works by adding a fixed 
 // value to the winding value whenever the scanline passes through it. This allows the code to accurately track the winding value 
 // as the simulated virtual scanline moves across the path in a grid cell, even in a random access manner.
-float sampleVectorPathShape(const vec3 shapeCoord){
-  float signedDistance = 1e+32; 
+float vectorPathShapeSignedDistance(const vec3 shapeCoord){
+  float signedDistance = 1e+32;
   VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
   uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
   uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / (vectorPathGPUShape.minMax.zw - vectorPathGPUShape.minMax.xy)))));
@@ -885,14 +884,341 @@ float sampleVectorPathShape(const vec3 shapeCoord){
     }
   }
   // A cell holding no edge at all leaves the distance at its starting value, and a cell that is
-  // simply far from any edge gives a large one. Either way the step below only needs to know how
-  // fast the distance changes right at the outline, so it is capped at the radius within which a
-  // cell is guaranteed to carry every segment near it. Without the cap the screen space
+  // simply far from any edge gives a large one. Either way the coverage modes only need to know
+  // how fast the distance changes right at the outline, so it is capped at the radius within which
+  // a cell is guaranteed to carry every segment near it. Without the cap the screen space
   // derivative across a cell border, where one side holds a real distance and the other does not,
   // comes out enormous and smears whole cells.
-  signedDistance = clamp(signedDistance, -1.41421356, 1.41421356);
+  return clamp(signedDistance, -1.41421356, 1.41421356);
+}
+
+// The cheapest of the three coverage modes, and the one the vector path shader has always used.
+// From the distance alone it cannot be told how wide the shape is, so wherever the shape is
+// narrower than a pixel both of its edges claim the pixel for themselves and it comes out solid
+// instead of faint. Everything wider than a pixel it gets right.
+float sampleVectorPathShapeEstimated(const vec3 shapeCoord){
+  float signedDistance = vectorPathShapeSignedDistance(shapeCoord);
   float d = fwidth(signedDistance);
   return linearstep(d, 0.0, signedDistance);
+}
+
+int vectorPathGreatestCommonDivisor(int a, int b){
+  while(b != 0){
+    int remainder = a % b;
+    a = b;
+    b = remainder;
+  }
+  return a;
+}
+
+// Where inside the pixel the sample with the given index sits, measured in pixels from the middle
+// of it. Four samples get the rotated grid, whose points sit on a grid turned by about 26.57
+// degrees, which is the arrangement that keeps a near horizontal and a near vertical edge from
+// stepping through several samples at once and is therefore what breaks up the staircase that
+// plain grid sampling leaves on exactly those edges. Any other count gets the same idea
+// generalized: as many points as there are samples, on a grid that many cells wide, one point per
+// row and one per column, which is what a set of rooks that cannot take each other looks like.
+vec2 vectorPathCoverageSampleOffset(const int index, const int sampleCount){
+  if(sampleCount == 4){
+    const vec2 rotatedGrid[4] = vec2[4](vec2(-0.125, -0.375),
+                                        vec2( 0.375, -0.125),
+                                        vec2(-0.375,  0.125),
+                                        vec2( 0.125,  0.375));
+    return rotatedGrid[index];
+  }else{
+    // The step from one column to the next row has to share no divisor with the count, or the
+    // pattern would fall back onto fewer rows than it has samples and some rows would hold two.
+    // Starting near the golden section of the count and walking down to the first step that fits
+    // spreads the rows about as evenly as the rotated grid does for four.
+    int rowStep = max(1, int(floor((float(sampleCount) * 0.6180339887498949) + 0.5)));
+    while((rowStep > 1) && (vectorPathGreatestCommonDivisor(rowStep, sampleCount) != 1)){
+      rowStep--;
+    }
+    return (vec2(float(index) + 0.5,
+                 float(((index * rowStep) % sampleCount)) + 0.5) / float(sampleCount)) - vec2(0.5);
+  }
+}
+
+// Asks the distance question at several places inside the pixel and averages the answers. The edge
+// one sample sees is spread over how far apart the samples are, so that the answers of two
+// neighbouring ones meet and the result moves smoothly with the edge rather than stepping between
+// as many levels as there are samples. How far apart they are depends on which way the edge runs:
+// the samples share no row and no column, so an edge along one of the two axes passes them one by
+// one, a hundredth of a pixel apart for a hundred of them, while a diagonal edge can pass several
+// at once, and the root of the count is the middle ground between the two. A shape narrower than a
+// pixel comes out right as long as it is still wider than that spacing.
+float sampleVectorPathShapeSupersampled(const vec3 shapeCoord, const int sampleCount){
+  // Both derivatives are taken out here, where every fragment of the quad is still on the same
+  // path through the shader, since that is the only place they mean anything.
+  vec2 shapePerPixelX = dFdx(shapeCoord.xy);
+  vec2 shapePerPixelY = dFdy(shapeCoord.xy);
+  float width = max(fwidth(vectorPathShapeSignedDistance(shapeCoord)) / sqrt(float(sampleCount)), 1e-8);
+  float coverage = 0.0;
+  for(int index = 0; index < sampleCount; index++){
+    vec2 offset = vectorPathCoverageSampleOffset(index, sampleCount);
+    vec3 sampleCoord = vec3(shapeCoord.xy + (shapePerPixelX * offset.x) + (shapePerPixelY * offset.y),
+                            shapeCoord.z);
+    coverage += clamp(0.5 - (vectorPathShapeSignedDistance(sampleCoord) / width), 0.0, 1.0);
+  }
+  return coverage / float(sampleCount);
+}
+
+// The integral of x clamped to the horizontal extent of the pixel, which is how the mean of that
+// clamp over a straight run of x is had: as the difference of this at both ends of the run,
+// divided by the run. It is zero at the left edge of the pixel, and any other constant would do
+// just as well, since it cancels in the difference.
+float vectorPathClampIntegral(const float x){
+  if(x <= -0.5){
+    return -0.5 * (x + 0.5);
+  }else if(x >= 0.5){
+    return (0.5 * x) - 0.25;
+  }else{
+    return 0.5 * ((x * x) - 0.25);
+  }
+}
+
+// How much of the pixel one straight edge has to the right of itself, signed by which way the edge
+// runs, in pixel space where the pixel is the unit box around the origin. That is the share of the
+// pixel the winding of this edge applies to: a point is inside when an odd or a non zero number of
+// edges cross the ray that runs left from it, so the area an edge moves the winding of is the area
+// to its right, cut down to the pixel. Both the vertical cut, which is the part of the edge that
+// is level with the pixel at all, and the horizontal one, which the clamp above takes care of, are
+// exact, so a polygon drawn this way covers each pixel by exactly the area it really covers.
+float vectorPathEdgeWindingArea(vec2 a, vec2 b){
+  if(a.y == b.y){
+    // A level edge crosses no ray that runs left from anywhere, so it moves no winding at all.
+    return 0.0;
+  }
+  float direction = (b.y > a.y) ? 1.0 : -1.0;
+  if(a.y > b.y){
+    vec2 swap = a;
+    a = b;
+    b = swap;
+  }
+  float lower = max(a.y, -0.5), upper = min(b.y, 0.5);
+  if(upper <= lower){
+    return 0.0;
+  }
+  float oneOverHeight = 1.0 / (b.y - a.y);
+  float xAtLower = mix(a.x, b.x, (lower - a.y) * oneOverHeight);
+  float xAtUpper = mix(a.x, b.x, (upper - a.y) * oneOverHeight);
+  float meanX;
+  if(abs(xAtUpper - xAtLower) > 1e-7){
+    meanX = (vectorPathClampIntegral(xAtUpper) - vectorPathClampIntegral(xAtLower)) / (xAtUpper - xAtLower);
+  }else{
+    meanX = clamp(0.5 * (xAtLower + xAtUpper), -0.5, 0.5);
+  }
+  return direction * (upper - lower) * (0.5 - meanX);
+}
+
+// The time at which a run of a quadratic curve that only ever moves one way in y reaches the given
+// height, or a negative number when it never does.
+float vectorPathCurveTimeAtY(const float squareCoefficient, const float linearCoefficient, const float constantCoefficient,
+                             const float height, const float fromTime, const float untilTime){
+  float c = constantCoefficient - height;
+  if(abs(squareCoefficient) > 1e-12){
+    float discriminant = (linearCoefficient * linearCoefficient) - ((4.0 * squareCoefficient) * c);
+    if(discriminant >= 0.0){
+      float root = sqrt(discriminant);
+      float oneOverTwoA = 1.0 / (2.0 * squareCoefficient);
+      float first = (-linearCoefficient - root) * oneOverTwoA;
+      float second = (-linearCoefficient + root) * oneOverTwoA;
+      // Only one of the two can be inside a run that moves one way only.
+      if((first >= fromTime) && (first <= untilTime)){
+        return first;
+      }
+      if((second >= fromTime) && (second <= untilTime)){
+        return second;
+      }
+    }
+  }else if(abs(linearCoefficient) > 1e-12){
+    float root = -c / linearCoefficient;
+    if((root >= fromTime) && (root <= untilTime)){
+      return root;
+    }
+  }
+  return -1.0;
+}
+
+// The same area as above for a quadratic curve, by cutting the curve into straight edges. The curve
+// is first cut where it turns around in y, so that each run of it passes the pixel at most once,
+// and each run is then cut down to the part that is level with the pixel at all, so that only that
+// part gets straightened. That way how far a straight edge strays from the curve is measured
+// against the size of a pixel instead of against the size of the whole curve, which is what keeps
+// a curve spanning many pixels exact where it matters. How many edges a run is worth comes from how
+// far it bends: a quadratic curve strays from the line between its ends by a quarter of how far its
+// middle sits off that line, and halving the time range quarters that.
+float vectorPathCurveWindingArea(const vec2 a, const vec2 b, const vec2 c){
+  vec2 squareCoefficient = (a - (2.0 * b)) + c;
+  vec2 linearCoefficient = 2.0 * (b - a);
+  // Where the curve turns around in y, which is the one time a quadratic curve can do so.
+  float turn = (abs(squareCoefficient.y) > 1e-12) ? clamp((-linearCoefficient.y) / (2.0 * squareCoefficient.y), 0.0, 1.0) : 0.0;
+  float result = 0.0;
+  for(int run = 0; run < 2; run++){
+    float fromTime = (run == 0) ? 0.0 : turn;
+    float untilTime = (run == 0) ? turn : 1.0;
+    if((untilTime - fromTime) < 1e-9){
+      continue;
+    }
+    float fromHeight = (((squareCoefficient.y * fromTime) + linearCoefficient.y) * fromTime) + a.y;
+    float untilHeight = (((squareCoefficient.y * untilTime) + linearCoefficient.y) * untilTime) + a.y;
+    if((max(fromHeight, untilHeight) < -0.5) || (min(fromHeight, untilHeight) > 0.5)){
+      // The whole run misses the pixel in the one direction that matters.
+      continue;
+    }
+    float clippedFrom = fromTime, clippedUntil = untilTime;
+    if(abs(fromHeight) > 0.5){
+      float found = vectorPathCurveTimeAtY(squareCoefficient.y, linearCoefficient.y, a.y,
+                                           (fromHeight < 0.0) ? -0.5 : 0.5, fromTime, untilTime);
+      clippedFrom = (found >= 0.0) ? found : fromTime;
+    }
+    if(abs(untilHeight) > 0.5){
+      float found = vectorPathCurveTimeAtY(squareCoefficient.y, linearCoefficient.y, a.y,
+                                           (untilHeight < 0.0) ? -0.5 : 0.5, fromTime, untilTime);
+      clippedUntil = (found >= 0.0) ? found : untilTime;
+    }
+    if((clippedUntil - clippedFrom) < 1e-9){
+      continue;
+    }
+    vec2 atFrom = (((squareCoefficient * clippedFrom) + linearCoefficient) * clippedFrom) + a;
+    vec2 atUntil = (((squareCoefficient * clippedUntil) + linearCoefficient) * clippedUntil) + a;
+    float middleTime = 0.5 * (clippedFrom + clippedUntil);
+    vec2 atMiddle = (((squareCoefficient * middleTime) + linearCoefficient) * middleTime) + a;
+    float bend = length(atMiddle - (0.5 * (atFrom + atUntil)));
+    int countEdges = clamp(int(ceil(sqrt(bend * 64.0))), 1, 8);
+    vec2 previous = atFrom;
+    for(int edge = 1; edge <= countEdges; edge++){
+      float time = mix(clippedFrom, clippedUntil, float(edge) / float(countEdges));
+      vec2 current = (((squareCoefficient * time) + linearCoefficient) * time) + a;
+      result += vectorPathEdgeWindingArea(previous, current);
+      previous = current;
+    }
+  }
+  return result;
+}
+
+// The share of the pixel whose shape space height is below the given one. The pixel maps to a
+// parallelogram in shape space, so the height across it is the sum of two values spread evenly
+// over the two sides of it, whose density is therefore the one box function folded into the other
+// and comes out as a trapezoid, and the share below a height is the integral of that.
+float vectorPathPixelShareBelowHeight(const float height, const float alongX, const float alongY){
+  float wide = max(abs(alongX), abs(alongY)) * 0.5;
+  float narrow = min(abs(alongX), abs(alongY)) * 0.5;
+  if(wide < 1e-12){
+    // The height is the same everywhere in the pixel, so the share jumps from none to all.
+    return (height > 0.0) ? 1.0 : 0.0;
+  }
+  if(narrow < (wide * 1e-6)){
+    // The trapezoid has degenerated into the box one side of the pixel alone makes.
+    return clamp((height + wide) / (2.0 * wide), 0.0, 1.0);
+  }
+  float flatUntil = wide - narrow, slopedUntil = wide + narrow;
+  float overNarrowWide = 1.0 / ((8.0 * narrow) * wide);
+  if(height <= -slopedUntil){
+    return 0.0;
+  }else if(height <= -flatUntil){
+    float reach = height + slopedUntil;
+    return (reach * reach) * overNarrowWide;
+  }else if(height <= flatUntil){
+    return (narrow / (2.0 * wide)) + ((height + flatUntil) / (2.0 * wide));
+  }else if(height <= slopedUntil){
+    float reach = slopedUntil - height;
+    return 1.0 - ((reach * reach) * overNarrowWide);
+  }else{
+    return 1.0;
+  }
+}
+
+// Adds up the area each edge of the outline cuts off the pixel, which is what a software
+// rasterizer does and is therefore right for a shape of any width, down to one far narrower than a
+// pixel. The grid cell only carries the segments near itself, so this holds as long as a pixel is
+// small against how far outside its own bounds a cell reaches, which it is at any scale that draws
+// a cell across several pixels. Where the mapping into pixel space has collapsed there is nothing
+// to measure an area against, and the estimate takes over.
+float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
+  // The derivatives are taken out here, where every fragment of the quad is still on the same path
+  // through the shader, since that is the only place they mean anything.
+  vec2 shapePerPixelX = dFdx(shapeCoord.xy);
+  vec2 shapePerPixelY = dFdy(shapeCoord.xy);
+  float areaScale = (shapePerPixelX.x * shapePerPixelY.y) - (shapePerPixelX.y * shapePerPixelY.x);
+  if(abs(areaScale) < 1e-20){
+    return sampleVectorPathShapeEstimated(shapeCoord);
+  }
+  mat2 pixelFromShape = inverse(mat2(shapePerPixelX, shapePerPixelY));
+  // A mapping that turns the shape over turns every outline the other way round with it, so the
+  // areas come out with the sign the shape space winding would not have had.
+  float windingSign = (areaScale < 0.0) ? -1.0 : 1.0;
+  float accumulatedWinding = 0.0;
+  VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
+  uvec2 gridCellDims = uvec2(vectorPathGPUShape.flagsStartGridCellIndexGridSize.zw);
+  uvec2 gridCellIndices = uvec2(ivec2(floor(vec2(((shapeCoord.xy - vectorPathGPUShape.minMax.xy) * vec2(ivec2(gridCellDims))) / (vectorPathGPUShape.minMax.zw - vectorPathGPUShape.minMax.xy)))));
+  if(all(greaterThanEqual(gridCellIndices, uvec2(0))) && all(lessThan(gridCellIndices, uvec2(gridCellDims)))){
+    VectorPathGPUGridCell vectorPathGPUGridCell = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + ((gridCellIndices.y * gridCellDims.x) + gridCellIndices.x)];
+    uint countIndirectSegments = vectorPathGPUGridCell.y;
+    for(uint indirectSegmentIndex = vectorPathGPUGridCell.x, untilIndirectSegmentIndex = vectorPathGPUGridCell.x + countIndirectSegments;
+        indirectSegmentIndex < untilIndirectSegmentIndex;
+        indirectSegmentIndex++){
+      VectorPathGPUSegment vectorPathGPUSegment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[indirectSegmentIndex]];
+      vec2 point0 = uintBitsToFloat(vectorPathGPUSegment.typeWindingPoint0.zw);
+      switch(vectorPathGPUSegment.typeWindingPoint0.x){
+        case 1u:{
+          // Line
+          accumulatedWinding += windingSign *
+                                vectorPathEdgeWindingArea(pixelFromShape * (point0 - shapeCoord.xy),
+                                                          pixelFromShape * (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy));
+          break;
+        }
+        case 2u:{
+          // Quadratic curve
+          accumulatedWinding += windingSign *
+                                vectorPathCurveWindingArea(pixelFromShape * (point0 - shapeCoord.xy),
+                                                           pixelFromShape * (vectorPathGPUSegment.point1Point2.xy - shapeCoord.xy),
+                                                           pixelFromShape * (vectorPathGPUSegment.point1Point2.zw - shapeCoord.xy));
+          break;
+        }
+        case 3u:{
+          // Meta winding setting line (winding only). It stands for every outline left of the cell
+          // rather than for an outline of its own, so what it applies to is not an area to one side
+          // of an edge but the whole band of heights it spans, and the winding it carries is not
+          // necessarily one.
+          float lower = min(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y;
+          float upper = max(point0.y, vectorPathGPUSegment.point1Point2.y) - shapeCoord.y;
+          accumulatedWinding += float(int(vectorPathGPUSegment.typeWindingPoint0.y)) * // <= GLSL: int(uint) preserves bit pattern
+                                (vectorPathPixelShareBelowHeight(upper, shapePerPixelX.y, shapePerPixelY.y) -
+                                 vectorPathPixelShareBelowHeight(lower, shapePerPixelX.y, shapePerPixelY.y));
+          break;
+        }
+        default:{
+          break;
+        }
+      }
+    }
+  }
+  if((vectorPathGPUShape.flagsStartGridCellIndexGridSize.x & 1) != 0){
+    // Even odd rule, so a winding of one covers the pixel, one of two leaves it empty again, and
+    // the way between them is the same ramp walked back and forth.
+    return 1.0 - abs(mod(abs(accumulatedWinding), 2.0) - 1.0);
+  }else{
+    // Non-zero rule, so anything from one winding upwards covers the pixel.
+    return min(abs(accumulatedWinding), 1.0);
+  }
+}
+
+// How much of the pixel the shape covers, by whichever of the three ways the fill matrix push
+// constant asks for. Every fragment of a draw reads the same mode out of it, so the branch is one
+// the whole quad takes together and the derivatives inside the modes still mean what they should.
+float sampleVectorPathShape(const vec3 shapeCoord, const mat4 fillMatrix){
+  switch(int(fillMatrix[3].y + 0.5)){
+    case 1:{
+      return sampleVectorPathShapeAnalytical(shapeCoord);
+    }
+    case 2:{
+      return sampleVectorPathShapeSupersampled(shapeCoord, clamp(int(fillMatrix[3].z + 0.5), 1, 16));
+    }
+    default:{
+      return sampleVectorPathShapeEstimated(shapeCoord);
+    }
+  }
 }
 
 // Looks the gradient color up for a point in shape space. The gradient is described entirely by
@@ -906,6 +1232,11 @@ float sampleVectorPathShape(const vec3 shapeCoord){
 //   [2].z             which row of the ramp atlas this gradient sits in, as a texture coordinate
 //   [2].w             the kind: 1 is linear, 2 is radial
 //   [3].x             what happens outside zero to one: 0 pads, 1 repeats, 2 reflects
+//
+// and, read by sampleVectorPathShape rather than by the gradient:
+//
+//   [3].y             how the coverage is worked out: 0 estimates, 1 accumulates areas, 2 samples
+//   [3].z             how many samples that last one takes
 //
 // The ramp has 256 entries and is sampled with nearest filtering, and the half texel offset puts
 // the sample in the middle of the entry the software rasterizer would have picked, so that both
@@ -983,7 +1314,7 @@ void main(void){
   vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * vec3(inPosition, 1.0)).xy : inTexCoord.xy;
 #endif
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
-  color = vec2(1.0, sampleVectorPathShape(texCoord)).xxxy * inColor;
+  color = vec2(1.0, sampleVectorPathShape(texCoord, fillMatrix)).xxxy * inColor;
   if(int(fillMatrix[2].w + 0.5) != 0){
     // A gradient fill, so the plain color of the vertex only contributes its opacity on top of
     // what the ramp says.

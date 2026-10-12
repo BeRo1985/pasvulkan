@@ -16,6 +16,8 @@ program keeps running.
 | Key | What it does |
 |---|---|
 | `G` | switch between the vector path shader and the software texture |
+| `C` | switch how the shader works out how much of a pixel an outline covers |
+| `V` | switch how many samples the supersampling coverage mode takes |
 | `R` | turn the rotation on and off |
 | `W` / `S` | zoom in and out, as does the mouse wheel |
 | `N` | record the shapes again at the size they are currently drawn at |
@@ -46,6 +48,14 @@ than what the window manager has on screen.
 Zoom well past 100 percent and switch between the two routes with `G`. The texture route stretches
 the pixels it rasterized once, while the shader route resolves every outline per pixel and stays
 sharp however far it is scaled, without anything being rasterized again.
+
+The whiskers are the other thing to look at, and `C` is what changes them. They are stroked at
+0.172 units, so at a zoom of 100 percent they are a sixth of a pixel wide, and the `Estimate` mode
+the shader starts with draws them solid white and ragged, because the distance to the nearest edge
+alone cannot tell that there is a second edge a sixth of a pixel behind the first.
+`AnalyticalAccumulation` adds up the area each edge cuts off the pixel instead and gets them right,
+and `Supersampling` asks the estimate question at four places inside the pixel and gets close, with
+`V` raising that to sixteen.
 
 What does get coarse on the shader route at a big zoom are the **stroked** outlines, because the
 stroker turned them into polygons at the scale they were recorded at. `N` records them again at
