@@ -12373,6 +12373,9 @@ begin
  HostData:=POCAGetHostData(aContext);
  if not assigned(HostData^.VectorGraphicsBufferPool) then begin
   HostData^.VectorGraphicsBufferPool:=TpvVectorPathGPUBufferPool.Create(pvApplication.VulkanDevice);
+  // Building the grid of a shape is where nearly all of the time of registering one goes, and its
+  // rows are independent of each other, so they go over the cores the application already has.
+  HostData^.VectorGraphicsBufferPool.PasMPInstance:=pvApplication.PasMPInstance;
  end;
  result:=HostData^.VectorGraphicsBufferPool;
 end;

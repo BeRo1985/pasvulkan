@@ -361,6 +361,12 @@ type EpvSpriteAtlas=class(Exception);
        property MaximumCountArrayLayers:TpvInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
      end;
 
+// Give every fully transparent texel the colour of the nearest texel that has some opacity, in place,
+// leaving every alpha value exactly as it was. The comment at the implementation says what it is for
+// and why it is needed. Anything that hands a picture with straight alpha to the canvas wants this,
+// not only a sprite atlas, since the fringe it heads off comes from the hardware's own filtering.
+procedure DilateTransparentColoursInImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aDepth16Bit:boolean);
+
 implementation
 
 uses PasDblStrUtils,

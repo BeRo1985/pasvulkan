@@ -82,6 +82,7 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     PasMP,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -163,6 +164,11 @@ type EpvVectorGraphicsCanvas=class(Exception);
        fRasterizer:TpvVectorGraphicsCanvasRasterizer;
        fTexture:TpvVulkanTexture;
        fSRGB:boolean;
+       // Whether the colour of the picture is carried out into the transparent area before the
+       // upload, which is what keeps the filter of the hardware from pulling every edge towards the
+       // black the rasterizer cleared to. On by default, since there is no case where the fringe is
+       // wanted, and only worth turning off where the picture is read as data rather than looked at.
+       fDilateTransparentColors:boolean;
        fTick:TpvInt64;
        fTickFraction:TpvDouble;
        fDirty:boolean;
@@ -211,6 +217,9 @@ type EpvVectorGraphicsCanvas=class(Exception);
        property TickFraction:TpvDouble read fTickFraction write SetTickFraction;
        // Set this after changing the document itself, which nothing here can notice on its own.
        property Dirty:boolean read fDirty write fDirty;
+       // Whether the colour is carried out into the transparent area before every upload, which is
+       // what keeps the edges from being pulled towards black by the filter of the hardware.
+       property DilateTransparentColors:boolean read fDilateTransparentColors write fDilateTransparentColors;
      end;
 
      { TpvVectorGraphicsCanvasShapes }
@@ -256,8 +265,12 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // aBufferPool nil creates a pool of this object's own, which is the simple case for one
        // document on its own. Several of these should share one pool, so that they end up in the
        // same buffers and the canvas does not have to swap its descriptor set between them.
+       // aPasMPInstance is what a pool created here spreads the grid building of its shapes over,
+       // which is where nearly all of the time of a Build goes. It is ignored when a pool is handed
+       // in, since that one brings its own.
        constructor Create(const aDevice:TpvVulkanDevice;
-                          const aBufferPool:TpvVectorPathGPUBufferPool=nil); reintroduce;
+                          const aBufferPool:TpvVectorPathGPUBufferPool=nil;
+                          const aPasMPInstance:TPasMP=nil); reintroduce;
        destructor Destroy; override;
        // Uploads the gradient ramps, which the first draw after a Build needs. Does nothing when
        // nothing changed and nothing when the document has no gradient at all, so calling it
@@ -511,6 +524,8 @@ begin
  fOwnsDocument:=aOwnsDocument;
  fSRGB:=aSRGB;
 
+ fDilateTransparentColors:=true;
+
  fTexture:=nil;
 
  fTick:=0;
@@ -604,6 +619,17 @@ begin
   exit;
  end;
 
+ // The rasterizer clears to transparent black, so every texel outside the picture holds black, and
+ // the hardware's bilinear filter mixes that black into every edge texel it touches, which it does
+ // before the fragment shader ever multiplies by the alpha. The result is a dark fringe all the way
+ // around. Carrying the colour of the nearest texel that has some opacity outwards makes the filter
+ // mix in the picture's own colour instead, which is what it should have been mixing all along. The
+ // alpha is left exactly as it is, so nothing that is actually visible changes. The same thing a
+ // sprite atlas does for the same reason, which is where this comes from.
+ if fDilateTransparentColors then begin
+  DilateTransparentColoursInImage(Pixels,fRasterizer.Width,fRasterizer.Height,false);
+ end;
+
  DataSize:=TVkSizeInt(fRasterizer.Width)*TVkSizeInt(fRasterizer.Height)*SizeOf(TpvVectorGraphicsColor);
 
  if fSRGB then begin
@@ -676,7 +702,8 @@ end;
 { TpvVectorGraphicsCanvasShapes }
 
 constructor TpvVectorGraphicsCanvasShapes.Create(const aDevice:TpvVulkanDevice;
-                                                 const aBufferPool:TpvVectorPathGPUBufferPool);
+                                                 const aBufferPool:TpvVectorPathGPUBufferPool;
+                                                 const aPasMPInstance:TPasMP);
 begin
 
  inherited Create;
@@ -688,6 +715,7 @@ begin
   fOwnsBufferPool:=false;
  end else begin
   fBufferPool:=TpvVectorPathGPUBufferPool.Create(aDevice);
+  fBufferPool.PasMPInstance:=aPasMPInstance;
   fOwnsBufferPool:=true;
  end;
 

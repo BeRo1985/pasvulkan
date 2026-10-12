@@ -804,6 +804,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               fBoundingBox:TpvVectorPathBoundingBox;
               fExtendedBoundingBox:TpvVectorPathBoundingBox;
               fSegments:TpvVectorPathSegments;
+              // The meta winding setting lines this cell made, which it owns until the shape has
+              // taken them over. They used to go straight into the segments of the shape, which is
+              // the one thing that kept two cells from being built at the same time.
+              fMetaWindingSettingLines:TpvVectorPathSegments;
              public
               // aOutlineSegments are the segments of the outline itself, without the meta winding
               // setting lines the cells add as they are built. Handed in rather than taken from
@@ -838,26 +842,47 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fGridCellBufferRange:TpvBufferRangeAllocator.TBufferRange;
        fShapeIndex:TpvInt32;
        fBoundingBoxExtent:TpvDouble;
+       // What the rows of grid cells are built over, or nil to build them one after the other on
+       // the calling thread. Not owned here.
+       fPasMPInstance:TPasMP;
       private
        procedure ClearAndInvalidateBufferRanges;
        procedure UpdateBufferPool;
+       // Builds the rows of grid cells from aFromIndex to aToIndex. One row is independent of
+       // every other, so this is what the rows are spread over the cores with.
+       procedure BuildGridCellRowsJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
-       // At most two ends and at most two turning points, which is all a cubic curve can have.
-       type TWindingChangeYCoordinates=array[0..3] of TpvDouble;
+       // One height at which the winding to the right of a segment changes, and by how much. A run
+       // of a segment that only ever moves one way in the height counts for every height from its
+       // lower end up to but not including its upper one, so it opens at the one and closes at the
+       // other.
+       type TWindingChangeEvent=record
+             Y:TpvDouble;
+             Delta:TpvInt32;
+            end;
+            PWindingChangeEvent=^TWindingChangeEvent;
+            // Three runs at most, which is what a cubic curve can be cut into, and two events each.
+            TWindingChangeEvents=array[0..5] of TWindingChangeEvent;
+            TWindingChangeEventDynamicArray=TpvDynamicArray<TWindingChangeEvent>;
       public
        // The winding at a point, by casting a ray to the left and counting the crossings of the
        // given segments. Public because it is the one definition of what the grid has to add up
        // to, which is what makes it checkable from the outside.
        class function ComputeWindingAtPosition(const aSegments:TpvVectorPathSegments;const aX,aY:TpvDouble):TpvInt32; static;
-       // The heights at which the given segment changes how often a scan line crosses it, which is
-       // where the starting winding of a cell to the right of it has to change with it: where the
+       // Where the given segment changes how often a scan line crosses it, and by how much, which
+       // is where the starting winding of a cell to the right of it changes with it: where the
        // segment begins, where it ends and where it turns around. The bounding box carries only
        // the lowest and the highest of them, so a segment that turns around hides whichever of its
        // two ends lies between the two, and a cell that goes by the box alone takes one winding
-       // for a span the winding really changes inside of.
-       class function GetWindingChangeYCoordinates(const aSegment:TpvVectorPathSegment;out aYCoordinates:TWindingChangeYCoordinates):TpvSizeInt; static;
+       // for a span the winding really changes inside of. Adding these up in order of height gives
+       // the winding of a whole span at once, rather than asking every segment again for every
+       // span, which is what the cells used to do and what made them cost the square of how many
+       // segments feed them.
+       class function GetWindingChangeEvents(const aSegment:TpvVectorPathSegment;out aEvents:TWindingChangeEvents):TpvSizeInt; static;
       public
-       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
+       // aPasMPInstance spreads the rows of grid cells over the cores, which is where nearly all of
+       // the time of building a shape goes. Left out, they are built one after the other.
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil); reintroduce;
        destructor Destroy; override;
        procedure Update;
       public
@@ -936,6 +961,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // The device this buffer pool is created for
        fDevice:TpvVulkanDevice;
 
+       // What the shapes made here build their grids over, or nil to build them one row after the
+       // other. Not owned here, and set from outside, because only the application knows which one
+       // its own work runs on.
+       fPasMPInstance:TPasMP;
+
        // Array of GPU shapes, shape index / ID wise
        fGPUShapes:TpvVectorPathGPUShapes;
 
@@ -1002,6 +1032,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        property DescriptorSet:TpvVulkanDescriptorSet read GetDescriptorSet;
        
        property DescriptorSetLayout:TpvVulkanDescriptorSetLayout read fDescriptorSetLayout;
+
+       // Set this and the shapes made here spread the rows of their grids over the cores, which is
+       // where nearly all of the time of registering a shape goes.
+       property PasMPInstance:TPasMP read fPasMPInstance write fPasMPInstance;
 
        property FragmentationFactorThreshold:TpvDouble read fFragmentationFactorThreshold write fFragmentationFactorThreshold;
 
@@ -6785,9 +6819,9 @@ end;
 
 { TpvVectorPathGPUShape.TGridCell }
 
-function TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc(const a,b:TpvDouble):TpvInt32;
+function TpvVectorPathGPUShape_TGridCell_WindingEventsSortFunc(const a,b:TpvVectorPathGPUShape.TWindingChangeEvent):TpvInt32;
 begin
- result:=Sign(a-b);
+ result:=Sign(a.Y-b.Y);
 end;
 
 constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aOutlineSegments:TpvVectorPathSegments;const aBoundingBox:TpvVectorPathBoundingBox);
@@ -6796,14 +6830,16 @@ type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
 var Segment:TpvVectorPathSegment;
     IntersectionSegments:TpvVectorPathSegments;
     BoundingBox:TpvVectorPathBoundingBox;
-    YCoordinateIndex,SegmentIndex,OtherSegmentIndex,PointIndex:TpvSizeInt;
-    CountWindingChangeYCoordinates:TpvSizeInt;
-    WindingChangeYCoordinates:TpvVectorPathGPUShape.TWindingChangeYCoordinates;
-    YCoordinates:TpvDynamicArray<TpvDouble>;
-    YCoordinateHashMap:TYCoordinateHashMap;
+    EventIndex,SegmentIndex,OtherSegmentIndex,PointIndex:TpvSizeInt;
+    CountWindingChangeEvents:TpvSizeInt;
+    CurrentWinding:TpvInt32;
+    WindingChangeEvents:TpvVectorPathGPUShape.TWindingChangeEvents;
+    WindingEvents:TpvVectorPathGPUShape.TWindingChangeEventDynamicArray;
+    WindingEvent:TpvVectorPathGPUShape.PWindingChangeEvent;
+    // YCoordinateHashMap:TYCoordinateHashMap;
     Vector:TpvVectorPathVector;
     LastY,CurrentY:TpvDouble;
-    IntersectionPoints:TpvVectorPathVectorList;
+    // IntersectionPoints:TpvVectorPathVectorList;
     DummyGridCellLeftSplitSegmentLine:TpvVectorPathSegmentLine;
     SegmentMetaWindingSettingLine:TpvVectorPathSegmentMetaWindingSettingLine;
 begin
@@ -6818,6 +6854,9 @@ begin
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
+
+ fMetaWindingSettingLines:=TpvVectorPathSegments.Create;
+ fMetaWindingSettingLines.OwnsObjects:=true;
 
  // IntersectionPoints:=TpvVectorPathVectorList.Create; // <= nothing collects into it any more
  try
@@ -6885,7 +6924,7 @@ begin
    end;
    }
 
-   YCoordinates.Initialize;
+   WindingEvents.Initialize;
    try
 
     { A hash map kept the heights apart that two segments share, which is one allocation per cell
@@ -6896,15 +6935,13 @@ begin
     }
 
      // Where a segment to the left starts, ends or turns around in y, the number of times it
-     // crosses a scan line changes, so the starting winding has to change there too.
+     // crosses a scan line changes, so the starting winding has to change there too. Every one of
+     // those is collected with the amount it changes it by, so that one walk up through them adds
+     // up the winding of every span at once.
      for Segment in IntersectionSegments do begin
-      CountWindingChangeYCoordinates:=TpvVectorPathGPUShape.GetWindingChangeYCoordinates(Segment,WindingChangeYCoordinates);
-      for PointIndex:=0 to CountWindingChangeYCoordinates-1 do begin
-       CurrentY:=WindingChangeYCoordinates[PointIndex];
-       if (CurrentY>fExtendedBoundingBox.MinMax[0].y) and
-          (CurrentY<fExtendedBoundingBox.MinMax[1].y) then begin
-        YCoordinates.Add(CurrentY);
-       end;
+      CountWindingChangeEvents:=TpvVectorPathGPUShape.GetWindingChangeEvents(Segment,WindingChangeEvents);
+      for PointIndex:=0 to CountWindingChangeEvents-1 do begin
+       WindingEvents.Add(WindingChangeEvents[PointIndex]);
       end;
      end;
 
@@ -6924,42 +6961,53 @@ begin
      FreeAndNil(YCoordinateHashMap);
     end;}
 
-    if YCoordinates.Count>=2 then begin
-     TpvTypedSort<TpvDouble>.IntroSort(@YCoordinates.Items[0],0,YCoordinates.Count-1,TpvVectorPathGPUShape_TGridCell_YCoordinatesSortFunc);
+    if WindingEvents.Count>=2 then begin
+     TpvTypedSort<TpvVectorPathGPUShape.TWindingChangeEvent>.IntroSort(@WindingEvents.Items[0],0,WindingEvents.Count-1,TpvVectorPathGPUShape_TGridCell_WindingEventsSortFunc);
     end;
 
+    // One walk from the bottom of the cell up through the heights. Whatever happens below the cell
+    // has already happened by the time it begins, so those events only move the winding along, and
+    // from there every stretch between two heights is one span of constant winding.
+    CurrentWinding:=0;
     LastY:=fExtendedBoundingBox.MinMax[0].y;
-    for YCoordinateIndex:=0 to YCoordinates.Count do begin
-     if YCoordinateIndex<YCoordinates.Count then begin
-      CurrentY:=YCoordinates.Items[YCoordinateIndex];
-      if (CurrentY<fExtendedBoundingBox.MinMax[0].y) or (CurrentY>fExtendedBoundingBox.MinMax[1].y) then begin
+    for EventIndex:=0 to WindingEvents.Count do begin
+     if EventIndex<WindingEvents.Count then begin
+      WindingEvent:=@WindingEvents.Items[EventIndex];
+      CurrentY:=WindingEvent^.Y;
+      if CurrentY<=fExtendedBoundingBox.MinMax[0].y then begin
+       inc(CurrentWinding,WindingEvent^.Delta);
        continue;
+      end;
+      if CurrentY>=fExtendedBoundingBox.MinMax[1].y then begin
+       CurrentY:=fExtendedBoundingBox.MinMax[1].y;
+       WindingEvent:=nil;
       end;
      end else begin
       CurrentY:=fExtendedBoundingBox.MinMax[1].y;
+      WindingEvent:=nil;
      end;
      if not SameValue(CurrentY,LastY) then begin
-      // Asked at the left edge of the extended box, which is the very line the y values above
-      // were collected along and the one the cell takes its own segments from. Asking at the left
-      // edge of the plain box instead would put the question on a different line than the answer
-      // was prepared for: a segment crossing between the two edges changes its contribution
-      // somewhere inside a y span that is then taken as one constant value.
+      // The winding is the one of everything to the left of the cell, which is where the feeding
+      // segments were picked from, and it holds for every height from LastY up to but not
+      // including CurrentY, which is the very span this line carries.
       SegmentMetaWindingSettingLine:=TpvVectorPathSegmentMetaWindingSettingLine.Create(TpvVectorPathVector.Create(-Infinity,LastY),
                                                                                        TpvVectorPathVector.Create(-Infinity,CurrentY),
-                                                                                       TpvVectorPathGPUShape.ComputeWindingAtPosition(IntersectionSegments,
-                                                                                                                                      fExtendedBoundingBox.MinMax[0].x-EPSILON,
-                                                                                                                                      LastY+((CurrentY-LastY)*0.5)));
+                                                                                       CurrentWinding);
       try
        fSegments.Add(SegmentMetaWindingSettingLine);
       finally
-       fVectorPathGPUShape.fSegments.Add(SegmentMetaWindingSettingLine);
+       fMetaWindingSettingLines.Add(SegmentMetaWindingSettingLine);
       end;
+      LastY:=CurrentY;
      end;
-     LastY:=CurrentY;
+     if not assigned(WindingEvent) then begin
+      break;
+     end;
+     inc(CurrentWinding,WindingEvent^.Delta);
     end;
 
    finally
-    YCoordinates.Finalize;
+    WindingEvents.Finalize;
    end;
 
   finally
@@ -6974,18 +7022,21 @@ end;
 
 destructor TpvVectorPathGPUShape.TGridCell.Destroy;
 begin
+ FreeAndNil(fMetaWindingSettingLines);
  FreeAndNil(fSegments);
  inherited Destroy;
 end;
 
 { TpvVectorPathGPUShape }
 
-constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble);
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP);
 begin
 
  inherited Create;
 
  fBufferPool:=aBufferPool;
+
+ fPasMPInstance:=aPasMPInstance;
 
  fResolution:=aResolution;
 
@@ -7033,10 +7084,9 @@ var Contour:TpvVectorPathContour;
     Segment,NewSegment:TpvVectorPathSegment;
     IndexX,IndexY:TpvSizeInt;
     tx0,tx1,ty0,ty1:TpvDouble;
-    OutlineSegments,RowSegments:TpvVectorPathSegments;
+    OutlineSegments:TpvVectorPathSegments;
     ContourStart,ContourEnd:TpvVectorPathVector;
-    SegmentBoundingBox:TpvVectorPathBoundingBox;
-    RowMinY,RowMaxY:TpvDouble;
+    GridCell:TGridCell;
  // Where a contour begins and where it ends, which is what tells whether it comes back to where it
  // started.
  function ContourStartPoint(const aContour:TpvVectorPathContour):TpvVectorPathVector;
@@ -7146,7 +7196,6 @@ begin
 
  // The segments of the outline as they are right now, before any cell has added its meta winding
  // setting lines to the shape, which is what every cell is to be built from.
- RowSegments:=nil;
  OutlineSegments:=TpvVectorPathSegments.Create;
  try
 
@@ -7155,10 +7204,57 @@ begin
    OutlineSegments.Add(Segment);
   end;
 
-  RowSegments:=TpvVectorPathSegments.Create;
+  // Every cell has its place in the grid before any of them is built, so that a row can be put
+  // together without knowing what the rows before it did.
+  fGridCells.Count:=fResolution*fResolution;
+  for IndexY:=0 to fGridCells.Count-1 do begin
+   fGridCells[IndexY]:=nil;
+  end;
+
+  if assigned(fPasMPInstance) then begin
+   fPasMPInstance.Invoke(fPasMPInstance.ParallelFor(OutlineSegments,0,fResolution-1,BuildGridCellRowsJob,1,PasMPDefaultDepth,nil));
+  end else begin
+   BuildGridCellRowsJob(nil,0,OutlineSegments,0,fResolution-1);
+  end;
+
+  // And only now, where there is one thread again, the meta winding setting lines each cell made
+  // go over to the shape, which is what owns every segment the buffers are filled from.
+  for IndexY:=0 to fGridCells.Count-1 do begin
+   GridCell:=fGridCells[IndexY];
+   if assigned(GridCell) then begin
+    for IndexX:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+     fSegments.Add(GridCell.fMetaWindingSettingLines[IndexX]);
+    end;
+    GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
+    GridCell.fMetaWindingSettingLines.Clear;
+   end;
+  end;
+
+ finally
+  FreeAndNil(OutlineSegments);
+ end;
+
+end;
+
+procedure TpvVectorPathGPUShape.BuildGridCellRowsJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var IndexX,IndexY:TpvSizeInt;
+    tx0,tx1,ty0,ty1,RowMinY,RowMaxY:TpvDouble;
+    OutlineSegments,RowSegments:TpvVectorPathSegments;
+    Segment:TpvVectorPathSegment;
+    SegmentBoundingBox:TpvVectorPathBoundingBox;
+begin
+
+ OutlineSegments:=TpvVectorPathSegments(aData);
+
+ // One list per worker rather than one for all of them, since each is only ever read by the row it
+ // was filled for.
+ RowSegments:=TpvVectorPathSegments.Create;
+ try
+
   RowSegments.OwnsObjects:=false;
 
-  for IndexY:=0 to fResolution-1 do begin
+  for IndexY:=aFromIndex to aToIndex do begin
+
    ty0:=IndexY/fResolution;
    ty1:=(IndexY+1)/fResolution;
 
@@ -7179,18 +7275,18 @@ begin
    for IndexX:=0 to fResolution-1 do begin
     tx0:=IndexX/fResolution;
     tx1:=(IndexX+1)/fResolution;
-    fGridCells.Add(TGridCell.Create(self,
-                                    RowSegments,
-                                    TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx0))+(fBoundingBox.MinMax[1].x*tx0),
-                                                                                               (fBoundingBox.MinMax[0].y*(1.0-ty0))+(fBoundingBox.MinMax[1].y*ty0)),
-                                                                    TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx1))+(fBoundingBox.MinMax[1].x*tx1),
-                                                                                               (fBoundingBox.MinMax[0].y*(1.0-ty1))+(fBoundingBox.MinMax[1].y*ty1)))));
+    fGridCells[(IndexY*fResolution)+IndexX]:=TGridCell.Create(self,
+                                                              RowSegments,
+                                                              TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx0))+(fBoundingBox.MinMax[1].x*tx0),
+                                                                                                                         (fBoundingBox.MinMax[0].y*(1.0-ty0))+(fBoundingBox.MinMax[1].y*ty0)),
+                                                                                              TpvVectorPathVector.Create((fBoundingBox.MinMax[0].x*(1.0-tx1))+(fBoundingBox.MinMax[1].x*tx1),
+                                                                                                                         (fBoundingBox.MinMax[0].y*(1.0-ty1))+(fBoundingBox.MinMax[1].y*ty1))));
    end;
+
   end;
 
  finally
   FreeAndNil(RowSegments);
-  FreeAndNil(OutlineSegments);
  end;
 
 end;
@@ -7346,28 +7442,61 @@ begin
 
 end;
 
-class function TpvVectorPathGPUShape.GetWindingChangeYCoordinates(const aSegment:TpvVectorPathSegment;out aYCoordinates:TWindingChangeYCoordinates):TpvSizeInt;
+class function TpvVectorPathGPUShape.GetWindingChangeEvents(const aSegment:TpvVectorPathSegment;out aEvents:TWindingChangeEvents):TpvSizeInt;
 const EPSILON=1e-8;
 var P0,P1,P2,P3:TpvVectorPathVector;
-    QuadA,QuadB,QuadC,QuadDisc,QuadRoot,ParamT:TpvDouble;
-    RootIndex:TpvSizeInt;
+    QuadA,QuadB,QuadC,QuadDisc,ParamT,FirstTurn,SecondTurn,SwapTurn:TpvDouble;
+    TurnCount,RunIndex:TpvSizeInt;
+    Turns:array[0..1] of TpvDouble;
+    RunStart,RunEnd:TpvDouble;
+    CountEvents:TpvSizeInt;
+ // A run that only ever moves one way in the height counts for every height from its lower end up
+ // to but not including its upper one, so it opens at the one and closes at the other. A level run
+ // never crosses a scan line and so opens nothing.
+ procedure AddRun(const aFromHeight,aUntilHeight:TpvDouble);
+ var Direction:TpvInt32;
+ begin
+  if aUntilHeight>aFromHeight then begin
+   Direction:=1;
+  end else if aUntilHeight<aFromHeight then begin
+   Direction:=-1;
+  end else begin
+   exit;
+  end;
+  aEvents[CountEvents].Y:=Min(aFromHeight,aUntilHeight);
+  aEvents[CountEvents].Delta:=Direction;
+  inc(CountEvents);
+  aEvents[CountEvents].Y:=Max(aFromHeight,aUntilHeight);
+  aEvents[CountEvents].Delta:=-Direction;
+  inc(CountEvents);
+ end;
+ function QuadraticHeightAt(const aTime:TpvDouble):TpvDouble;
+ begin
+  result:=(P0.y*((1.0-aTime)*(1.0-aTime)))+
+          ((P1.y*2.0)*(1.0-aTime)*aTime)+
+          (P2.y*(aTime*aTime));
+ end;
+ function CubicHeightAt(const aTime:TpvDouble):TpvDouble;
+ begin
+  result:=(P0.y*(((1.0-aTime)*(1.0-aTime))*(1.0-aTime)))+
+          (((P1.y*3.0)*((1.0-aTime)*(1.0-aTime)))*aTime)+
+          (((P2.y*3.0)*(1.0-aTime))*(aTime*aTime))+
+          (P3.y*((aTime*aTime)*aTime));
+ end;
 begin
 
- result:=0;
+ CountEvents:=0;
 
  case aSegment.Type_ of
 
   TpvVectorPathSegmentType.Line:begin
 
-   // A line never turns around, so its two ends are all there is.
+   // A line never turns around, so it is one run from end to end.
 
    P0:=TpvVectorPathSegmentLine(aSegment).Points[0];
    P1:=TpvVectorPathSegmentLine(aSegment).Points[1];
 
-   aYCoordinates[result]:=P0.y;
-   inc(result);
-   aYCoordinates[result]:=P1.y;
-   inc(result);
+   AddRun(P0.y,P1.y);
 
   end;
 
@@ -7377,22 +7506,20 @@ begin
    P1:=TpvVectorPathSegmentQuadraticCurve(aSegment).Points[1];
    P2:=TpvVectorPathSegmentQuadraticCurve(aSegment).Points[2];
 
-   aYCoordinates[result]:=P0.y;
-   inc(result);
-   aYCoordinates[result]:=P2.y;
-   inc(result);
-
    // Where the height stops rising and starts falling or the other way round, which is the one
-   // place a quadratic curve can do so.
+   // place a quadratic curve can do so and therefore the one place it has to be cut.
    QuadA:=(P0.y-(2.0*P1.y))+P2.y;
    if abs(QuadA)>EPSILON then begin
     ParamT:=(P0.y-P1.y)/QuadA;
-    if (ParamT>0.0) and (ParamT<1.0) then begin
-     aYCoordinates[result]:=(P0.y*((1.0-ParamT)*(1.0-ParamT)))+
-                            ((P1.y*2.0)*(1.0-ParamT)*ParamT)+
-                            (P2.y*(ParamT*ParamT));
-     inc(result);
-    end;
+   end else begin
+    ParamT:=-1.0;
+   end;
+
+   if (ParamT>0.0) and (ParamT<1.0) then begin
+    AddRun(P0.y,QuadraticHeightAt(ParamT));
+    AddRun(QuadraticHeightAt(ParamT),P2.y);
+   end else begin
+    AddRun(P0.y,P2.y);
    end;
 
   end;
@@ -7404,12 +7531,8 @@ begin
    P2:=TpvVectorPathSegmentCubicCurve(aSegment).Points[2];
    P3:=TpvVectorPathSegmentCubicCurve(aSegment).Points[3];
 
-   aYCoordinates[result]:=P0.y;
-   inc(result);
-   aYCoordinates[result]:=P3.y;
-   inc(result);
-
    // The same two places, which a cubic curve finds as the roots of its derivative.
+   TurnCount:=0;
    QuadA:=(((-P0.y)+(3.0*P1.y))-(3.0*P2.y))+P3.y;
    QuadB:=((2.0*P0.y)-(4.0*P1.y))+(2.0*P2.y);
    QuadC:=P1.y-P0.y;
@@ -7417,31 +7540,49 @@ begin
     QuadDisc:=(QuadB*QuadB)-((4.0*QuadA)*QuadC);
     if QuadDisc>=0.0 then begin
      QuadDisc:=sqrt(QuadDisc);
-     for RootIndex:=0 to 1 do begin
-      if RootIndex=0 then begin
+     for RunIndex:=0 to 1 do begin
+      if RunIndex=0 then begin
        ParamT:=((-QuadB)-QuadDisc)/(2.0*QuadA);
       end else begin
        ParamT:=((-QuadB)+QuadDisc)/(2.0*QuadA);
       end;
       if (ParamT>0.0) and (ParamT<1.0) then begin
-       aYCoordinates[result]:=(P0.y*(((1.0-ParamT)*(1.0-ParamT))*(1.0-ParamT)))+
-                              (((P1.y*3.0)*((1.0-ParamT)*(1.0-ParamT)))*ParamT)+
-                              (((P2.y*3.0)*(1.0-ParamT))*(ParamT*ParamT))+
-                              (P3.y*((ParamT*ParamT)*ParamT));
-       inc(result);
+       Turns[TurnCount]:=ParamT;
+       inc(TurnCount);
       end;
      end;
     end;
    end else if abs(QuadB)>EPSILON then begin
     ParamT:=(-QuadC)/QuadB;
     if (ParamT>0.0) and (ParamT<1.0) then begin
-     aYCoordinates[result]:=(P0.y*(((1.0-ParamT)*(1.0-ParamT))*(1.0-ParamT)))+
-                            (((P1.y*3.0)*((1.0-ParamT)*(1.0-ParamT)))*ParamT)+
-                            (((P2.y*3.0)*(1.0-ParamT))*(ParamT*ParamT))+
-                            (P3.y*((ParamT*ParamT)*ParamT));
-     inc(result);
+     Turns[TurnCount]:=ParamT;
+     inc(TurnCount);
     end;
    end else begin
+   end;
+
+   // The runs have to come in order, since each one begins where the one before it ended.
+   if TurnCount=2 then begin
+    FirstTurn:=Turns[0];
+    SecondTurn:=Turns[1];
+    if FirstTurn>SecondTurn then begin
+     SwapTurn:=FirstTurn;
+     FirstTurn:=SecondTurn;
+     SecondTurn:=SwapTurn;
+    end;
+    RunStart:=P0.y;
+    RunEnd:=CubicHeightAt(FirstTurn);
+    AddRun(RunStart,RunEnd);
+    RunStart:=RunEnd;
+    RunEnd:=CubicHeightAt(SecondTurn);
+    AddRun(RunStart,RunEnd);
+    AddRun(RunEnd,P3.y);
+   end else if TurnCount=1 then begin
+    RunEnd:=CubicHeightAt(Turns[0]);
+    AddRun(P0.y,RunEnd);
+    AddRun(RunEnd,P3.y);
+   end else begin
+    AddRun(P0.y,P3.y);
    end;
 
   end;
@@ -7451,6 +7592,8 @@ begin
   end;
 
  end;
+
+ result:=CountEvents;
 
 end;
 
@@ -8219,7 +8362,9 @@ begin
 
  fTransferFence:=TpvVulkanFence.Create(fDevice);
 
- fFragmentationFactorThreshold:=0.75; 
+ fFragmentationFactorThreshold:=0.75;
+
+ fPasMPInstance:=nil;
 
 end;
 
@@ -8296,7 +8441,7 @@ begin
     SetLength(fGPUShapes,(ShapeIndex+1)*2);
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
-   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent);
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance);
    try
     result.fShapeIndex:=ShapeIndex;
     result.UpdateBufferPool;
