@@ -286,6 +286,33 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // coverage is raised when that is what was chosen.
        fSeamMode:TpvVectorGraphicsCanvasSeamMode;
        fSeamCoverageWidening:TpvFloat;
+       // The buffer the SRGBCompositingBuffer mode draws the whole document into before putting it
+       // over the canvas in one go. It is the size of the canvas it is drawn onto, so that both
+       // share one coordinate system and what lands in it needs no transform of its own.
+       //
+       // The texture carries an sRGB format, which is the view the canvas samples it through, while
+       // the image view the render pass writes into carries the plain one over the very same
+       // memory. So the shader encodes to sRGB on the way in, the hardware blends on those encoded
+       // values the way every other 2D renderer does, and the hardware decodes again on the way
+       // out. VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, which CreateSimple2DTarget sets whenever it is
+       // given a second format, is what lets one image be seen as both.
+       fCompositingTexture:TpvVulkanTexture;
+       fCompositingImageView:TpvVulkanImageView;
+       fCompositingRenderPass:TpvVulkanRenderPass;
+       fCompositingFrameBuffer:TpvVulkanFrameBuffer;
+       fCompositingCanvas:TpvCanvas;
+       fCompositingWidth:TpvInt32;
+       fCompositingHeight:TpvInt32;
+       procedure ReleaseCompositingBuffer;
+       function EnsureCompositingBuffer(const aGraphicsQueue:TpvVulkanQueue;
+                                        const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                        const aGraphicsFence:TpvVulkanFence;
+                                        const aWidth,aHeight:TpvInt32):boolean;
+       procedure DrawThroughCompositingBuffer(const aCanvas:TpvCanvas;
+                                              const aGraphicsQueue:TpvVulkanQueue;
+                                              const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aGraphicsFence:TpvVulkanFence);
+       procedure DrawShapes(const aCanvas:TpvCanvas);
        // Takes every shape out of the pool again before the records that own them go away, so
        // that the pool is not left with entries pointing at freed shapes.
        procedure ReleaseRecords;
@@ -346,7 +373,15 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // Draws what Build recorded. The canvas has to have this object's pool set as its
        // VectorPathBufferPool, which Draw does itself, since one canvas draws one pool at a time
        // anyway.
-       procedure Draw(const aCanvas:TpvCanvas);
+       //
+       // The three transfer objects are only needed by the SRGBCompositingBuffer seam mode, which
+       // renders into a buffer of its own first. Left out, that mode falls back to drawing
+       // straight onto the canvas. They have to be ones that may be submitted right here, which
+       // holds while the canvas is still collecting geometry and its own render pass has not begun.
+       procedure Draw(const aCanvas:TpvCanvas;
+                      const aGraphicsQueue:TpvVulkanQueue=nil;
+                      const aGraphicsCommandBuffer:TpvVulkanCommandBuffer=nil;
+                      const aGraphicsFence:TpvVulkanFence=nil);
       public
        property BufferPool:TpvVectorPathGPUBufferPool read fBufferPool;
        property Records:TpvVectorGraphicsRasterizerRecorder.TRecords read fRecords;
@@ -799,12 +834,22 @@ begin
  fSeamMode:=TpvVectorGraphicsCanvasSeamMode.None;
  fSeamCoverageWidening:=0.5;
 
+ fCompositingTexture:=nil;
+ fCompositingImageView:=nil;
+ fCompositingRenderPass:=nil;
+ fCompositingFrameBuffer:=nil;
+ fCompositingCanvas:=nil;
+ fCompositingWidth:=0;
+ fCompositingHeight:=0;
+
 end;
 
 destructor TpvVectorGraphicsCanvasShapes.Destroy;
 begin
 
  ReleaseRecords;
+
+ ReleaseCompositingBuffer;
 
  FreeAndNil(fRecorder);
 
@@ -853,6 +898,261 @@ begin
  end else begin
   result:=0;
  end;
+end;
+
+procedure TpvVectorGraphicsCanvasShapes.ReleaseCompositingBuffer;
+begin
+ FreeAndNil(fCompositingCanvas);
+ FreeAndNil(fCompositingFrameBuffer);
+ FreeAndNil(fCompositingRenderPass);
+ FreeAndNil(fCompositingImageView);
+ FreeAndNil(fCompositingTexture);
+ fCompositingWidth:=0;
+ fCompositingHeight:=0;
+end;
+
+// Builds the buffer the document is drawn into, or keeps the one there is when it already has the
+// size asked for. Returns whether there is one to draw into afterwards.
+function TpvVectorGraphicsCanvasShapes.EnsureCompositingBuffer(const aGraphicsQueue:TpvVulkanQueue;
+                                                               const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                                               const aGraphicsFence:TpvVulkanFence;
+                                                               const aWidth,aHeight:TpvInt32):boolean;
+begin
+
+ if (aWidth<1) or (aHeight<1) then begin
+  result:=false;
+  exit;
+ end;
+
+ if assigned(fCompositingCanvas) and (fCompositingWidth=aWidth) and (fCompositingHeight=aHeight) then begin
+  result:=true;
+  exit;
+ end;
+
+ ReleaseCompositingBuffer;
+
+ try
+
+  // The sRGB format is the one the texture keeps and therefore the one the canvas samples it
+  // through. The plain view over the same memory comes right after, for the render pass to write
+  // into.
+  fCompositingTexture:=TpvVulkanTexture.CreateSimple2DTarget(fDevice,
+                                                             aGraphicsQueue,
+                                                             aGraphicsCommandBuffer,
+                                                             aGraphicsFence,
+                                                             true,
+                                                             VK_FORMAT_R8G8B8A8_SRGB,
+                                                             VK_FORMAT_R8G8B8A8_SRGB,
+                                                             aWidth,
+                                                             aHeight,
+                                                             [TpvVulkanTextureUsageFlag.ColorAttachment,
+                                                              TpvVulkanTextureUsageFlag.Sampled,
+                                                              TpvVulkanTextureUsageFlag.TransferDst],
+                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                             pvAllocationGroupIDCanvas,
+                                                             'TpvVectorGraphicsCanvasShapes.fCompositingTexture');
+
+  fCompositingTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
+  fCompositingTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
+  fCompositingTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
+  fCompositingTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+  fCompositingTexture.UpdateSampler;
+
+  fCompositingImageView:=TpvVulkanImageView.Create(fDevice,
+                                                   fCompositingTexture.Image,
+                                                   VK_IMAGE_VIEW_TYPE_2D,
+                                                   VK_FORMAT_R8G8B8A8_UNORM,
+                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                   0,
+                                                   1,
+                                                   0,
+                                                   1);
+
+  // One attachment, cleared to nothing at the start and left in the layout the canvas samples it
+  // from at the end, so that no barrier of its own is needed around it.
+  fCompositingRenderPass:=TpvVulkanRenderPass.Create(fDevice);
+  fCompositingRenderPass.AddSubpassDescription(0,
+                                               VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                               [],
+                                               [fCompositingRenderPass.AddAttachmentReference(fCompositingRenderPass.AddAttachmentDescription(0,
+                                                                                                                                              VK_FORMAT_R8G8B8A8_UNORM,
+                                                                                                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                                              VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                                                              VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)],
+                                               [],
+                                               VK_ATTACHMENT_UNUSED,
+                                               []);
+  fCompositingRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                              0,
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                              TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                              TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                              TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  fCompositingRenderPass.AddSubpassDependency(0,
+                                              VK_SUBPASS_EXTERNAL,
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
+                                              TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                              TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                              TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  fCompositingRenderPass.Initialize;
+
+  fCompositingRenderPass.ClearValues[0].color.float32[0]:=0.0;
+  fCompositingRenderPass.ClearValues[0].color.float32[1]:=0.0;
+  fCompositingRenderPass.ClearValues[0].color.float32[2]:=0.0;
+  fCompositingRenderPass.ClearValues[0].color.float32[3]:=0.0;
+
+  fCompositingFrameBuffer:=TpvVulkanFrameBuffer.Create(fDevice,
+                                                       fCompositingRenderPass,
+                                                       aWidth,
+                                                       aHeight,
+                                                       1,
+                                                       [TpvVulkanFrameBufferAttachment.Create(fDevice,
+                                                                                              fCompositingTexture.Image,
+                                                                                              fCompositingImageView,
+                                                                                              aWidth,
+                                                                                              aHeight,
+                                                                                              VK_FORMAT_R8G8B8A8_UNORM,
+                                                                                              false)],
+                                                       true);
+
+  // One buffer is enough, since what goes in is submitted and waited for before anything else
+  // touches it.
+  fCompositingCanvas:=TpvCanvas.Create(fDevice,nil,1);
+  fCompositingCanvas.VulkanRenderPass:=fCompositingRenderPass;
+  fCompositingCanvas.Resize(aWidth,aHeight);
+  // The attachment stores plain numbers, so the shader encodes to sRGB itself and the hardware
+  // then blends on those encoded values, which is the whole point of this route.
+  fCompositingCanvas.EncodeOutputToSRGB:=true;
+
+  fCompositingWidth:=aWidth;
+  fCompositingHeight:=aHeight;
+
+  result:=true;
+
+ except
+  ReleaseCompositingBuffer;
+  raise;
+ end;
+
+end;
+
+// Draws the whole document into the buffer of its own, which blends in sRGB, and then puts that
+// over the canvas as one picture. Only the part of it the document really covers is drawn back,
+// since the buffer is the size of the whole canvas and the rest of it is empty.
+procedure TpvVectorGraphicsCanvasShapes.DrawThroughCompositingBuffer(const aCanvas:TpvCanvas;
+                                                                     const aGraphicsQueue:TpvVulkanQueue;
+                                                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                                                     const aGraphicsFence:TpvVulkanFence);
+var Width,Height:TpvInt32;
+    Corners:array[0..3] of TpvVector2;
+    CornerIndex:TpvSizeInt;
+    MinX,MinY,MaxX,MaxY:TpvFloat;
+    DestinationRect:TpvRect;
+    OldTexturePremultipliedAlpha:boolean;
+begin
+
+ Width:=aCanvas.Width;
+ Height:=aCanvas.Height;
+
+ if not EnsureCompositingBuffer(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,Width,Height) then begin
+  DrawShapes(aCanvas);
+  exit;
+ end;
+
+ // The buffer is the size of the canvas and shares its coordinate system, so everything the
+ // drawing side set up carries over unchanged and what lands in the buffer lands where it belongs.
+ fCompositingCanvas.Start(0);
+ try
+  fCompositingCanvas.ViewMatrix:=aCanvas.ViewMatrix;
+  fCompositingCanvas.ProjectionMatrix:=aCanvas.ProjectionMatrix;
+  fCompositingCanvas.ModelMatrix:=aCanvas.ModelMatrix;
+  fCompositingCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+  fCompositingCanvas.VectorPathCoverageMode:=aCanvas.VectorPathCoverageMode;
+  fCompositingCanvas.VectorPathCoverageSampleCount:=aCanvas.VectorPathCoverageSampleCount;
+  DrawShapes(fCompositingCanvas);
+ finally
+  fCompositingCanvas.Stop;
+ end;
+
+ fCompositingCanvas.ExecuteUpload(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,0);
+
+ aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ aGraphicsCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+ fCompositingRenderPass.BeginRenderPass(aGraphicsCommandBuffer,
+                                        fCompositingFrameBuffer,
+                                        VK_SUBPASS_CONTENTS_INLINE,
+                                        0,
+                                        0,
+                                        Width,
+                                        Height);
+ fCompositingCanvas.ExecuteDraw(aGraphicsCommandBuffer,0);
+ fCompositingRenderPass.EndRenderPass(aGraphicsCommandBuffer);
+ aGraphicsCommandBuffer.EndRecording;
+ aGraphicsCommandBuffer.Execute(aGraphicsQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT),nil,nil,aGraphicsFence,true);
+
+ // Where the document ended up on the canvas, which is the only part of the buffer worth putting
+ // back. The bounding box is in the space the shapes were recorded in, so the model matrix of the
+ // canvas is what takes it to where it was drawn, and all four corners are needed since that
+ // matrix may turn it.
+ Corners[0]:=TpvVector2.InlineableCreate(fBoundingBox.Min.x,fBoundingBox.Min.y);
+ Corners[1]:=TpvVector2.InlineableCreate(fBoundingBox.Max.x,fBoundingBox.Min.y);
+ Corners[2]:=TpvVector2.InlineableCreate(fBoundingBox.Max.x,fBoundingBox.Max.y);
+ Corners[3]:=TpvVector2.InlineableCreate(fBoundingBox.Min.x,fBoundingBox.Max.y);
+ MinX:=Infinity;
+ MinY:=Infinity;
+ MaxX:=-Infinity;
+ MaxY:=-Infinity;
+ for CornerIndex:=0 to 3 do begin
+  Corners[CornerIndex]:=aCanvas.ModelMatrix*Corners[CornerIndex];
+  MinX:=Min(MinX,Corners[CornerIndex].x);
+  MinY:=Min(MinY,Corners[CornerIndex].y);
+  MaxX:=Max(MaxX,Corners[CornerIndex].x);
+  MaxY:=Max(MaxY,Corners[CornerIndex].y);
+ end;
+
+ // Whole texels, and never outside the buffer, since a fetch past its edge would read the border.
+ MinX:=Max(Floor(MinX),0.0);
+ MinY:=Max(Floor(MinY),0.0);
+ MaxX:=Min(Ceil(MaxX),Width);
+ MaxY:=Min(Ceil(MaxY),Height);
+ if (MaxX<=MinX) or (MaxY<=MinY) then begin
+  exit;
+ end;
+
+ DestinationRect:=TpvRect.CreateAbsolute(0.0,0.0,Width,Height);
+
+ OldTexturePremultipliedAlpha:=aCanvas.TexturePremultipliedAlpha;
+ try
+  // One to one over the whole canvas, so the model matrix has to be out of the way: the picture is
+  // already where it belongs. The scissor is what keeps the work to the part the document really
+  // covers, since the rest of the buffer holds nothing. What comes out of it carries its alpha in
+  // its colors already.
+  aCanvas.Push;
+  try
+   aCanvas.SetScissor(trunc(MinX),trunc(MinY),trunc(MaxX-MinX),trunc(MaxY-MinY));
+   aCanvas.ModelMatrix:=TpvMatrix4x4.Identity;
+   aCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+   aCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+   aCanvas.TexturePremultipliedAlpha:=true;
+   aCanvas.DrawTexturedRectangle(fCompositingTexture,DestinationRect);
+  finally
+   aCanvas.Pop;
+  end;
+ finally
+  aCanvas.TexturePremultipliedAlpha:=OldTexturePremultipliedAlpha;
+ end;
+
 end;
 
 procedure TpvVectorGraphicsCanvasShapes.Clear;
@@ -1102,7 +1402,28 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsCanvasShapes.Draw(const aCanvas:TpvCanvas);
+procedure TpvVectorGraphicsCanvasShapes.Draw(const aCanvas:TpvCanvas;
+                                             const aGraphicsQueue:TpvVulkanQueue;
+                                             const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aGraphicsFence:TpvVulkanFence);
+begin
+
+ if not (fSupported and assigned(fRecords) and assigned(aCanvas)) then begin
+  exit;
+ end;
+
+ if (fSeamMode=TpvVectorGraphicsCanvasSeamMode.SRGBCompositingBuffer) and
+    assigned(aGraphicsQueue) and
+    assigned(aGraphicsCommandBuffer) and
+    assigned(aGraphicsFence) then begin
+  DrawThroughCompositingBuffer(aCanvas,aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence);
+ end else begin
+  DrawShapes(aCanvas);
+ end;
+
+end;
+
+procedure TpvVectorGraphicsCanvasShapes.DrawShapes(const aCanvas:TpvCanvas);
 var Index:TpvSizeInt;
     CurrentRecord:TpvVectorGraphicsRasterizerRecorder.TRecord_;
     Color:TpvVectorGraphicsColor;

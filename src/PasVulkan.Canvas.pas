@@ -749,6 +749,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        // the place of the fill matrix in the push constants of such a draw, so that the fill
        // matrix of the state, which belongs to the caller, stays untouched.
        fVectorPathFillMatrix:TpvMatrix4x4;
+       // Whether the shader encodes what it writes to sRGB itself, which a target that stores plain
+       // numbers needs, since it then blends on the encoded values rather than on linear light. A
+       // property of the target and not of the drawing, so it sits here rather than in the state.
+       fEncodeOutputToSRGB:boolean;
        // How much of a pixel an outline covers is worked out. A quality setting rather than a
        // drawing state, so it sits on the canvas next to the buffer pool instead of in the state
        // that is pushed and popped. Changing it ends the current batch, since it rides along in
@@ -1059,6 +1063,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property VectorPathCoverageMode:TpvCanvasVectorPathCoverageMode read fVectorPathCoverageMode write fVectorPathCoverageMode;
        property VectorPathCoverageSampleCount:TpvInt32 read fVectorPathCoverageSampleCount write SetVectorPathCoverageSampleCount;
        property VectorPathCoverageWidening:TpvFloat read fVectorPathCoverageWidening write SetVectorPathCoverageWidening;
+       // Set this for a target that stores plain numbers rather than sRGB ones, so that the shader
+       // encodes what it writes and the hardware then blends on the encoded values. Everything
+       // drawn afterwards goes through it, so it belongs to the target and is set once for it.
+       property EncodeOutputToSRGB:boolean read fEncodeOutputToSRGB write fEncodeOutputToSRGB;
        property State:TpvCanvasState read fState;
        property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
        property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
@@ -3875,6 +3883,8 @@ begin
 
  fVectorPathFillMatrix:=TpvMatrix4x4.Null;
 
+ fEncodeOutputToSRGB:=false;
+
  fVectorPathCoverageMode:=TpvCanvasVectorPathCoverageMode.Estimate;
 
  fVectorPathCoverageSampleCount:=4;
@@ -5686,6 +5696,9 @@ begin
    if fState.fTexturePremultipliedAlpha or
       (assigned(fState.fAtlasTexture) and (State.fAtlasTexture is TpvSpriteAtlasArrayTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha) then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 1);
+   end;
+   if fEncodeOutputToSRGB then begin
+    PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 2);
    end;
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);

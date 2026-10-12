@@ -336,8 +336,16 @@ float sdCircleArcRingSegment(vec2 p, float innerRadius, float outerRadius, float
     d = max(d, -sdOrientedBox(op, vec2(0.0), vec2(startEndSinCos.wz) * (outerRadius * 2.0), gapThickness)); 
   }
   return d;
-}      
+}
 #endif
+
+// Out here rather than among the GUI element helpers it used to sit with, because writing to a
+// target that stores plain numbers needs it whatever is being drawn.
+vec3 convertLinearRGBToSRGB(vec3 c){
+  return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2),
+             c * vec3(12.92),
+             lessThan(c, vec3(3.1308e-3)));
+}
 
 #ifdef GUI_ELEMENTS
 float sdRoundedRect(vec2 p, vec2 b, float r){
@@ -403,11 +411,7 @@ vec3 hsv2rgb(vec3 c){
     return clamp(c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y), vec3(0.0), vec3(1.0));
 }
 
-vec3 convertLinearRGBToSRGB(vec3 c){
-  return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), 
-             c * vec3(12.92),     
-             lessThan(c, vec3(3.1308e-3)));
-}
+// Moved out above, so that every fill type has it.
 
 vec3 convertSRGBToLinearRGB(vec3 c){
   return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)),
@@ -2246,6 +2250,11 @@ void main(void){
       // Non-premultiplied texture: apply coverage directly (premultiplies in the process)
       outFragColor = vec4(color.xyz * coverage, coverage);
     }
+    // The same encoding to sRGB as on the ordinary path below, for the same reason.
+    if ((pushConstants.data[7].w & (1u << 2)) != 0u) {
+      vec3 straight = (outFragColor.w > 1e-4) ? (outFragColor.xyz / outFragColor.w) : outFragColor.xyz;
+      outFragColor = vec4(convertLinearRGBToSRGB(straight) * outFragColor.w, outFragColor.w);
+    }
   } else {
     discard;
   }
@@ -2260,6 +2269,16 @@ void main(void){
   } else {
     // Non-premultiplied texture, premultiply now
     outFragColor = vec4(color.xyz * color.w, color.w);
+  }
+  // Encoding to sRGB here rather than leaving it to the format of the target (bit 2 of flags), for
+  // a target that stores plain numbers and therefore blends on the encoded values rather than on
+  // linear light. That is what every other 2D renderer does, and it is what makes the seam between
+  // two shapes that share an edge as faint there as it is everywhere else. The encoding is of the
+  // color itself and not of the premultiplied one, since a value scaled by its alpha is no longer
+  // a color the curve applies to, so it comes apart and goes back together around it.
+  if ((pushConstants.data[7].w & (1u << 2)) != 0u) {
+    vec3 straight = (outFragColor.w > 1e-4) ? (outFragColor.xyz / outFragColor.w) : outFragColor.xyz;
+    outFragColor = vec4(convertLinearRGBToSRGB(straight) * outFragColor.w, outFragColor.w);
   }
 #endif
 }

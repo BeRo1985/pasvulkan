@@ -12963,6 +12963,7 @@ end;
 function POCACanvasFunctionDRAWVECTORGRAPHICSSHAPES(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Canvas:TpvCanvas;
     Shapes:TpvVectorGraphicsCanvasShapes;
+    HostData:PPOCAHostData;
 begin
 
  Canvas:=POCAGetCanvasValue(aThis);
@@ -12983,7 +12984,16 @@ begin
   exit;
  end;
 
- Shapes.Draw(Canvas);
+ // The transfer objects go along because the SRGBCompositingBuffer seam mode renders into a buffer
+ // of its own first, which it submits right here. That is safe at this point, since the canvas is
+ // still collecting geometry and its own render pass has not begun. Without them that mode falls
+ // back to drawing straight onto the canvas.
+ HostData:=POCAGetHostData(aContext);
+ if assigned(HostData) then begin
+  Shapes.Draw(Canvas,HostData^.GraphicsQueue,HostData^.GraphicsCommandBuffer,HostData^.GraphicsCommandBufferFence);
+ end else begin
+  Shapes.Draw(Canvas);
+ end;
 
  result:=aThis;
 
