@@ -120,7 +120,12 @@ type { TScreenMain }
        // Whether to end the application once the picture is written, which is what makes an
        // unattended run end by itself.
        fScreenshotAndExit:boolean;
+       // Whether --verify-buffers was given, which reads the vector path buffers back off the
+       // device once and holds them against what was written into them.
+       fVerifyBuffers:boolean;
+       fBuffersVerified:boolean;
        procedure ParseScreenshotParameters;
+       procedure VerifyVectorPathBuffers;
        procedure TakeScreenshot;
        procedure POCAInitialize;
        procedure POCAGarbageCollect;
@@ -319,6 +324,7 @@ begin
  fFramebufferCaptureImage.Height:=0;
  fFramebufferCaptureImage.Data:=nil;
  fScreenshotTaken:=false;
+ fBuffersVerified:=false;
  ParseScreenshotParameters;
 
  fCriticalSection:=TPasMPCriticalSection.Create;
@@ -411,6 +417,7 @@ begin
  fScreenshotFileName:='';
  fScreenshotDelayFrames:=30;
  fScreenshotAndExit:=true;
+ fVerifyBuffers:=false;
 
  Index:=1;
  while Index<=ParamCount do begin
@@ -425,10 +432,59 @@ begin
    fScreenshotDelayFrames:=StrToIntDef(ParamStr(Index),fScreenshotDelayFrames);
   end else if Parameter='--screenshot-keep-running' then begin
    fScreenshotAndExit:=false;
+  end else if Parameter='--verify-buffers' then begin
+   fVerifyBuffers:=true;
   end;
 
   inc(Index);
 
+ end;
+
+end;
+
+// Reads the four vector path buffers back off the device and holds them against what was written
+// into them, which tells a shape that was built wrong from one that was merely handed over wrong.
+procedure TScreenMain.VerifyVectorPathBuffers;
+var HostData:PPOCAHostData;
+    Report:TpvUTF8String;
+    CountMismatches:TpvSizeInt;
+    Line:TpvUTF8String;
+    Position:TpvSizeInt;
+begin
+
+ if (not assigned(fPOCAContext)) or (not assigned(fPOCAContext.Instance)) then begin
+  exit;
+ end;
+
+ HostData:=PPOCAHostData(fPOCAContext.Instance^.Globals.HostData);
+ if (not assigned(HostData)) or (not assigned(HostData^.VectorGraphicsBufferPool)) then begin
+  pvApplication.Log(LOG_INFO,'TScreenMain.VerifyVectorPathBuffers','No vector path buffer pool to check');
+  exit;
+ end;
+
+ CountMismatches:=HostData^.VectorGraphicsBufferPool.VerifyUploadedBuffers(Report);
+
+ // One line at a time, so that the log keeps them apart.
+ while length(Report)>0 do begin
+  Position:=Pos(#13#10,Report);
+  if Position>0 then begin
+   Line:=Copy(Report,1,Position-1);
+   Delete(Report,1,Position+1);
+  end else begin
+   Line:=Report;
+   Report:='';
+  end;
+  if length(Line)>0 then begin
+   pvApplication.Log(LOG_INFO,'TScreenMain.VerifyVectorPathBuffers',String(Line));
+  end;
+ end;
+
+ if CountMismatches=0 then begin
+  pvApplication.Log(LOG_INFO,'TScreenMain.VerifyVectorPathBuffers',
+                    'What is on the device is what was written into it');
+ end else begin
+  pvApplication.Log(LOG_ERROR,'TScreenMain.VerifyVectorPathBuffers',
+                    IntToStr(CountMismatches)+' entries on the device differ from what was written');
  end;
 
 end;
@@ -480,6 +536,11 @@ begin
    dec(fScreenshotDelayFrames);
   end else begin
    fScreenshotTaken:=true;
+   if fVerifyBuffers and not fBuffersVerified then begin
+    // Here rather than earlier, so that everything a frame needs has really been uploaded by now.
+    fBuffersVerified:=true;
+    VerifyVectorPathBuffers;
+   end;
    TakeScreenshot;
    if fScreenshotAndExit then begin
     pvApplication.Terminate;

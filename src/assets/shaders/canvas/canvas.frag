@@ -1041,25 +1041,32 @@ float vectorPathEdgeWindingArea(vec2 a, vec2 b){
 float vectorPathCurveTimeAtY(const float squareCoefficient, const float linearCoefficient, const float constantCoefficient,
                              const float height, const float fromTime, const float untilTime){
   float c = constantCoefficient - height;
-  if(abs(squareCoefficient) > 1e-12){
-    float discriminant = (linearCoefficient * linearCoefficient) - ((4.0 * squareCoefficient) * c);
-    if(discriminant >= 0.0){
-      float root = sqrt(discriminant);
-      float oneOverTwoA = 1.0 / (2.0 * squareCoefficient);
-      float first = (-linearCoefficient - root) * oneOverTwoA;
-      float second = (-linearCoefficient + root) * oneOverTwoA;
-      // Only one of the two can be inside a run that moves one way only.
+  float discriminant = (linearCoefficient * linearCoefficient) - ((4.0 * squareCoefficient) * c);
+  if(discriminant >= 0.0){
+    float root = sqrt(discriminant);
+    // The two roots are taken the way that does not cancel: the sum of the two numbers that carry
+    // the same sign is worked out first, and the other root follows from the product of the roots
+    // instead of from a second subtraction of two nearly equal numbers. That matters because a
+    // curve which runs straight in y leaves a square coefficient that is nothing but the leftovers
+    // of a cancellation, some 1e-7 of what the other coefficients are worth in 32 bit floats, and
+    // dividing an equally cancelled numerator by it used to turn a crossing that really happens
+    // into a time of zero. The run was then clipped to nothing and the edge dropped out of the
+    // sum, which left whole cells covered that should have been empty.
+    float helper = -0.5 * (linearCoefficient + (((linearCoefficient >= 0.0) ? root : -root)));
+    // Only one of the two can be inside a run that moves one way only.
+    if(squareCoefficient != 0.0){
+      float first = helper / squareCoefficient;
       if((first >= fromTime) && (first <= untilTime)){
         return first;
       }
+    }
+    if(helper != 0.0){
+      // Wherever the curve does not really bend in y this is the straight answer, so that case no
+      // longer needs a branch of its own.
+      float second = c / helper;
       if((second >= fromTime) && (second <= untilTime)){
         return second;
       }
-    }
-  }else if(abs(linearCoefficient) > 1e-12){
-    float root = -c / linearCoefficient;
-    if((root >= fromTime) && (root <= untilTime)){
-      return root;
     }
   }
   return -1.0;

@@ -1027,6 +1027,13 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        procedure Defragment(const aForce:boolean=false);
 
+       // Reads the four buffers back off the device and holds them against the arrays they were
+       // filled from, which is the one way to tell a shape that was built wrong from one that was
+       // merely handed over wrong. Returns how many entries disagree and puts the first few of
+       // each kind into aReport. Meant for looking into a problem, not for a frame: it waits for
+       // the device on every one of the four.
+       function VerifyUploadedBuffers(out aReport:TpvUTF8String;const aMaximalReportsPerBuffer:TpvSizeInt=8):TpvSizeInt;
+
       published
 
        property DescriptorSet:TpvVulkanDescriptorSet read GetDescriptorSet;
@@ -8495,6 +8502,117 @@ begin
  result:=Max(fSegmentsAllocator.CalculateFragmentationFactor,
              Max(fIndirectSegmentsAllocator.CalculateFragmentationFactor,
                  fGridCellsAllocator.CalculateFragmentationFactor)); 
+end;
+
+function TpvVectorPathGPUBufferPool.VerifyUploadedBuffers(out aReport:TpvUTF8String;const aMaximalReportsPerBuffer:TpvSizeInt):TpvSizeInt;
+var State:TState;
+    CountMismatches,CountOutOfRange,Index:TpvSizeInt;
+    Reach,FurthestReach:TpvUInt32;
+ // Reads one buffer back and walks it against the array it was filled from. Only as many entries
+ // as the array holds are looked at, since whatever sits past them was never written.
+ procedure CheckBuffer(const aName:TpvUTF8String;
+                       const aBuffer:TpvVulkanBuffer;
+                       const aSource:TpvPointer;
+                       const aCountEntries:TpvSizeInt;
+                       const aEntrySize:TpvSizeInt);
+ var ReadBack:array of TpvUInt8;
+     Size:TVkDeviceSize;
+     Index,CountReports:TpvSizeInt;
+     SourceEntry,ReadBackEntry:PpvUInt8;
+ begin
+
+  if (not assigned(aBuffer)) or (aCountEntries<1) then begin
+   aReport:=aReport+aName+': nothing to check'+#13#10;
+   exit;
+  end;
+
+  Size:=TVkDeviceSize(aCountEntries)*TVkDeviceSize(aEntrySize);
+  if aBuffer.Size<Size then begin
+   aReport:=aReport+aName+': the buffer holds '+IntToStr(aBuffer.Size)+' bytes but '+
+            IntToStr(Size)+' were written, so '+IntToStr((Size-aBuffer.Size) div aEntrySize)+
+            ' entries never made it to the device'+#13#10;
+   inc(CountMismatches,(Size-aBuffer.Size) div aEntrySize);
+   Size:=aBuffer.Size;
+  end;
+
+  ReadBack:=nil;
+  try
+
+   SetLength(ReadBack,Size);
+   aBuffer.DownloadData(fTransferQueue,fTransferCommandBuffer,fTransferFence,ReadBack[0],0,Size);
+
+   CountReports:=0;
+   for Index:=0 to (Size div TVkDeviceSize(aEntrySize))-1 do begin
+    SourceEntry:=PpvUInt8(TpvPointer(TpvPtrUInt(aSource)+TpvPtrUInt(Index*aEntrySize)));
+    ReadBackEntry:=@ReadBack[Index*aEntrySize];
+    if not CompareMem(SourceEntry,ReadBackEntry,aEntrySize) then begin
+     inc(CountMismatches);
+     if CountReports<aMaximalReportsPerBuffer then begin
+      inc(CountReports);
+      aReport:=aReport+aName+': entry '+IntToStr(Index)+' differs'+#13#10;
+     end;
+    end;
+   end;
+
+   if CountReports=0 then begin
+    aReport:=aReport+aName+': all '+IntToStr(Size div TVkDeviceSize(aEntrySize))+' entries agree'+#13#10;
+   end;
+
+  finally
+   ReadBack:=nil;
+  end;
+
+ end;
+begin
+
+ aReport:='';
+ CountMismatches:=0;
+
+ State:=GetActiveState;
+ if not assigned(State) then begin
+  aReport:='no state to check'+#13#10;
+  result:=0;
+  exit;
+ end;
+
+ if length(fSegments)>0 then begin
+  CheckBuffer('segments',State.fSegmentsBuffer,@fSegments[0],length(fSegments),SizeOf(TpvVectorPathGPUSegmentData));
+ end;
+ if length(fIndirectSegments)>0 then begin
+  CheckBuffer('indirect segments',State.fIndirectSegmentsBuffer,@fIndirectSegments[0],length(fIndirectSegments),SizeOf(TpvVectorPathGPUIndirectSegmentData));
+ end;
+ if length(fGridCells)>0 then begin
+  CheckBuffer('grid cells',State.fGridCellsBuffer,@fGridCells[0],length(fGridCells),SizeOf(TpvVectorPathGPUGridCellData));
+ end;
+ if length(fShapes)>0 then begin
+  CheckBuffer('shapes',State.fShapesBuffer,@fShapes[0],length(fShapes),SizeOf(TpvVectorPathGPUShapeData));
+ end;
+
+ // What the grid cells say they point at, against what there is room for. A cell that reaches past
+ // the end of the indirect segment array reads whatever happens to sit there, which is the one
+ // thing a comparison of the arrays themselves cannot show.
+ begin
+  CountOutOfRange:=0;
+  FurthestReach:=0;
+  for Index:=0 to length(fGridCells)-1 do begin
+   Reach:=fGridCells[Index].StartIndirectSegmentIndex+fGridCells[Index].CountIndirectSegments;
+   if Reach>FurthestReach then begin
+    FurthestReach:=Reach;
+   end;
+   if (fGridCells[Index].CountIndirectSegments>0) and (Reach>length(fIndirectSegments)) then begin
+    inc(CountOutOfRange);
+   end;
+  end;
+  aReport:=aReport+'grid cells reach up to indirect segment '+IntToStr(FurthestReach)+
+           ' and there are '+IntToStr(length(fIndirectSegments))+' of them'+#13#10;
+  if CountOutOfRange>0 then begin
+   aReport:=aReport+IntToStr(CountOutOfRange)+' grid cells point past the end of the indirect segments'+#13#10;
+   inc(CountMismatches,CountOutOfRange);
+  end;
+ end;
+
+ result:=CountMismatches;
+
 end;
 
 procedure TpvVectorPathGPUBufferPool.Defragment(const aForce:boolean);
