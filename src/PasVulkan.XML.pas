@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2024, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2026, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -440,7 +440,10 @@ var Counter:TpvInt32;
 begin
  if (Index>=0) and (Index<InternalCount) then begin
   SetCount(InternalCount+1);
-  for Counter:=InternalCount-1 downto Index do begin
+  // SetCount has already raised InternalCount, so the last valid index is InternalCount-1 and
+  // the shift has to start one below that; starting at InternalCount-1 wrote one element past
+  // the end of the list.
+  for Counter:=InternalCount-2 downto Index do begin
    InternalList^[Counter+1]:=InternalList^[Counter];
   end;
   InternalList^[Index]:=Item;

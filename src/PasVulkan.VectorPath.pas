@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2024, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2026, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -196,6 +196,54 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathBoundingBox=^TpvVectorPathBoundingBox;
 
+     { TpvVectorPathMatrix }
+
+     // Affine 2D transformation matrix in the row-major 3x2 layout that SVG uses for its
+     // transform attribute, so that the six values map one-to-one onto matrix(a,b,c,d,e,f).
+     TpvVectorPathMatrix=record
+      public
+       constructor Create(const aValue:TpvDouble); overload;
+       constructor Create(const aM00,aM01,aM10,aM11,aM20,aM21:TpvDouble); overload;
+       class function CreateIdentity:TpvVectorPathMatrix; static;
+       class function CreateTranslate(const aTX,aTY:TpvDouble):TpvVectorPathMatrix; overload; static;
+       class function CreateTranslate(const aTranslate:TpvVectorPathVector):TpvVectorPathMatrix; overload; static;
+       class function CreateScale(const aSX,aSY:TpvDouble):TpvVectorPathMatrix; overload; static;
+       class function CreateScale(const aScale:TpvVectorPathVector):TpvVectorPathMatrix; overload; static;
+       class function CreateRotate(const aAngle:TpvDouble):TpvVectorPathMatrix; overload; static;
+       class function CreateRotate(const aAngle,aCenterX,aCenterY:TpvDouble):TpvVectorPathMatrix; overload; static;
+       class function CreateSkewX(const aAngle:TpvDouble):TpvVectorPathMatrix; static;
+       class function CreateSkewY(const aAngle:TpvDouble):TpvVectorPathMatrix; static;
+       function Determinant:TpvDouble;
+       function Inverse:TpvVectorPathMatrix;
+       // Average of the two axis scale factors, used to pick a curve flattening tolerance that
+       // matches the on-screen size instead of the untransformed one.
+       function ExpansionFactor:TpvDouble;
+       function Transform(const aVector:TpvVectorPathVector):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       function Transform(const aX,aY:TpvDouble):TpvVectorPathVector; overload; {$ifdef CANINLINE}inline;{$endif}
+       // Transforms a direction, so without the translation part.
+       function TransformDirection(const aVector:TpvVectorPathVector):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       class operator Equal(const a,b:TpvVectorPathMatrix):boolean;
+       class operator NotEqual(const a,b:TpvVectorPathMatrix):boolean;
+       class operator Multiply(const a,b:TpvVectorPathMatrix):TpvVectorPathMatrix;
+       class operator Multiply(const a:TpvVectorPathMatrix;const b:TpvVectorPathVector):TpvVectorPathVector;
+       class operator Multiply(const a:TpvVectorPathVector;const b:TpvVectorPathMatrix):TpvVectorPathVector;
+      public
+       case boolean of
+        false:(
+         m00:TpvDouble;
+         m01:TpvDouble;
+         m10:TpvDouble;
+         m11:TpvDouble;
+         m20:TpvDouble;
+         m21:TpvDouble;
+        );
+        true:(
+         Values:array[0..5] of TpvDouble;
+        );
+     end;
+
+     PpvVectorPathMatrix=^TpvVectorPathMatrix;
+
      { TpvVectorPathBVHDynamicAABBTree }
      TpvVectorPathBVHDynamicAABBTree=class
       public
@@ -376,6 +424,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function GetBoundingBox:TpvVectorPathBoundingBox; virtual;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); virtual;
        function GetCompareHorizontalLowestXCoordinate:TpvDouble;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix); virtual;
       public
        property BoundingBox:TpvVectorPathBoundingBox read GetBoundingBox;
       published
@@ -398,6 +447,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix); override;
      end;
 
      { TpvVectorPathSegmentMetaWindingSettingLine }
@@ -427,6 +477,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix); override;
      end;
 
      { TpvVectorPathSegmentCubicCurve }
@@ -445,6 +496,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function Clone:TpvVectorPathSegment; override;
        function GetBoundingBox:TpvVectorPathBoundingBox; override;
        procedure GetIntersectionPointsWithSegment(const aWith:TpvVectorPathSegment;const aIntersectionPoints:TpvVectorPathVectorList); override;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix); override;
      end;
 
      { TpvVectorPathSegments }
@@ -467,6 +519,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure Assign(const aContour:TpvVectorPathContour);
        function Clone:TpvVectorPathContour;
        function GetBoundingBox:TpvVectorPathBoundingBox;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix);
       published
        property Segments:TpvVectorPathSegments read fSegments;
        property Closed:boolean read fClosed write fClosed;
@@ -493,6 +546,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure Assign(const aVectorPath:TpvVectorPath); overload;
        function Clone:TpvVectorPathShape;
        function GetBoundingBox:TpvVectorPathBoundingBox;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix);
        procedure ConvertCubicCurvesToQuadraticCurves(const aPixelRatio:TpvDouble=1.0);
        procedure ConvertCurvesToLines(const aPixelRatio:TpvDouble=1.0);
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
@@ -544,9 +598,122 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function RoundedRectangle(const aCenter,aBounds:TpvVectorPathVector;const aRadius:TpvDouble):TpvVectorPath; overload;
        function Close:TpvVectorPath;
        function GetShape:TpvVectorPathShape;
+       procedure Transform(const aMatrix:TpvVectorPathMatrix);
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Commands:TpvVectorPathCommandList read fCommands;
+     end;
+
+     PpvVectorPathStrokeCapMode=^TpvVectorPathStrokeCapMode;
+     TpvVectorPathStrokeCapMode=
+      (
+       Butt=0,
+       Round,
+       Square
+      );
+
+     PpvVectorPathStrokeJoinMode=^TpvVectorPathStrokeJoinMode;
+     TpvVectorPathStrokeJoinMode=
+      (
+       Bevel=0,
+       Miter,
+       MiterRevert,
+       MiterRound,
+       Round
+      );
+
+     PpvVectorPathStrokeInnerJoinMode=^TpvVectorPathStrokeInnerJoinMode;
+     TpvVectorPathStrokeInnerJoinMode=
+      (
+       Bevel=0,
+       Jag,
+       Miter,
+       Round
+      );
+
+     TpvVectorPathStrokeDashArray=array of TpvDouble;
+
+     { TpvVectorPathStrokeSettings }
+
+     TpvVectorPathStrokeSettings=record
+      public
+       Width:TpvDouble;
+       CapMode:TpvVectorPathStrokeCapMode;
+       JoinMode:TpvVectorPathStrokeJoinMode;
+       InnerJoinMode:TpvVectorPathStrokeInnerJoinMode;
+       MiterLimit:TpvDouble;
+       InnerMiterLimit:TpvDouble;
+       DashArray:TpvVectorPathStrokeDashArray;
+       DashOffset:TpvDouble;
+      public
+       class function CreateDefault:TpvVectorPathStrokeSettings; static;
+       procedure Assign(const aFrom:TpvVectorPathStrokeSettings);
+       function HasDashes:boolean;
+     end;
+
+     PpvVectorPathStrokeSettings=^TpvVectorPathStrokeSettings;
+
+     { TpvVectorPathStroker }
+
+     // Converts the outline of a stroked path into a fillable path, after the manner of the
+     // Anti-Grain Geometry stroke converter: every flattened polyline is walked forwards and
+     // backwards, with a join emitted at every interior vertex and a cap at every end. The
+     // result is always meant to be filled with the non-zero rule.
+     TpvVectorPathStroker=class
+      public
+       type TLinePoint=record
+             Position:TpvVectorPathVector;
+             Distance:TpvDouble;
+            end;
+            PLinePoint=^TLinePoint;
+            TLinePoints=array of TLinePoint;
+      private
+       fSettings:TpvVectorPathStrokeSettings;
+       fApproximationScale:TpvDouble;
+       fLinePoints:TLinePoints;
+       fCountLinePoints:TpvSizeInt;
+       fDashedLinePoints:TLinePoints;
+       fCountDashedLinePoints:TpvSizeInt;
+       fDashes:TpvVectorPathStrokeDashArray;
+       fDashFlags:array of boolean;
+       fOutputShape:TpvVectorPathShape;
+       fOutputContour:TpvVectorPathContour;
+       fFirstPosition:TpvVectorPathVector;
+       fLastPosition:TpvVectorPathVector;
+       fHasLastPosition:boolean;
+       fFirst:boolean;
+       fWidth:TpvDouble;
+       fWidthAbsolute:TpvDouble;
+       fWidthEpsilon:TpvDouble;
+       fWidthSign:TpvInt32;
+       procedure AddLinePoint(const aPosition:TpvVectorPathVector);
+       procedure AddDashedLinePoint(const aPosition:TpvVectorPathVector);
+       procedure Point(const aX,aY:TpvDouble);
+       procedure CloseOutputContour;
+       procedure DoArc(const aX,aY,aDX1,aDY1,aDX2,aDY2:TpvDouble);
+       procedure DoMiter(const aP1X,aP1Y,aP2X,aP2Y,aP3X,aP3Y,aDX1,aDY1,aDX2,aDY2:TpvDouble;
+                         const aJoinMode:TpvVectorPathStrokeJoinMode;
+                         const aMiterLimit,aBevel:TpvDouble);
+       procedure Join(const aIndex1,aIndex2,aIndex3,aDistanceIndex1,aDistanceIndex2:TpvSizeInt;
+                      const aLinePoints:TLinePoints);
+       procedure Cap(const aIndex1,aIndex2,aDistanceIndex:TpvSizeInt;
+                     const aLinePoints:TLinePoints);
+       procedure MakeDashes;
+       procedure ConvertStrokeToPolygon(const aLinePoints:TLinePoints;const aCountLinePoints:TpvSizeInt;const aClosed:boolean);
+       procedure ProcessDashes(const aLinePoints:TLinePoints;const aCountLinePoints:TpvSizeInt;const aClosed:boolean);
+       procedure FlushLine(const aClosed:boolean);
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       // Strokes the already flattened contours of aShape and returns a freshly created shape
+       // holding the outline, which the caller owns. aApproximationScale is the scale at which
+       // the result will be rasterized, so that arcs in round joins and caps get enough
+       // subdivisions, and nothing beyond that.
+       function Stroke(const aShape:TpvVectorPathShape;
+                       const aSettings:TpvVectorPathStrokeSettings;
+                       const aApproximationScale:TpvDouble=1.0):TpvVectorPathShape;
+      published
+       property ApproximationScale:TpvDouble read fApproximationScale write fApproximationScale;
      end;
 
      TpvVectorPathGPUSegmentData=packed record // 32 bytes per segment
@@ -781,7 +948,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        property FragmentationFactorThreshold:TpvDouble read fFragmentationFactorThreshold write fFragmentationFactorThreshold;
 
-     end;  
+     end;
+
+// Turns a pictorial dash pattern into a dash array. A run of non-space characters is a dash and
+// a run of spaces is a gap, each character worth aStepSize, so that '--  -  ' draws a long dash,
+// a gap, a short dash and a gap. This is the shorthand the old vector editor used; the SVG
+// stroke-dasharray form goes straight into TpvVectorPathStrokeSettings.DashArray instead.
+function pvVectorPathStrokePatternToDashArray(const aPattern:TpvRawByteString;
+                                              const aStepSize:TpvDouble=1.0):TpvVectorPathStrokeDashArray;
 
 implementation
 
@@ -1582,6 +1756,188 @@ begin
    end;
   end;
  end;
+end;
+
+{ TpvVectorPathMatrix }
+
+constructor TpvVectorPathMatrix.Create(const aValue:TpvDouble);
+begin
+ m00:=aValue;
+ m01:=aValue;
+ m10:=aValue;
+ m11:=aValue;
+ m20:=aValue;
+ m21:=aValue;
+end;
+
+constructor TpvVectorPathMatrix.Create(const aM00,aM01,aM10,aM11,aM20,aM21:TpvDouble);
+begin
+ m00:=aM00;
+ m01:=aM01;
+ m10:=aM10;
+ m11:=aM11;
+ m20:=aM20;
+ m21:=aM21;
+end;
+
+class function TpvVectorPathMatrix.CreateIdentity:TpvVectorPathMatrix;
+begin
+ result.m00:=1.0;
+ result.m01:=0.0;
+ result.m10:=0.0;
+ result.m11:=1.0;
+ result.m20:=0.0;
+ result.m21:=0.0;
+end;
+
+class function TpvVectorPathMatrix.CreateTranslate(const aTX,aTY:TpvDouble):TpvVectorPathMatrix;
+begin
+ result.m00:=1.0;
+ result.m01:=0.0;
+ result.m10:=0.0;
+ result.m11:=1.0;
+ result.m20:=aTX;
+ result.m21:=aTY;
+end;
+
+class function TpvVectorPathMatrix.CreateTranslate(const aTranslate:TpvVectorPathVector):TpvVectorPathMatrix;
+begin
+ result:=TpvVectorPathMatrix.CreateTranslate(aTranslate.x,aTranslate.y);
+end;
+
+class function TpvVectorPathMatrix.CreateScale(const aSX,aSY:TpvDouble):TpvVectorPathMatrix;
+begin
+ result.m00:=aSX;
+ result.m01:=0.0;
+ result.m10:=0.0;
+ result.m11:=aSY;
+ result.m20:=0.0;
+ result.m21:=0.0;
+end;
+
+class function TpvVectorPathMatrix.CreateScale(const aScale:TpvVectorPathVector):TpvVectorPathMatrix;
+begin
+ result:=TpvVectorPathMatrix.CreateScale(aScale.x,aScale.y);
+end;
+
+class function TpvVectorPathMatrix.CreateRotate(const aAngle:TpvDouble):TpvVectorPathMatrix;
+var Sinus,Cosinus:TpvDouble;
+begin
+ Sinus:=sin(aAngle);
+ Cosinus:=cos(aAngle);
+ result.m00:=Cosinus;
+ result.m01:=Sinus;
+ result.m10:=-Sinus;
+ result.m11:=Cosinus;
+ result.m20:=0.0;
+ result.m21:=0.0;
+end;
+
+class function TpvVectorPathMatrix.CreateRotate(const aAngle,aCenterX,aCenterY:TpvDouble):TpvVectorPathMatrix;
+begin
+ result:=TpvVectorPathMatrix.CreateTranslate(-aCenterX,-aCenterY)*
+         TpvVectorPathMatrix.CreateRotate(aAngle)*
+         TpvVectorPathMatrix.CreateTranslate(aCenterX,aCenterY);
+end;
+
+class function TpvVectorPathMatrix.CreateSkewX(const aAngle:TpvDouble):TpvVectorPathMatrix;
+begin
+ result.m00:=1.0;
+ result.m01:=0.0;
+ result.m10:=tan(aAngle);
+ result.m11:=1.0;
+ result.m20:=0.0;
+ result.m21:=0.0;
+end;
+
+class function TpvVectorPathMatrix.CreateSkewY(const aAngle:TpvDouble):TpvVectorPathMatrix;
+begin
+ result.m00:=1.0;
+ result.m01:=tan(aAngle);
+ result.m10:=0.0;
+ result.m11:=1.0;
+ result.m20:=0.0;
+ result.m21:=0.0;
+end;
+
+function TpvVectorPathMatrix.Determinant:TpvDouble;
+begin
+ result:=(m00*m11)-(m01*m10);
+end;
+
+function TpvVectorPathMatrix.Inverse:TpvVectorPathMatrix;
+var CurrentDeterminant,InverseDeterminant:TpvDouble;
+begin
+ CurrentDeterminant:=Determinant;
+ if abs(CurrentDeterminant)<1e-30 then begin
+  result:=TpvVectorPathMatrix.CreateIdentity;
+ end else begin
+  InverseDeterminant:=1.0/CurrentDeterminant;
+  result.m00:=m11*InverseDeterminant;
+  result.m01:=-(m01*InverseDeterminant);
+  result.m10:=-(m10*InverseDeterminant);
+  result.m11:=m00*InverseDeterminant;
+  result.m20:=((m10*m21)-(m11*m20))*InverseDeterminant;
+  result.m21:=((m01*m20)-(m00*m21))*InverseDeterminant;
+ end;
+end;
+
+function TpvVectorPathMatrix.ExpansionFactor:TpvDouble;
+begin
+ result:=(sqrt(sqr(m00)+sqr(m01))+sqrt(sqr(m10)+sqr(m11)))*0.5;
+end;
+
+function TpvVectorPathMatrix.Transform(const aVector:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result.x:=((aVector.x*m00)+(aVector.y*m10))+m20;
+ result.y:=((aVector.x*m01)+(aVector.y*m11))+m21;
+end;
+
+function TpvVectorPathMatrix.Transform(const aX,aY:TpvDouble):TpvVectorPathVector;
+begin
+ result.x:=((aX*m00)+(aY*m10))+m20;
+ result.y:=((aX*m01)+(aY*m11))+m21;
+end;
+
+function TpvVectorPathMatrix.TransformDirection(const aVector:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result.x:=(aVector.x*m00)+(aVector.y*m10);
+ result.y:=(aVector.x*m01)+(aVector.y*m11);
+end;
+
+class operator TpvVectorPathMatrix.Equal(const a,b:TpvVectorPathMatrix):boolean;
+begin
+ result:=SameValue(a.m00,b.m00) and
+         SameValue(a.m01,b.m01) and
+         SameValue(a.m10,b.m10) and
+         SameValue(a.m11,b.m11) and
+         SameValue(a.m20,b.m20) and
+         SameValue(a.m21,b.m21);
+end;
+
+class operator TpvVectorPathMatrix.NotEqual(const a,b:TpvVectorPathMatrix):boolean;
+begin
+ result:=not (a=b);
+end;
+
+class operator TpvVectorPathMatrix.Multiply(const a,b:TpvVectorPathMatrix):TpvVectorPathMatrix;
+begin
+ result.m00:=(a.m00*b.m00)+(a.m01*b.m10);
+ result.m01:=(a.m00*b.m01)+(a.m01*b.m11);
+ result.m10:=(a.m10*b.m00)+(a.m11*b.m10);
+ result.m11:=(a.m10*b.m01)+(a.m11*b.m11);
+ result.m20:=((a.m20*b.m00)+(a.m21*b.m10))+b.m20;
+ result.m21:=((a.m20*b.m01)+(a.m21*b.m11))+b.m21;
+end;
+
+class operator TpvVectorPathMatrix.Multiply(const a:TpvVectorPathMatrix;const b:TpvVectorPathVector):TpvVectorPathVector;
+begin
+ result:=a.Transform(b);
+end;
+
+class operator TpvVectorPathMatrix.Multiply(const a:TpvVectorPathVector;const b:TpvVectorPathMatrix):TpvVectorPathVector;
+begin
+ result:=b.Transform(a);
 end;
 
 { TpvVectorPathBVHDynamicAABBTree }
@@ -3233,6 +3589,18 @@ begin
 
 end;
 
+procedure TpvVectorPathSegment.Transform(const aMatrix:TpvVectorPathMatrix);
+begin
+ // The subclasses transform their own points and then call here, so that the cached bounding
+ // box is dropped in exactly one place.
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCachedBoundingBoxLock);
+ try
+  fHasCachedBoundingBox:=false;
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCachedBoundingBoxLock);
+ end;
+end;
+
 function TpvVectorPathSegment.GetCompareHorizontalLowestXCoordinate:TpvDouble;
 var OK:boolean;
 begin
@@ -3325,6 +3693,13 @@ begin
  if assigned(self) and assigned(aWith) then begin
   aWith.GetIntersectionPointsWithLineSegment(self,aIntersectionPoints);
  end;
+end;
+
+procedure TpvVectorPathSegmentLine.Transform(const aMatrix:TpvVectorPathMatrix);
+begin
+ Points[0]:=aMatrix.Transform(Points[0]);
+ Points[1]:=aMatrix.Transform(Points[1]);
+ inherited Transform(aMatrix);
 end;
 
 { TpvVectorPathSegmentMetaWindingSettingLine }
@@ -3446,6 +3821,14 @@ begin
  if assigned(self) and assigned(aWith) then begin
   aWith.GetIntersectionPointsWithQuadraticCurveSegment(self,aIntersectionPoints);
  end;
+end;
+
+procedure TpvVectorPathSegmentQuadraticCurve.Transform(const aMatrix:TpvVectorPathMatrix);
+begin
+ Points[0]:=aMatrix.Transform(Points[0]);
+ Points[1]:=aMatrix.Transform(Points[1]);
+ Points[2]:=aMatrix.Transform(Points[2]);
+ inherited Transform(aMatrix);
 end;
 
 { TpvVectorPathSegmentCubicCurve }
@@ -3600,6 +3983,15 @@ begin
  if assigned(self) and assigned(aWith) then begin
   aWith.GetIntersectionPointsWithCubicCurveSegment(self,aIntersectionPoints);
  end;
+end;
+
+procedure TpvVectorPathSegmentCubicCurve.Transform(const aMatrix:TpvVectorPathMatrix);
+begin
+ Points[0]:=aMatrix.Transform(Points[0]);
+ Points[1]:=aMatrix.Transform(Points[1]);
+ Points[2]:=aMatrix.Transform(Points[2]);
+ Points[3]:=aMatrix.Transform(Points[3]);
+ inherited Transform(aMatrix);
 end;
 
 { TpvVectorPathSegments }
@@ -3795,6 +4187,16 @@ begin
  end;
 end;
 
+procedure TpvVectorPathContour.Transform(const aMatrix:TpvVectorPathMatrix);
+var Segment:TpvVectorPathSegment;
+begin
+ for Segment in fSegments do begin
+  if assigned(Segment) then begin
+   Segment.Transform(aMatrix);
+  end;
+ end;
+end;
+
 { TpvVectorPathShape }
 
 constructor TpvVectorPathShape.Create;
@@ -3942,6 +4344,16 @@ begin
  for Contour in fContours do begin
   if assigned(Contour) then begin
    result:=result.Combine(Contour.GetBoundingBox);
+  end;
+ end;
+end;
+
+procedure TpvVectorPathShape.Transform(const aMatrix:TpvVectorPathMatrix);
+var Contour:TpvVectorPathContour;
+begin
+ for Contour in fContours do begin
+  if assigned(Contour) then begin
+   Contour.Transform(aMatrix);
   end;
  end;
 end;
@@ -5497,6 +5909,740 @@ begin
   fShape:=TpvVectorPathShape.Create(self);
  end;
  result:=fShape;
+end;
+
+procedure TpvVectorPath.Transform(const aMatrix:TpvVectorPathMatrix);
+var Command:TpvVectorPathCommand;
+    Position:TpvVectorPathVector;
+begin
+ for Command in fCommands do begin
+  if assigned(Command) then begin
+   case Command.fCommandType of
+    TpvVectorPathCommandType.MoveTo,
+    TpvVectorPathCommandType.LineTo:begin
+     Position:=aMatrix.Transform(Command.fX0,Command.fY0);
+     Command.fX0:=Position.x;
+     Command.fY0:=Position.y;
+    end;
+    TpvVectorPathCommandType.QuadraticCurveTo:begin
+     Position:=aMatrix.Transform(Command.fX0,Command.fY0);
+     Command.fX0:=Position.x;
+     Command.fY0:=Position.y;
+     Position:=aMatrix.Transform(Command.fX1,Command.fY1);
+     Command.fX1:=Position.x;
+     Command.fY1:=Position.y;
+    end;
+    TpvVectorPathCommandType.CubicCurveTo:begin
+     Position:=aMatrix.Transform(Command.fX0,Command.fY0);
+     Command.fX0:=Position.x;
+     Command.fY0:=Position.y;
+     Position:=aMatrix.Transform(Command.fX1,Command.fY1);
+     Command.fX1:=Position.x;
+     Command.fY1:=Position.y;
+     Position:=aMatrix.Transform(Command.fX2,Command.fY2);
+     Command.fX2:=Position.x;
+     Command.fY2:=Position.y;
+    end;
+    else {TpvVectorPathCommandType.Close:}begin
+    end;
+   end;
+  end;
+ end;
+ if assigned(fShape) then begin
+  fShape.Transform(aMatrix);
+ end;
+end;
+
+{ TpvVectorPathStrokeSettings }
+
+class function TpvVectorPathStrokeSettings.CreateDefault:TpvVectorPathStrokeSettings;
+begin
+ result.Width:=1.0;
+ result.CapMode:=TpvVectorPathStrokeCapMode.Butt;
+ result.JoinMode:=TpvVectorPathStrokeJoinMode.Miter;
+ result.InnerJoinMode:=TpvVectorPathStrokeInnerJoinMode.Miter;
+ result.MiterLimit:=4.0;
+ result.InnerMiterLimit:=1.01;
+ result.DashArray:=nil;
+ result.DashOffset:=0.0;
+end;
+
+procedure TpvVectorPathStrokeSettings.Assign(const aFrom:TpvVectorPathStrokeSettings);
+begin
+ Width:=aFrom.Width;
+ CapMode:=aFrom.CapMode;
+ JoinMode:=aFrom.JoinMode;
+ InnerJoinMode:=aFrom.InnerJoinMode;
+ MiterLimit:=aFrom.MiterLimit;
+ InnerMiterLimit:=aFrom.InnerMiterLimit;
+ DashArray:=copy(aFrom.DashArray);
+ DashOffset:=aFrom.DashOffset;
+end;
+
+function TpvVectorPathStrokeSettings.HasDashes:boolean;
+var Index:TpvSizeInt;
+begin
+ result:=false;
+ for Index:=0 to length(DashArray)-1 do begin
+  if DashArray[Index]>1e-12 then begin
+   result:=true;
+   break;
+  end;
+ end;
+end;
+
+function pvVectorPathStrokePatternToDashArray(const aPattern:TpvRawByteString;
+                                              const aStepSize:TpvDouble):TpvVectorPathStrokeDashArray;
+var Index,RunStart,Count,OldCount:TpvSizeInt;
+    Character:AnsiChar;
+    IsDash,StartsWithGap:boolean;
+begin
+ result:=nil;
+ Count:=0;
+ if Length(aPattern)=0 then begin
+  exit;
+ end;
+ // A dash array always starts with a dash, so a pattern that opens with a gap gets a zero
+ // length dash in front of it.
+ StartsWithGap:=aPattern[1]=' ';
+ if StartsWithGap then begin
+  SetLength(result,1);
+  result[0]:=0.0;
+  Count:=1;
+ end;
+ Index:=1;
+ while Index<=Length(aPattern) do begin
+  Character:=aPattern[Index];
+  IsDash:=Character<>' ';
+  RunStart:=Index;
+  while (Index<=Length(aPattern)) and
+        ((aPattern[Index]=Character) or (IsDash and (aPattern[Index]<>' '))) do begin
+   inc(Index);
+  end;
+  if Count>=Length(result) then begin
+   SetLength(result,(Count+1)*2);
+  end;
+  result[Count]:=(Index-RunStart)*aStepSize;
+  inc(Count);
+ end;
+ SetLength(result,Count);
+ if (Count>0) and ((Count and 1)=1) then begin
+  // An odd number of entries repeats with dashes and gaps swapped, so doubling it keeps the
+  // stroker from having to track that parity.
+  OldCount:=Count;
+  SetLength(result,OldCount*2);
+  for Index:=0 to OldCount-1 do begin
+   result[OldCount+Index]:=result[Index];
+  end;
+ end;
+end;
+
+{ TpvVectorPathStroker }
+
+// Intersection of the infinite lines through a-b and c-d, false when they are parallel within
+// the epsilon.
+function TpvVectorPathStrokerCalculateIntersection(const aAX,aAY,aBX,aBY,aCX,aCY,aDX,aDY:TpvDouble;out aX,aY:TpvDouble):boolean;
+var Numerator,Denominator,Ratio:TpvDouble;
+begin
+ Numerator:=((aAY-aCY)*(aDX-aCX))-((aAX-aCX)*(aDY-aCY));
+ Denominator:=((aBX-aAX)*(aDY-aCY))-((aBY-aAY)*(aDX-aCX));
+ if abs(Denominator)<1e-14 then begin
+  aX:=0.0;
+  aY:=0.0;
+  result:=false;
+ end else begin
+  Ratio:=Numerator/Denominator;
+  aX:=aAX+(Ratio*(aBX-aAX));
+  aY:=aAY+(Ratio*(aBY-aAY));
+  result:=true;
+ end;
+end;
+
+// Which side of the line through 1-2 the point lies on. Only the sign is used.
+function TpvVectorPathStrokerCrossProduct(const aX1,aY1,aX2,aY2,aX,aY:TpvDouble):TpvDouble;
+begin
+ result:=((aX-aX2)*(aY2-aY1))-((aY-aY2)*(aX2-aX1));
+end;
+
+// Which way the polyline turns at point 2. Positive and negative tell the two sides of the turn
+// apart, which is what picks the outer join over the inner one.
+function TpvVectorPathStrokerCalculatePointLocation(const aX1,aY1,aX2,aY2,aX3,aY3:TpvDouble):TpvDouble;
+begin
+ result:=((aX3-aX2)*(aY2-aY1))-((aY3-aY2)*(aX2-aX1));
+end;
+
+constructor TpvVectorPathStroker.Create;
+begin
+ inherited Create;
+ fSettings:=TpvVectorPathStrokeSettings.CreateDefault;
+ fApproximationScale:=1.0;
+ fLinePoints:=nil;
+ fCountLinePoints:=0;
+ fDashedLinePoints:=nil;
+ fCountDashedLinePoints:=0;
+ fDashes:=nil;
+ fDashFlags:=nil;
+ fOutputShape:=nil;
+ fOutputContour:=nil;
+ fHasLastPosition:=false;
+ fFirst:=true;
+ fWidth:=0.5;
+ fWidthAbsolute:=0.5;
+ fWidthEpsilon:=0.5/1024.0;
+ fWidthSign:=1;
+end;
+
+destructor TpvVectorPathStroker.Destroy;
+begin
+ fLinePoints:=nil;
+ fDashedLinePoints:=nil;
+ fDashes:=nil;
+ fDashFlags:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvVectorPathStroker.AddLinePoint(const aPosition:TpvVectorPathVector);
+begin
+ if fCountLinePoints>=length(fLinePoints) then begin
+  SetLength(fLinePoints,(fCountLinePoints+1)*2);
+ end;
+ fLinePoints[fCountLinePoints].Position:=aPosition;
+ fLinePoints[fCountLinePoints].Distance:=0.0;
+ inc(fCountLinePoints);
+end;
+
+procedure TpvVectorPathStroker.AddDashedLinePoint(const aPosition:TpvVectorPathVector);
+begin
+ if fCountDashedLinePoints>=length(fDashedLinePoints) then begin
+  SetLength(fDashedLinePoints,(fCountDashedLinePoints+1)*2);
+ end;
+ fDashedLinePoints[fCountDashedLinePoints].Position:=aPosition;
+ fDashedLinePoints[fCountDashedLinePoints].Distance:=0.0;
+ inc(fCountDashedLinePoints);
+end;
+
+procedure TpvVectorPathStroker.Point(const aX,aY:TpvDouble);
+var Position:TpvVectorPathVector;
+begin
+ Position:=TpvVectorPathVector.Create(aX,aY);
+ if fFirst then begin
+  fFirstPosition:=Position;
+  fFirst:=false;
+  fOutputContour:=TpvVectorPathContour.Create;
+  fOutputContour.fClosed:=true;
+  fOutputShape.fContours.Add(fOutputContour);
+ end else begin
+  fOutputContour.fSegments.Add(TpvVectorPathSegmentLine.Create(fLastPosition,Position));
+ end;
+ fLastPosition:=Position;
+ fHasLastPosition:=true;
+end;
+
+procedure TpvVectorPathStroker.CloseOutputContour;
+begin
+ if (not fFirst) and assigned(fOutputContour) then begin
+  if (not SameValue(fLastPosition.x,fFirstPosition.x)) or
+     (not SameValue(fLastPosition.y,fFirstPosition.y)) then begin
+   fOutputContour.fSegments.Add(TpvVectorPathSegmentLine.Create(fLastPosition,fFirstPosition));
+   fLastPosition:=fFirstPosition;
+  end;
+ end;
+end;
+
+procedure TpvVectorPathStroker.DoArc(const aX,aY,aDX1,aDY1,aDX2,aDY2:TpvDouble);
+var Angle,AngleFrom,AngleTo,AngleDelta:TpvDouble;
+    Index,Count:TpvSizeInt;
+begin
+ AngleFrom:=ArcTan2(aDY1*fWidthSign,aDX1*fWidthSign);
+ AngleTo:=ArcTan2(aDY2*fWidthSign,aDX2*fWidthSign);
+ AngleDelta:=ArcCos(fWidthAbsolute/(fWidthAbsolute+(0.125/fApproximationScale)))*2.0;
+ Point(aX+aDX1,aY+aDY1);
+ if fWidthSign>0 then begin
+  if AngleFrom>AngleTo then begin
+   AngleTo:=AngleTo+(2.0*PI);
+  end;
+  Count:=trunc((AngleTo-AngleFrom)/AngleDelta);
+  AngleDelta:=(AngleTo-AngleFrom)/(Count+1);
+  Angle:=AngleFrom+AngleDelta;
+  for Index:=0 to Count-1 do begin
+   Point(aX+(cos(Angle)*fWidth),aY+(sin(Angle)*fWidth));
+   Angle:=Angle+AngleDelta;
+  end;
+ end else begin
+  if AngleFrom<AngleTo then begin
+   AngleTo:=AngleTo-(2.0*PI);
+  end;
+  Count:=trunc((AngleFrom-AngleTo)/AngleDelta);
+  AngleDelta:=(AngleFrom-AngleTo)/(Count+1);
+  Angle:=AngleFrom-AngleDelta;
+  for Index:=0 to Count-1 do begin
+   Point(aX+(cos(Angle)*fWidth),aY+(sin(Angle)*fWidth));
+   Angle:=Angle-AngleDelta;
+  end;
+ end;
+ Point(aX+aDX2,aY+aDY2);
+end;
+
+procedure TpvVectorPathStroker.DoMiter(const aP1X,aP1Y,aP2X,aP2Y,aP3X,aP3Y,aDX1,aDY1,aDX2,aDY2:TpvDouble;
+                                       const aJoinMode:TpvVectorPathStrokeJoinMode;
+                                       const aMiterLimit,aBevel:TpvDouble);
+var IntersectionX,IntersectionY,Distance,Limit,MiterLimit,X1,Y1,X2,Y2:TpvDouble;
+    MiterLimitExceeded,IntersectionFailed:boolean;
+begin
+ IntersectionX:=aP2X;
+ IntersectionY:=aP2Y;
+ Distance:=1.0;
+ Limit:=fWidthAbsolute*aMiterLimit;
+ MiterLimitExceeded:=true;
+ IntersectionFailed:=true;
+ if TpvVectorPathStrokerCalculateIntersection(aP1X+aDX1,aP1Y-aDY1,aP2X+aDX1,aP2Y-aDY1,
+                                              aP2X+aDX2,aP2Y-aDY2,aP3X+aDX2,aP3Y-aDY2,
+                                              IntersectionX,IntersectionY) then begin
+  Distance:=sqrt(sqr(aP2X-IntersectionX)+sqr(aP2Y-IntersectionY));
+  if Distance<=Limit then begin
+   Point(IntersectionX,IntersectionY);
+   MiterLimitExceeded:=false;
+  end;
+  IntersectionFailed:=false;
+ end else begin
+  X2:=aP2X+aDX1;
+  Y2:=aP2Y-aDY1;
+  if (TpvVectorPathStrokerCrossProduct(aP1X,aP1Y,aP2X,aP2Y,X2,Y2)<0.0)=
+     (TpvVectorPathStrokerCrossProduct(aP2X,aP2Y,aP3X,aP3Y,X2,Y2)<0.0) then begin
+   Point(aP2X+aDX1,aP2Y-aDY1);
+   MiterLimitExceeded:=false;
+  end;
+ end;
+ if MiterLimitExceeded then begin
+  case aJoinMode of
+   TpvVectorPathStrokeJoinMode.MiterRevert:begin
+    Point(aP2X+aDX1,aP2Y-aDY1);
+    Point(aP2X+aDX2,aP2Y-aDY2);
+   end;
+   TpvVectorPathStrokeJoinMode.MiterRound:begin
+    DoArc(aP2X,aP2Y,aDX1,-aDY1,aDX2,-aDY2);
+   end;
+   else begin
+    if IntersectionFailed then begin
+     MiterLimit:=aMiterLimit*fWidthSign;
+     Point(aP2X+aDX1+(aDY1*MiterLimit),aP2Y-aDY1+(aDX1*MiterLimit));
+     Point(aP2X+aDX2-(aDY2*MiterLimit),aP2Y-aDY2-(aDX2*MiterLimit));
+    end else begin
+     X1:=aP2X+aDX1;
+     Y1:=aP2Y-aDY1;
+     X2:=aP2X+aDX2;
+     Y2:=aP2Y-aDY2;
+     Distance:=(Limit-aBevel)/(Distance-aBevel);
+     Point(X1+((IntersectionX-X1)*Distance),Y1+((IntersectionY-Y1)*Distance));
+     Point(X2+((IntersectionX-X2)*Distance),Y2+((IntersectionY-Y2)*Distance));
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvVectorPathStroker.Join(const aIndex1,aIndex2,aIndex3,aDistanceIndex1,aDistanceIndex2:TpvSizeInt;
+                                    const aLinePoints:TLinePoints);
+var X1,Y1,X2,Y2,X3,Y3,DX1,DY1,DX2,DY2,Distance1,Distance2,Distance,
+    InnerLimit,CrossProduct,DX,DY,Bevel:TpvDouble;
+begin
+ X1:=aLinePoints[aIndex1].Position.x;
+ Y1:=aLinePoints[aIndex1].Position.y;
+ X2:=aLinePoints[aIndex2].Position.x;
+ Y2:=aLinePoints[aIndex2].Position.y;
+ X3:=aLinePoints[aIndex3].Position.x;
+ Y3:=aLinePoints[aIndex3].Position.y;
+ Distance1:=aLinePoints[aDistanceIndex1].Distance;
+ Distance2:=aLinePoints[aDistanceIndex2].Distance;
+ DX1:=(fWidth*(Y2-Y1))/Distance1;
+ DY1:=(fWidth*(X2-X1))/Distance1;
+ DX2:=(fWidth*(Y3-Y2))/Distance2;
+ DY2:=(fWidth*(X3-X2))/Distance2;
+ CrossProduct:=TpvVectorPathStrokerCalculatePointLocation(X1,Y1,X2,Y2,X3,Y3);
+ if (CrossProduct<>0.0) and ((CrossProduct>0.0)=(fWidth>0.0)) then begin
+  // Inner join, so the side of the turn where the two offset edges overlap each other.
+  InnerLimit:=Max(Min(Distance1,Distance2)/fWidthAbsolute,fSettings.InnerMiterLimit);
+  case fSettings.InnerJoinMode of
+   TpvVectorPathStrokeInnerJoinMode.Miter:begin
+    DoMiter(X1,Y1,X2,Y2,X3,Y3,DX1,DY1,DX2,DY2,TpvVectorPathStrokeJoinMode.MiterRevert,InnerLimit,0.0);
+   end;
+   TpvVectorPathStrokeInnerJoinMode.Jag:begin
+    Distance:=sqr(DX1-DX2)+sqr(DY1-DY2);
+    if (Distance<sqr(Distance1)) and (Distance<sqr(Distance2)) then begin
+     DoMiter(X1,Y1,X2,Y2,X3,Y3,DX1,DY1,DX2,DY2,TpvVectorPathStrokeJoinMode.MiterRevert,InnerLimit,0.0);
+    end else begin
+     Point(X2+DX1,Y2-DY1);
+     Point(X2,Y2);
+     Point(X2+DX2,Y2-DY2);
+    end;
+   end;
+   TpvVectorPathStrokeInnerJoinMode.Round:begin
+    Distance:=sqr(DX1-DX2)+sqr(DY1-DY2);
+    if (Distance<sqr(Distance1)) and (Distance<sqr(Distance2)) then begin
+     DoMiter(X1,Y1,X2,Y2,X3,Y3,DX1,DY1,DX2,DY2,TpvVectorPathStrokeJoinMode.MiterRevert,InnerLimit,0.0);
+    end else begin
+     Point(X2+DX1,Y2-DY1);
+     Point(X2,Y2);
+     DoArc(X2,Y2,DX2,-DY2,DX1,-DY1);
+     Point(X2,Y2);
+     Point(X2+DX2,Y2-DY2);
+    end;
+   end;
+   else {TpvVectorPathStrokeInnerJoinMode.Bevel:}begin
+    Point(X2+DX1,Y2-DY1);
+    Point(X2+DX2,Y2-DY2);
+   end;
+  end;
+ end else begin
+  DX:=(DX1+DX2)*0.5;
+  DY:=(DY1+DY2)*0.5;
+  Bevel:=sqrt(sqr(DX)+sqr(DY));
+  if fSettings.JoinMode in [TpvVectorPathStrokeJoinMode.Round,TpvVectorPathStrokeJoinMode.Bevel] then begin
+   // The turn is so shallow that at the target scale a single point is indistinguishable from
+   // the proper join, so one point saves the whole arc or bevel.
+   if (fApproximationScale*(fWidthAbsolute-Bevel))<fWidthEpsilon then begin
+    if TpvVectorPathStrokerCalculateIntersection(X1+DX1,Y1-DY1,X2+DX1,Y2-DY1,
+                                                 X2+DX2,Y2-DY2,X3+DX2,Y3-DY2,
+                                                 DX,DY) then begin
+     Point(DX,DY);
+    end else begin
+     Point(X2+DX1,Y2-DY1);
+    end;
+    exit;
+   end;
+  end;
+  case fSettings.JoinMode of
+   TpvVectorPathStrokeJoinMode.Round:begin
+    DoArc(X2,Y2,DX1,-DY1,DX2,-DY2);
+   end;
+   TpvVectorPathStrokeJoinMode.Miter,
+   TpvVectorPathStrokeJoinMode.MiterRevert,
+   TpvVectorPathStrokeJoinMode.MiterRound:begin
+    DoMiter(X1,Y1,X2,Y2,X3,Y3,DX1,DY1,DX2,DY2,fSettings.JoinMode,fSettings.MiterLimit,Bevel);
+   end;
+   else {TpvVectorPathStrokeJoinMode.Bevel:}begin
+    Point(X2+DX1,Y2-DY1);
+    Point(X2+DX2,Y2-DY2);
+   end;
+  end;
+ end;
+end;
+
+procedure TpvVectorPathStroker.Cap(const aIndex1,aIndex2,aDistanceIndex:TpvSizeInt;
+                                   const aLinePoints:TLinePoints);
+var X1,Y1,X2,Y2,DX1,DY1,DX2,DY2,Distance,Angle,AngleDelta:TpvDouble;
+    Index,Count:TpvSizeInt;
+begin
+ X1:=aLinePoints[aIndex1].Position.x;
+ Y1:=aLinePoints[aIndex1].Position.y;
+ X2:=aLinePoints[aIndex2].Position.x;
+ Y2:=aLinePoints[aIndex2].Position.y;
+ Distance:=aLinePoints[aDistanceIndex].Distance;
+ DX1:=((Y2-Y1)/Distance)*fWidth;
+ DY1:=((X2-X1)/Distance)*fWidth;
+ case fSettings.CapMode of
+  TpvVectorPathStrokeCapMode.Round:begin
+   AngleDelta:=ArcCos(fWidthAbsolute/(fWidthAbsolute+(0.125/fApproximationScale)))*2.0;
+   Count:=trunc(PI/AngleDelta);
+   AngleDelta:=PI/(Count+1);
+   Point(X1-DX1,Y1+DY1);
+   if fWidthSign>0 then begin
+    Angle:=ArcTan2(DY1,-DX1)+AngleDelta;
+    for Index:=0 to Count-1 do begin
+     Point(X1+(cos(Angle)*fWidth),Y1+(sin(Angle)*fWidth));
+     Angle:=Angle+AngleDelta;
+    end;
+   end else begin
+    Angle:=ArcTan2(-DY1,DX1)-AngleDelta;
+    for Index:=0 to Count-1 do begin
+     Point(X1+(cos(Angle)*fWidth),Y1+(sin(Angle)*fWidth));
+     Angle:=Angle-AngleDelta;
+    end;
+   end;
+   Point(X1+DX1,Y1-DY1);
+  end;
+  TpvVectorPathStrokeCapMode.Square:begin
+   DX2:=DY1*fWidthSign;
+   DY2:=DX1*fWidthSign;
+   Point((X1-DX1)-DX2,(Y1+DY1)-DY2);
+   Point((X1+DX1)-DX2,(Y1-DY1)-DY2);
+  end;
+  else {TpvVectorPathStrokeCapMode.Butt:}begin
+   Point(X1-DX1,Y1+DY1);
+   Point(X1+DX1,Y1-DY1);
+  end;
+ end;
+end;
+
+procedure TpvVectorPathStroker.MakeDashes;
+var Index,Count,OldCount:TpvSizeInt;
+begin
+ fDashes:=nil;
+ fDashFlags:=nil;
+ Count:=0;
+ for Index:=0 to length(fSettings.DashArray)-1 do begin
+  if not SameValue(fSettings.DashArray[Index],0.0) then begin
+   if Count>=length(fDashes) then begin
+    SetLength(fDashes,(Count+1)*2);
+    SetLength(fDashFlags,(Count+1)*2);
+   end;
+   fDashes[Count]:=fSettings.DashArray[Index];
+   fDashFlags[Count]:=(Count and 1)=0;
+   inc(Count);
+  end;
+ end;
+ SetLength(fDashes,Count);
+ SetLength(fDashFlags,Count);
+ if (Count>0) and ((Count and 1)=1) then begin
+  // An odd dash array repeats with the on and off roles swapped, exactly as SVG demands, so the
+  // array gets doubled instead of carrying the parity around through the whole walk.
+  OldCount:=Count;
+  SetLength(fDashes,OldCount*2);
+  SetLength(fDashFlags,OldCount*2);
+  for Index:=0 to OldCount-1 do begin
+   fDashes[OldCount+Index]:=fDashes[Index];
+   fDashFlags[OldCount+Index]:=not fDashFlags[Index];
+  end;
+ end;
+end;
+
+procedure TpvVectorPathStroker.ConvertStrokeToPolygon(const aLinePoints:TLinePoints;const aCountLinePoints:TpvSizeInt;const aClosed:boolean);
+var Index,Count:TpvSizeInt;
+    Delta:TpvVectorPathVector;
+    Distance:TpvDouble;
+    Closed:boolean;
+begin
+ if aCountLinePoints<2 then begin
+  exit;
+ end;
+ Count:=aCountLinePoints;
+ Closed:=false;
+ if aClosed then begin
+  if SameValue(aLinePoints[0].Position.x,aLinePoints[Count-1].Position.x) and
+     SameValue(aLinePoints[0].Position.y,aLinePoints[Count-1].Position.y) then begin
+   // The explicit closing point coincides with the start point, so it would make a zero length
+   // segment and a degenerate join.
+   dec(Count);
+   if Count<2 then begin
+    exit;
+   end;
+  end;
+  Closed:=true;
+ end;
+ for Index:=0 to Count-1 do begin
+  Delta:=aLinePoints[(Index+1) mod Count].Position-aLinePoints[Index].Position;
+  Distance:=Delta.Length;
+  if Distance=0.0 then begin
+   Distance:=1.0;
+  end;
+  aLinePoints[Index].Distance:=Distance;
+ end;
+ fWidth:=fSettings.Width*0.5;
+ if abs(fWidth)<1e-15 then begin
+  if fSettings.Width<0.0 then begin
+   fWidth:=-1e-15;
+  end else begin
+   fWidth:=1e-15;
+  end;
+ end;
+ if fWidth<0.0 then begin
+  fWidthAbsolute:=-fWidth;
+  fWidthSign:=-1;
+ end else begin
+  fWidthAbsolute:=fWidth;
+  fWidthSign:=1;
+ end;
+ fWidthEpsilon:=fWidth/1024.0;
+ if Closed then begin
+  // A closed polyline yields two contours, the outer one walked forwards and the inner one
+  // walked backwards, which together fill the ring under the non-zero rule.
+  fFirst:=true;
+  for Index:=0 to Count-1 do begin
+   Join(((Index+Count)-1) mod Count,
+        Index,
+        (Index+1) mod Count,
+        ((Index+Count)-1) mod Count,
+        Index,
+        aLinePoints);
+  end;
+  CloseOutputContour;
+  fFirst:=true;
+  for Index:=Count-1 downto 0 do begin
+   Join((Index+1) mod Count,
+        Index,
+        ((Index+Count)-1) mod Count,
+        Index,
+        ((Index+Count)-1) mod Count,
+        aLinePoints);
+  end;
+  CloseOutputContour;
+ end else begin
+  // An open polyline yields a single contour: cap, forward joins, cap, backward joins.
+  fFirst:=true;
+  Cap(0,1,0,aLinePoints);
+  for Index:=1 to Count-2 do begin
+   Join(((Index+Count)-1) mod Count,
+        Index,
+        (Index+1) mod Count,
+        ((Index+Count)-1) mod Count,
+        Index,
+        aLinePoints);
+  end;
+  Cap(Count-1,Count-2,Count-2,aLinePoints);
+  for Index:=Count-2 downto 1 do begin
+   Join((Index+1) mod Count,
+        Index,
+        ((Index+Count)-1) mod Count,
+        Index,
+        ((Index+Count)-1) mod Count,
+        aLinePoints);
+  end;
+  CloseOutputContour;
+ end;
+end;
+
+procedure TpvVectorPathStroker.ProcessDashes(const aLinePoints:TLinePoints;const aCountLinePoints:TpvSizeInt;const aClosed:boolean);
+var Index,LastIndex,DashIndex,PointCount:TpvSizeInt;
+    Position,Start,Delta:TpvVectorPathVector;
+    DashRemain,LineLength,LineRemain,StartRemain,StepLength,Factor:TpvDouble;
+    InLine:boolean;
+begin
+ if (aCountLinePoints<2) or (length(fDashes)=0) then begin
+  exit;
+ end;
+ InLine:=false;
+ fCountDashedLinePoints:=0;
+ LineRemain:=0.0;
+ LineLength:=0.0;
+ Start:=aLinePoints[0].Position;
+ Delta:=TpvVectorPathVector.Create(0.0,0.0);
+ DashIndex:=0;
+ DashRemain:=fDashes[DashIndex];
+ StartRemain:=fSettings.DashOffset;
+ while StartRemain>0.0 do begin
+  StepLength:=Min(DashRemain,StartRemain);
+  if StepLength=0.0 then begin
+   break;
+  end;
+  StartRemain:=StartRemain-StepLength;
+  DashRemain:=DashRemain-StepLength;
+  if DashRemain<=0.0 then begin
+   inc(DashIndex);
+   if DashIndex>=length(fDashes) then begin
+    DashIndex:=0;
+   end;
+   DashRemain:=fDashes[DashIndex];
+  end;
+ end;
+ if aClosed then begin
+  PointCount:=aCountLinePoints;
+  LastIndex:=aCountLinePoints-1;
+ end else begin
+  PointCount:=aCountLinePoints;
+  LastIndex:=aCountLinePoints-2;
+ end;
+ for Index:=0 to LastIndex do begin
+  Start:=aLinePoints[Index mod PointCount].Position;
+  Delta:=aLinePoints[(Index+1) mod PointCount].Position-Start;
+  LineLength:=Delta.Length;
+  LineRemain:=LineLength;
+  while LineRemain>0.0 do begin
+   StepLength:=Min(DashRemain,LineRemain);
+   if StepLength=0.0 then begin
+    break;
+   end;
+   Factor:=(LineLength-LineRemain)/LineLength;
+   Position:=Start+(Delta*Factor);
+   if fDashFlags[DashIndex] then begin
+    InLine:=true;
+    AddDashedLinePoint(Position);
+   end else begin
+    if InLine then begin
+     InLine:=false;
+     AddDashedLinePoint(Position);
+     ConvertStrokeToPolygon(fDashedLinePoints,fCountDashedLinePoints,false);
+     fCountDashedLinePoints:=0;
+    end;
+   end;
+   LineRemain:=LineRemain-StepLength;
+   DashRemain:=DashRemain-StepLength;
+   if DashRemain<=0.0 then begin
+    inc(DashIndex);
+    if DashIndex>=length(fDashes) then begin
+     DashIndex:=0;
+    end;
+    DashRemain:=fDashes[DashIndex];
+   end;
+  end;
+ end;
+ if InLine and (LineLength>1e-18) then begin
+  Factor:=(LineLength-LineRemain)/LineLength;
+  AddDashedLinePoint(Start+(Delta*Factor));
+  ConvertStrokeToPolygon(fDashedLinePoints,fCountDashedLinePoints,false);
+  fCountDashedLinePoints:=0;
+ end;
+end;
+
+procedure TpvVectorPathStroker.FlushLine(const aClosed:boolean);
+begin
+ if fCountLinePoints>0 then begin
+  if length(fDashes)>0 then begin
+   ProcessDashes(fLinePoints,fCountLinePoints,aClosed);
+  end else begin
+   ConvertStrokeToPolygon(fLinePoints,fCountLinePoints,aClosed);
+  end;
+  fCountLinePoints:=0;
+ end;
+end;
+
+function TpvVectorPathStroker.Stroke(const aShape:TpvVectorPathShape;
+                                     const aSettings:TpvVectorPathStrokeSettings;
+                                     const aApproximationScale:TpvDouble):TpvVectorPathShape;
+var Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
+    SegmentLine:TpvVectorPathSegmentLine;
+    First:boolean;
+begin
+ fSettings.Assign(aSettings);
+ if aApproximationScale>0.125 then begin
+  fApproximationScale:=aApproximationScale;
+ end else begin
+  fApproximationScale:=0.125;
+ end;
+ MakeDashes;
+ result:=TpvVectorPathShape.Create;
+ try
+  result.fFillRule:=TpvVectorPathFillRule.NonZero;
+  fOutputShape:=result;
+  fOutputContour:=nil;
+  fCountLinePoints:=0;
+  fCountDashedLinePoints:=0;
+  fFirst:=true;
+  fHasLastPosition:=false;
+  if assigned(aShape) then begin
+   for Contour in aShape.fContours do begin
+    if assigned(Contour) then begin
+     First:=true;
+     for Segment in Contour.fSegments do begin
+      // Only line segments are walked, so the caller has to flatten the curves beforehand, which
+      // keeps the flattening tolerance in the caller's hands where the target scale is known.
+      if Segment is TpvVectorPathSegmentLine then begin
+       SegmentLine:=TpvVectorPathSegmentLine(Segment);
+       if First then begin
+        First:=false;
+        AddLinePoint(SegmentLine.Points[0]);
+       end;
+       AddLinePoint(SegmentLine.Points[1]);
+      end;
+     end;
+     FlushLine(Contour.fClosed);
+    end;
+   end;
+  end;
+ finally
+  fOutputShape:=nil;
+  fOutputContour:=nil;
+ end;
 end;
 
 { TpvVectorPathGPUShape.TGridCell }
