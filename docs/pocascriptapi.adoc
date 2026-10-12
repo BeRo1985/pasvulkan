@@ -7842,6 +7842,7 @@ let texture = VectorGraphics.createTexture(document);
 ** `+width+` (number): Optional width in pixels. Zero or left out takes the size the document itself states.
 ** `+height+` (number): Optional height in pixels.
 ** `+srgb+` (boolean): Whether to give the texture an sRGB format, so that the GPU converts on every fetch (default: true). The bytes the rasterizer produces are sRGB values whichever color space it blends in, so this is what makes the picture come out with the colors it was drawn with. Turning it off hands those bytes to the canvas as if they were linear light, which comes out visibly washed out, and is only right where the picture is not a picture at all but data, such as a mask.
+* *Note:* The colors are multiplied by their own alpha before every upload, and the canvas is told so when the texture is drawn. That is what keeps the filtering of the hardware from pulling every half transparent edge towards the transparent black the rasterizer cleared to, which otherwise shows as a dark fringe wherever the picture is drawn at any size but its own.
 * *Return Value:* A new VectorGraphicsTexture object.
 * *Example:*
 +

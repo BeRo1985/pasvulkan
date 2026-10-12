@@ -164,10 +164,14 @@ type EpvVectorGraphicsCanvas=class(Exception);
        fRasterizer:TpvVectorGraphicsCanvasRasterizer;
        fTexture:TpvVulkanTexture;
        fSRGB:boolean;
+       // Whether the colour is multiplied by its own alpha before the upload, which is what makes
+       // the filtering of the hardware right at every edge, in every mip level and at the border.
+       // On by default, and only worth turning off where something reads the texture back and wants
+       // the colours as they were drawn.
+       fPremultipliedAlpha:boolean;
        // Whether the colour of the picture is carried out into the transparent area before the
-       // upload, which is what keeps the filter of the hardware from pulling every edge towards the
-       // black the rasterizer cleared to. On by default, since there is no case where the fringe is
-       // wanted, and only worth turning off where the picture is read as data rather than looked at.
+       // upload instead, which is the weaker of the two ways and only used when the one above is
+       // off.
        fDilateTransparentColors:boolean;
        fTick:TpvInt64;
        fTickFraction:TpvDouble;
@@ -217,8 +221,11 @@ type EpvVectorGraphicsCanvas=class(Exception);
        property TickFraction:TpvDouble read fTickFraction write SetTickFraction;
        // Set this after changing the document itself, which nothing here can notice on its own.
        property Dirty:boolean read fDirty write fDirty;
-       // Whether the colour is carried out into the transparent area before every upload, which is
-       // what keeps the edges from being pulled towards black by the filter of the hardware.
+       // Whether the colour is multiplied by its own alpha before every upload, which is what makes
+       // the filtering of the hardware right at the edges of the picture.
+       property PremultipliedAlpha:boolean read fPremultipliedAlpha write fPremultipliedAlpha;
+       // Whether the colour is carried out into the transparent area instead, which only applies
+       // when the one above is off.
        property DilateTransparentColors:boolean read fDilateTransparentColors write fDilateTransparentColors;
      end;
 
@@ -524,6 +531,8 @@ begin
  fOwnsDocument:=aOwnsDocument;
  fSRGB:=aSRGB;
 
+ fPremultipliedAlpha:=true;
+
  fDilateTransparentColors:=true;
 
  fTexture:=nil;
@@ -622,11 +631,21 @@ begin
  // The rasterizer clears to transparent black, so every texel outside the picture holds black, and
  // the hardware's bilinear filter mixes that black into every edge texel it touches, which it does
  // before the fragment shader ever multiplies by the alpha. The result is a dark fringe all the way
- // around. Carrying the colour of the nearest texel that has some opacity outwards makes the filter
- // mix in the picture's own colour instead, which is what it should have been mixing all along. The
- // alpha is left exactly as it is, so nothing that is actually visible changes. The same thing a
- // sprite atlas does for the same reason, which is where this comes from.
- if fDilateTransparentColors then begin
+ // around, and the same happens again in every mip level and at the transparent black border the
+ // sampler reads past the edge of the picture.
+ //
+ // Multiplying the colour by its own alpha here is what makes all of that right rather than only
+ // less wrong: the average of premultiplied texels is the premultiplied average, so whatever the
+ // filter mixes in from a transparent texel is zero and contributes nothing, at every mip level and
+ // at the border alike. The shader is told not to multiply a second time.
+ //
+ // Carrying the colour of the nearest opaque texel outwards is the other way, the one a sprite
+ // atlas takes, and it only approximates this: it gets the colour right where the picture has one
+ // colour along the edge, and not where two meet. It is left here for a caller that needs the
+ // texture to keep straight alpha for something else.
+ if fPremultipliedAlpha then begin
+  ConvertImageAlphaMode(Pixels,fRasterizer.Width,fRasterizer.Height,false,fSRGB,true);
+ end else if fDilateTransparentColors then begin
   DilateTransparentColoursInImage(Pixels,fRasterizer.Width,fRasterizer.Height,false);
  end;
 
@@ -684,18 +703,27 @@ begin
 end;
 
 procedure TpvVectorGraphicsCanvasTexture.Draw(const aCanvas:TpvCanvas;const aDestination:TpvRect);
+var OldTexturePremultipliedAlpha:boolean;
 begin
  if assigned(fTexture) then begin
-  aCanvas.DrawTexturedRectangle(fTexture,aDestination);
+  // The shader has to know which of the two the texture holds, or it multiplies by the alpha a
+  // second time and every half transparent edge comes out too faint.
+  OldTexturePremultipliedAlpha:=aCanvas.TexturePremultipliedAlpha;
+  try
+   aCanvas.TexturePremultipliedAlpha:=fPremultipliedAlpha;
+   aCanvas.DrawTexturedRectangle(fTexture,aDestination);
+  finally
+   aCanvas.TexturePremultipliedAlpha:=OldTexturePremultipliedAlpha;
+  end;
  end;
 end;
 
 procedure TpvVectorGraphicsCanvasTexture.Draw(const aCanvas:TpvCanvas;const aPosition:TpvVector2);
 begin
  if assigned(fTexture) then begin
-  aCanvas.DrawTexturedRectangle(fTexture,
-                                TpvRect.CreateRelative(aPosition.x,aPosition.y,
-                                                       fRasterizer.Width,fRasterizer.Height));
+  // Through the one above, so that it tells the shader about the premultiplied colours here too.
+  Draw(aCanvas,TpvRect.CreateRelative(aPosition.x,aPosition.y,
+                                      fRasterizer.Width,fRasterizer.Height));
  end;
 end;
 

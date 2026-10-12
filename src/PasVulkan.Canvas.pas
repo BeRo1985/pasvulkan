@@ -312,6 +312,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fPath:TpvCanvasPath;
        fTexture:TObject;
+       // Whether the colors of fTexture are already multiplied by their alpha, which the shader has
+       // to be told, or it multiplies a second time. An atlas texture says so itself, a plain one
+       // cannot, so whoever set it says it here.
+       fTexturePremultipliedAlpha:boolean;
        fAtlasTexture:TObject;
        fMaskTexture:TObject;
        fGUIElementMode:boolean;
@@ -786,6 +790,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        function GetTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTexture(const aTexture:TObject);
+       function GetTexturePremultipliedAlpha:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTexturePremultipliedAlpha(const aTexturePremultipliedAlpha:boolean);
        function GetAtlasTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetAtlasTexture(const aTexture:TObject);
        function GetMaskTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1038,6 +1044,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillStyle:TpvCanvasFillStyle read GetFillStyle write SetFillStyle;
        property FillWrapMode:TpvCanvasFillWrapMode read GetFillWrapMode write SetFillWrapMode;
        property Texture:TObject read GetTexture write SetTexture;
+       // Set this for a texture whose colors are already multiplied by their alpha, or the shader
+       // multiplies a second time. An atlas texture carries this itself and needs nothing here.
+       property TexturePremultipliedAlpha:boolean read GetTexturePremultipliedAlpha write SetTexturePremultipliedAlpha;
        property UseBreadcrumbs:Boolean read fUseBreadcrumbs write fUseBreadcrumbs;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
        property VectorPathMode:boolean read GetVectorPathMode write SetVectorPathMode;
@@ -1736,6 +1745,7 @@ begin
  fMaskMatrix:=TpvMatrix4x4.Identity;
  fPath.fCountCommands:=0;
  fTexture:=nil;
+ fTexturePremultipliedAlpha:=false;
  fAtlasTexture:=nil;
  fMaskTexture:=nil;
  fGUIElementMode:=false;
@@ -1769,6 +1779,7 @@ begin
   fTextVerticalAlignment:=TpvCanvasState(aSource).fTextVerticalAlignment;
   fPath.Assign(TpvCanvasState(aSource).fPath);
   fTexture:=TpvCanvasState(aSource).fTexture;
+  fTexturePremultipliedAlpha:=TpvCanvasState(aSource).fTexturePremultipliedAlpha;
   fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
   fMaskTexture:=TpvCanvasState(aSource).fMaskTexture;
   fGUIElementMode:=TpvCanvasState(aSource).fGUIElementMode;
@@ -4900,6 +4911,19 @@ begin
  end;
 end;
 
+function TpvCanvas.GetTexturePremultipliedAlpha:boolean;
+begin
+ result:=fState.fTexturePremultipliedAlpha;
+end;
+
+procedure TpvCanvas.SetTexturePremultipliedAlpha(const aTexturePremultipliedAlpha:boolean);
+begin
+ if fState.fTexturePremultipliedAlpha<>aTexturePremultipliedAlpha then begin
+  Flush;
+  fState.fTexturePremultipliedAlpha:=aTexturePremultipliedAlpha;
+ end;
+end;
+
 function TpvCanvas.GetAtlasTexture:TObject;
 begin
  result:=fState.fAtlasTexture;
@@ -5640,7 +5664,8 @@ begin
    if QueueItem^.MaskingMode then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 0);
    end;
-   if assigned(fState.fAtlasTexture) and (State.fAtlasTexture is TpvSpriteAtlasArrayTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha then begin
+   if fState.fTexturePremultipliedAlpha or
+      (assigned(fState.fAtlasTexture) and (State.fAtlasTexture is TpvSpriteAtlasArrayTexture) and TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).PremultipliedAlpha) then begin
     PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^:=PpvUInt32(Pointer(@QueueItem^.PushConstants.Data[7].w))^ or (TpvUInt32(1) shl 1);
    end;
   finally

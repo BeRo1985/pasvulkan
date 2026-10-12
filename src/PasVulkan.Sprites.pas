@@ -367,6 +367,13 @@ type EpvSpriteAtlas=class(Exception);
 // not only a sprite atlas, since the fringe it heads off comes from the hardware's own filtering.
 procedure DilateTransparentColoursInImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aDepth16Bit:boolean);
 
+// Convert the colour channels of an image in place between straight and premultiplied alpha, leaving
+// every alpha value exactly as it was. The comment at the implementation says why the multiplication
+// has to happen in linear light. Premultiplied is what makes the filtering of the hardware right
+// rather than only less wrong: the average of premultiplied texels is the premultiplied average,
+// which carrying the colour outwards can only approximate.
+procedure ConvertImageAlphaMode(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aDepth16Bit,aSRGB,aToPremultiplied:boolean);
+
 implementation
 
 uses PasDblStrUtils,
