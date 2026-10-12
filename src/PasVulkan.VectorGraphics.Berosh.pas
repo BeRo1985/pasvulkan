@@ -117,6 +117,9 @@ type EpvVectorGraphicsBerosh=class(Exception);
        function ParseColor(const aText:TpvRawByteString):TpvVectorGraphicsColor;
        function ParseFillRule(const aText:TpvRawByteString):TpvVectorPathFillRule;
        function ParseSpreadMethod(const aText:TpvRawByteString):TpvVectorGraphicsSpreadMethod;
+       // The same keywords mix-blend-mode uses, so that a document can go from SVG into this
+       // format and back without losing the mode on the way.
+       function ParseBlendMode(const aText:TpvRawByteString):TpvVectorGraphicsBlendMode;
 
        procedure ReadSimpleMatrix(const aTag:TpvXMLTag;out aSimpleMatrix:TpvVectorGraphicsSimpleMatrix);
        procedure ReadPathCommands(const aTag:TpvXMLTag;const aPath:TpvVectorPath);
@@ -152,6 +155,8 @@ type EpvVectorGraphicsBerosh=class(Exception);
        function FormatFloat_(const aValue:TpvDouble):TpvRawByteString;
        function FormatColor(const aColor:TpvVectorGraphicsColor):TpvRawByteString;
        function FormatBoolean(const aValue:boolean):TpvRawByteString;
+       // The same keywords the reader accepts, which are the ones of mix-blend-mode.
+       function FormatBlendMode(const aBlendMode:TpvVectorGraphicsBlendMode):TpvRawByteString;
 
        function ClipIDOf(const aGroup:TpvVectorGraphicsGroup):TpvInt32;
        procedure CollectClips(const aObject:TpvVectorGraphicsObject);
@@ -354,6 +359,50 @@ begin
   result:=TpvVectorGraphicsSpreadMethod.Repeat_;
  end else begin
   result:=TpvVectorGraphicsSpreadMethod.Pad;
+ end;
+
+end;
+
+function TpvVectorGraphicsBeroshReader.ParseBlendMode(const aText:TpvRawByteString):TpvVectorGraphicsBlendMode;
+var Text:string;
+begin
+
+ Text:=LowerCase(Trim(String(aText)));
+
+ // The twelve separable modes first, then the four that need all three channels at once, and
+ // anything unrecognised counts as normal.
+ if Text='multiply' then begin
+  result:=TpvVectorGraphicsBlendMode.Multiply;
+ end else if Text='screen' then begin
+  result:=TpvVectorGraphicsBlendMode.Screen;
+ end else if Text='overlay' then begin
+  result:=TpvVectorGraphicsBlendMode.Overlay;
+ end else if Text='darken' then begin
+  result:=TpvVectorGraphicsBlendMode.Darken;
+ end else if Text='lighten' then begin
+  result:=TpvVectorGraphicsBlendMode.Lighten;
+ end else if Text='color-dodge' then begin
+  result:=TpvVectorGraphicsBlendMode.ColorDodge;
+ end else if Text='color-burn' then begin
+  result:=TpvVectorGraphicsBlendMode.ColorBurn;
+ end else if Text='hard-light' then begin
+  result:=TpvVectorGraphicsBlendMode.HardLight;
+ end else if Text='soft-light' then begin
+  result:=TpvVectorGraphicsBlendMode.SoftLight;
+ end else if Text='difference' then begin
+  result:=TpvVectorGraphicsBlendMode.Difference;
+ end else if Text='exclusion' then begin
+  result:=TpvVectorGraphicsBlendMode.Exclusion;
+ end else if Text='hue' then begin
+  result:=TpvVectorGraphicsBlendMode.Hue;
+ end else if Text='saturation' then begin
+  result:=TpvVectorGraphicsBlendMode.Saturation;
+ end else if Text='color' then begin
+  result:=TpvVectorGraphicsBlendMode.Color;
+ end else if Text='luminosity' then begin
+  result:=TpvVectorGraphicsBlendMode.Luminosity;
+ end else begin
+  result:=TpvVectorGraphicsBlendMode.Normal;
  end;
 
 end;
@@ -681,6 +730,13 @@ begin
    end else begin
     aObject.MaskMode:=TpvVectorGraphicsMaskMode.None;
    end;
+
+  end else if Name='blend' then begin
+
+   // An extension of the original format, which knew no blend modes at all, so a file without
+   // this element simply keeps the defaults.
+   aObject.BlendMode:=ParseBlendMode(SubTag.GetParameter('mode','normal'));
+   aObject.Isolate:=ParseBoolean(SubTag.GetParameter('isolate','false'));
 
   end else if Name='flags' then begin
 
@@ -1316,6 +1372,62 @@ begin
  end;
 end;
 
+function TpvVectorGraphicsBeroshWriter.FormatBlendMode(const aBlendMode:TpvVectorGraphicsBlendMode):TpvRawByteString;
+begin
+
+ case aBlendMode of
+  TpvVectorGraphicsBlendMode.Multiply:begin
+   result:='multiply';
+  end;
+  TpvVectorGraphicsBlendMode.Screen:begin
+   result:='screen';
+  end;
+  TpvVectorGraphicsBlendMode.Overlay:begin
+   result:='overlay';
+  end;
+  TpvVectorGraphicsBlendMode.Darken:begin
+   result:='darken';
+  end;
+  TpvVectorGraphicsBlendMode.Lighten:begin
+   result:='lighten';
+  end;
+  TpvVectorGraphicsBlendMode.ColorDodge:begin
+   result:='color-dodge';
+  end;
+  TpvVectorGraphicsBlendMode.ColorBurn:begin
+   result:='color-burn';
+  end;
+  TpvVectorGraphicsBlendMode.HardLight:begin
+   result:='hard-light';
+  end;
+  TpvVectorGraphicsBlendMode.SoftLight:begin
+   result:='soft-light';
+  end;
+  TpvVectorGraphicsBlendMode.Difference:begin
+   result:='difference';
+  end;
+  TpvVectorGraphicsBlendMode.Exclusion:begin
+   result:='exclusion';
+  end;
+  TpvVectorGraphicsBlendMode.Hue:begin
+   result:='hue';
+  end;
+  TpvVectorGraphicsBlendMode.Saturation:begin
+   result:='saturation';
+  end;
+  TpvVectorGraphicsBlendMode.Color:begin
+   result:='color';
+  end;
+  TpvVectorGraphicsBlendMode.Luminosity:begin
+   result:='luminosity';
+  end;
+  else {TpvVectorGraphicsBlendMode.Normal:}begin
+   result:='normal';
+  end;
+ end;
+
+end;
+
 function TpvVectorGraphicsBeroshWriter.ClipIDOf(const aGroup:TpvVectorGraphicsGroup):TpvInt32;
 var Index:TpvSizeInt;
 begin
@@ -1704,6 +1816,14 @@ begin
  Tag.Name:='mask';
  aTag.Add(Tag);
  Tag.AddParameter('mode',Name);
+
+ // An extension of the original format. It is written unconditionally, so that a reader can
+ // tell a document that was saved without a blend mode from one that never had the element.
+ Tag:=TpvXMLTag.Create;
+ Tag.Name:='blend';
+ aTag.Add(Tag);
+ Tag.AddParameter('mode',FormatBlendMode(aObject.BlendMode));
+ Tag.AddParameter('isolate',FormatBoolean(aObject.Isolate));
 
  Tag:=TpvXMLTag.Create;
  Tag.Name:='flags';

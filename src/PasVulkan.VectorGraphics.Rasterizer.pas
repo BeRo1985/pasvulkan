@@ -114,6 +114,12 @@ type EpvVectorGraphicsRasterizer=class(Exception);
 
      PpvVectorGraphicsRGBA=^TpvVectorGraphicsRGBA;
 
+     // The three color channels of one pixel as floating point values from zero to one, which is
+     // the form the blend functions work in, since several of them are not expressible in bytes
+     // without losing too much on the way.
+     PpvVectorGraphicsFloatTriple=^TpvVectorGraphicsFloatTriple;
+     TpvVectorGraphicsFloatTriple=array[0..2] of TpvFloat;
+
      // Which arithmetic the span blending uses. Integer is bit-for-bit what the old BeRoVector
      // software renderer did, so output can be compared against it; Linear converts to linear
      // light, blends there and converts back, which is correct but no longer comparable.
@@ -121,6 +127,50 @@ type EpvVectorGraphicsRasterizer=class(Exception);
      TpvVectorGraphicsColorSpaceMode=
       (
        Integer=0,
+       Linear
+      );
+
+     // The sixteen blend modes of the CSS compositing specification, in the order the
+     // specification lists them, which is also the order mix-blend-mode names them in.
+     //
+     // The first twelve are separable, meaning they are one and the same function applied to each
+     // channel on its own. The last four are not: they take the whole triple apart into hue,
+     // saturation and luminosity and put a new one together, so they have to be computed from all
+     // three channels at once.
+     PpvVectorGraphicsBlendMode=^TpvVectorGraphicsBlendMode;
+     TpvVectorGraphicsBlendMode=
+      (
+       Normal=0,
+       Multiply,
+       Screen,
+       Overlay,
+       Darken,
+       Lighten,
+       ColorDodge,
+       ColorBurn,
+       HardLight,
+       SoftLight,
+       Difference,
+       Exclusion,
+       Hue,
+       Saturation,
+       Color,
+       Luminosity
+      );
+
+     // Which arithmetic a blend mode other than Normal uses. This is deliberately independent of
+     // the pixel buffer's own color space mode, because the two answer different questions: the
+     // buffer decides how compositing rounds, a blend mode decides what the blend function sees.
+     PpvVectorGraphicsBlendColorSpaceMode=^TpvVectorGraphicsBlendColorSpaceMode;
+     TpvVectorGraphicsBlendColorSpaceMode=
+      (
+       // Follow whatever the pixel buffer being drawn into uses.
+       Auto=0,
+       // Blend on the sRGB encoded values. This is what every browser does for mix-blend-mode and
+       // what keeps the integer path bit-comparable, which is why it is the default.
+       SRGB,
+       // Blend in linear light, which is physically the sounder choice but matches no reference
+       // renderer.
        Linear
       );
 
@@ -166,6 +216,14 @@ type EpvVectorGraphicsRasterizer=class(Exception);
        // Blends aSource over this buffer with the given alpha, which is how the off-image group
        // opacity of the scene graph gets composited.
        procedure BlendFrom(const aSource:TpvVectorGraphicsPixelBuffer;const aAlpha:TpvUInt8);
+       // Composites aSource over this buffer, optionally through a blend mode that takes this
+       // buffer as the backdrop. Unlike BlendFrom this never degenerates into a copy at full
+       // opacity, because an isolated off-image buffer is transparent wherever nothing was drawn
+       // and a copy would wipe the backdrop there.
+       procedure BlendOverFrom(const aSource:TpvVectorGraphicsPixelBuffer;
+                               const aAlpha:TpvUInt8;
+                               const aBlendMode:TpvVectorGraphicsBlendMode=TpvVectorGraphicsBlendMode.Normal;
+                               const aLinearBlending:boolean=false);
        // Copies the linear light buffer back into the integer pixels, which the Linear color
        // space mode needs before the result is read or uploaded.
        procedure FlushLinearToIntegerPixels;
@@ -277,6 +335,9 @@ type EpvVectorGraphicsRasterizer=class(Exception);
        fSolidPaint:TpvVectorGraphicsPaint;
        fMask:TpvVectorGraphicsMask;
        fFillRule:TpvVectorPathFillRule;
+       fBlendMode:TpvVectorGraphicsBlendMode;
+       fElementBlendMode:TpvVectorGraphicsBlendMode;
+       fBlendColorSpaceMode:TpvVectorGraphicsBlendColorSpaceMode;
        fGamma:TpvDouble;
        fGammaLookUpTable:TpvVectorGraphicsGammaLookUpTable;
        fFlipY:boolean;
@@ -289,6 +350,9 @@ type EpvVectorGraphicsRasterizer=class(Exception);
        function GetColor:TpvVectorGraphicsColor;
        function GetWidth:TpvInt32; {$ifdef CANINLINE}inline;{$endif}
        function GetHeight:TpvInt32; {$ifdef CANINLINE}inline;{$endif}
+       // Resolves the Auto setting against the buffer currently being drawn into, so that the
+       // span loop only ever has to ask whether it blends on linear values or not.
+       function GetLinearBlending:boolean; {$ifdef CANINLINE}inline;{$endif}
        // Blends one horizontal run of aCount pixels at (aX,aY) with the given coverage, after
        // clipping it to the buffer and running it through the gamma table and the mask.
        // aThreadIndex picks the scratch buffer, so a subclass that blends scanlines in parallel
@@ -332,16 +396,33 @@ type EpvVectorGraphicsRasterizer=class(Exception);
       public
        property PixelBuffer:TpvVectorGraphicsPixelBuffer read fPixelBuffer;
        property GammaLookUpTable:TpvVectorGraphicsGammaLookUpTable read fGammaLookUpTable;
+       // The resolved answer to BlendColorSpaceMode, which a caller compositing a buffer of its
+       // own needs so that it blends the same way the span path would have.
+       property LinearBlending:boolean read GetLinearBlending;
       published
        property Width:TpvInt32 read GetWidth;
        property Height:TpvInt32 read GetHeight;
        property Color:TpvVectorGraphicsColor read GetColor write SetColor;
        property Gamma:TpvDouble read fGamma write SetGamma;
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
+       // Anything but Normal makes every span read the backdrop and run it through the blend
+       // function before compositing, which costs noticeably more, so it is left on Normal
+       // unless an element actually asks for a mode.
+       property BlendMode:TpvVectorGraphicsBlendMode read fBlendMode write fBlendMode;
+       // The blend mode of the element currently being drawn, which is something else entirely:
+       // a backend that records the drawing instead of carrying it out needs to know it, whereas
+       // the span path above deliberately does not look at it, because the scene graph puts the
+       // element into a buffer of its own and applies the mode when compositing that buffer.
+       property ElementBlendMode:TpvVectorGraphicsBlendMode read fElementBlendMode write fElementBlendMode;
+       property BlendColorSpaceMode:TpvVectorGraphicsBlendColorSpaceMode read fBlendColorSpaceMode write fBlendColorSpaceMode;
        property Mask:TpvVectorGraphicsMask read fMask write fMask;
        property Paint:TpvVectorGraphicsPaint read fPaint;
        property FlipY:boolean read fFlipY write fFlipY;
      end;
+
+const // The first blend mode that is not separable, so that the span loop can tell the two
+      // families apart with a single comparison.
+      pvVectorGraphicsFirstNonSeparableBlendMode=TpvVectorGraphicsBlendMode.Hue;
 
 var pvVectorGraphicsByteMulTable:TpvVectorGraphicsByteMulTable;
 
@@ -357,6 +438,23 @@ function pvVectorGraphicsMultiplyColors(const aColor,aWith:TpvVectorGraphicsColo
 function pvVectorGraphicsSRGBToLinear(const aValue:TpvFloat):TpvFloat; {$ifdef CANINLINE}inline;{$endif}
 
 function pvVectorGraphicsLinearToSRGB(const aValue:TpvFloat):TpvFloat; {$ifdef CANINLINE}inline;{$endif}
+
+// One channel through one of the twelve separable blend modes. Both arguments and the result run
+// from zero to one.
+function pvVectorGraphicsBlendChannel(const aMode:TpvVectorGraphicsBlendMode;const aBackdrop,aSource:TpvFloat):TpvFloat;
+
+// The whole blend step for one pixel: the blend function itself, and then the weighting by the
+// backdrop alpha that the specification puts between blending and compositing. The result goes
+// into the normal source-over path as if it were the source color.
+function pvVectorGraphicsBlendTriple(const aMode:TpvVectorGraphicsBlendMode;
+                                     const aBackdrop,aSource:TpvVectorGraphicsFloatTriple;
+                                     const aBackdropAlpha:TpvFloat):TpvVectorGraphicsFloatTriple;
+
+// The same thing for two packed colors, which is what the integer span path has in hand. The
+// alpha of the result is the one of aSource, untouched.
+function pvVectorGraphicsBlendColors(const aMode:TpvVectorGraphicsBlendMode;
+                                     const aDestination,aSource:TpvVectorGraphicsColor;
+                                     const aLinearBlending:boolean):TpvVectorGraphicsColor;
 
 implementation
 
@@ -429,6 +527,348 @@ begin
  end else begin
   result:=(1.055*Power(aValue,1.0/2.4))-0.055;
  end;
+end;
+
+function pvVectorGraphicsBlendChannel(const aMode:TpvVectorGraphicsBlendMode;const aBackdrop,aSource:TpvFloat):TpvFloat;
+var Doubled,Target:TpvFloat;
+begin
+
+ case aMode of
+
+  TpvVectorGraphicsBlendMode.Multiply:begin
+   result:=aBackdrop*aSource;
+  end;
+
+  TpvVectorGraphicsBlendMode.Screen:begin
+   result:=(aBackdrop+aSource)-(aBackdrop*aSource);
+  end;
+
+  TpvVectorGraphicsBlendMode.Overlay:begin
+   // Overlay is hard light with the two arguments the other way round, which the specification
+   // states outright, so there is no second formula to keep in step.
+   result:=pvVectorGraphicsBlendChannel(TpvVectorGraphicsBlendMode.HardLight,aSource,aBackdrop);
+  end;
+
+  TpvVectorGraphicsBlendMode.Darken:begin
+   if aBackdrop<aSource then begin
+    result:=aBackdrop;
+   end else begin
+    result:=aSource;
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.Lighten:begin
+   if aBackdrop>aSource then begin
+    result:=aBackdrop;
+   end else begin
+    result:=aSource;
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.ColorDodge:begin
+   // The two ends are spelled out, because the division would be by zero at one of them and
+   // would give the wrong answer at the other.
+   if aBackdrop<=0.0 then begin
+    result:=0.0;
+   end else if aSource>=1.0 then begin
+    result:=1.0;
+   end else begin
+    result:=aBackdrop/(1.0-aSource);
+    if result>1.0 then begin
+     result:=1.0;
+    end;
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.ColorBurn:begin
+   if aBackdrop>=1.0 then begin
+    result:=1.0;
+   end else if aSource<=0.0 then begin
+    result:=0.0;
+   end else begin
+    result:=(1.0-aBackdrop)/aSource;
+    if result>1.0 then begin
+     result:=1.0;
+    end;
+    result:=1.0-result;
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.HardLight:begin
+   // Multiply below half, screen above it, both on a source stretched over the full range.
+   Doubled:=aSource*2.0;
+   if aSource<=0.5 then begin
+    result:=aBackdrop*Doubled;
+   end else begin
+    Doubled:=Doubled-1.0;
+    result:=(aBackdrop+Doubled)-(aBackdrop*Doubled);
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.SoftLight:begin
+   if aSource<=0.5 then begin
+    result:=aBackdrop-((1.0-(aSource*2.0))*aBackdrop*(1.0-aBackdrop));
+   end else begin
+    // The specification uses a cubic below a quarter and a square root above it, so that the
+    // curve stays smooth where the two meet.
+    if aBackdrop<=0.25 then begin
+     Target:=(((((16.0*aBackdrop)-12.0)*aBackdrop)+4.0)*aBackdrop);
+    end else begin
+     Target:=sqrt(aBackdrop);
+    end;
+    result:=aBackdrop+(((aSource*2.0)-1.0)*(Target-aBackdrop));
+   end;
+  end;
+
+  TpvVectorGraphicsBlendMode.Difference:begin
+   result:=abs(aBackdrop-aSource);
+  end;
+
+  TpvVectorGraphicsBlendMode.Exclusion:begin
+   result:=(aBackdrop+aSource)-(2.0*aBackdrop*aSource);
+  end;
+
+  else {TpvVectorGraphicsBlendMode.Normal:}begin
+   // Normal, and also the four non-separable modes, which never reach this function.
+   result:=aSource;
+  end;
+
+ end;
+
+end;
+
+// The luminosity of a triple, with the weights the compositing specification gives, which are not
+// the ones of the luminance used for masking.
+function pvVectorGraphicsBlendLuminosity(const aColor:TpvVectorGraphicsFloatTriple):TpvFloat; {$ifdef CANINLINE}inline;{$endif}
+begin
+ result:=(0.3*aColor[0])+(0.59*aColor[1])+(0.11*aColor[2]);
+end;
+
+// The saturation of a triple, which here simply means how far its channels spread apart.
+function pvVectorGraphicsBlendSaturation(const aColor:TpvVectorGraphicsFloatTriple):TpvFloat; {$ifdef CANINLINE}inline;{$endif}
+var Minimum,Maximum:TpvFloat;
+begin
+
+ Minimum:=Min(aColor[0],Min(aColor[1],aColor[2]));
+ Maximum:=Max(aColor[0],Max(aColor[1],aColor[2]));
+
+ result:=Maximum-Minimum;
+
+end;
+
+// Pulls a triple that left the unit cube back into it, around its own luminosity, so that the
+// result keeps the luminosity that was just set on it.
+function pvVectorGraphicsBlendClipColor(const aColor:TpvVectorGraphicsFloatTriple):TpvVectorGraphicsFloatTriple;
+var Luminosity,Minimum,Maximum,Scale:TpvFloat;
+    Channel:TpvSizeInt;
+begin
+
+ result:=aColor;
+
+ Luminosity:=pvVectorGraphicsBlendLuminosity(result);
+ Minimum:=Min(result[0],Min(result[1],result[2]));
+ Maximum:=Max(result[0],Max(result[1],result[2]));
+
+ // Below zero the triple is pulled towards its luminosity from underneath, above one from above,
+ // and both can be needed one after the other.
+ if Minimum<0.0 then begin
+  Scale:=Luminosity-Minimum;
+  if Scale>1e-12 then begin
+   for Channel:=0 to 2 do begin
+    result[Channel]:=Luminosity+(((result[Channel]-Luminosity)*Luminosity)/Scale);
+   end;
+  end else begin
+   for Channel:=0 to 2 do begin
+    result[Channel]:=Luminosity;
+   end;
+  end;
+ end;
+
+ if Maximum>1.0 then begin
+  Scale:=Maximum-Luminosity;
+  if Scale>1e-12 then begin
+   for Channel:=0 to 2 do begin
+    result[Channel]:=Luminosity+(((result[Channel]-Luminosity)*(1.0-Luminosity))/Scale);
+   end;
+  end else begin
+   for Channel:=0 to 2 do begin
+    result[Channel]:=Luminosity;
+   end;
+  end;
+ end;
+
+end;
+
+// Gives a triple a new luminosity while leaving its hue and saturation alone.
+function pvVectorGraphicsBlendSetLuminosity(const aColor:TpvVectorGraphicsFloatTriple;const aLuminosity:TpvFloat):TpvVectorGraphicsFloatTriple;
+var Difference:TpvFloat;
+    Channel:TpvSizeInt;
+begin
+
+ Difference:=aLuminosity-pvVectorGraphicsBlendLuminosity(aColor);
+ for Channel:=0 to 2 do begin
+  result[Channel]:=aColor[Channel]+Difference;
+ end;
+
+ // Shifting all three channels by the same amount can push them out of the unit cube.
+ result:=pvVectorGraphicsBlendClipColor(result);
+
+end;
+
+// Gives a triple a new saturation while leaving its hue alone. The middle channel keeps its
+// relative place between the other two, which is what preserves the hue.
+function pvVectorGraphicsBlendSetSaturation(const aColor:TpvVectorGraphicsFloatTriple;const aSaturation:TpvFloat):TpvVectorGraphicsFloatTriple;
+var Minimum,Maximum,Spread:TpvFloat;
+    MinimumIndex,MiddleIndex,MaximumIndex,Channel:TpvSizeInt;
+begin
+
+ // Which channel is the smallest and which the largest, so that the third one is the middle one.
+ MinimumIndex:=0;
+ MaximumIndex:=0;
+ for Channel:=1 to 2 do begin
+  if aColor[Channel]<aColor[MinimumIndex] then begin
+   MinimumIndex:=Channel;
+  end;
+  if aColor[Channel]>aColor[MaximumIndex] then begin
+   MaximumIndex:=Channel;
+  end;
+ end;
+
+ // A flat triple has no spread to scale, in which case the specification says the result is
+ // black, and the index arithmetic below would pick the same channel twice as well.
+ if MinimumIndex=MaximumIndex then begin
+  result[0]:=0.0;
+  result[1]:=0.0;
+  result[2]:=0.0;
+  exit;
+ end;
+
+ MiddleIndex:=3-(MinimumIndex+MaximumIndex);
+
+ Minimum:=aColor[MinimumIndex];
+ Maximum:=aColor[MaximumIndex];
+ Spread:=Maximum-Minimum;
+
+ result[MinimumIndex]:=0.0;
+ if Spread>1e-12 then begin
+  result[MiddleIndex]:=((aColor[MiddleIndex]-Minimum)*aSaturation)/Spread;
+  result[MaximumIndex]:=aSaturation;
+ end else begin
+  result[MiddleIndex]:=0.0;
+  result[MaximumIndex]:=0.0;
+ end;
+
+end;
+
+function pvVectorGraphicsBlendTriple(const aMode:TpvVectorGraphicsBlendMode;
+                                     const aBackdrop,aSource:TpvVectorGraphicsFloatTriple;
+                                     const aBackdropAlpha:TpvFloat):TpvVectorGraphicsFloatTriple;
+var Blended:TpvVectorGraphicsFloatTriple;
+    Channel:TpvSizeInt;
+begin
+
+ // Without a backdrop there is nothing to blend against, so the source stands as it is. This is
+ // also what makes a blend mode inside an isolated group behave itself.
+ if (aMode=TpvVectorGraphicsBlendMode.Normal) or (aBackdropAlpha<=0.0) then begin
+  result:=aSource;
+  exit;
+ end;
+
+ // The four non-separable modes take the triple apart and put a new one together, the other
+ // twelve are one function applied to each channel.
+ case aMode of
+
+  TpvVectorGraphicsBlendMode.Hue:begin
+   Blended:=pvVectorGraphicsBlendSetLuminosity(pvVectorGraphicsBlendSetSaturation(aSource,pvVectorGraphicsBlendSaturation(aBackdrop)),
+                                               pvVectorGraphicsBlendLuminosity(aBackdrop));
+  end;
+
+  TpvVectorGraphicsBlendMode.Saturation:begin
+   Blended:=pvVectorGraphicsBlendSetLuminosity(pvVectorGraphicsBlendSetSaturation(aBackdrop,pvVectorGraphicsBlendSaturation(aSource)),
+                                               pvVectorGraphicsBlendLuminosity(aBackdrop));
+  end;
+
+  TpvVectorGraphicsBlendMode.Color:begin
+   Blended:=pvVectorGraphicsBlendSetLuminosity(aSource,pvVectorGraphicsBlendLuminosity(aBackdrop));
+  end;
+
+  TpvVectorGraphicsBlendMode.Luminosity:begin
+   Blended:=pvVectorGraphicsBlendSetLuminosity(aBackdrop,pvVectorGraphicsBlendLuminosity(aSource));
+  end;
+
+  else begin
+   for Channel:=0 to 2 do begin
+    Blended[Channel]:=pvVectorGraphicsBlendChannel(aMode,aBackdrop[Channel],aSource[Channel]);
+   end;
+  end;
+
+ end;
+
+ // A partly transparent backdrop only blends in proportion to its own alpha, which is what keeps
+ // a blend mode over nothing from darkening or brightening the edge of what is underneath.
+ for Channel:=0 to 2 do begin
+  result[Channel]:=((1.0-aBackdropAlpha)*aSource[Channel])+(aBackdropAlpha*Blended[Channel]);
+ end;
+
+end;
+
+function pvVectorGraphicsBlendColors(const aMode:TpvVectorGraphicsBlendMode;
+                                     const aDestination,aSource:TpvVectorGraphicsColor;
+                                     const aLinearBlending:boolean):TpvVectorGraphicsColor;
+const OneOver255=1.0/255.0;
+var Backdrop,Source,Blended:TpvVectorGraphicsFloatTriple;
+    BackdropAlpha,Value:TpvFloat;
+    Channel,Shifts:TpvSizeInt;
+begin
+
+ BackdropAlpha:=((aDestination shr 24) and $ff)*OneOver255;
+ if (aMode=TpvVectorGraphicsBlendMode.Normal) or (BackdropAlpha<=0.0) then begin
+  result:=aSource;
+  exit;
+ end;
+
+ // Either straight on the stored values, or through the transfer function in both directions.
+ if aLinearBlending then begin
+  Backdrop[0]:=pvVectorGraphicsSRGBToLinearTable[(aDestination shr 16) and $ff];
+  Backdrop[1]:=pvVectorGraphicsSRGBToLinearTable[(aDestination shr 8) and $ff];
+  Backdrop[2]:=pvVectorGraphicsSRGBToLinearTable[aDestination and $ff];
+  Source[0]:=pvVectorGraphicsSRGBToLinearTable[(aSource shr 16) and $ff];
+  Source[1]:=pvVectorGraphicsSRGBToLinearTable[(aSource shr 8) and $ff];
+  Source[2]:=pvVectorGraphicsSRGBToLinearTable[aSource and $ff];
+ end else begin
+  Backdrop[0]:=((aDestination shr 16) and $ff)*OneOver255;
+  Backdrop[1]:=((aDestination shr 8) and $ff)*OneOver255;
+  Backdrop[2]:=(aDestination and $ff)*OneOver255;
+  Source[0]:=((aSource shr 16) and $ff)*OneOver255;
+  Source[1]:=((aSource shr 8) and $ff)*OneOver255;
+  Source[2]:=(aSource and $ff)*OneOver255;
+ end;
+
+ Blended:=pvVectorGraphicsBlendTriple(aMode,Backdrop,Source,BackdropAlpha);
+
+ // The alpha of the source carries over untouched, since blending changes the color and leaves
+ // the compositing to the caller.
+ result:=aSource and TpvUInt32($ff000000);
+
+ for Channel:=0 to 2 do begin
+
+  Value:=Blended[Channel];
+  if aLinearBlending then begin
+   Value:=pvVectorGraphicsLinearToSRGB(Value);
+  end;
+
+  if Value<=0.0 then begin
+   Value:=0.0;
+  end else if Value>=1.0 then begin
+   Value:=1.0;
+  end;
+
+  // Channel zero is red and therefore the highest of the three, channel two is blue.
+  Shifts:=16-(Channel*8);
+  result:=result or (TpvVectorGraphicsColor(round(Value*255.0)) shl Shifts);
+
+ end;
+
 end;
 
 { TpvVectorGraphicsRGBA }
@@ -751,6 +1191,69 @@ begin
    DestinationPixels^[Index]:=pvVectorGraphicsBlendColor(DestinationPixels^[Index],
                                                          pvVectorGraphicsModulateColor(SourcePixels^[Index],aAlpha));
   end;
+ end;
+
+ if fColorSpaceMode=TpvVectorGraphicsColorSpaceMode.Linear then begin
+  FlushIntegerToLinearPixels;
+ end;
+
+end;
+
+procedure TpvVectorGraphicsPixelBuffer.BlendOverFrom(const aSource:TpvVectorGraphicsPixelBuffer;
+                                                     const aAlpha:TpvUInt8;
+                                                     const aBlendMode:TpvVectorGraphicsBlendMode;
+                                                     const aLinearBlending:boolean);
+var Index,Count:TpvSizeInt;
+    SourcePixels,DestinationPixels:PpvVectorGraphicsRawColorArray;
+    SourceColor:TpvVectorGraphicsColor;
+begin
+
+ if (not assigned(aSource)) or (aAlpha=0) then begin
+  exit;
+ end;
+
+ if (aSource.fWidth<>fWidth) or (aSource.fHeight<>fHeight) then begin
+  raise EpvVectorGraphicsRasterizer.Create('Pixel buffer size mismatch while blending');
+ end;
+
+ Count:=TpvSizeInt(fWidth)*TpvSizeInt(fHeight);
+ if Count<=0 then begin
+  exit;
+ end;
+
+ // Compositing happens on the integer pixels, so a linear source has to be brought up to date.
+ if aSource.fColorSpaceMode=TpvVectorGraphicsColorSpaceMode.Linear then begin
+  aSource.FlushLinearToIntegerPixels;
+ end;
+ if fColorSpaceMode=TpvVectorGraphicsColorSpaceMode.Linear then begin
+  FlushLinearToIntegerPixels;
+ end;
+
+ SourcePixels:=aSource.GetPixelPointer;
+ DestinationPixels:=GetPixelPointer;
+ if not (assigned(SourcePixels) and assigned(DestinationPixels)) then begin
+  exit;
+ end;
+
+ for Index:=0 to Count-1 do begin
+
+  SourceColor:=SourcePixels^[Index];
+  if (SourceColor shr 24)=0 then begin
+   continue;
+  end;
+
+  // The group opacity goes on first, since the blend function has to see the alpha the element
+  // is actually composited with.
+  if aAlpha<>255 then begin
+   SourceColor:=pvVectorGraphicsModulateColor(SourceColor,aAlpha);
+  end;
+
+  if aBlendMode<>TpvVectorGraphicsBlendMode.Normal then begin
+   SourceColor:=pvVectorGraphicsBlendColors(aBlendMode,DestinationPixels^[Index],SourceColor,aLinearBlending);
+  end;
+
+  DestinationPixels^[Index]:=pvVectorGraphicsBlendColor(DestinationPixels^[Index],SourceColor);
+
  end;
 
  if fColorSpaceMode=TpvVectorGraphicsColorSpaceMode.Linear then begin
@@ -1166,6 +1669,12 @@ begin
  fFlipY:=false;
  fSpanColors:=nil;
 
+ // Normal means the span loop never touches the blend path at all, and sRGB is the default
+ // because that is what every browser blends mix-blend-mode in.
+ fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ fElementBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ fBlendColorSpaceMode:=TpvVectorGraphicsBlendColorSpaceMode.SRGB;
+
  // The zero above makes SetGamma actually build the table instead of taking its early exit.
  fGamma:=0.0;
  SetGamma(1.0);
@@ -1243,6 +1752,23 @@ end;
 function TpvVectorGraphicsRasterizer.GetHeight:TpvInt32;
 begin
  result:=fPixelBuffer.fHeight;
+end;
+
+function TpvVectorGraphicsRasterizer.GetLinearBlending:boolean;
+begin
+
+ case fBlendColorSpaceMode of
+  TpvVectorGraphicsBlendColorSpaceMode.SRGB:begin
+   result:=false;
+  end;
+  TpvVectorGraphicsBlendColorSpaceMode.Linear:begin
+   result:=true;
+  end;
+  else {TpvVectorGraphicsBlendColorSpaceMode.Auto:}begin
+   result:=fPixelBuffer.fColorSpaceMode=TpvVectorGraphicsColorSpaceMode.Linear;
+  end;
+ end;
+
 end;
 
 procedure TpvVectorGraphicsRasterizer.SetPaint(const aPaint:TpvVectorGraphicsPaint);
@@ -1364,6 +1890,9 @@ var X,Count,Index,ThreadIndex:TpvInt32;
     LinearIndex:TpvSizeInt;
     SourceAlpha,InverseSourceAlpha,ResultAlpha:TpvFloat;
     Channel:TpvInt32;
+    IsBlending,LinearBlending:boolean;
+    BlendBackdrop,BlendSource,BlendResult:TpvVectorGraphicsFloatTriple;
+    BackdropAlpha:TpvFloat;
 begin
 
  if (aCoverage=0) or (aY<0) or (aY>=fPixelBuffer.fHeight) then begin
@@ -1400,6 +1929,11 @@ begin
  if Alpha=0 then begin
   exit;
  end;
+
+ // A blend mode makes every pixel depend on what is already there, which rules out the whole-run
+ // shortcuts further down.
+ IsBlending:=fBlendMode<>TpvVectorGraphicsBlendMode.Normal;
+ LinearBlending:=IsBlending and GetLinearBlending;
 
  if fFlipY then begin
   Row:=fPixelBuffer.fHeight-(aY+1);
@@ -1461,6 +1995,39 @@ begin
    LinearSource[2]:=pvVectorGraphicsSRGBToLinearTable[SourceColor and $ff];
 
    LinearIndex:=(((TpvSizeInt(Row)*TpvSizeInt(fPixelBuffer.fWidth))+TpvSizeInt(X+Index))*4);
+
+   // The blend mode rewrites the source color against the backdrop before compositing, so
+   // everything below it stays the plain source-over path.
+   if IsBlending then begin
+
+    BackdropAlpha:=fPixelBuffer.fLinearPixels[LinearIndex+3];
+
+    // Both sides are at hand in linear light here, so blending in sRGB is the case that costs
+    // the two extra conversions rather than the other way round.
+    if LinearBlending then begin
+     for Channel:=0 to 2 do begin
+      BlendBackdrop[Channel]:=fPixelBuffer.fLinearPixels[LinearIndex+Channel];
+      BlendSource[Channel]:=LinearSource[Channel];
+     end;
+    end else begin
+     for Channel:=0 to 2 do begin
+      BlendBackdrop[Channel]:=pvVectorGraphicsLinearToSRGB(fPixelBuffer.fLinearPixels[LinearIndex+Channel]);
+      BlendSource[Channel]:=pvVectorGraphicsLinearToSRGB(LinearSource[Channel]);
+     end;
+    end;
+
+    BlendResult:=pvVectorGraphicsBlendTriple(fBlendMode,BlendBackdrop,BlendSource,BackdropAlpha);
+
+    for Channel:=0 to 2 do begin
+     if LinearBlending then begin
+      LinearSource[Channel]:=BlendResult[Channel];
+     end else begin
+      LinearSource[Channel]:=pvVectorGraphicsSRGBToLinear(BlendResult[Channel]);
+     end;
+    end;
+
+   end;
+
    InverseSourceAlpha:=1.0-SourceAlpha;
    ResultAlpha:=SourceAlpha+(fPixelBuffer.fLinearPixels[LinearIndex+3]*InverseSourceAlpha);
 
@@ -1484,7 +2051,7 @@ begin
 
   Row:=(Row*fPixelBuffer.fWidth)+X;
 
-  if IsSolidPaint and not assigned(fMask) then begin
+  if IsSolidPaint and not (assigned(fMask) or IsBlending) then begin
 
    // The cheap case: one color for the whole run, and a fully opaque one can be stored
    // outright instead of blended.
@@ -1505,7 +2072,8 @@ begin
 
   end else begin
 
-   // Per pixel, because the paint varies, a mask is in effect, or both.
+   // Per pixel, because the paint varies, a mask is in effect, a blend mode needs the backdrop,
+   // or any combination of the three.
    for Index:=0 to Count-1 do begin
 
     if IsSolidPaint then begin
@@ -1517,6 +2085,12 @@ begin
     SourceColor:=pvVectorGraphicsModulateColor(SourceColor,Alpha);
     if assigned(fMask) then begin
      SourceColor:=pvVectorGraphicsMultiplyColors(SourceColor,fMask.GetPixel(X+Index,aY));
+    end;
+
+    // Same two steps as in the linear path: the blend mode rewrites the source color, then it
+    // composites as if nothing had happened.
+    if IsBlending then begin
+     SourceColor:=pvVectorGraphicsBlendColors(fBlendMode,Pixels^[Row+Index],SourceColor,LinearBlending);
     end;
 
     Pixels^[Row+Index]:=pvVectorGraphicsBlendColor(Pixels^[Row+Index],SourceColor);

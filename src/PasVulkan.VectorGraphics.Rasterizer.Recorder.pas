@@ -92,6 +92,7 @@ type { TpvVectorGraphicsRasterizerRecorder }
               fShape:TpvVectorPathShape;
               fColor:TpvVectorGraphicsColor;
               fFillRule:TpvVectorPathFillRule;
+              fBlendMode:TpvVectorGraphicsBlendMode;
               fBoundingBox:TpvVectorPathBoundingBox;
              public
               constructor Create; reintroduce;
@@ -104,6 +105,9 @@ type { TpvVectorGraphicsRasterizerRecorder }
               property Shape:TpvVectorPathShape read fShape;
               property Color:TpvVectorGraphicsColor read fColor;
               property FillRule:TpvVectorPathFillRule read fFillRule;
+              // How this shape is meant to combine with what is already there. The GPU side has
+              // to honour it, since the recorder itself composites nothing.
+              property BlendMode:TpvVectorGraphicsBlendMode read fBlendMode;
             end;
             TRecords=TpvObjectGenericList<TRecord_>;
       private
@@ -142,12 +146,18 @@ implementation
 
 constructor TpvVectorGraphicsRasterizerRecorder.TRecord_.Create;
 begin
+
  inherited Create;
+
  fShape:=TpvVectorPathShape.Create;
  fColor:=0;
  fFillRule:=TpvVectorPathFillRule.NonZero;
+ fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+
+ // The inverted bounds of an empty box, so that the first point set on it decides all four sides.
  fBoundingBox:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
                                                TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
+
 end;
 
 destructor TpvVectorGraphicsRasterizerRecorder.TRecord_.Destroy;
@@ -307,6 +317,7 @@ begin
   CurrentRecord.fShape.FillRule:=fFillRule;
   CurrentRecord.fColor:=fPaint.Color;
   CurrentRecord.fFillRule:=fFillRule;
+  CurrentRecord.fBlendMode:=fElementBlendMode;
 
  except
   FreeAndNil(CurrentRecord);

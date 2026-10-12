@@ -128,6 +128,10 @@ type EpvVectorGraphicsSVG=class(Exception);
               MarkerMidID:TpvUTF8String;
               MarkerEndID:TpvUTF8String;
               Display:boolean;
+              // Neither of these two inherits in CSS, so unlike everything else in this record
+              // they are reset for every element rather than passed down.
+              BlendMode:TpvVectorGraphicsBlendMode;
+              Isolate:boolean;
              public
               class function CreateDefault:TState; static;
             end;
@@ -239,17 +243,27 @@ type EpvVectorGraphicsSVG=class(Exception);
        // Shapes whose paint still has to be resolved once every bounding box is known.
        fPendingFillPaints:TpvObjectGenericList<TpvVectorGraphicsObject>;
        fPendingFillPaintIDs:TpvGenericList<TpvUTF8String>;
+       fPendingFillPaintMatrices:TpvGenericList<TpvVectorPathMatrix>;
        fPendingStrokePaints:TpvObjectGenericList<TpvVectorGraphicsObject>;
        fPendingStrokePaintIDs:TpvGenericList<TpvUTF8String>;
+       fPendingStrokePaintMatrices:TpvGenericList<TpvVectorPathMatrix>;
        function ParseValue(const aValue:TpvUTF8String;const aBase:TpvDouble=1.0):TpvDouble;
        function ParseColor(const aValue:TpvUTF8String;const aCurrentColor:TpvVectorGraphicsColor;out aIsNone:boolean):TpvVectorGraphicsColor;
        function ParseTransform(const aValue:TpvUTF8String):TpvVectorPathMatrix;
        function ParsePaintReference(const aValue:TpvUTF8String):TpvUTF8String;
+       // The mix-blend-mode keyword, where anything unknown counts as normal rather than as an
+       // error, which is what a CSS property with an unsupported value does.
+       function ParseBlendMode(const aValue:TpvUTF8String):TpvVectorGraphicsBlendMode;
        procedure ParseStyleDeclarations(const aDeclarations:TpvUTF8String;var aState:TState);
        procedure ParseCSS(const aText:TpvUTF8String);
        function GetMatchingDeclarations(const aTag:TpvXMLTag):TpvUTF8String;
        procedure ApplyPresentationAttributes(const aTag:TpvXMLTag;var aState:TState);
-       procedure ApplyStateToGraphic(const aGraphic:TpvVectorGraphicsGraphic;const aState:TState);
+       // aBakedMatrix is the transform that was written into the geometry rather than left on the
+       // object, which is what the shape elements do and what text and images do not. A paint
+       // server given in user space is specified in the element's own coordinates, so it has to
+       // be brought back out of the baked transform again.
+       procedure ApplyStateToGraphic(const aGraphic:TpvVectorGraphicsGraphic;const aState:TState;
+                                     const aBakedMatrix:TpvVectorPathMatrix);
        function FindGradient(const aID:TpvUTF8String):TpvSizeInt;
        function FindPattern(const aID:TpvUTF8String):TpvSizeInt;
        function FindMarker(const aID:TpvUTF8String):TpvSizeInt;
@@ -288,7 +302,8 @@ type EpvVectorGraphicsSVG=class(Exception);
                                  const aGroup:TpvVectorGraphicsGroup;
                                  const aState:TState):TpvVectorGraphicsObject;
        procedure ResolvePendingPaints;
-       procedure ResolvePaint(const aObject:TpvVectorGraphicsObject;const aID:TpvUTF8String;const aStroke:boolean);
+       procedure ResolvePaint(const aObject:TpvVectorGraphicsObject;const aID:TpvUTF8String;const aStroke:boolean;
+                              const aBakedMatrix:TpvVectorPathMatrix);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -312,6 +327,9 @@ type EpvVectorGraphicsSVG=class(Exception);
        function FormatValue(const aValue:TpvDouble):TpvRawByteString;
        function FormatColor(const aColor:TpvVectorGraphicsColor):TpvRawByteString;
        function FormatMatrix(const aMatrix:TpvVectorPathMatrix):TpvRawByteString;
+       // The mix-blend-mode keyword for a mode, and an empty string for Normal, which is the
+       // initial value and therefore never written out.
+       function FormatBlendMode(const aBlendMode:TpvVectorGraphicsBlendMode):TpvRawByteString;
        function FormatPathData(const aPath:TpvVectorPath):TpvRawByteString;
        function EnsureDefinitionsTag:TpvXMLTag;
        // Writes a gradient or pattern into defs and returns the url(#id) reference for it, or an
@@ -604,6 +622,8 @@ begin
  result.MarkerMidID:='';
  result.MarkerEndID:='';
  result.Display:=true;
+ result.BlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ result.Isolate:=false;
 end;
 
 { TpvVectorGraphicsSVGLoader }
@@ -634,9 +654,11 @@ begin
  fPendingFillPaints:=TpvObjectGenericList<TpvVectorGraphicsObject>.Create;
  fPendingFillPaints.OwnsObjects:=false;
  fPendingFillPaintIDs:=TpvGenericList<TpvUTF8String>.Create;
+ fPendingFillPaintMatrices:=TpvGenericList<TpvVectorPathMatrix>.Create;
  fPendingStrokePaints:=TpvObjectGenericList<TpvVectorGraphicsObject>.Create;
  fPendingStrokePaints.OwnsObjects:=false;
  fPendingStrokePaintIDs:=TpvGenericList<TpvUTF8String>.Create;
+ fPendingStrokePaintMatrices:=TpvGenericList<TpvVectorPathMatrix>.Create;
 
 end;
 
@@ -651,8 +673,10 @@ begin
  // The lists hold borrowed references, the objects belong to the document.
  FreeAndNil(fPendingFillPaints);
  FreeAndNil(fPendingFillPaintIDs);
+ FreeAndNil(fPendingFillPaintMatrices);
  FreeAndNil(fPendingStrokePaints);
  FreeAndNil(fPendingStrokePaintIDs);
+ FreeAndNil(fPendingStrokePaintMatrices);
 
  inherited Destroy;
 
@@ -1005,6 +1029,51 @@ begin
 
 end;
 
+function TpvVectorGraphicsSVGLoader.ParseBlendMode(const aValue:TpvUTF8String):TpvVectorGraphicsBlendMode;
+var Text:string;
+begin
+
+ Text:=LowerCase(Trim(String(aValue)));
+
+ // The twelve separable modes first, in the order the specification lists them.
+ if Text='multiply' then begin
+  result:=TpvVectorGraphicsBlendMode.Multiply;
+ end else if Text='screen' then begin
+  result:=TpvVectorGraphicsBlendMode.Screen;
+ end else if Text='overlay' then begin
+  result:=TpvVectorGraphicsBlendMode.Overlay;
+ end else if Text='darken' then begin
+  result:=TpvVectorGraphicsBlendMode.Darken;
+ end else if Text='lighten' then begin
+  result:=TpvVectorGraphicsBlendMode.Lighten;
+ end else if Text='color-dodge' then begin
+  result:=TpvVectorGraphicsBlendMode.ColorDodge;
+ end else if Text='color-burn' then begin
+  result:=TpvVectorGraphicsBlendMode.ColorBurn;
+ end else if Text='hard-light' then begin
+  result:=TpvVectorGraphicsBlendMode.HardLight;
+ end else if Text='soft-light' then begin
+  result:=TpvVectorGraphicsBlendMode.SoftLight;
+ end else if Text='difference' then begin
+  result:=TpvVectorGraphicsBlendMode.Difference;
+ end else if Text='exclusion' then begin
+  result:=TpvVectorGraphicsBlendMode.Exclusion;
+
+ // And then the four that need all three channels at once.
+ end else if Text='hue' then begin
+  result:=TpvVectorGraphicsBlendMode.Hue;
+ end else if Text='saturation' then begin
+  result:=TpvVectorGraphicsBlendMode.Saturation;
+ end else if Text='color' then begin
+  result:=TpvVectorGraphicsBlendMode.Color;
+ end else if Text='luminosity' then begin
+  result:=TpvVectorGraphicsBlendMode.Luminosity;
+ end else begin
+  result:=TpvVectorGraphicsBlendMode.Normal;
+ end;
+
+end;
+
 procedure TpvVectorGraphicsSVGLoader.ParseStyleDeclarations(const aDeclarations:TpvUTF8String;var aState:TState);
 var Text,Declaration,Name,Value,Reference:TpvUTF8String;
     IsNone:boolean;
@@ -1148,6 +1217,10 @@ begin
   end else if Name='visibility' then begin
    Value:=TpvUTF8String(LowerCase(String(Value)));
    aState.Display:=(Value<>'hidden') and (Value<>'collapse');
+  end else if Name='mix-blend-mode' then begin
+   aState.BlendMode:=ParseBlendMode(Value);
+  end else if Name='isolation' then begin
+   aState.Isolate:=LowerCase(Trim(String(Value)))='isolate';
   end;
 
  end;
@@ -1297,6 +1370,8 @@ begin
  Collect('marker-end');
  Collect('display');
  Collect('visibility');
+ Collect('mix-blend-mode');
+ Collect('isolation');
 
  Value:=TpvUTF8String(aTag.GetParameter('style',''));
  if Length(Value)>0 then begin
@@ -1315,11 +1390,12 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsSVGLoader.ApplyStateToGraphic(const aGraphic:TpvVectorGraphicsGraphic;const aState:TState);
+procedure TpvVectorGraphicsSVGLoader.ApplyStateToGraphic(const aGraphic:TpvVectorGraphicsGraphic;const aState:TState;
+                                                         const aBakedMatrix:TpvVectorPathMatrix);
 var Style:TpvVectorGraphicsStyle;
     DashText,Token:TpvUTF8String;
     DashCount:TpvSizeInt;
-    DashValue:TpvDouble;
+    DashValue,BakedScale:TpvDouble;
 begin
 
  Style:=aGraphic.Style;
@@ -1382,6 +1458,20 @@ begin
 
  end;
 
+ // Every stroke length above is given in the element's own user space, but the element transform
+ // went into the geometry on loading, so they have to be scaled along with it. A non-scaling
+ // stroke is the exception: it is in device units and is built after the transform anyway.
+ if not Style.StrokeWidthFixed then begin
+  BakedScale:=aBakedMatrix.ExpansionFactor;
+  if BakedScale>1e-12 then begin
+   Style.StrokeWidth:=Style.StrokeWidth*BakedScale;
+   Style.StrokeDashOffset:=Style.StrokeDashOffset*BakedScale;
+   for DashCount:=0 to Length(Style.StrokeDashArray)-1 do begin
+    Style.StrokeDashArray[DashCount]:=Style.StrokeDashArray[DashCount]*BakedScale;
+   end;
+  end;
+ end;
+
  // Fill and stroke of one shape overlap along the outline, so a semi transparent shape has to
  // be composited as a whole to avoid a darker seam there.
  Style.OffImage:=(aState.Opacity<>255) and
@@ -1393,15 +1483,20 @@ begin
  aGraphic.SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
  aGraphic.Visible:=aState.Display;
 
+ // Isolation is left out, since a shape has no children whose blend modes it could keep inside.
+ aGraphic.BlendMode:=aState.BlendMode;
+
  // The paint servers can only be resolved once every bounding box is known, so the shapes that
  // want one get queued here.
  if Length(aState.FillPaintID)>0 then begin
   fPendingFillPaints.Add(aGraphic);
   fPendingFillPaintIDs.Add(aState.FillPaintID);
+  fPendingFillPaintMatrices.Add(aBakedMatrix);
  end;
  if Length(aState.StrokePaintID)>0 then begin
   fPendingStrokePaints.Add(aGraphic);
   fPendingStrokePaintIDs.Add(aState.StrokePaintID);
+  fPendingStrokePaintMatrices.Add(aBakedMatrix);
  end;
 
 end;
@@ -2146,7 +2241,7 @@ begin
   end;
 
   Shape.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Shape,aState);
+  ApplyStateToGraphic(Shape,aState,aState.Matrix);
 
  except
   FreeAndNil(Shape);
@@ -2186,7 +2281,7 @@ begin
   // the generated path instead, which keeps a later non-uniform scale from distorting the
   // corner radii differently than SVG would.
   Rectangle.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Rectangle,aState);
+  ApplyStateToGraphic(Rectangle,aState,aState.Matrix);
 
  except
   FreeAndNil(Rectangle);
@@ -2224,7 +2319,7 @@ begin
   Ellipse.Update;
 
   Ellipse.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Ellipse,aState);
+  ApplyStateToGraphic(Ellipse,aState,aState.Matrix);
 
  except
   FreeAndNil(Ellipse);
@@ -2258,7 +2353,7 @@ begin
   Ellipse.Update;
 
   Ellipse.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Ellipse,aState);
+  ApplyStateToGraphic(Ellipse,aState,aState.Matrix);
 
  except
   FreeAndNil(Ellipse);
@@ -2287,7 +2382,7 @@ begin
   Line.Update;
 
   Line.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Line,aState);
+  ApplyStateToGraphic(Line,aState,aState.Matrix);
 
  except
   FreeAndNil(Line);
@@ -2349,7 +2444,7 @@ begin
   end;
 
   Shape.Path.Transform(aState.Matrix);
-  ApplyStateToGraphic(Shape,aState);
+  ApplyStateToGraphic(Shape,aState,aState.Matrix);
 
  except
   FreeAndNil(Shape);
@@ -2492,8 +2587,10 @@ begin
    ImageObject.Height:=Resource.Height;
   end;
 
+  // The transform of an image stays on the object rather than going into the geometry, so there
+  // is nothing baked in that a paint server would have to be brought back out of.
   ImageObject.SetImage(Resource);
-  ApplyStateToGraphic(ImageObject,aState);
+  ApplyStateToGraphic(ImageObject,aState,TpvVectorPathMatrix.CreateIdentity);
 
   // The fill mode has to stay on the image, which ApplyStateToGraphic would have turned into a
   // plain color because the state says nothing about images.
@@ -2596,7 +2693,8 @@ begin
     Text.Baseline:=TpvVectorGraphicsTextBaseline.Alphabetic;
    end;
 
-   ApplyStateToGraphic(Text,aState);
+   // As with an image, the transform of a text run stays on the object.
+   ApplyStateToGraphic(Text,aState,TpvVectorPathMatrix.CreateIdentity);
 
    // The outline is built in the text's own space, so the inherited transform goes onto the
    // object rather than into the path, which keeps the glyphs from being rebuilt on every
@@ -2650,6 +2748,9 @@ begin
  // would show through each other.
  Group.OffImage:=aState.Opacity<>255;
 
+ Group.BlendMode:=aState.BlendMode;
+ Group.Isolate:=aState.Isolate;
+
  State:=aState;
 
  // The opacity is applied once, on the group, so the children must not apply it again.
@@ -2658,6 +2759,10 @@ begin
  // Clip path and mask likewise belong to the group and not to each of its children.
  State.ClipPathID:='';
  State.MaskID:='';
+
+ // And the two that do not inherit in the first place.
+ State.BlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ State.Isolate:=false;
 
  ProcessChildren(aTag,Group,State);
 
@@ -2698,6 +2803,8 @@ begin
  Instance.Target:=Target;
  Instance.Alpha:=aState.Opacity;
  Instance.Visible:=aState.Display;
+ Instance.BlendMode:=aState.BlendMode;
+ Instance.Isolate:=aState.Isolate;
 
  Matrix:=aState.Matrix;
  if (abs(OffsetX)>1e-12) or (abs(OffsetY)>1e-12) then begin
@@ -2787,6 +2894,12 @@ begin
  end;
 
  State:=aState;
+
+ // Unlike the rest of the state these two do not inherit, so whatever the parent carried is
+ // dropped before this element's own attributes are read.
+ State.BlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ State.Isolate:=false;
+
  ApplyPresentationAttributes(aTag,State);
  if not State.Display then begin
   exit;
@@ -2853,13 +2966,14 @@ begin
 
 end;
 
-procedure TpvVectorGraphicsSVGLoader.ResolvePaint(const aObject:TpvVectorGraphicsObject;const aID:TpvUTF8String;const aStroke:boolean);
+procedure TpvVectorGraphicsSVGLoader.ResolvePaint(const aObject:TpvVectorGraphicsObject;const aID:TpvUTF8String;const aStroke:boolean;
+                                                  const aBakedMatrix:TpvVectorPathMatrix);
 var GradientIndex,PatternIndex,Index:TpvSizeInt;
     Gradient:TGradient;
     Graphic:TpvVectorGraphicsGraphic;
     Style:TpvVectorGraphicsStyle;
     FillData:PpvVectorGraphicsFillData;
-    Matrix:TpvVectorPathMatrix;
+    Matrix,Canonical:TpvVectorPathMatrix;
     BoundingBox:TpvVectorGraphicsBoundingBox;
     x1,y1,x2,y2,Radius,BoxWidth,BoxHeight:TpvDouble;
  function ParseAxisX(const aValue:TpvUTF8String;const aDefault:TpvDouble):TpvDouble;
@@ -2936,15 +3050,17 @@ begin
   FillData^.Pattern:=fPatterns[PatternIndex].Group;
   FillData^.SpreadMethod:=TpvVectorGraphicsSpreadMethod.Repeat_;
 
-  // The paint matrix maps a device pixel into the tile, so everything goes in inverted.
-  Matrix:=TpvVectorPathMatrix.CreateIdentity;
+  // The paint matrix maps a device pixel into the tile, so the steps come in the reverse order
+  // of how the pattern was built up, exactly as for a gradient below.
   if fPatterns[PatternIndex].Units=TUnits.ObjectBoundingBox then begin
    Matrix:=(TpvVectorPathMatrix.CreateScale(BoxWidth,BoxHeight)*
-            TpvVectorPathMatrix.CreateTranslate(BoundingBox.x1,BoundingBox.y1)).Inverse*Matrix;
+            TpvVectorPathMatrix.CreateTranslate(BoundingBox.x1,BoundingBox.y1)).Inverse;
+  end else begin
+   Matrix:=aBakedMatrix.Inverse;
   end;
 
   FillData^.SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
-  FillData^.SimpleMatrix.Matrix:=fPatterns[PatternIndex].Matrix.Inverse*Matrix;
+  FillData^.SimpleMatrix.Matrix:=Matrix*fPatterns[PatternIndex].Matrix.Inverse;
   Graphic.Style:=Style;
   exit;
 
@@ -2986,16 +3102,20 @@ begin
  x2:=0.0;
  y2:=0.0;
  Radius:=0.0;
+
+ // The canonical form a gradient paint samples in: for a linear one the gradient vector lies on
+ // the positive x axis starting at the origin, for a radial one the center sits at the origin.
  if Gradient.Kind=TGradientKind.Linear then begin
+
   // The defaults of a linear gradient run left to right across the object box.
   x1:=ParseAxisX(Gradient.x1,0.0);
   y1:=ParseAxisY(Gradient.y1,0.0);
   x2:=ParseAxisX(Gradient.x2,1.0);
   y2:=ParseAxisY(Gradient.y2,0.0);
-  // Rotating by the negative angle of the gradient vector puts it onto the positive x axis,
-  // which is the canonical form the linear gradient paint samples along.
-  Matrix:=TpvVectorPathMatrix.CreateTranslate(-x1,-y1)*
-          TpvVectorPathMatrix.CreateRotate(-ArcTan2(y2-y1,x2-x1));
+
+  Canonical:=TpvVectorPathMatrix.CreateTranslate(-x1,-y1)*
+             TpvVectorPathMatrix.CreateRotate(-ArcTan2(y2-y1,x2-x1));
+
   Radius:=sqrt(sqr(x2-x1)+sqr(y2-y1));
   if Radius<1e-9 then begin
    // A degenerate gradient vector paints the last stop everywhere, per the specification.
@@ -3004,33 +3124,59 @@ begin
    Graphic.Style:=Style;
    exit;
   end;
+
  end else begin
+
   Radius:=ParseRadius(Gradient.r,0.5);
   if abs(Radius)<1e-5 then begin
    Radius:=1e-5;
   end;
+
   x1:=ParseAxisX(Gradient.cx,0.5);
   y1:=ParseAxisY(Gradient.cy,0.5);
+
   // A missing focus coincides with the center, which is the usual centered highlight.
   x2:=ParseAxisX(Gradient.fx,x1);
   y2:=ParseAxisY(Gradient.fy,y1);
-  Matrix:=TpvVectorPathMatrix.CreateTranslate(-x1,-y1);
+
+  Canonical:=TpvVectorPathMatrix.CreateTranslate(-x1,-y1);
+
  end;
+
+ // The paint matrix takes a point in document space and has to end up in that canonical space,
+ // so the three steps come in the reverse order of how the gradient was built up.
  if Gradient.Units=TUnits.ObjectBoundingBox then begin
+
+  // The coordinates are fractions of the bounding box, which is already in document space, so
+  // the first step is simply out of that box.
   Matrix:=(TpvVectorPathMatrix.CreateScale(BoxWidth,BoxHeight)*
-           TpvVectorPathMatrix.CreateTranslate(BoundingBox.x1,BoundingBox.y1)).Inverse*Matrix;
+           TpvVectorPathMatrix.CreateTranslate(BoundingBox.x1,BoundingBox.y1)).Inverse;
+
+ end else begin
+
+  // The coordinates are in the user space the element was in, and that element's own transform
+  // went into its geometry on loading, so it has to be undone here.
+  Matrix:=aBakedMatrix.Inverse;
+
  end;
+
+ // Then the gradient transform, and only then the step into the canonical form, because that is
+ // the space the gradient coordinates were given in.
+ Matrix:=Matrix*Gradient.Matrix.Inverse*Canonical;
+
  FillData^.SimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
- FillData^.SimpleMatrix.Matrix:=Gradient.Matrix.Inverse*Matrix;
+ FillData^.SimpleMatrix.Matrix:=Matrix;
  FillData^.GradientFocusSimpleMatrix:=TpvVectorGraphicsSimpleMatrix.CreateDefault;
  FillData^.GradientFocusX:=x2-x1;
  FillData^.GradientFocusY:=y2-y1;
  FillData^.GradientRadius:=Radius;
  FillData^.SpreadMethod:=Gradient.SpreadMethod;
+
  SetLength(FillData^.GradientStops,Length(Gradient.Stops));
  for Index:=0 to Length(Gradient.Stops)-1 do begin
   FillData^.GradientStops[Index]:=Gradient.Stops[Index];
  end;
+
  Graphic.Style:=Style;
 
 end;
@@ -3046,11 +3192,11 @@ begin
  fDocument.CalculateBoundingBox(0);
 
  for Index:=0 to fPendingFillPaints.Count-1 do begin
-  ResolvePaint(fPendingFillPaints[Index],fPendingFillPaintIDs[Index],false);
+  ResolvePaint(fPendingFillPaints[Index],fPendingFillPaintIDs[Index],false,fPendingFillPaintMatrices[Index]);
  end;
 
  for Index:=0 to fPendingStrokePaints.Count-1 do begin
-  ResolvePaint(fPendingStrokePaints[Index],fPendingStrokePaintIDs[Index],true);
+  ResolvePaint(fPendingStrokePaints[Index],fPendingStrokePaintIDs[Index],true,fPendingStrokePaintMatrices[Index]);
  end;
 
 end;
@@ -3327,6 +3473,62 @@ begin
                    FormatValue(aMatrix.m20)+','+FormatValue(aMatrix.m21)+')';
 end;
 
+function TpvVectorGraphicsSVGWriter.FormatBlendMode(const aBlendMode:TpvVectorGraphicsBlendMode):TpvRawByteString;
+begin
+
+ case aBlendMode of
+  TpvVectorGraphicsBlendMode.Multiply:begin
+   result:='multiply';
+  end;
+  TpvVectorGraphicsBlendMode.Screen:begin
+   result:='screen';
+  end;
+  TpvVectorGraphicsBlendMode.Overlay:begin
+   result:='overlay';
+  end;
+  TpvVectorGraphicsBlendMode.Darken:begin
+   result:='darken';
+  end;
+  TpvVectorGraphicsBlendMode.Lighten:begin
+   result:='lighten';
+  end;
+  TpvVectorGraphicsBlendMode.ColorDodge:begin
+   result:='color-dodge';
+  end;
+  TpvVectorGraphicsBlendMode.ColorBurn:begin
+   result:='color-burn';
+  end;
+  TpvVectorGraphicsBlendMode.HardLight:begin
+   result:='hard-light';
+  end;
+  TpvVectorGraphicsBlendMode.SoftLight:begin
+   result:='soft-light';
+  end;
+  TpvVectorGraphicsBlendMode.Difference:begin
+   result:='difference';
+  end;
+  TpvVectorGraphicsBlendMode.Exclusion:begin
+   result:='exclusion';
+  end;
+  TpvVectorGraphicsBlendMode.Hue:begin
+   result:='hue';
+  end;
+  TpvVectorGraphicsBlendMode.Saturation:begin
+   result:='saturation';
+  end;
+  TpvVectorGraphicsBlendMode.Color:begin
+   result:='color';
+  end;
+  TpvVectorGraphicsBlendMode.Luminosity:begin
+   result:='luminosity';
+  end;
+  else {TpvVectorGraphicsBlendMode.Normal:}begin
+   result:='';
+  end;
+ end;
+
+end;
+
 function TpvVectorGraphicsSVGWriter.FormatPathData(const aPath:TpvVectorPath):TpvRawByteString;
 var Command:TpvVectorPathCommand;
 begin
@@ -3590,7 +3792,7 @@ var Tag:TpvXMLTag;
     Group:TpvVectorGraphicsGroup;
     Matrix:TpvVectorPathMatrix;
     Index:TpvSizeInt;
-    PathData:TpvRawByteString;
+    PathData,BlendModeText,StyleText:TpvRawByteString;
 begin
 
  if not assigned(aObject) then begin
@@ -3654,6 +3856,26 @@ begin
   // A graphic's opacity was already written by WriteStyle, a group's was not.
   if (aObject is TpvVectorGraphicsGroup) and (aObject.Alpha<>255) then begin
    Tag.AddParameter('opacity',FormatValue(aObject.Alpha/255.0));
+  end;
+
+  // Both of these are CSS properties rather than SVG attributes, so they go into the style
+  // attribute, which is also where they came from when the document was read.
+  StyleText:='';
+
+  BlendModeText:=FormatBlendMode(aObject.BlendMode);
+  if Length(BlendModeText)>0 then begin
+   StyleText:='mix-blend-mode:'+BlendModeText;
+  end;
+
+  if aObject.Isolate then begin
+   if Length(StyleText)>0 then begin
+    StyleText:=StyleText+';';
+   end;
+   StyleText:=StyleText+'isolation:isolate';
+  end;
+
+  if Length(StyleText)>0 then begin
+   Tag.AddParameter('style',StyleText);
   end;
 
  end;

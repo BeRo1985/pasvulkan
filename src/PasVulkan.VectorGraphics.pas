@@ -357,11 +357,16 @@ type EpvVectorGraphics=class(Exception);
        fLocked:boolean;
        fOutline:boolean;
        fMaskMode:TpvVectorGraphicsMaskMode;
+       fBlendMode:TpvVectorGraphicsBlendMode;
+       fIsolate:boolean;
        fTimeLine:TpvVectorGraphicsTimeLine;
        fBoundingBox:TpvVectorGraphicsBoundingBox;
        fCurrentMatrix:TpvVectorPathMatrix;
        fCurrentMatrixInverse:TpvVectorPathMatrix;
        fCurrentAlpha:TpvUInt8;
+       // The buffer this object composites itself through, kept around between frames because it
+       // is the size of the whole target. Created on first use, which most objects never reach.
+       fOffImageBuffer:TpvVectorGraphicsPixelBuffer;
        procedure SetID(const aID:TpvUTF8String);
        // Resolves the transform at a point in time, including whatever the timeline interpolates.
        function GetMatrixAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathMatrix; virtual;
@@ -370,6 +375,24 @@ type EpvVectorGraphics=class(Exception);
        // Sets up fCurrentMatrix, its inverse and fCurrentAlpha, which every subclass needs before
        // it draws anything.
        procedure PrepareRender(var aContext:TpvVectorGraphicsRenderContext); virtual;
+       // Redirects the rasterizer into a buffer of this object's own and returns the buffer that
+       // was in effect, which the caller has to hand back to EndOffImage. aIsolated starts the
+       // buffer out empty, which a blend mode needs because the blend function has to see the
+       // backdrop as a separate thing; without one it starts from a copy of the backdrop, which
+       // keeps a semi transparent object over existing content blending correctly.
+       function BeginOffImage(var aContext:TpvVectorGraphicsRenderContext;
+                              const aIsolated:boolean):TpvVectorGraphicsPixelBuffer;
+       // Puts aOldBuffer back and composites into it what was drawn in the meantime.
+       procedure EndOffImage(var aContext:TpvVectorGraphicsRenderContext;
+                             const aOldBuffer:TpvVectorGraphicsPixelBuffer;
+                             const aAlpha:TpvUInt8;
+                             const aBlendMode:TpvVectorGraphicsBlendMode;
+                             const aIsolated:boolean);
+       // Which blend mode actually applies, and whether the object therefore has to go through a
+       // buffer of its own. A mask pass carries no color, so a blend mode is meaningless there.
+       procedure ResolveBlending(const aContext:TpvVectorGraphicsRenderContext;
+                                 out aBlendMode:TpvVectorGraphicsBlendMode;
+                                 out aIsolated:boolean);
       public
        constructor Create(const aDocument:TpvVectorGraphicsDocument;const aParent:TpvVectorGraphicsObject); reintroduce; virtual;
        destructor Destroy; override;
@@ -400,6 +423,13 @@ type EpvVectorGraphics=class(Exception);
        property Locked:boolean read fLocked write fLocked;
        property Outline:boolean read fOutline write fOutline;
        property MaskMode:TpvVectorGraphicsMaskMode read fMaskMode write fMaskMode;
+       // Anything but Normal makes the object draw into a buffer of its own and composite that
+       // once through the blend function, which is what the CSS compositing specification means
+       // by an element rather than each of its parts blending with the backdrop.
+       property BlendMode:TpvVectorGraphicsBlendMode read fBlendMode write fBlendMode;
+       // Keeps the blend modes of the children inside, which is what isolation:isolate asks for
+       // and what every stacking context implies anyway.
+       property Isolate:boolean read fIsolate write fIsolate;
        property CurrentAlpha:TpvUInt8 read fCurrentAlpha;
      end;
 
@@ -423,7 +453,6 @@ type EpvVectorGraphics=class(Exception);
        fLinearGradientPaint:TpvVectorGraphicsLinearGradientPaint;
        fRadialGradientPaint:TpvVectorGraphicsRadialGradientPaint;
        fImagePaint:TpvVectorGraphicsImagePaint;
-       fOffImageBuffer:TpvVectorGraphicsPixelBuffer;
        // Rebuilds fPath from the parameters of the subclass. The base class does nothing, which
        // is right for the free form shape that owns its path outright.
        procedure UpdatePath; virtual;
@@ -635,7 +664,6 @@ type EpvVectorGraphics=class(Exception);
        fLoopTime:TpvInt64;
        fOffImage:boolean;
        fNestingLevel:TpvInt32;
-       fOffImageBuffer:TpvVectorGraphicsPixelBuffer;
        // Pattern tiles get rendered into this once per frame and then sampled by the image paint.
        fPatternBuffer:TpvVectorGraphicsPixelBuffer;
        procedure SortChildren;
@@ -1225,6 +1253,11 @@ begin
  fOutline:=false;
  fMaskMode:=TpvVectorGraphicsMaskMode.None;
 
+ // Normal and not isolated means the object composites straight into whatever it is drawn over,
+ // with no buffer of its own.
+ fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+ fIsolate:=false;
+
  fTimeLine:=nil;
 
  // Everything below is filled in by PrepareRender and only holds defaults until then.
@@ -1232,6 +1265,8 @@ begin
  fCurrentMatrix:=TpvVectorPathMatrix.CreateIdentity;
  fCurrentMatrixInverse:=TpvVectorPathMatrix.CreateIdentity;
  fCurrentAlpha:=255;
+
+ fOffImageBuffer:=nil;
 
 end;
 
@@ -1249,6 +1284,8 @@ begin
   FreeAndNil(fTimeLine[Index].MorphPath);
  end;
  fTimeLine:=nil;
+
+ FreeAndNil(fOffImageBuffer);
 
  inherited Destroy;
 
@@ -1292,6 +1329,8 @@ begin
  fLocked:=aFrom.fLocked;
  fOutline:=aFrom.fOutline;
  fMaskMode:=aFrom.fMaskMode;
+ fBlendMode:=aFrom.fBlendMode;
+ fIsolate:=aFrom.fIsolate;
 
  // The identifier is deliberately left out, since it has to stay unique within the document.
  fName:=aFrom.fName;
@@ -1465,6 +1504,68 @@ begin
 
 end;
 
+procedure TpvVectorGraphicsObject.ResolveBlending(const aContext:TpvVectorGraphicsRenderContext;
+                                                  out aBlendMode:TpvVectorGraphicsBlendMode;
+                                                  out aIsolated:boolean);
+begin
+
+ if aContext.MaskPass then begin
+  aBlendMode:=TpvVectorGraphicsBlendMode.Normal;
+  aIsolated:=false;
+ end else begin
+  aBlendMode:=fBlendMode;
+  aIsolated:=(aBlendMode<>TpvVectorGraphicsBlendMode.Normal) or fIsolate;
+ end;
+
+end;
+
+function TpvVectorGraphicsObject.BeginOffImage(var aContext:TpvVectorGraphicsRenderContext;
+                                               const aIsolated:boolean):TpvVectorGraphicsPixelBuffer;
+begin
+
+ // The buffer covers the whole target, so it is only rebuilt when that changes size.
+ if (not assigned(fOffImageBuffer)) or
+    (fOffImageBuffer.Width<>aContext.Rasterizer.Width) or
+    (fOffImageBuffer.Height<>aContext.Rasterizer.Height) then begin
+  FreeAndNil(fOffImageBuffer);
+  fOffImageBuffer:=TpvVectorGraphicsPixelBuffer.Create(aContext.Rasterizer.Width,
+                                                       aContext.Rasterizer.Height,
+                                                       aContext.Rasterizer.PixelBuffer.ColorSpaceMode);
+ end;
+
+ if aIsolated then begin
+  fOffImageBuffer.Clear(0);
+ end else begin
+  fOffImageBuffer.BlendFrom(aContext.Rasterizer.PixelBuffer,255);
+ end;
+
+ result:=aContext.Rasterizer.ReplacePixelBuffer(fOffImageBuffer);
+
+end;
+
+procedure TpvVectorGraphicsObject.EndOffImage(var aContext:TpvVectorGraphicsRenderContext;
+                                              const aOldBuffer:TpvVectorGraphicsPixelBuffer;
+                                              const aAlpha:TpvUInt8;
+                                              const aBlendMode:TpvVectorGraphicsBlendMode;
+                                              const aIsolated:boolean);
+begin
+
+ if not (assigned(aOldBuffer) and assigned(fOffImageBuffer)) then begin
+  exit;
+ end;
+
+ aContext.Rasterizer.ReplacePixelBuffer(aOldBuffer);
+
+ // An isolated buffer is transparent where nothing was drawn, so it has to be composited rather
+ // than copied, and that is also where a blend mode gets applied.
+ if aIsolated then begin
+  aOldBuffer.BlendOverFrom(fOffImageBuffer,aAlpha,aBlendMode,aContext.Rasterizer.LinearBlending);
+ end else begin
+  aOldBuffer.BlendFrom(fOffImageBuffer,aAlpha);
+ end;
+
+end;
+
 procedure TpvVectorGraphicsObject.CalculateBoundingBox(const aTick:TpvInt64;const aMatrix:TpvVectorPathMatrix);
 begin
  fBoundingBox:=TpvVectorGraphicsBoundingBox.CreateEmpty;
@@ -1518,8 +1619,6 @@ begin
  fFillPaint:=nil;
  fStrokePaint:=nil;
 
- fOffImageBuffer:=nil;
-
 end;
 
 destructor TpvVectorGraphicsGraphic.Destroy;
@@ -1534,8 +1633,6 @@ begin
  FreeAndNil(fLinearGradientPaint);
  FreeAndNil(fRadialGradientPaint);
  FreeAndNil(fImagePaint);
-
- FreeAndNil(fOffImageBuffer);
 
  inherited Destroy;
 
@@ -1883,10 +1980,16 @@ begin
  aContext.Rasterizer.SetPaint(CurrentPaint);
  aContext.Rasterizer.FillRule:=aFillData.FillRule;
  aContext.Rasterizer.Mask:=aContext.Mask;
+
+ // Only a recording backend reads this; the software path has the element in a buffer of its own
+ // at this point and applies the mode when that buffer is composited.
+ aContext.Rasterizer.ElementBlendMode:=fBlendMode;
+
  aContext.Rasterizer.FillShape(aShape,fCurrentMatrix,false);
 
- // The paint belongs to this object and must not stay behind for the next one.
+ // The paint and the blend mode belong to this object and must not stay behind for the next one.
  aContext.Rasterizer.SetPaint(nil);
+ aContext.Rasterizer.ElementBlendMode:=TpvVectorGraphicsBlendMode.Normal;
 
 end;
 
@@ -1897,9 +2000,10 @@ var Shape,StrokedShape:TpvVectorPathShape;
     FillColor,StrokeColor:TpvVectorGraphicsColor;
     StrokeWidth:TpvDouble;
     FillData,StrokeFillData:TpvVectorGraphicsFillData;
-    TargetBuffer,OldBuffer:TpvVectorGraphicsPixelBuffer;
-    UseOffImage:boolean;
+    OldBuffer:TpvVectorGraphicsPixelBuffer;
+    UseOffImage,UseIsolation:boolean;
     OffImageAlpha:TpvUInt8;
+    BlendMode:TpvVectorGraphicsBlendMode;
     StrokeMatrix:TpvVectorPathMatrix;
 begin
 
@@ -1949,30 +2053,20 @@ begin
  end;
 
  // Fill and stroke overlap along the outline, so a semi transparent object is drawn into a
- // buffer of its own and composited once, rather than showing a darker seam there.
- UseOffImage:=fStyle.OffImage and (fCurrentAlpha<>255) and not aContext.MaskPass;
+ // buffer of its own and composited once, rather than showing a darker seam there. A blend mode
+ // needs the same buffer, because it applies to the element as a whole and not to each of its
+ // two passes separately.
+ ResolveBlending(aContext,BlendMode,UseIsolation);
+ UseOffImage:=UseIsolation or (fStyle.OffImage and (fCurrentAlpha<>255) and not aContext.MaskPass);
+
  OldBuffer:=nil;
- TargetBuffer:=nil;
  OffImageAlpha:=fCurrentAlpha;
 
  try
 
   if UseOffImage then begin
 
-   if (not assigned(fOffImageBuffer)) or
-      (fOffImageBuffer.Width<>aContext.Rasterizer.Width) or
-      (fOffImageBuffer.Height<>aContext.Rasterizer.Height) then begin
-    FreeAndNil(fOffImageBuffer);
-    fOffImageBuffer:=TpvVectorGraphicsPixelBuffer.Create(aContext.Rasterizer.Width,
-                                                         aContext.Rasterizer.Height,
-                                                         aContext.Rasterizer.PixelBuffer.ColorSpaceMode);
-   end;
-
-   // Starting from a copy of what is already there keeps the blend correct where the object is
-   // semi transparent over existing content.
-   fOffImageBuffer.BlendFrom(aContext.Rasterizer.PixelBuffer,255);
-   TargetBuffer:=fOffImageBuffer;
-   OldBuffer:=aContext.Rasterizer.ReplacePixelBuffer(TargetBuffer);
+   OldBuffer:=BeginOffImage(aContext,UseIsolation);
 
    // The opacity belongs to the one composite at the end, so the passes themselves draw at full
    // strength; applying it in both places would square it.
@@ -2051,10 +2145,7 @@ begin
 
   if UseOffImage then begin
    fCurrentAlpha:=OffImageAlpha;
-   if assigned(OldBuffer) and assigned(TargetBuffer) then begin
-    aContext.Rasterizer.ReplacePixelBuffer(OldBuffer);
-    OldBuffer.BlendFrom(TargetBuffer,OffImageAlpha);
-   end;
+   EndOffImage(aContext,OldBuffer,OffImageAlpha,BlendMode,UseIsolation);
   end;
 
  end;
@@ -2504,8 +2595,7 @@ begin
  fOffImage:=false;
  fNestingLevel:=0;
 
- // Both scratch buffers are created on first use.
- fOffImageBuffer:=nil;
+ // Created on first use, like the off-image buffer of the base class.
  fPatternBuffer:=nil;
 
 end;
@@ -2517,7 +2607,6 @@ begin
  FreeAndNil(fSortedChildren);
  FreeAndNil(fChildren);
 
- FreeAndNil(fOffImageBuffer);
  FreeAndNil(fPatternBuffer);
 
  inherited Destroy;
@@ -2740,7 +2829,8 @@ var Index:TpvSizeInt;
     ChildContext:TpvVectorGraphicsRenderContext;
     BuiltMask,PushedMask:TpvVectorGraphicsMask;
     OldBuffer:TpvVectorGraphicsPixelBuffer;
-    UseOffImage:boolean;
+    UseOffImage,UseIsolation:boolean;
+    BlendMode:TpvVectorGraphicsBlendMode;
     Corner:array[0..3] of TpvVectorPathVector;
 begin
 
@@ -2794,21 +2884,15 @@ begin
   end;
 
   // A group with its own opacity is composited as a whole, so that overlapping children do not
-  // show through each other.
-  UseOffImage:=fOffImage and (fCurrentAlpha<>255) and not aContext.MaskPass;
+  // show through each other. A blend mode on the group itself, and an isolation that keeps the
+  // blend modes of the children from reaching past the group, need the same buffer, only one
+  // that starts out empty.
+  ResolveBlending(aContext,BlendMode,UseIsolation);
+  UseOffImage:=UseIsolation or (fOffImage and (fCurrentAlpha<>255) and not aContext.MaskPass);
+
   if UseOffImage then begin
 
-   if (not assigned(fOffImageBuffer)) or
-      (fOffImageBuffer.Width<>aContext.Rasterizer.Width) or
-      (fOffImageBuffer.Height<>aContext.Rasterizer.Height) then begin
-    FreeAndNil(fOffImageBuffer);
-    fOffImageBuffer:=TpvVectorGraphicsPixelBuffer.Create(aContext.Rasterizer.Width,
-                                                         aContext.Rasterizer.Height,
-                                                         aContext.Rasterizer.PixelBuffer.ColorSpaceMode);
-   end;
-
-   fOffImageBuffer.BlendFrom(aContext.Rasterizer.PixelBuffer,255);
-   OldBuffer:=aContext.Rasterizer.ReplacePixelBuffer(fOffImageBuffer);
+   OldBuffer:=BeginOffImage(aContext,UseIsolation);
 
    // The children then draw at full opacity and the group opacity is applied once, at the end.
    ChildContext.ParentAlpha:=255;
@@ -2845,8 +2929,7 @@ begin
   end;
 
   if UseOffImage and assigned(OldBuffer) then begin
-   aContext.Rasterizer.ReplacePixelBuffer(OldBuffer);
-   OldBuffer.BlendFrom(fOffImageBuffer,fCurrentAlpha);
+   EndOffImage(aContext,OldBuffer,fCurrentAlpha,BlendMode,UseIsolation);
    OldBuffer:=nil;
   end;
 
@@ -2962,6 +3045,9 @@ end;
 
 procedure TpvVectorGraphicsGroupInstance.Render(var aContext:TpvVectorGraphicsRenderContext);
 var ChildContext:TpvVectorGraphicsRenderContext;
+    OldBuffer:TpvVectorGraphicsPixelBuffer;
+    BlendMode:TpvVectorGraphicsBlendMode;
+    UseIsolation:boolean;
 begin
 
  inherited Render(aContext);
@@ -2980,6 +3066,11 @@ begin
   exit;
  end;
 
+ // A blend mode on a use element applies to the whole referenced subtree, so it goes through a
+ // buffer of its own just like one on a group would.
+ ResolveBlending(aContext,BlendMode,UseIsolation);
+ OldBuffer:=nil;
+
  inc(fRecursionGuard);
  try
 
@@ -2987,6 +3078,11 @@ begin
   ChildContext:=aContext;
   ChildContext.ParentMatrix:=fCurrentMatrix;
   ChildContext.ParentAlpha:=fCurrentAlpha;
+
+  if UseIsolation then begin
+   OldBuffer:=BeginOffImage(aContext,true);
+   ChildContext.ParentAlpha:=255;
+  end;
 
   // The target may be hidden because it lives in defs, which is not a reason not to draw it
   // here, so visibility of the target itself is bypassed for a group.
@@ -3002,7 +3098,13 @@ begin
   end;
 
  finally
+
+  if assigned(OldBuffer) then begin
+   EndOffImage(aContext,OldBuffer,fCurrentAlpha,BlendMode,true);
+  end;
+
   dec(fRecursionGuard);
+
  end;
 
 end;
