@@ -420,7 +420,10 @@ var application = {
         (data.coverageModeIndex === 2 ? ", " ~ canvas.getVectorPathCoverageSampleCount() ~ " samples   (C, V switch)"
                                       : "   (C switches)"),
       "seam: " ~ data.seamModeNames[data.seamModeIndex] ~
-        (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)"),
+        (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)") ~
+        // The buffer draws in a pass of its own, so what it costs the GPU is not in the figure the
+        // window title shows and has to be asked for separately.
+        (data.seamModeIndex === 2 ? "   " ~ (Math.round(data.shapes.getCompositingGPUTime() * 100.0) / 100.0) ~ " ms GPU" : ""),
       "zoom: " ~ Math.round(data.zoom * 100.0) ~ "%   (W / S or the mouse wheel)",
       "shapes: " ~ data.shapes.getCountShapes() ~ "   gradients: " ~ data.shapes.getCountGradients(),
       "bounds: " ~ Math.round(box.leftTop.x) ~ ", " ~ Math.round(box.leftTop.y) ~

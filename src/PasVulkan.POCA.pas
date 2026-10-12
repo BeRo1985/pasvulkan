@@ -12619,6 +12619,21 @@ begin
 
 end;
 
+function POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,Shapes.CompositingGPUTime);
+
+end;
+
 function POCAVectorGraphicsShapesFunctionSETSEAMMODE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Shapes:TpvVectorGraphicsCanvasShapes;
 begin
@@ -12699,6 +12714,7 @@ begin
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCountGradients',POCAVectorGraphicsShapesFunctionGETCOUNTGRADIENTS);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getSeamMode',POCAVectorGraphicsShapesFunctionGETSEAMMODE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'setSeamMode',POCAVectorGraphicsShapesFunctionSETSEAMMODE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCompositingGPUTime',POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getBoundingBox',POCAVectorGraphicsShapesFunctionGETBOUNDINGBOX);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'clear',POCAVectorGraphicsShapesFunctionCLEAR);
 end;

@@ -88,6 +88,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Framework,
+     PasVulkan.TimerQuery,
      PasVulkan.Sprites,
      PasVulkan.Canvas,
      PasVulkan.VectorPath,
@@ -279,6 +280,10 @@ type EpvVectorGraphicsCanvas=class(Exception);
              FrameBuffer:TpvVulkanFrameBuffer;
              CommandBuffer:TpvVulkanCommandBuffer;
              Fence:TpvVulkanFence;
+             // A pair of timestamps around the pass, so that what it costs the device can be had
+             // without waiting for it: by the time this slot comes round again, its last frame is
+             // long done and the numbers are simply there to be read.
+             TimerQuery:TpvTimerQuery;
              // Whether a submit of this slot is still on its way, which is what says that the
              // fence has to be waited for before the slot is taken again.
              InFlight:boolean;
@@ -322,6 +327,7 @@ type EpvVectorGraphicsCanvas=class(Exception);
        fCompositingRing:TCompositingRingEntries;
        fCompositingRingIndex:TpvSizeInt;
        fCompositingRingLength:TpvSizeInt;
+       fCompositingGPUTime:TpvDouble;
        fCompositingWidth:TpvInt32;
        fCompositingHeight:TpvInt32;
        procedure ReleaseCompositingBuffer;
@@ -428,6 +434,10 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // the ring is that nothing is overwritten while the GPU is still on it. Setting it throws
        // the buffer away, so the next draw builds the ring anew.
        property CompositingRingLength:TpvSizeInt read fCompositingRingLength write SetCompositingRingLength;
+       // What the pass of the SRGBCompositingBuffer mode last cost the device, in milliseconds, or
+       // zero while that mode is not the one in use. It is the measurement of a frame a few back,
+       // since reading the one of this frame would mean waiting for it.
+       property CompositingGPUTime:TpvDouble read fCompositingGPUTime;
      end;
 
 // The short way for the common case: an SVG from a file, a stream or a string, straight into a
@@ -866,6 +876,7 @@ begin
  fCompositingCommandPool:=nil;
  fCompositingRing:=nil;
  fCompositingRingIndex:=0;
+ fCompositingGPUTime:=0.0;
  // Three is what a swap chain usually keeps in the air, and one more than that costs only another
  // texture while one less would put the wait back in.
  fCompositingRingLength:=3;
@@ -950,6 +961,7 @@ begin
   FreeAndNil(Entry^.FrameBuffer);
   FreeAndNil(Entry^.ImageView);
   FreeAndNil(Entry^.Texture);
+  FreeAndNil(Entry^.TimerQuery);
   FreeAndNil(Entry^.CommandBuffer);
   FreeAndNil(Entry^.Fence);
  end;
@@ -1047,6 +1059,7 @@ begin
    Entry^.FrameBuffer:=nil;
    Entry^.CommandBuffer:=nil;
    Entry^.Fence:=nil;
+   Entry^.TimerQuery:=nil;
    Entry^.InFlight:=false;
   end;
 
@@ -1111,6 +1124,8 @@ begin
 
    Entry^.Fence:=TpvVulkanFence.Create(fDevice);
 
+   Entry^.TimerQuery:=TpvTimerQuery.Create(fDevice,1);
+
   end;
 
   fCompositingCanvas:=TpvCanvas.Create(fDevice,nil,1);
@@ -1172,6 +1187,12 @@ begin
   Entry^.InFlight:=false;
  end;
 
+ // Now that this slot is known to be done with, what it cost the device last time round can be
+ // read off it, which is a few frames back but costs nothing to have.
+ if assigned(Entry^.TimerQuery) and Entry^.TimerQuery.Update then begin
+  fCompositingGPUTime:=Entry^.TimerQuery.Total*1000.0;
+ end;
+
  // The buffer is the size of the canvas and shares its coordinate system, so everything the
  // drawing side set up carries over unchanged and what lands in the buffer lands where it belongs.
  fCompositingCanvas.Start(fCompositingRingIndex);
@@ -1191,6 +1212,12 @@ begin
 
  Entry^.CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
  Entry^.CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+ if assigned(Entry^.TimerQuery) then begin
+  Entry^.TimerQuery.Reset;
+  Entry^.TimerQuery.Start(aGraphicsQueue,Entry^.CommandBuffer,'compositing');
+ end;
+
  fCompositingRenderPass.BeginRenderPass(Entry^.CommandBuffer,
                                         Entry^.FrameBuffer,
                                         VK_SUBPASS_CONTENTS_INLINE,
@@ -1200,6 +1227,11 @@ begin
                                         Height);
  fCompositingCanvas.ExecuteDraw(Entry^.CommandBuffer,fCompositingRingIndex);
  fCompositingRenderPass.EndRenderPass(Entry^.CommandBuffer);
+
+ if assigned(Entry^.TimerQuery) then begin
+  Entry^.TimerQuery.Stop(aGraphicsQueue,Entry^.CommandBuffer);
+ end;
+
  Entry^.CommandBuffer.EndRecording;
 
  // Submitted without waiting for it. What the canvas draws afterwards goes to the same queue and
