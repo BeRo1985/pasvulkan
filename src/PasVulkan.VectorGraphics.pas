@@ -526,6 +526,10 @@ type EpvVectorGraphics=class(Exception);
        fPathDirty:boolean;
        fFlattenedShape:TpvVectorPathShape;
        fFlattenedScale:TpvDouble;
+       // The same outline with its curved segments still in it, for a backend that evaluates
+       // curves by itself. Built on demand, so a page that never meets such a backend never
+       // pays for it.
+       fCurvedShape:TpvVectorPathShape;
        fStroker:TpvVectorPathStroker;
        fFillPaint:TpvVectorGraphicsPaint;
        fStrokePaint:TpvVectorGraphicsPaint;
@@ -542,6 +546,12 @@ type EpvVectorGraphics=class(Exception);
        // through GetValueAt rather than straight out of its fields, so that the stored ones stay
        // the base and are not overwritten tick by tick.
        procedure UpdatePath(const aTick:TpvInt64;const aTickFraction:TpvDouble); virtual;
+       // Brings fPath up to date for a point in time, throws away whatever cached shape no longer
+       // matches it and hands back the path the shapes are to be built from, which is the morph
+       // result where a morph key is in play and fPath itself otherwise. Both shape getters go
+       // through here, so that calling one of them cannot leave the other holding a stale shape.
+       procedure PrepareSourcePath(const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                                   out aSourcePath:TpvVectorPath);
        // Picks and configures the paint for one pass. Returns nil when the pass draws nothing.
        function PreparePaint(const aFillData:TpvVectorGraphicsFillData;
                              const aColor:TpvVectorGraphicsColor;
@@ -570,6 +580,9 @@ type EpvVectorGraphics=class(Exception);
        // Returns the shape flattened for the given scale, rebuilding it when the scale moved far
        // enough for the old flattening to show.
        function GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
+       // Returns the shape with its curved segments untouched, which is what a backend that can
+       // evaluate curves wants, because then nothing about the outline depends on a scale.
+       function GetCurvedShape(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
        function GetFillColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
        function GetStrokeColorAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorGraphicsColor;
        function GetStrokeWidthAt(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvDouble;
@@ -1094,7 +1107,7 @@ begin
  result:=TpvVectorPathMatrix.CreateTranslate(TranslateX,TranslateY);
 
  // Rotation, skew and scale all happen around the given offset, which is what makes an object
- // turn about its own centre rather than about the origin of the document.
+ // turn about its own center rather than about the origin of the document.
  result:=TpvVectorPathMatrix.CreateTranslate(aOffsetX,aOffsetY)*result;
 
  result:=TpvVectorPathMatrix.CreateRotate(RotationDegrees*DegreesToRadians)*result;
@@ -1976,6 +1989,7 @@ begin
  fPathDirty:=true;
  fFlattenedShape:=nil;
  fFlattenedScale:=0.0;
+ fCurvedShape:=nil;
 
  // Only ever created when a morph key is actually there.
  fMorphedPath:=nil;
@@ -1998,6 +2012,7 @@ begin
  FreeAndNil(fPath);
  FreeAndNil(fMorphedPath);
  FreeAndNil(fFlattenedShape);
+ FreeAndNil(fCurvedShape);
  FreeAndNil(fStroker);
 
  // fFillPaint and fStrokePaint only point at one of the paints below and own nothing.
@@ -2026,9 +2041,10 @@ end;
 procedure TpvVectorGraphicsGraphic.MarkPathDirty;
 begin
 
- // The flattening belongs to the old path and has to go with it.
+ // The cached shapes belong to the old path and have to go with it.
  fPathDirty:=true;
  fFlattenedScale:=0.0;
+ FreeAndNil(fCurvedShape);
 
 end;
 
@@ -2105,29 +2121,35 @@ begin
 
 end;
 
-function TpvVectorGraphicsGraphic.GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
-var Scale:TpvDouble;
-    Animated:boolean;
-    SourcePath:TpvVectorPath;
+procedure TpvVectorGraphicsGraphic.PrepareSourcePath(const aTick:TpvInt64;const aTickFraction:TpvDouble;
+                                                     out aSourcePath:TpvVectorPath);
 begin
 
  // A parameter that is animated makes the geometry depend on the tick, so it cannot be cached
  // and has to be rebuilt every time.
- Animated:=HasAnimatedValues;
-
- if fPathDirty or Animated then begin
+ if fPathDirty or HasAnimatedValues then begin
   fPathDirty:=false;
   UpdatePath(aTick,aTickFraction);
   fFlattenedScale:=0.0;
+  FreeAndNil(fCurvedShape);
  end;
 
- // A morph changes the geometry per tick just as an animated parameter does, so the flattening
- // cannot be kept either.
- SourcePath:=GetMorphedPath(aTick,aTickFraction);
- if SourcePath<>fPath then begin
-  Animated:=true;
+ // A morph changes the geometry per tick just as an animated parameter does, so the cached
+ // shapes cannot be kept either.
+ aSourcePath:=GetMorphedPath(aTick,aTickFraction);
+ if aSourcePath<>fPath then begin
   fFlattenedScale:=0.0;
+  FreeAndNil(fCurvedShape);
  end;
+
+end;
+
+function TpvVectorGraphicsGraphic.GetFlattenedShape(const aScale:TpvDouble;const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
+var Scale:TpvDouble;
+    SourcePath:TpvVectorPath;
+begin
+
+ PrepareSourcePath(aTick,aTickFraction,SourcePath);
 
  // A floor on the scale keeps a heavily shrunk object from being flattened into nothing.
  Scale:=aScale;
@@ -2156,6 +2178,23 @@ begin
  end;
 
  result:=fFlattenedShape;
+
+end;
+
+function TpvVectorGraphicsGraphic.GetCurvedShape(const aTick:TpvInt64;const aTickFraction:TpvDouble):TpvVectorPathShape;
+var SourcePath:TpvVectorPath;
+begin
+
+ PrepareSourcePath(aTick,aTickFraction,SourcePath);
+
+ if not assigned(fCurvedShape) then begin
+  fCurvedShape:=TpvVectorPathShape.Create(SourcePath);
+ end;
+
+ // The fill rule is cheap to set and can have changed without the geometry changing.
+ fCurvedShape.FillRule:=fStyle.FillData.FillRule;
+
+ result:=fCurvedShape;
 
 end;
 
@@ -2437,7 +2476,7 @@ begin
 end;
 
 procedure TpvVectorGraphicsGraphic.Render(var aContext:TpvVectorGraphicsRenderContext);
-var Shape,StrokedShape:TpvVectorPathShape;
+var Shape,StrokedShape,FillPassShape:TpvVectorPathShape;
     Scale:TpvDouble;
     StrokeSettings:TpvVectorPathStrokeSettings;
     FillColor,StrokeColor:TpvVectorGraphicsColor;
@@ -2518,7 +2557,20 @@ begin
   end;
 
   if FillData.Mode<>TpvVectorGraphicsFillMode.None then begin
-   RenderPass(Shape,FillData,FillColor,aContext);
+
+   // A backend that can evaluate curves gets the unflattened outline, so that nothing about the
+   // filled area depends on the scale this frame happens to be drawn at. The stroke below keeps
+   // the flattened one either way, because the stroker builds its outline out of line segments.
+   FillPassShape:=Shape;
+   if aContext.Rasterizer.WantsCurvedSegments then begin
+    FillPassShape:=GetCurvedShape(aContext.Tick,aContext.TickFraction);
+    if not assigned(FillPassShape) then begin
+     FillPassShape:=Shape;
+    end;
+   end;
+
+   RenderPass(FillPassShape,FillData,FillColor,aContext);
+
   end;
 
   if (StrokeFillData.Mode<>TpvVectorGraphicsFillMode.None) and (StrokeWidth>0.0) then begin

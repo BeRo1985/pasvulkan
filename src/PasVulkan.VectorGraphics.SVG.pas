@@ -3017,6 +3017,7 @@ var GradientIndex,PatternIndex,Index:TpvSizeInt;
     Matrix,Canonical:TpvVectorPathMatrix;
     BoundingBox:TpvVectorGraphicsBoundingBox;
     x1,y1,x2,y2,Radius,BoxWidth,BoxHeight:TpvDouble;
+    Opacity:TpvUInt8;
  function ParseAxisX(const aValue:TpvUTF8String;const aDefault:TpvDouble):TpvDouble;
  begin
   if Length(aValue)=0 then begin
@@ -3213,9 +3214,17 @@ begin
  FillData^.GradientRadius:=Radius;
  FillData^.SpreadMethod:=Gradient.SpreadMethod;
 
+ // The fill-opacity or stroke-opacity of the element sits in the alpha of the color that was put
+ // here before the paint server was resolved, and once the gradient takes over, that color has no
+ // say any more. So it goes into the stops, which is where it ends up having the same effect.
+ Opacity:=(FillData^.Color shr 24) and $ff;
+
  SetLength(FillData^.GradientStops,Length(Gradient.Stops));
  for Index:=0 to Length(Gradient.Stops)-1 do begin
   FillData^.GradientStops[Index]:=Gradient.Stops[Index];
+  if Opacity<>255 then begin
+   FillData^.GradientStops[Index].Color:=pvVectorGraphicsModulateColor(Gradient.Stops[Index].Color,Opacity);
+  end;
  end;
 
  Graphic.Style:=Style;
@@ -4020,7 +4029,7 @@ var Index:TpvSizeInt;
     end;
    end else if TypeName='rotate' then begin
     aItem^.TransformSimpleMatrix.RotationDegrees:=Numbers[0];
-    // The optional centre of rotation becomes the offset the parts turn around.
+    // The optional center of rotation becomes the offset the parts turn around.
     if NumberCount>=3 then begin
      aObject.OffsetX:=Numbers[1];
      aObject.OffsetY:=Numbers[2];

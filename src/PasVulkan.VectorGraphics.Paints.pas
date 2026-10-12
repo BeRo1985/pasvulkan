@@ -126,6 +126,7 @@ type { TpvVectorGraphicsGradientStop }
        fDirty:boolean;
        procedure SetStops(const aStops:TpvVectorGraphicsGradientStops);
        function ApplySpreadMethod(const aValue:TpvInt32):TpvInt32; {$ifdef CANINLINE}inline;{$endif}
+       function GetBuffer:PpvVectorGraphicsGradientBuffer;
       public
        constructor Create(const aColor:TpvVectorGraphicsColor=$ff000000); override;
        destructor Destroy; override;
@@ -137,6 +138,9 @@ type { TpvVectorGraphicsGradientStop }
       public
        property Stops:TpvVectorGraphicsGradientStops read fStops write SetStops;
        property Matrix:TpvVectorPathMatrix read fMatrix write fMatrix;
+       // The baked 256 entry ramp, brought up to date first, which a backend that samples the
+       // gradient somewhere else needs in order to arrive at the same colors.
+       property Buffer:PpvVectorGraphicsGradientBuffer read GetBuffer;
       published
        property SpreadMethod:TpvVectorGraphicsSpreadMethod read fSpreadMethod write fSpreadMethod;
        property Radius:TpvDouble read fRadius write fRadius;
@@ -256,6 +260,14 @@ begin
  result:=false;
 end;
 
+function TpvVectorGraphicsGradientPaint.GetBuffer:PpvVectorGraphicsGradientBuffer;
+begin
+ if fDirty then begin
+  Update;
+ end;
+ result:=@fBuffer;
+end;
+
 function TpvVectorGraphicsGradientPaint.SampleStops(const aOffset:TpvFloat):TpvVectorGraphicsColor;
 var Index:TpvSizeInt;
     Left,Right:TpvVectorGraphicsRGBA;
@@ -294,13 +306,16 @@ begin
   end else begin
    t:=(aOffset-fStops[Index-1].Offset)/(fStops[Index].Offset-fStops[Index-1].Offset);
    ti:=1.0-t;
-   Value:=trunc((Left.a*ti)+(Right.a*t));
+   // Rounded rather than truncated, because two stops that agree on a channel would otherwise
+   // come out one short of it in between them: the two weights add up to one only to within the
+   // precision of a float, so a value of 255 lands just below it and truncating takes it to 254.
+   Value:=round((Left.a*ti)+(Right.a*t));
    Mixed.a:=Min(Max(Value,0),255);
-   Value:=trunc((Left.r*ti)+(Right.r*t));
+   Value:=round((Left.r*ti)+(Right.r*t));
    Mixed.r:=Min(Max(Value,0),255);
-   Value:=trunc((Left.g*ti)+(Right.g*t));
+   Value:=round((Left.g*ti)+(Right.g*t));
    Mixed.g:=Min(Max(Value,0),255);
-   Value:=trunc((Left.b*ti)+(Right.b*t));
+   Value:=round((Left.b*ti)+(Right.b*t));
    Mixed.b:=Min(Max(Value,0),255);
   end;
 

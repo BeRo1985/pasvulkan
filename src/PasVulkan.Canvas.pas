@@ -79,6 +79,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Sprites,
      PasVulkan.SignedDistanceField2D,
+     PasVulkan.VectorPath,
      PasVulkan.Font;
 
 const pvcvsRenderingModeShift=0;
@@ -141,6 +142,26 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasFillWrapMode=
       (
        None=0,
+       WrappedRepeat=1,
+       MirroredRepeat=2
+      );
+
+     // What a vector path shape is filled with. The values are what the vector path fragment
+     // shader reads out of the fill matrix push constant, so they must not be renumbered.
+     PpvCanvasVectorPathGradientKind=^TpvCanvasVectorPathGradientKind;
+     TpvCanvasVectorPathGradientKind=
+      (
+       None=0,
+       Linear=1,
+       Radial=2
+      );
+
+     // What happens outside the zero to one range of such a gradient. Same note about the
+     // numbering.
+     PpvCanvasVectorPathGradientSpreadMode=^TpvCanvasVectorPathGradientSpreadMode;
+     TpvCanvasVectorPathGradientSpreadMode=
+      (
+       Pad=0,
        WrappedRepeat=1,
        MirroredRepeat=2
       );
@@ -268,6 +289,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fAtlasTexture:TObject;
        fMaskTexture:TObject;
        fGUIElementMode:boolean;
+       fVectorPathMode:boolean;
        fStrokePattern:TpvCanvasStrokePattern;
        procedure UpdateClipSpaceClipRect(const aCanvas:TpvCanvas);
        function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -522,6 +544,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
       Descriptor:TpvCanvasVulkanDescriptor;
+      // The set = 2 descriptor set of the vector path buffer pool as it stood when this item was
+      // queued, so that a pool which flipped its double-buffered state in the meantime cannot
+      // make this item read from the buffers that are being uploaded to.
+      VectorPathDescriptorSet:TpvVulkanDescriptorSet;
       MaskingMode:Boolean;
       BlendingMode:TpvCanvasBlendingMode;
       TextureMode:TpvInt32;
@@ -618,9 +644,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FragmentStoresAndAtomicsSupported:Boolean read fFragmentStoresAndAtomicsSupported;
      end;
 
-     TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..3] of TpvVulkanPipelineLayout;
+     // The second index is the texture mode: 0 = no texture, 1 = texture, 2 = array texture,
+     // 3 = GUI elements, 4 = vector path shapes out of a TpvVectorPathGPUBufferPool.
+     TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..4] of TpvVulkanPipelineLayout;
 
-     TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..3] of TpvVulkanGraphicsPipeline;
+     TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..4] of TpvVulkanGraphicsPipeline;
 
      { TpvCanvasFont }
      TpvCanvasFont=class
@@ -646,6 +674,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanDescriptors:TpvCanvasVulkanDescriptorLinkedListNode;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetVectorPathLayout:TpvVulkanDescriptorSetLayout;
+       // Stands in for set = 1 in the vector path pipeline layout on devices without a coverage
+       // buffer, because Vulkan wants the sets up to the highest used one without gaps.
+       fVulkanDescriptorSetEmptyLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetCoverageBufferLayout:TpvVulkanDescriptorSetLayout;
        fVulkanCoverageBufferDescriptorPools:TpvVulkanDescriptorPoolDynamicArray;
        fVulkanCoverageBufferDescriptorSets:TpvVulkanDescriptorSetDynamicArray;
@@ -680,6 +711,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
        fSignedDistanceFieldVariant:TpvSignedDistanceField2DVariant;
+       // The pool whose shapes DrawVectorPathShape draws. Set from outside and not owned here,
+       // because one pool is meant to be shared by everything that draws vector path shapes.
+       fVectorPathBufferPool:TpvVectorPathGPUBufferPool;
+       // The gradient a vector path shape is filled with, in the layout the comment above
+       // sampleVectorPathGradient in canvas.frag spells out. It takes the place of the fill
+       // matrix in the push constants of such a draw, so that the fill matrix of the state, which
+       // belongs to the caller, stays untouched.
+       fVectorPathGradient:TpvMatrix4x4;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
@@ -719,6 +758,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetMaskTexture(const aTexture:TObject);
        function GetGUIElementMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetGUIElementMode(const aGUIElementMode:boolean);
+       function GetVectorPathMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetVectorPathMode(const aVectorPathMode:boolean);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetZPosition:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -866,6 +907,26 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        function DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
       public
+       // Draws aShape through the vector path fragment shader, which resolves its outline and its
+       // fill rule per pixel, so the result stays sharp at any model matrix scale. The shape needs
+       // VectorPathBufferPool to be set, it is registered there on first use and stays registered
+       // until it is removed from the pool again, and it keeps its curved segments, so the caller
+       // hands in the unflattened shape. The current color fills it.
+       function DrawVectorPathShape(const aShape:TpvVectorPathShape):TpvCanvas; overload;
+       // The same filled with a gradient out of the ramp atlas that is currently set as the
+       // texture. aGradientMatrix takes a point of the shape into the space of the gradient, with
+       // the radius already divided out so that the ramp runs from zero to one, aGradientFocus is
+       // the focus point of a radial gradient in that same space and zero for a centered one, and
+       // aGradientRampRow is the texture coordinate of the row the ramp sits in. The gradient
+       // goes into the push constants, so a change of it ends the current batch, while shapes
+       // sharing one gradient still go out together.
+       function DrawVectorPathShape(const aShape:TpvVectorPathShape;
+                                    const aGradientKind:TpvCanvasVectorPathGradientKind;
+                                    const aGradientMatrix:TpvVectorPathMatrix;
+                                    const aGradientFocus:TpvVector2;
+                                    const aGradientSpreadMode:TpvCanvasVectorPathGradientSpreadMode;
+                                    const aGradientRampRow:TpvFloat):TpvCanvas; overload;
+      public
        function BeginPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
        function EndPath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
        function ClosePath:TpvCanvas; {$ifdef CAN_INLINE}inline;{$endif}
@@ -944,6 +1005,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property Texture:TObject read GetTexture write SetTexture;
        property UseBreadcrumbs:Boolean read fUseBreadcrumbs write fUseBreadcrumbs;
        property MaskTexture:TObject read GetMaskTexture write SetMaskTexture;
+       property VectorPathMode:boolean read GetVectorPathMode write SetVectorPathMode;
+       property VectorPathBufferPool:TpvVectorPathGPUBufferPool read fVectorPathBufferPool write fVectorPathBufferPool;
        property State:TpvCanvasState read fState;
        property OnSuspendRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnSuspendRenderPass write fOnSuspendRenderPass;
        property OnResumeRenderPass:TpvCanvasOnSuspendResumeRenderPassEvent read fOnResumeRenderPass write fOnResumeRenderPass;
@@ -1639,6 +1702,7 @@ begin
  fAtlasTexture:=nil;
  fMaskTexture:=nil;
  fGUIElementMode:=false;
+ fVectorPathMode:=false;
  fStrokePattern:=TpvCanvasStrokePattern.Empty;
 end;
 
@@ -1671,6 +1735,7 @@ begin
   fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
   fMaskTexture:=TpvCanvasState(aSource).fMaskTexture;
   fGUIElementMode:=TpvCanvasState(aSource).fGUIElementMode;
+  fVectorPathMode:=TpvCanvasState(aSource).fVectorPathMode;
   fStrokePattern:=TpvCanvasState(aSource).fStrokePattern;
  end;
 end;
@@ -3752,6 +3817,10 @@ begin
 
  fCountProcessingBuffers:=aCountProcessingBuffers;
 
+ fVectorPathBufferPool:=nil;
+
+ fVectorPathGradient:=TpvMatrix4x4.Null;
+
  fShape:=TpvCanvasShape.Create;
 
  fState:=TpvCanvasState.Create;
@@ -3804,14 +3873,18 @@ begin
   fVulkanDescriptorSetCoverageBufferLayout.Initialize;
  end;
 
+ // Four storage buffers at the bindings 0 to 3, in the order in which canvas.frag declares them
+ // for set = 2: segments, indirect segments, grid cells and shape metadata. This has to stay
+ // identical to the layout TpvVectorPathGPUBufferPool builds for its own descriptor set, because
+ // that set is what gets bound here.
  fVulkanDescriptorSetVectorPathLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(0,
-                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
  fVulkanDescriptorSetVectorPathLayout.AddBinding(1,
-                                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
@@ -3825,17 +3898,12 @@ begin
                                                  1,
                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                  []);
- fVulkanDescriptorSetVectorPathLayout.AddBinding(4,
-                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                 1,
-                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                 []);
- fVulkanDescriptorSetVectorPathLayout.AddBinding(5,
-                                                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                 1,
-                                                 TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                 []);
  fVulkanDescriptorSetVectorPathLayout.Initialize;
+
+ // No bindings at all, which is what makes the gap at set = 1 legal where the coverage buffer
+ // layout does not exist.
+ fVulkanDescriptorSetEmptyLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+ fVulkanDescriptorSetEmptyLayout.Initialize;
 
  fVulkanDescriptors:=TpvCanvasVulkanDescriptorLinkedListNode.Create;
 
@@ -3846,7 +3914,7 @@ begin
  fVulkanRenderPass:=nil;
 
  for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
-  for TextureModeIndex:=0 to 3 do begin
+  for TextureModeIndex:=0 to 4 do begin
    fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=nil;
    fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]:=nil;
   end;
@@ -3932,6 +4000,7 @@ begin
  FreeAndNil(fVulkanDescriptors);
 
  FreeAndNil(fVulkanDescriptorSetVectorPathLayout);
+ FreeAndNil(fVulkanDescriptorSetEmptyLayout);
  for Index:=0 to length(fVulkanCoverageBufferDescriptorSets)-1 do begin
   FreeAndNil(fVulkanCoverageBufferDescriptorSets[Index]);
  end;
@@ -4232,7 +4301,7 @@ begin
  if fVulkanRenderPass<>aVulkanRenderPass then begin
 
   for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
-   for TextureModeIndex:=0 to 3 do begin
+   for TextureModeIndex:=0 to 4 do begin
     FreeAndNil(fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]);
     FreeAndNil(fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]);
    end;
@@ -4250,15 +4319,20 @@ begin
 
    for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
 
-    for TextureModeIndex:=0 to 3 do begin
+    for TextureModeIndex:=0 to 4 do begin
 
      VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
      fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=VulkanPipelineLayout;
      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout); // set = 0
      if assigned(fVulkanDescriptorSetCoverageBufferLayout) then begin
       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetCoverageBufferLayout); // set = 1
+     end else if TextureModeIndex=4 then begin
+      // Only the vector path mode reaches past set = 1, so only it needs the gap filled.
+      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetEmptyLayout); // set = 1
      end;
-//   VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout); // set = 2
+     if TextureModeIndex=4 then begin
+      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetVectorPathLayout); // set = 2
+     end;
      VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                0,
@@ -4297,6 +4371,9 @@ begin
         3:begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlending);
         end;
+        4:begin
+         VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlending);
+        end;
         else begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlending);
         end;
@@ -4313,6 +4390,9 @@ begin
         3:begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentGUINoTextureNoBlendingNoDiscard);
         end;
+        4:begin
+         VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentVectorPathNoBlendingNoDiscard);
+        end;
         else begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTextureNoBlendingNoDiscard);
         end;
@@ -4328,6 +4408,9 @@ begin
         end;
         3:begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentGUINoTexture);
+        end;
+        4:begin
+         VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentVectorPath);
         end;
         else begin
          VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
@@ -4815,6 +4898,19 @@ begin
  end;
 end;
 
+function TpvCanvas.GetVectorPathMode:boolean;
+begin
+ result:=fState.fVectorPathMode;
+end;
+
+procedure TpvCanvas.SetVectorPathMode(const aVectorPathMode:boolean);
+begin
+ if fState.fVectorPathMode<>aVectorPathMode then begin
+  Flush;
+  fState.fVectorPathMode:=aVectorPathMode;
+ end;
+end;
+
 procedure TpvCanvas.SetScissor(const aScissor:TVkRect2D);
 begin
  if (fState.fScissor.offset.x<>aScissor.offset.x) or
@@ -5263,7 +5359,7 @@ begin
 end;
 
 procedure TpvCanvas.Flush;
-var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex:TpvInt32;
+var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,CurrentTextureMode:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     Descriptor:TpvCanvasVulkanDescriptor;
     CurrentTexture,CurrentMaskTexture:TObject;
@@ -5404,9 +5500,31 @@ begin
     SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
+   if fState.fGUIElementMode then begin
+    CurrentTextureMode:=3;
+   end else if fState.fVectorPathMode then begin
+    CurrentTextureMode:=4;
+   end else begin
+    if assigned(CurrentTexture) then begin
+     if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
+        ((CurrentTexture is TpvVulkanTexture) and
+         (TpvVulkanTexture(CurrentTexture).ImageViewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY)) then begin
+      CurrentTextureMode:=2;
+     end else begin
+      CurrentTextureMode:=1;
+     end;
+    end else begin
+     CurrentTextureMode:=0;
+    end;
+   end;
    if fCoverageResetPass then begin
     QueueItem^.Kind:=TpvCanvasQueueItemKind.CoverageReset;
     fCoverageResetPass:=false;
+   end else if CurrentTextureMode=4 then begin
+    // A vector path shape is one quad whose fill rule the fragment shader resolves, so it cannot
+    // overdraw itself and has no use for the coverage buffer. The coverage shaders do not know
+    // the vector path fill type either, so such an item must never reach their passes.
+    QueueItem^.Kind:=TpvCanvasQueueItemKind.Normal;
    end else if fTransparentShapeActive then begin
     QueueItem^.Kind:=TpvCanvasQueueItemKind.TransparentShapeMask;
    end else if fTransparentShapeCoverPass then begin
@@ -5417,30 +5535,26 @@ begin
    end;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.Descriptor:=Descriptor;
+   if (CurrentTextureMode=4) and assigned(fVectorPathBufferPool) then begin
+    QueueItem^.VectorPathDescriptorSet:=fVectorPathBufferPool.DescriptorSet;
+   end else begin
+    QueueItem^.VectorPathDescriptorSet:=nil;
+   end;
    QueueItem^.MaskingMode:=assigned(CurrentMaskTexture);
    QueueItem^.BlendingMode:=fState.fBlendingMode;
-   if fState.fGUIElementMode then begin
-    QueueItem^.TextureMode:=3;
-   end else begin
-    if assigned(CurrentTexture) then begin
-     if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
-        ((CurrentTexture is TpvVulkanTexture) and
-         (TpvVulkanTexture(CurrentTexture).ImageViewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY)) then begin
-      QueueItem^.TextureMode:=2;
-     end else begin
-      QueueItem^.TextureMode:=1;
-     end;
-    end else begin
-     QueueItem^.TextureMode:=0;
-    end;
-   end;
+   QueueItem^.TextureMode:=CurrentTextureMode;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
    QueueItem^.CountIndices:=fCurrentCountIndices;
    QueueItem^.Scissor:=fState.fScissor;
    QueueItem^.TransformMatrix:=fState.fViewMatrix*fState.fProjectionMatrix;
-   QueueItem^.FillMatrix:=fState.fFillMatrix;
+   if CurrentTextureMode=4 then begin
+    // A vector path draw puts its gradient where the fill matrix would otherwise go.
+    QueueItem^.FillMatrix:=fVectorPathGradient;
+   end else begin
+    QueueItem^.FillMatrix:=fState.fFillMatrix;
+   end;
    QueueItem^.MaskMatrix:=fState.fMaskMatrix*fState.fProjectionMatrix;
    QueueItem^.PushConstants.Data[0].x:=QueueItem^.TransformMatrix.RawComponents[0,0];
    QueueItem^.PushConstants.Data[0].y:=QueueItem^.TransformMatrix.RawComponents[0,1];
@@ -5890,6 +6004,7 @@ procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffe
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
     Descriptor:TpvCanvasVulkanDescriptor;
+    VectorPathDescriptorSet:TpvVulkanDescriptorSet;
     MaskingMode:Boolean;
     BlendingMode:TpvCanvasBlendingMode;
     QueueItem:PpvCanvasQueueItem;
@@ -5914,6 +6029,8 @@ var Index,StartVertexIndex,TextureMode,CoverageBufferIndex:TpvInt32;
   OldScissor.extent.Height:=$7fffffff;
 
   Descriptor:=nil;
+
+  VectorPathDescriptorSet:=nil;
 
 { TransformMatrix:=TpvMatrix4x4.Null;
 
@@ -6019,6 +6136,9 @@ begin
        OldScissor.extent.Height:=$7fffffff;
 {$endif}
        Descriptor:=nil;
+       // The pipeline layout changed along with the pipeline, so whatever was bound at set = 2
+       // does not count any more either.
+       VectorPathDescriptorSet:=nil;
 {$ifdef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
        ForceUpdatePushConstants:=true;
 {$endif}
@@ -6031,6 +6151,12 @@ begin
 {$ifdef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
        ForceUpdatePushConstants:=true;
 {$endif}
+      end;
+
+      if assigned(QueueItem^.VectorPathDescriptorSet) and
+         (VectorPathDescriptorSet<>QueueItem^.VectorPathDescriptorSet) then begin
+       VectorPathDescriptorSet:=QueueItem^.VectorPathDescriptorSet;
+       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle,2,1,@VectorPathDescriptorSet.Handle,0,nil);
       end;
 
       if ForceUpdate or
@@ -6631,7 +6757,8 @@ begin
       (fState.fMaskMatrix<>PeekState.fMaskMatrix) or
       (fState.fTexture<>PeekState.fTexture) or
       (fState.fAtlasTexture<>PeekState.fAtlasTexture) or
-      (fState.fGUIElementMode<>PeekState.fGUIElementMode)) then begin
+      (fState.fGUIElementMode<>PeekState.fGUIElementMode) or
+      (fState.fVectorPathMode<>PeekState.fVectorPathMode)) then begin
    Flush;
   end;
   TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
@@ -6709,6 +6836,8 @@ begin
  VertexState:=GetVertexState;
 
  SetGUIElementMode(false);
+
+ SetVectorPathMode(false);
 
  SetAtlasTexture(aSprite.ArrayTexture);
 
@@ -7152,6 +7281,7 @@ var MetaInfo:TpvVector4;
     CanvasVertex:PpvCanvasVertex;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7222,6 +7352,7 @@ var MetaInfo,MetaInfo2:TpvVector4;
     ExtendedRadius:TpvVector2;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7296,6 +7427,7 @@ var MetaInfo:TpvVector4;
     CanvasVertex:PpvCanvasVertex;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7367,6 +7499,7 @@ var MetaInfo,MetaInfo2:TpvVector4;
     ExtendedRadius:TpvFloat;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7442,6 +7575,7 @@ var MetaInfo:TpvVector4;
     CanvasVertex:PpvCanvasVertex;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7511,6 +7645,7 @@ var MetaInfo:TpvVector4;
     CanvasVertex:PpvCanvasVertex;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7576,6 +7711,7 @@ var MetaInfo,MetaInfo2:TpvVector4;
     ExtendedBounds:TpvVector2;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7656,6 +7792,7 @@ var MetaInfo:TpvVector4;
     CanvasVertex:PpvCanvasVertex;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7732,6 +7869,7 @@ var MetaInfo,MetaInfo2:TpvVector4;
     ExtendedBounds:TpvVector2;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7815,6 +7953,7 @@ var Index,Count:TpvSizeInt;
     CosSinValues:TpvVector2;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -7911,6 +8050,7 @@ var Index,Count:TpvSizeInt;
     CosSinValues:TpvVector2;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
@@ -8006,6 +8146,7 @@ var MetaInfo:TpvVector4;
     LocalModelMatrix:TpvMatrix4x4;
 begin
  SetGUIElementMode(false);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  OldTexture:=GetTexture;
  SetTexture(aTexture);
@@ -8095,6 +8236,7 @@ begin
  Center:=(aMin+aMax)*0.5;
  Bounds:=(aMax-aMin)*0.5;
  SetGUIElementMode(true);
+ SetVectorPathMode(false);
  SetAtlasTexture(nil);
  OldTexture:=GetTexture;
  SetTexture(nil);
@@ -8164,6 +8306,143 @@ begin
  result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.InlineableCreate(aMinX,aMinY),TpvVector2.InlineableCreate(aMaxX,aMaxY),TpvVector2.InlineableCreate(aMetaMinX,aMetaMinY),TpvVector2.InlineableCreate(aMetaMaxX,aMetaMaxY),aMeta,aTransparent);
 end;
 
+function TpvCanvas.DrawVectorPathShape(const aShape:TpvVectorPathShape):TpvCanvas;
+begin
+ result:=DrawVectorPathShape(aShape,
+                             TpvCanvasVectorPathGradientKind.None,
+                             TpvVectorPathMatrix.CreateIdentity,
+                             TpvVector2.Null,
+                             TpvCanvasVectorPathGradientSpreadMode.Pad,
+                             0.0);
+end;
+
+function TpvCanvas.DrawVectorPathShape(const aShape:TpvVectorPathShape;
+                                       const aGradientKind:TpvCanvasVectorPathGradientKind;
+                                       const aGradientMatrix:TpvVectorPathMatrix;
+                                       const aGradientFocus:TpvVector2;
+                                       const aGradientSpreadMode:TpvCanvasVectorPathGradientSpreadMode;
+                                       const aGradientRampRow:TpvFloat):TpvCanvas;
+var GPUShape:TpvVectorPathGPUShape;
+    BoundingBox:TpvVectorPathBoundingBox;
+    MinX,MinY,MaxX,MaxY,ShapeIndex:TpvFloat;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    GradientFillMatrix:TpvMatrix4x4;
+begin
+
+ result:=self;
+
+ if (not assigned(aShape)) or (not assigned(fVectorPathBufferPool)) then begin
+  exit;
+ end;
+
+ GPUShape:=fVectorPathBufferPool.GetOrCreateShape(aShape);
+ if (not assigned(GPUShape)) or (GPUShape.ShapeIndex<0) then begin
+  exit;
+ end;
+
+ SetGUIElementMode(false);
+ SetVectorPathMode(true);
+ SetAtlasTexture(nil);
+
+ // The gradient rides along in the fill matrix push constant, in the layout the comment above
+ // sampleVectorPathGradient in canvas.frag spells out. Setting it flushes whenever it really
+ // changed, which is what keeps one gradient's shapes in one batch.
+ GradientFillMatrix:=TpvMatrix4x4.Null;
+ GradientFillMatrix.RawComponents[0,0]:=aGradientMatrix.m00;
+ GradientFillMatrix.RawComponents[0,1]:=aGradientMatrix.m10;
+ GradientFillMatrix.RawComponents[0,2]:=aGradientMatrix.m20;
+ GradientFillMatrix.RawComponents[1,0]:=aGradientMatrix.m01;
+ GradientFillMatrix.RawComponents[1,1]:=aGradientMatrix.m11;
+ GradientFillMatrix.RawComponents[1,2]:=aGradientMatrix.m21;
+ GradientFillMatrix.RawComponents[2,0]:=aGradientFocus.x;
+ GradientFillMatrix.RawComponents[2,1]:=aGradientFocus.y;
+ GradientFillMatrix.RawComponents[2,2]:=aGradientRampRow;
+ GradientFillMatrix.RawComponents[2,3]:=TpvUInt32(aGradientKind);
+ GradientFillMatrix.RawComponents[3,0]:=TpvUInt32(aGradientSpreadMode);
+ if fVectorPathGradient<>GradientFillMatrix then begin
+  Flush;
+  fVectorPathGradient:=GradientFillMatrix;
+ end;
+
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
+
+ // The quad covers the already widened bounding box, so the antialiased edge the shader computes
+ // from its own derivatives is inside the drawn area everywhere.
+ BoundingBox:=GPUShape.BoundingBox;
+ MinX:=BoundingBox.Min.x;
+ MinY:=BoundingBox.Min.y;
+ MaxX:=BoundingBox.Max.x;
+ MaxY:=BoundingBox.Max.y;
+
+ // The texture coordinate carries the position in shape space in xy and the index into the shapes
+ // buffer in z, which is how the fragment shader finds the shape it is asked to sample. Shape
+ // space and canvas space are the same space here, so the positions double as the coordinates and
+ // the model matrix is free to scale the result as far as it likes.
+ ShapeIndex:=GPUShape.ShapeIndex;
+
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+
+ VertexState:=GetVertexState;
+
+ EnsureSufficientReserveUsableSpace(4,6);
+
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(MinX,MinY);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(MinX,MinY,ShapeIndex);
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=TpvVector4.Null;
+ CanvasVertex^.MetaInfo2:=TpvVector4.Null;
+
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(MaxX,MinY);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(MaxX,MinY,ShapeIndex);
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=TpvVector4.Null;
+ CanvasVertex^.MetaInfo2:=TpvVector4.Null;
+
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(MaxX,MaxY);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(MaxX,MaxY,ShapeIndex);
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=TpvVector4.Null;
+ CanvasVertex^.MetaInfo2:=TpvVector4.Null;
+
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.OriginalPosition:=TpvVector2.InlineableCreate(MinX,MaxY);
+ CanvasVertex^.Position:=TpvVector3.InlineableCreate(fState.fModelMatrix*CanvasVertex^.OriginalPosition,fState.fZPosition);
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(MinX,MaxY,ShapeIndex);
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipSpaceClipRect;
+ CanvasVertex^.MetaInfo:=TpvVector4.Null;
+ CanvasVertex^.MetaInfo2:=TpvVector4.Null;
+
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+
+end;
+
 function TpvCanvas.DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
 var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     CachePart:PpvCanvasShapeCachePart;
@@ -8178,6 +8457,7 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
 begin
  if assigned(aShape) then begin
   SetGUIElementMode(false);
+  SetVectorPathMode(false);
   SetAtlasTexture(nil);
   fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
   VertexColor.r:=fState.fColor.r;

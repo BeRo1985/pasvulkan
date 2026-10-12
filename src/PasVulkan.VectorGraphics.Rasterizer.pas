@@ -374,12 +374,17 @@ type EpvVectorGraphicsRasterizer=class(Exception);
        procedure Close; virtual;
        // Draws everything accumulated since the last Render or Reset, then resets.
        procedure Render; virtual;
+       // True for a backend that wants the shape with its curved segments still in it, so that the
+       // caller skips the flattening step. The span rasterizer needs lines and answers false; a
+       // backend that hands the outline on to something which can evaluate curves by itself, such
+       // as the path recorder, answers true.
+       function WantsCurvedSegments:boolean; virtual;
        // Feeds an already flattened shape through MoveTo/LineTo/Close and renders it. Curved
        // segments are ignored, so the caller flattens first, where the target scale is known.
        // aUseShapeFillRule false keeps whatever fill rule is currently set instead of taking the
        // one the shape carries.
        procedure FillShape(const aShape:TpvVectorPathShape;const aMatrix:TpvVectorPathMatrix;
-                           const aUseShapeFillRule:boolean=true);
+                           const aUseShapeFillRule:boolean=true); virtual;
        // Rasterizes aShape into aMask instead of into the pixel buffer, which is how clip paths
        // and masks are turned into coverage.
        procedure RasterizeShapeToMask(const aShape:TpvVectorPathShape;
@@ -392,7 +397,7 @@ type EpvVectorGraphicsRasterizer=class(Exception);
        // Redirects drawing into another buffer and returns the one that was in effect, so the
        // caller can put it back. Ownership of neither buffer changes, which is what off-image
        // group compositing, masks and pattern tiles all need.
-       function ReplacePixelBuffer(const aPixelBuffer:TpvVectorGraphicsPixelBuffer):TpvVectorGraphicsPixelBuffer;
+       function ReplacePixelBuffer(const aPixelBuffer:TpvVectorGraphicsPixelBuffer):TpvVectorGraphicsPixelBuffer; virtual;
       public
        property PixelBuffer:TpvVectorGraphicsPixelBuffer read fPixelBuffer;
        property GammaLookUpTable:TpvVectorGraphicsGammaLookUpTable read fGammaLookUpTable;
@@ -2101,6 +2106,11 @@ begin
 
  end;
 
+end;
+
+function TpvVectorGraphicsRasterizer.WantsCurvedSegments:boolean;
+begin
+ result:=false;
 end;
 
 procedure TpvVectorGraphicsRasterizer.FillShape(const aShape:TpvVectorPathShape;const aMatrix:TpvVectorPathMatrix;

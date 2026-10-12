@@ -826,6 +826,13 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0); reintroduce;
        destructor Destroy; override;
        procedure Update;
+      public
+       // The bounding box already widened by the extent, so a caller that draws a quad over it
+       // covers the whole antialiased edge and not just the geometry.
+       property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
+       // The index into the shapes buffer, which is what a shader needs in order to find this
+       // shape, and -1 as long as the shape has none.
+       property ShapeIndex:TpvInt32 read fShapeIndex;
      end;
 
      TpvVectorPathGPUShapes=array of TpvVectorPathGPUShape;

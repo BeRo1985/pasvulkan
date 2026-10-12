@@ -73,13 +73,14 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.VectorPath,
      PasVulkan.VectorGraphics.Rasterizer,
+     PasVulkan.VectorGraphics.Paints,
      PasVulkan.VectorGraphics.Filters;
 
 type { TpvVectorGraphicsRasterizerRecorder }
 
      // A rasterizer that draws nothing and instead keeps what it was asked to draw. Every Render
-     // call appends one entry holding the flattened outline in device space together with the
-     // paint color and fill rule that were in effect.
+     // call appends one entry holding the outline in device space, curved segments included,
+     // together with the fill and the fill rule that were in effect.
      //
      // This is the hand-off point to the GPU side: the recorded shapes go straight into
      // TpvVectorPathGPUShape, which builds the segment grid the vector shader samples. The whole
@@ -98,6 +99,24 @@ type { TpvVectorGraphicsRasterizerRecorder }
               Texture
              );
 
+            { TFillKind }
+
+            // How the recorded area is filled. A solid fill is the plain color, while the two
+            // gradients come with the ramp and the mapping a backend needs in order to evaluate
+            // them by itself.
+            TFillKind=
+             (
+              Solid=0,
+              LinearGradient,
+              RadialGradient
+             );
+
+            // The ramp of a recorded gradient, the same 256 entries the software rasterizer
+            // samples, so that both routes come out on the same colors.
+            TGradientRamp=array[0..255] of TpvVectorGraphicsColor;
+
+            PGradientRamp=^TGradientRamp;
+
             { TRecord_ }
             TRecord_=class
              private
@@ -112,6 +131,12 @@ type { TpvVectorGraphicsRasterizerRecorder }
               fAlpha:TpvUInt8;
               fFirstChildIndex:TpvSizeInt;
               fCountChildren:TpvSizeInt;
+              fFillKind:TFillKind;
+              fGradientMatrix:TpvVectorPathMatrix;
+              fGradientFocus:TpvVectorPathVector;
+              fGradientSpreadMethod:TpvVectorGraphicsSpreadMethod;
+              fGradientRamp:TGradientRamp;
+              function GetGradientRamp:PGradientRamp;
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
@@ -119,13 +144,29 @@ type { TpvVectorGraphicsRasterizerRecorder }
               property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
               // What the filter needs to know about where the subtree sits, handed over with it.
               property FilterContext:TpvVectorGraphicsFilterContext read fFilterContext write fFilterContext;
+              // Takes a point of the shape into the space of the gradient, with the radius
+              // already divided out, so that the ramp runs from zero to one along the local x
+              // axis of a linear gradient and from the origin outwards for a radial one.
+              property GradientMatrix:TpvVectorPathMatrix read fGradientMatrix;
+              // The focus point of a radial gradient, in that same space. Zero means centered,
+              // which is also what a linear gradient carries.
+              property GradientFocus:TpvVectorPathVector read fGradientFocus;
+              // The 256 entries of the ramp. Only meaningful for a gradient fill.
+              property GradientRamp:PGradientRamp read GetGradientRamp;
              published
               property Kind:TRecordKind read fKind;
-              // The outline in device space, made of line segments only, ready to be fed to
-              // TpvVectorPathGPUShape or to be triangulated. Only a shape record has one.
+              // The outline in device space, with its curved segments still in it, ready to be
+              // fed to TpvVectorPathGPUShape. Only a shape record has one.
               property Shape:TpvVectorPathShape read fShape;
+              // The plain color of a solid fill. A gradient fill carries opaque white here, so
+              // that a backend can multiply the two without having to tell the cases apart, and
+              // the opacity of the gradient sits in its ramp.
               property Color:TpvVectorGraphicsColor read fColor;
               property FillRule:TpvVectorPathFillRule read fFillRule;
+              // Whether the area is one color or one of the two gradients.
+              property FillKind:TFillKind read fFillKind;
+              // What happens outside the zero to one range of the gradient.
+              property GradientSpreadMethod:TpvVectorGraphicsSpreadMethod read fGradientSpreadMethod;
               // How this entry is meant to combine with what is already there. The GPU side has
               // to honour it, since the recorder itself composites nothing.
               property BlendMode:TpvVectorGraphicsBlendMode read fBlendMode;
@@ -146,7 +187,19 @@ type { TpvVectorGraphicsRasterizerRecorder }
        fCurrentPosition:TpvVectorPathVector;
        fStartPosition:TpvVectorPathVector;
        fFlushEmptyRecords:boolean;
+       fFullyRecorded:boolean;
+       // The buffer that was in effect when this recorder was created, which is the one that
+       // stands for the page itself.
+       fBasePixelBuffer:TpvVectorGraphicsPixelBuffer;
+       // True while drawing goes into a buffer other than that one, which is how a coverage mask
+       // and a pattern tile are built. Those are pixels by nature, so nothing of them can be
+       // recorded and whatever would be is dropped instead of ending up in the page.
+       fInForeignPixelBuffer:boolean;
        function ToVector(const aX,aY:TpvInt32):TpvVectorPathVector; {$ifdef CANINLINE}inline;{$endif}
+       // Copies whatever the current paint is into aRecord: a plain color, or the ramp and the
+       // mapping of one of the two gradients. A paint that is neither leaves the record on its
+       // solid default and makes FullyRecorded say no.
+       procedure TakeFill(const aRecord:TRecord_);
       public
        constructor Create(const aPixelBuffer:TpvVectorGraphicsPixelBuffer=nil); override;
        destructor Destroy; override;
@@ -155,6 +208,10 @@ type { TpvVectorGraphicsRasterizerRecorder }
        procedure LineTo(const aX,aY:TpvInt32); override;
        procedure Close; override;
        procedure Render; override;
+       function WantsCurvedSegments:boolean; override;
+       function ReplacePixelBuffer(const aPixelBuffer:TpvVectorGraphicsPixelBuffer):TpvVectorGraphicsPixelBuffer; override;
+       procedure FillShape(const aShape:TpvVectorPathShape;const aMatrix:TpvVectorPathMatrix;
+                           const aUseShapeFillRule:boolean=true); override;
        // Opens a texture record and returns its index. Everything recorded until the matching
        // EndTexture belongs to it, which is how a filtered subtree reaches the GPU side: render
        // those entries into a texture of their own, run the filter chain over it, then composite
@@ -176,6 +233,13 @@ type { TpvVectorGraphicsRasterizerRecorder }
        // When set, a Render that produced no geometry still appends an empty record, which keeps
        // the record indices lined up with the draw calls for callers that rely on that.
        property FlushEmptyRecords:boolean read fFlushEmptyRecords write fFlushEmptyRecords;
+       // True while the records describe everything that was drawn, which is the case as long as
+       // every area was filled with a plain color or with one of the two gradients, with no
+       // pattern or image paint, no coverage mask, no blend mode and no texture record among
+       // them. A backend that draws nothing but filled outlines asks this to find out whether it
+       // can take the records as they are or has to fall back to a software render. Reset by
+       // ClearRecords and by ExtractRecords, so it covers one recording run.
+       property FullyRecorded:boolean read fFullyRecorded;
      end;
 
 implementation
@@ -191,6 +255,11 @@ begin
  fShape:=TpvVectorPathShape.Create;
  fColor:=0;
  fFillRule:=TpvVectorPathFillRule.NonZero;
+ fFillKind:=TFillKind.Solid;
+ fGradientMatrix:=TpvVectorPathMatrix.CreateIdentity;
+ fGradientFocus:=TpvVectorPathVector.Create(0.0,0.0);
+ fGradientSpreadMethod:=TpvVectorGraphicsSpreadMethod.Pad;
+ FillChar(fGradientRamp,SizeOf(TGradientRamp),#0);
  fBlendMode:=TpvVectorGraphicsBlendMode.Normal;
 
  // Only a texture record uses these.
@@ -211,6 +280,11 @@ begin
  inherited Destroy;
 end;
 
+function TpvVectorGraphicsRasterizerRecorder.TRecord_.GetGradientRamp:PGradientRamp;
+begin
+ result:=@fGradientRamp;
+end;
+
 { TpvVectorGraphicsRasterizerRecorder }
 
 constructor TpvVectorGraphicsRasterizerRecorder.Create(const aPixelBuffer:TpvVectorGraphicsPixelBuffer);
@@ -225,6 +299,9 @@ begin
  fCurrentContour:=nil;
  fHasCurrentPosition:=false;
  fFlushEmptyRecords:=false;
+ fFullyRecorded:=true;
+ fBasePixelBuffer:=fPixelBuffer;
+ fInForeignPixelBuffer:=false;
 
 end;
 
@@ -245,6 +322,63 @@ begin
  result.y:=aY*OneOverPixelFactor;
 end;
 
+procedure TpvVectorGraphicsRasterizerRecorder.TakeFill(const aRecord:TRecord_);
+var GradientPaint:TpvVectorGraphicsGradientPaint;
+    RadialPaint:TpvVectorGraphicsRadialGradientPaint;
+    Radius,OneOverRadius:TpvDouble;
+    Focus:TpvVectorPathVector;
+    SourceRamp:PpvVectorGraphicsGradientBuffer;
+    Index:TpvSizeInt;
+    Opacity:TpvUInt8;
+begin
+
+ if not (assigned(fPaint) and (fPaint is TpvVectorGraphicsGradientPaint)) then begin
+  exit;
+ end;
+
+ GradientPaint:=TpvVectorGraphicsGradientPaint(fPaint);
+
+ // A radius of zero would make the mapping below collapse, and the software rasterizer treats it
+ // as one, so the same is done here.
+ Radius:=GradientPaint.Radius;
+ if SameValue(Radius,0.0) then begin
+  Radius:=1.0;
+ end;
+ OneOverRadius:=1.0/Radius;
+
+ if GradientPaint is TpvVectorGraphicsRadialGradientPaint then begin
+  aRecord.fFillKind:=TFillKind.RadialGradient;
+  RadialPaint:=TpvVectorGraphicsRadialGradientPaint(GradientPaint);
+  Focus:=RadialPaint.FocusMatrix.Transform(RadialPaint.FocusX,RadialPaint.FocusY);
+  aRecord.fGradientFocus:=TpvVectorPathVector.Create(Focus.x*OneOverRadius,Focus.y*OneOverRadius);
+ end else begin
+  aRecord.fFillKind:=TFillKind.LinearGradient;
+  aRecord.fGradientFocus:=TpvVectorPathVector.Create(0.0,0.0);
+ end;
+
+ // Dividing the radius out here is what lets the ramp run from zero to one on the other side,
+ // which in turn is what keeps the radial formula free of the radius altogether.
+ aRecord.fGradientMatrix:=GradientPaint.Matrix*TpvVectorPathMatrix.CreateScale(OneOverRadius,OneOverRadius);
+
+ aRecord.fGradientSpreadMethod:=GradientPaint.SpreadMethod;
+
+ // The opacity of the enclosing object goes into the ramp rather than being carried separately,
+ // which is the same thing the software rasterizer does to every sample it takes.
+ SourceRamp:=GradientPaint.Buffer;
+ Opacity:=GradientPaint.Opacity;
+ if Opacity=255 then begin
+  Move(SourceRamp^[0],aRecord.fGradientRamp[0],SizeOf(TGradientRamp));
+ end else begin
+  for Index:=0 to 255 do begin
+   aRecord.fGradientRamp[Index]:=pvVectorGraphicsModulateColor(SourceRamp^[Index],Opacity);
+  end;
+ end;
+
+ // Whatever color the paint happened to carry has no say any more, so it is made neutral.
+ aRecord.fColor:=TpvVectorGraphicsColor($ffffffff);
+
+end;
+
 function TpvVectorGraphicsRasterizerRecorder.BeginTexture(const aFilter:TpvVectorGraphicsFilter;
                                                           const aFilterContext:TpvVectorGraphicsFilterContext;
                                                           const aAlpha:TpvUInt8;
@@ -254,6 +388,10 @@ begin
 
  // Anything half drawn belongs before the texture, not inside it.
  Render;
+
+ // A texture record is a subtree that gets composited as a whole, which a backend that only
+ // draws filled outlines cannot do.
+ fFullyRecorded:=false;
 
  CurrentRecord:=TRecord_.Create;
  CurrentRecord.fKind:=TRecordKind.Texture;
@@ -291,6 +429,7 @@ end;
 procedure TpvVectorGraphicsRasterizerRecorder.ClearRecords;
 begin
  fRecords.Clear;
+ fFullyRecorded:=true;
 end;
 
 function TpvVectorGraphicsRasterizerRecorder.ExtractRecords:TRecords;
@@ -298,6 +437,7 @@ begin
  result:=fRecords;
  fRecords:=TRecords.Create;
  fRecords.OwnsObjects:=true;
+ fFullyRecorded:=true;
 end;
 
 function TpvVectorGraphicsRasterizerRecorder.GetBoundingBox:TpvVectorPathBoundingBox;
@@ -384,6 +524,15 @@ begin
 
  Close;
 
+ // A coverage mask or a pattern tile is being built, which only exists as pixels. Recording its
+ // outlines would put them into the page as if they were drawn there, so they are dropped and
+ // the run is marked as no longer describing everything.
+ if fInForeignPixelBuffer then begin
+  fFullyRecorded:=false;
+  Reset;
+  exit;
+ end;
+
  HasGeometry:=assigned(fCurrentShape) and (fCurrentShape.Contours.Count>0);
  if not (HasGeometry or fFlushEmptyRecords) then begin
   Reset;
@@ -407,6 +556,8 @@ begin
   CurrentRecord.fFillRule:=fFillRule;
   CurrentRecord.fBlendMode:=fElementBlendMode;
 
+  TakeFill(CurrentRecord);
+
  except
   FreeAndNil(CurrentRecord);
   raise;
@@ -415,6 +566,56 @@ begin
  fRecords.Add(CurrentRecord);
 
  Reset;
+
+end;
+
+function TpvVectorGraphicsRasterizerRecorder.WantsCurvedSegments:boolean;
+begin
+ result:=true;
+end;
+
+function TpvVectorGraphicsRasterizerRecorder.ReplacePixelBuffer(const aPixelBuffer:TpvVectorGraphicsPixelBuffer):TpvVectorGraphicsPixelBuffer;
+begin
+ result:=inherited ReplacePixelBuffer(aPixelBuffer);
+ fInForeignPixelBuffer:=fPixelBuffer<>fBasePixelBuffer;
+end;
+
+procedure TpvVectorGraphicsRasterizerRecorder.FillShape(const aShape:TpvVectorPathShape;
+                                                        const aMatrix:TpvVectorPathMatrix;
+                                                        const aUseShapeFillRule:boolean);
+begin
+
+ if not assigned(aShape) then begin
+  exit;
+ end;
+
+ Reset;
+
+ if aUseShapeFillRule then begin
+  fFillRule:=aShape.FillRule;
+ end;
+
+ // A plain color and the two gradients are what a record can carry. A pattern or an image fill
+ // is a buffer of pixels and would come out as one flat color, and so would a coverage mask,
+ // which lives in the pixels as well and has nowhere to go in a record. A blend mode normally
+ // brings a texture record with it, which already settles the question, but it is asked here as
+ // well so that the answer does not depend on how the caller went about it.
+ if (not assigned(fPaint)) or
+    not (fPaint.IsSolid or (fPaint is TpvVectorGraphicsGradientPaint)) or
+    assigned(fMask) or
+    (fElementBlendMode<>TpvVectorGraphicsBlendMode.Normal) then begin
+  fFullyRecorded:=false;
+ end;
+
+ // The outline is taken over as it stands instead of being walked through MoveTo and LineTo,
+ // so that its curved segments survive. That is what makes the recorded shape independent of
+ // the resolution it will later be drawn at, because the GPU side evaluates quadratic curves
+ // by itself and breaks the cubic ones down when it builds its own copy.
+ fCurrentShape:=TpvVectorPathShape.Create;
+ fCurrentShape.Assign(aShape);
+ fCurrentShape.Transform(aMatrix);
+
+ Render;
 
 end;
 

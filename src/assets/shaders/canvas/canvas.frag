@@ -37,9 +37,11 @@ layout(location = 7) in vec2 inClipSpacePosition;  // xy
 layout(location = 8) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 #endif
 
-#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
+#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
-#elif FILLTYPE == FILLTYPE_TEXTURE
+#elif (FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH)
+// The vector path fill type uses this as its gradient ramp atlas: one row of 256 entries per
+// gradient, sampled with nearest filtering so that the rows cannot bleed into each other.
 layout(set = 0, binding = 0) uniform sampler2D uTexture;
 #endif
 
@@ -880,21 +882,83 @@ float sampleVectorPathShape(const vec3 shapeCoord){
   float d = fwidth(signedDistance);
   return linearstep(d, 0.0, signedDistance);
 }
-#endif 
+
+// Looks the gradient color up for a point in shape space. The gradient is described entirely by
+// the fill matrix push constant, which carries, row by row:
+//
+//   [0].xyz, [1].xyz  the two rows of the 2x3 matrix that takes a point of the shape into the
+//                     space of the gradient, with the radius already divided out, so that the
+//                     ramp runs from zero to one
+//   [2].xy            the focus point of a radial gradient, in that same space, zero for a
+//                     centered one and for a linear gradient
+//   [2].z             which row of the ramp atlas this gradient sits in, as a texture coordinate
+//   [2].w             the kind: 1 is linear, 2 is radial
+//   [3].x             what happens outside zero to one: 0 pads, 1 repeats, 2 reflects
+//
+// The ramp has 256 entries and is sampled with nearest filtering, and the half texel offset puts
+// the sample in the middle of the entry the software rasterizer would have picked, so that both
+// routes land on the same color.
+vec4 sampleVectorPathGradient(const vec2 shapePoint, const mat4 fillMatrix){
+  vec2 gradientPoint = vec2(dot(fillMatrix[0].xyz, vec3(shapePoint, 1.0)),
+                            dot(fillMatrix[1].xyz, vec3(shapePoint, 1.0)));
+  float gradientTime;
+  if(int(fillMatrix[2].w + 0.5) == 2){
+    vec2 focus = fillMatrix[2].xy;
+    if(dot(focus, focus) < 1e-12){
+      // Centered focus, so plain distance from the origin of the gradient space.
+      gradientTime = length(gradientPoint);
+    }else{
+      // An off-center focus makes the ramp run along the ray from the focus through the point out
+      // to the unit circle, which is the highlight effect SVG describes. The radius is one here,
+      // because it went into the matrix above.
+      float denominator = 1.0 - dot(focus, focus);
+      if(abs(denominator) < 1e-12){
+        denominator = (denominator < 0.0) ? -1e-12 : 1e-12;
+      }
+      vec2 delta = gradientPoint - focus;
+      float cross_ = (delta.x * focus.y) - (delta.y * focus.x);
+      float discriminant = dot(delta, delta) - (cross_ * cross_);
+      gradientTime = (dot(delta, focus) + sqrt(abs(discriminant))) / denominator;
+    }
+  }else{
+    gradientTime = gradientPoint.x;
+  }
+  switch(int(fillMatrix[3].x + 0.5)){
+    case 1:{
+      // Repeat
+      gradientTime = fract(gradientTime);
+      break;
+    }
+    case 2:{
+      // Reflect
+      gradientTime = 1.0 - abs(mod(gradientTime, 2.0) - 1.0);
+      break;
+    }
+    default:{
+      // Pad
+      gradientTime = clamp(gradientTime, 0.0, 1.0);
+      break;
+    }
+  }
+  return texture(uTexture, vec2(gradientTime + (1.0 / 512.0), fillMatrix[2].z));
+}
+#endif
 
 void main(void){
   vec4 color;
 #ifndef GUI_ELEMENTS
-#if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
+#if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_VECTOR_PATH)
   const mat4 fillMatrix = mat4(
     uintBitsToFloat(uvec4(pushConstants.data[2].yzw, 0u)),
     uintBitsToFloat(uvec4(pushConstants.data[3].xyz, 0u)),
     uintBitsToFloat(uvec4(pushConstants.data[3].w, pushConstants.data[4].xyz)),
     uintBitsToFloat(uvec4(pushConstants.data[4].w, pushConstants.data[5].xyz))
   );
+#endif
+#if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
   const mat3x2 fillTransformMatrix = mat3x2(
-    fillMatrix[0].xy, 
-    fillMatrix[1].xy, 
+    fillMatrix[0].xy,
+    fillMatrix[1].xy,
     vec2(fillMatrix[0].z, fillMatrix[1].z)
   );
 #endif
@@ -907,7 +971,12 @@ void main(void){
   vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * vec3(inPosition, 1.0)).xy : inTexCoord.xy;
 #endif
 #if FILLTYPE == FILLTYPE_VECTOR_PATH
-  color = vec2(1.0, sampleVectorPathShape(texCoord)).xxxy * inColor;  
+  color = vec2(1.0, sampleVectorPathShape(texCoord)).xxxy * inColor;
+  if(int(fillMatrix[2].w + 0.5) != 0){
+    // A gradient fill, so the plain color of the vertex only contributes its opacity on top of
+    // what the ramp says.
+    color *= sampleVectorPathGradient(texCoord.xy, fillMatrix);
+  }
 #else
   switch(inState.x){ 
     case 1:{
