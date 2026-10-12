@@ -37,6 +37,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.HighResolutionTimer,
+     PasVulkan.TimerQuery,
      PasVulkan.Sprites,
      PasVulkan.Canvas,
      PasVulkan.Font,
@@ -109,6 +110,14 @@ type { TScreenMain }
        fPercentileXthFrameRate:TpvDouble;
        fMedianFrameTime:TpvDouble;
        fFrameTimeString:string;
+       // How long the processor spent putting the frame together, measured around Draw, and how
+       // long the device then took for it, measured by a pair of timestamps around the render
+       // pass. One query per frame in flight, since the one of the frame before is still on its
+       // way when the next one starts. The GPU time of a frame is therefore the one of a frame a
+       // few back, which is as good as it gets without waiting for the device.
+       fRenderCPUTime:TpvHighResolutionTime;
+       fRenderGPUTime:TpvDouble;
+       fTimerQueries:array[0..MaxInFlightFrames-1] of TpvTimerQuery;
        // Where --screenshot wants its picture written, empty when it was not given.
        fScreenshotFileName:string;
        // How many frames to let pass before taking it, so that the picture shows a settled scene
@@ -777,7 +786,12 @@ begin
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
+  // One timestamp pair per frame, which is what the render pass is bracketed with.
+  fTimerQueries[Index]:=TpvTimerQuery.Create(pvApplication.VulkanDevice,1);
  end;
+
+ fRenderCPUTime:=0;
+ fRenderGPUTime:=0.0;
 
  fVulkanRenderPass:=nil;
 
@@ -916,6 +930,7 @@ begin
  FreeAndNil(fVulkanRenderPass);
 
  for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fTimerQueries[Index]);
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
@@ -1222,16 +1237,17 @@ begin
   MedianFrameTime:=fMedianFrameTime;
   MedianFPS:=1.0/Max(1e-4,MedianFrameTime);
   str((FPS*0.01):4:2,FPSString);
-  //fScene3D.GetProfilerTimes(RenderCPUTime,FrameTime);
-  //str(FrameTime*1000.0:4:2,fFrameTimeString);
-  //str(pvApplication.HighResolutionTimer.ToFloatSeconds(fRenderCPUTime)*1000.0:4:2,RenderCPUTimeString);
+  // The GPU time comes from a pair of timestamps around the render pass of Draw rather than from
+  // a Scene3D profiler, since this one draws through the canvas alone. It therefore covers what
+  // the canvas does and not the pass the sRGB compositing buffer submits on its own.
+  str(fRenderGPUTime:4:2,fFrameTimeString);
+  str(pvApplication.HighResolutionTimer.ToFloatSeconds(TPasMPInterlocked.Read(fRenderCPUTime))*1000.0:4:2,RenderCPUTimeString);
   str(pvApplication.HighResolutionTimer.ToFloatSeconds(UpdateTime)*1000.0:4:2,UpdateCPUTimeString);
   str(PercentileXthFPS:4:2,PercentileXthFPSString);
   str(PercentileXthFrameRate*1000.0:4:2,PercentileXthFrameTimeString);
   str(MedianFPS:4:2,MedianFPSString);
   str(MedianFrameTime*1000.0:4:2,MedianFrameTimeString);
-  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
-//pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms GPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms GPU time] ['+RenderCPUTimeString+' ms render CPU time] ['+UpdateCPUTimeString+' ms update CPU time] ['+PercentileXthFPSString+' FPS 95%] ['+PercentileXthFrameTimeString+' ms 95%] ['+MedianFPSString+' FPS median] ['+MedianFrameTimeString+' ms median]';
  end;
 
 end;
@@ -1240,10 +1256,22 @@ procedure TScreenMain.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphor
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var VulkanCommandBuffer:TpvVulkanCommandBuffer;
     VulkanSwapChain:TpvVulkanSwapChain;
+    TimerQuery:TpvTimerQuery;
+    StartCPUTime:TpvHighResolutionTime;
 begin
+
+ StartCPUTime:=pvApplication.HighResolutionTimer.GetTime;
 
  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex];
  VulkanSwapChain:=pvApplication.VulkanSwapChain;
+ TimerQuery:=fTimerQueries[pvApplication.DrawInFlightFrameIndex];
+
+ // What this very query carries is the frame it was last used for, which is a few back by now and
+ // therefore long finished. Reading it before it is reset is the only way to get at it at all
+ // without making the processor wait for the device.
+ if assigned(TimerQuery) and TimerQuery.Update then begin
+  fRenderGPUTime:=TimerQuery.Total*1000.0;
+ end;
 
  VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
@@ -1253,6 +1281,11 @@ begin
                              fVulkanTransferCommandBuffer,
                              fVulkanTransferCommandBufferFence,
                              pvApplication.DrawInFlightFrameIndex);
+
+ if assigned(TimerQuery) then begin
+  TimerQuery.Reset;
+  TimerQuery.Start(pvApplication.VulkanDevice.GraphicsQueue,VulkanCommandBuffer,'canvas');
+ end;
 
  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                    pvApplication.VulkanFrameBuffers[aSwapChainImageIndex],
@@ -1267,6 +1300,10 @@ begin
 
  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
+ if assigned(TimerQuery) then begin
+  TimerQuery.Stop(pvApplication.VulkanDevice.GraphicsQueue,VulkanCommandBuffer);
+ end;
+
  VulkanCommandBuffer.EndRecording;
 
  VulkanCommandBuffer.Execute(pvApplication.VulkanDevice.GraphicsQueue,
@@ -1277,6 +1314,9 @@ begin
                              false);
 
  aWaitSemaphore:=fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex];
+
+ // Written the interlocked way because Update reads it, and the two do not run on the same thread.
+ TPasMPInterlocked.Write(fRenderCPUTime,pvApplication.HighResolutionTimer.GetTime-StartCPUTime);
 
 end;
 
