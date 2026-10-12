@@ -617,7 +617,24 @@ bool lineHorziontalLineIntersect(vec2 p0, vec2 p1, float y0, float y1) {
   }
 }
 
-float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout int winding) {   
+// Whether a crossing found at the given curve parameter, where the segment runs the given way in
+// the height, is one to count. Half open in the height and not in the parameter: a segment that
+// runs downwards reaches its lower end at a parameter of one rather than of zero, so going by the
+// parameter alone would count the lower end for one segment and the upper one for the other, and
+// the two sides of a shared point would disagree. That disagreement is also what the meta winding
+// setting lines cannot carry, since they hold one winding for a whole span of heights and would
+// then be wrong at the very height the span begins at.
+bool vectorPathCrossingCounts(const float t, const float deltaY){
+  if(deltaY > 0.0){
+    return (t >= 0.0) && (t < 1.0);
+  }else if(deltaY < 0.0){
+    return (t > 0.0) && (t <= 1.0);
+  }else{
+    return false;
+  }
+}
+
+float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout int winding) {
 
   vec2 lineSegment = B - A;
 
@@ -633,14 +650,15 @@ float getLineDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 B, inout i
   // polygon is oriented counter-clockwise) or -1 (if the polygon is oriented clockwise).  
   if(abs(lineSegment.y) > 1e-8){
     float t = -(A.y - pos.y) / lineSegment.y;
-    // The parameter range is half open, so t of zero counts and t of one does not. Where two
-    // segments meet, the shared point would otherwise be counted twice and every point on that
-    // exact height would come out with a winding one too high. ComputeWindingAtPosition in
-    // PasVulkan.VectorPath.pas, which fills the meta winding setting lines, follows the same rule.
-    winding += ((t >= 0.0) && (t < 1.0) && (mix(A.x, B.x, t) <= pos.x)) ?
+    // A crossing is taken half open in the height, so the lower end of a segment counts and the
+    // upper one does not. Where two segments meet, the shared point would otherwise be counted
+    // twice and every point on that exact height would come out with a winding one too high.
+    // ComputeWindingAtPosition in PasVulkan.VectorPath.pas, which fills the meta winding setting
+    // lines, follows the same rule.
+    winding += (vectorPathCrossingCounts(t, lineSegment.y) && (mix(A.x, B.x, t) <= pos.x)) ?
                  ((B.y < A.y) ? -1 : 1) :
                  0;
-  }   
+  }
 
   // Distance
   vec2 pSubA = pos - A;
@@ -683,29 +701,32 @@ float getQuadraticCurveDistanceAndUpdateWinding(in vec2 pos, in vec2 A, in vec2 
       float d = (b * b) - (4.0 * a * c);
       if (d > 0.0) {
         vec2 t = (vec2(-b) + (vec2(-1.0, 1.0) * sqrt(d))) / (2.0 * a);
-        vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);  
-        // Half open parameter range, see the note in getLineDistanceAndUpdateWinding.
-        winding += (((t.x >= 0.0) && (t.x < 1.0)) && (h.x <= pos.x)) ?
-                    (((mix(B.y, C.y, t.x) - mix(A.y, B.y, t.x)) < 0.0) ? -1 : 1) :
+        vec2 h = mix(mix(A.xx, B.xx, t), mix(B.xx, C.xx, t), t);
+        // Which way the curve runs at a root decides which of its two ends counts, see the note in
+        // getLineDistanceAndUpdateWinding.
+        vec2 dy = mix(B.yy, C.yy, t) - mix(A.yy, B.yy, t);
+        winding += (vectorPathCrossingCounts(t.x, dy.x) && (h.x <= pos.x)) ?
+                    ((dy.x < 0.0) ? -1 : 1) :
                     0;
-        winding += (((t.y >= 0.0) && (t.y < 1.0)) && (h.y <= pos.x)) ?
-                    (((mix(B.y, C.y, t.y) - mix(A.y, B.y, t.y)) < 0.0) ? -1 : 1) :
+        winding += (vectorPathCrossingCounts(t.y, dy.y) && (h.y <= pos.x)) ?
+                    ((dy.y < 0.0) ? -1 : 1) :
                     0;
-      }          
+      }
     } else if (abs(b) > 1e-8) {
       // One root case
       float t = -c / b;
-      float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);  
-      winding += ((t >= 0.0) && (t < 1.0) && (h <= pos.x)) ?
-                  (((mix(B.y, C.y, t) - mix(A.y, B.y, t)) < 0.0) ? -1 : 1) :
+      float h = mix(mix(A.x, B.x, t), mix(B.x, C.x, t), t);
+      float dy = mix(B.y, C.y, t) - mix(A.y, B.y, t);
+      winding += (vectorPathCrossingCounts(t, dy) && (h <= pos.x)) ?
+                  ((dy < 0.0) ? -1 : 1) :
                    0;
     } else {
       // Otherwise treat as a horizontal line segment
       float dy = C.y - A.y;
       if (abs(dy) > 1e-8) {
         float t = (pos.y - A.y) / dy;
-        float h = mix(A.x, C.x, t);  
-        winding += ((t >= 0.0) && (t < 1.0) && (h <= pos.x)) ?
+        float h = mix(A.x, C.x, t);
+        winding += (vectorPathCrossingCounts(t, dy) && (h <= pos.x)) ?
                     ((dy < 0.0) ? -1 : 1) :
                     0;
       }
