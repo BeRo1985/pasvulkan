@@ -293,8 +293,9 @@ type EpvVectorGraphicsCanvas=class(Exception);
              // Raised with every change to what is written, since a file of an older layout read
              // by a newer reader runs off the end of the stream rather than failing cleanly.
              // Version 2 added whether duplicate data was shared, version 3 turned that into how
-             // far it is shared.
-             CacheVersion=TpvUInt32(3);
+             // far it is shared, version 4 writes the segments, points, cells and indices as
+             // blocks instead of a number at a time.
+             CacheVersion=TpvUInt32(4);
       private
        type { TCompositingRingEntry }
             // One slot of the ring the compositing buffer is drawn through. There is more than one

@@ -604,11 +604,28 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function GetBeginEndPoints:TpvVectorPathVectors;
        procedure GetSegmentIntersectionPoints(const aIntersectionPoints:TpvVectorPathVectorList);
       public
-       // One segment onto a stream and back, which both this and the GPU shape built from it are
-       // written with. The type decides how many points follow, and a meta winding setting line
-       // carries its winding as well.
+       type { TCachedSegmentHead }
+            // What a segment is besides its points: which kind it is, and the winding a meta
+            // winding setting line carries.
+            TCachedSegmentHead=packed record
+             Type_:TpvUInt32;
+             Winding:TpvInt32;
+            end;
+            { TCachedContourHead }
+            TCachedContourHead=packed record
+             Closed:TpvUInt32;
+             CountSegments:TpvUInt32;
+            end;
+      public
+       class function CountSegmentPoints(const aType:TpvVectorPathSegmentType):TpvSizeInt; static;
+       // One segment at a time, which nothing writes with any more since the blocks below are what
+       // keeps loading down to milliseconds, but which is the readable form of the same thing.
        class procedure SaveSegmentToStream(const aStreamIO:TpvStreamIO;const aSegment:TpvVectorPathSegment); static;
        class function LoadSegmentFromStream(const aStreamIO:TpvStreamIO):TpvVectorPathSegment; static;
+       // A run of segments onto a stream and back, as two blocks rather than a number at a time,
+       // which both this and the GPU shape built from it are written with.
+       class procedure SaveSegmentsToStream(const aStreamIO:TpvStreamIO;const aSegments:TpvVectorPathSegments); static;
+       class procedure LoadSegmentsFromStream(const aStreamIO:TpvStreamIO;const aSegments:TpvVectorPathSegments); static;
        // The whole shape: its fill rule, the settings it carries to the GPU, and its contours.
        procedure SaveToStream(const aStreamIO:TpvStreamIO);
        procedure LoadFromStream(const aStreamIO:TpvStreamIO);
@@ -4626,6 +4643,130 @@ begin
  end;
 end;
 
+// How many control points a segment of this type carries, which is what lets the points of a whole
+// shape go onto the stream as one block with the types as another.
+class function TpvVectorPathShape.CountSegmentPoints(const aType:TpvVectorPathSegmentType):TpvSizeInt;
+begin
+ case aType of
+  TpvVectorPathSegmentType.Line,TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+   result:=2;
+  end;
+  TpvVectorPathSegmentType.QuadraticCurve:begin
+   result:=3;
+  end;
+  TpvVectorPathSegmentType.CubicCurve:begin
+   result:=4;
+  end;
+  else begin
+   result:=0;
+  end;
+ end;
+end;
+
+// The heads and the points of a run of segments, each as one block. Writing them a number at a
+// time is what made loading take a fifth of a second rather than the few milliseconds it should,
+// so everything that comes in counts goes out in blocks, the way TpvScene3D handles its meshes.
+class procedure TpvVectorPathShape.SaveSegmentsToStream(const aStreamIO:TpvStreamIO;const aSegments:TpvVectorPathSegments);
+var Index,PointIndex,CountPoints,CountAllPoints:TpvSizeInt;
+    Segment:TpvVectorPathSegment;
+    Heads:array of TCachedSegmentHead;
+    Points:array of TpvVectorPathVector;
+begin
+ aStreamIO.WriteInt32(aSegments.Count);
+ if aSegments.Count=0 then begin
+  aStreamIO.WriteInt32(0);
+  exit;
+ end;
+ SetLength(Heads,aSegments.Count);
+ CountAllPoints:=0;
+ for Index:=0 to aSegments.Count-1 do begin
+  Segment:=aSegments[Index];
+  Heads[Index].Type_:=TpvUInt32(TpvVectorPathSegmentType(Segment.Type_));
+  if Segment.Type_=TpvVectorPathSegmentType.MetaWindingSettingLine then begin
+   Heads[Index].Winding:=TpvVectorPathSegmentMetaWindingSettingLine(Segment).Winding;
+  end else begin
+   Heads[Index].Winding:=0;
+  end;
+  inc(CountAllPoints,CountSegmentPoints(Segment.Type_));
+ end;
+ aStreamIO.WriteWithCheck(Heads[0],aSegments.Count*SizeOf(TCachedSegmentHead));
+ aStreamIO.WriteInt32(CountAllPoints);
+ if CountAllPoints>0 then begin
+  SetLength(Points,CountAllPoints);
+  CountAllPoints:=0;
+  for Index:=0 to aSegments.Count-1 do begin
+   Segment:=aSegments[Index];
+   CountPoints:=CountSegmentPoints(Segment.Type_);
+   for PointIndex:=0 to CountPoints-1 do begin
+    case Segment.Type_ of
+     TpvVectorPathSegmentType.Line,TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+      Points[CountAllPoints]:=TpvVectorPathSegmentLine(Segment).Points[PointIndex];
+     end;
+     TpvVectorPathSegmentType.QuadraticCurve:begin
+      Points[CountAllPoints]:=TpvVectorPathSegmentQuadraticCurve(Segment).Points[PointIndex];
+     end;
+     TpvVectorPathSegmentType.CubicCurve:begin
+      Points[CountAllPoints]:=TpvVectorPathSegmentCubicCurve(Segment).Points[PointIndex];
+     end;
+     else begin
+      Points[CountAllPoints]:=TpvVectorPathVector.Create(0.0,0.0);
+     end;
+    end;
+    inc(CountAllPoints);
+   end;
+  end;
+  aStreamIO.WriteWithCheck(Points[0],CountAllPoints*SizeOf(TpvVectorPathVector));
+ end;
+end;
+
+class procedure TpvVectorPathShape.LoadSegmentsFromStream(const aStreamIO:TpvStreamIO;const aSegments:TpvVectorPathSegments);
+var Index,PointIndex,CountSegments,CountPoints,CountAllPoints:TpvSizeInt;
+    Heads:array of TCachedSegmentHead;
+    Points:array of TpvVectorPathVector;
+    SegmentType:TpvVectorPathSegmentType;
+    Segment:TpvVectorPathSegment;
+begin
+ CountSegments:=aStreamIO.ReadInt32;
+ if CountSegments<=0 then begin
+  aStreamIO.ReadInt32;
+  exit;
+ end;
+ SetLength(Heads,CountSegments);
+ aStreamIO.ReadWithCheck(Heads[0],CountSegments*SizeOf(TCachedSegmentHead));
+ CountAllPoints:=aStreamIO.ReadInt32;
+ if CountAllPoints>0 then begin
+  SetLength(Points,CountAllPoints);
+  aStreamIO.ReadWithCheck(Points[0],CountAllPoints*SizeOf(TpvVectorPathVector));
+ end;
+ PointIndex:=0;
+ for Index:=0 to CountSegments-1 do begin
+  SegmentType:=TpvVectorPathSegmentType(Heads[Index].Type_);
+  CountPoints:=CountSegmentPoints(SegmentType);
+  case SegmentType of
+   TpvVectorPathSegmentType.Line:begin
+    Segment:=TpvVectorPathSegmentLine.Create(Points[PointIndex],Points[PointIndex+1]);
+   end;
+   TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+    Segment:=TpvVectorPathSegmentMetaWindingSettingLine.Create(Points[PointIndex],Points[PointIndex+1],Heads[Index].Winding);
+   end;
+   TpvVectorPathSegmentType.QuadraticCurve:begin
+    Segment:=TpvVectorPathSegmentQuadraticCurve.Create(Points[PointIndex],Points[PointIndex+1],Points[PointIndex+2]);
+   end;
+   TpvVectorPathSegmentType.CubicCurve:begin
+    Segment:=TpvVectorPathSegmentCubicCurve.Create(Points[PointIndex],Points[PointIndex+1],Points[PointIndex+2],Points[PointIndex+3]);
+   end;
+   else begin
+    Segment:=nil;
+   end;
+  end;
+  if assigned(Segment) then begin
+   Segment.fIndex:=aSegments.Count;
+   aSegments.Add(Segment);
+  end;
+  inc(PointIndex,CountPoints);
+ end;
+end;
+
 class procedure TpvVectorPathShape.SaveSegmentToStream(const aStreamIO:TpvStreamIO;const aSegment:TpvVectorPathSegment);
 var PointIndex,CountPoints:TpvSizeInt;
 begin
@@ -4721,6 +4862,8 @@ end;
 procedure TpvVectorPathShape.SaveToStream(const aStreamIO:TpvStreamIO);
 var ContourIndex,SegmentIndex:TpvSizeInt;
     Contour:TpvVectorPathContour;
+    ContourHeads:array of TCachedContourHead;
+    All:TpvVectorPathSegments;
 begin
  aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathFillRule(fFillRule)));
  aStreamIO.WriteInt32(fResolution);
@@ -4730,20 +4873,40 @@ begin
  aStreamIO.WriteInt32(fCountBands);
  aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathDuplicateSharing(fDuplicateSharing)));
  aStreamIO.WriteInt32(fContours.Count);
- for ContourIndex:=0 to fContours.Count-1 do begin
-  Contour:=fContours[ContourIndex];
-  aStreamIO.WriteBoolean(Contour.fClosed);
-  aStreamIO.WriteInt32(Contour.fSegments.Count);
-  for SegmentIndex:=0 to Contour.fSegments.Count-1 do begin
-   SaveSegmentToStream(aStreamIO,Contour.fSegments[SegmentIndex]);
+ if fContours.Count>0 then begin
+  // How the segments that follow are shared out over the contours, as one block.
+  SetLength(ContourHeads,fContours.Count);
+  for ContourIndex:=0 to fContours.Count-1 do begin
+   Contour:=fContours[ContourIndex];
+   if Contour.fClosed then begin
+    ContourHeads[ContourIndex].Closed:=1;
+   end else begin
+    ContourHeads[ContourIndex].Closed:=0;
+   end;
+   ContourHeads[ContourIndex].CountSegments:=Contour.fSegments.Count;
   end;
+  aStreamIO.WriteWithCheck(ContourHeads[0],fContours.Count*SizeOf(TCachedContourHead));
+ end;
+ All:=TpvVectorPathSegments.Create;
+ try
+  All.OwnsObjects:=false;
+  for ContourIndex:=0 to fContours.Count-1 do begin
+   Contour:=fContours[ContourIndex];
+   for SegmentIndex:=0 to Contour.fSegments.Count-1 do begin
+    All.Add(Contour.fSegments[SegmentIndex]);
+   end;
+  end;
+  SaveSegmentsToStream(aStreamIO,All);
+ finally
+  FreeAndNil(All);
  end;
 end;
 
 procedure TpvVectorPathShape.LoadFromStream(const aStreamIO:TpvStreamIO);
-var ContourIndex,SegmentIndex,CountContours,CountSegments:TpvSizeInt;
+var ContourIndex,SegmentIndex,CountContours,RunningIndex:TpvSizeInt;
     Contour:TpvVectorPathContour;
-    Segment:TpvVectorPathSegment;
+    ContourHeads:array of TCachedContourHead;
+    All:TpvVectorPathSegments;
 begin
  fFillRule:=TpvVectorPathFillRule(aStreamIO.ReadUInt32);
  fResolution:=aStreamIO.ReadInt32;
@@ -4754,20 +4917,31 @@ begin
  fDuplicateSharing:=TpvVectorPathDuplicateSharing(aStreamIO.ReadUInt32);
  fContours.Clear;
  CountContours:=aStreamIO.ReadInt32;
- for ContourIndex:=0 to CountContours-1 do begin
-  Contour:=TpvVectorPathContour.Create;
-  try
-   Contour.fClosed:=aStreamIO.ReadBoolean;
-   CountSegments:=aStreamIO.ReadInt32;
-   for SegmentIndex:=0 to CountSegments-1 do begin
-    Segment:=LoadSegmentFromStream(aStreamIO);
-    if assigned(Segment) then begin
-     Contour.fSegments.Add(Segment);
+ if CountContours>0 then begin
+  SetLength(ContourHeads,CountContours);
+  aStreamIO.ReadWithCheck(ContourHeads[0],CountContours*SizeOf(TCachedContourHead));
+ end;
+ All:=TpvVectorPathSegments.Create;
+ try
+  All.OwnsObjects:=false;
+  LoadSegmentsFromStream(aStreamIO,All);
+  RunningIndex:=0;
+  for ContourIndex:=0 to CountContours-1 do begin
+   Contour:=TpvVectorPathContour.Create;
+   try
+    Contour.fClosed:=ContourHeads[ContourIndex].Closed<>0;
+    for SegmentIndex:=0 to TpvSizeInt(ContourHeads[ContourIndex].CountSegments)-1 do begin
+     if RunningIndex<All.Count then begin
+      Contour.fSegments.Add(All[RunningIndex]);
+      inc(RunningIndex);
+     end;
     end;
+   finally
+    fContours.Add(Contour);
    end;
-  finally
-   fContours.Add(Contour);
   end;
+ finally
+  FreeAndNil(All);
  end;
 end;
 
@@ -7095,8 +7269,11 @@ begin
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=false;
 
- fMetaWindingSettingLines:=TpvVectorPathSegments.Create;
- fMetaWindingSettingLines.OwnsObjects:=true;
+ // No list of its own meta winding setting lines, because a cell built this way never makes any:
+ // the bands have none at all, and a cell read back from a cache gets the ones the shape already
+ // owns. At a grid of three hundred thousand cells that is three hundred thousand allocations
+ // saved, which is most of what loading one used to cost.
+ fMetaWindingSettingLines:=nil;
 
  fKind:=TKind.Empty;
 
@@ -7372,8 +7549,10 @@ begin
 end;
 
 procedure TpvVectorPathGPUShape.SaveToStream(const aStreamIO:TpvStreamIO);
-var Index,CellIndex:TpvSizeInt;
+var Index,CellIndex,CountAllIndices:TpvSizeInt;
     GridCell:TGridCell;
+    CellBoxes:array of TpvVectorPathBoundingBox;
+    CellCounts,CellIndices:array of TpvUInt32;
 begin
 
  aStreamIO.WriteInt32(fResolution);
@@ -7393,34 +7572,49 @@ begin
  fVectorPathShape.SaveToStream(aStreamIO);
 
  // Every segment of the shape, the closing ones and the meta winding setting lines among them.
- aStreamIO.WriteInt32(fSegments.Count);
  for Index:=0 to fSegments.Count-1 do begin
   fSegments[Index].fIndex:=Index;
-  TpvVectorPathShape.SaveSegmentToStream(aStreamIO,fSegments[Index]);
  end;
+ TpvVectorPathShape.SaveSegmentsToStream(aStreamIO,fSegments);
 
  // And which of them each cell or band holds, as indices into the list above rather than as
- // segments of their own, since they are the very same objects.
+ // segments of their own, since they are the very same objects. Boxes, counts and indices each go
+ // as one block.
  aStreamIO.WriteInt32(fGridCells.Count);
- for CellIndex:=0 to fGridCells.Count-1 do begin
-  GridCell:=fGridCells[CellIndex];
-  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[0].x);
-  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[0].y);
-  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[1].x);
-  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[1].y);
-  aStreamIO.WriteInt32(GridCell.fSegments.Count);
-  for Index:=0 to GridCell.fSegments.Count-1 do begin
-   aStreamIO.WriteInt32(GridCell.fSegments[Index].fIndex);
+ if fGridCells.Count>0 then begin
+  SetLength(CellBoxes,fGridCells.Count);
+  SetLength(CellCounts,fGridCells.Count);
+  CountAllIndices:=0;
+  for CellIndex:=0 to fGridCells.Count-1 do begin
+   GridCell:=fGridCells[CellIndex];
+   CellBoxes[CellIndex]:=GridCell.fBoundingBox;
+   CellCounts[CellIndex]:=GridCell.fSegments.Count;
+   inc(CountAllIndices,GridCell.fSegments.Count);
+  end;
+  aStreamIO.WriteWithCheck(CellBoxes[0],fGridCells.Count*SizeOf(TpvVectorPathBoundingBox));
+  aStreamIO.WriteWithCheck(CellCounts[0],fGridCells.Count*SizeOf(TpvUInt32));
+  aStreamIO.WriteInt32(CountAllIndices);
+  if CountAllIndices>0 then begin
+   SetLength(CellIndices,CountAllIndices);
+   CountAllIndices:=0;
+   for CellIndex:=0 to fGridCells.Count-1 do begin
+    GridCell:=fGridCells[CellIndex];
+    for Index:=0 to GridCell.fSegments.Count-1 do begin
+     CellIndices[CountAllIndices]:=GridCell.fSegments[Index].fIndex;
+     inc(CountAllIndices);
+    end;
+   end;
+   aStreamIO.WriteWithCheck(CellIndices[0],CountAllIndices*SizeOf(TpvUInt32));
   end;
  end;
 
 end;
 
 procedure TpvVectorPathGPUShape.LoadFromStream(const aStreamIO:TpvStreamIO);
-var Index,CellIndex,CountSegments,CountCells,CountCellSegments,SegmentIndex:TpvSizeInt;
+var Index,CellIndex,CountCells,CountAllIndices,SegmentIndex:TpvSizeInt;
     GridCell:TGridCell;
-    Segment:TpvVectorPathSegment;
-    BoundingBox:TpvVectorPathBoundingBox;
+    CellBoxes:array of TpvVectorPathBoundingBox;
+    CellCounts,CellIndices:array of TpvUInt32;
 begin
 
  if assigned(fBufferPool) then begin
@@ -7455,31 +7649,32 @@ begin
 
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=true;
- CountSegments:=aStreamIO.ReadInt32;
- for Index:=0 to CountSegments-1 do begin
-  Segment:=TpvVectorPathShape.LoadSegmentFromStream(aStreamIO);
-  if assigned(Segment) then begin
-   Segment.fIndex:=fSegments.Count;
-   fSegments.Add(Segment);
-  end;
- end;
+ TpvVectorPathShape.LoadSegmentsFromStream(aStreamIO,fSegments);
 
  fGridCells:=TGridCells.Create;
  fGridCells.OwnsObjects:=true;
  CountCells:=aStreamIO.ReadInt32;
  fGridCells.Count:=CountCells;
- for CellIndex:=0 to CountCells-1 do begin
-  BoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
-  BoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
-  BoundingBox.MinMax[1].x:=aStreamIO.ReadDouble;
-  BoundingBox.MinMax[1].y:=aStreamIO.ReadDouble;
-  GridCell:=TGridCell.Create(self,BoundingBox);
-  fGridCells[CellIndex]:=GridCell;
-  CountCellSegments:=aStreamIO.ReadInt32;
-  for Index:=0 to CountCellSegments-1 do begin
-   SegmentIndex:=aStreamIO.ReadInt32;
-   if (SegmentIndex>=0) and (SegmentIndex<fSegments.Count) then begin
-    GridCell.fSegments.Add(fSegments[SegmentIndex]);
+ if CountCells>0 then begin
+  SetLength(CellBoxes,CountCells);
+  SetLength(CellCounts,CountCells);
+  aStreamIO.ReadWithCheck(CellBoxes[0],CountCells*SizeOf(TpvVectorPathBoundingBox));
+  aStreamIO.ReadWithCheck(CellCounts[0],CountCells*SizeOf(TpvUInt32));
+  CountAllIndices:=aStreamIO.ReadInt32;
+  if CountAllIndices>0 then begin
+   SetLength(CellIndices,CountAllIndices);
+   aStreamIO.ReadWithCheck(CellIndices[0],CountAllIndices*SizeOf(TpvUInt32));
+  end;
+  CountAllIndices:=0;
+  for CellIndex:=0 to CountCells-1 do begin
+   GridCell:=TGridCell.Create(self,CellBoxes[CellIndex]);
+   fGridCells[CellIndex]:=GridCell;
+   for Index:=0 to TpvSizeInt(CellCounts[CellIndex])-1 do begin
+    SegmentIndex:=CellIndices[CountAllIndices];
+    inc(CountAllIndices);
+    if (SegmentIndex>=0) and (SegmentIndex<fSegments.Count) then begin
+     GridCell.fSegments.Add(fSegments[SegmentIndex]);
+    end;
    end;
   end;
  end;
@@ -7665,11 +7860,13 @@ begin
    for IndexY:=0 to fGridCells.Count-1 do begin
     GridCell:=fGridCells[IndexY];
     if assigned(GridCell) then begin
-     for IndexX:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
-      fSegments.Add(GridCell.fMetaWindingSettingLines[IndexX]);
+     if assigned(GridCell.fMetaWindingSettingLines) then begin
+      for IndexX:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+       fSegments.Add(GridCell.fMetaWindingSettingLines[IndexX]);
+      end;
+      GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
+      GridCell.fMetaWindingSettingLines.Clear;
      end;
-     GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
-     GridCell.fMetaWindingSettingLines.Clear;
     end;
    end;
   end;
@@ -7736,7 +7933,9 @@ begin
   for CellIndex:=0 to fGridCells.Count-1 do begin
    GridCell:=fGridCells[CellIndex];
    if assigned(GridCell) then begin
-    inc(CountAll,GridCell.fMetaWindingSettingLines.Count);
+    if assigned(GridCell.fMetaWindingSettingLines) then begin
+     inc(CountAll,GridCell.fMetaWindingSettingLines.Count);
+    end;
    end;
   end;
   if CountAll=0 then begin
@@ -7791,14 +7990,16 @@ begin
        end;
       end;
      end;
-     GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
-     for LineIndex:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
-      Line:=GridCell.fMetaWindingSettingLines[LineIndex];
-      if Canonical.TryGet(Line,Kept) and (Kept<>Line) then begin
-       Line.Free;
+     if assigned(GridCell.fMetaWindingSettingLines) then begin
+      GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
+      for LineIndex:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+       Line:=GridCell.fMetaWindingSettingLines[LineIndex];
+       if Canonical.TryGet(Line,Kept) and (Kept<>Line) then begin
+        Line.Free;
+       end;
       end;
+      GridCell.fMetaWindingSettingLines.Clear;
      end;
-     GridCell.fMetaWindingSettingLines.Clear;
     end;
    end;
 
