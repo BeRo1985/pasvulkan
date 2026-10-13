@@ -72,7 +72,7 @@ var application = {
                              VectorGraphics.SeamMode.WidenedCoverage,
                              VectorGraphics.SeamMode.SRGBCompositingBuffer];
       this.data.seamModeNames = ["none", "widened coverage", "srgb buffer"];
-      this.data.seamModeIndex = 0;
+      this.data.seamModeIndex = 2;
 
       // Which structure the shader is given to find the curves near a pixel with, which A walks
       // through. The grid is cut in both axes and needs meta winding setting lines standing for
@@ -84,12 +84,12 @@ var application = {
       this.data.structures = [VectorGraphics.AccelerationStructure.Grid,
                               VectorGraphics.AccelerationStructure.SlugBands];
       this.data.structureNames = ["grid with meta lines", "slug bands"];
-      this.data.structureIndex = 0;
+      this.data.structureIndex = 1;
 
       // How many bands per axis, which D walks through. Zero lets Slug pick it from the curve
       // count, which is what it does on its own.
       this.data.bandCounts = [0, 16, 32, 64, 128];
-      this.data.bandCountIndex = 0;
+      this.data.bandCountIndex = 4;
       this.data.seamWidening = 0.5;
 
       this.data.status = "";
