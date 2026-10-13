@@ -168,7 +168,12 @@ type { TpvVectorGraphicsRasterizerRecorder }
               // The plain color of a solid fill. A gradient fill carries opaque white here, so
               // that a backend can multiply the two without having to tell the cases apart, and
               // the opacity of the gradient sits in its ramp.
-              property Color:TpvVectorGraphicsColor read fColor;
+              //
+              // Writable, because the shapes a record was built into carry nothing but geometry:
+              // the color is read out of here again at every draw. A caller that recolors the same
+              // outlines from one frame to the next, say to show what state a control is in, can
+              // therefore set this and draw again, with nothing rebuilt and nothing uploaded.
+              property Color:TpvVectorGraphicsColor read fColor write fColor;
               property FillRule:TpvVectorPathFillRule read fFillRule;
               // Whether the area is one color or one of the two gradients.
               property FillKind:TFillKind read fFillKind;
