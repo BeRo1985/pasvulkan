@@ -12658,6 +12658,71 @@ begin
 
 end;
 
+function POCAVectorGraphicsShapesFunctionSAVECACHE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    FileName:TpvUTF8String;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments<1 then begin
+  POCARuntimeError(aContext,'A file name is expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FileName:=POCAGetStringValue(aContext,aArguments^[0]);
+
+ try
+  Shapes.SaveToFile(String(FileName));
+  result:=POCANewNumber(aContext,1);
+ except
+  on e:Exception do begin
+   result:=POCANewNumber(aContext,0);
+  end;
+ end;
+
+end;
+
+function POCAVectorGraphicsShapesFunctionLOADCACHE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+    FileName:TpvUTF8String;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments<1 then begin
+  POCARuntimeError(aContext,'A file name is expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ FileName:=POCAGetStringValue(aContext,aArguments^[0]);
+
+ try
+  if Shapes.LoadFromFile(String(FileName)) then begin
+   result:=POCANewNumber(aContext,1);
+  end else begin
+   result:=POCANewNumber(aContext,0);
+  end;
+ except
+  on e:Exception do begin
+   result:=POCANewNumber(aContext,0);
+  end;
+ end;
+
+end;
+
 function POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Shapes:TpvVectorGraphicsCanvasShapes;
 begin
@@ -12756,6 +12821,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCompositingGPUTime',POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'setAccelerationStructure',POCAVectorGraphicsShapesFunctionSETACCELERATIONSTRUCTURE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getAccelerationStructure',POCAVectorGraphicsShapesFunctionGETACCELERATIONSTRUCTURE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'saveCache',POCAVectorGraphicsShapesFunctionSAVECACHE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'loadCache',POCAVectorGraphicsShapesFunctionLOADCACHE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getBoundingBox',POCAVectorGraphicsShapesFunctionGETBOUNDINGBOX);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'clear',POCAVectorGraphicsShapesFunctionCLEAR);
 end;

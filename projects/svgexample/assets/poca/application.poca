@@ -191,9 +191,23 @@ var application = {
       data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
                                            data.bandCounts[data.bandCountIndex]);
 
-      // Recorded at the size of the document itself, so one unit is one pixel at a zoom of one.
-      let supported = data.shapes.build(data.document);
-      data.shapes.update();
+      // The cache carries the records, the ramps and the finished acceleration structure of every
+      // shape, so loading it skips the parsing, the recording and the building alike. One per
+      // structure, since they build different things out of the same document.
+      data.cacheFileName = "tiger-" ~ (data.structureIndex === 0 ? "grid" : "bands") ~ ".pvvc";
+
+      let supported = true;
+      if (data.shapes.loadCache(data.cacheFileName) !== 0) {
+        print("SVG example: loaded ", data.cacheFileName, "\n");
+      } else {
+        // Recorded at the size of the document itself, so one unit is one pixel at a zoom of one.
+        supported = data.shapes.build(data.document);
+        data.shapes.update();
+        if (supported) {
+          data.shapes.saveCache(data.cacheFileName);
+          print("SVG example: wrote ", data.cacheFileName, "\n");
+        }
+      }
       data.builtZoom = 1.0;
 
       print("SVG example: ", data.shapes.getCountShapes(), " shapes, ",

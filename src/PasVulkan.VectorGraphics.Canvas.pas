@@ -88,6 +88,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Framework,
+     PasVulkan.Streams,
      PasVulkan.TimerQuery,
      PasVulkan.Sprites,
      PasVulkan.Canvas,
@@ -268,6 +269,28 @@ type EpvVectorGraphicsCanvas=class(Exception);
      // that, Build then returns false and Supported stays false, which is the signal to draw that
      // document through TpvVectorGraphicsCanvasTexture instead.
      TpvVectorGraphicsCanvasShapes=class
+      public
+       type { TCacheSignature }
+            TCacheSignature=packed array[0..3] of AnsiChar;
+            PCacheSignature=^TCacheSignature;
+            { TCacheHeader }
+            // Laid out the way TpvScene3D lays out its own: a signature and a version to know the
+            // thing by without reading it, the size for the same reason, and a free field the
+            // caller can put whatever it needs into. SourceHash is what tells a cache written for
+            // one document from one written for another.
+            TCacheHeader=packed record
+             Signature:TCacheSignature;
+             Version:TpvUInt32;
+             Size:TpvUInt64;
+             MetaData:TpvUInt64;
+             SourceHash:TpvUInt64;
+             Flags:TpvUInt32;
+             CountRecords:TpvUInt32;
+            end;
+            PCacheHeader=^TCacheHeader;
+      public
+       const CacheSignature:TCacheSignature=('P','V','V','C'); // PasVulkan Vector Cache
+             CacheVersion=TpvUInt32(1);
       private
        type { TCompositingRingEntry }
             // One slot of the ring the compositing buffer is drawn through. There is more than one
@@ -448,6 +471,21 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
        // does. Means nothing for the grid.
        property CountBands:TpvInt32 read fCountBands write fCountBands;
+      public
+       // Everything that Build worked out, onto a stream and back: the records with their
+       // outlines, the ramps, and the finished acceleration structure of every shape. Nothing is
+       // worked out again on the way back in, so loading skips the parsing, the recording and the
+       // building alike. At the tiger those are 262, 19 and 81 milliseconds.
+       //
+       // aSourceHash is carried in the header and handed back by LoadFromStream, so that a caller
+       // can tell a cache written for another document, or by other settings, from one it may use.
+       procedure SaveToStream(const aStream:TStream;const aSourceHash:TpvUInt64=0;const aMetaData:TpvUInt64=0);
+       function LoadFromStream(const aStream:TStream;const aSourceHash:TpvUInt64=0;const aMetaData:PpvUInt64=nil):boolean;
+       procedure SaveToFile(const aFileName:string;const aSourceHash:TpvUInt64=0;const aMetaData:TpvUInt64=0);
+       function LoadFromFile(const aFileName:string;const aSourceHash:TpvUInt64=0;const aMetaData:PpvUInt64=nil):boolean;
+       // Whether a stream holds a cache of this kind and version at all, and for which document,
+       // without reading any of it. The position is left where it was.
+       class function CheckStream(const aStream:TStream;const aSourceHash:PpvUInt64=nil;const aMetaData:PpvUInt64=nil):boolean; static;
      end;
 
 // The short way for the common case: an SVG from a file, a stream or a string, straight into a
@@ -1560,6 +1598,253 @@ begin
 
  fBufferPool.Update;
 
+end;
+
+class function TpvVectorGraphicsCanvasShapes.CheckStream(const aStream:TStream;const aSourceHash:PpvUInt64;const aMetaData:PpvUInt64):boolean;
+var StreamIO:TpvStreamIO;
+    Header:TCacheHeader;
+    HeaderPosition:TpvInt64;
+begin
+ result:=false;
+ if aStream.Size<(aStream.Position+SizeOf(TCacheHeader)) then begin
+  exit;
+ end;
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+  HeaderPosition:=aStream.Position;
+  try
+   StreamIO.ReadWithCheck(Header,SizeOf(TCacheHeader));
+   if (Header.Signature=CacheSignature) and (Header.Version=CacheVersion) then begin
+    if assigned(aSourceHash) then begin
+     aSourceHash^:=Header.SourceHash;
+    end;
+    if assigned(aMetaData) then begin
+     aMetaData^:=Header.MetaData;
+    end;
+    result:=true;
+   end;
+  finally
+   aStream.Seek(HeaderPosition,soBeginning);
+  end;
+ finally
+  FreeAndNil(StreamIO);
+ end;
+end;
+
+procedure TpvVectorGraphicsCanvasShapes.SaveToStream(const aStream:TStream;const aSourceHash:TpvUInt64;const aMetaData:TpvUInt64);
+var StreamIO:TpvStreamIO;
+    Header:TCacheHeader;
+    HeaderPosition,EndPosition:TpvInt64;
+    Index,RowIndex:TpvSizeInt;
+    BlockPosition,BlockEndPosition:TpvInt64;
+    CurrentRecord:TpvVectorGraphicsRasterizerRecorder.TRecord_;
+    GPUShape:TpvVectorPathGPUShape;
+begin
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  HeaderPosition:=aStream.Position;
+
+  // Written once with a size of zero and again at the end, when the size is known, the way
+  // TpvScene3D does it.
+  FillChar(Header,SizeOf(TCacheHeader),#0);
+  Header.Signature:=CacheSignature;
+  Header.Version:=CacheVersion;
+  Header.Size:=0;
+  Header.MetaData:=aMetaData;
+  Header.SourceHash:=aSourceHash;
+  Header.Flags:=0;
+  if fSupported then begin
+   Header.Flags:=Header.Flags or 1;
+  end;
+  if assigned(fRecords) then begin
+   Header.CountRecords:=fRecords.Count;
+  end else begin
+   Header.CountRecords:=0;
+  end;
+  StreamIO.WriteWithCheck(Header,SizeOf(TCacheHeader));
+
+  // What the shapes were built with, so that a cache written under other settings is recognised
+  // for what it is rather than quietly drawn with the wrong ones.
+  StreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
+  StreamIO.WriteInt32(fCountBands);
+
+  StreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
+  StreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
+  StreamIO.WriteDouble(fBoundingBox.MinMax[1].x);
+  StreamIO.WriteDouble(fBoundingBox.MinMax[1].y);
+
+  // The ramp rows as they were collected, with the row each record ended up sampling.
+  StreamIO.WriteInt32(fCountRampRows);
+  for RowIndex:=0 to fCountRampRows-1 do begin
+   for Index:=0 to 255 do begin
+    StreamIO.WriteUInt32(fRampRows[RowIndex][Index]);
+   end;
+  end;
+  StreamIO.WriteInt32(length(fRecordRampRows));
+  for Index:=0 to length(fRecordRampRows)-1 do begin
+   StreamIO.WriteInt64(fRecordRampRows[Index]);
+  end;
+
+  // And every record, each followed by the acceleration structure its shape was built into.
+  if assigned(fRecords) then begin
+   for Index:=0 to fRecords.Count-1 do begin
+    CurrentRecord:=fRecords[Index];
+    StreamIO.WriteBoolean(assigned(CurrentRecord));
+    if assigned(CurrentRecord) then begin
+     CurrentRecord.SaveToStream(StreamIO);
+     if assigned(CurrentRecord.Shape) and assigned(fBufferPool) then begin
+      GPUShape:=fBufferPool.GetShapeOf(CurrentRecord.Shape);
+     end else begin
+      GPUShape:=nil;
+     end;
+     StreamIO.WriteBoolean(assigned(GPUShape));
+     if assigned(GPUShape) then begin
+      // The length goes first, so that a reader with no pool to hang the structure on, or one of
+      // a later version that does not want it, can step over the block instead of having to
+      // understand it.
+      BlockPosition:=aStream.Position;
+      StreamIO.WriteUInt64(0);
+      GPUShape.SaveToStream(StreamIO);
+      BlockEndPosition:=aStream.Position;
+      aStream.Seek(BlockPosition,soBeginning);
+      StreamIO.WriteUInt64(TpvUInt64(BlockEndPosition-(BlockPosition+SizeOf(TpvUInt64))));
+      aStream.Seek(BlockEndPosition,soBeginning);
+     end;
+    end;
+   end;
+  end;
+
+  EndPosition:=aStream.Position;
+  Header.Size:=EndPosition-HeaderPosition;
+  aStream.Seek(HeaderPosition,soBeginning);
+  StreamIO.WriteWithCheck(Header,SizeOf(TCacheHeader));
+  aStream.Seek(EndPosition,soBeginning);
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+function TpvVectorGraphicsCanvasShapes.LoadFromStream(const aStream:TStream;const aSourceHash:TpvUInt64;const aMetaData:PpvUInt64):boolean;
+var StreamIO:TpvStreamIO;
+    Header:TCacheHeader;
+    Index,RowIndex,CountRows,CountRecordRows:TpvSizeInt;
+    BlockPosition:TpvInt64;
+    BlockSize:TpvUInt64;
+    CurrentRecord:TpvVectorGraphicsRasterizerRecorder.TRecord_;
+begin
+
+ result:=false;
+
+ StreamIO:=TpvStreamIO.Create(aStream);
+ try
+
+  StreamIO.ReadWithCheck(Header,SizeOf(TCacheHeader));
+  if (Header.Signature<>CacheSignature) or (Header.Version<>CacheVersion) then begin
+   exit;
+  end;
+
+  // A cache written for another document is of no use here, and drawing it would be worse than
+  // not loading it at all.
+  if (aSourceHash<>0) and (Header.SourceHash<>aSourceHash) then begin
+   exit;
+  end;
+
+  if assigned(aMetaData) then begin
+   aMetaData^:=Header.MetaData;
+  end;
+
+  Clear;
+
+  fAccelerationStructure:=TpvVectorPathAccelerationStructure(StreamIO.ReadUInt32);
+  fCountBands:=StreamIO.ReadInt32;
+
+  fBoundingBox.MinMax[0].x:=StreamIO.ReadDouble;
+  fBoundingBox.MinMax[0].y:=StreamIO.ReadDouble;
+  fBoundingBox.MinMax[1].x:=StreamIO.ReadDouble;
+  fBoundingBox.MinMax[1].y:=StreamIO.ReadDouble;
+
+  CountRows:=StreamIO.ReadInt32;
+  SetLength(fRampRows,CountRows);
+  for RowIndex:=0 to CountRows-1 do begin
+   for Index:=0 to 255 do begin
+    fRampRows[RowIndex][Index]:=StreamIO.ReadUInt32;
+   end;
+  end;
+  fCountRampRows:=CountRows;
+  CountRecordRows:=StreamIO.ReadInt32;
+  SetLength(fRecordRampRows,CountRecordRows);
+  for Index:=0 to CountRecordRows-1 do begin
+   fRecordRampRows[Index]:=StreamIO.ReadInt64;
+  end;
+
+  fRecords:=TpvVectorGraphicsRasterizerRecorder.TRecords.Create;
+  fRecords.OwnsObjects:=true;
+  for Index:=0 to TpvSizeInt(Header.CountRecords)-1 do begin
+   if StreamIO.ReadBoolean then begin
+    CurrentRecord:=TpvVectorGraphicsRasterizerRecorder.TRecord_.Create;
+    try
+     CurrentRecord.LoadFromStream(StreamIO);
+     if StreamIO.ReadBoolean then begin
+      BlockSize:=StreamIO.ReadUInt64;
+      BlockPosition:=aStream.Position;
+      if assigned(fBufferPool) and assigned(CurrentRecord.Shape) then begin
+       fBufferPool.GetOrCreateShape(CurrentRecord.Shape,StreamIO);
+      end;
+      // Whether it was taken or not, the stream carries on after the block.
+      aStream.Seek(BlockPosition+TpvInt64(BlockSize),soBeginning);
+     end;
+    finally
+     fRecords.Add(CurrentRecord);
+    end;
+   end else begin
+    fRecords.Add(nil);
+   end;
+  end;
+
+  fSupported:=(Header.Flags and 1)<>0;
+
+  if assigned(fBufferPool) then begin
+   fBufferPool.Update;
+  end;
+
+  fRampTextureDirty:=true;
+
+  result:=true;
+
+ finally
+  FreeAndNil(StreamIO);
+ end;
+
+end;
+
+procedure TpvVectorGraphicsCanvasShapes.SaveToFile(const aFileName:string;const aSourceHash:TpvUInt64;const aMetaData:TpvUInt64);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(Stream,aSourceHash,aMetaData);
+ finally
+  FreeAndNil(Stream);
+ end;
+end;
+
+function TpvVectorGraphicsCanvasShapes.LoadFromFile(const aFileName:string;const aSourceHash:TpvUInt64;const aMetaData:PpvUInt64):boolean;
+var Stream:TFileStream;
+begin
+ if not FileExists(aFileName) then begin
+  result:=false;
+  exit;
+ end;
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  result:=LoadFromStream(Stream,aSourceHash,aMetaData);
+ finally
+  FreeAndNil(Stream);
+ end;
 end;
 
 procedure TpvVectorGraphicsCanvasShapes.Draw(const aCanvas:TpvCanvas;

@@ -74,7 +74,8 @@ uses SysUtils,
      PasVulkan.VectorPath,
      PasVulkan.VectorGraphics.Rasterizer,
      PasVulkan.VectorGraphics.Paints,
-     PasVulkan.VectorGraphics.Filters;
+     PasVulkan.VectorGraphics.Filters,
+     PasVulkan.Streams;
 
 type { TpvVectorGraphicsRasterizerRecorder }
 
@@ -140,6 +141,12 @@ type { TpvVectorGraphicsRasterizerRecorder }
              public
               constructor Create; reintroduce;
               destructor Destroy; override;
+             public
+              // Everything this record needs in order to be drawn again, onto a stream and back.
+              // The filter and its context stay out: a document that needs one is never fully
+              // recorded as shapes in the first place, so nothing that goes through here has one.
+              procedure SaveToStream(const aStreamIO:TpvStreamIO);
+              procedure LoadFromStream(const aStreamIO:TpvStreamIO);
              public
               property BoundingBox:TpvVectorPathBoundingBox read fBoundingBox;
               // What the filter needs to know about where the subtree sits, handed over with it.
@@ -277,6 +284,67 @@ begin
  fBoundingBox:=TpvVectorPathBoundingBox.Create(TpvVectorPathVector.Create(MaxDouble,MaxDouble),
                                                TpvVectorPathVector.Create(-MaxDouble,-MaxDouble));
 
+end;
+
+procedure TpvVectorGraphicsRasterizerRecorder.TRecord_.SaveToStream(const aStreamIO:TpvStreamIO);
+var Index:TpvSizeInt;
+begin
+ aStreamIO.WriteUInt32(TpvUInt32(TRecordKind(fKind)));
+ aStreamIO.WriteUInt32(fColor);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathFillRule(fFillRule)));
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorGraphicsBlendMode(fBlendMode)));
+ aStreamIO.WriteUInt32(fAlpha);
+ aStreamIO.WriteInt64(fFirstChildIndex);
+ aStreamIO.WriteInt64(fCountChildren);
+ aStreamIO.WriteUInt32(TpvUInt32(TFillKind(fFillKind)));
+ for Index:=0 to 5 do begin
+  aStreamIO.WriteDouble(fGradientMatrix.Values[Index]);
+ end;
+ aStreamIO.WriteDouble(fGradientFocus.x);
+ aStreamIO.WriteDouble(fGradientFocus.y);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorGraphicsSpreadMethod(fGradientSpreadMethod)));
+ for Index:=0 to 255 do begin
+  aStreamIO.WriteUInt32(fGradientRamp[Index]);
+ end;
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[1].x);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[1].y);
+ aStreamIO.WriteBoolean(assigned(fShape));
+ if assigned(fShape) then begin
+  fShape.SaveToStream(aStreamIO);
+ end;
+end;
+
+procedure TpvVectorGraphicsRasterizerRecorder.TRecord_.LoadFromStream(const aStreamIO:TpvStreamIO);
+var Index:TpvSizeInt;
+begin
+ fKind:=TRecordKind(aStreamIO.ReadUInt32);
+ fColor:=aStreamIO.ReadUInt32;
+ fFillRule:=TpvVectorPathFillRule(aStreamIO.ReadUInt32);
+ fBlendMode:=TpvVectorGraphicsBlendMode(aStreamIO.ReadUInt32);
+ fAlpha:=aStreamIO.ReadUInt32 and $ff;
+ fFirstChildIndex:=aStreamIO.ReadInt64;
+ fCountChildren:=aStreamIO.ReadInt64;
+ fFillKind:=TFillKind(aStreamIO.ReadUInt32);
+ for Index:=0 to 5 do begin
+  fGradientMatrix.Values[Index]:=aStreamIO.ReadDouble;
+ end;
+ fGradientFocus.x:=aStreamIO.ReadDouble;
+ fGradientFocus.y:=aStreamIO.ReadDouble;
+ fGradientSpreadMethod:=TpvVectorGraphicsSpreadMethod(aStreamIO.ReadUInt32);
+ for Index:=0 to 255 do begin
+  fGradientRamp[Index]:=aStreamIO.ReadUInt32;
+ end;
+ fBoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[1].x:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[1].y:=aStreamIO.ReadDouble;
+ FreeAndNil(fShape);
+ if aStreamIO.ReadBoolean then begin
+  fShape:=TpvVectorPathShape.Create;
+  fShape.LoadFromStream(aStreamIO);
+ end;
 end;
 
 destructor TpvVectorGraphicsRasterizerRecorder.TRecord_.Destroy;

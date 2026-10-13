@@ -77,7 +77,8 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.BufferRangeAllocator,
      PasVulkan.Math,
-     PasVulkan.Math.Double;
+     PasVulkan.Math.Double,
+     PasVulkan.Streams;
 
 type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathCommandType=
@@ -572,6 +573,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
        function GetBeginEndPoints:TpvVectorPathVectors;
        procedure GetSegmentIntersectionPoints(const aIntersectionPoints:TpvVectorPathVectorList);
+      public
+       // One segment onto a stream and back, which both this and the GPU shape built from it are
+       // written with. The type decides how many points follow, and a meta winding setting line
+       // carries its winding as well.
+       class procedure SaveSegmentToStream(const aStreamIO:TpvStreamIO;const aSegment:TpvVectorPathSegment); static;
+       class function LoadSegmentFromStream(const aStreamIO:TpvStreamIO):TpvVectorPathSegment; static;
+       // The whole shape: its fill rule, the settings it carries to the GPU, and its contours.
+       procedure SaveToStream(const aStreamIO:TpvStreamIO);
+       procedure LoadFromStream(const aStreamIO:TpvStreamIO);
       published
        property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Contours:TpvVectorPathContours read fContours;
@@ -919,9 +929,15 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        // aPasMPInstance spreads the rows of grid cells over the cores, which is where nearly all of
        // the time of building a shape goes. Left out, they are built one after the other.
-       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0); reintroduce;
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0); reintroduce; overload;
+       // Takes everything off a stream instead of working it out, which is what a cache is for.
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO;const aPasMPInstance:TPasMP=nil); reintroduce; overload;
        destructor Destroy; override;
        procedure Update;
+       // The whole acceleration structure as it stands: the settings, the segments, and which of
+       // them each cell or band holds. Nothing here is worked out again on the way back in.
+       procedure SaveToStream(const aStreamIO:TpvStreamIO);
+       procedure LoadFromStream(const aStreamIO:TpvStreamIO);
       public
        // The bounding box already widened by the extent, so a caller that draws a quad over it
        // covers the whole antialiased edge and not just the geometry.
@@ -1063,7 +1079,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
        procedure Update;
 
-       function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
+       function GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape; overload;
+       // The same, but with the acceleration structure taken off a stream rather than worked out.
+       function GetOrCreateShape(const aShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO):TpvVectorPathGPUShape; overload;
+       // The one already there for this shape, or nil, which is what writing a cache needs.
+       function GetShapeOf(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
        procedure RemoveShape(const aShape:TpvVectorPathShape);
        procedure UpdateShape(const aShape:TpvVectorPathShape);
 
@@ -4568,6 +4588,149 @@ begin
  end;
 end;
 
+class procedure TpvVectorPathShape.SaveSegmentToStream(const aStreamIO:TpvStreamIO;const aSegment:TpvVectorPathSegment);
+var PointIndex,CountPoints:TpvSizeInt;
+begin
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathSegmentType(aSegment.Type_)));
+ case aSegment.Type_ of
+  TpvVectorPathSegmentType.Line:begin
+   CountPoints:=2;
+  end;
+  TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+   CountPoints:=2;
+  end;
+  TpvVectorPathSegmentType.QuadraticCurve:begin
+   CountPoints:=3;
+  end;
+  TpvVectorPathSegmentType.CubicCurve:begin
+   CountPoints:=4;
+  end;
+  else begin
+   CountPoints:=0;
+  end;
+ end;
+ for PointIndex:=0 to CountPoints-1 do begin
+  case aSegment.Type_ of
+   TpvVectorPathSegmentType.Line,TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+    aStreamIO.WriteDouble(TpvVectorPathSegmentLine(aSegment).Points[PointIndex].x);
+    aStreamIO.WriteDouble(TpvVectorPathSegmentLine(aSegment).Points[PointIndex].y);
+   end;
+   TpvVectorPathSegmentType.QuadraticCurve:begin
+    aStreamIO.WriteDouble(TpvVectorPathSegmentQuadraticCurve(aSegment).Points[PointIndex].x);
+    aStreamIO.WriteDouble(TpvVectorPathSegmentQuadraticCurve(aSegment).Points[PointIndex].y);
+   end;
+   TpvVectorPathSegmentType.CubicCurve:begin
+    aStreamIO.WriteDouble(TpvVectorPathSegmentCubicCurve(aSegment).Points[PointIndex].x);
+    aStreamIO.WriteDouble(TpvVectorPathSegmentCubicCurve(aSegment).Points[PointIndex].y);
+   end;
+   else begin
+   end;
+  end;
+ end;
+ // A meta winding setting line stands for everything to the left of a cell, and what it stands for
+ // is the number it carries, so that goes with it.
+ if aSegment.Type_=TpvVectorPathSegmentType.MetaWindingSettingLine then begin
+  aStreamIO.WriteInt32(TpvVectorPathSegmentMetaWindingSettingLine(aSegment).Winding);
+ end;
+end;
+
+class function TpvVectorPathShape.LoadSegmentFromStream(const aStreamIO:TpvStreamIO):TpvVectorPathSegment;
+var SegmentType:TpvVectorPathSegmentType;
+    PointIndex,CountPoints:TpvSizeInt;
+    Points:array[0..3] of TpvVectorPathVector;
+begin
+ SegmentType:=TpvVectorPathSegmentType(aStreamIO.ReadUInt32);
+ case SegmentType of
+  TpvVectorPathSegmentType.Line:begin
+   CountPoints:=2;
+  end;
+  TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+   CountPoints:=2;
+  end;
+  TpvVectorPathSegmentType.QuadraticCurve:begin
+   CountPoints:=3;
+  end;
+  TpvVectorPathSegmentType.CubicCurve:begin
+   CountPoints:=4;
+  end;
+  else begin
+   CountPoints:=0;
+  end;
+ end;
+ for PointIndex:=0 to CountPoints-1 do begin
+  Points[PointIndex].x:=aStreamIO.ReadDouble;
+  Points[PointIndex].y:=aStreamIO.ReadDouble;
+ end;
+ case SegmentType of
+  TpvVectorPathSegmentType.Line:begin
+   result:=TpvVectorPathSegmentLine.Create(Points[0],Points[1]);
+  end;
+  TpvVectorPathSegmentType.MetaWindingSettingLine:begin
+   result:=TpvVectorPathSegmentMetaWindingSettingLine.Create(Points[0],Points[1],aStreamIO.ReadInt32);
+  end;
+  TpvVectorPathSegmentType.QuadraticCurve:begin
+   result:=TpvVectorPathSegmentQuadraticCurve.Create(Points[0],Points[1],Points[2]);
+  end;
+  TpvVectorPathSegmentType.CubicCurve:begin
+   result:=TpvVectorPathSegmentCubicCurve.Create(Points[0],Points[1],Points[2],Points[3]);
+  end;
+  else begin
+   result:=nil;
+  end;
+ end;
+end;
+
+procedure TpvVectorPathShape.SaveToStream(const aStreamIO:TpvStreamIO);
+var ContourIndex,SegmentIndex:TpvSizeInt;
+    Contour:TpvVectorPathContour;
+begin
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathFillRule(fFillRule)));
+ aStreamIO.WriteInt32(fResolution);
+ aStreamIO.WriteDouble(fBoundingBoxExtent);
+ aStreamIO.WriteDouble(fCubicToQuadraticTolerance);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
+ aStreamIO.WriteInt32(fCountBands);
+ aStreamIO.WriteInt32(fContours.Count);
+ for ContourIndex:=0 to fContours.Count-1 do begin
+  Contour:=fContours[ContourIndex];
+  aStreamIO.WriteBoolean(Contour.fClosed);
+  aStreamIO.WriteInt32(Contour.fSegments.Count);
+  for SegmentIndex:=0 to Contour.fSegments.Count-1 do begin
+   SaveSegmentToStream(aStreamIO,Contour.fSegments[SegmentIndex]);
+  end;
+ end;
+end;
+
+procedure TpvVectorPathShape.LoadFromStream(const aStreamIO:TpvStreamIO);
+var ContourIndex,SegmentIndex,CountContours,CountSegments:TpvSizeInt;
+    Contour:TpvVectorPathContour;
+    Segment:TpvVectorPathSegment;
+begin
+ fFillRule:=TpvVectorPathFillRule(aStreamIO.ReadUInt32);
+ fResolution:=aStreamIO.ReadInt32;
+ fBoundingBoxExtent:=aStreamIO.ReadDouble;
+ fCubicToQuadraticTolerance:=aStreamIO.ReadDouble;
+ fAccelerationStructure:=TpvVectorPathAccelerationStructure(aStreamIO.ReadUInt32);
+ fCountBands:=aStreamIO.ReadInt32;
+ fContours.Clear;
+ CountContours:=aStreamIO.ReadInt32;
+ for ContourIndex:=0 to CountContours-1 do begin
+  Contour:=TpvVectorPathContour.Create;
+  try
+   Contour.fClosed:=aStreamIO.ReadBoolean;
+   CountSegments:=aStreamIO.ReadInt32;
+   for SegmentIndex:=0 to CountSegments-1 do begin
+    Segment:=LoadSegmentFromStream(aStreamIO);
+    if assigned(Segment) then begin
+     Contour.fSegments.Add(Segment);
+    end;
+   end;
+  finally
+   fContours.Add(Contour);
+  end;
+ end;
+end;
+
 procedure TpvVectorPathShape.GetSegmentIntersectionPoints(const aIntersectionPoints:TpvVectorPathVectorList);
 var SegmentIndex,OtherSegmentIndex:TpvSizeInt;
     Segment,OtherSegment:TpvVectorPathSegment;
@@ -7140,6 +7303,146 @@ begin
 
 end;
 
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO;const aPasMPInstance:TPasMP);
+begin
+
+ inherited Create;
+
+ fBufferPool:=aBufferPool;
+
+ fPasMPInstance:=aPasMPInstance;
+
+ fGeneration:=1;
+
+ fSegmentBufferRange.Clear;
+ fIndirectSegmentBufferRange.Clear;
+ fGridCellBufferRange.Clear;
+ fShapeIndex:=-1;
+
+ fGridCells:=nil;
+ fSegmentDynamicAABBTree:=nil;
+ fSegments:=nil;
+ fVectorPathShape:=nil;
+
+ fSourceVectorPathShape:=aVectorPathShape;
+
+ LoadFromStream(aStreamIO);
+
+end;
+
+procedure TpvVectorPathGPUShape.SaveToStream(const aStreamIO:TpvStreamIO);
+var Index,CellIndex:TpvSizeInt;
+    GridCell:TGridCell;
+begin
+
+ aStreamIO.WriteInt32(fResolution);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
+ aStreamIO.WriteInt32(fCountBands);
+ aStreamIO.WriteInt32(fCountHorizontalBands);
+ aStreamIO.WriteInt32(fCountVerticalBands);
+ aStreamIO.WriteDouble(fBoundingBoxExtent);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[1].x);
+ aStreamIO.WriteDouble(fBoundingBox.MinMax[1].y);
+
+ // The outline after the cubic curves were turned into quadratic ones, which is what the cells
+ // hold their segments of and what the fill rule is read from.
+ fVectorPathShape.SaveToStream(aStreamIO);
+
+ // Every segment of the shape, the closing ones and the meta winding setting lines among them.
+ aStreamIO.WriteInt32(fSegments.Count);
+ for Index:=0 to fSegments.Count-1 do begin
+  fSegments[Index].fIndex:=Index;
+  TpvVectorPathShape.SaveSegmentToStream(aStreamIO,fSegments[Index]);
+ end;
+
+ // And which of them each cell or band holds, as indices into the list above rather than as
+ // segments of their own, since they are the very same objects.
+ aStreamIO.WriteInt32(fGridCells.Count);
+ for CellIndex:=0 to fGridCells.Count-1 do begin
+  GridCell:=fGridCells[CellIndex];
+  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[0].x);
+  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[0].y);
+  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[1].x);
+  aStreamIO.WriteDouble(GridCell.fBoundingBox.MinMax[1].y);
+  aStreamIO.WriteInt32(GridCell.fSegments.Count);
+  for Index:=0 to GridCell.fSegments.Count-1 do begin
+   aStreamIO.WriteInt32(GridCell.fSegments[Index].fIndex);
+  end;
+ end;
+
+end;
+
+procedure TpvVectorPathGPUShape.LoadFromStream(const aStreamIO:TpvStreamIO);
+var Index,CellIndex,CountSegments,CountCells,CountCellSegments,SegmentIndex:TpvSizeInt;
+    GridCell:TGridCell;
+    Segment:TpvVectorPathSegment;
+    BoundingBox:TpvVectorPathBoundingBox;
+begin
+
+ if assigned(fBufferPool) then begin
+  fBufferPool.fSegmentsAllocator.ReleaseBufferRangeAndNil(fSegmentBufferRange);
+  fBufferPool.fIndirectSegmentsAllocator.ReleaseBufferRangeAndNil(fIndirectSegmentBufferRange);
+  fBufferPool.fGridCellsAllocator.ReleaseBufferRangeAndNil(fGridCellBufferRange);
+ end;
+
+ FreeAndNil(fGridCells);
+ FreeAndNil(fSegmentDynamicAABBTree);
+ FreeAndNil(fSegments);
+ FreeAndNil(fVectorPathShape);
+
+ fResolution:=aStreamIO.ReadInt32;
+ fAccelerationStructure:=TpvVectorPathAccelerationStructure(aStreamIO.ReadUInt32);
+ fCountBands:=aStreamIO.ReadInt32;
+ fCountHorizontalBands:=aStreamIO.ReadInt32;
+ fCountVerticalBands:=aStreamIO.ReadInt32;
+ fBoundingBoxExtent:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[1].x:=aStreamIO.ReadDouble;
+ fBoundingBox.MinMax[1].y:=aStreamIO.ReadDouble;
+
+ fVectorPathShape:=TpvVectorPathShape.Create;
+ fVectorPathShape.LoadFromStream(aStreamIO);
+
+ // The tree is only ever filled while the structure is being worked out and never asked anything
+ // afterwards, so an empty one is all that is needed to keep the rest of the class happy.
+ fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
+
+ fSegments:=TpvVectorPathSegments.Create;
+ fSegments.OwnsObjects:=true;
+ CountSegments:=aStreamIO.ReadInt32;
+ for Index:=0 to CountSegments-1 do begin
+  Segment:=TpvVectorPathShape.LoadSegmentFromStream(aStreamIO);
+  if assigned(Segment) then begin
+   Segment.fIndex:=fSegments.Count;
+   fSegments.Add(Segment);
+  end;
+ end;
+
+ fGridCells:=TGridCells.Create;
+ fGridCells.OwnsObjects:=true;
+ CountCells:=aStreamIO.ReadInt32;
+ fGridCells.Count:=CountCells;
+ for CellIndex:=0 to CountCells-1 do begin
+  BoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
+  BoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
+  BoundingBox.MinMax[1].x:=aStreamIO.ReadDouble;
+  BoundingBox.MinMax[1].y:=aStreamIO.ReadDouble;
+  GridCell:=TGridCell.Create(self,BoundingBox);
+  fGridCells[CellIndex]:=GridCell;
+  CountCellSegments:=aStreamIO.ReadInt32;
+  for Index:=0 to CountCellSegments-1 do begin
+   SegmentIndex:=aStreamIO.ReadInt32;
+   if (SegmentIndex>=0) and (SegmentIndex<fSegments.Count) then begin
+    GridCell.fSegments.Add(fSegments[SegmentIndex]);
+   end;
+  end;
+ end;
+
+end;
+
 destructor TpvVectorPathGPUShape.Destroy;
 begin
 
@@ -8676,6 +8979,47 @@ end;
 function TpvVectorPathGPUBufferPool.GetDescriptorSet:TpvVulkanDescriptorSet;
 begin
  result:=GetActiveState.fDescriptorSet;
+end;
+
+function TpvVectorPathGPUBufferPool.GetShapeOf(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
+var ShapeIndex:TpvInt32;
+begin
+ if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) then begin
+  result:=fGPUShapes[ShapeIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO):TpvVectorPathGPUShape;
+var ShapeIndex,OldCount:TpvInt32;
+begin
+ if fShapeIndexHashMap.TryGet(aShape,ShapeIndex) then begin
+  result:=fGPUShapes[ShapeIndex];
+ end else begin
+  if not fFreeShapeIndices.Pop(ShapeIndex) then begin
+   ShapeIndex:=fShapeIndexCounter;
+   inc(fShapeIndexCounter);
+  end;
+  if ShapeIndex>=0 then begin
+   OldCount:=length(fGPUShapes);
+   if OldCount<=ShapeIndex then begin
+    SetLength(fGPUShapes,(ShapeIndex+1)*2);
+    FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
+   end;
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aStreamIO,fPasMPInstance);
+   try
+    result.fShapeIndex:=ShapeIndex;
+    result.UpdateBufferPool;
+    result.fGeneration:=TPasMPInterlocked.Increment(fGeneration);
+    fShapeIndexHashMap.Add(aShape,ShapeIndex);
+   finally
+    fGPUShapes[ShapeIndex]:=result;
+   end;
+  end else begin
+   result:=nil;
+  end;
+ end;
 end;
 
 function TpvVectorPathGPUBufferPool.GetOrCreateShape(const aShape:TpvVectorPathShape):TpvVectorPathGPUShape;
