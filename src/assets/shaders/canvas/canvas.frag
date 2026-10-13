@@ -1238,6 +1238,165 @@ float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
   }
 }
 
+// ================================================================================================
+// The Slug algorithm, after the reference shader of Eric Lengyel (Copyright 2017), published at
+// https://github.com/EricLengyel/Slug under the MIT license and described in the Journal of
+// Computer Graphics Techniques, volume 6 number 2. The patent on it was dedicated to the public
+// domain in March 2026. Credit is due and hereby given.
+//
+// Where the grid above cuts in both axes and therefore needs meta winding setting lines to stand
+// for everything left of a cell, this cuts into two sets of bands, one along y and one along x,
+// each spanning the whole of the other axis. A band therefore holds every curve the ray can meet
+// and no meta lines are needed at all. The curves of a band are sorted by their greatest
+// coordinate along the ray, so the walk stops at the first one lying behind the pixel.
+// ================================================================================================
+
+// The root eligibility code of a sample-relative quadratic curve, out of the signs of the heights
+// of its three control points. This is the rule that keeps the winding exact where two curves meet
+// at a shared endpoint, which is the same thing the half open rule in the height does for the grid
+// above: of the two curves meeting there, exactly one counts the crossing. Eligibility comes back
+// in bits 0 and 8.
+uint vectorPathSlugRootCode(const float y1, const float y2, const float y3){
+  uint i1 = floatBitsToUint(y1) >> 31u;
+  uint i2 = floatBitsToUint(y2) >> 30u;
+  uint i3 = floatBitsToUint(y3) >> 29u;
+  uint shift = (i2 & 2u) | (i1 & ~2u);
+  shift = (i3 & 4u) | (shift & ~4u);
+  return ((0x2E74u >> shift) & 0x0101u);
+}
+
+// Where a curve crosses y = 0, as the x coordinates of those crossings. The polynomial in t is
+// a t^2 - 2b t + c with a = p1 - 2 p2 + p3, b = p1 - p2 and c = p1. A negative discriminant is
+// clamped away, which treats imaginary roots as a double root at the extremum, and a polynomial
+// that is nearly linear is solved as one.
+vec2 vectorPathSlugSolveHorizontal(const vec2 p1, const vec2 p2, const vec2 p3){
+  vec2 a = (p1 - (p2 * 2.0)) + p3;
+  vec2 b = p1 - p2;
+  float ra = 1.0 / a.y;
+  float rb = 0.5 / b.y;
+  float d = sqrt(max((b.y * b.y) - (a.y * p1.y), 0.0));
+  float t1 = (b.y - d) * ra;
+  float t2 = (b.y + d) * ra;
+  if(abs(a.y) < (1.0 / 65536.0)){
+    t1 = t2 = p1.y * rb;
+  }
+  return vec2(((a.x * t1) - (b.x * 2.0)) * t1 + p1.x,
+              ((a.x * t2) - (b.x * 2.0)) * t2 + p1.x);
+}
+
+// The same for x = 0, as the y coordinates of the crossings.
+vec2 vectorPathSlugSolveVertical(const vec2 p1, const vec2 p2, const vec2 p3){
+  vec2 a = (p1 - (p2 * 2.0)) + p3;
+  vec2 b = p1 - p2;
+  float ra = 1.0 / a.x;
+  float rb = 0.5 / b.x;
+  float d = sqrt(max((b.x * b.x) - (a.x * p1.x), 0.0));
+  float t1 = (b.x - d) * ra;
+  float t2 = (b.x + d) * ra;
+  if(abs(a.x) < (1.0 / 65536.0)){
+    t1 = t2 = p1.x * rb;
+  }
+  return vec2(((a.y * t1) - (b.y * 2.0)) * t1 + p1.y,
+              ((a.y * t2) - (b.y * 2.0)) * t2 + p1.y);
+}
+
+// The two rays combined through their weights. A ray running nearly along an edge says little
+// about it, and its weight is then small, so the other one carries the result. The absolute values
+// let either winding direction work.
+float vectorPathSlugCoverage(const float xcov, const float ycov, const float xwgt, const float ywgt,
+                             const bool evenOdd){
+  float coverage = max(abs((xcov * xwgt) + (ycov * ywgt)) / max(xwgt + ywgt, 1.0 / 65536.0),
+                       min(abs(xcov), abs(ycov)));
+  if(evenOdd){
+    return 1.0 - abs(1.0 - (fract(coverage * 0.5) * 2.0));
+  }else{
+    return clamp(coverage, 0.0, 1.0);
+  }
+}
+
+float sampleVectorPathShapeSlug(const vec3 shapeCoord){
+
+  // As above, the derivatives are taken where every fragment of the quad is still on the same path
+  // through the shader.
+  vec2 shapePerPixel = fwidth(shapeCoord.xy);
+  vec2 pixelsPerShapeUnit = 1.0 / max(shapePerPixel, vec2(1e-20));
+
+  VectorPathGPUShape vectorPathGPUShape = vectorPathGPUShapes[int(shapeCoord.z + 0.5)];
+  uint countVerticalBands = vectorPathGPUShape.flagsStartGridCellIndexGridSize.z;
+  uint countHorizontalBands = vectorPathGPUShape.flagsStartGridCellIndexGridSize.w;
+  vec2 extent = vectorPathGPUShape.minMax.zw - vectorPathGPUShape.minMax.xy;
+  vec2 normalized = (shapeCoord.xy - vectorPathGPUShape.minMax.xy) / max(extent, vec2(1e-20));
+  ivec2 bandIndex = clamp(ivec2(normalized * vec2(float(countVerticalBands), float(countHorizontalBands))),
+                          ivec2(0),
+                          ivec2(int(countVerticalBands) - 1, int(countHorizontalBands) - 1));
+
+  float xcov = 0.0;
+  float xwgt = 0.0;
+  float ycov = 0.0;
+  float ywgt = 0.0;
+
+  // The horizontal band, which is the ray running along x.
+  {
+    VectorPathGPUGridCell band = vectorPathGPUGridCells[vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + uint(bandIndex.y)];
+    for(uint index = band.x, until = band.x + band.y; index < until; index++){
+      VectorPathGPUSegment segment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[index]];
+      vec2 p1 = uintBitsToFloat(segment.typeWindingPoint0.zw) - shapeCoord.xy;
+      vec2 p2 = segment.point1Point2.xy - shapeCoord.xy;
+      // A straight line is carried as two points, and the way to read it as a quadratic curve is
+      // to put the control point on the second endpoint.
+      vec2 p3 = (segment.typeWindingPoint0.x == 1u) ? p2 : (segment.point1Point2.zw - shapeCoord.xy);
+      // Sorted by greatest x descending, so once one of them lies left of the pixel, so do all the
+      // ones after it.
+      if((max(max(p1.x, p2.x), p3.x) * pixelsPerShapeUnit.x) < -0.5){
+        break;
+      }
+      uint code = vectorPathSlugRootCode(p1.y, p2.y, p3.y);
+      if(code != 0u){
+        vec2 r = vectorPathSlugSolveHorizontal(p1, p2, p3) * pixelsPerShapeUnit.x;
+        if((code & 1u) != 0u){
+          xcov += clamp(r.x + 0.5, 0.0, 1.0);
+          xwgt = max(xwgt, clamp(1.0 - (abs(r.x) * 2.0), 0.0, 1.0));
+        }
+        if(code > 1u){
+          xcov -= clamp(r.y + 0.5, 0.0, 1.0);
+          xwgt = max(xwgt, clamp(1.0 - (abs(r.y) * 2.0), 0.0, 1.0));
+        }
+      }
+    }
+  }
+
+  // The vertical band, which is the ray running along y. Its data follows all of the horizontal
+  // bands, so the count of those is the offset onto it.
+  {
+    VectorPathGPUGridCell band = vectorPathGPUGridCells[(vectorPathGPUShape.flagsStartGridCellIndexGridSize.y + countHorizontalBands) + uint(bandIndex.x)];
+    for(uint index = band.x, until = band.x + band.y; index < until; index++){
+      VectorPathGPUSegment segment = vectorPathGPUSegments[vectorPathGPUIndirectSegments[index]];
+      vec2 p1 = uintBitsToFloat(segment.typeWindingPoint0.zw) - shapeCoord.xy;
+      vec2 p2 = segment.point1Point2.xy - shapeCoord.xy;
+      vec2 p3 = (segment.typeWindingPoint0.x == 1u) ? p2 : (segment.point1Point2.zw - shapeCoord.xy);
+      if((max(max(p1.y, p2.y), p3.y) * pixelsPerShapeUnit.y) < -0.5){
+        break;
+      }
+      uint code = vectorPathSlugRootCode(p1.x, p2.x, p3.x);
+      if(code != 0u){
+        vec2 r = vectorPathSlugSolveVertical(p1, p2, p3) * pixelsPerShapeUnit.y;
+        if((code & 1u) != 0u){
+          ycov -= clamp(r.x + 0.5, 0.0, 1.0);
+          ywgt = max(ywgt, clamp(1.0 - (abs(r.x) * 2.0), 0.0, 1.0));
+        }
+        if(code > 1u){
+          ycov += clamp(r.y + 0.5, 0.0, 1.0);
+          ywgt = max(ywgt, clamp(1.0 - (abs(r.y) * 2.0), 0.0, 1.0));
+        }
+      }
+    }
+  }
+
+  return vectorPathSlugCoverage(xcov, ycov, xwgt, ywgt,
+                                (vectorPathGPUShape.flagsStartGridCellIndexGridSize.x & 1u) != 0u);
+
+}
+
 // How much of the pixel the shape covers, by whichever of the three ways the fill matrix push
 // constant asks for. Every fragment of a draw reads the same mode out of it, so the branch is one
 // the whole quad takes together and the derivatives inside the modes still mean what they should.
@@ -1250,6 +1409,12 @@ float sampleVectorPathShapeAnalytical(const vec3 shapeCoord){
 // is everywhere the question does not arise.
 float sampleVectorPathShape(const vec3 shapeCoord, const mat4 fillMatrix){
   float coverage;
+  // A shape built with Slug bands carries no meta winding setting lines and its cells are not a
+  // grid, so none of the three modes below can read it. It brings its own coverage with it, which
+  // is why the structure decides here and the mode only applies to the grid.
+  if((vectorPathGPUShapes[int(shapeCoord.z + 0.5)].flagsStartGridCellIndexGridSize.x & 2u) != 0u){
+    return clamp(sampleVectorPathShapeSlug(shapeCoord) * (1.0 + fillMatrix[3].w), 0.0, 1.0);
+  }
   switch(int(fillMatrix[3].y + 0.5)){
     case 1:{
       coverage = sampleVectorPathShapeAnalytical(shapeCoord);

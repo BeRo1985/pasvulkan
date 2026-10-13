@@ -309,6 +309,10 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // coverage is raised when that is what was chosen.
        fSeamMode:TpvVectorGraphicsCanvasSeamMode;
        fSeamCoverageWidening:TpvFloat;
+       // Which structure the shapes of this document are built with, and how many bands per axis
+       // the Slug one gets. Changing either only takes effect on the next build.
+       fAccelerationStructure:TpvVectorPathAccelerationStructure;
+       fCountBands:TpvInt32;
        // The buffer the SRGBCompositingBuffer mode draws the whole document into before putting it
        // over the canvas in one go. It is the size of the canvas it is drawn onto, so that both
        // share one coordinate system and what lands in it needs no transform of its own.
@@ -438,6 +442,12 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // zero while that mode is not the one in use. It is the measurement of a frame a few back,
        // since reading the one of this frame would mean waiting for it.
        property CompositingGPUTime:TpvDouble read fCompositingGPUTime;
+       // Which acceleration structure the shapes are built with: the grid of cells with meta
+       // winding setting lines, or the two sets of Slug bands. Takes effect on the next Build.
+       property AccelerationStructure:TpvVectorPathAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
+       // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
+       // does. Means nothing for the grid.
+       property CountBands:TpvInt32 read fCountBands write fCountBands;
      end;
 
 // The short way for the common case: an SVG from a file, a stream or a string, straight into a
@@ -870,6 +880,9 @@ begin
 
  fSeamMode:=TpvVectorGraphicsCanvasSeamMode.None;
  fSeamCoverageWidening:=0.5;
+
+ fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
+ fCountBands:=0;
 
  fCompositingRenderPass:=nil;
  fCompositingCanvas:=nil;
@@ -1539,6 +1552,8 @@ begin
      assigned(CurrentRecord.Shape) and
      (CurrentRecord.Shape.Contours.Count>0) then begin
    CurrentRecord.Shape.FillRule:=CurrentRecord.FillRule;
+   CurrentRecord.Shape.AccelerationStructure:=fAccelerationStructure;
+   CurrentRecord.Shape.CountBands:=fCountBands;
    fBufferPool.GetOrCreateShape(CurrentRecord.Shape);
   end;
  end;

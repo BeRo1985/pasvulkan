@@ -12619,6 +12619,45 @@ begin
 
 end;
 
+function POCAVectorGraphicsShapesFunctionSETACCELERATIONSTRUCTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ if aCountArguments>0 then begin
+  Shapes.AccelerationStructure:=TpvVectorPathAccelerationStructure(TpvInt32(Min(Max(trunc(POCAGetNumberValue(aContext,aArguments^[0])),0),1)));
+ end;
+
+ // A band count of zero lets it pick for itself, the way Slug does.
+ if aCountArguments>1 then begin
+  Shapes.CountBands:=Min(Max(trunc(POCAGetNumberValue(aContext,aArguments^[1])),0),256);
+ end;
+
+ result.CastedUInt64:=POCAValueNullCastedUInt64;
+
+end;
+
+function POCAVectorGraphicsShapesFunctionGETACCELERATIONSTRUCTURE(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
+var Shapes:TpvVectorGraphicsCanvasShapes;
+begin
+
+ Shapes:=POCAGetVectorGraphicsShapesValue(aThis);
+ if not assigned(Shapes) then begin
+  POCARuntimeError(aContext,'VectorGraphicsShapes expected');
+  result.CastedUInt64:=POCAValueNullCastedUInt64;
+  exit;
+ end;
+
+ result:=POCANewNumber(aContext,TPOCAInt32(Shapes.AccelerationStructure));
+
+end;
+
 function POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME(aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TPOCAInt32;const aUserData:TPOCAPointer):TPOCAValue;
 var Shapes:TpvVectorGraphicsCanvasShapes;
 begin
@@ -12715,6 +12754,8 @@ begin
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getSeamMode',POCAVectorGraphicsShapesFunctionGETSEAMMODE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'setSeamMode',POCAVectorGraphicsShapesFunctionSETSEAMMODE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getCompositingGPUTime',POCAVectorGraphicsShapesFunctionGETCOMPOSITINGGPUTIME);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'setAccelerationStructure',POCAVectorGraphicsShapesFunctionSETACCELERATIONSTRUCTURE);
+ POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getAccelerationStructure',POCAVectorGraphicsShapesFunctionGETACCELERATIONSTRUCTURE);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'getBoundingBox',POCAVectorGraphicsShapesFunctionGETBOUNDINGBOX);
  POCAAddNativeFunction(aContext,HostData^.VectorGraphicsShapesHash,'clear',POCAVectorGraphicsShapesFunctionCLEAR);
 end;
@@ -13065,6 +13106,13 @@ end;
 // VectorGraphics namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+function POCAInitVectorGraphicsAccelerationStructure(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'Grid',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathAccelerationStructure.Grid)));
+ POCAHashSetString(aContext,result,'SlugBands',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathAccelerationStructure.SlugBands)));
+end;
+
 function POCAInitVectorGraphicsSeamMode(aContext:PPOCAContext):TPOCAValue;
 begin
  result:=POCANewHash(aContext);
@@ -13079,6 +13127,7 @@ begin
  Hash:=POCANewHash(aContext);
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'SeamMode',POCAInitVectorGraphicsSeamMode(aContext));
+ POCAHashSetString(aContext,Hash,'AccelerationStructure',POCAInitVectorGraphicsAccelerationStructure(aContext));
  POCAAddNativeFunction(aContext,Hash,'loadSVG',POCAVectorGraphicsFunctionLOADSVG);
  POCAAddNativeFunction(aContext,Hash,'parseSVG',POCAVectorGraphicsFunctionPARSESVG);
  POCAAddNativeFunction(aContext,Hash,'createShapes',POCAVectorGraphicsFunctionCREATESHAPES);

@@ -10,6 +10,8 @@
 //   R  turn the rotation on and off
 //   W  zoom in, S zoom out, or use the mouse wheel
 //   M  switch what is done about the seam between two shapes that share an edge
+//   A  switch the acceleration structure between the grid and the Slug bands
+//   D  switch how many Slug bands per axis
 //   N  record the shapes again at the size they are currently drawn at
 //   Space  back to the starting view
 
@@ -71,6 +73,23 @@ var application = {
                              VectorGraphics.SeamMode.SRGBCompositingBuffer];
       this.data.seamModeNames = ["none", "widened coverage", "srgb buffer"];
       this.data.seamModeIndex = 0;
+
+      // Which structure the shader is given to find the curves near a pixel with, which A walks
+      // through. The grid is cut in both axes and needs meta winding setting lines standing for
+      // everything left of a cell, which is some ninety nine of every hundred segments it keeps.
+      // The bands are Eric Lengyel's Slug algorithm: two sets, one cut along y and one along x,
+      // each spanning the whole of the other axis, so a band carries every curve at its height and
+      // needs no meta lines at all. Some fifty times smaller, at the price of walking more curves
+      // per pixel.
+      this.data.structures = [VectorGraphics.AccelerationStructure.Grid,
+                              VectorGraphics.AccelerationStructure.SlugBands];
+      this.data.structureNames = ["grid with meta lines", "slug bands"];
+      this.data.structureIndex = 0;
+
+      // How many bands per axis, which D walks through. Zero lets Slug pick it from the curve
+      // count, which is what it does on its own.
+      this.data.bandCounts = [0, 16, 32, 64, 128];
+      this.data.bandCountIndex = 0;
       this.data.seamWidening = 0.5;
 
       this.data.status = "";
@@ -169,6 +188,8 @@ var application = {
     if (!data.shapes) {
 
       data.shapes = VectorGraphics.createShapes();
+      data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
+                                           data.bandCounts[data.bandCountIndex]);
 
       // Recorded at the size of the document itself, so one unit is one pixel at a zoom of one.
       let supported = data.shapes.build(data.document);
@@ -221,6 +242,21 @@ var application = {
 
         if (event.KeyCode === Input.KeyCodes.KEYCODE_M) {
           data.seamModeIndex = (data.seamModeIndex + 1) % data.seamModes.length;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_A) {
+          // The structure is decided while the shapes are built, so switching it means building
+          // them again, which is left to the update for the same reason N is.
+          data.structureIndex = (data.structureIndex + 1) % data.structures.length;
+          data.rebuildRequested = true;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_D) {
+          // Only means anything for the bands; zero lets Slug pick from the curve count.
+          data.bandCountIndex = (data.bandCountIndex + 1) % data.bandCounts.length;
+          data.rebuildRequested = true;
           return true;
         }
 
@@ -297,6 +333,8 @@ var application = {
     let width = data.document.getWidth() * data.zoom;
     let height = data.document.getHeight() * data.zoom;
 
+    data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
+                                         data.bandCounts[data.bandCountIndex]);
     data.shapes.build(data.document, width, height);
     data.shapes.update();
     data.builtZoom = data.zoom;
@@ -419,6 +457,12 @@ var application = {
       "coverage: " ~ data.coverageModeNames[data.coverageModeIndex] ~
         (data.coverageModeIndex === 2 ? ", " ~ canvas.getVectorPathCoverageSampleCount() ~ " samples   (C, V switch)"
                                       : "   (C switches)"),
+      "structure: " ~ data.structureNames[data.structureIndex] ~
+        (data.structureIndex === 1
+           ? (data.bandCounts[data.bandCountIndex] === 0
+                ? ", bands chosen per shape   (A, D switch)"
+                : ", " ~ data.bandCounts[data.bandCountIndex] ~ " bands per axis   (A, D switch)")
+           : "   (A switches)"),
       "seam: " ~ data.seamModeNames[data.seamModeIndex] ~
         (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)") ~
         // The buffer draws in a pass of its own, so what it costs the GPU is not in the figure the

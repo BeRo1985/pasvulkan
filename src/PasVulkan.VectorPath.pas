@@ -393,6 +393,23 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathFillRule=^TpvVectorPathFillRule;
 
+     // Which structure the shader is given to find the curves near a pixel with.
+     TpvVectorPathAccelerationStructure=
+      (
+       // A grid cut in both axes. A cell carries the segments that reach into it, and since it is
+       // cut in x as well, it also needs meta winding setting lines standing for everything to its
+       // left. Few curves to look at per pixel, but those meta lines are the bulk of the data by
+       // far: at the tiger they are some ninety nine of every hundred segments kept.
+       Grid=0,
+       // Two sets of bands after Eric Lengyel's Slug algorithm, one cut along y and one along x,
+       // each spanning the whole of the other axis. A band therefore carries every curve at its
+       // height and needs no meta lines at all, which makes it some fifty times smaller; in return
+       // a pixel walks more curves.
+       SlugBands=1
+      );
+
+     PpvVectorPathAccelerationStructure=^TpvVectorPathAccelerationStructure;
+
      TpvVectorPathSegmentType=
       (
        Line=0,
@@ -538,6 +555,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fResolution:TpvInt32;
        fBoundingBoxExtent:TpvDouble;
        fCubicToQuadraticTolerance:TpvDouble;
+       fAccelerationStructure:TpvVectorPathAccelerationStructure;
+       fCountBands:TpvInt32;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
@@ -563,6 +582,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // about one pixel on screen; a shape whose units are much smaller than a pixel, which is
        // what a viewBox of a few units gives, needs a correspondingly smaller value.
        property CubicToQuadraticTolerance:TpvDouble read fCubicToQuadraticTolerance write fCubicToQuadraticTolerance;
+       // Which structure is built for this shape when it goes to the GPU.
+       property AccelerationStructure:TpvVectorPathAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
+       // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
+       // does. Means nothing for the grid, which goes by Resolution.
+       property CountBands:TpvInt32 read fCountBands write fCountBands;
      end;
 
      { TpvVectorPath }
@@ -814,7 +838,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
               // the shape, because the shape collects those meta lines of every cell built so far
               // and walking them again for every further cell is what made a document of a few
               // hundred outlines take twenty seconds to build.
-              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aOutlineSegments:TpvVectorPathSegments;const aBoundingBox:TpvVectorPathBoundingBox); reintroduce;
+              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aOutlineSegments:TpvVectorPathSegments;const aBoundingBox:TpvVectorPathBoundingBox); reintroduce; overload;
+              // An empty one, for the Slug bands, which fill it themselves and need none of the
+              // work the constructor above does for a grid cell.
+              constructor Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox); reintroduce; overload;
               destructor Destroy; override;
              public
               // The segments a point inside this cell has to be tested against, which is what the
@@ -833,6 +860,12 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fVectorPathShape:TpvVectorPathShape;
        fBoundingBox:TpvVectorPathBoundingBox;
        fResolution:TpvInt32;
+       fAccelerationStructure:TpvVectorPathAccelerationStructure;
+       // How many bands the Slug structure is cut into per axis. Zero lets it pick for itself, the
+       // way Slug does, from how many curves the outline has.
+       fCountBands:TpvInt32;
+       fCountHorizontalBands:TpvInt32;
+       fCountVerticalBands:TpvInt32;
        fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
@@ -851,6 +884,10 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // Builds the rows of grid cells from aFromIndex to aToIndex. One row is independent of
        // every other, so this is what the rows are spread over the cores with.
        procedure BuildGridCellRowsJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       // Builds the two sets of bands of the Slug structure out of the outline segments, in place
+       // of the grid. They go into the very same list of cells, the horizontal ones first and the
+       // vertical ones after them, so that everything downstream stays as it is.
+       procedure BuildSlugBands(const aOutlineSegments:TpvVectorPathSegments);
       public
        // One height at which the winding to the right of a segment changes, and by how much. A run
        // of a segment that only ever moves one way in the height counts for every height from its
@@ -882,7 +919,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        // aPasMPInstance spreads the rows of grid cells over the cores, which is where nearly all of
        // the time of building a shape goes. Left out, they are built one after the other.
-       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil); reintroduce;
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0); reintroduce;
        destructor Destroy; override;
        procedure Update;
       public
@@ -897,6 +934,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // The grid the shader looks a point up in, row by row, and how many cells it has per axis.
        property GridCells:TGridCells read fGridCells;
        property Resolution:TpvInt32 read fResolution;
+       // Which structure the cells above actually hold: a grid, or the two sets of Slug bands with
+       // the horizontal ones first and the vertical ones after them.
+       property AccelerationStructure:TpvVectorPathAccelerationStructure read fAccelerationStructure;
+       property CountHorizontalBands:TpvInt32 read fCountHorizontalBands;
+       property CountVerticalBands:TpvInt32 read fCountVerticalBands;
        // The outline this shape was built from, after the cubic curves were turned into quadratic
        // ones, which is what the cells hold their segments of.
        property VectorPathShape:TpvVectorPathShape read fVectorPathShape;
@@ -4324,6 +4366,8 @@ begin
  fResolution:=32;
  fBoundingBoxExtent:=4.0;
  fCubicToQuadraticTolerance:=1.0;
+ fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
+ fCountBands:=0;
 end;
 
 constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
@@ -4365,6 +4409,8 @@ begin
  fResolution:=aVectorPathShape.fResolution;
  fBoundingBoxExtent:=aVectorPathShape.fBoundingBoxExtent;
  fCubicToQuadraticTolerance:=aVectorPathShape.fCubicToQuadraticTolerance;
+ fAccelerationStructure:=aVectorPathShape.fAccelerationStructure;
+ fCountBands:=aVectorPathShape.fCountBands;
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
@@ -6831,6 +6877,28 @@ begin
  result:=Sign(a.Y-b.Y);
 end;
 
+constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aBoundingBox:TpvVectorPathBoundingBox);
+begin
+
+ inherited Create;
+
+ fVectorPathGPUShape:=aVectorPathGPUShape;
+
+ fBoundingBox:=aBoundingBox;
+
+ fExtendedBoundingBox.MinMax[0]:=fBoundingBox.MinMax[0]-TpvVectorPathVector.Create(TpvVectorPathGPUShape.CoordinateExtents,TpvVectorPathGPUShape.CoordinateExtents);
+ fExtendedBoundingBox.MinMax[1]:=fBoundingBox.MinMax[1]+TpvVectorPathVector.Create(TpvVectorPathGPUShape.CoordinateExtents,TpvVectorPathGPUShape.CoordinateExtents);
+
+ fSegments:=TpvVectorPathSegments.Create;
+ fSegments.OwnsObjects:=false;
+
+ fMetaWindingSettingLines:=TpvVectorPathSegments.Create;
+ fMetaWindingSettingLines.OwnsObjects:=true;
+
+ fKind:=TKind.Empty;
+
+end;
+
 constructor TpvVectorPathGPUShape.TGridCell.Create(const aVectorPathGPUShape:TpvVectorPathGPUShape;const aOutlineSegments:TpvVectorPathSegments;const aBoundingBox:TpvVectorPathBoundingBox);
 const EPSILON=1e-8;
 type TYCoordinateHashMap=TpvHashMap<TpvDouble,Boolean>;
@@ -7036,7 +7104,7 @@ end;
 
 { TpvVectorPathGPUShape }
 
-constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP);
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP;const aAccelerationStructure:TpvVectorPathAccelerationStructure;const aCountBands:TpvInt32);
 begin
 
  inherited Create;
@@ -7046,6 +7114,11 @@ begin
  fPasMPInstance:=aPasMPInstance;
 
  fResolution:=aResolution;
+
+ fAccelerationStructure:=aAccelerationStructure;
+ fCountBands:=aCountBands;
+ fCountHorizontalBands:=0;
+ fCountVerticalBands:=0;
 
  fGeneration:=1;
 
@@ -7211,6 +7284,12 @@ begin
    OutlineSegments.Add(Segment);
   end;
 
+  if fAccelerationStructure=TpvVectorPathAccelerationStructure.SlugBands then begin
+   // The finally below is what gives the list back, so nothing is freed here.
+   BuildSlugBands(OutlineSegments);
+   exit;
+  end;
+
   // Every cell has its place in the grid before any of them is built, so that a row can be put
   // together without knowing what the rows before it did.
   fGridCells.Count:=fResolution*fResolution;
@@ -7239,6 +7318,164 @@ begin
 
  finally
   FreeAndNil(OutlineSegments);
+ end;
+
+end;
+
+// The two sets of bands of Eric Lengyel's Slug algorithm, built out of the same outline the grid
+// would be built from. A band spans the whole of the axis the ray runs along, so it carries every
+// curve the ray can meet and the winding comes out of the band alone. That is what makes the meta
+// winding setting lines of the grid unnecessary here, and they are the bulk of what the grid costs.
+//
+// Three rules out of Lengyel's own notes are followed here. The bands overlap a little, by an
+// epsilon in the space of the shape, so that a pixel sitting on a boundary still finds what it
+// needs. A curve that is level never goes into a horizontal band and a curve that is upright never
+// into a vertical one, since neither can move the winding of a ray running along it. And the
+// curves of a band are sorted by their greatest coordinate along the ray, descending, which is
+// what lets the shader stop as soon as one of them lies behind the pixel.
+procedure TpvVectorPathGPUShape.BuildSlugBands(const aOutlineSegments:TpvVectorPathSegments);
+const Epsilon=1.0/1024.0;
+var Curves:TpvVectorPathSegments;
+    Maxima,Minima:array of TpvVectorPathVector;
+    Index,OtherIndex,BandIndex,FirstBand,LastBand,CountCurves,CountBands:TpvSizeInt;
+    Segment:TpvVectorPathSegment;
+    SegmentBoundingBox:TpvVectorPathBoundingBox;
+    Width,Height,BandWidth,BandHeight,ScaledEpsilon:TpvDouble;
+    GridCell:TGridCell;
+    IsLevel,IsUpright:boolean;
+ // Sorts the segments a band holds by their greatest coordinate along the axis the ray runs,
+ // greatest first, which is the order the shader walks them in.
+ procedure SortBand(const aGridCell:TGridCell;const aHorizontal:boolean);
+ var IndexA,IndexB:TpvSizeInt;
+     Temp:TpvVectorPathSegment;
+     Left,Right:TpvDouble;
+ begin
+  for IndexA:=0 to aGridCell.fSegments.Count-2 do begin
+   for IndexB:=0 to (aGridCell.fSegments.Count-2)-IndexA do begin
+    if aHorizontal then begin
+     Left:=Maxima[aGridCell.fSegments[IndexB].fIndex].x;
+     Right:=Maxima[aGridCell.fSegments[IndexB+1].fIndex].x;
+    end else begin
+     Left:=Maxima[aGridCell.fSegments[IndexB].fIndex].y;
+     Right:=Maxima[aGridCell.fSegments[IndexB+1].fIndex].y;
+    end;
+    if Left<Right then begin
+     Temp:=aGridCell.fSegments[IndexB];
+     aGridCell.fSegments[IndexB]:=aGridCell.fSegments[IndexB+1];
+     aGridCell.fSegments[IndexB+1]:=Temp;
+    end;
+   end;
+  end;
+ end;
+begin
+
+ Width:=fBoundingBox.MinMax[1].x-fBoundingBox.MinMax[0].x;
+ Height:=fBoundingBox.MinMax[1].y-fBoundingBox.MinMax[0].y;
+
+ Curves:=TpvVectorPathSegments.Create;
+ try
+
+  Curves.OwnsObjects:=false;
+
+  // Only real outline segments go in, and each keeps the index it has in the shape, since that is
+  // what the indirect segment buffer is filled from.
+  for Index:=0 to aOutlineSegments.Count-1 do begin
+   Segment:=aOutlineSegments[Index];
+   if Segment.Type_<>TpvVectorPathSegmentType.MetaWindingSettingLine then begin
+    Curves.Add(Segment);
+   end;
+  end;
+
+  CountCurves:=Curves.Count;
+  if CountCurves=0 then begin
+   fCountHorizontalBands:=1;
+   fCountVerticalBands:=1;
+   fGridCells.Count:=2;
+   for Index:=0 to 1 do begin
+    fGridCells[Index]:=TGridCell.Create(self,fBoundingBox);
+   end;
+   exit;
+  end;
+
+  SetLength(Minima,fSegments.Count);
+  SetLength(Maxima,fSegments.Count);
+  for Index:=0 to Curves.Count-1 do begin
+   Segment:=Curves[Index];
+   SegmentBoundingBox:=Segment.GetBoundingBox;
+   Minima[Segment.fIndex]:=SegmentBoundingBox.MinMax[0];
+   Maxima[Segment.fIndex]:=SegmentBoundingBox.MinMax[1];
+  end;
+
+  // Left to itself, Slug takes half the curve count per axis and caps it at sixteen. The aim is to
+  // keep the fullest band as thin as possible, and more bands cost only index entries, never a
+  // copy of a curve.
+  if fCountBands>0 then begin
+   CountBands:=fCountBands;
+  end else begin
+   CountBands:=Min(16,Max(1,CountCurves div 2));
+  end;
+  fCountHorizontalBands:=CountBands;
+  fCountVerticalBands:=CountBands;
+
+  BandHeight:=Height/fCountHorizontalBands;
+  BandWidth:=Width/fCountVerticalBands;
+  if (BandHeight<1e-12) or (BandWidth<1e-12) then begin
+   fCountHorizontalBands:=1;
+   fCountVerticalBands:=1;
+   BandHeight:=Max(Height,1e-12);
+   BandWidth:=Max(Width,1e-12);
+  end;
+
+  // The horizontal ones first and the vertical ones after them, which is the order the shader
+  // expects to find them in.
+  fGridCells.Count:=fCountHorizontalBands+fCountVerticalBands;
+  for Index:=0 to fGridCells.Count-1 do begin
+   fGridCells[Index]:=TGridCell.Create(self,fBoundingBox);
+  end;
+
+  ScaledEpsilon:=Epsilon*Max(Width,Height);
+
+  for Index:=0 to Curves.Count-1 do begin
+
+   Segment:=Curves[Index];
+   OtherIndex:=Segment.fIndex;
+
+   IsLevel:=abs(Maxima[OtherIndex].y-Minima[OtherIndex].y)<1e-12;
+   IsUpright:=abs(Maxima[OtherIndex].x-Minima[OtherIndex].x)<1e-12;
+
+   // A level curve crosses no ray that runs along x, so it belongs in no horizontal band.
+   if not IsLevel then begin
+    FirstBand:=trunc(Floor(((Minima[OtherIndex].y-ScaledEpsilon)-fBoundingBox.MinMax[0].y)/BandHeight));
+    LastBand:=trunc(Floor(((Maxima[OtherIndex].y+ScaledEpsilon)-fBoundingBox.MinMax[0].y)/BandHeight));
+    FirstBand:=Min(Max(FirstBand,0),fCountHorizontalBands-1);
+    LastBand:=Min(Max(LastBand,0),fCountHorizontalBands-1);
+    for BandIndex:=FirstBand to LastBand do begin
+     fGridCells[BandIndex].fSegments.Add(Segment);
+    end;
+   end;
+
+   // And an upright one crosses no ray that runs along y.
+   if not IsUpright then begin
+    FirstBand:=trunc(Floor(((Minima[OtherIndex].x-ScaledEpsilon)-fBoundingBox.MinMax[0].x)/BandWidth));
+    LastBand:=trunc(Floor(((Maxima[OtherIndex].x+ScaledEpsilon)-fBoundingBox.MinMax[0].x)/BandWidth));
+    FirstBand:=Min(Max(FirstBand,0),fCountVerticalBands-1);
+    LastBand:=Min(Max(LastBand,0),fCountVerticalBands-1);
+    for BandIndex:=FirstBand to LastBand do begin
+     fGridCells[fCountHorizontalBands+BandIndex].fSegments.Add(Segment);
+    end;
+   end;
+
+  end;
+
+  for Index:=0 to fCountHorizontalBands-1 do begin
+   SortBand(fGridCells[Index],true);
+  end;
+  for Index:=0 to fCountVerticalBands-1 do begin
+   SortBand(fGridCells[fCountHorizontalBands+Index],false);
+  end;
+
+ finally
+  FreeAndNil(Curves);
  end;
 
 end;
@@ -7442,8 +7679,17 @@ begin
    ShapeData^.Flags:=ShapeData^.Flags or 1;
   end;
   ShapeData^.StartGridCellIndex:=fGridCellBufferRange.Offset;
-  ShapeData^.GridSizeX:=fResolution;
-  ShapeData^.GridSizeY:=fResolution;
+  if fAccelerationStructure=TpvVectorPathAccelerationStructure.SlugBands then begin
+   // Bit 1 tells the shader that the cells are the two sets of bands and not a grid, with the
+   // horizontal ones first and the vertical ones after them. The two counts go into the very same
+   // fields the grid uses for its size per axis.
+   ShapeData^.Flags:=ShapeData^.Flags or 2;
+   ShapeData^.GridSizeX:=fCountVerticalBands;
+   ShapeData^.GridSizeY:=fCountHorizontalBands;
+  end else begin
+   ShapeData^.GridSizeX:=fResolution;
+   ShapeData^.GridSizeY:=fResolution;
+  end;
 
  end;
 
@@ -8448,7 +8694,7 @@ begin
     SetLength(fGPUShapes,(ShapeIndex+1)*2);
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
-   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance);
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance,aShape.fAccelerationStructure,aShape.fCountBands);
    try
     result.fShapeIndex:=ShapeIndex;
     result.UpdateBufferPool;
