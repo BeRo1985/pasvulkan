@@ -5522,9 +5522,11 @@ var i,SrcPos,StartSrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
     Command,LastCommand:AnsiChar;
     StartCommandCount:TpvSizeInt;
     MissingNumber:boolean;
+ // A comma counts as space here, since that is what SVG says separates two numbers: "10,20" and
+ // "10 20" are the same thing, and a drawing which writes the one way was read as broken before.
  procedure SkipBlank;
  begin
-  while (SrcPos<=SrcLen) and (Src[SrcPos] in [#0..#32]) do begin
+  while (SrcPos<=SrcLen) and (Src[SrcPos] in [#0..#32,',']) do begin
    inc(SrcPos);
   end;
  end;
