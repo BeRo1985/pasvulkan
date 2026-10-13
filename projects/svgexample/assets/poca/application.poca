@@ -90,7 +90,11 @@ var application = {
       // How many bands per axis, which D walks through. Zero lets Slug pick it from the curve
       // count, which is what it does on its own.
       this.data.bandCounts = [0, 16, 32, 64, 128];
-      this.data.bandCountIndex = 0;
+      // 128 per axis, because that is the fastest: more bands cost only index entries, never a
+      // copy of a curve, so the data hardly grows while a pixel walks far fewer curves. Left to
+      // itself Slug takes at most 16, which is meant for glyphs rather than for outlines of this
+      // size.
+      this.data.bandCountIndex = 4;
 
       // How far repetition in the acceleration structure is folded away, which F walks through.
       // At the tiger the grid writes the same meta winding setting line down 1004908 times while
