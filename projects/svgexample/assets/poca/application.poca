@@ -12,6 +12,7 @@
 //   M  switch what is done about the seam between two shapes that share an edge
 //   A  switch the acceleration structure between the grid and the Slug bands
 //   D  switch how many Slug bands per axis
+//   F  switch whether data that repeats is folded together
 //   N  record the shapes again at the size they are currently drawn at
 //   Space  back to the starting view
 
@@ -72,7 +73,7 @@ var application = {
                              VectorGraphics.SeamMode.WidenedCoverage,
                              VectorGraphics.SeamMode.SRGBCompositingBuffer];
       this.data.seamModeNames = ["none", "widened coverage", "srgb buffer"];
-      this.data.seamModeIndex = 2;
+      this.data.seamModeIndex = 0;
 
       // Which structure the shader is given to find the curves near a pixel with, which A walks
       // through. The grid is cut in both axes and needs meta winding setting lines standing for
@@ -84,12 +85,17 @@ var application = {
       this.data.structures = [VectorGraphics.AccelerationStructure.Grid,
                               VectorGraphics.AccelerationStructure.SlugBands];
       this.data.structureNames = ["grid with meta lines", "slug bands"];
-      this.data.structureIndex = 1;
+      this.data.structureIndex = 0;
 
       // How many bands per axis, which D walks through. Zero lets Slug pick it from the curve
       // count, which is what it does on its own.
       this.data.bandCounts = [0, 16, 32, 64, 128];
-      this.data.bandCountIndex = 4;
+      this.data.bandCountIndex = 0;
+
+      // Whether data that repeats is folded together, which F switches. At the tiger the grid
+      // writes the same meta winding setting line down 1004908 times while only 74955 of them are
+      // different, and its cells carry 325632 segment lists of which only 73915 differ.
+      this.data.shareDuplicates = true;
       this.data.seamWidening = 0.5;
 
       this.data.status = "";
@@ -189,12 +195,14 @@ var application = {
 
       data.shapes = VectorGraphics.createShapes();
       data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
-                                           data.bandCounts[data.bandCountIndex]);
+                                           data.bandCounts[data.bandCountIndex],
+                                           data.shareDuplicates ? 1 : 0);
 
       // The cache carries the records, the ramps and the finished acceleration structure of every
       // shape, so loading it skips the parsing, the recording and the building alike. One per
       // structure, since they build different things out of the same document.
-      data.cacheFileName = "tiger-" ~ (data.structureIndex === 0 ? "grid" : "bands") ~ ".pvvc";
+      data.cacheFileName = "tiger-" ~ (data.structureIndex === 0 ? "grid" : "bands") ~
+                           (data.shareDuplicates ? "-shared" : "-plain") ~ ".pvvc";
 
       let supported = true;
       if (data.shapes.loadCache(data.cacheFileName) !== 0) {
@@ -263,6 +271,12 @@ var application = {
           // The structure is decided while the shapes are built, so switching it means building
           // them again, which is left to the update for the same reason N is.
           data.structureIndex = (data.structureIndex + 1) % data.structures.length;
+          data.rebuildRequested = true;
+          return true;
+        }
+
+        if (event.KeyCode === Input.KeyCodes.KEYCODE_F) {
+          data.shareDuplicates = !data.shareDuplicates;
           data.rebuildRequested = true;
           return true;
         }
@@ -348,7 +362,8 @@ var application = {
     let height = data.document.getHeight() * data.zoom;
 
     data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
-                                         data.bandCounts[data.bandCountIndex]);
+                                         data.bandCounts[data.bandCountIndex],
+                                         data.shareDuplicates ? 1 : 0);
     data.shapes.build(data.document, width, height);
     data.shapes.update();
     data.builtZoom = data.zoom;
@@ -476,7 +491,8 @@ var application = {
            ? (data.bandCounts[data.bandCountIndex] === 0
                 ? ", bands chosen per shape   (A, D switch)"
                 : ", " ~ data.bandCounts[data.bandCountIndex] ~ " bands per axis   (A, D switch)")
-           : "   (A switches)"),
+           : "   (A switches)") ~
+        (data.shareDuplicates ? ", duplicates shared   (F switches)" : ", duplicates kept   (F switches)"),
       "seam: " ~ data.seamModeNames[data.seamModeIndex] ~
         (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)") ~
         // The buffer draws in a pass of its own, so what it costs the GPU is not in the figure the

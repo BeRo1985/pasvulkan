@@ -336,6 +336,7 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // the Slug one gets. Changing either only takes effect on the next build.
        fAccelerationStructure:TpvVectorPathAccelerationStructure;
        fCountBands:TpvInt32;
+       fShareDuplicateData:boolean;
        // The buffer the SRGBCompositingBuffer mode draws the whole document into before putting it
        // over the canvas in one go. It is the size of the canvas it is drawn onto, so that both
        // share one coordinate system and what lands in it needs no transform of its own.
@@ -471,6 +472,8 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
        // does. Means nothing for the grid.
        property CountBands:TpvInt32 read fCountBands write fCountBands;
+       // Whether duplicate data is folded together, see TpvVectorPathShape.ShareDuplicateData.
+       property ShareDuplicateData:boolean read fShareDuplicateData write fShareDuplicateData;
       public
        // Everything that Build worked out, onto a stream and back: the records with their
        // outlines, the ramps, and the finished acceleration structure of every shape. Nothing is
@@ -921,6 +924,7 @@ begin
 
  fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
  fCountBands:=0;
+ fShareDuplicateData:=true;
 
  fCompositingRenderPass:=nil;
  fCompositingCanvas:=nil;
@@ -1592,6 +1596,7 @@ begin
    CurrentRecord.Shape.FillRule:=CurrentRecord.FillRule;
    CurrentRecord.Shape.AccelerationStructure:=fAccelerationStructure;
    CurrentRecord.Shape.CountBands:=fCountBands;
+   CurrentRecord.Shape.ShareDuplicateData:=fShareDuplicateData;
    fBufferPool.GetOrCreateShape(CurrentRecord.Shape);
   end;
  end;
@@ -1669,6 +1674,7 @@ begin
   // for what it is rather than quietly drawn with the wrong ones.
   StreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
   StreamIO.WriteInt32(fCountBands);
+  StreamIO.WriteBoolean(fShareDuplicateData);
 
   StreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
   StreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
@@ -1761,6 +1767,7 @@ begin
 
   fAccelerationStructure:=TpvVectorPathAccelerationStructure(StreamIO.ReadUInt32);
   fCountBands:=StreamIO.ReadInt32;
+  fShareDuplicateData:=StreamIO.ReadBoolean;
 
   fBoundingBox.MinMax[0].x:=StreamIO.ReadDouble;
   fBoundingBox.MinMax[0].y:=StreamIO.ReadDouble;

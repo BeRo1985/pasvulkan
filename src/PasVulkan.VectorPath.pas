@@ -524,6 +524,14 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure SortHorizontal;
      end;
 
+     // Which segment stands in for another one, which is what folding the repeated meta winding
+     // setting lines onto one of each kind is kept in.
+     TpvVectorPathSegmentHashMap=TpvHashMap<TpvVectorPathSegment,TpvVectorPathSegment>;
+
+     // Which cell already wrote out a given list of indirect segments, so that the next one with
+     // the same list can point at it instead of writing its own copy.
+     TpvVectorPathIndirectListHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
+
      { TpvVectorPathContour }
 
      TpvVectorPathContour=class
@@ -558,6 +566,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fCubicToQuadraticTolerance:TpvDouble;
        fAccelerationStructure:TpvVectorPathAccelerationStructure;
        fCountBands:TpvInt32;
+       fShareDuplicateData:boolean;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
@@ -597,6 +606,11 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
        // does. Means nothing for the grid, which goes by Resolution.
        property CountBands:TpvInt32 read fCountBands write fCountBands;
+       // Whether meta winding setting lines that say the same thing are folded onto one, and
+       // whether cells holding the same list of segments share one range of the indirect buffer.
+       // On by default, since it costs some building time and gives back a great deal of space;
+       // off is there to measure what it is worth.
+       property ShareDuplicateData:boolean read fShareDuplicateData write fShareDuplicateData;
      end;
 
      { TpvVectorPath }
@@ -876,6 +890,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fCountBands:TpvInt32;
        fCountHorizontalBands:TpvInt32;
        fCountVerticalBands:TpvInt32;
+       fShareDuplicateData:boolean;
        fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
@@ -898,6 +913,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // of the grid. They go into the very same list of cells, the horizontal ones first and the
        // vertical ones after them, so that everything downstream stays as it is.
        procedure BuildSlugBands(const aOutlineSegments:TpvVectorPathSegments);
+       // Folds the meta winding setting lines of all cells onto one of each kind and hands those
+       // to the shape, with every cell left pointing at the one that was kept.
+       procedure ShareMetaWindingSettingLines;
       public
        // One height at which the winding to the right of a segment changes, and by how much. A run
        // of a segment that only ever moves one way in the height counts for every height from its
@@ -929,7 +947,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        // aPasMPInstance spreads the rows of grid cells over the cores, which is where nearly all of
        // the time of building a shape goes. Left out, they are built one after the other.
-       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0); reintroduce; overload;
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0;const aShareDuplicateData:boolean=true); reintroduce; overload;
        // Takes everything off a stream instead of working it out, which is what a cache is for.
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO;const aPasMPInstance:TPasMP=nil); reintroduce; overload;
        destructor Destroy; override;
@@ -4388,6 +4406,7 @@ begin
  fCubicToQuadraticTolerance:=1.0;
  fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
  fCountBands:=0;
+ fShareDuplicateData:=true;
 end;
 
 constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
@@ -4431,6 +4450,7 @@ begin
  fCubicToQuadraticTolerance:=aVectorPathShape.fCubicToQuadraticTolerance;
  fAccelerationStructure:=aVectorPathShape.fAccelerationStructure;
  fCountBands:=aVectorPathShape.fCountBands;
+ fShareDuplicateData:=aVectorPathShape.fShareDuplicateData;
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
@@ -4690,6 +4710,7 @@ begin
  aStreamIO.WriteDouble(fCubicToQuadraticTolerance);
  aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
  aStreamIO.WriteInt32(fCountBands);
+ aStreamIO.WriteBoolean(fShareDuplicateData);
  aStreamIO.WriteInt32(fContours.Count);
  for ContourIndex:=0 to fContours.Count-1 do begin
   Contour:=fContours[ContourIndex];
@@ -4712,6 +4733,7 @@ begin
  fCubicToQuadraticTolerance:=aStreamIO.ReadDouble;
  fAccelerationStructure:=TpvVectorPathAccelerationStructure(aStreamIO.ReadUInt32);
  fCountBands:=aStreamIO.ReadInt32;
+ fShareDuplicateData:=aStreamIO.ReadBoolean;
  fContours.Clear;
  CountContours:=aStreamIO.ReadInt32;
  for ContourIndex:=0 to CountContours-1 do begin
@@ -7267,7 +7289,7 @@ end;
 
 { TpvVectorPathGPUShape }
 
-constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP;const aAccelerationStructure:TpvVectorPathAccelerationStructure;const aCountBands:TpvInt32);
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP;const aAccelerationStructure:TpvVectorPathAccelerationStructure;const aCountBands:TpvInt32;const aShareDuplicateData:boolean);
 begin
 
  inherited Create;
@@ -7280,6 +7302,7 @@ begin
 
  fAccelerationStructure:=aAccelerationStructure;
  fCountBands:=aCountBands;
+ fShareDuplicateData:=aShareDuplicateData;
  fCountHorizontalBands:=0;
  fCountVerticalBands:=0;
 
@@ -7340,6 +7363,7 @@ begin
  aStreamIO.WriteInt32(fCountBands);
  aStreamIO.WriteInt32(fCountHorizontalBands);
  aStreamIO.WriteInt32(fCountVerticalBands);
+ aStreamIO.WriteBoolean(fShareDuplicateData);
  aStreamIO.WriteDouble(fBoundingBoxExtent);
  aStreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
  aStreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
@@ -7397,6 +7421,7 @@ begin
  fCountBands:=aStreamIO.ReadInt32;
  fCountHorizontalBands:=aStreamIO.ReadInt32;
  fCountVerticalBands:=aStreamIO.ReadInt32;
+ fShareDuplicateData:=aStreamIO.ReadBoolean;
  fBoundingBoxExtent:=aStreamIO.ReadDouble;
  fBoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
  fBoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
@@ -7608,19 +7633,32 @@ begin
 
   // And only now, where there is one thread again, the meta winding setting lines each cell made
   // go over to the shape, which is what owns every segment the buffers are filled from.
-  for IndexY:=0 to fGridCells.Count-1 do begin
-   GridCell:=fGridCells[IndexY];
-   if assigned(GridCell) then begin
-    for IndexX:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
-     fSegments.Add(GridCell.fMetaWindingSettingLines[IndexX]);
+  //
+  // They are shared first. A meta winding setting line says nothing but "over this band of
+  // heights, everything to the left of this cell adds up to this much", so two of them that carry
+  // the same band and the same number are the same line. Since every cell makes its own, a row of
+  // cells that nothing crosses writes the same one down again and again: at the tiger there are
+  // 1004908 of them and only 74955 are different, so sharing them takes the segment buffer down to
+  // a fourteenth of what it was. Nothing downstream notices, because the cells simply point at the
+  // one that was kept.
+  if fShareDuplicateData then begin
+   ShareMetaWindingSettingLines;
+  end else begin
+   for IndexY:=0 to fGridCells.Count-1 do begin
+    GridCell:=fGridCells[IndexY];
+    if assigned(GridCell) then begin
+     for IndexX:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+      fSegments.Add(GridCell.fMetaWindingSettingLines[IndexX]);
+     end;
+     GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
+     GridCell.fMetaWindingSettingLines.Clear;
     end;
-    GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
-    GridCell.fMetaWindingSettingLines.Clear;
    end;
   end;
 
  finally
   FreeAndNil(OutlineSegments);
+
  end;
 
 end;
@@ -7636,6 +7674,126 @@ end;
 // into a vertical one, since neither can move the winding of a ray running along it. And the
 // curves of a band are sorted by their greatest coordinate along the ray, descending, which is
 // what lets the shader stop as soon as one of them lies behind the pixel.
+// Sorted by band of heights and then by winding, so that lines which say the same thing end up
+// next to each other and one pass over the list finds every group.
+function TpvVectorPathGPUShape_MetaWindingSettingLineSortFunc(const a,b:TpvVectorPathSegment):TpvInt32;
+var LeftLine,RightLine:TpvVectorPathSegmentMetaWindingSettingLine;
+    LeftLower,LeftUpper,RightLower,RightUpper:TpvDouble;
+begin
+ LeftLine:=TpvVectorPathSegmentMetaWindingSettingLine(a);
+ RightLine:=TpvVectorPathSegmentMetaWindingSettingLine(b);
+ LeftLower:=Min(LeftLine.Points[0].y,LeftLine.Points[1].y);
+ LeftUpper:=Max(LeftLine.Points[0].y,LeftLine.Points[1].y);
+ RightLower:=Min(RightLine.Points[0].y,RightLine.Points[1].y);
+ RightUpper:=Max(RightLine.Points[0].y,RightLine.Points[1].y);
+ if LeftLower<RightLower then begin
+  result:=-1;
+ end else if LeftLower>RightLower then begin
+  result:=1;
+ end else if LeftUpper<RightUpper then begin
+  result:=-1;
+ end else if LeftUpper>RightUpper then begin
+  result:=1;
+ end else if LeftLine.Winding<RightLine.Winding then begin
+  result:=-1;
+ end else if LeftLine.Winding>RightLine.Winding then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
+procedure TpvVectorPathGPUShape.ShareMetaWindingSettingLines;
+var CellIndex,LineIndex,SegmentIndex,CountAll,KeptIndex:TpvSizeInt;
+    GridCell:TGridCell;
+    All:array of TpvVectorPathSegment;
+    Canonical:TpvVectorPathSegmentHashMap;
+    Line,Kept:TpvVectorPathSegment;
+begin
+
+ All:=nil;
+ try
+
+  CountAll:=0;
+  for CellIndex:=0 to fGridCells.Count-1 do begin
+   GridCell:=fGridCells[CellIndex];
+   if assigned(GridCell) then begin
+    inc(CountAll,GridCell.fMetaWindingSettingLines.Count);
+   end;
+  end;
+  if CountAll=0 then begin
+   exit;
+  end;
+
+  SetLength(All,CountAll);
+  CountAll:=0;
+  for CellIndex:=0 to fGridCells.Count-1 do begin
+   GridCell:=fGridCells[CellIndex];
+   if assigned(GridCell) then begin
+    for LineIndex:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+     All[CountAll]:=GridCell.fMetaWindingSettingLines[LineIndex];
+     inc(CountAll);
+    end;
+   end;
+  end;
+
+  if CountAll>1 then begin
+   TpvTypedSort<TpvVectorPathSegment>.IntroSort(@All[0],0,CountAll-1,TpvVectorPathGPUShape_MetaWindingSettingLineSortFunc);
+  end;
+
+  // Which line each of them is to be replaced by: the first of its group, which is the one the
+  // shape keeps.
+  Canonical:=TpvVectorPathSegmentHashMap.Create(nil);
+  try
+
+   KeptIndex:=0;
+   fSegments.Add(All[0]);
+   Canonical.Add(All[0],All[0]);
+   for LineIndex:=1 to CountAll-1 do begin
+    if TpvVectorPathGPUShape_MetaWindingSettingLineSortFunc(All[KeptIndex],All[LineIndex])=0 then begin
+     Canonical.Add(All[LineIndex],All[KeptIndex]);
+    end else begin
+     KeptIndex:=LineIndex;
+     fSegments.Add(All[LineIndex]);
+     Canonical.Add(All[LineIndex],All[LineIndex]);
+    end;
+   end;
+
+   // Every cell now points at the kept one instead of at its own copy, and the copies go. The
+   // kept ones belong to the shape from here on, which is what owns every segment the buffers are
+   // filled from, so the cells let go of all of them either way.
+   for CellIndex:=0 to fGridCells.Count-1 do begin
+    GridCell:=fGridCells[CellIndex];
+    if assigned(GridCell) then begin
+     for SegmentIndex:=0 to GridCell.fSegments.Count-1 do begin
+      Line:=GridCell.fSegments[SegmentIndex];
+      if Line.Type_=TpvVectorPathSegmentType.MetaWindingSettingLine then begin
+       if Canonical.TryGet(Line,Kept) and (Kept<>Line) then begin
+        GridCell.fSegments[SegmentIndex]:=Kept;
+       end;
+      end;
+     end;
+     GridCell.fMetaWindingSettingLines.OwnsObjects:=false;
+     for LineIndex:=0 to GridCell.fMetaWindingSettingLines.Count-1 do begin
+      Line:=GridCell.fMetaWindingSettingLines[LineIndex];
+      if Canonical.TryGet(Line,Kept) and (Kept<>Line) then begin
+       Line.Free;
+      end;
+     end;
+     GridCell.fMetaWindingSettingLines.Clear;
+    end;
+   end;
+
+  finally
+   FreeAndNil(Canonical);
+  end;
+
+ finally
+  All:=nil;
+ end;
+
+end;
+
 procedure TpvVectorPathGPUShape.BuildSlugBands(const aOutlineSegments:TpvVectorPathSegments);
 const Epsilon=1.0/1024.0;
 var Curves:TpvVectorPathSegments;
@@ -7848,8 +8006,12 @@ begin
 end;
 
 procedure TpvVectorPathGPUShape.UpdateBufferPool;
-var OldCount,NewCount,Index:TpvSizeInt;
+var OldCount,NewCount,Index,OtherIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
+    CellListOffsets,CellListSharedWith:array of TpvSizeInt;
+    ListHashMap:TpvVectorPathIndirectListHashMap;
+    ListHash:TpvUInt64;
+    SameList:boolean;
     SegmentData:PpvVectorPathGPUSegmentData;
     GridCell:TpvVectorPathGPUShape.TGridCell;
     GridCellData:PpvVectorPathGPUGridCellData;
@@ -7912,10 +8074,50 @@ begin
   end;
 
   // Update indirect segments
-  NewCount:=0;
-  for Index:=0 to fGridCells.Count-1 do begin
-   GridCell:=fGridCells[Index];
-   inc(NewCount,GridCell.fSegments.Count);
+  //
+  // Two cells that hold the same segments in the same order need only one range between them, and
+  // on a grid that happens a great deal: at the tiger 325632 cells carry only 73915 different
+  // lists, so the indirect buffer goes from 1344615 entries down to about 505156. Which cell got
+  // which range is worked out first, over a hash of the list, and a hash that matches is still
+  // compared entry by entry so that a collision costs a range rather than the wrong picture.
+  SetLength(CellListOffsets,fGridCells.Count);
+  SetLength(CellListSharedWith,fGridCells.Count);
+  ListHashMap:=TpvVectorPathIndirectListHashMap.Create(-1);
+  try
+   NewCount:=0;
+   for Index:=0 to fGridCells.Count-1 do begin
+    GridCell:=fGridCells[Index];
+    CellListSharedWith[Index]:=-1;
+    ListHash:=TpvUInt64(1469598103934665603);
+    for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+     ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments[OldCount].fIndex)))*TpvUInt64(1099511628211);
+    end;
+    ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments.Count)))*TpvUInt64(1099511628211);
+    if fShareDuplicateData and
+       ListHashMap.TryGet(ListHash,OtherIndex) and
+       (OtherIndex>=0) and
+       (OtherIndex<Index) and
+       (fGridCells[OtherIndex].fSegments.Count=GridCell.fSegments.Count) then begin
+     SameList:=true;
+     for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+      if fGridCells[OtherIndex].fSegments[OldCount]<>GridCell.fSegments[OldCount] then begin
+       SameList:=false;
+       break;
+      end;
+     end;
+     if SameList then begin
+      CellListSharedWith[Index]:=OtherIndex;
+      CellListOffsets[Index]:=CellListOffsets[OtherIndex];
+      continue;
+     end;
+    end else if fShareDuplicateData then begin
+     ListHashMap.Add(ListHash,Index);
+    end;
+    CellListOffsets[Index]:=NewCount;
+    inc(NewCount,GridCell.fSegments.Count);
+   end;
+  finally
+   FreeAndNil(ListHashMap);
   end;
 
   if fIndirectSegmentBufferRange.Size<NewCount then begin
@@ -7932,13 +8134,15 @@ begin
     SetLength(fBufferPool.fIndirectSegments,NewCount);
     FillChar(fBufferPool.fIndirectSegments[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUIndirectSegmentData),#0);
    end;
-   NewCount:=0;
    for Index:=0 to fGridCells.Count-1 do begin
+    if CellListSharedWith[Index]>=0 then begin
+     // Already written out by the cell this one shares with.
+     continue;
+    end;
     GridCell:=fGridCells[Index];
     for OldCount:=0 to GridCell.fSegments.Count-1 do begin
      Segment:=GridCell.fSegments[OldCount];
-     fBufferPool.fIndirectSegments[fIndirectSegmentBufferRange.Offset+NewCount]:=fSegmentBufferRange.Offset+Segment.fIndex;
-     inc(NewCount);
+     fBufferPool.fIndirectSegments[(fIndirectSegmentBufferRange.Offset+CellListOffsets[Index])+OldCount]:=fSegmentBufferRange.Offset+Segment.fIndex;
     end;
    end;
   end;
@@ -7958,13 +8162,19 @@ begin
     SetLength(fBufferPool.fGridCells,NewCount);
     FillChar(fBufferPool.fGridCells[OldCount],(NewCount-OldCount)*SizeOf(TpvVectorPathGPUGridCellData),#0);
    end;
-   NewCount:=0;
    for Index:=0 to fGridCells.Count-1 do begin
     GridCell:=fGridCells[Index];
     GridCellData:=@fBufferPool.fGridCells[fGridCellBufferRange.Offset+Index];
-    GridCellData^.StartIndirectSegmentIndex:=fIndirectSegmentBufferRange.Offset+NewCount;
+    // The offset worked out above, which is the one of the cell this shares its list with
+    // wherever it shares one. A shape whose cells are all empty gets no range at all, and the
+    // offset of minus one that comes back from that would read as four billion rather than as
+    // nothing, so it is written as a zero; the count of zero is what keeps the shader out of it.
+    if fIndirectSegmentBufferRange.Offset>=0 then begin
+     GridCellData^.StartIndirectSegmentIndex:=fIndirectSegmentBufferRange.Offset+CellListOffsets[Index];
+    end else begin
+     GridCellData^.StartIndirectSegmentIndex:=0;
+    end;
     GridCellData^.CountIndirectSegments:=GridCell.fSegments.Count;
-    inc(NewCount,GridCell.fSegments.Count);
    end;
   end;
 
@@ -9038,7 +9248,7 @@ begin
     SetLength(fGPUShapes,(ShapeIndex+1)*2);
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
-   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance,aShape.fAccelerationStructure,aShape.fCountBands);
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance,aShape.fAccelerationStructure,aShape.fCountBands,aShape.fShareDuplicateData);
    try
     result.fShapeIndex:=ShapeIndex;
     result.UpdateBufferPool;

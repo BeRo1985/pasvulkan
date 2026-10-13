@@ -12639,6 +12639,10 @@ begin
   Shapes.CountBands:=Min(Max(trunc(POCAGetNumberValue(aContext,aArguments^[1])),0),256);
  end;
 
+ if aCountArguments>2 then begin
+  Shapes.ShareDuplicateData:=POCAGetNumberValue(aContext,aArguments^[2])<>0;
+ end;
+
  result.CastedUInt64:=POCAValueNullCastedUInt64;
 
 end;
