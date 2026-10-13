@@ -70,6 +70,7 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Math.Utils,
      PasVulkan.VectorPath,
      PasVulkan.VectorGraphics.Rasterizer;
 
@@ -602,13 +603,13 @@ begin
  end;
  FractionX:=FixedX and $ff;
  FractionY:=FixedY and $ff;
-{$ifdef fpc}
+ // An arithmetic shift rather than a division, because the two part ways for a sample that lands
+ // left of or above the image: division rounds towards zero and would put the whole range from
+ // minus one to minus 255 onto pixel zero, so the leftmost column would be read twice. SARLongint
+ // out of PasVulkan.Math.Utils carries its own assembler for every compiler and target, which is
+ // why every other place that needs this shift simply calls it.
  PixelX:=SARLongint(FixedX,8);
  PixelY:=SARLongint(FixedY,8);
-{$else}
- PixelX:=FixedX div 256;
- PixelY:=FixedY div 256;
-{$endif}
 
  // Under the pad method a sample may still land outside, where the image paints nothing.
  if (PixelX<0) or (PixelX>=fWidth) or (PixelY<0) or (PixelY>=fHeight) then begin
