@@ -12640,7 +12640,7 @@ begin
  end;
 
  if aCountArguments>2 then begin
-  Shapes.ShareDuplicateData:=POCAGetNumberValue(aContext,aArguments^[2])<>0;
+  Shapes.DuplicateSharing:=TpvVectorPathDuplicateSharing(TpvInt32(Min(Max(trunc(POCAGetNumberValue(aContext,aArguments^[2])),0),2)));
  end;
 
  result.CastedUInt64:=POCAValueNullCastedUInt64;
@@ -13184,6 +13184,14 @@ begin
  POCAHashSetString(aContext,result,'SlugBands',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathAccelerationStructure.SlugBands)));
 end;
 
+function POCAInitVectorGraphicsDuplicateSharing(aContext:PPOCAContext):TPOCAValue;
+begin
+ result:=POCANewHash(aContext);
+ POCAHashSetString(aContext,result,'None',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathDuplicateSharing.None)));
+ POCAHashSetString(aContext,result,'EqualLists',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathDuplicateSharing.EqualLists)));
+ POCAHashSetString(aContext,result,'ContiguousRuns',POCANewNumber(aContext,TPOCAInt32(TpvVectorPathDuplicateSharing.ContiguousRuns)));
+end;
+
 function POCAInitVectorGraphicsSeamMode(aContext:PPOCAContext):TPOCAValue;
 begin
  result:=POCANewHash(aContext);
@@ -13199,6 +13207,7 @@ begin
  POCAArrayPush(aContext^.Instance^.Globals.RootArray,Hash);
  POCAHashSetString(aContext,Hash,'SeamMode',POCAInitVectorGraphicsSeamMode(aContext));
  POCAHashSetString(aContext,Hash,'AccelerationStructure',POCAInitVectorGraphicsAccelerationStructure(aContext));
+ POCAHashSetString(aContext,Hash,'DuplicateSharing',POCAInitVectorGraphicsDuplicateSharing(aContext));
  POCAAddNativeFunction(aContext,Hash,'loadSVG',POCAVectorGraphicsFunctionLOADSVG);
  POCAAddNativeFunction(aContext,Hash,'parseSVG',POCAVectorGraphicsFunctionPARSESVG);
  POCAAddNativeFunction(aContext,Hash,'createShapes',POCAVectorGraphicsFunctionCREATESHAPES);

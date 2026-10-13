@@ -290,7 +290,11 @@ type EpvVectorGraphicsCanvas=class(Exception);
             PCacheHeader=^TCacheHeader;
       public
        const CacheSignature:TCacheSignature=('P','V','V','C'); // PasVulkan Vector Cache
-             CacheVersion=TpvUInt32(1);
+             // Raised with every change to what is written, since a file of an older layout read
+             // by a newer reader runs off the end of the stream rather than failing cleanly.
+             // Version 2 added whether duplicate data was shared, version 3 turned that into how
+             // far it is shared.
+             CacheVersion=TpvUInt32(3);
       private
        type { TCompositingRingEntry }
             // One slot of the ring the compositing buffer is drawn through. There is more than one
@@ -336,7 +340,7 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // the Slug one gets. Changing either only takes effect on the next build.
        fAccelerationStructure:TpvVectorPathAccelerationStructure;
        fCountBands:TpvInt32;
-       fShareDuplicateData:boolean;
+       fDuplicateSharing:TpvVectorPathDuplicateSharing;
        // The buffer the SRGBCompositingBuffer mode draws the whole document into before putting it
        // over the canvas in one go. It is the size of the canvas it is drawn onto, so that both
        // share one coordinate system and what lands in it needs no transform of its own.
@@ -472,8 +476,8 @@ type EpvVectorGraphicsCanvas=class(Exception);
        // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
        // does. Means nothing for the grid.
        property CountBands:TpvInt32 read fCountBands write fCountBands;
-       // Whether duplicate data is folded together, see TpvVectorPathShape.ShareDuplicateData.
-       property ShareDuplicateData:boolean read fShareDuplicateData write fShareDuplicateData;
+       // How far repetition is folded away, see TpvVectorPathShape.DuplicateSharing.
+       property DuplicateSharing:TpvVectorPathDuplicateSharing read fDuplicateSharing write fDuplicateSharing;
       public
        // Everything that Build worked out, onto a stream and back: the records with their
        // outlines, the ramps, and the finished acceleration structure of every shape. Nothing is
@@ -924,7 +928,7 @@ begin
 
  fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
  fCountBands:=0;
- fShareDuplicateData:=true;
+ fDuplicateSharing:=TpvVectorPathDuplicateSharing.EqualLists;
 
  fCompositingRenderPass:=nil;
  fCompositingCanvas:=nil;
@@ -1596,7 +1600,7 @@ begin
    CurrentRecord.Shape.FillRule:=CurrentRecord.FillRule;
    CurrentRecord.Shape.AccelerationStructure:=fAccelerationStructure;
    CurrentRecord.Shape.CountBands:=fCountBands;
-   CurrentRecord.Shape.ShareDuplicateData:=fShareDuplicateData;
+   CurrentRecord.Shape.DuplicateSharing:=fDuplicateSharing;
    fBufferPool.GetOrCreateShape(CurrentRecord.Shape);
   end;
  end;
@@ -1674,7 +1678,7 @@ begin
   // for what it is rather than quietly drawn with the wrong ones.
   StreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
   StreamIO.WriteInt32(fCountBands);
-  StreamIO.WriteBoolean(fShareDuplicateData);
+  StreamIO.WriteUInt32(TpvUInt32(TpvVectorPathDuplicateSharing(fDuplicateSharing)));
 
   StreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
   StreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
@@ -1745,8 +1749,18 @@ begin
 
  result:=false;
 
+ if (aStream.Size-aStream.Position)<TpvInt64(SizeOf(TCacheHeader)) then begin
+  exit;
+ end;
+
  StreamIO:=TpvStreamIO.Create(aStream);
  try
+
+  // Anything that goes wrong in here leaves nothing half loaded behind and simply says no, so
+  // that a caller can fall back on building the document. A file of a layout this reader does not
+  // know runs off the end of the stream rather than failing on its own, which is what the version
+  // above is there to catch first.
+  try
 
   StreamIO.ReadWithCheck(Header,SizeOf(TCacheHeader));
   if (Header.Signature<>CacheSignature) or (Header.Version<>CacheVersion) then begin
@@ -1767,7 +1781,7 @@ begin
 
   fAccelerationStructure:=TpvVectorPathAccelerationStructure(StreamIO.ReadUInt32);
   fCountBands:=StreamIO.ReadInt32;
-  fShareDuplicateData:=StreamIO.ReadBoolean;
+  fDuplicateSharing:=TpvVectorPathDuplicateSharing(StreamIO.ReadUInt32);
 
   fBoundingBox.MinMax[0].x:=StreamIO.ReadDouble;
   fBoundingBox.MinMax[0].y:=StreamIO.ReadDouble;
@@ -1822,35 +1836,58 @@ begin
 
   result:=true;
 
+  except
+   on e:Exception do begin
+    Clear;
+    result:=false;
+   end;
+  end;
+
  finally
   FreeAndNil(StreamIO);
  end;
 
 end;
 
+// Both of these go through memory rather than straight at the file, because the stream is written
+// and read a number at a time and every one of those would otherwise be its own trip to the disk.
+// At the tiger that is some four million of them for twenty megabytes, which took eight seconds
+// and tripped the hang watchdog; through memory it is one read and one write.
 procedure TpvVectorGraphicsCanvasShapes.SaveToFile(const aFileName:string;const aSourceHash:TpvUInt64;const aMetaData:TpvUInt64);
-var Stream:TFileStream;
+var MemoryStream:TMemoryStream;
+    FileStream:TFileStream;
 begin
- Stream:=TFileStream.Create(aFileName,fmCreate);
+ MemoryStream:=TMemoryStream.Create;
  try
-  SaveToStream(Stream,aSourceHash,aMetaData);
+  SaveToStream(MemoryStream,aSourceHash,aMetaData);
+  MemoryStream.Seek(0,soBeginning);
+  FileStream:=TFileStream.Create(aFileName,fmCreate);
+  try
+   if MemoryStream.Size>0 then begin
+    FileStream.CopyFrom(MemoryStream,MemoryStream.Size);
+   end;
+  finally
+   FreeAndNil(FileStream);
+  end;
  finally
-  FreeAndNil(Stream);
+  FreeAndNil(MemoryStream);
  end;
 end;
 
 function TpvVectorGraphicsCanvasShapes.LoadFromFile(const aFileName:string;const aSourceHash:TpvUInt64;const aMetaData:PpvUInt64):boolean;
-var Stream:TFileStream;
+var MemoryStream:TMemoryStream;
 begin
  if not FileExists(aFileName) then begin
   result:=false;
   exit;
  end;
- Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ MemoryStream:=TMemoryStream.Create;
  try
-  result:=LoadFromStream(Stream,aSourceHash,aMetaData);
+  MemoryStream.LoadFromFile(aFileName);
+  MemoryStream.Seek(0,soBeginning);
+  result:=LoadFromStream(MemoryStream,aSourceHash,aMetaData);
  finally
-  FreeAndNil(Stream);
+  FreeAndNil(MemoryStream);
  end;
 end;
 

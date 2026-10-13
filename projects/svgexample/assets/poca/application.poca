@@ -12,7 +12,7 @@
 //   M  switch what is done about the seam between two shapes that share an edge
 //   A  switch the acceleration structure between the grid and the Slug bands
 //   D  switch how many Slug bands per axis
-//   F  switch whether data that repeats is folded together
+//   F  switch how far repetition in the acceleration structure is folded away
 //   N  record the shapes again at the size they are currently drawn at
 //   Space  back to the starting view
 
@@ -92,10 +92,16 @@ var application = {
       this.data.bandCounts = [0, 16, 32, 64, 128];
       this.data.bandCountIndex = 0;
 
-      // Whether data that repeats is folded together, which F switches. At the tiger the grid
-      // writes the same meta winding setting line down 1004908 times while only 74955 of them are
-      // different, and its cells carry 325632 segment lists of which only 73915 differ.
-      this.data.shareDuplicates = true;
+      // How far repetition in the acceleration structure is folded away, which F walks through.
+      // At the tiger the grid writes the same meta winding setting line down 1004908 times while
+      // only 74955 of them are different, and its cells carry 325632 segment lists of which only
+      // 73915 differ. The last step, pointing a list into the middle of a longer one, saves
+      // another 74 kilobytes and costs a second of building, so it is not the default.
+      this.data.sharings = [VectorGraphics.DuplicateSharing.None,
+                            VectorGraphics.DuplicateSharing.EqualLists,
+                            VectorGraphics.DuplicateSharing.ContiguousRuns];
+      this.data.sharingNames = ["none", "equal lists", "runs inside lists"];
+      this.data.sharingIndex = 1;
       this.data.seamWidening = 0.5;
 
       this.data.status = "";
@@ -196,13 +202,13 @@ var application = {
       data.shapes = VectorGraphics.createShapes();
       data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
                                            data.bandCounts[data.bandCountIndex],
-                                           data.shareDuplicates ? 1 : 0);
+                                           data.sharings[data.sharingIndex]);
 
       // The cache carries the records, the ramps and the finished acceleration structure of every
       // shape, so loading it skips the parsing, the recording and the building alike. One per
       // structure, since they build different things out of the same document.
       data.cacheFileName = "tiger-" ~ (data.structureIndex === 0 ? "grid" : "bands") ~
-                           (data.shareDuplicates ? "-shared" : "-plain") ~ ".pvvc";
+                           "-" ~ data.sharingIndex ~ ".pvvc";
 
       let supported = true;
       if (data.shapes.loadCache(data.cacheFileName) !== 0) {
@@ -276,7 +282,7 @@ var application = {
         }
 
         if (event.KeyCode === Input.KeyCodes.KEYCODE_F) {
-          data.shareDuplicates = !data.shareDuplicates;
+          data.sharingIndex = (data.sharingIndex + 1) % data.sharings.length;
           data.rebuildRequested = true;
           return true;
         }
@@ -363,7 +369,7 @@ var application = {
 
     data.shapes.setAccelerationStructure(data.structures[data.structureIndex],
                                          data.bandCounts[data.bandCountIndex],
-                                         data.shareDuplicates ? 1 : 0);
+                                         data.sharings[data.sharingIndex]);
     data.shapes.build(data.document, width, height);
     data.shapes.update();
     data.builtZoom = data.zoom;
@@ -492,7 +498,7 @@ var application = {
                 ? ", bands chosen per shape   (A, D switch)"
                 : ", " ~ data.bandCounts[data.bandCountIndex] ~ " bands per axis   (A, D switch)")
            : "   (A switches)") ~
-        (data.shareDuplicates ? ", duplicates shared   (F switches)" : ", duplicates kept   (F switches)"),
+        ", sharing: " ~ data.sharingNames[data.sharingIndex] ~ "   (F switches)",
       "seam: " ~ data.seamModeNames[data.seamModeIndex] ~
         (data.seamModeIndex === 1 ? ", " ~ data.seamWidening ~ "   (M switches)" : "   (M switches)") ~
         // The buffer draws in a pass of its own, so what it costs the GPU is not in the figure the

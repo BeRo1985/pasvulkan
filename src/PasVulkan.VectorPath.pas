@@ -411,6 +411,25 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      PpvVectorPathAccelerationStructure=^TpvVectorPathAccelerationStructure;
 
+     // How far repetition in the acceleration structure is folded away. Each step costs building
+     // time and gives back space, and the last of them gives back very little.
+     TpvVectorPathDuplicateSharing=
+      (
+       // Nothing, which is the fastest to build and what the others are measured against.
+       None=0,
+       // Meta winding setting lines that say the same thing become one, and cells holding the same
+       // list of segments share one range of the indirect buffer. At the tiger this takes the grid
+       // from 38,74 to 10,36 megabytes and its drawing from 1,08 to 0,34 milliseconds.
+       EqualLists=1,
+       // And on top of that, a cell whose list is a contiguous run inside another cell's list
+       // points into the middle of that one, which is what Lengyel's notes suggest for the bands
+       // of Slug. At the tiger it saves another 74 kilobytes and costs a second of building, so it
+       // is there to be asked for rather than had by default.
+       ContiguousRuns=2
+      );
+
+     PpvVectorPathDuplicateSharing=^TpvVectorPathDuplicateSharing;
+
      TpvVectorPathSegmentType=
       (
        Line=0,
@@ -530,7 +549,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      // Which cell already wrote out a given list of indirect segments, so that the next one with
      // the same list can point at it instead of writing its own copy.
-     TpvVectorPathIndirectListHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
+     // Where a given list of indirect segments already lies: the cell that wrote it in the upper
+     // half and where in that cell's list the run starts in the lower half.
+     TpvVectorPathIndirectListHashMap=TpvHashMap<TpvUInt64,TpvUInt64>;
 
      { TpvVectorPathContour }
 
@@ -566,7 +587,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fCubicToQuadraticTolerance:TpvDouble;
        fAccelerationStructure:TpvVectorPathAccelerationStructure;
        fCountBands:TpvInt32;
-       fShareDuplicateData:boolean;
+       fDuplicateSharing:TpvVectorPathDuplicateSharing;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aVectorPathShape:TpvVectorPathShape); reintroduce; overload;
@@ -606,11 +627,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        // How many Slug bands per axis, or zero to let it pick from the curve count the way Slug
        // does. Means nothing for the grid, which goes by Resolution.
        property CountBands:TpvInt32 read fCountBands write fCountBands;
-       // Whether meta winding setting lines that say the same thing are folded onto one, and
-       // whether cells holding the same list of segments share one range of the indirect buffer.
-       // On by default, since it costs some building time and gives back a great deal of space;
-       // off is there to measure what it is worth.
-       property ShareDuplicateData:boolean read fShareDuplicateData write fShareDuplicateData;
+       // How far repetition in the acceleration structure is folded away.
+       property DuplicateSharing:TpvVectorPathDuplicateSharing read fDuplicateSharing write fDuplicateSharing;
      end;
 
      { TpvVectorPath }
@@ -890,7 +908,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        fCountBands:TpvInt32;
        fCountHorizontalBands:TpvInt32;
        fCountVerticalBands:TpvInt32;
-       fShareDuplicateData:boolean;
+       fDuplicateSharing:TpvVectorPathDuplicateSharing;
        fSegments:TpvVectorPathSegments;
        fSegmentDynamicAABBTree:TpvVectorPathBVHDynamicAABBTree;
        fGridCells:TGridCells;
@@ -947,7 +965,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
       public
        // aPasMPInstance spreads the rows of grid cells over the cores, which is where nearly all of
        // the time of building a shape goes. Left out, they are built one after the other.
-       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0;const aShareDuplicateData:boolean=true); reintroduce; overload;
+       constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32=32;const aBoundingBoxExtent:TpvDouble=4.0;const aPasMPInstance:TPasMP=nil;const aAccelerationStructure:TpvVectorPathAccelerationStructure=TpvVectorPathAccelerationStructure.Grid;const aCountBands:TpvInt32=0;const aDuplicateSharing:TpvVectorPathDuplicateSharing=TpvVectorPathDuplicateSharing.EqualLists); reintroduce; overload;
        // Takes everything off a stream instead of working it out, which is what a cache is for.
        constructor Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aStreamIO:TpvStreamIO;const aPasMPInstance:TPasMP=nil); reintroduce; overload;
        destructor Destroy; override;
@@ -4406,7 +4424,7 @@ begin
  fCubicToQuadraticTolerance:=1.0;
  fAccelerationStructure:=TpvVectorPathAccelerationStructure.Grid;
  fCountBands:=0;
- fShareDuplicateData:=true;
+ fDuplicateSharing:=TpvVectorPathDuplicateSharing.EqualLists;
 end;
 
 constructor TpvVectorPathShape.Create(const aVectorPathShape:TpvVectorPathShape);
@@ -4450,7 +4468,7 @@ begin
  fCubicToQuadraticTolerance:=aVectorPathShape.fCubicToQuadraticTolerance;
  fAccelerationStructure:=aVectorPathShape.fAccelerationStructure;
  fCountBands:=aVectorPathShape.fCountBands;
- fShareDuplicateData:=aVectorPathShape.fShareDuplicateData;
+ fDuplicateSharing:=aVectorPathShape.fDuplicateSharing;
 end;
 
 procedure TpvVectorPathShape.Assign(const aVectorPath:TpvVectorPath);
@@ -4710,7 +4728,7 @@ begin
  aStreamIO.WriteDouble(fCubicToQuadraticTolerance);
  aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathAccelerationStructure(fAccelerationStructure)));
  aStreamIO.WriteInt32(fCountBands);
- aStreamIO.WriteBoolean(fShareDuplicateData);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathDuplicateSharing(fDuplicateSharing)));
  aStreamIO.WriteInt32(fContours.Count);
  for ContourIndex:=0 to fContours.Count-1 do begin
   Contour:=fContours[ContourIndex];
@@ -4733,7 +4751,7 @@ begin
  fCubicToQuadraticTolerance:=aStreamIO.ReadDouble;
  fAccelerationStructure:=TpvVectorPathAccelerationStructure(aStreamIO.ReadUInt32);
  fCountBands:=aStreamIO.ReadInt32;
- fShareDuplicateData:=aStreamIO.ReadBoolean;
+ fDuplicateSharing:=TpvVectorPathDuplicateSharing(aStreamIO.ReadUInt32);
  fContours.Clear;
  CountContours:=aStreamIO.ReadInt32;
  for ContourIndex:=0 to CountContours-1 do begin
@@ -7289,7 +7307,7 @@ end;
 
 { TpvVectorPathGPUShape }
 
-constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP;const aAccelerationStructure:TpvVectorPathAccelerationStructure;const aCountBands:TpvInt32;const aShareDuplicateData:boolean);
+constructor TpvVectorPathGPUShape.Create(const aBufferPool:TpvVectorPathGPUBufferPool;const aVectorPathShape:TpvVectorPathShape;const aResolution:TpvInt32;const aBoundingBoxExtent:TpvDouble;const aPasMPInstance:TPasMP;const aAccelerationStructure:TpvVectorPathAccelerationStructure;const aCountBands:TpvInt32;const aDuplicateSharing:TpvVectorPathDuplicateSharing);
 begin
 
  inherited Create;
@@ -7302,7 +7320,7 @@ begin
 
  fAccelerationStructure:=aAccelerationStructure;
  fCountBands:=aCountBands;
- fShareDuplicateData:=aShareDuplicateData;
+ fDuplicateSharing:=aDuplicateSharing;
  fCountHorizontalBands:=0;
  fCountVerticalBands:=0;
 
@@ -7363,7 +7381,7 @@ begin
  aStreamIO.WriteInt32(fCountBands);
  aStreamIO.WriteInt32(fCountHorizontalBands);
  aStreamIO.WriteInt32(fCountVerticalBands);
- aStreamIO.WriteBoolean(fShareDuplicateData);
+ aStreamIO.WriteUInt32(TpvUInt32(TpvVectorPathDuplicateSharing(fDuplicateSharing)));
  aStreamIO.WriteDouble(fBoundingBoxExtent);
  aStreamIO.WriteDouble(fBoundingBox.MinMax[0].x);
  aStreamIO.WriteDouble(fBoundingBox.MinMax[0].y);
@@ -7421,7 +7439,7 @@ begin
  fCountBands:=aStreamIO.ReadInt32;
  fCountHorizontalBands:=aStreamIO.ReadInt32;
  fCountVerticalBands:=aStreamIO.ReadInt32;
- fShareDuplicateData:=aStreamIO.ReadBoolean;
+ fDuplicateSharing:=TpvVectorPathDuplicateSharing(aStreamIO.ReadUInt32);
  fBoundingBoxExtent:=aStreamIO.ReadDouble;
  fBoundingBox.MinMax[0].x:=aStreamIO.ReadDouble;
  fBoundingBox.MinMax[0].y:=aStreamIO.ReadDouble;
@@ -7641,7 +7659,7 @@ begin
   // 1004908 of them and only 74955 are different, so sharing them takes the segment buffer down to
   // a fourteenth of what it was. Nothing downstream notices, because the cells simply point at the
   // one that was kept.
-  if fShareDuplicateData then begin
+  if fDuplicateSharing<>TpvVectorPathDuplicateSharing.None then begin
    ShareMetaWindingSettingLines;
   end else begin
    for IndexY:=0 to fGridCells.Count-1 do begin
@@ -8008,9 +8026,11 @@ end;
 procedure TpvVectorPathGPUShape.UpdateBufferPool;
 var OldCount,NewCount,Index,OtherIndex:TpvSizeInt;
     Segment:TpvVectorPathSegment;
-    CellListOffsets,CellListSharedWith:array of TpvSizeInt;
+    CellListOffsets,CellListSharedWith,CellOrder:array of TpvSizeInt;
+    OrderIndex,RunStart,LongestList:TpvSizeInt;
+    LengthCounts:array of TpvSizeInt;
     ListHashMap:TpvVectorPathIndirectListHashMap;
-    ListHash:TpvUInt64;
+    ListHash,PackedWhere:TpvUInt64;
     SameList:boolean;
     SegmentData:PpvVectorPathGPUSegmentData;
     GridCell:TpvVectorPathGPUShape.TGridCell;
@@ -8075,46 +8095,113 @@ begin
 
   // Update indirect segments
   //
+  // Three kinds of repetition are folded away here, each one a step further than the one before.
   // Two cells that hold the same segments in the same order need only one range between them, and
-  // on a grid that happens a great deal: at the tiger 325632 cells carry only 73915 different
-  // lists, so the indirect buffer goes from 1344615 entries down to about 505156. Which cell got
-  // which range is worked out first, over a hash of the list, and a hash that matches is still
-  // compared entry by entry so that a collision costs a range rather than the wrong picture.
+  // a cell whose list is a contiguous run inside another cell's list can point into the middle of
+  // that one, which is what Lengyel's notes suggest for the bands of Slug. The longest lists are
+  // laid down first, so that the shorter ones have something to be found inside of.
+  //
+  // A hash leads the search and a hit is still compared entry by entry, so that a collision costs
+  // a range rather than the wrong picture.
   SetLength(CellListOffsets,fGridCells.Count);
   SetLength(CellListSharedWith,fGridCells.Count);
+  SetLength(CellOrder,fGridCells.Count);
+  for Index:=0 to fGridCells.Count-1 do begin
+   CellOrder[Index]:=Index;
+   CellListSharedWith[Index]:=-1;
+  end;
+  if (fDuplicateSharing=TpvVectorPathDuplicateSharing.ContiguousRuns) and (fGridCells.Count>1) then begin
+   // Longest first, since a run can only be found inside something at least as long. Counted
+   // rather than compared, because the lengths are small numbers and there are many cells.
+   LongestList:=0;
+   for Index:=0 to fGridCells.Count-1 do begin
+    LongestList:=Max(LongestList,fGridCells[Index].fSegments.Count);
+   end;
+   SetLength(LengthCounts,LongestList+2);
+   for Index:=0 to LongestList+1 do begin
+    LengthCounts[Index]:=0;
+   end;
+   for Index:=0 to fGridCells.Count-1 do begin
+    inc(LengthCounts[fGridCells[Index].fSegments.Count]);
+   end;
+   // Running totals from the longest downwards, which is where each length starts in the order.
+   OldCount:=0;
+   for Index:=LongestList downto 0 do begin
+    NewCount:=LengthCounts[Index];
+    LengthCounts[Index]:=OldCount;
+    inc(OldCount,NewCount);
+   end;
+   for Index:=0 to fGridCells.Count-1 do begin
+    CellOrder[LengthCounts[fGridCells[Index].fSegments.Count]]:=Index;
+    inc(LengthCounts[fGridCells[Index].fSegments.Count]);
+   end;
+  end;
   ListHashMap:=TpvVectorPathIndirectListHashMap.Create(-1);
   try
    NewCount:=0;
-   for Index:=0 to fGridCells.Count-1 do begin
+   for OrderIndex:=0 to fGridCells.Count-1 do begin
+    Index:=CellOrder[OrderIndex];
     GridCell:=fGridCells[Index];
-    CellListSharedWith[Index]:=-1;
-    ListHash:=TpvUInt64(1469598103934665603);
-    for OldCount:=0 to GridCell.fSegments.Count-1 do begin
-     ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments[OldCount].fIndex)))*TpvUInt64(1099511628211);
-    end;
-    ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments.Count)))*TpvUInt64(1099511628211);
-    if fShareDuplicateData and
-       ListHashMap.TryGet(ListHash,OtherIndex) and
-       (OtherIndex>=0) and
-       (OtherIndex<Index) and
-       (fGridCells[OtherIndex].fSegments.Count=GridCell.fSegments.Count) then begin
-     SameList:=true;
+    if (fDuplicateSharing<>TpvVectorPathDuplicateSharing.None) and (GridCell.fSegments.Count>0) then begin
+     ListHash:=TpvUInt64(1469598103934665603);
      for OldCount:=0 to GridCell.fSegments.Count-1 do begin
-      if fGridCells[OtherIndex].fSegments[OldCount]<>GridCell.fSegments[OldCount] then begin
-       SameList:=false;
-       break;
+      ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments[OldCount].fIndex)))*TpvUInt64(1099511628211);
+     end;
+     if ListHashMap.TryGet(ListHash,PackedWhere) then begin
+      // The upper half says which cell holds the run and the lower half where in it it starts.
+      OtherIndex:=TpvSizeInt(PackedWhere shr 32);
+      RunStart:=TpvSizeInt(PackedWhere and $ffffffff);
+      if (OtherIndex>=0) and
+         (OtherIndex<fGridCells.Count) and
+         ((RunStart+GridCell.fSegments.Count)<=fGridCells[OtherIndex].fSegments.Count) then begin
+       SameList:=true;
+       for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+        if fGridCells[OtherIndex].fSegments[RunStart+OldCount]<>GridCell.fSegments[OldCount] then begin
+         SameList:=false;
+         break;
+        end;
+       end;
+       if SameList then begin
+        CellListSharedWith[Index]:=OtherIndex;
+        CellListOffsets[Index]:=CellListOffsets[OtherIndex]+RunStart;
+        continue;
+       end;
       end;
      end;
-     if SameList then begin
-      CellListSharedWith[Index]:=OtherIndex;
-      CellListOffsets[Index]:=CellListOffsets[OtherIndex];
-      continue;
-     end;
-    end else if fShareDuplicateData then begin
-     ListHashMap.Add(ListHash,Index);
     end;
     CellListOffsets[Index]:=NewCount;
     inc(NewCount,GridCell.fSegments.Count);
+    // Every contiguous run of what was just laid down becomes something a later, shorter list can
+    // be found in. The first one to claim a hash keeps it, which is the longest run of it.
+    case fDuplicateSharing of
+     TpvVectorPathDuplicateSharing.EqualLists:begin
+      // Only the list as a whole, which is what another cell holding the very same one finds.
+      if GridCell.fSegments.Count>0 then begin
+       ListHash:=TpvUInt64(1469598103934665603);
+       for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+        ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments[OldCount].fIndex)))*TpvUInt64(1099511628211);
+       end;
+       if not ListHashMap.TryGet(ListHash,PackedWhere) then begin
+        ListHashMap.Add(ListHash,TpvUInt64(TpvUInt32(Index)) shl 32);
+       end;
+      end;
+     end;
+     TpvVectorPathDuplicateSharing.ContiguousRuns:begin
+      // Every contiguous run of what was just laid down, so that a later and shorter list can be
+      // found inside it. The first to claim a hash keeps it, which is the longest run of it.
+      for OldCount:=0 to GridCell.fSegments.Count-1 do begin
+       ListHash:=TpvUInt64(1469598103934665603);
+       for RunStart:=OldCount to GridCell.fSegments.Count-1 do begin
+        ListHash:=(ListHash xor TpvUInt64(TpvUInt32(GridCell.fSegments[RunStart].fIndex)))*TpvUInt64(1099511628211);
+        if not ListHashMap.TryGet(ListHash,PackedWhere) then begin
+         ListHashMap.Add(ListHash,(TpvUInt64(TpvUInt32(Index)) shl 32) or TpvUInt64(TpvUInt32(OldCount)));
+        end;
+       end;
+      end;
+     end;
+     else begin
+     end;
+    end;
    end;
   finally
    FreeAndNil(ListHashMap);
@@ -8136,7 +8223,7 @@ begin
    end;
    for Index:=0 to fGridCells.Count-1 do begin
     if CellListSharedWith[Index]>=0 then begin
-     // Already written out by the cell this one shares with.
+     // Already written out by the cell this one was found inside of.
      continue;
     end;
     GridCell:=fGridCells[Index];
@@ -9248,7 +9335,7 @@ begin
     SetLength(fGPUShapes,(ShapeIndex+1)*2);
     FillChar(fGPUShapes[OldCount],(length(fGPUShapes)-OldCount)*SizeOf(TpvVectorPathGPUShape),#0);
    end;
-   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance,aShape.fAccelerationStructure,aShape.fCountBands,aShape.fShareDuplicateData);
+   result:=TpvVectorPathGPUShape.Create(self,aShape,aShape.fResolution,aShape.fBoundingBoxExtent,fPasMPInstance,aShape.fAccelerationStructure,aShape.fCountBands,aShape.fDuplicateSharing);
    try
     result.fShapeIndex:=ShapeIndex;
     result.UpdateBufferPool;
