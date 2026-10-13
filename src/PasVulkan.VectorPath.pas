@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -7107,12 +7107,12 @@ procedure TpvVectorPathStroker.ProcessDashes(const aLinePoints:TLinePoints;const
 var Index,LastIndex,DashIndex,PointCount:TpvSizeInt;
     Position,Start,Delta:TpvVectorPathVector;
     DashRemain,LineLength,LineRemain,StartRemain,StepLength,Factor:TpvDouble;
-    InLine:boolean;
+    IsInLine:boolean;
 begin
  if (aCountLinePoints<2) or (length(fDashes)=0) then begin
   exit;
  end;
- InLine:=false;
+ IsInLine:=false;
  fCountDashedLinePoints:=0;
  LineRemain:=0.0;
  LineLength:=0.0;
@@ -7156,11 +7156,11 @@ begin
    Factor:=(LineLength-LineRemain)/LineLength;
    Position:=Start+(Delta*Factor);
    if fDashFlags[DashIndex] then begin
-    InLine:=true;
+    IsInLine:=true;
     AddDashedLinePoint(Position);
    end else begin
-    if InLine then begin
-     InLine:=false;
+    if IsInLine then begin
+     IsInLine:=false;
      AddDashedLinePoint(Position);
      ConvertStrokeToPolygon(fDashedLinePoints,fCountDashedLinePoints,false);
      fCountDashedLinePoints:=0;
@@ -7177,7 +7177,7 @@ begin
    end;
   end;
  end;
- if InLine and (LineLength>1e-18) then begin
+ if IsInLine and (LineLength>1e-18) then begin
   Factor:=(LineLength-LineRemain)/LineLength;
   AddDashedLinePoint(Start+(Delta*Factor));
   ConvertStrokeToPolygon(fDashedLinePoints,fCountDashedLinePoints,false);
@@ -8337,7 +8337,7 @@ begin
     inc(LengthCounts[fGridCells[Index].fSegments.Count]);
    end;
   end;
-  ListHashMap:=TpvVectorPathIndirectListHashMap.Create(-1);
+  ListHashMap:=TpvVectorPathIndirectListHashMap.Create(TpvUInt64(-1));
   try
    NewCount:=0;
    for OrderIndex:=0 to fGridCells.Count-1 do begin

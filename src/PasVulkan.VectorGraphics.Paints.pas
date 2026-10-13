@@ -541,7 +541,7 @@ var Position:TpvVectorPathVector;
     FixedX,FixedY,FullWidth,FullHeight,PixelX,PixelY,FractionX,FractionY,Shift:TpvInt32;
     Samples:array[0..3] of TpvVectorGraphicsColor;
     RowColors:array[0..1] of TpvVectorGraphicsColor;
- function SampleAt(const aPixelX,aPixelY:TpvInt32):TpvVectorGraphicsColor; {$ifdef CANINLINE}inline;{$endif}
+ function SampleAt(const aPixelX,aPixelY:TpvInt32):TpvVectorGraphicsColor; {$if defined(fpc) and defined(CANINLINE)}inline;{$ifend}
  begin
   if (aPixelX>=0) and (aPixelX<fWidth) and (aPixelY>=0) and (aPixelY<fHeight) then begin
    result:=fPixels^[(TpvSizeInt(aPixelY)*TpvSizeInt(fStride))+TpvSizeInt(aPixelX)];
@@ -602,8 +602,13 @@ begin
  end;
  FractionX:=FixedX and $ff;
  FractionY:=FixedY and $ff;
+{$ifdef fpc}
  PixelX:=SARLongint(FixedX,8);
  PixelY:=SARLongint(FixedY,8);
+{$else}
+ PixelX:=FixedX div 256;
+ PixelY:=FixedY div 256;
+{$endif}
 
  // Under the pad method a sample may still land outside, where the image paints nothing.
  if (PixelX<0) or (PixelX>=fWidth) or (PixelY<0) or (PixelY>=fHeight) then begin

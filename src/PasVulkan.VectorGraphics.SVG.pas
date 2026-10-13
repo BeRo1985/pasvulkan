@@ -383,8 +383,6 @@ function pvVectorGraphicsFindNamedColor(const aName:TpvUTF8String;out aColor:Tpv
 
 implementation
 
-var pvVectorGraphicsSVGFormatSettings:TFormatSettings;
-
 type TNamedColor=record
       Name:TpvUTF8String;
       Color:TpvVectorGraphicsColor;
@@ -4203,7 +4201,7 @@ var Index:TpvSizeInt;
     // it departs from is already known at this point.
     Token:=TrimText(TpvUTF8String(aAnimationTag.GetParameter('by','')));
     if (Length(Token)>0) and (CountValues>0) and not (IsColor or IsTransform) then begin
-     Text:=TpvUTF8String(FloatToStr(ParseValue(Values[0])+ParseValue(Token),pvVectorGraphicsSVGFormatSettings));
+     Text:=TpvUTF8String(ConvertDoubleToString(ParseValue(Values[0])+ParseValue(Token)));
     end;
    end;
    if Length(Text)>0 then begin
@@ -4819,7 +4817,7 @@ begin
 
  // Six digits are plenty for coordinates and keep the output from exploding in size, and the
  // trailing zeros go away so that whole numbers stay whole numbers.
- Text:=FormatFloat('0.######',aValue,pvVectorGraphicsSVGFormatSettings);
+ Text:=ConvertDoubleToString(aValue);
  if Pos('.',Text)>0 then begin
   Index:=Length(Text);
   while (Index>0) and (Text[Index]='0') do begin
@@ -5360,9 +5358,4 @@ begin
 end;
 
 initialization
- // A fixed format setting, so that the numbers written out do not follow whatever decimal
- // separator the machine happens to be configured with.
- pvVectorGraphicsSVGFormatSettings:=DefaultFormatSettings;
- pvVectorGraphicsSVGFormatSettings.DecimalSeparator:='.';
- pvVectorGraphicsSVGFormatSettings.ThousandSeparator:=#0;
 end.

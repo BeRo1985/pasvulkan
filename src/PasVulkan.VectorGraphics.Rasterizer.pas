@@ -1810,13 +1810,15 @@ end;
 
 procedure TpvVectorGraphicsRasterizer.UpdateSpanBuffers;
 var Index,Count,Width_:TpvSizeInt;
+    PasMPInstance:TPasMP;
 begin
 
  // One more than the worker count, since the thread that invokes a parallel job takes part in
  // it as well and gets index zero.
  Count:=1;
- if assigned(TPasMP.GetGlobalInstance) then begin
-  Count:=Max(1,TPasMP.GetGlobalInstance.CountJobWorkerThreads+1);
+ PasMPInstance:=TPasMP.GetGlobalInstance;
+ if assigned(PasMPInstance) then begin
+  Count:=Max(1,PasMPInstance.CountJobWorkerThreads+1);
  end;
 
  if Length(fSpanColors)<Count then begin
