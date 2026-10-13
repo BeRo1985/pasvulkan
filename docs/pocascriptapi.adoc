@@ -7771,6 +7771,40 @@ shapes.setSeamMode(VectorGraphics.SeamMode.WidenedCoverage, 0.5);
 
 '''''
 
+=== VectorGraphics.AccelerationStructure
+
+Which structure the vector path shader is given to find the curves near a pixel with. It is decided while the shapes are built, so changing it means building them again.
+
+* `+Grid+`: A grid cut in both axes. A cell carries the segments that reach into it, and since it is cut in x as well, it also needs meta winding setting lines standing for everything to its left. Few curves to look at per pixel, but those meta lines are the bulk of the data.
+* `+SlugBands+`: Two sets of bands after Eric Lengyel's Slug algorithm, one cut along y and one along x, each spanning the whole of the other axis. A band therefore carries every curve at its height and needs no meta lines at all, which makes it far smaller; in return a pixel walks more curves, and how many depends on how many bands there are.
+
+*Example:*
+
+[source,js]
+----
+shapes.setAccelerationStructure(VectorGraphics.AccelerationStructure.SlugBands, 128);
+----
+
+'''''
+
+=== VectorGraphics.DuplicateSharing
+
+How far repetition in the acceleration structure is folded away. Each step costs building time and gives back space, and the last of them gives back very little.
+
+* `+None+`: Nothing, which is the fastest to build.
+* `+EqualLists+`: Meta winding setting lines that say the same thing become one, and cells holding the same list of segments share one range of the indirect buffer. This is the default, since a grid writes the same meta winding setting line down again for every cell of a row that nothing crosses.
+* `+ContiguousRuns+`: And on top of that, a cell whose list is a contiguous run inside another cell's list points into the middle of that one. Saves little and costs a good deal of building time, so it is there to be asked for.
+
+*Example:*
+
+[source,js]
+----
+shapes.setAccelerationStructure(VectorGraphics.AccelerationStructure.Grid, 0,
+                                VectorGraphics.DuplicateSharing.EqualLists);
+----
+
+'''''
+
 === Global VectorGraphics Object
 
 ==== VectorGraphics.loadSVG(fileName)
@@ -8099,6 +8133,99 @@ shapes.setSeamMode(mode, widening);
 ----
 shapes.setSeamMode(VectorGraphics.SeamMode.WidenedCoverage, 0.5);
 ----
+
+'''''
+
+==== getAccelerationStructure()
+
+*Usage:*
+
+[source,js]
+----
+let structure = shapes.getAccelerationStructure();
+----
+
+* *Description:* Returns which structure the shapes are built with, as a VectorGraphics.AccelerationStructure value.
+* *Parameters:* None.
+* *Return Value:* The acceleration structure as a number.
+
+'''''
+
+==== setAccelerationStructure()
+
+*Usage:*
+
+[source,js]
+----
+shapes.setAccelerationStructure(structure);
+shapes.setAccelerationStructure(structure, countBands);
+shapes.setAccelerationStructure(structure, countBands, duplicateSharing);
+----
+
+* *Description:* Sets which structure the vector path shader is given to find the curves near a pixel with, how many Slug bands per axis it gets, and how far repetition in it is folded away. All three are decided while the shapes are built, so this has to be called before `+build()+` and a later change needs another `+build()+`. See VectorGraphics.AccelerationStructure and VectorGraphics.DuplicateSharing for what the values do.
+* *Parameters:*
+** `+structure+` (number): Acceleration structure (use VectorGraphics.AccelerationStructure constants)
+** `+countBands+` (number): Optional, how many Slug bands per axis, from 0 to 256. Zero lets Slug pick it from the curve count, which gives at most 16 and is meant for glyphs; outlines of the size an SVG brings are better off with far more, since bands cost only index entries and never a copy of a curve. Means nothing for the grid, which goes by its own resolution.
+** `+duplicateSharing+` (number): Optional, how far repetition is folded away (use VectorGraphics.DuplicateSharing constants).
+* *Return Value:* None.
+* *Example:*
++
+[source,js]
+----
+shapes.setAccelerationStructure(VectorGraphics.AccelerationStructure.SlugBands, 128);
+shapes.build(document);
+----
+
+'''''
+
+==== getCompositingGPUTime()
+
+*Usage:*
+
+[source,js]
+----
+let milliseconds = shapes.getCompositingGPUTime();
+----
+
+* *Description:* Returns what the pass of the `+SRGBCompositingBuffer+` seam mode last cost the device, in milliseconds, or zero while that mode is not the one in use. Since that mode draws in a pass of its own, what it costs is not part of whatever GPU time the application measures around its main render pass. The figure is the one of a frame a few back, because reading the one of this frame would mean waiting for the device.
+* *Parameters:* None.
+* *Return Value:* The time in milliseconds as a number.
+
+'''''
+
+==== saveCache()
+
+*Usage:*
+
+[source,js]
+----
+let ok = shapes.saveCache("tiger.pvvc");
+----
+
+* *Description:* Writes everything `+build()+` worked out into a file: the records with their outlines, the ramps, and the finished acceleration structure of every shape. Loading it again skips the parsing, the recording and the building alike.
+* *Parameters:*
+** `+fileName+` (string): Where to write it.
+* *Return Value:* 1 when it was written, 0 when it was not.
+
+'''''
+
+==== loadCache()
+
+*Usage:*
+
+[source,js]
+----
+if (shapes.loadCache("tiger.pvvc") === 0) {
+  shapes.build(document);
+  shapes.update();
+  shapes.saveCache("tiger.pvvc");
+}
+----
+
+* *Description:* Takes everything back off a file written by `+saveCache()+`, in place of building it. Nothing is worked out again, so the shapes are ready to draw afterwards and `+update()+` is not needed. A file of another layout, of an older version of this one, or one that cannot be read at all is simply refused, so the caller can fall back on building.
+* *Parameters:*
+** `+fileName+` (string): Which file to read.
+* *Return Value:* 1 when it was loaded, 0 when it was not.
 
 '''''
 
