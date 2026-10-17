@@ -1461,11 +1461,13 @@ begin
  end else begin
 
   // The ramp entries are sRGB values, and the canvas works on linear ones, so the format does
-  // that conversion on every fetch and the shader gets what it expects.
+  // that conversion on every fetch and the shader gets what it expects. They are colors of the
+  // rasterizer, blue in the lowest byte and so BGRA in memory, hence the BGRA format; with RGBA
+  // the shader would read red and blue swapped.
   fRampTexture:=TpvVulkanTexture.CreateFromMemory(fDevice,
                                                   aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,
                                                   aTransferQueue,aTransferCommandBuffer,aTransferFence,
-                                                  VK_FORMAT_R8G8B8A8_SRGB,
+                                                  VK_FORMAT_B8G8R8A8_SRGB,
                                                   VK_SAMPLE_COUNT_1_BIT,
                                                   RampWidth,
                                                   Rows,

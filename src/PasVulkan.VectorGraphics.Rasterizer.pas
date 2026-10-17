@@ -470,13 +470,15 @@ begin
  result:=round(aValue*pvVectorGraphicsPixelFactor);
 end;
 
-// Straight, non-premultiplied source-over blending, with the same rounding the old renderer
-// used, so that the integer path stays comparable down to the last bit.
+// Straight, non-premultiplied source-over blending. Onto an opaque pixel with the same rounding the
+// old renderer used, so that the integer path stays comparable down to the last bit there; onto a
+// pixel that is not, with the color underneath weighted by its alpha, as the linear path does it.
 function pvVectorGraphicsBlendColor(const aDestination,aSource:TpvVectorGraphicsColor):TpvVectorGraphicsColor;
-var SourceAlpha,DestinationAlpha:TpvUInt32;
+var SourceAlpha,DestinationAlpha,SourceWeight,DestinationWeight,TotalWeight:TpvUInt32;
 begin
 
  SourceAlpha:=aSource shr 24;
+ DestinationAlpha:=aDestination shr 24;
 
  // The two fully transparent and fully opaque cases need no arithmetic at all.
  if SourceAlpha=0 then begin
@@ -487,15 +489,28 @@ begin
 
   result:=aSource;
 
- end else begin
+ end else if DestinationAlpha=255 then begin
 
   // Red and blue are interpolated in one go and green in a second one, so that the two halves
   // never carry into each other.
-  DestinationAlpha:=aDestination shr 24;
   result:=(((aDestination and TpvUInt32($00ff00ff))+
             (((((aSource and TpvUInt32($00ff00ff))-(aDestination and TpvUInt32($00ff00ff)))*SourceAlpha)+TpvUInt32($00800080)) shr 8)) and TpvUInt32($00ff00ff)) or
           (((aDestination and TpvUInt32($0000ff00))+
             (((((aSource and TpvUInt32($0000ff00))-(aDestination and TpvUInt32($0000ff00)))*SourceAlpha)+TpvUInt32($00008000)) shr 8)) and TpvUInt32($0000ff00)) or
+          (TpvUInt32((SourceAlpha+DestinationAlpha)-(((SourceAlpha*DestinationAlpha)+255) shr 8)) shl 24);
+
+ end else begin
+
+  // The color underneath counts by what of it still shows, its alpha times what the source leaves
+  // over, and both are divided by the sum again; over a transparent pixel that leaves the color of
+  // the source as it is. Weights go up to 255*255, so a channel times one stays within 32 bits, and
+  // the sum is never zero, since the source alpha is at least one here.
+  SourceWeight:=SourceAlpha*255;
+  DestinationWeight:=DestinationAlpha*(255-SourceAlpha);
+  TotalWeight:=SourceWeight+DestinationWeight;
+  result:=((((((aSource shr 16) and $ff)*SourceWeight)+(((aDestination shr 16) and $ff)*DestinationWeight)+(TotalWeight shr 1)) div TotalWeight) shl 16) or
+          ((((((aSource shr 8) and $ff)*SourceWeight)+(((aDestination shr 8) and $ff)*DestinationWeight)+(TotalWeight shr 1)) div TotalWeight) shl 8) or
+          (((((aSource and $ff)*SourceWeight)+((aDestination and $ff)*DestinationWeight)+(TotalWeight shr 1)) div TotalWeight)) or
           (TpvUInt32((SourceAlpha+DestinationAlpha)-(((SourceAlpha*DestinationAlpha)+255) shr 8)) shl 24);
 
  end;

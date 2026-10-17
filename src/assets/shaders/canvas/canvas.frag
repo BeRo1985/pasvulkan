@@ -919,12 +919,14 @@ float vectorPathShapeSignedDistance(const vec3 shapeCoord){
 
 // The cheapest of the three coverage modes, and the one the vector path shader has always used.
 // From the distance alone it cannot be told how wide the shape is, so wherever the shape is
-// narrower than a pixel both of its edges claim the pixel for themselves and it comes out solid
-// instead of faint. Everything wider than a pixel it gets right.
+// narrower than a pixel both of its edges claim the pixel for themselves and it comes out at least
+// half covered instead of faint. Everything wider than a pixel it gets right.
 float sampleVectorPathShapeEstimated(const vec3 shapeCoord){
   float signedDistance = vectorPathShapeSignedDistance(shapeCoord);
-  float d = fwidth(signedDistance);
-  return linearstep(d, 0.0, signedDistance);
+  float d = max(fwidth(signedDistance), 1e-8);
+  // Centered on the outline as in the supersampling mode, so a pixel right on the edge is half
+  // covered and the edge stays where the outline is.
+  return clamp(0.5 - (signedDistance / d), 0.0, 1.0);
 }
 
 int vectorPathGreatestCommonDivisor(int a, int b){
