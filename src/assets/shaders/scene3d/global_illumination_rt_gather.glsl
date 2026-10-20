@@ -199,7 +199,9 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
   int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
 
   int geometryInstanceOffset = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
+  int additionalInstanceDataID = 0; // 0 = no additional instance data, see the custom index layout in raytracing.glsl
   if((geometryInstanceOffset & 0x00800000) != 0){
+    additionalInstanceDataID = geometryInstanceOffset & 0x007fffff;
     const int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
     geometryInstanceOffset = int(uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID]);
   }
@@ -282,8 +284,11 @@ GIGatherSurface giGatherClosestHit(const in vec3 origin, const in vec3 direction
         s.backface = false;
       }
 
-      // Base color (texture index 0, sRGB) modulated by the base color factor and vertex color.
-      s.albedo = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).xyz * material.baseColorFactor.xyz * vertexColor.xyz;
+      // Base color (texture index 0, sRGB) modulated by the base color factor, the per instance material colour and the
+      // vertex color, the same order the main shading uses.
+      vec4 albedoBaseColor = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords) * material.baseColorFactor;
+      applyMaterialInstanceColor(uint(additionalInstanceDataID), material.alphaCutOffFlagsTex0Tex1.y, albedoBaseColor);
+      s.albedo = albedoBaseColor.xyz * vertexColor.xyz;
 
       // Emissive (texture index 4, sRGB) modulated by the emissive factor (xyz) and strength (w) and vertex color.
       s.emission = raytracingTextureFetch(material, 4, vec4(1.0), true, texCoords).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * vertexColor.xyz;

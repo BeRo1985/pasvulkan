@@ -505,7 +505,9 @@ void main() {
   // new costly voxelization passes are not required to be performed for these cases. Hence also the name meta voxelization, as the
   // voxelization is just performed for to gather meta data, which is then used for various purposes.
 
-  vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor * inColor0;
+  vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+  applyMaterialInstanceColor(currentInstanceDataIndex, flags, baseColor);
+  baseColor *= inColor0;
 
   vec3 voxelEmission = textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz;
   // GI-only emissive limitation (PASVULKAN_materials_emissive_gi): per-material factor/max (two fp16 packed into the material's
@@ -532,7 +534,11 @@ void main() {
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   uint flags = material.alphaCutOffFlagsTex0Tex1.y;
-  float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w);
+  // The base colour with the per instance material colour, as the shading pass has it, so that depth
+  // and shadows lose the same alpha tested texels as the visible surface does
+  vec4 depthBaseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+  applyMaterialInstanceColor(currentInstanceDataIndex, flags, depthBaseColor);
+  float alpha = ((flags & (1u << 31u)) != 0u) ? 1.0 : (depthBaseColor.w * inColor0.w);
   if((currentInstanceDataIndex > 0u) && ((flags & (1u << 31u)) != 0u)){
     vec4 dummyColor = vec4(1.0);
     if(!applyInstanceDataEffect(uint(currentInstanceDataIndex), dummyColor, vec2(texCoords[0]), uvec2(gl_FragCoord.xy),

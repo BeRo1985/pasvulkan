@@ -45,6 +45,23 @@ bool applyMaterialInstanceDataEffect(const in uint instanceDataIndex,
   }
 
 }
+
+// The per instance material colour as the main shading applies it to the base colour: first the color
+// key matrix for materials flagged for it (material flags bit 25), then the tint of the material's
+// color key slot (material flags bits 17..19). For every other pass that reads a material's base colour
+// or alpha - depth, shadows, voxelization, ray queries - so that they see the same surface, including
+// an alpha tested surface thinned out by the alpha of a tint.
+void applyMaterialInstanceColor(const in uint instanceDataIndex, const in uint materialFlags, inout vec4 color){
+  if(instanceDataIndex > 0u){
+    if((materialFlags & (1u << 25u)) != 0u){
+      applyMaterialInstanceDataEffect(instanceDataIndex, color, vec2(0.0), uvec2(0u), false);
+    }
+    uint materialColorKeySlot = (materialFlags >> 17u) & 7u;
+    if((materialColorKeySlot > 0u) && (materialColorKeySlot <= 4u)){
+      color *= unpackUnorm4x8(instanceDataItems[instanceDataIndex].materialColorKeys[materialColorKeySlot - 1u]);
+    }
+  }
+}
   
 
 bool applyInstanceDataEffect(const in uint instanceDataIndex, inout vec4 color, const in vec2 uv, const in uvec2 fragCoord, const bool forRaytracing){

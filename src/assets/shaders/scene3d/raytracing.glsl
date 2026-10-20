@@ -240,8 +240,10 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                 vec2 texCoords[2] = vec2[2]( vertexTexCoords.xy, vertexTexCoords.zw );
 
                 if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 4u)) != 0u){
-                  // Mask / Alpha Test
-                  float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  // Mask / Alpha Test, with the per instance material colour like the rasterized passes
+                  vec4 baseColor = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords) * material.baseColorFactor;
+                  applyMaterialInstanceColor(uint(additionalInstanceDataID), material.alphaCutOffFlagsTex0Tex1.y, baseColor);
+                  float alpha = baseColor.w * vertexColor.w;
                   if(additionalInstanceDataID > 0){
                     // Apply instance effect
                     vec4 dummyColor = vec4(1.0);
@@ -257,8 +259,10 @@ void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool 
                     }
                   }              
                 }else if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 5u)) != 0u){
-                  // Blend / Alpha Blend
-                  float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  // Blend / Alpha Blend, with the per instance material colour like the rasterized passes
+                  vec4 baseColor = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords) * material.baseColorFactor;
+                  applyMaterialInstanceColor(uint(additionalInstanceDataID), material.alphaCutOffFlagsTex0Tex1.y, baseColor);
+                  float alpha = baseColor.w * vertexColor.w;
                   if(additionalInstanceDataID > 0){
                     // Apply instance effect
                     vec4 dummyColor = vec4(1.0);
