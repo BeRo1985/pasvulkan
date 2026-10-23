@@ -3431,7 +3431,7 @@ begin
  RawComponents[1,0]:=((1.0-CosinusAngle)*Axis.x*Axis.y)-(Axis.z*SinusAngle);
  RawComponents[2,0]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.y*SinusAngle);
  RawComponents[0,3]:=0.0;
- RawComponents[0,1]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.z*SinusAngle);
+ RawComponents[0,1]:=((1.0-CosinusAngle)*Axis.x*Axis.y)+(Axis.z*SinusAngle);
  RawComponents[1,1]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.y));
  RawComponents[2,1]:=((1.0-CosinusAngle)*Axis.y*Axis.z)-(Axis.x*SinusAngle);
  RawComponents[1,3]:=0.0;
