@@ -3230,6 +3230,10 @@ type EpvScene3D=class(Exception);
                           TSkins=array of TpvScene3D.TGroup.TInstance.TSkin;
                           TNodeIndices=array of TpvSizeInt;
                           TOnNodeMatrix=function(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4):Boolean of object;
+                          // Gets the morph target weights of a node with morph targets once the animations and
+                          // overwrites are blended, and may change them in place, so for example a blink can be
+                          // laid over whatever the clips do. Result true when something was changed.
+                          TOnNodeWeights=function(const aInstance:TInstance;aNode,aInstanceNode:pointer;var aWeights:TpvFloatDynamicArray):Boolean of object;
                           TNodeMatrices=array of TpvMatrix4x4;
                           TMorphTargetVertexWeights=array of TpvFloat;
                           { TLight }
@@ -3766,6 +3770,7 @@ type EpvScene3D=class(Exception);
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
+                     fOnNodeWeights:TOnNodeWeights;
                      fActiveRenderPasses:TpvScene3DRendererRenderPasses;
                      fOnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate;
                      fUploaded:boolean;
@@ -4023,6 +4028,9 @@ type EpvScene3D=class(Exception);
                     published
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
+                     // Not called on updates that skip the instance as a whole (InstanceUpdateDirtySkippable),
+                     // so a hook with weights that change on their own has to keep those from happening.
+                     property OnNodeWeights:TOnNodeWeights read fOnNodeWeights write fOnNodeWeights;
                      property ActiveRenderPasses:TpvScene3DRendererRenderPasses read fActiveRenderPasses write SetActiveRenderPasses;
                      property OnUpdate:TpvScene3D.TGroup.TInstance.TOnUpdate read fOnUpdate write fOnUpdate;
                    end;
@@ -31815,6 +31823,7 @@ begin
     (InstanceNode.fCountOverwrites=0) and
     (not assigned(fOnNodeMatrixPre)) and
     (not assigned(fOnNodeMatrixPost)) and
+    (not assigned(fOnNodeWeights)) and
     (InstanceNode.fSubtreeCleanInFlightFrameGenerations[aInFlightFrameIndex]=InstanceNode.fSubtreeCleanGeneration) and
     (InstanceNode.fSubtreeCleanGeneration>0) then begin
   exit;
@@ -32029,6 +32038,12 @@ begin
    InstanceNode.fWorkWeights[Index]:=Node.fWeights.Items[Index];
   end;
  end;
+ // The weights are final now on every path above, so the hook gets the last word on them
+ if assigned(fOnNodeWeights) and (length(InstanceNode.fWorkWeights)>0) then begin
+  if fOnNodeWeights(self,Node,InstanceNode,InstanceNode.fWorkWeights) then begin
+   Dirty:=true;
+  end;
+ end;
 //InstanceNode.fWorkMatrices[aInFlightFrameIndex]:=Matrix;
  if assigned(Node.fMesh) then begin
   // The determinant sign can only change together with the work matrix
@@ -32172,7 +32187,8 @@ begin
  if (aInFlightFrameIndex>=0) and (not Dirty) and (not MatrixDirty) and
     (InstanceNode.fCountOverwrites=0) and
     (not assigned(fOnNodeMatrixPre)) and
-    (not assigned(fOnNodeMatrixPost)) then begin
+    (not assigned(fOnNodeMatrixPost)) and
+    (not assigned(fOnNodeWeights)) then begin
   SubtreeClean:=true;
   for Index:=0 to Node.Children.Count-1 do begin
    if fNodes.RawItems[Node.Children[Index].Index].fSubtreeCleanInFlightFrameGenerations[aInFlightFrameIndex]<>
@@ -33013,7 +33029,8 @@ begin
            (fLights.Count=0) and
            (fCameras.Count=0) and
            (not assigned(fOnNodeMatrixPre)) and
-           (not assigned(fOnNodeMatrixPost));
+           (not assigned(fOnNodeMatrixPost)) and
+           (not assigned(fOnNodeWeights));
   end else begin
    fAnimationUpdateCountdown:=fAnimationUpdateInterval-1;
   end;

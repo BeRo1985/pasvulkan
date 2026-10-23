@@ -4836,7 +4836,7 @@ begin
  m[0,0]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.x));
  m[1,0]:=((1.0-CosinusAngle)*Axis.x*Axis.y)-(Axis.z*SinusAngle);
  m[2,0]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.y*SinusAngle);
- m[0,1]:=((1.0-CosinusAngle)*Axis.x*Axis.z)+(Axis.z*SinusAngle);
+ m[0,1]:=((1.0-CosinusAngle)*Axis.x*Axis.y)+(Axis.z*SinusAngle);
  m[1,1]:=CosinusAngle+((1.0-CosinusAngle)*sqr(Axis.y));
  m[2,1]:=((1.0-CosinusAngle)*Axis.y*Axis.z)-(Axis.x*SinusAngle);
  m[0,2]:=((1.0-CosinusAngle)*Axis.x*Axis.z)-(Axis.y*SinusAngle);
@@ -5490,7 +5490,7 @@ begin
  m[0,0]:=CosinusAngle+((1-CosinusAngle)*Axis.x*Axis.x);
  m[1,0]:=((1-CosinusAngle)*Axis.x*Axis.y)-(Axis.z*SinusAngle);
  m[2,0]:=((1-CosinusAngle)*Axis.x*Axis.z)+(Axis.y*SinusAngle);
- m[0,1]:=((1-CosinusAngle)*Axis.x*Axis.z)+(Axis.z*SinusAngle);
+ m[0,1]:=((1-CosinusAngle)*Axis.x*Axis.y)+(Axis.z*SinusAngle);
  m[1,1]:=CosinusAngle+((1-CosinusAngle)*Axis.y*Axis.y);
  m[2,1]:=((1-CosinusAngle)*Axis.y*Axis.z)-(Axis.x*SinusAngle);
  m[0,2]:=((1-CosinusAngle)*Axis.x*Axis.z)-(Axis.y*SinusAngle);
