@@ -110,6 +110,11 @@ type { TpvScene3DRendererInstance }
              // longest streak the filter can draw: it never walks further than the fastest velocity in a
              // tile's neighbourhood, and that summary is one texel per tile. Sixteen because it divides
              // every sensible resolution and keeps the two tile buffers small.
+             //
+             // Pixels of the velocity buffer, that is, at the render resolution. The filter itself runs
+             // on the full-sized picture behind the tone mapping, so measured there a tile is
+             // MotionBlurTileSize/SizeFactor pixels wide: the same share of the rendered detail at every
+             // size factor, and without upscaling the same sixteen pixels either way.
              MotionBlurTileSize=16;
              // What the volumetric scattering marches and blurs at, as a divisor of the surface size, when
              // nothing says otherwise. The result is smooth by its nature and gets blurred again
@@ -6149,13 +6154,25 @@ begin
  // The two tile buffers of the motion blur, and what its filter writes into. The tile buffers hold a
  // velocity in pixels, so two channels and a float format; they are one texel per MotionBlurTileSize
  // pixels, and the two passes that fill them are sized to match.
+ //
+ // The two sides are at different resolutions when the picture is upscaled. The tile buffers summarise
+ // the velocity buffer, so they follow it at fSizeFactor and count in its pixels. The filter's target
+ // follows the picture it filters instead, the tone-mapped one, which is at full resolution, and the
+ // filter maps between the two itself (see motionblur.comp).
+ //
+ // The tile count is rounded up, not to the nearest: where the velocity buffer is no whole number of
+ // tiles wide or high, the last column or row of tiles is a partial one rather than none at all. Rounded
+ // to the nearest, a remainder that rounds down would fall into no tile - less than half a tile, and
+ // exactly half where round-half-to-even goes down: 1366 pixels across would give 85 tiles, 1360 pixels,
+ // and 1800 down 112 tiles, 1792 pixels - and whatever moves in those last pixels would never be
+ // summarised and so never smeared. The tile-max pass skips the texels a partial tile does not have.
  if Renderer.MotionBlurActive then begin
   fFrameGraph.AddImageResourceType('resourcetype_motionblur_tile',
                                    false,
                                    VK_FORMAT_R16G16_SFLOAT,
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
-                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependentCeil,
                                                                    fSizeFactor/TpvScene3DRendererInstance.MotionBlurTileSize,
                                                                    fSizeFactor/TpvScene3DRendererInstance.MotionBlurTileSize,
                                                                    1.0,
@@ -6163,12 +6180,15 @@ begin
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
                                    1
                                   );
+  // 1.0, not fSizeFactor: the motion blur runs behind the tone mapping, where everything - tone mapping
+  // output, radial blur, selection outline compose, canvas, HUD - is at full resolution, and its output
+  // becomes LastOutputResource for all of those
   fFrameGraph.AddImageResourceType('resourcetype_color_motionblur',
                                    false,
                                    VK_FORMAT_R16G16B16A16_SFLOAT,
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
-                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
                                    TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
                                    1
                                   );

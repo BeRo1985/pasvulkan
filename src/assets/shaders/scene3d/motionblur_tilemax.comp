@@ -17,6 +17,9 @@
 //
 // The velocity buffer is in normalized screen units (what the temporal antialiasing wants). It is turned
 // into pixels here and stays in pixels from here on, because everything downstream measures in pixels.
+// Pixels of the velocity buffer, that is, at the render resolution, like the tiles themselves: the filter
+// runs on the full-sized picture behind the tone mapping and scales them over into its own pixels where
+// the picture is upscaled.
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -40,6 +43,9 @@ void main(){
   ivec3 velocitySize = ivec3(textureSize(uTextureVelocity, 0));
   ivec2 at = (tile * pushConstants.tileSize) + ivec2(gl_LocalInvocationID.xy);
 
+  // The last column and row of tiles are partial ones wherever the velocity buffer is no whole number of
+  // tiles across: the tile buffer is rounded up so that they exist at all. Their texels past the edge are
+  // not read and count as standing still, so a partial tile holds the fastest of the texels it does have.
   vec2 velocity = vec2(0.0);
   if(all(lessThan(at, velocitySize.xy)) && all(lessThan(ivec2(gl_LocalInvocationID.xy), ivec2(pushConstants.tileSize)))){
     velocity = texelFetch(uTextureVelocity, ivec3(at, layer), 0).xy * vec2(velocitySize.xy);

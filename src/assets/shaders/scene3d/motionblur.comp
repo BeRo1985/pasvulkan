@@ -62,6 +62,14 @@ float linearDepth(const in float aDepth){
   return pushConstants.strengthTileSizeSoftZDepthUnproject.w / max(aDepth, 1e-7);
 }
 
+// The texel of the velocity and depth buffers that a pixel of the picture lies over. Those two are at the
+// render resolution and the picture at the output resolution, so with upscaling several pixels of the
+// picture share one texel there, and with supersampling a pixel takes one of the several under it.
+// Without either the scale is exactly one and this is the pixel itself.
+ivec3 renderTexel(const in ivec2 aAt, const in int aLayer, const in vec2 aScale, const in ivec2 aRenderSize){
+  return ivec3(min(ivec2((vec2(aAt) + vec2(0.5)) * aScale), aRenderSize - ivec2(1)), aLayer);
+}
+
 void main(){
 
   ivec3 destinationSize = imageSize(uDestinationTexture);
@@ -87,14 +95,30 @@ void main(){
 
   int tileSize = int(pushConstants.strengthTileSizeSoftZDepthUnproject.y);
 
+  // Two resolutions meet here. The picture is filtered where it is, behind the tone mapping and so at the
+  // output resolution; the velocity and the depth, and the two tile buffers made from the velocity, are at
+  // the render resolution. Every lookup into those is therefore taken at the texel the pixel lies over
+  // there, and every length the filter compares is in pixels of the picture: the velocity buffer is in
+  // normalized screen units and is scaled by the picture's size below, and the tiles, which the tile
+  // passes measure in pixels of the velocity buffer, are scaled over by the ratio of the two sizes.
+  // Without upscaling both ratios are one and nothing changes - exactly one, set rather than divided out,
+  // because a division on the GPU may be off in its last bits and the tile lookup would carry that.
+  ivec2 renderSize = textureSize(uTextureVelocity, 0).xy;
+  bool sameResolution = all(equal(renderSize, destinationSize.xy));
+  vec2 outputToRender = sameResolution ? vec2(1.0) : (vec2(renderSize) / size);
+  vec2 renderToOutput = sameResolution ? vec2(1.0) : (size / vec2(renderSize));
+
   // The tile buffer is read smoothly rather than tile by tile - this is the one input taken with a linear
   // sampler. One velocity per 16x16 tile, read exactly, puts the tile grid into the picture: whether a
   // pixel is smeared at all then depends on which tile it happened to fall in, and whole blocks differ
   // from the blocks beside them. Read between the tiles, the reach grows and shrinks across the picture
   // instead of stepping. The half pixel places the sample on the tile centre, where the value belongs.
+  // A partial last tile, where the velocity buffer is no whole number of tiles across, starts on the same
+  // grid as all the others, so dividing by the tile size and then by the count of tiles still lands every
+  // pixel in the tile its texel was summarised in.
   vec2 countTiles = vec2(textureSize(uTextureNeighbourMax, 0).xy);
-  vec2 tileCoord = ((vec2(at.xy) + vec2(0.5)) / float(tileSize)) / countTiles;
-  vec2 neighbourVelocity = texture(uTextureNeighbourMax, vec3(tileCoord, float(layer))).xy * strength;
+  vec2 tileCoord = (((vec2(at.xy) + vec2(0.5)) * outputToRender) / float(tileSize)) / countTiles;
+  vec2 neighbourVelocity = (texture(uTextureNeighbourMax, vec3(tileCoord, float(layer))).xy * renderToOutput) * strength;
 
   // How much of the filtered result is taken in the end, nothing below the minimum and all of it a pixel
   // of speed above. Nothing means nothing is computed, so the early-out is still an early-out.
@@ -106,8 +130,9 @@ void main(){
 
   float softZ = pushConstants.strengthTileSizeSoftZDepthUnproject.z;
 
-  vec2 velocityHere = (texelFetch(uTextureVelocity, at, 0).xy * size) * strength;
-  float depthHere = linearDepth(texelFetch(uTextureDepth, at, 0).x);
+  ivec3 renderHere = renderTexel(at.xy, layer, outputToRender, renderSize);
+  vec2 velocityHere = (texelFetch(uTextureVelocity, renderHere, 0).xy * size) * strength;
+  float depthHere = linearDepth(texelFetch(uTextureDepth, renderHere, 0).x);
 
   // The centre sample is weighted by the inverse of its own speed, so a pixel that is itself moving fast
   // contributes little to itself - it is, after all, smeared elsewhere too.
@@ -129,10 +154,11 @@ void main(){
     ivec2 otherXY = ivec2((vec2(at.xy) + (neighbourVelocity * along)) + vec2(0.5));
     otherXY = clamp(otherXY, ivec2(0), destinationSize.xy - ivec2(1));
     ivec3 other = ivec3(otherXY, layer);
+    ivec3 renderOther = renderTexel(otherXY, layer, outputToRender, renderSize);
 
     float distanceToOther = length(vec2(at.xy - otherXY));
-    vec2 velocityOther = (texelFetch(uTextureVelocity, other, 0).xy * size) * strength;
-    float depthOther = linearDepth(texelFetch(uTextureDepth, other, 0).x);
+    vec2 velocityOther = (texelFetch(uTextureVelocity, renderOther, 0).xy * size) * strength;
+    float depthOther = linearDepth(texelFetch(uTextureDepth, renderOther, 0).x);
 
     // Could the other pixel have reached here, and could this one have reached there? Both are asked,
     // because the first covers the other pixel smearing onto this one and the second covers this one

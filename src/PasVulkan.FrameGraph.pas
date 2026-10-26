@@ -201,7 +201,12 @@ type EpvFrameGraph=class(Exception);
                      SurfaceDependent,
                      SurfaceDependentPreviousPowerOfTwo,
                      SurfaceDependentNextPowerOfTwo,
-                     SurfaceDependentNearestPowerOfTwo
+                     SurfaceDependentNearestPowerOfTwo,
+                     // Like SurfaceDependent, but rounded up rather than to the nearest. For images that
+                     // summarise the surface in blocks: with a factor of 1/n there is a texel for every
+                     // n texels of the surface, the last, partial block included, where rounding to the
+                     // nearest would drop it whenever the remainder rounds down.
+                     SurfaceDependentCeil
                     );
                    PImageSizeKind=^TImageSizeKind;
                    TKind=TImageSizeKind;
@@ -2213,6 +2218,12 @@ begin
   TpvFrameGraph.TImageSize.TKind.SurfaceDependentNearestPowerOfTwo:begin
    fExtent.width:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
    fExtent.height:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
+  end;
+  TpvFrameGraph.TImageSize.TKind.SurfaceDependentCeil:begin
+   fExtent.width:=Max(1,Ceil(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
+   fExtent.height:=Max(1,Ceil(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
    AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
   end;
@@ -4373,6 +4384,15 @@ begin
    TpvFrameGraph.TImageSize.TKind.SurfaceDependentNearestPowerOfTwo:begin
     Width:=Max(1,RoundNearestToPowerOfTwo(round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth)));
     Height:=Max(1,RoundNearestToPowerOfTwo(round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight)));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
+    end;
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependentCeil:begin
+    Width:=Max(1,Ceil(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
+    Height:=Max(1,Ceil(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
     if fMultiview then begin
      Layers:=1;
     end else begin
