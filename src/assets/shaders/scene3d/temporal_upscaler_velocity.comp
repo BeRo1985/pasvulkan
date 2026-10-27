@@ -1,0 +1,78 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// The motion vectors as a temporal upscaler gets them: those of the velocity buffer, and for every pixel
+// with nothing drawn into it - the sky, the atmosphere, the clouds, the skybox, which all write no velocity -
+// the motion of the camera alone, as if the pixel were a point at the far plane.
+//
+// Such a pixel is unprojected with the current view and projected again with the previous one, which for an
+// infinite far plane is a direction and so takes the rotation of the camera only, as it should for the sky.
+// The result is written in the convention of the velocity buffer: half the difference of the current and
+// the previous position in clip space, each without its jitter.
+//
+// The temporal antialiasing reads the velocity buffer itself and never this one; it gets along without
+// motion for the sky in its own way.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureVelocity;
+layout(set = 0, binding = 2) uniform sampler2DArray uTextureDepth;
+
+layout(set = 0, binding = 3, rg16f) writeonly uniform image2DArray uDestinationTexture;
+
+layout(push_constant) uniform PushConstants {
+  uint viewBaseIndex;
+  uint countAllViews; // the previous frame's views follow the current ones at this offset
+  float farDepth;     // the depth of nothing drawn: 0.0 for the reversed depth, 1.0 for the ordinary one
+  float unused;
+  vec4 jitter;        // xy of this frame, zw of the previous one, as clip space offsets
+} pushConstants;
+
+void main(){
+
+  ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
+
+  ivec3 size = imageSize(uDestinationTexture);
+
+  if(any(greaterThanEqual(at, size))){
+    return;
+  }
+
+  vec2 velocity = texelFetch(uTextureVelocity, at, 0).xy;
+
+  float depth = texelFetch(uTextureDepth, at, 0).x;
+
+  if(depth == pushConstants.farDepth){
+
+    View view = uView.views[pushConstants.viewBaseIndex + uint(at.z)];
+    View previousView = uView.views[pushConstants.viewBaseIndex + uint(at.z) + pushConstants.countAllViews];
+
+    // The pixel centre in clip space, through the jittered projection the frame was rendered with.
+    vec2 clipSpacePosition = fma((vec2(at.xy) + vec2(0.5)) / vec2(size.xy), vec2(2.0), vec2(-1.0));
+
+    vec4 worldSpacePosition = view.inverseViewMatrix * (view.inverseProjectionMatrix * vec4(clipSpacePosition, depth, 1.0));
+
+    vec4 previousClipSpacePosition = previousView.projectionMatrix * (previousView.viewMatrix * worldSpacePosition);
+
+    if(abs(previousClipSpacePosition.w) > 1e-7){
+      velocity = ((clipSpacePosition - pushConstants.jitter.xy) - ((previousClipSpacePosition.xy / previousClipSpacePosition.w) - pushConstants.jitter.zw)) * 0.5;
+    }
+
+  }
+
+  imageStore(uDestinationTexture, at, vec4(velocity, 0.0, 0.0));
+
+}

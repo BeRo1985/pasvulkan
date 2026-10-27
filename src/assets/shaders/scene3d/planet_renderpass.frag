@@ -326,6 +326,7 @@ vec3 workNormal;
 #include "pbr.glsl"
 #endif
 #include "blendnormals.glsl"
+#define DECAL_TEXTURE_LOD_BIAS pushConstants.textureLodBias
 #include "decals.glsl"
 #include "meshlet.glsl"
 
@@ -371,7 +372,11 @@ void main(){
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  multiplanarSetup(inBlock.triplanarPosition, dFdx(inBlock.triplanarPosition), dFdy(inBlock.triplanarPosition), triplanarNormal);
+  // The gradients scaled by the texture LOD bias of a temporal upscaler, so the terrain keeps the detail of
+  // the output resolution rather than that of the smaller render resolution. The bias is 0.0 otherwise, and
+  // the factor so exactly 1.0.
+  float textureLodBiasScale = exp2(pushConstants.textureLodBias);
+  multiplanarSetup(inBlock.triplanarPosition, dFdx(inBlock.triplanarPosition) * textureLodBiasScale, dFdy(inBlock.triplanarPosition) * textureLodBiasScale, triplanarNormal);
 
   if((planetData.flagsResolutions.x & (1u << 2u)) != 0){
     parallaxMapping();

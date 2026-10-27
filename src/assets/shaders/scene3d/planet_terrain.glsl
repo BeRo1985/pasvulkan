@@ -47,6 +47,12 @@ layout(push_constant) uniform PushConstants {
   // Fifth uvec4
   vec4 raytracingOffsetConstants;
 
+  // Sixth uvec4
+  float textureLodBias; // log2 bias of the material texture sampling, non-zero only with a temporal upscaler
+  float unused0;
+  float unused1;
+  float unused2;
+
 } pushConstants;
 
 #if defined(USE_BUFFER_REFERENCE)

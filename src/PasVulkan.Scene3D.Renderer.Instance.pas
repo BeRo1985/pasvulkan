@@ -2245,6 +2245,8 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.ResamplingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.EASURCASComputePass,
      PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerVelocityComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerReactiveComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CNNUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
@@ -2408,6 +2410,8 @@ type TpvScene3DRendererInstancePasses=class
        fEASURCASComputePass:TpvScene3DRendererPassesEASURCASComputePass;
        fCNNUpscalerComputePass:TpvScene3DRendererPassesCNNUpscalerComputePass;
        fTemporalUpscalerComputePass:TpvScene3DRendererPassesTemporalUpscalerComputePass;
+       fTemporalUpscalerVelocityComputePass:TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass;
+       fTemporalUpscalerReactiveComputePass:TpvScene3DRendererPassesTemporalUpscalerReactiveComputePass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
@@ -4742,6 +4746,9 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     PreLastPass:TpvFrameGraph.TPass;
     LastPass:TpvFrameGraph.TPass;
     CascadedShadowMapCullDepthLastRenderPass:TpvFrameGraph.TPass;
+    // The picture as the depth of field gets it, whose alpha channel the temporal upscaler's reactive pass
+    // reads, since the depth of field writes one of its own.
+    PreDepthOfFieldOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
     InFlightFrameIndex,CascadeIndex,ImageIndex,Index:TpvSizeInt;
     Format:TVkFormat;
     // The surface fraction the volumetric buffers are made at, from the divisor property. Worked out once
@@ -6333,6 +6340,33 @@ begin
                                   1
                                  );
 
+ // The velocity as the temporal upscaler reads it, with the camera motion filled in where nothing was
+ // drawn, see TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass.
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  // The colour attachment usage is there for the frame graph, which brings an image into its first layout
+  // that way, as with the other compute outputs.
+  fFrameGraph.AddImageResourceType('resourcetype_temporal_upscaler_velocity',
+                                   false,
+                                   VK_FORMAT_R16G16_SFLOAT,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+  // How much each pixel should follow the current frame over its history, see
+  // TpvScene3DRendererPassesTemporalUpscalerReactiveComputePass.
+  fFrameGraph.AddImageResourceType('resourcetype_temporal_upscaler_reactive',
+                                   false,
+                                   VK_FORMAT_R8_UNORM,
+                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                   TpvFrameGraph.TImageType.Color,
+                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   1
+                                  );
+ end;
+
  fFrameGraph.AddImageResourceType('resourcetype_normals',
                                   false,
                                   VK_FORMAT_A2B10G10R10_UNORM_PACK32,
@@ -7748,6 +7782,8 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   end;
  end;
 
+ PreDepthOfFieldOutputResource:=LastOutputResource;
+
 (**)
  if (Renderer.DepthOfFieldMode<>TpvScene3DRendererDepthOfFieldMode.None) and not assigned(VirtualReality) then begin
 
@@ -7802,8 +7838,16 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
  // antialiasing alone. It stands behind the depth of field, which needs depth and color on the same
  // jittered grid, and before the lens effects, which then run at output resolution.
  if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerVelocityComputePass:=TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerVelocityComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerReactiveComputePass:=TpvScene3DRendererPassesTemporalUpscalerReactiveComputePass.Create(fFrameGraph,
+                                                                                                                                                       self,
+                                                                                                                                                       PreDepthOfFieldOutputResource,
+                                                                                                                                                       (Renderer.DepthOfFieldMode<>TpvScene3DRendererDepthOfFieldMode.None) and not assigned(VirtualReality));
   TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass:=TpvScene3DRendererPassesTemporalUpscalerComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerVelocityComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerReactiveComputePass);
  end else if not (GetPostProcessingAtScaledResolution or SameValue(fSizeFactor,1.0)) then begin
   // Resampling BEFORE Lens passes
   if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin

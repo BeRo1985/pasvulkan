@@ -94,7 +94,9 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
              LanczosLUTWidth=128;
              CountSPDMipViews=6;
        type // The passes as they are dispatched. AccumulateSharpen is Accumulate built for the RCAS pass
-            // behind it, which then writes the output instead.
+            // behind it, which then writes the output instead. DebugView draws, when asked for, six views of
+            // the inputs and the internal state over the output, in a grid of three by three with the
+            // picture itself left in the middle row.
             TPass=
              (
               PrepareInputs,
@@ -105,7 +107,8 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
               LumaInstability,
               Accumulate,
               AccumulateSharpen,
-              RCAS
+              RCAS,
+              DebugView
              );
             // The internal images, as the SDK's internal resource identifiers. DilatedDepth,
             // DilatedMotionVectors and ReconstructedPreviousNearestDepth are the three the SDK leaves to the
@@ -930,6 +933,15 @@ begin
    Add(3,TBindingKind.UniformBuffer,TResource.ConstantsFSR3Upscaler);
    Add(4,TBindingKind.UniformBuffer,TResource.ConstantsRCAS);
   end;
+  TPass.DebugView:begin
+   Add(0,TBindingKind.SampledImage,TResource.DilatedReactiveMasks);
+   Add(1,TBindingKind.SampledImage,TResource.DilatedMotionVectors);
+   Add(2,TBindingKind.SampledImage,TResource.DilatedDepth);
+   Add(3,TBindingKind.SampledImage,TResource.InternalUpscaledWrite);
+   Add(4,TBindingKind.SampledImage,TResource.InputExposure);
+   Add(5,TBindingKind.StorageImage,TResource.UpscaledOutput);
+   Add(6,TBindingKind.UniformBuffer,TResource.ConstantsFSR3Upscaler);
+  end;
  end;
  // s_PointClamp and s_LinearClamp, declared by the shared callbacks of every pass.
  Add(1000,TBindingKind.Sampler,TResource.PointClampSampler);
@@ -968,8 +980,11 @@ begin
     result:=result+'_sharpen';
    end;
   end;
-  else {TPass.RCAS:}begin
+  TPass.RCAS:begin
    result:='fsr3upscaler_rcas';
+  end;
+  else {TPass.DebugView:}begin
+   result:='fsr3upscaler_debug_view';
   end;
  end;
  if fInvertedDepth then begin
@@ -1581,6 +1596,10 @@ begin
                    (fConstants.UpscaleSize[1]+(ThreadGroupWorkRegionDimRCAS-1)) div ThreadGroupWorkRegionDimRCAS);
  end else begin
   ScheduleDispatch(aCommandBuffer,aInFlightFrameIndex,Parity,TPass.Accumulate,DispatchDstX,DispatchDstY);
+ end;
+
+ if aDescription.DebugView then begin
+  ScheduleDispatch(aCommandBuffer,aInFlightFrameIndex,Parity,TPass.DebugView,DispatchDstX,DispatchDstY);
  end;
 
  fResourceFrameIndex:=(fResourceFrameIndex+1) and 15;

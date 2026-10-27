@@ -280,6 +280,7 @@ begin
  fRenderer.TemporalUpscaler:=UnitApplication.Application.TemporalUpscaler;
  fRenderer.TemporalUpscalerQuality:=UnitApplication.Application.TemporalUpscalerQuality;
  fRenderer.TemporalUpscalerSharpness:=UnitApplication.Application.TemporalUpscalerSharpness;
+ fRenderer.TemporalUpscalerDebugView:=UnitApplication.Application.TemporalUpscalerDebugView;
  fRenderer.FrameGeneration:=UnitApplication.Application.FrameGeneration;
  fRenderer.CountGeneratedFrames:=UnitApplication.Application.CountGeneratedFrames;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;

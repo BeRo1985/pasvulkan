@@ -621,6 +621,10 @@ compileshaderarguments=(
   "-V resampling_rcas.comp -o ${tempPath}/resampling_rcas_comp.spv"
   "-V resampling_rcas.comp -DMULTIVIEW -o ${tempPath}/resampling_rcas_multiview_comp.spv"
 
+  "-V temporal_upscaler_velocity.comp -o ${tempPath}/temporal_upscaler_velocity_comp.spv"
+  "-V temporal_upscaler_reactive.comp -o ${tempPath}/temporal_upscaler_reactive_comp.spv"
+  "-V temporal_upscaler_reactive.comp -DDEPTHOFFIELD -o ${tempPath}/temporal_upscaler_reactive_depthoffield_comp.spv"
+
   "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_inverteddepth_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_luma_pyramid_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_luma_pyramid_comp.spv"
@@ -643,6 +647,8 @@ compileshaderarguments=(
   "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=1 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=1 -o ${tempPath}/fsr3upscaler_accumulate_lut_sharpen_inverteddepth_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_rcas_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_rcas_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_rcas_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_rcas_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_debug_view_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_debug_view_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_debug_view_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_debug_view_inverteddepth_comp.spv"
 
   "-V cnn_conv_forward.comp -o ${tempPath}/cnn_conv_forward_comp.spv"
   "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"

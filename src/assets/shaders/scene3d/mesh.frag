@@ -332,6 +332,7 @@ float diffuseTransmissionThickness = 1.0;
 #include "lighting.glsl"
 #undef LIGHTING_GLOBALS
 
+#define DECAL_TEXTURE_LOD_BIAS pushConstants.textureLodBias
 #include "decals.glsl"
 
 #endif // !defined(DEPTHONLY) || defined(VOXELIZATION)

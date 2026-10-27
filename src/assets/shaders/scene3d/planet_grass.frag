@@ -148,6 +148,7 @@ layout(set = 2, binding = 2) uniform usampler2D uGrassFlagsMap; // GrassFlagsMap
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
+#define DECAL_TEXTURE_LOD_BIAS pushConstants.textureLodBias
 #include "decals.glsl"
 
 #define LIGHTING_GLOBALS

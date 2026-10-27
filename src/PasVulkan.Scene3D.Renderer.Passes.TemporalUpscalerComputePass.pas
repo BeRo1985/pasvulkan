@@ -92,6 +92,7 @@ type { TpvScene3DRendererPassesTemporalUpscalerComputePass }
        type TLayerImageViews=record
              Color:TpvVulkanImageView;
              MotionVectors:TpvVulkanImageView;
+             Reactive:TpvVulkanImageView;
              Output:TpvVulkanImageView;
             end;
             TLayerImageViewsArray=array of TLayerImageViews;
@@ -99,6 +100,7 @@ type { TpvScene3DRendererPassesTemporalUpscalerComputePass }
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceMotionVectors:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceReactive:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fBackends:array of TpvScene3DRendererTemporalUpscalerBackend;
        fDepthImageViews:array of TpvVulkanImageView;
@@ -136,11 +138,21 @@ begin
                                []
                               );
 
- fResourceMotionVectors:=AddImageInput('resourcetype_velocity',
-                                       'resource_velocity_data',
+ // The velocity with the camera motion filled in where nothing was drawn, which the velocity pass before
+ // this one makes.
+ fResourceMotionVectors:=AddImageInput('resourcetype_temporal_upscaler_velocity',
+                                       'resource_temporal_upscaler_velocity',
                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                        []
                                       );
+
+ // How much each pixel should follow the current frame, from the transparency and the depth of field,
+ // which the reactive pass before this one makes.
+ fResourceReactive:=AddImageInput('resourcetype_temporal_upscaler_reactive',
+                                  'resource_temporal_upscaler_reactive',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  []
+                                 );
 
  // The depth is not taken from the graph: it comes from FinalDepthArray2DImage, which the depth resolve
  // leaves behind, and which the instance makes this pass wait for.
@@ -192,7 +204,7 @@ end;
 procedure TpvScene3DRendererPassesTemporalUpscalerComputePass.AcquireVolatileResources;
 var InFlightFrameIndex,ViewIndex,CountViews:TpvSizeInt;
     Inputs:TpvScene3DRendererTemporalUpscalerBackend.TInputs;
-    ColorFormat,MotionVectorsFormat,OutputFormat:TVkFormat;
+    ColorFormat,MotionVectorsFormat,ReactiveFormat,OutputFormat:TVkFormat;
     InvertedDepth,InfiniteDepth:boolean;
 begin
 
@@ -202,6 +214,7 @@ begin
 
  ColorFormat:=TpvFrameGraph.TImageResourceType(fResourceColor.ResourceType).Format;
  MotionVectorsFormat:=TpvFrameGraph.TImageResourceType(fResourceMotionVectors.ResourceType).Format;
+ ReactiveFormat:=TpvFrameGraph.TImageResourceType(fResourceReactive.ResourceType).Format;
  OutputFormat:=TpvFrameGraph.TImageResourceType(fResourceOutput.ResourceType).Format;
 
  // A negative far plane is the renderer's reversed depth, and an infinite one is the reversed infinite
@@ -252,6 +265,11 @@ begin
                                                                                       ViewIndex,
                                                                                       'TemporalUpscaler.MotionVectors['+IntToStr(InFlightFrameIndex)+','+IntToStr(ViewIndex)+']');
 
+   fLayerImageViews[InFlightFrameIndex,ViewIndex].Reactive:=CreateLayerImageView(fResourceReactive.VulkanImages[InFlightFrameIndex],
+                                                                                 ReactiveFormat,
+                                                                                 ViewIndex,
+                                                                                 'TemporalUpscaler.Reactive['+IntToStr(InFlightFrameIndex)+','+IntToStr(ViewIndex)+']');
+
    fLayerImageViews[InFlightFrameIndex,ViewIndex].Output:=CreateLayerImageView(fResourceOutput.VulkanImages[InFlightFrameIndex],
                                                                                OutputFormat,
                                                                                ViewIndex,
@@ -279,6 +297,12 @@ begin
     Inputs.MotionVectors.Width:=fInstance.ScaledWidth;
     Inputs.MotionVectors.Height:=fInstance.ScaledHeight;
 
+    Inputs.Reactive.Image:=fResourceReactive.VulkanImages[InFlightFrameIndex].Handle;
+    Inputs.Reactive.ImageView:=fLayerImageViews[InFlightFrameIndex,ViewIndex].Reactive.Handle;
+    Inputs.Reactive.Format:=ReactiveFormat;
+    Inputs.Reactive.Width:=fInstance.ScaledWidth;
+    Inputs.Reactive.Height:=fInstance.ScaledHeight;
+
     Inputs.Output.Image:=fResourceOutput.VulkanImages[InFlightFrameIndex].Handle;
     Inputs.Output.ImageView:=fLayerImageViews[InFlightFrameIndex,ViewIndex].Output.Handle;
     Inputs.Output.Format:=OutputFormat;
@@ -305,6 +329,7 @@ begin
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   for ViewIndex:=0 to length(fLayerImageViews[InFlightFrameIndex])-1 do begin
    FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].Output);
+   FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].Reactive);
    FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].MotionVectors);
    FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].Color);
   end;
@@ -394,6 +419,8 @@ begin
    Description.Sharpness:=fInstance.Renderer.TemporalUpscalerSharpness;
 
    Description.Reset:=InFlightFrameState^.CameraReset;
+
+   Description.DebugView:=fInstance.Renderer.TemporalUpscalerDebugView;
 
    fBackends[ViewIndex].Dispatch(aCommandBuffer,aInFlightFrameIndex,Description);
 

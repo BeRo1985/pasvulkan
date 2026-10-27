@@ -45,12 +45,15 @@ layout(push_constant) uniform PushConstants {
 
   // The planet's own data block, which carries the model matrix this pass used to receive taken apart
   // into a position and a quaternion, plus everything else about the planet - the decal group mask among
-  // it. Last in the block, so every group above stays on its sixteen-byte boundary.
+  // it. Behind the sixteen-byte groups, so every one of them stays on its boundary.
 #if defined(USE_PLANET_BUFFER_REFERENCE)
   PlanetData planetData;
 #else
   uvec2 unusedPlanetData; // Ignored in this case
 #endif
+
+  float textureLodBias; // log2 bias of the decal texture sampling, non-zero only with a temporal upscaler
+  float unused0;
 
 } pushConstants;
 

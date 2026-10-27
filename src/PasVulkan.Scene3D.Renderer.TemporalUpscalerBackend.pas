@@ -120,6 +120,7 @@ type { TpvScene3DRendererTemporalUpscalerBackend }
              PreExposure:TpvFloat;    // what the input color was already multiplied with, 1.0 for nothing
              Sharpness:TpvFloat;      // 0.0 for none, up to 1.0
              Reset:boolean;           // the camera jumped, the history must not be used
+             DebugView:boolean;       // draw the backend's own view of its inputs and internals over the output, where it has one
             end;
             PDispatchDescription=^TDispatchDescription;
       protected

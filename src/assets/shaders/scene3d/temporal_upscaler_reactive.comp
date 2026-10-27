@@ -1,0 +1,58 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
+// How much each pixel should follow the current frame over its history, as a temporal upscaler gets it,
+// for FSR as its reactive mask.
+//
+// Two things go into it. The transparency first: the resolves of all transparency modes leave the opacity of
+// the picture in its alpha channel, 0.0 where something transparent or the water lies over what is behind
+// it and 1.0 where nothing does, which is what the temporal antialiasing reads to weaken its history there.
+// Transparent surfaces write neither depth nor motion, so the motion vectors there are those of whatever is
+// behind them.
+//
+// Then, with DEPTHOFFIELD, the depth of field: where its resolve takes the blurred picture instead of the
+// sharp one, from a circle of confusion of one pixel up to two, with the same smoothstep as there. A blurred
+// pixel is made of its neighbours, and at the border of the focus those move differently from it.
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2DArray uTextureColor;
+
+#ifdef DEPTHOFFIELD
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepthOfField; // w: the signed circle of confusion over the image height
+layout(set = 0, binding = 2, r8) writeonly uniform image2DArray uDestinationTexture;
+#else
+layout(set = 0, binding = 1, r8) writeonly uniform image2DArray uDestinationTexture;
+#endif
+
+layout(push_constant) uniform PushConstants {
+  float transparencyReactiveness; // the value for a pixel entirely covered by something transparent
+  float depthOfFieldReactiveness; // the value for a pixel entirely taken from the blurred picture
+  float unused0;
+  float unused1;
+} pushConstants;
+
+void main(){
+
+  ivec3 at = ivec3(gl_GlobalInvocationID.xyz);
+
+  ivec3 size = imageSize(uDestinationTexture);
+
+  if(any(greaterThanEqual(at, size))){
+    return;
+  }
+
+  float opacity = clamp(texelFetch(uTextureColor, at, 0).w, 0.0, 1.0);
+
+  float reactiveness = (1.0 - opacity) * pushConstants.transparencyReactiveness;
+
+#ifdef DEPTHOFFIELD
+  float circleOfConfusionInPixels = abs(texelFetch(uTextureDepthOfField, at, 0).w) * float(textureSize(uTextureDepthOfField, 0).y);
+  reactiveness = max(reactiveness, smoothstep(1.0, 2.0, circleOfConfusionInPixels) * pushConstants.depthOfFieldReactiveness);
+#endif
+
+  imageStore(uDestinationTexture, at, vec4(clamp(reactiveness, 0.0, 1.0), 0.0, 0.0, 0.0));
+
+}

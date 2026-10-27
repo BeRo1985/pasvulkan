@@ -201,6 +201,9 @@ type TpvScene3DRenderer=class;
        fTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
        fTemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality;
        fTemporalUpscalerSharpness:TpvFloat;
+       fTemporalUpscalerTransparencyReactiveness:TpvFloat;
+       fTemporalUpscalerDepthOfFieldReactiveness:TpvFloat;
+       fTemporalUpscalerDebugView:boolean;
        fActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
@@ -309,6 +312,17 @@ type TpvScene3DRenderer=class;
        // How much the temporal upscaler sharpens its output, 0.0 for not at all up to 1.0. It can change from
        // frame to frame.
        property TemporalUpscalerSharpness:TpvFloat read fTemporalUpscalerSharpness write fTemporalUpscalerSharpness;
+       // How much the temporal upscaler follows the current frame over its history, 0.0 to 1.0, where
+       // something transparent or the water covers a pixel and where the depth of field blurs it. Without it,
+       // what moves with the transparency would smear over what stands still behind it. 0.5 is about as much
+       // as the temporal antialiasing weakens its history there. Both can change from frame to frame.
+       property TemporalUpscalerTransparencyReactiveness:TpvFloat read fTemporalUpscalerTransparencyReactiveness write fTemporalUpscalerTransparencyReactiveness;
+       property TemporalUpscalerDepthOfFieldReactiveness:TpvFloat read fTemporalUpscalerDepthOfFieldReactiveness write fTemporalUpscalerDepthOfFieldReactiveness;
+       // Whether the temporal upscaler draws its own debug view over the picture, where the backend has one:
+       // for FSR the motion vectors, the protected areas and the depth in the top row, the disocclusion,
+       // the reactiveness and the detail protection takedown in the bottom row. It can change from frame to
+       // frame.
+       property TemporalUpscalerDebugView:boolean read fTemporalUpscalerDebugView write fTemporalUpscalerDebugView;
        property ActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fActiveTemporalUpscaler;
        // Frame generation the same way, asked for before Prepare and resolved into ActiveFrameGeneration. It
        // is independent of the temporal upscaler. CountGeneratedFrames is how many frames are generated
@@ -545,6 +559,12 @@ begin
  fTemporalUpscalerQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
 
  fTemporalUpscalerSharpness:=0.0;
+
+ fTemporalUpscalerTransparencyReactiveness:=0.5;
+
+ fTemporalUpscalerDepthOfFieldReactiveness:=0.5;
+
+ fTemporalUpscalerDebugView:=false;
 
  fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
 

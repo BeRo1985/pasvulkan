@@ -55,6 +55,7 @@ type TApplication=class(TpvApplication)
        fTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
        fTemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality;
        fTemporalUpscalerSharpness:TpvDouble;
+       fTemporalUpscalerDebugView:boolean;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
        fSizeFactor:TpvDouble;
@@ -107,6 +108,7 @@ type TApplication=class(TpvApplication)
        property TemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fTemporalUpscaler;
        property TemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality read fTemporalUpscalerQuality;
        property TemporalUpscalerSharpness:TpvDouble read fTemporalUpscalerSharpness;
+       property TemporalUpscalerDebugView:boolean read fTemporalUpscalerDebugView;
        property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames;
        property SizeFactor:TpvDouble read fSizeFactor;
@@ -162,6 +164,7 @@ begin
  fTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
  fTemporalUpscalerQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
  fTemporalUpscalerSharpness:=0.0;
+ fTemporalUpscalerDebugView:=false;
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
  fCountGeneratedFrames:=1;
  fSizeFactor:=1.0;
@@ -372,6 +375,12 @@ begin
     fTemporalUpscalerSharpness:=Min(Max(fTemporalUpscalerSharpness,0.0),1.0);
     inc(Index);
    end;
+  end else if (Parameter='--temporal-upscaler-debug-view') or
+              (Parameter='/temporal-upscaler-debug-view') or
+              (Parameter='--upscale-debug') or
+              (Parameter='/upscale-debug') then begin
+   // The upscaler's own debug view over the picture, see TpvScene3DRenderer.TemporalUpscalerDebugView
+   fTemporalUpscalerDebugView:=true;
   end else if (Parameter='--frame-generation') or
               (Parameter='/frame-generation') or
               (Parameter='--framegen') or

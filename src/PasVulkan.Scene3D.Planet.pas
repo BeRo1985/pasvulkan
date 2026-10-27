@@ -2816,9 +2816,14 @@ type TpvScene3DPlanets=class;
                     Jitter:TpvVector4;
 
                     // The planet data block, from which this pass takes the model matrix it used to get
-                    // as a separate position and quaternion. Last in the block, so everything above stays
-                    // on its sixteen-byte boundary.
+                    // as a separate position and quaternion. Behind the sixteen-byte groups, so every one
+                    // of them stays on its boundary.
                     PlanetData:TVkDeviceAddress;
+
+                    // Only there because the emulated task and mesh shaders declare the same block as the
+                    // ones of the render pass; nothing here samples a texture.
+                    TextureLODBias:TpvFloat;
+                    Unused0:TpvFloat;
 
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -2959,6 +2964,11 @@ type TpvScene3DPlanets=class;
                     RaytracingOffsetIntScale:TpvFloat;
                     RaytracingOffsetDirectionScale:TpvFloat;
 
+                    TextureLODBias:TpvFloat; // log2 bias of the material texture sampling, non-zero only with a temporal upscaler
+                    Unused0:TpvFloat;
+                    Unused1:TpvFloat;
+                    Unused2:TpvFloat;
+
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
@@ -2991,9 +3001,12 @@ type TpvScene3DPlanets=class;
                     Jitter:TpvVector4;
 
                     // The planet data block, from which this pass takes the model matrix it used to get
-                    // as a separate position and quaternion. Last in the block, so everything above stays
-                    // on its sixteen-byte boundary.
+                    // as a separate position and quaternion. Behind the sixteen-byte groups, so every one
+                    // of them stays on its boundary.
                     PlanetData:TVkDeviceAddress;
+
+                    TextureLODBias:TpvFloat; // log2 bias of the decal texture sampling, non-zero only with a temporal upscaler
+                    Unused0:TpvFloat;
 
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -29077,6 +29090,8 @@ begin
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
          fGrassPushConstants.InvocationVariants:=Planet.fGrassInvocationVariants;
          fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter;
+         fGrassPushConstants.TextureLODBias:=0.0;
+         fGrassPushConstants.Unused0:=0.0;
 
          begin
 
@@ -31398,6 +31413,15 @@ begin
       fPlanetPushConstants.RaytracingOffsetFloatScale:=Planet.fRaytracingOffsetFloatScale;
       fPlanetPushConstants.RaytracingOffsetIntScale:=Planet.fRaytracingOffsetIntScale;
       fPlanetPushConstants.RaytracingOffsetDirectionScale:=Planet.fRaytracingOffsetDirectionScale;
+      // The texture LOD bias of a temporal upscaler, for the final view only, as for the meshes.
+      if aRenderPass=TpvScene3DRendererRenderPass.View then begin
+       fPlanetPushConstants.TextureLODBias:=TpvScene3DRendererInstance(fRendererInstance).GetTemporalUpscalerTextureLODBias;
+      end else begin
+       fPlanetPushConstants.TextureLODBias:=0.0;
+      end;
+      fPlanetPushConstants.Unused0:=0.0;
+      fPlanetPushConstants.Unused1:=0.0;
+      fPlanetPushConstants.Unused2:=0.0;
 
       if UseTerrainMeshShader then begin
        aCommandBuffer.CmdPushConstants(fTerrainMeshPipelineLayout.Handle,
@@ -31642,6 +31666,12 @@ begin
       end else begin
        fGrassPushConstants.Jitter:=TpvVector4.Null;
       end;
+      if aRenderPass=TpvScene3DRendererRenderPass.View then begin
+       fGrassPushConstants.TextureLODBias:=TpvScene3DRendererInstance(fRendererInstance).GetTemporalUpscalerTextureLODBias;
+      end else begin
+       fGrassPushConstants.TextureLODBias:=0.0;
+      end;
+      fGrassPushConstants.Unused0:=0.0;
 {     begin
        fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
       end;}

@@ -23,6 +23,13 @@ const uint DECAL_FLAG_PASS = DECAL_FLAG_PASS_MESH | DECAL_FLAG_PASS_PLANET | DEC
 
 #include "blendnormals.glsl"
 
+// The log2 bias the decal textures are sampled with, which an includer sets to the texture LOD bias of a
+// temporal upscaler, so the decals keep the detail of the output resolution like the material textures do.
+// 0.0, which leaves the sampling exactly as it is, when the includer sets none.
+#ifndef DECAL_TEXTURE_LOD_BIAS
+#define DECAL_TEXTURE_LOD_BIAS 0.0
+#endif
+
 // Test switch: look decals up through their BVH even where the cluster grid is in use, which lights keep
 // using either way. Uncomment to tell a problem in the grid assignment apart from one in the decal data
 // itself, which both paths read the same way.
@@ -126,11 +133,11 @@ void applyDecals(
             angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
             
             // Sample decal textures from unified u2DTextures array
-            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0); // sRGB
-            vec3 decalNormalTangentSpace = (decal.textureIndices.y >= 0) ? (texture(u2DTextures[nonuniformEXT((decal.textureIndices.y & 0x3fff) << 1)], decalUV).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0); // linear
-            vec3 decalORM = (decal.textureIndices.z >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.z & 0x3fff) << 1)], decalUV).xyz : vec3(1.0); // linear
-            vec4 decalSpecular = (decal.textureIndices.w >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.w & 0x3fff) << 1)], decalUV) : vec4(1.0, 1.0, 1.0, 1.0); // linear
-            vec3 decalEmissive = (decal.textureIndices2.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices2.x & 0x3fff) << 1) | 1], decalUV).xyz : vec3(0.0); // sRGB
+            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV, DECAL_TEXTURE_LOD_BIAS) : vec4(1.0); // sRGB
+            vec3 decalNormalTangentSpace = (decal.textureIndices.y >= 0) ? (texture(u2DTextures[nonuniformEXT((decal.textureIndices.y & 0x3fff) << 1)], decalUV, DECAL_TEXTURE_LOD_BIAS).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0); // linear
+            vec3 decalORM = (decal.textureIndices.z >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.z & 0x3fff) << 1)], decalUV, DECAL_TEXTURE_LOD_BIAS).xyz : vec3(1.0); // linear
+            vec4 decalSpecular = (decal.textureIndices.w >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.w & 0x3fff) << 1)], decalUV, DECAL_TEXTURE_LOD_BIAS) : vec4(1.0, 1.0, 1.0, 1.0); // linear
+            vec3 decalEmissive = (decal.textureIndices2.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices2.x & 0x3fff) << 1) | 1], decalUV, DECAL_TEXTURE_LOD_BIAS).xyz : vec3(0.0); // sRGB
             
             // Extract ORM components
             float decalOcclusion = decalORM.x;
@@ -323,8 +330,8 @@ void applyDecalsUnlit(
             angleFade = pow(angleFade, uintBitsToFloat(decal.blendParams.y));
             
             // Sample only albedo texture for unlit (sRGB)
-            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV) : vec4(1.0);
-            
+            vec4 decalAlbedo = (decal.textureIndices.x >= 0) ? texture(u2DTextures[nonuniformEXT((decal.textureIndices.x & 0x3fff) << 1) | 1], decalUV, DECAL_TEXTURE_LOD_BIAS) : vec4(1.0);
+
             // Combined blend factor
             float blend = decalAlbedo.w * uintBitsToFloat(decal.blendParams.x) * angleFade * edgeFade;
             
