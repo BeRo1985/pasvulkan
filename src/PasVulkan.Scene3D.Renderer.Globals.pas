@@ -249,12 +249,14 @@ type TpvScene3DRendererAntialiasingMode=
      // Frames generated between the rendered ones and presented in between them. Independent of the temporal
      // upscaler: it works on top of any of them and on top of none at all, at native resolution as much as with
      // multisampling. What is asked for and what a device actually gets can differ, see
-     // TpvScene3DRenderer.ActiveFrameGeneration.
+     // TpvScene3DRenderer.ActiveFrameGeneration. Blend is a plain cross-fade of the two rendered frames
+     // around the generated one, for testing the presentation of generated frames on its own.
      TpvScene3DRendererFrameGeneration=
       (
        None,
        FSR,
-       DLSS
+       DLSS,
+       Blend
       );
 
      PpvScene3DRendererFrameGeneration=^TpvScene3DRendererFrameGeneration;
@@ -786,6 +788,9 @@ begin
   TpvScene3DRendererFrameGeneration.DLSS:begin
    result:='dlss';
   end;
+  TpvScene3DRendererFrameGeneration.Blend:begin
+   result:='blend';
+  end;
   else begin
    result:='none';
   end;
@@ -802,6 +807,8 @@ begin
   self:=TpvScene3DRendererFrameGeneration.FSR;
  end else if (Value='dlss') or (Value='dlssg') or (Value='dlss-g') then begin
   self:=TpvScene3DRendererFrameGeneration.DLSS;
+ end else if Value='blend' then begin
+  self:=TpvScene3DRendererFrameGeneration.Blend;
  end else begin
   self:=TpvScene3DRendererFrameGeneration.None;
  end;

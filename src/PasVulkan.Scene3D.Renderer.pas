@@ -209,6 +209,7 @@ type TpvScene3DRenderer=class;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
        fActiveFrameGeneration:TpvScene3DRendererFrameGeneration;
+       fFrameGenerationDebugView:boolean;
       private
        fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
@@ -336,6 +337,9 @@ type TpvScene3DRenderer=class;
        property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration write fFrameGeneration;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames write fCountGeneratedFrames;
        property ActiveFrameGeneration:TpvScene3DRendererFrameGeneration read fActiveFrameGeneration;
+       // Generated frames get a tint and a row of boxes in the upper left corner, filled up to their place in
+       // the interval, so that their order and their count can be seen. It can change from frame to frame.
+       property FrameGenerationDebugView:boolean read fFrameGenerationDebugView write fFrameGenerationDebugView;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;}
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -409,7 +413,9 @@ uses PasVulkan.Scene3D.Assets,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.GradientEnvironment,
      PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend,
-     PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3;
+     PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3,
+     PasVulkan.Scene3D.Renderer.FrameGenerationBackend,
+     PasVulkan.Scene3D.Renderer.FrameGenerationBackend.Blend;
 
 { TpvScene3DRendererBaseObject }
 
@@ -572,6 +578,7 @@ begin
  fTemporalUpscalerDepthOfFieldReactiveness:=0.5;
 
  fTemporalUpscalerDebugView:=false;
+ fFrameGenerationDebugView:=false;
 
  fFrameGenerationProbe:=false;
 
@@ -656,16 +663,15 @@ begin
 end;
 
 function TpvScene3DRenderer.IsFrameGenerationAvailable(const aFrameGeneration:TpvScene3DRendererFrameGeneration):boolean;
+var BackendClass:TpvScene3DRendererFrameGenerationBackendClass;
 begin
- // The same for frame generation, which needs a backend and the application's presentation of the
- // generated frames on top. Neither is in the engine so far, so every one of them falls back to none.
- case aFrameGeneration of
-  TpvScene3DRendererFrameGeneration.None:begin
-   result:=true;
-  end;
-  else begin
-   result:=false;
-  end;
+ // The same for frame generation: a registered backend that accepts this device, see
+ // TpvScene3DRendererFrameGenerationBackend.RegisterBackend.
+ if aFrameGeneration=TpvScene3DRendererFrameGeneration.None then begin
+  result:=true;
+ end else begin
+  BackendClass:=TpvScene3DRendererFrameGenerationBackend.FindBackend(aFrameGeneration);
+  result:=assigned(BackendClass) and BackendClass.IsSupported(fVulkanDevice);
  end;
 end;
 
@@ -1056,6 +1062,10 @@ begin
   fActiveFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
  end;
  fCountGeneratedFrames:=Max(1,fCountGeneratedFrames);
+ if fActiveFrameGeneration<>TpvScene3DRendererFrameGeneration.None then begin
+  // As many generated frames as asked for, as far as the backend can make them.
+  fCountGeneratedFrames:=Min(fCountGeneratedFrames,TpvScene3DRendererFrameGenerationBackend.FindBackend(fActiveFrameGeneration).GetMaximumCountGeneratedFrames(fVulkanDevice));
+ end;
 
  // A temporal upscaler is the antialiasing as well and wants a single-sampled, aliased picture to work
  // from, so whatever antialiasing was set gives way to it.

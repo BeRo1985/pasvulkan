@@ -59,6 +59,7 @@ type TApplication=class(TpvApplication)
        fFrameGenerationProbe:boolean;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
+       fFrameGenerationDebugView:boolean;
        fSizeFactor:TpvDouble;
        fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
@@ -118,6 +119,7 @@ type TApplication=class(TpvApplication)
        property FrameGenerationProbe:boolean read fFrameGenerationProbe;
        property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames;
+       property FrameGenerationDebugView:boolean read fFrameGenerationDebugView;
        property SizeFactor:TpvDouble read fSizeFactor;
        property AutoOrbitSpeed:TpvDouble read fAutoOrbitSpeed;
        property TransparentColorKey:boolean read fTransparentColorKey;
@@ -177,6 +179,7 @@ begin
  fFrameGenerationProbe:=false;
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
  fCountGeneratedFrames:=1;
+ fFrameGenerationDebugView:=false;
  fSizeFactor:=1.0;
  fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
@@ -414,6 +417,12 @@ begin
     fCountGeneratedFrames:=Max(1,StrToIntDef(ParamStr(Index),1));
     inc(Index);
    end;
+  end else if (Parameter='--frame-generation-debug') or
+              (Parameter='/frame-generation-debug') or
+              (Parameter='--framegen-debug') or
+              (Parameter='/framegen-debug') then begin
+   // Generated frames tinted and numbered, see TpvScene3DRenderer.FrameGenerationDebugView
+   fFrameGenerationDebugView:=true;
   end else if (Parameter='--auto-screenshot') or
               (Parameter='/auto-screenshot') then begin
    // For automated comparisons: after this many seconds a PNG screenshot is written and the viewer quits.
@@ -547,6 +556,10 @@ begin
  end else begin
   PresentMode:=TpvApplicationPresentMode.FIFO;
  end;
+ // Generated frames take swapchain images of their own, see TpvApplication.AcquireGeneratedFrameImage
+ if fFrameGeneration<>TpvScene3DRendererFrameGeneration.None then begin
+  DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,3+fCountGeneratedFrames);
+ end;
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
  VulkanAPIVersion:=0;//VK_API_VERSION_1_0;
 end;
@@ -679,6 +692,8 @@ end;
 
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var Stream:TMemoryStream;
+    GeneratedFrameIndex:TpvInt32;
+    FileName:String;
 begin
  if assigned(fVirtualReality) then begin
   inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
@@ -713,6 +728,24 @@ begin
    end;
   finally
    Stream.Free;
+  end;
+  // With frame generation, the frames generated ahead of this one as well, as <name>_generated<n>.<ext>
+  for GeneratedFrameIndex:=0 to CountQueuedGeneratedFrames-1 do begin
+   Stream:=TMemoryStream.Create;
+   try
+    VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream,VulkanSwapChain.Images[GetQueuedGeneratedFrameImageIndex(GeneratedFrameIndex)]);
+    try
+     if fAutoScreenshotRequested then begin
+      FileName:=GetAutoScreenshotFileName(fAutoScreenshotFrameIndex);
+     end else begin
+      FileName:=fScreenshotPNGFileName;
+     end;
+     Stream.SaveToFile(ChangeFileExt(FileName,'')+'_generated'+IntToStr(GeneratedFrameIndex+1)+ExtractFileExt(FileName));
+    except
+    end;
+   finally
+    Stream.Free;
+   end;
   end;
   if fAutoScreenshotRequested then begin
    if (fAutoScreenshotFrameIndex+1)<fAutoScreenshotCountFrames then begin

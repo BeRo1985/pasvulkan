@@ -2878,6 +2878,9 @@ type EpvVulkanException=class(Exception);
        // the swapchain was actually created with and what callers have to go by - not the device flags.
        fPresentID2Enabled:boolean;
        fPresentWait2Enabled:boolean;
+       // Which target times of VK_EXT_present_timing the surface takes, the same way per surface.
+       fPresentAtAbsoluteTimeSupported:boolean;
+       fPresentAtRelativeTimeSupported:boolean;
        function GetImage(const aImageIndex:TpvInt32):TpvVulkanImage;
        function GetPreviousImage:TpvVulkanImage;
        function GetCurrentImage:TpvVulkanImage;
@@ -2918,6 +2921,10 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
        function QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
        function AcquireNextImage(const aSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aTimeOut:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
+       // The same two for images beside the current one, with the image index given and returned
+       // explicitly: they leave CurrentImageIndex and PreviousImageIndex as they are.
+       function QueuePresentImage(const aQueue:TpvVulkanQueue;const aImageIndex:TpvUInt32;const aSemaphore:TpvVulkanSemaphore=nil;const aNext:Pointer=nil):TVkResult;
+       function AcquireNextImageIndex(out aImageIndex:TpvUInt32;const aSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aTimeOut:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
        procedure GetScreenshot(out aScreenshot:TpvVulkanSwapChainScreenshot;const aSwapChainImage:TpvVulkanImage=nil);
        procedure SaveScreenshotAsJPEGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aQuality:TpvInt32=95;const aFast:Boolean=false;const aChromaSubsampling:TpvInt32=-1);
        procedure SaveScreenshotAsPNGToStream(const aStream:TStream;const aSwapChainImage:TpvVulkanImage=nil;const aFast:Boolean=false);
@@ -2940,6 +2947,8 @@ type EpvVulkanException=class(Exception);
        property ExclusiveFullScreen:boolean read fExclusiveFullScreen;
        property PresentID2Enabled:boolean read fPresentID2Enabled;
        property PresentWait2Enabled:boolean read fPresentWait2Enabled;
+       property PresentAtAbsoluteTimeSupported:boolean read fPresentAtAbsoluteTimeSupported;
+       property PresentAtRelativeTimeSupported:boolean read fPresentAtRelativeTimeSupported;
      end;
 
      TpvVulkanRenderTarget=class(TpvVulkanObject)
@@ -24265,6 +24274,7 @@ var Index,TryIterationIndex:TpvInt32;
     PresentSurfaceCapabilities2KHR:TVkSurfaceCapabilities2KHR;
     SurfaceCapabilitiesPresentId2KHR:TVkSurfaceCapabilitiesPresentId2KHR;
     SurfaceCapabilitiesPresentWait2KHR:TVkSurfaceCapabilitiesPresentWait2KHR;
+    PresentTimingSurfaceCapabilitiesEXT:TVkPresentTimingSurfaceCapabilitiesEXT;
 {$ifdef Windows}
     Monitor:HMONITOR;
     SurfaceFullScreenExclusiveWin32InfoEXT:TVkSurfaceFullScreenExclusiveWin32InfoEXT;
@@ -24301,6 +24311,10 @@ begin
  fPresentID2Enabled:=false;
 
  fPresentWait2Enabled:=false;
+
+ fPresentAtAbsoluteTimeSupported:=false;
+
+ fPresentAtRelativeTimeSupported:=false;
 
  try
 
@@ -24597,6 +24611,34 @@ begin
 
   end;
 
+  // The target times of present_timing are a property of the surface as well: a present that asks for
+  // an absolute or a relative time the surface does not take is invalid usage, beyond the device feature.
+  if fDevice.PresentTimingSupport and
+     assigned(fDevice.Instance.Commands.Commands.GetPhysicalDeviceSurfaceCapabilities2KHR) then begin
+
+   FillChar(PresentTimingSurfaceCapabilitiesEXT,SizeOf(TVkPresentTimingSurfaceCapabilitiesEXT),#0);
+   PresentTimingSurfaceCapabilitiesEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT;
+
+   FillChar(PresentSurfaceCapabilities2KHR,SizeOf(TVkSurfaceCapabilities2KHR),#0);
+   PresentSurfaceCapabilities2KHR.sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+   PresentSurfaceCapabilities2KHR.pNext:=@PresentTimingSurfaceCapabilitiesEXT;
+
+   FillChar(PresentSurfaceInfo2KHR,SizeOf(TVkPhysicalDeviceSurfaceInfo2KHR),#0);
+   PresentSurfaceInfo2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+   PresentSurfaceInfo2KHR.pNext:=nil;
+   PresentSurfaceInfo2KHR.surface:=fSurface.Handle;
+
+   if fDevice.Instance.Commands.GetPhysicalDeviceSurfaceCapabilities2KHR(fDevice.PhysicalDevice.Handle,@PresentSurfaceInfo2KHR,@PresentSurfaceCapabilities2KHR)=VK_SUCCESS then begin
+    fPresentAtAbsoluteTimeSupported:=(PresentTimingSurfaceCapabilitiesEXT.presentTimingSupported<>VK_FALSE) and
+                                     (PresentTimingSurfaceCapabilitiesEXT.presentAtAbsoluteTimeSupported<>VK_FALSE) and
+                                     (fDevice.PresentTimingFeatures.presentAtAbsoluteTime<>VK_FALSE);
+    fPresentAtRelativeTimeSupported:=(PresentTimingSurfaceCapabilitiesEXT.presentTimingSupported<>VK_FALSE) and
+                                     (PresentTimingSurfaceCapabilitiesEXT.presentAtRelativeTimeSupported<>VK_FALSE) and
+                                     (fDevice.PresentTimingFeatures.presentAtRelativeTime<>VK_FALSE);
+   end;
+
+  end;
+
   // Enable present id2/wait2 on swapchain when the surface takes them
   if fPresentID2Enabled then begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_ID_2_BIT_KHR);
@@ -24788,6 +24830,57 @@ begin
   FenceHandle:=VK_NULL_HANDLE;
  end;
  result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,aTimeOut,SemaphoreHandle,FenceHandle,@fCurrentImageIndex);
+ if result<VK_SUCCESS then begin
+  VulkanCheckResult(result);
+ end;
+end;
+
+function TpvVulkanSwapChain.QueuePresentImage(const aQueue:TpvVulkanQueue;const aImageIndex:TpvUInt32;const aSemaphore:TpvVulkanSemaphore;const aNext:Pointer):TVkResult;
+var PresentInfo:TVkPresentInfoKHR;
+    ImageIndex:TpvUInt32;
+begin
+ ImageIndex:=aImageIndex;
+ FillChar(PresentInfo,SizeOf(TVkPresentInfoKHR),#0);
+ PresentInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+ PresentInfo.pNext:=aNext;
+ PresentInfo.swapchainCount:=1;
+ PresentInfo.pSwapchains:=@fSwapChainHandle;
+ PresentInfo.pImageIndices:=@ImageIndex;
+ if assigned(aSemaphore) then begin
+  PresentInfo.waitSemaphoreCount:=1;
+  PresentInfo.pWaitSemaphores:=@aSemaphore.fSemaphoreHandle;
+ end;
+{$ifdef PasVulkanNoThreadSafeQueue}
+ result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
+{$else}
+ aQueue.fLock.Acquire;
+ try
+  result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
+ finally
+  aQueue.fLock.Release;
+ end;
+{$endif}
+ if result<VK_SUCCESS then begin
+  VulkanCheckResult(result);
+ end;
+end;
+
+function TpvVulkanSwapChain.AcquireNextImageIndex(out aImageIndex:TpvUInt32;const aSemaphore:TpvVulkanSemaphore;const aFence:TpvVulkanFence;const aTimeOut:TpvUInt64):TVkResult;
+var SemaphoreHandle:TVkFence;
+    FenceHandle:TVkFence;
+begin
+ aImageIndex:=0;
+ if assigned(aSemaphore) then begin
+  SemaphoreHandle:=aSemaphore.fSemaphoreHandle;
+ end else begin
+  SemaphoreHandle:=VK_NULL_HANDLE;
+ end;
+ if assigned(aFence) then begin
+  FenceHandle:=aFence.fFenceHandle;
+ end else begin
+  FenceHandle:=VK_NULL_HANDLE;
+ end;
+ result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,aTimeOut,SemaphoreHandle,FenceHandle,@aImageIndex);
  if result<VK_SUCCESS then begin
   VulkanCheckResult(result);
  end;

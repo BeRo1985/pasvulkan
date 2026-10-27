@@ -101,7 +101,8 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.ReflectionProbeCubeMaps,
      PasVulkan.Scene3D.Renderer.Instance.ColorGrading,
-     PasVulkan.Scene3D.Renderer.MeshCullReset;
+     PasVulkan.Scene3D.Renderer.MeshCullReset,
+     PasVulkan.Scene3D.Renderer.FrameGenerationCompositor;
 
 type { TpvScene3DRendererInstance }
      TpvScene3DRendererInstance=class(TpvScene3DRendererBaseObject)
@@ -785,6 +786,10 @@ type { TpvScene3DRendererInstance }
        fExternalImageFormat:TVkFormat;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
        fHasExternalOutputImage:boolean;
+       // Frame generation in this instance: only for output into the swapchain, so neither in VR nor into
+       // external images. The compositor lives with the volatile resources.
+       fFrameGenerationActive:boolean;
+       fFrameGenerationCompositor:TpvScene3DRendererFrameGenerationCompositor;
        fReflectionProbeWidth:TpvInt32;
        fReflectionProbeHeight:TpvInt32;
        fTopDownSkyOcclusionMapWidth:TpvInt32;
@@ -2078,6 +2083,8 @@ type { TpvScene3DRendererInstance }
        property VirtualReality:TpvVirtualReality read fVirtualReality;
        property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
+       property FrameGenerationActive:boolean read fFrameGenerationActive;
+       property FrameGenerationCompositor:TpvScene3DRendererFrameGenerationCompositor read fFrameGenerationCompositor;
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
        property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
@@ -2270,7 +2277,9 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.AtmospherePrecipitationReleaseCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.WaterReleaseCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.FrameBufferBlitRenderPass;
+     PasVulkan.Scene3D.Renderer.Passes.FrameBufferBlitRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.FrameGenerationCaptureCustomPass,
+     PasVulkan.Scene3D.Renderer.FrameGenerationBackend;
 
 type TpvScene3DRendererInstancePasses=class
       private
@@ -2441,6 +2450,7 @@ type TpvScene3DRendererInstancePasses=class
        fWaterReleaseCustomPass:TpvScene3DRendererPassesWaterReleaseCustomPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
        fFrameBufferBlitRenderPass:TpvScene3DRendererPassesFrameBufferBlitRenderPass;
+       fFrameGenerationCaptureCustomPass:TpvScene3DRendererPassesFrameGenerationCaptureCustomPass;
      end;
 
 const CountJitterOffsets=32;
@@ -3503,6 +3513,11 @@ begin
 
  fHasExternalOutputImage:=(fExternalImageFormat<>VK_FORMAT_UNDEFINED) and not assigned(fVirtualReality);
 
+ fFrameGenerationActive:=(Renderer.ActiveFrameGeneration<>TpvScene3DRendererFrameGeneration.None) and
+                         fFrameGraph.SurfaceIsSwapchain;
+
+ fFrameGenerationCompositor:=nil;
+
  fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.SingleInstance;
 
  fColorGradingSettings:=DefaultColorGradingSettings;
@@ -3867,6 +3882,8 @@ var InFlightFrameIndex,CascadeIndex,ImageIndex,PerInFlightFrameBufferIndex:TpvSi
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+
+ FreeAndNil(fFrameGenerationCompositor);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fWaterSimulationSemaphores[InFlightFrameIndex]);
@@ -6052,7 +6069,9 @@ begin
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  // Frame generation copies the picture out of it, see TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
+                                  IfThen(fFrameGenerationActive,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),TVkImageUsageFlags(0)),
                                   1,
                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                   VK_IMAGE_LAYOUT_UNDEFINED{,
@@ -6306,7 +6325,8 @@ begin
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
+                                   IfThen(fFrameGenerationActive,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),TVkImageUsageFlags(0)),
                                    1
                                   );
  end;
@@ -8025,8 +8045,21 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=TpvScene3DRendererPassesHUDMipMapCustomPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
 
+  // Frame generation captures the picture and the HUD right before they are put together, see
+  // TpvScene3DRendererFrameGenerationCompositor.
+  if fFrameGenerationActive then begin
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Create(fFrameGraph,self,true);
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass);
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=nil;
+  end;
+
   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass:=TpvScene3DRendererPassesContentProjectionRenderPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass);
+  end;
 
  end else begin
 
@@ -8035,6 +8068,20 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=nil;
 
   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass:=nil;
+
+  // Without a HUD, frame generation captures the picture as it goes into the blit.
+  if fFrameGenerationActive then begin
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Create(fFrameGraph,self,false);
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
+   end;
+   if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDComputePass);
+   end;
+  end else begin
+   TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=nil;
+  end;
 
  end;
 
@@ -8084,6 +8131,9 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
   end;
   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass);
+  end;
   if assigned(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass);
   end;
@@ -8107,6 +8157,9 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
  end;
  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass);
+ end;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fWaterReleaseCustomPass);
  end;
@@ -9927,6 +9980,35 @@ begin
   end;
  end;
 
+ // The picture and the HUD of frame generation are at output resolution, the HUD outside of VR at the
+ // size of the surface as well.
+ if fFrameGenerationActive then begin
+  fFrameGenerationCompositor:=TpvScene3DRendererFrameGenerationCompositor.Create(Renderer.VulkanDevice,
+                                                                                 Renderer.VulkanPipelineCache,
+                                                                                 Renderer.CountInFlightFrames,
+                                                                                 fWidth,
+                                                                                 fHeight,
+                                                                                 fScaledWidth,
+                                                                                 fScaledHeight,
+                                                                                 VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                 assigned(fHUDRenderPassClass),
+                                                                                 fWidth,
+                                                                                 fHeight,
+                                                                                 VK_FORMAT_R8G8B8A8_SRGB,
+                                                                                 Renderer.ClampedSampler,
+                                                                                 TpvScene3DRendererFrameGenerationBackend.FindBackend(Renderer.ActiveFrameGeneration),
+                                                                                 Renderer.CountGeneratedFrames,
+                                                                                 fZFar<0.0,
+                                                                                 'FrameGeneration');
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,
+                     'TpvScene3DRendererInstance',
+                     'Frame generation "'+Renderer.ActiveFrameGeneration.ToString+'" with '+IntToStr(Renderer.CountGeneratedFrames)+' generated frame(s) per rendered frame, '+IntToStr(pvApplication.CountSwapChainImages)+' swapchain images');
+  end;
+ end else begin
+  fFrameGenerationCompositor:=nil;
+ end;
+
  fFrameGraph.AcquireVolatileResources;
 
 end;
@@ -9936,6 +10018,8 @@ var InFlightFrameIndex,PerInFlightFrameBufferIndex:TpvSizeInt;
 begin
 
  fFrameGraph.ReleaseVolatileResources;
+
+ FreeAndNil(fFrameGenerationCompositor);
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
   FreeAndNil(fPickReadBackBuffers[InFlightFrameIndex]);
@@ -13987,6 +14071,14 @@ begin
 
  end;
 
+ if assigned(fFrameGenerationCompositor) then begin
+  fFrameGenerationCompositor.CountGeneratedFrames:=Renderer.CountGeneratedFrames;
+  fFrameGenerationCompositor.DebugView:=Renderer.FrameGenerationDebugView;
+  fFrameGenerationCompositor.BeginFrame(aFrameCounter,
+                                        fInFlightFrameStates[aInFlightFrameIndex].CameraReset,
+                                        pvApplication.DeltaTime);
+ end;
+
  fFrameGraph.Draw(aSwapChainImageIndex,
                   aInFlightFrameIndex,
                   aFrameCounter,
@@ -13995,6 +14087,11 @@ begin
                   aWaitFence);
 
  aWaitSemaphore:=fVulkanRenderSemaphores[aInFlightFrameIndex];
+
+ // The frames generated between the previous rendered frame and this one, which go out ahead of it.
+ if assigned(fFrameGenerationCompositor) then begin
+  fFrameGenerationCompositor.DrawGeneratedFrames(aInFlightFrameIndex,aWaitSemaphore);
+ end;
 
  TPasMPInterlocked.Write(fInFlightFrameStates[aInFlightFrameIndex].Ready,false);
 

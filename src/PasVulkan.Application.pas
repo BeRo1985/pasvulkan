@@ -127,9 +127,15 @@ uses {$if defined(Unix)}
      PasVulkan.CrashReport.MiniDump,
      PasJSON;
 
-const MaxSwapChainImages=3;
+const // The most swapchain images asked for with DesiredCountSwapChainImages. Three by default, more for the
+      // frames generated between the rendered ones, which take images of their own.
+      MaxSwapChainImages=8;
 
       MaxInFlightFrames=3;
+
+      // The most frames that are generated between two rendered ones, see
+      // TpvApplication.AcquireGeneratedFrameImage.
+      MaxGeneratedFramesPerFrame=4;
 
       FrameTimesHistorySize=1 shl 10;
       FrameTimesHistoryMask=FrameTimesHistorySize-1;
@@ -2105,6 +2111,26 @@ type EpvApplication=class(Exception)
 
        fVulkanPresentCompleteFencesReady:array of boolean;
 
+       // The frames generated between two rendered ones, see AcquireGeneratedFrameImage: a ring of acquire
+       // semaphores with the fences of their acquisitions, one render-done semaphore per swapchain image,
+       // the images queued for presentation ahead of the current rendered frame, and the interval between
+       // the rendered frames over which their presents are spread.
+       fGeneratedFrameAcquireSemaphores:array of TpvVulkanSemaphore;
+
+       fGeneratedFrameAcquireFences:array of TpvVulkanFence;
+
+       fGeneratedFrameAcquireFencesReady:array of boolean;
+
+       fGeneratedFrameAcquireIndex:TpvInt32;
+
+       fGeneratedFrameRenderDoneSemaphores:array of TpvVulkanSemaphore;
+
+       fCountQueuedGeneratedFrames:TpvInt32;
+
+       fQueuedGeneratedFrameImageIndices:array[0..MaxGeneratedFramesPerFrame-1] of TpvUInt32;
+
+       fGeneratedFramePresentInterval:TpvDouble;
+
        fVulkanDepthImageFormat:TVkFormat;
 
        fVulkanDepthFrameBufferAttachment:TpvVulkanFrameBufferAttachment;
@@ -2289,6 +2315,7 @@ type EpvApplication=class(Exception)
        function WaitForSwapChainLatency:boolean;
 
        function AcquireVulkanBackBuffer:boolean;
+       function PresentGeneratedFrames:TpvInt32;
        function PresentVulkanBackBuffer:boolean;
 
        procedure SetScreen(const aScreen:TpvApplicationScreen);
@@ -2425,6 +2452,21 @@ type EpvApplication=class(Exception)
        procedure WaitForAllInFlightFrames;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
+
+       // Acquires a further swapchain image for a frame generated between the previous rendered frame and the
+       // current one, which is drawn right now: only valid while the current rendered frame is drawn, between
+       // its acquisition and its present, and for up to MaxGeneratedFramesPerFrame of them. The caller submits
+       // the work that draws the image, waiting on aAcquireSemaphore at the color attachment output stage and
+       // signalling aRenderDoneSemaphore when done. The generated frames are then presented before the
+       // rendered one, in the order of acquisition, spread evenly over the interval between the rendered
+       // frames where the device can time presents. The swapchain should have DesiredCountSwapChainImages
+       // of at least three plus the count of generated frames per rendered one.
+       function AcquireGeneratedFrameImage(out aImageIndex:TpvInt32;out aAcquireSemaphore,aRenderDoneSemaphore:TpvVulkanSemaphore):boolean;
+
+       // The swapchain images of the frames generated for the current rendered frame so far, for example for
+       // a screenshot of one of them while the rendered frame is drawn.
+       function GetQueuedGeneratedFrameImageIndex(const aIndex:TpvInt32):TpvInt32;
+       property CountQueuedGeneratedFrames:TpvInt32 read fCountQueuedGeneratedFrames;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
 
@@ -13220,7 +13262,7 @@ begin
     if SwapchainTimingProperties.refreshDuration>0 then begin
      fFramePacingPresentTimingRefreshDuration:=SwapchainTimingProperties.refreshDuration;
      fFramePacingPresentTimingAvailable:=true;
-     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns');
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true));
     end;
    end;
   except
@@ -13310,6 +13352,24 @@ begin
   fVulkanPresentCompleteFencesReady[Index]:=false;
  end;
 
+ // For the generated frames: one render-done semaphore per image, since an image is not acquired again
+ // before its previous present is through, and a ring of acquire semaphores, each with the fence of its
+ // acquisition, long enough that a slot comes round again only after its earlier use is long done.
+ SetLength(fGeneratedFrameRenderDoneSemaphores,fCountSwapChainImages);
+ for Index:=0 to fCountSwapChainImages-1 do begin
+  fGeneratedFrameRenderDoneSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+ end;
+ SetLength(fGeneratedFrameAcquireSemaphores,fCountSwapChainImages+(MaxInFlightFrames*MaxGeneratedFramesPerFrame));
+ SetLength(fGeneratedFrameAcquireFences,length(fGeneratedFrameAcquireSemaphores));
+ SetLength(fGeneratedFrameAcquireFencesReady,length(fGeneratedFrameAcquireSemaphores));
+ for Index:=0 to length(fGeneratedFrameAcquireSemaphores)-1 do begin
+  fGeneratedFrameAcquireSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+  fGeneratedFrameAcquireFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
+  fGeneratedFrameAcquireFencesReady[Index]:=false;
+ end;
+ fGeneratedFrameAcquireIndex:=0;
+ fCountQueuedGeneratedFrames:=0;
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
 {$ifend}
@@ -13341,6 +13401,21 @@ begin
  fVulkanPresentCompleteSemaphores:=nil;
  fVulkanPresentCompleteFences:=nil;
  fVulkanPresentCompleteFencesReady:=nil;
+ for Index:=0 to length(fGeneratedFrameAcquireFences)-1 do begin
+  if fGeneratedFrameAcquireFencesReady[Index] then begin
+   fGeneratedFrameAcquireFences[Index].WaitFor;
+  end;
+  FreeAndNil(fGeneratedFrameAcquireFences[Index]);
+  FreeAndNil(fGeneratedFrameAcquireSemaphores[Index]);
+ end;
+ for Index:=0 to length(fGeneratedFrameRenderDoneSemaphores)-1 do begin
+  FreeAndNil(fGeneratedFrameRenderDoneSemaphores[Index]);
+ end;
+ fGeneratedFrameAcquireFences:=nil;
+ fGeneratedFrameAcquireFencesReady:=nil;
+ fGeneratedFrameAcquireSemaphores:=nil;
+ fGeneratedFrameRenderDoneSemaphores:=nil;
+ fCountQueuedGeneratedFrames:=0;
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanInFlightFenceIndices[Index]:=-1;
  end;
@@ -14769,6 +14844,183 @@ begin
 
 end;
 
+function TpvApplication.AcquireGeneratedFrameImage(out aImageIndex:TpvInt32;out aAcquireSemaphore,aRenderDoneSemaphore:TpvVulkanSemaphore):boolean;
+const AcquireTimeOut=TpvUInt64(100000000); // 100 milliseconds, after which the frame goes without that generated frame
+var SlotIndex:TpvInt32;
+    ImageIndex:TpvUInt32;
+    Fence:TpvVulkanFence;
+begin
+
+ result:=false;
+
+ aImageIndex:=-1;
+ aAcquireSemaphore:=nil;
+ aRenderDoneSemaphore:=nil;
+
+ if (fCountQueuedGeneratedFrames>=MaxGeneratedFramesPerFrame) or
+    (fVulkanBackBufferState<>TVulkanBackBufferState.Present) or
+    (not assigned(fVulkanSwapChain)) or
+    (length(fGeneratedFrameAcquireSemaphores)=0) then begin
+  exit;
+ end;
+
+ SlotIndex:=fGeneratedFrameAcquireIndex;
+
+ Fence:=fGeneratedFrameAcquireFences[SlotIndex];
+ if fGeneratedFrameAcquireFencesReady[SlotIndex] then begin
+  Fence.WaitFor;
+  Fence.Reset;
+  fGeneratedFrameAcquireFencesReady[SlotIndex]:=false;
+ end;
+
+ // A finite time out, since an image that never becomes free would otherwise hang the frame: that is the
+ // case when the swapchain has too few images for that many acquired at once. An image that is out of
+ // date leaves the generated frame out as well, the present of the rendered frame then sees to the
+ // recreation.
+ try
+  case fVulkanSwapChain.AcquireNextImageIndex(ImageIndex,fGeneratedFrameAcquireSemaphores[SlotIndex],Fence,AcquireTimeOut) of
+   VK_SUCCESS,
+   VK_SUBOPTIMAL_KHR:begin
+    fGeneratedFrameAcquireFencesReady[SlotIndex]:=true;
+   end;
+   else begin
+    exit;
+   end;
+  end;
+ except
+  on EpvVulkanResultException do begin
+   exit;
+  end;
+ end;
+
+ inc(fGeneratedFrameAcquireIndex);
+ if fGeneratedFrameAcquireIndex>=length(fGeneratedFrameAcquireSemaphores) then begin
+  fGeneratedFrameAcquireIndex:=0;
+ end;
+
+ fQueuedGeneratedFrameImageIndices[fCountQueuedGeneratedFrames]:=ImageIndex;
+ inc(fCountQueuedGeneratedFrames);
+
+ aImageIndex:=ImageIndex;
+ aAcquireSemaphore:=fGeneratedFrameAcquireSemaphores[SlotIndex];
+ aRenderDoneSemaphore:=fGeneratedFrameRenderDoneSemaphores[ImageIndex];
+
+ result:=true;
+
+end;
+
+function TpvApplication.GetQueuedGeneratedFrameImageIndex(const aIndex:TpvInt32):TpvInt32;
+begin
+ if (aIndex>=0) and (aIndex<fCountQueuedGeneratedFrames) then begin
+  result:=fQueuedGeneratedFrameImageIndices[aIndex];
+ end else begin
+  result:=-1;
+ end;
+end;
+
+// Presents the frames generated for the current rendered frame, ahead of it. Where the device can time
+// presents, each of them and the rendered frame after them is shown a fraction of the interval between
+// the rendered frames after the one before, so that all of them come at even distances; otherwise they
+// go out as fast as the present mode lets them.
+function TpvApplication.PresentGeneratedFrames:TpvInt32;
+var Index:TpvInt32;
+    ImageIndex:TpvUInt32;
+    PresentIdKHR:TVkPresentIdKHR;
+    PresentId2KHR:TVkPresentId2KHR;
+    PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
+    PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
+    PresentNext:Pointer;
+begin
+
+ result:=0;
+
+ try
+
+  for Index:=0 to fCountQueuedGeneratedFrames-1 do begin
+
+   ImageIndex:=fQueuedGeneratedFrameImageIndices[Index];
+
+   PresentNext:=nil;
+
+   if fVulkanSwapChain.PresentID2Enabled then begin
+    FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
+    PresentId2KHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;
+    PresentId2KHR.swapchainCount:=1;
+    PresentId2KHR.pPresentIds:=@fVulkanPresentID;
+    inc(fVulkanPresentID);
+    PresentNext:=@PresentId2KHR;
+   end else if fVulkanDevice.PresentIDSupport then begin
+    FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
+    PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+    PresentIdKHR.swapchainCount:=1;
+    PresentIdKHR.pPresentIds:=@fVulkanPresentID;
+    inc(fVulkanPresentID);
+    PresentNext:=@PresentIdKHR;
+   end;
+
+   if fFramePacingPresentTimingAvailable and
+      fVulkanDevice.PresentTimingSupport and
+      fVulkanSwapChain.PresentAtRelativeTimeSupported and
+      (not fDisablePresentTiming) and
+      (fGeneratedFramePresentInterval>0.0) then begin
+    FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
+    PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+    PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
+    PresentTimingInfoEXT.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/(fCountQueuedGeneratedFrames+1)));
+    PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
+    FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
+    PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+    PresentTimingsInfoEXT.swapchainCount:=1;
+    PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
+    PresentTimingsInfoEXT.pNext:=PresentNext;
+    PresentNext:=@PresentTimingsInfoEXT;
+   end;
+
+{$ifdef PasVulkanFrameTrace}
+   pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(fGeneratedFrameRenderDoneSemaphores[ImageIndex].Handle));
+{$endif}
+
+   case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,fGeneratedFrameRenderDoneSemaphores[ImageIndex],PresentNext) of
+    VK_SUCCESS,
+    VK_SUBOPTIMAL_KHR:begin
+     fVulkanPresentLastID:=fVulkanPresentID;
+     inc(result);
+    end;
+    else begin
+    end;
+   end;
+
+  end;
+
+ except
+  on VulkanResultException:EpvVulkanResultException do begin
+   case VulkanResultException.ResultCode of
+    VK_ERROR_SURFACE_LOST_KHR,
+    VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+     end;
+    end;
+    VK_ERROR_OUT_OF_DATE_KHR:begin
+     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                               TAcquireVulkanBackBufferState.RecreateSurface,
+                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+     end;
+    end;
+    else begin
+     fCountQueuedGeneratedFrames:=0;
+     raise;
+    end;
+   end;
+  end;
+ end;
+
+ fCountQueuedGeneratedFrames:=0;
+
+end;
+
 var VulkanPresentTimingDecisionLogged:boolean=false; // one-shot diagnostic: prints the resolved present-timing chaining decision on the first present
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
@@ -14779,6 +15031,7 @@ var PresentIdKHR:TVkPresentIdKHR;
     PresentNext:Pointer;
     PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
     PresentFenceHandle:TVkFence;
+    CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
 begin
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV);
@@ -14851,6 +15104,21 @@ begin
 
   fVulkanBackBufferState:=TVulkanBackBufferState.Acquire;
 
+  // The frames generated for this rendered frame go out ahead of it, spread over the interval between the
+  // rendered frames, which is smoothed over the last frames.
+  if fCountQueuedGeneratedFrames>0 then begin
+   if fGeneratedFramePresentInterval<=0.0 then begin
+    fGeneratedFramePresentInterval:=Min(Max(fFloatDeltaTime,0.001),0.25);
+   end else begin
+    fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
+   end;
+   CountIntervalParts:=fCountQueuedGeneratedFrames+1;
+   CountGeneratedFramesPresented:=PresentGeneratedFrames;
+  end else begin
+   CountIntervalParts:=1;
+   CountGeneratedFramesPresented:=0;
+  end;
+
   PresentNext:=nil;
 
   // Same as for the waiting side: VkPresentId2KHR may only be chained when the swapchain was created
@@ -14881,7 +15149,27 @@ begin
   // Chain VK_EXT_present_timing info when available, to request
   // presentation at the nearest refresh cycle for consistent pacing
   // Present timing: either simple (nearest refresh cycle) or feedback-based
-  if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
+  if (CountGeneratedFramesPresented>0) and
+     fFramePacingPresentTimingAvailable and
+     assigned(fVulkanDevice) and
+     fVulkanDevice.PresentTimingSupport and
+     fVulkanSwapChain.PresentAtRelativeTimeSupported and
+     (not fDisablePresentTiming) and
+     (fGeneratedFramePresentInterval>0.0) then begin
+   // After generated frames, the rendered frame comes the same fraction of the interval after the last of
+   // them, see PresentGeneratedFrames.
+   FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
+   PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+   PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
+   PresentTimingInfoEXT.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/CountIntervalParts));
+   PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
+   FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
+   PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+   PresentTimingsInfoEXT.swapchainCount:=1;
+   PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
+   PresentTimingsInfoEXT.pNext:=PresentNext;
+   PresentNext:=@PresentTimingsInfoEXT;
+  end else if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
      fPresentTimingFeedbackInitialized and
      assigned(fVulkanDevice) and
      fVulkanDevice.PresentTimingSupport and not fDisablePresentTiming then begin
@@ -15887,8 +16175,12 @@ begin
  aTimingInfo.timeDomainID:=fPresentTimingFeedbackActiveTimeDomainID;
  aTimingInfo.presentStageQueries:=0;
  aTimingInfo.targetTimeDomainPresentStage:=0;
+ // A target time the surface does not take is invalid usage, see TpvVulkanSwapChain.PresentAtRelativeTimeSupported
+ // and PresentAtAbsoluteTimeSupported, so without it the present goes out at the nearest refresh cycle.
  if (not fPresentTimingFeedbackHasRefreshFeedback) or
-    (fPresentTimingFeedbackRefreshDuration=0) then begin
+    (fPresentTimingFeedbackRefreshDuration=0) or
+    ((fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and not fVulkanSwapChain.PresentAtRelativeTimeSupported) or
+    ((fPresentTimingFeedbackRefreshMode<>TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and not fVulkanSwapChain.PresentAtAbsoluteTimeSupported) then begin
   aTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
   aTimingInfo.targetTime:=0;
   exit;
