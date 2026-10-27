@@ -56,6 +56,7 @@ type TApplication=class(TpvApplication)
        fTemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality;
        fTemporalUpscalerSharpness:TpvDouble;
        fTemporalUpscalerDebugView:boolean;
+       fFrameGenerationProbe:boolean;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
        fSizeFactor:TpvDouble;
@@ -114,6 +115,7 @@ type TApplication=class(TpvApplication)
        property TemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality read fTemporalUpscalerQuality;
        property TemporalUpscalerSharpness:TpvDouble read fTemporalUpscalerSharpness;
        property TemporalUpscalerDebugView:boolean read fTemporalUpscalerDebugView;
+       property FrameGenerationProbe:boolean read fFrameGenerationProbe;
        property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames;
        property SizeFactor:TpvDouble read fSizeFactor;
@@ -172,6 +174,7 @@ begin
  fTemporalUpscalerQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
  fTemporalUpscalerSharpness:=0.0;
  fTemporalUpscalerDebugView:=false;
+ fFrameGenerationProbe:=false;
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
  fCountGeneratedFrames:=1;
  fSizeFactor:=1.0;
@@ -388,6 +391,13 @@ begin
               (Parameter='/upscale-debug') then begin
    // The upscaler's own debug view over the picture, see TpvScene3DRenderer.TemporalUpscalerDebugView
    fTemporalUpscalerDebugView:=true;
+  end else if (Parameter='--frame-generation-probe') or
+              (Parameter='/frame-generation-probe') or
+              (Parameter='--framegen-probe') or
+              (Parameter='/framegen-probe') then begin
+   // Whether frame generation runs here at all, see TpvScene3DRenderer.FrameGenerationProbe; it needs a
+   // temporal upscaler to sit behind
+   fFrameGenerationProbe:=true;
   end else if (Parameter='--frame-generation') or
               (Parameter='/frame-generation') or
               (Parameter='--framegen') or

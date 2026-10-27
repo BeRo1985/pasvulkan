@@ -2760,6 +2760,20 @@ type EpvApplication=class(Exception)
 
      end;
 
+     { TpvApplicationVulkanHook }
+
+     // A hook into the Vulkan setup of the application, for parts that live outside PasVulkan and need
+     // instance or device extensions of their own, or have to go down before the device does. A hook is
+     // registered with pvRegisterApplicationVulkanHook, typically in the initialization section of the unit
+     // that brings it, and stays owned by that unit. The application calls every registered hook right
+     // before its own SetupVulkanInstance and SetupVulkanDevice, and before it destroys the device.
+     TpvApplicationVulkanHook=class
+      public
+       procedure SetupVulkanInstance(const aApplication:TpvApplication;const aVulkanInstance:TpvVulkanInstance); virtual;
+       procedure SetupVulkanDevice(const aApplication:TpvApplication;const aVulkanDevice:TpvVulkanDevice); virtual;
+       procedure BeforeDestroyVulkanDevice(const aApplication:TpvApplication;const aVulkanDevice:TpvVulkanDevice); virtual;
+     end;
+
 const pvApplicationInputKeyModifierKeyShortcutMask:TpvApplicationInputKeyModifiers=
        [
         TpvApplicationInputKeyModifier.SHIFT,
@@ -2926,9 +2940,16 @@ procedure pvInputRecorderStop;
 // to tell that what it wanted to reproduce is behind it. False whenever no replay is running.
 function pvInputReplayFinished:Boolean;
 
+// Registers and unregisters a TpvApplicationVulkanHook, see there. The hooks are called in the order
+// they were registered; registering one twice does nothing.
+procedure pvRegisterApplicationVulkanHook(const aHook:TpvApplicationVulkanHook);
+procedure pvUnregisterApplicationVulkanHook(const aHook:TpvApplicationVulkanHook);
+
 implementation
 
 uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport,PasVulkan.HangWatchdog,PasDblStrUtils;
+
+var pvApplicationVulkanHooks:array of TpvApplicationVulkanHook=nil;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -3771,6 +3792,49 @@ end;
 function pvInputReplayFinished:Boolean;
 begin
  result:=InputRecorderRunning and InputReplayActive and (InputReplayCursor>=InputReplayCount);
+end;
+
+procedure pvRegisterApplicationVulkanHook(const aHook:TpvApplicationVulkanHook);
+var Index:TpvSizeInt;
+begin
+ if assigned(aHook) then begin
+  for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
+   if pvApplicationVulkanHooks[Index]=aHook then begin
+    exit;
+   end;
+  end;
+  Index:=length(pvApplicationVulkanHooks);
+  SetLength(pvApplicationVulkanHooks,Index+1);
+  pvApplicationVulkanHooks[Index]:=aHook;
+ end;
+end;
+
+procedure pvUnregisterApplicationVulkanHook(const aHook:TpvApplicationVulkanHook);
+var Index,OtherIndex:TpvSizeInt;
+begin
+ for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
+  if pvApplicationVulkanHooks[Index]=aHook then begin
+   for OtherIndex:=Index+1 to length(pvApplicationVulkanHooks)-1 do begin
+    pvApplicationVulkanHooks[OtherIndex-1]:=pvApplicationVulkanHooks[OtherIndex];
+   end;
+   SetLength(pvApplicationVulkanHooks,length(pvApplicationVulkanHooks)-1);
+   exit;
+  end;
+ end;
+end;
+
+{ TpvApplicationVulkanHook }
+
+procedure TpvApplicationVulkanHook.SetupVulkanInstance(const aApplication:TpvApplication;const aVulkanInstance:TpvVulkanInstance);
+begin
+end;
+
+procedure TpvApplicationVulkanHook.SetupVulkanDevice(const aApplication:TpvApplication;const aVulkanDevice:TpvVulkanDevice);
+begin
+end;
+
+procedure TpvApplicationVulkanHook.BeforeDestroyVulkanDevice(const aApplication:TpvApplication;const aVulkanDevice:TpvVulkanDevice);
+begin
 end;
 
 procedure pvInputRecorderStop;
@@ -12441,6 +12505,10 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
   end;
 
+  for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
+   pvApplicationVulkanHooks[Index].SetupVulkanDevice(self,fVulkanDevice);
+  end;
+
   SetupVulkanDevice(fVulkanDevice);
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -12785,6 +12853,9 @@ begin
      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
     end;
    end;
+   for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
+    pvApplicationVulkanHooks[Index].SetupVulkanInstance(self,fVulkanInstance);
+   end;
    SetupVulkanInstance(fVulkanInstance);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    VulkanDebugLn('Calling TpvVulkanInstance.Initialize() . . .');
@@ -12893,6 +12964,11 @@ begin
 
  //FreeAndNil(VulkanPresentationSurface);
  FreeAndNil(fVulkanPipelineCache);
+ if assigned(fVulkanDevice) then begin
+  for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
+   pvApplicationVulkanHooks[Index].BeforeDestroyVulkanDevice(self,fVulkanDevice);
+  end;
+ end;
  FreeAndNil(fVulkanDevice);
  FreeAndNil(fVulkanInstance);
 //VulkanPresentationSurface:=nil;

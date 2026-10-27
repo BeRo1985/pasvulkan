@@ -204,6 +204,7 @@ type TpvScene3DRenderer=class;
        fTemporalUpscalerTransparencyReactiveness:TpvFloat;
        fTemporalUpscalerDepthOfFieldReactiveness:TpvFloat;
        fTemporalUpscalerDebugView:boolean;
+       fFrameGenerationProbe:boolean;
        fActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
@@ -323,6 +324,11 @@ type TpvScene3DRenderer=class;
        // the reactiveness and the detail protection takedown in the bottom row. It can change from frame to
        // frame.
        property TemporalUpscalerDebugView:boolean read fTemporalUpscalerDebugView write fTemporalUpscalerDebugView;
+       // A test aid for the backends of the temporal upscaler that have a frame generation of their vendor
+       // behind them: such a backend creates that feature and evaluates it for a few frames into an image of
+       // its own, and what comes back goes into the log. It shows whether frame generation runs on a system
+       // at all, long before anything presents its frames. Set before Prepare.
+       property FrameGenerationProbe:boolean read fFrameGenerationProbe write fFrameGenerationProbe;
        property ActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fActiveTemporalUpscaler;
        // Frame generation the same way, asked for before Prepare and resolved into ActiveFrameGeneration. It
        // is independent of the temporal upscaler. CountGeneratedFrames is how many frames are generated
@@ -402,6 +408,7 @@ implementation
 uses PasVulkan.Scene3D.Assets,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.GradientEnvironment,
+     PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend,
      PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3;
 
 { TpvScene3DRendererBaseObject }
@@ -566,6 +573,8 @@ begin
 
  fTemporalUpscalerDebugView:=false;
 
+ fFrameGenerationProbe:=false;
+
  fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
 
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
@@ -633,20 +642,16 @@ begin
 end;
 
 function TpvScene3DRenderer.IsTemporalUpscalerAvailable(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler):boolean;
+var BackendClass:TpvScene3DRendererTemporalUpscalerBackendClass;
 begin
- // A temporal upscaler is available once the engine has a backend for it and that backend accepts this
- // device. FSR is FSR 3.1, which needs nothing vendor-specific; the others have no backend in the engine
- // so far and fall back to none.
- case aTemporalUpscaler of
-  TpvScene3DRendererTemporalUpscaler.None:begin
-   result:=true;
-  end;
-  TpvScene3DRendererTemporalUpscaler.FSR:begin
-   result:=TpvScene3DRendererTemporalUpscalerBackendFSR3.IsSupported(fVulkanDevice);
-  end;
-  else begin
-   result:=false;
-  end;
+ // A temporal upscaler is available once a backend is registered for it and that backend accepts this
+ // device. FSR 3.1 is part of PasVulkan and needs nothing vendor-specific; backends that live outside
+ // register themselves the same way. Without one, the renderer falls back to none.
+ if aTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None then begin
+  result:=true;
+ end else begin
+  BackendClass:=TpvScene3DRendererTemporalUpscalerBackend.FindBackend(aTemporalUpscaler);
+  result:=assigned(BackendClass) and BackendClass.IsSupported(fVulkanDevice);
  end;
 end;
 

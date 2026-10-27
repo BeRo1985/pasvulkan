@@ -119,8 +119,6 @@ type { TpvScene3DRendererPassesTemporalUpscalerComputePass }
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3;
-
 { TpvScene3DRendererPassesTemporalUpscalerComputePass }
 
 constructor TpvScene3DRendererPassesTemporalUpscalerComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
@@ -206,6 +204,7 @@ var InFlightFrameIndex,ViewIndex,CountViews:TpvSizeInt;
     Inputs:TpvScene3DRendererTemporalUpscalerBackend.TInputs;
     ColorFormat,MotionVectorsFormat,ReactiveFormat,OutputFormat:TVkFormat;
     InvertedDepth,InfiniteDepth:boolean;
+    BackendClass:TpvScene3DRendererTemporalUpscalerBackendClass;
 begin
 
  inherited AcquireVolatileResources;
@@ -228,24 +227,28 @@ begin
   SetLength(fLayerImageViews[InFlightFrameIndex],CountViews);
  end;
 
+ // The backend is the one registered for the active temporal upscaler, see
+ // TpvScene3DRendererTemporalUpscalerBackend.RegisterBackend.
+ BackendClass:=TpvScene3DRendererTemporalUpscalerBackend.FindBackend(fInstance.Renderer.ActiveTemporalUpscaler);
+
  for ViewIndex:=0 to CountViews-1 do begin
 
-  case fInstance.Renderer.ActiveTemporalUpscaler of
-   TpvScene3DRendererTemporalUpscaler.FSR:begin
-    fBackends[ViewIndex]:=TpvScene3DRendererTemporalUpscalerBackendFSR3.Create(fInstance.Renderer.VulkanDevice,
-                                                                               fInstance.Renderer.VulkanPipelineCache,
-                                                                               FrameGraph.CountInFlightFrames,
-                                                                               fInstance.ScaledWidth,
-                                                                               fInstance.ScaledHeight,
-                                                                               fInstance.Width,
-                                                                               fInstance.Height,
-                                                                               InvertedDepth,
-                                                                               InfiniteDepth,
-                                                                               'TemporalUpscaler.FSR3['+IntToStr(ViewIndex)+']');
-   end;
-   else begin
-    fBackends[ViewIndex]:=nil;
-   end;
+  if assigned(BackendClass) then begin
+   fBackends[ViewIndex]:=BackendClass.Create(fInstance.Renderer.VulkanDevice,
+                                             fInstance.Renderer.VulkanPipelineCache,
+                                             FrameGraph.CountInFlightFrames,
+                                             fInstance.ScaledWidth,
+                                             fInstance.ScaledHeight,
+                                             fInstance.Width,
+                                             fInstance.Height,
+                                             InvertedDepth,
+                                             InfiniteDepth,
+                                             'TemporalUpscaler.'+BackendClass.ClassName+'['+IntToStr(ViewIndex)+']');
+   fBackends[ViewIndex].Quality:=fInstance.Renderer.TemporalUpscalerQuality;
+   // The probe looks at the first view only.
+   fBackends[ViewIndex].FrameGenerationProbe:=fInstance.Renderer.FrameGenerationProbe and (ViewIndex=0);
+  end else begin
+   fBackends[ViewIndex]:=nil;
   end;
 
   fDepthImageViews[ViewIndex]:=CreateLayerImageView(fInstance.FinalDepthArray2DImage.VulkanImage,
@@ -284,30 +287,35 @@ begin
     Inputs.Color.Format:=ColorFormat;
     Inputs.Color.Width:=fInstance.ScaledWidth;
     Inputs.Color.Height:=fInstance.ScaledHeight;
+    Inputs.Color.BaseArrayLayer:=ViewIndex;
 
     Inputs.Depth.Image:=fInstance.FinalDepthArray2DImage.VulkanImage.Handle;
     Inputs.Depth.ImageView:=fDepthImageViews[ViewIndex].Handle;
     Inputs.Depth.Format:=VK_FORMAT_R32_SFLOAT;
     Inputs.Depth.Width:=fInstance.ScaledWidth;
     Inputs.Depth.Height:=fInstance.ScaledHeight;
+    Inputs.Depth.BaseArrayLayer:=ViewIndex;
 
     Inputs.MotionVectors.Image:=fResourceMotionVectors.VulkanImages[InFlightFrameIndex].Handle;
     Inputs.MotionVectors.ImageView:=fLayerImageViews[InFlightFrameIndex,ViewIndex].MotionVectors.Handle;
     Inputs.MotionVectors.Format:=MotionVectorsFormat;
     Inputs.MotionVectors.Width:=fInstance.ScaledWidth;
     Inputs.MotionVectors.Height:=fInstance.ScaledHeight;
+    Inputs.MotionVectors.BaseArrayLayer:=ViewIndex;
 
     Inputs.Reactive.Image:=fResourceReactive.VulkanImages[InFlightFrameIndex].Handle;
     Inputs.Reactive.ImageView:=fLayerImageViews[InFlightFrameIndex,ViewIndex].Reactive.Handle;
     Inputs.Reactive.Format:=ReactiveFormat;
     Inputs.Reactive.Width:=fInstance.ScaledWidth;
     Inputs.Reactive.Height:=fInstance.ScaledHeight;
+    Inputs.Reactive.BaseArrayLayer:=ViewIndex;
 
     Inputs.Output.Image:=fResourceOutput.VulkanImages[InFlightFrameIndex].Handle;
     Inputs.Output.ImageView:=fLayerImageViews[InFlightFrameIndex,ViewIndex].Output.Handle;
     Inputs.Output.Format:=OutputFormat;
     Inputs.Output.Width:=fInstance.Width;
     Inputs.Output.Height:=fInstance.Height;
+    Inputs.Output.BaseArrayLayer:=ViewIndex;
 
     fBackends[ViewIndex].SetInputs(InFlightFrameIndex,Inputs);
 
@@ -352,6 +360,7 @@ var ViewIndex,CountViews:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     Description:TpvScene3DRendererTemporalUpscalerBackend.TDispatchDescription;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    View:TpvScene3D.TView;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -406,7 +415,12 @@ begin
    Description.RenderWidth:=fInstance.ScaledWidth;
    Description.RenderHeight:=fInstance.ScaledHeight;
 
-   Description.ProjectionMatrix:=fInstance.Views[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex+ViewIndex].ProjectionMatrix;
+   View:=fInstance.Views[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex+ViewIndex];
+   Description.ProjectionMatrix:=View.ProjectionMatrix;
+   Description.ViewMatrix:=View.ViewMatrix;
+
+   Description.ZNear:=abs(fInstance.ZNear);
+   Description.ZFar:=abs(fInstance.ZFar);
 
    if assigned(pvApplication) then begin
     Description.FrameTimeDelta:=pvApplication.DeltaTime;

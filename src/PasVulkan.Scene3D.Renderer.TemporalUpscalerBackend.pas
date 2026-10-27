@@ -79,18 +79,25 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.Framework;
+     PasVulkan.Framework,
+     PasVulkan.Scene3D.Renderer.Globals;
 
-type { TpvScene3DRendererTemporalUpscalerBackend }
+type TpvScene3DRendererTemporalUpscalerBackend=class;
+
+     TpvScene3DRendererTemporalUpscalerBackendClass=class of TpvScene3DRendererTemporalUpscalerBackend;
+
+     { TpvScene3DRendererTemporalUpscalerBackend }
      TpvScene3DRendererTemporalUpscalerBackend=class
       public
-       type // One image as the backend sees it: a single 2D layer, already viewed as such.
+       type // One image as the backend sees it: a single 2D layer, already viewed as such. BaseArrayLayer
+            // is the layer of Image the view shows, for the backends that need the image itself as well.
             TImage=record
              Image:TVkImage;
              ImageView:TVkImageView;
              Format:TVkFormat;
              Width:TpvInt32;
              Height:TpvInt32;
+             BaseArrayLayer:TpvInt32;
             end;
             PImage=^TImage;
             // What the backend reads and writes in one in-flight frame. Reactive is optional and left with
@@ -116,6 +123,11 @@ type { TpvScene3DRendererTemporalUpscalerBackend }
              // The projection the frame was rendered with, the jittered one, from which the depth
              // conversion and the field of view are taken.
              ProjectionMatrix:TpvMatrix4x4;
+             // The world to view matrix of the frame, for the backends that need the camera itself.
+             ViewMatrix:TpvMatrix4x4;
+             // The distances of the near and the far plane, both positive, the far one possibly infinite.
+             ZNear:TpvFloat;
+             ZFar:TpvFloat;
              FrameTimeDelta:TpvFloat; // in seconds
              PreExposure:TpvFloat;    // what the input color was already multiplied with, 1.0 for nothing
              Sharpness:TpvFloat;      // 0.0 for none, up to 1.0
@@ -134,7 +146,23 @@ type { TpvScene3DRendererTemporalUpscalerBackend }
        fInvertedDepth:boolean;
        fInfiniteDepth:boolean;
        fName:TpvUTF8String;
+       fQuality:TpvScene3DRendererTemporalUpscalerQuality;
+       fFrameGenerationProbe:boolean;
       public
+       // The backend class that takes care of a temporal upscaler, nil when none is registered for it.
+       class function FindBackend(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler):TpvScene3DRendererTemporalUpscalerBackendClass; static;
+       // Registers the class it is called on for a temporal upscaler, typically in the initialization
+       // section of its unit. A backend may live outside PasVulkan this way, with nothing of it in here.
+       class procedure RegisterBackend(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler);
+       // Whether the backend can run on a device at all; the renderer falls back to no temporal upscaler
+       // when not.
+       class function IsSupported(const aDevice:TpvVulkanDevice):boolean; virtual;
+       // How many jitter phases one cycle has for the given render and output widths. Eight for every
+       // output pixel one render pixel covers, unless the backend wants otherwise.
+       class function GetJitterPhaseCount(const aRenderWidth,aOutputWidth:TpvInt32):TpvInt32; virtual;
+       // The texture LOD bias the final view is drawn with for the given render and output widths, log2
+       // of their ratio unless the backend wants otherwise.
+       class function GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat; virtual;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aPipelineCache:TpvVulkanPipelineCache;
                           const aCountInFlightFrames:TpvSizeInt;
@@ -158,11 +186,49 @@ type { TpvScene3DRendererTemporalUpscalerBackend }
        property UpscaleHeight:TpvInt32 read fUpscaleHeight;
        property InvertedDepth:boolean read fInvertedDepth;
        property InfiniteDepth:boolean read fInfiniteDepth;
+       // The quality the renderer asked for, set before the first dispatch, for the backends that choose
+       // something by it; the render size itself is the renderer's.
+       property Quality:TpvScene3DRendererTemporalUpscalerQuality read fQuality write fQuality;
+       // TpvScene3DRenderer.FrameGenerationProbe, set before the first dispatch, for the backends that can
+       // probe a frame generation of their vendor.
+       property FrameGenerationProbe:boolean read fFrameGenerationProbe write fFrameGenerationProbe;
      end;
 
 implementation
 
+var BackendClasses:array[TpvScene3DRendererTemporalUpscaler] of TpvScene3DRendererTemporalUpscalerBackendClass;
+
 { TpvScene3DRendererTemporalUpscalerBackend }
+
+class function TpvScene3DRendererTemporalUpscalerBackend.FindBackend(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler):TpvScene3DRendererTemporalUpscalerBackendClass;
+begin
+ result:=BackendClasses[aTemporalUpscaler];
+end;
+
+class procedure TpvScene3DRendererTemporalUpscalerBackend.RegisterBackend(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler);
+begin
+ BackendClasses[aTemporalUpscaler]:=self;
+end;
+
+class function TpvScene3DRendererTemporalUpscalerBackend.IsSupported(const aDevice:TpvVulkanDevice):boolean;
+begin
+ result:=false;
+end;
+
+// Eight phases for every output pixel that one render pixel covers, so that within one cycle every output
+// pixel gets samples from all over it at every upscaling ratio - eight at native resolution, 18 at 1.5
+// times, 32 at twice and 72 at three times the render size. Rounded down, as FSR counts them.
+class function TpvScene3DRendererTemporalUpscalerBackend.GetJitterPhaseCount(const aRenderWidth,aOutputWidth:TpvInt32):TpvInt32;
+var Ratio:TpvDouble;
+begin
+ Ratio:=Max(1,aOutputWidth)/Max(1,aRenderWidth);
+ result:=Max(1,trunc(8.0*sqr(Ratio)));
+end;
+
+class function TpvScene3DRendererTemporalUpscalerBackend.GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat;
+begin
+ result:=ln(Max(1,aRenderWidth)/Max(1,aOutputWidth))/ln(2.0);
+end;
 
 constructor TpvScene3DRendererTemporalUpscalerBackend.Create(const aDevice:TpvVulkanDevice;
                                                              const aPipelineCache:TpvVulkanPipelineCache;
@@ -186,6 +252,8 @@ begin
  fInvertedDepth:=aInvertedDepth;
  fInfiniteDepth:=aInfiniteDepth;
  fName:=aName;
+ fQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
+ fFrameGenerationProbe:=false;
 end;
 
 destructor TpvScene3DRendererTemporalUpscalerBackend.Destroy;

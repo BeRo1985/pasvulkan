@@ -2247,6 +2247,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerVelocityComputePass,
      PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerReactiveComputePass,
+     PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend,
      PasVulkan.Scene3D.Renderer.Passes.CNNUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
@@ -10669,29 +10670,31 @@ begin
 end;
 
 function TpvScene3DRendererInstance.GetTemporalUpscalerJitterPhaseCount:TpvInt32;
-var Ratio:TpvDouble;
+var BackendClass:TpvScene3DRendererTemporalUpscalerBackendClass;
 begin
- // Eight phases for every output pixel that one render pixel covers, so that within one cycle every output
- // pixel gets samples from all over it at every upscaling ratio - eight at native resolution, 18 at 1.5
- // times, 32 at twice and 72 at three times the render size. Rounded down, as FSR counts them, which
- // compares its own count against this one.
- Ratio:=Max(1,fWidth)/Max(1,fScaledWidth);
- result:=Max(1,trunc(8.0*sqr(Ratio)));
+ // The backend of the active temporal upscaler decides, see
+ // TpvScene3DRendererTemporalUpscalerBackend.GetJitterPhaseCount for the count all of them start from.
+ BackendClass:=TpvScene3DRendererTemporalUpscalerBackend.FindBackend(Renderer.ActiveTemporalUpscaler);
+ if assigned(BackendClass) then begin
+  result:=BackendClass.GetJitterPhaseCount(fScaledWidth,fWidth);
+ end else begin
+  result:=TpvScene3DRendererTemporalUpscalerBackend.GetJitterPhaseCount(fScaledWidth,fWidth);
+ end;
 end;
 
 function TpvScene3DRendererInstance.GetTemporalUpscalerTextureLODBias:TpvFloat;
+var BackendClass:TpvScene3DRendererTemporalUpscalerBackendClass;
 begin
- case Renderer.ActiveTemporalUpscaler of
-  TpvScene3DRendererTemporalUpscaler.None:begin
-   result:=0.0;
-  end;
-  TpvScene3DRendererTemporalUpscaler.FSR:begin
-   // AMD's formula, log2(render/display)-1, which is -1.0 at native resolution, -1.58 at 1.5 times,
-   // -2.0 at twice and -2.58 at three times the render size.
-   result:=(ln(Max(1,fScaledWidth)/Max(1,fWidth))/ln(2.0))-1.0;
-  end;
-  else begin
-   result:=ln(Max(1,fScaledWidth)/Max(1,fWidth))/ln(2.0);
+ if Renderer.ActiveTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None then begin
+  result:=0.0;
+ end else begin
+  // The backend of the active temporal upscaler decides, see
+  // TpvScene3DRendererTemporalUpscalerBackend.GetTextureLODBias for the bias all of them start from.
+  BackendClass:=TpvScene3DRendererTemporalUpscalerBackend.FindBackend(Renderer.ActiveTemporalUpscaler);
+  if assigned(BackendClass) then begin
+   result:=BackendClass.GetTextureLODBias(fScaledWidth,fWidth);
+  end else begin
+   result:=TpvScene3DRendererTemporalUpscalerBackend.GetTextureLODBias(fScaledWidth,fWidth);
   end;
  end;
 end;

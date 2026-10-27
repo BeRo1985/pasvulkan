@@ -314,8 +314,11 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
        // Whether a device can run FSR 3.1 at all: the formatless storage image writes and the extended
        // storage formats the passes declare, the quad subgroup operations of the two pyramid passes, and
        // storage support for every format of the internal images.
-       class function IsSupported(const aDevice:TpvVulkanDevice):boolean; static;
-       class function GetJitterPhaseCount(const aRenderWidth,aDisplayWidth:TpvInt32):TpvInt32; static;
+       class function IsSupported(const aDevice:TpvVulkanDevice):boolean; override;
+       class function GetJitterPhaseCount(const aRenderWidth,aOutputWidth:TpvInt32):TpvInt32; override;
+       // AMD's formula, log2(render/display)-1: -1.0 at native resolution, -1.58 at 1.5 times, -2.0 at
+       // twice and -2.58 at three times the render size.
+       class function GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat; override;
        procedure SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TInputs); override;
        procedure Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription); override;
      end;
@@ -720,9 +723,16 @@ begin
 end;
 
 // ffxFsr3UpscalerGetJitterPhaseCount of the SDK.
-class function TpvScene3DRendererTemporalUpscalerBackendFSR3.GetJitterPhaseCount(const aRenderWidth,aDisplayWidth:TpvInt32):TpvInt32;
+class function TpvScene3DRendererTemporalUpscalerBackendFSR3.GetJitterPhaseCount(const aRenderWidth,aOutputWidth:TpvInt32):TpvInt32;
 begin
- result:=Max(1,trunc(8.0*sqr(Max(1,aDisplayWidth)/Max(1,aRenderWidth))));
+ result:=Max(1,trunc(8.0*sqr(Max(1,aOutputWidth)/Max(1,aRenderWidth))));
+end;
+
+// AMD's formula, log2(render/display)-1: -1.0 at native resolution, -1.58 at 1.5 times, -2.0 at twice and
+// -2.58 at three times the render size.
+class function TpvScene3DRendererTemporalUpscalerBackendFSR3.GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat;
+begin
+ result:=(ln(Max(1,aRenderWidth)/Max(1,aOutputWidth))/ln(2.0))-1.0;
 end;
 
 procedure TpvScene3DRendererTemporalUpscalerBackendFSR3.CreateInternalImage(const aInternalImage:TInternalImage;
@@ -1606,4 +1616,6 @@ begin
 
 end;
 
+initialization
+ TpvScene3DRendererTemporalUpscalerBackendFSR3.RegisterBackend(TpvScene3DRendererTemporalUpscaler.FSR);
 end.
