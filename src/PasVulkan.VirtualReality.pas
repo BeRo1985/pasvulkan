@@ -1655,7 +1655,9 @@ begin
 
  begin
 
-  for Index:=0 to fCountInFlightFrames-1 do begin
+  // Over the array as it is rather than over fCountInFlightFrames: AfterCreateSwapChain calls this first,
+  // also the very first time, when the array is still empty.
+  for Index:=0 to length(fVulkanDescriptorSets)-1 do begin
    FreeAndNil(fVulkanDescriptorSets[Index]);
   end;
 

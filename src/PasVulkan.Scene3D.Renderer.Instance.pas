@@ -12478,13 +12478,16 @@ begin
    fCountRealViews[aInFlightFrameIndex]:=fViews[aInFlightFrameIndex].Count;
    InFlightFrameState^.CountFinalViews:=2;
 
+   // The HUD views without the jitter: the content projection lays the HUD into the picture only after the
+   // temporal antialiasing or the temporal upscaler, at output resolution, where nothing evens a jitter
+   // out any more, so the HUD would only shake with it.
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
-   ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
+   ViewLeft.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(0);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
    ViewRight.ViewMatrix:=fVirtualReality.GetPositionMatrix(1);
-   ViewRight.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(1),aFrameCounter);
+   ViewRight.ProjectionMatrix:=fVirtualReality.GetProjectionMatrix(1);
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 

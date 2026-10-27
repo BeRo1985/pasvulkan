@@ -68,7 +68,12 @@ type TApplication=class(TpvApplication)
        fAutoScreenshotElapsed:TpvDouble;
        fAutoScreenshotRequested:boolean;
        fAutoScreenshotWritten:boolean;
+       // --auto-screenshot-frames: that many pictures of frames in a row instead of one, with _0, _1 and so
+       // on before the extension. Each picture asks for the next one once it is written, in Draw.
+       fAutoScreenshotCountFrames:TpvInt32;
+       fAutoScreenshotFrameIndex:TpvInt32;
        fAutoOrbitSpeed:TpvDouble;
+       function GetAutoScreenshotFileName(const aFrameIndex:TpvInt32):String;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -144,6 +149,8 @@ begin
  fAutoScreenshotElapsed:=0.0;
  fAutoScreenshotRequested:=false;
  fAutoScreenshotWritten:=false;
+ fAutoScreenshotCountFrames:=1;
+ fAutoScreenshotFrameIndex:=0;
  fAutoOrbitSpeed:=0.0;
  ExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Allowed;
  fForceNoVSync:=false;
@@ -425,6 +432,13 @@ begin
     fScreenshotPNGFileName:=ParamStr(Index);
     inc(Index);
    end;
+  end else if (Parameter='--auto-screenshot-frames') or
+              (Parameter='/auto-screenshot-frames') then begin
+   // How many frames in a row --auto-screenshot takes, each a picture of its own, 1 to 64
+   if Index<=ParamCount then begin
+    fAutoScreenshotCountFrames:=Min(Max(StrToIntDef(trim(ParamStr(Index)),1),1),64);
+    inc(Index);
+   end;
   end else if (Parameter='--size-factor') or
               (Parameter='/size-factor') then begin
    if Index<=ParamCount then begin
@@ -446,6 +460,17 @@ begin
   fVirtualReality:=TpvVirtualReality.Create(VirtualRealityMode);
   fVirtualReality.ZNear:=0.1;
   fVirtualReality.ZFar:=-Infinity;
+ end;
+end;
+
+// The name of the given picture of --auto-screenshot, with _0, _1 and so on before the extension when
+// --auto-screenshot-frames asks for more than one.
+function TApplication.GetAutoScreenshotFileName(const aFrameIndex:TpvInt32):String;
+begin
+ if fAutoScreenshotCountFrames>1 then begin
+  result:=ChangeFileExt(fScreenshotPNGFileName,'')+'_'+IntToStr(aFrameIndex)+ExtractFileExt(fScreenshotPNGFileName);
+ end else begin
+  result:=fScreenshotPNGFileName;
  end;
 end;
 
@@ -669,14 +694,24 @@ begin
   try
    VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);
    try
-    Stream.SaveToFile(fScreenshotPNGFileName);
+    if fAutoScreenshotRequested then begin
+     Stream.SaveToFile(GetAutoScreenshotFileName(fAutoScreenshotFrameIndex));
+    end else begin
+     Stream.SaveToFile(fScreenshotPNGFileName);
+    end;
    except
    end;
   finally
    Stream.Free;
   end;
   if fAutoScreenshotRequested then begin
-   fAutoScreenshotWritten:=true;
+   if (fAutoScreenshotFrameIndex+1)<fAutoScreenshotCountFrames then begin
+    // The next frame in a row
+    inc(fAutoScreenshotFrameIndex);
+    fMakeScreenshotPNG:=true;
+   end else begin
+    fAutoScreenshotWritten:=true;
+   end;
   end;
  end else if fMakeScreenshotQOI then begin
   fMakeScreenshotQOI:=false;

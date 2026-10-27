@@ -218,14 +218,14 @@ begin
                                    @ImageMemoryBarriers[0]);
 
  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
- ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.srcOffsets[0].x:=0;
  ImageBlit.srcOffsets[0].y:=0;
  ImageBlit.srcOffsets[0].z:=0;
  ImageBlit.srcOffsets[1].x:=fResourceColor.Width;
  ImageBlit.srcOffsets[1].y:=fResourceColor.Height;
  ImageBlit.srcOffsets[1].z:=1;
- ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.dstOffsets[0].x:=0;
  ImageBlit.dstOffsets[0].y:=0;
  ImageBlit.dstOffsets[0].z:=0;
@@ -242,14 +242,14 @@ begin
                              VK_FILTER_NEAREST);
 
  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
- ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),0,0,1);
+ ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.srcOffsets[0].x:=0;
  ImageBlit.srcOffsets[0].y:=0;
  ImageBlit.srcOffsets[0].z:=0;
  ImageBlit.srcOffsets[1].x:=fResourceDepth.Width;
  ImageBlit.srcOffsets[1].y:=fResourceDepth.Height;
  ImageBlit.srcOffsets[1].z:=1;
- ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),0,0,1);
+ ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.dstOffsets[0].x:=0;
  ImageBlit.dstOffsets[0].y:=0;
  ImageBlit.dstOffsets[0].z:=0;
@@ -266,14 +266,14 @@ begin
                              VK_FILTER_NEAREST);
 
  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
- ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.srcSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.srcOffsets[0].x:=0;
  ImageBlit.srcOffsets[0].y:=0;
  ImageBlit.srcOffsets[0].z:=0;
  ImageBlit.srcOffsets[1].x:=fResourceColor.Width;
  ImageBlit.srcOffsets[1].y:=fResourceColor.Height;
  ImageBlit.srcOffsets[1].z:=1;
- ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1);
+ ImageBlit.dstSubresource:=TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,fInstance.CountSurfaceViews);
  ImageBlit.dstOffsets[0].x:=0;
  ImageBlit.dstOffsets[0].y:=0;
  ImageBlit.dstOffsets[0].z:=0;

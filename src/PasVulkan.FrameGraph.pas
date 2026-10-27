@@ -2453,6 +2453,9 @@ begin
                                                   fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
                                                   true);}
     end else begin
+     // With the whole subresource range, every array layer and every mip level: without one, SetLayout
+     // takes the first layer and the first level only, and the other layers of a multiview image, the
+     // second eye in VR, stayed undefined.
      if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
       fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                    VK_IMAGE_LAYOUT_UNDEFINED,
@@ -2462,7 +2465,7 @@ begin
                                                    TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                    fFrameGraph.fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                                   nil,
+                                                   @fImageSubresourceRange,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBuffer,
                                                    fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
@@ -2477,7 +2480,7 @@ begin
                                                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                     nil,
+                                                     @fImageSubresourceRange,
                                                      fFrameGraph.fVulkanUniversalQueueCommandBuffer,
                                                      fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                      fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
@@ -2492,7 +2495,7 @@ begin
                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
-                                                     nil,
+                                                     @fImageSubresourceRange,
                                                      fFrameGraph.fVulkanUniversalQueueCommandBuffer,
                                                      fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                      fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
