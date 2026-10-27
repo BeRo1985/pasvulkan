@@ -713,6 +713,8 @@ type EpvScene3D=class(Exception);
              MaximumDistance:TpvFloat;
              AreaTooSmallThreshold:TpvFloat;
 
+             TextureLODBias:TpvFloat; // log2 bias of the material texture sampling, non-zero only with a temporal upscaler
+
             end;
             PMeshStagePushConstants=^TMeshStagePushConstants;
             { TVertex }

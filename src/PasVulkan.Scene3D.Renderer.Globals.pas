@@ -198,6 +198,74 @@ type TpvScene3DRendererAntialiasingMode=
       procedure FromString(const aValue:TpvUTF8String);
      end;
 
+     // Temporal reconstruction through a vendor technique, which replaces the antialiasing and the resampling
+     // of the frame graph at once: it takes the jittered picture at render resolution together with depth and
+     // motion vectors, and puts out the picture at output resolution. None leaves the frame graph exactly as it
+     // is without this setting. What is asked for and what a device actually gets can differ, see
+     // TpvScene3DRenderer.ActiveTemporalUpscaler.
+     TpvScene3DRendererTemporalUpscaler=
+      (
+       None,
+       FSR,
+       DLSS,
+       DLSSRayReconstruction,
+       XeSS
+      );
+
+     PpvScene3DRendererTemporalUpscaler=^TpvScene3DRendererTemporalUpscaler;
+
+     { TpvScene3DRendererTemporalUpscalerHelper }
+
+     TpvScene3DRendererTemporalUpscalerHelper=record helper for TpvScene3DRendererTemporalUpscaler
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
+     // How much smaller than the output the picture is rendered with a temporal upscaler, per axis. NativeAA
+     // renders at output resolution and uses the upscaler for its antialiasing alone, the way DLAA does; Custom
+     // keeps the size factor the renderer instance was given.
+     TpvScene3DRendererTemporalUpscalerQuality=
+      (
+       NativeAA,
+       Quality,
+       Balanced,
+       Performance,
+       UltraPerformance,
+       Custom
+      );
+
+     PpvScene3DRendererTemporalUpscalerQuality=^TpvScene3DRendererTemporalUpscalerQuality;
+
+     { TpvScene3DRendererTemporalUpscalerQualityHelper }
+
+     TpvScene3DRendererTemporalUpscalerQualityHelper=record helper for TpvScene3DRendererTemporalUpscalerQuality
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+      // The render size per axis as a fraction of the output size, that is the inverse of the upscaling ratio.
+      // Zero for Custom, which has no fraction of its own.
+      function SizeFactor:TpvDouble;
+     end;
+
+     // Frames generated between the rendered ones and presented in between them. Independent of the temporal
+     // upscaler: it works on top of any of them and on top of none at all, at native resolution as much as with
+     // multisampling. What is asked for and what a device actually gets can differ, see
+     // TpvScene3DRenderer.ActiveFrameGeneration.
+     TpvScene3DRendererFrameGeneration=
+      (
+       None,
+       FSR,
+       DLSS
+      );
+
+     PpvScene3DRendererFrameGeneration=^TpvScene3DRendererFrameGeneration;
+
+     { TpvScene3DRendererFrameGenerationHelper }
+
+     TpvScene3DRendererFrameGenerationHelper=record helper for TpvScene3DRendererFrameGeneration
+      function ToString:TpvUTF8String;
+      procedure FromString(const aValue:TpvUTF8String);
+     end;
+
      TpvScene3DRendererGlobalIlluminationMode=
       (
        Auto=0,
@@ -581,6 +649,161 @@ begin
   self:=TpvScene3DRendererAIUpscaleQuality.High;
  end else begin
   self:=TpvScene3DRendererAIUpscaleQuality.Low;
+ end;
+end;
+
+{ TpvScene3DRendererTemporalUpscalerHelper }
+
+function TpvScene3DRendererTemporalUpscalerHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererTemporalUpscaler.None:begin
+   result:='none';
+  end;
+  TpvScene3DRendererTemporalUpscaler.FSR:begin
+   result:='fsr';
+  end;
+  TpvScene3DRendererTemporalUpscaler.DLSS:begin
+   result:='dlss';
+  end;
+  TpvScene3DRendererTemporalUpscaler.DLSSRayReconstruction:begin
+   result:='dlssrr';
+  end;
+  TpvScene3DRendererTemporalUpscaler.XeSS:begin
+   result:='xess';
+  end;
+  else begin
+   result:='none';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererTemporalUpscalerHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='none') or (Value='off') or (Value='disabled') then begin
+  self:=TpvScene3DRendererTemporalUpscaler.None;
+ end else if (Value='fsr') or (Value='fsr3') or (Value='fsr4') then begin
+  self:=TpvScene3DRendererTemporalUpscaler.FSR;
+ end else if (Value='dlss') or (Value='dlsssr') then begin
+  self:=TpvScene3DRendererTemporalUpscaler.DLSS;
+ end else if (Value='dlssrr') or (Value='dlss-rr') or (Value='dlssrayreconstruction') or (Value='rayreconstruction') then begin
+  self:=TpvScene3DRendererTemporalUpscaler.DLSSRayReconstruction;
+ end else if Value='xess' then begin
+  self:=TpvScene3DRendererTemporalUpscaler.XeSS;
+ end else begin
+  self:=TpvScene3DRendererTemporalUpscaler.None;
+ end;
+end;
+
+{ TpvScene3DRendererTemporalUpscalerQualityHelper }
+
+function TpvScene3DRendererTemporalUpscalerQualityHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererTemporalUpscalerQuality.NativeAA:begin
+   result:='nativeaa';
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Quality:begin
+   result:='quality';
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Balanced:begin
+   result:='balanced';
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Performance:begin
+   result:='performance';
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.UltraPerformance:begin
+   result:='ultraperformance';
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Custom:begin
+   result:='custom';
+  end;
+  else begin
+   result:='quality';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererTemporalUpscalerQualityHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='nativeaa') or (Value='native') or (Value='dlaa') then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.NativeAA;
+ end else if Value='quality' then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
+ end else if Value='balanced' then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.Balanced;
+ end else if Value='performance' then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.Performance;
+ end else if (Value='ultraperformance') or (Value='ultra-performance') or (Value='ultra') then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.UltraPerformance;
+ end else if Value='custom' then begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.Custom;
+ end else begin
+  self:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
+ end;
+end;
+
+function TpvScene3DRendererTemporalUpscalerQualityHelper.SizeFactor:TpvDouble;
+begin
+ // The ratios the vendors agree on: 1.0, 1.5, 1.7, 2.0 and 3.0 times the render size per axis.
+ case self of
+  TpvScene3DRendererTemporalUpscalerQuality.NativeAA:begin
+   result:=1.0;
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Quality:begin
+   result:=1.0/1.5;
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Balanced:begin
+   result:=1.0/1.7;
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.Performance:begin
+   result:=1.0/2.0;
+  end;
+  TpvScene3DRendererTemporalUpscalerQuality.UltraPerformance:begin
+   result:=1.0/3.0;
+  end;
+  else {TpvScene3DRendererTemporalUpscalerQuality.Custom:}begin
+   result:=0.0;
+  end;
+ end;
+end;
+
+{ TpvScene3DRendererFrameGenerationHelper }
+
+function TpvScene3DRendererFrameGenerationHelper.ToString:TpvUTF8String;
+begin
+ case self of
+  TpvScene3DRendererFrameGeneration.None:begin
+   result:='none';
+  end;
+  TpvScene3DRendererFrameGeneration.FSR:begin
+   result:='fsr';
+  end;
+  TpvScene3DRendererFrameGeneration.DLSS:begin
+   result:='dlss';
+  end;
+  else begin
+   result:='none';
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererFrameGenerationHelper.FromString(const aValue:TpvUTF8String);
+var Value:TpvUTF8String;
+begin
+ Value:=LowerCase(Trim(aValue));
+ if (Value='none') or (Value='off') or (Value='disabled') then begin
+  self:=TpvScene3DRendererFrameGeneration.None;
+ end else if (Value='fsr') or (Value='fsr3') then begin
+  self:=TpvScene3DRendererFrameGeneration.FSR;
+ end else if (Value='dlss') or (Value='dlssg') or (Value='dlss-g') then begin
+  self:=TpvScene3DRendererFrameGeneration.DLSS;
+ end else begin
+  self:=TpvScene3DRendererFrameGeneration.None;
  end;
 end;
 

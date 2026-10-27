@@ -52,11 +52,22 @@ type TApplication=class(TpvApplication)
        fRCASSharpness:TpvDouble;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
+       fTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
+       fTemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality;
+       fTemporalUpscalerSharpness:TpvDouble;
+       fFrameGeneration:TpvScene3DRendererFrameGeneration;
+       fCountGeneratedFrames:TpvInt32;
        fSizeFactor:TpvDouble;
        fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
        fMakeScreenshotQOI:boolean;
+       fScreenshotPNGFileName:String;
+       fAutoScreenshotTime:TpvDouble;
+       fAutoScreenshotElapsed:TpvDouble;
+       fAutoScreenshotRequested:boolean;
+       fAutoScreenshotWritten:boolean;
+       fAutoOrbitSpeed:TpvDouble;
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -93,7 +104,13 @@ type TApplication=class(TpvApplication)
        property RCASSharpness:TpvDouble read fRCASSharpness;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality;
+       property TemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fTemporalUpscaler;
+       property TemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality read fTemporalUpscalerQuality;
+       property TemporalUpscalerSharpness:TpvDouble read fTemporalUpscalerSharpness;
+       property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration;
+       property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames;
        property SizeFactor:TpvDouble read fSizeFactor;
+       property AutoOrbitSpeed:TpvDouble read fAutoOrbitSpeed;
        property TransparentColorKey:boolean read fTransparentColorKey;
      end;
 
@@ -120,6 +137,12 @@ begin
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
  fMakeScreenshotQOI:=false;
+ fScreenshotPNGFileName:='screenshot.png';
+ fAutoScreenshotTime:=-1.0;
+ fAutoScreenshotElapsed:=0.0;
+ fAutoScreenshotRequested:=false;
+ fAutoScreenshotWritten:=false;
+ fAutoOrbitSpeed:=0.0;
  ExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Allowed;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
@@ -136,6 +159,11 @@ begin
  fRCASSharpness:=0.25;
  fAIUpscaleMode:=TpvScene3DRendererAIUpscaleMode.None;
  fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
+ fTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
+ fTemporalUpscalerQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
+ fTemporalUpscalerSharpness:=0.0;
+ fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
+ fCountGeneratedFrames:=1;
  fSizeFactor:=1.0;
  fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
@@ -313,6 +341,79 @@ begin
               (Parameter='/ai-upscale-quality') then begin
    if Index<=ParamCount then begin
     fAIUpscaleQuality.FromString(ParamStr(Index));
+    inc(Index);
+   end;
+  end else if (Parameter='--temporal-upscaler') or
+              (Parameter='/temporal-upscaler') or
+              (Parameter='--upscaler') or
+              (Parameter='/upscaler') then begin
+   if Index<=ParamCount then begin
+    fTemporalUpscaler.FromString(ParamStr(Index));
+    inc(Index);
+   end;
+  end else if (Parameter='--temporal-upscaler-quality') or
+              (Parameter='/temporal-upscaler-quality') or
+              (Parameter='--upscale-quality') or
+              (Parameter='/upscale-quality') then begin
+   if Index<=ParamCount then begin
+    fTemporalUpscalerQuality.FromString(ParamStr(Index));
+    inc(Index);
+   end;
+  end else if (Parameter='--temporal-upscaler-sharpness') or
+              (Parameter='/temporal-upscaler-sharpness') or
+              (Parameter='--upscale-sharpness') or
+              (Parameter='/upscale-sharpness') then begin
+   if Index<=ParamCount then begin
+    OK:=false;
+    fTemporalUpscalerSharpness:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
+    if not OK then begin
+     fTemporalUpscalerSharpness:=0.0;
+    end;
+    fTemporalUpscalerSharpness:=Min(Max(fTemporalUpscalerSharpness,0.0),1.0);
+    inc(Index);
+   end;
+  end else if (Parameter='--frame-generation') or
+              (Parameter='/frame-generation') or
+              (Parameter='--framegen') or
+              (Parameter='/framegen') then begin
+   if Index<=ParamCount then begin
+    fFrameGeneration.FromString(ParamStr(Index));
+    inc(Index);
+   end;
+  end else if (Parameter='--frame-generation-count') or
+              (Parameter='/frame-generation-count') or
+              (Parameter='--framegen-count') or
+              (Parameter='/framegen-count') then begin
+   if Index<=ParamCount then begin
+    fCountGeneratedFrames:=Max(1,StrToIntDef(ParamStr(Index),1));
+    inc(Index);
+   end;
+  end else if (Parameter='--auto-screenshot') or
+              (Parameter='/auto-screenshot') then begin
+   // For automated comparisons: after this many seconds a PNG screenshot is written and the viewer quits.
+   if Index<=ParamCount then begin
+    OK:=false;
+    fAutoScreenshotTime:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
+    if not OK then begin
+     fAutoScreenshotTime:=-1.0;
+    end;
+    inc(Index);
+   end;
+  end else if (Parameter='--auto-orbit') or
+              (Parameter='/auto-orbit') then begin
+   // Lets the orbit camera turn by itself, in turns per second.
+   if Index<=ParamCount then begin
+    OK:=false;
+    fAutoOrbitSpeed:=ConvertStringToDouble(ParamStr(Index),rmNearest,@OK);
+    if not OK then begin
+     fAutoOrbitSpeed:=0.0;
+    end;
+    inc(Index);
+   end;
+  end else if (Parameter='--auto-screenshot-file') or
+              (Parameter='/auto-screenshot-file') then begin
+   if Index<=ParamCount then begin
+    fScreenshotPNGFileName:=ParamStr(Index);
     inc(Index);
    end;
   end else if (Parameter='--size-factor') or
@@ -510,6 +611,17 @@ begin
  if assigned(fVirtualReality) then begin
   fVirtualReality.Update(aDeltaTime);
  end;
+ if fAutoScreenshotTime>=0.0 then begin
+  if fAutoScreenshotWritten then begin
+   Terminate;
+  end else if not fAutoScreenshotRequested then begin
+   fAutoScreenshotElapsed:=fAutoScreenshotElapsed+aDeltaTime;
+   if fAutoScreenshotElapsed>=fAutoScreenshotTime then begin
+    fAutoScreenshotRequested:=true;
+    fMakeScreenshotPNG:=true;
+   end;
+  end;
+ end;
  inherited Update(aDeltaTime);
 end;
 
@@ -548,11 +660,14 @@ begin
   try
    VulkanSwapChain.SaveScreenshotAsPNGToStream(Stream);
    try
-    Stream.SaveToFile('screenshot.png');
+    Stream.SaveToFile(fScreenshotPNGFileName);
    except
    end;
   finally
    Stream.Free;
+  end;
+  if fAutoScreenshotRequested then begin
+   fAutoScreenshotWritten:=true;
   end;
  end else if fMakeScreenshotQOI then begin
   fMakeScreenshotQOI:=false;

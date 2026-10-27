@@ -198,6 +198,13 @@ type TpvScene3DRenderer=class;
        fRCASSharpness:TpvFloat;
        fAIUpscaleMode:TpvScene3DRendererAIUpscaleMode;
        fAIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality;
+       fTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
+       fTemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality;
+       fTemporalUpscalerSharpness:TpvFloat;
+       fActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
+       fFrameGeneration:TpvScene3DRendererFrameGeneration;
+       fCountGeneratedFrames:TpvInt32;
+       fActiveFrameGeneration:TpvScene3DRendererFrameGeneration;
       private
        fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
@@ -233,6 +240,8 @@ type TpvScene3DRenderer=class;
        procedure SetGlobalIlluminationVoxelCountBounces(const aValue:TpvInt32);
        procedure SetGlobalIlluminationVoxelCountCascades(const aValue:TpvInt32);
        procedure SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);
+       function IsTemporalUpscalerAvailable(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler):boolean;
+       function IsFrameGenerationAvailable(const aFrameGeneration:TpvScene3DRendererFrameGeneration):boolean;
       public
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aCountInFlightFrames:TpvSizeInt=0); reintroduce;
        destructor Destroy; override;
@@ -291,6 +300,22 @@ type TpvScene3DRenderer=class;
        property RCASSharpness:TpvFloat read fRCASSharpness write fRCASSharpness;
        property AIUpscaleMode:TpvScene3DRendererAIUpscaleMode read fAIUpscaleMode write fAIUpscaleMode;
        property AIUpscaleQuality:TpvScene3DRendererAIUpscaleQuality read fAIUpscaleQuality write fAIUpscaleQuality;
+       // The temporal upscaler asked for, and how much smaller than the output it renders. Set both before
+       // Prepare, which resolves the request into ActiveTemporalUpscaler: the same one where the engine has a
+       // backend for it that runs on this device, otherwise None. Only the active one changes anything, so a
+       // request that cannot be met leaves the renderer exactly as it is without one.
+       property TemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fTemporalUpscaler write fTemporalUpscaler;
+       property TemporalUpscalerQuality:TpvScene3DRendererTemporalUpscalerQuality read fTemporalUpscalerQuality write fTemporalUpscalerQuality;
+       // How much the temporal upscaler sharpens its output, 0.0 for not at all up to 1.0. It can change from
+       // frame to frame.
+       property TemporalUpscalerSharpness:TpvFloat read fTemporalUpscalerSharpness write fTemporalUpscalerSharpness;
+       property ActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fActiveTemporalUpscaler;
+       // Frame generation the same way, asked for before Prepare and resolved into ActiveFrameGeneration. It
+       // is independent of the temporal upscaler. CountGeneratedFrames is how many frames are generated
+       // between two rendered ones, at least one; a backend that cannot generate as many caps it.
+       property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration write fFrameGeneration;
+       property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames write fCountGeneratedFrames;
+       property ActiveFrameGeneration:TpvScene3DRendererFrameGeneration read fActiveFrameGeneration;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;}
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -362,7 +387,8 @@ implementation
 
 uses PasVulkan.Scene3D.Assets,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.GradientEnvironment;
+     PasVulkan.Scene3D.Renderer.GradientEnvironment,
+     PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3;
 
 { TpvScene3DRendererBaseObject }
 
@@ -514,6 +540,20 @@ begin
 
  fAIUpscaleQuality:=TpvScene3DRendererAIUpscaleQuality.Low;
 
+ fTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
+
+ fTemporalUpscalerQuality:=TpvScene3DRendererTemporalUpscalerQuality.Quality;
+
+ fTemporalUpscalerSharpness:=0.0;
+
+ fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
+
+ fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
+
+ fCountGeneratedFrames:=1;
+
+ fActiveFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
+
 {fMinLogLuminance:=-8.0;
 
  fMaxLogLuminance:=6.0;}
@@ -570,6 +610,38 @@ end;
 procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);
 begin
  fGlobalIlluminationVoxelGridSize:=RoundUpToPowerOfTwo(Min(Max(aValue,16),256));
+end;
+
+function TpvScene3DRenderer.IsTemporalUpscalerAvailable(const aTemporalUpscaler:TpvScene3DRendererTemporalUpscaler):boolean;
+begin
+ // A temporal upscaler is available once the engine has a backend for it and that backend accepts this
+ // device. FSR is FSR 3.1, which needs nothing vendor-specific; the others have no backend in the engine
+ // so far and fall back to none.
+ case aTemporalUpscaler of
+  TpvScene3DRendererTemporalUpscaler.None:begin
+   result:=true;
+  end;
+  TpvScene3DRendererTemporalUpscaler.FSR:begin
+   result:=TpvScene3DRendererTemporalUpscalerBackendFSR3.IsSupported(fVulkanDevice);
+  end;
+  else begin
+   result:=false;
+  end;
+ end;
+end;
+
+function TpvScene3DRenderer.IsFrameGenerationAvailable(const aFrameGeneration:TpvScene3DRendererFrameGeneration):boolean;
+begin
+ // The same for frame generation, which needs a backend and the application's presentation of the
+ // generated frames on top. Neither is in the engine so far, so every one of them falls back to none.
+ case aFrameGeneration of
+  TpvScene3DRendererFrameGeneration.None:begin
+   result:=true;
+  end;
+  else begin
+   result:=false;
+  end;
+ end;
 end;
 
 class procedure TpvScene3DRenderer.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
@@ -937,6 +1009,46 @@ begin
   TpvScene3DRendererAntialiasingMode.TAA:begin
    fVelocityBufferNeeded:=true;
   end;
+ end;
+
+ // The temporal upscaler and the frame generation actually used: the ones asked for where there is
+ // something to run them with on this device, otherwise none, which leaves the frame graph exactly as it
+ // is without them.
+ if (fTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and IsTemporalUpscalerAvailable(fTemporalUpscaler) then begin
+  fActiveTemporalUpscaler:=fTemporalUpscaler;
+ end else begin
+  if (fTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','Temporal upscaler "'+fTemporalUpscaler.ToString+'" is not available here, using none');
+  end;
+  fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
+ end;
+ if (fFrameGeneration<>TpvScene3DRendererFrameGeneration.None) and IsFrameGenerationAvailable(fFrameGeneration) then begin
+  fActiveFrameGeneration:=fFrameGeneration;
+ end else begin
+  if (fFrameGeneration<>TpvScene3DRendererFrameGeneration.None) and assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','Frame generation "'+fFrameGeneration.ToString+'" is not available here, using none');
+  end;
+  fActiveFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
+ end;
+ fCountGeneratedFrames:=Max(1,fCountGeneratedFrames);
+
+ // A temporal upscaler is the antialiasing as well and wants a single-sampled, aliased picture to work
+ // from, so whatever antialiasing was set gives way to it.
+ if (fActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and
+    (fAntialiasingMode<>TpvScene3DRendererAntialiasingMode.None) then begin
+  if assigned(pvApplication) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','The temporal upscaler takes the place of the antialiasing');
+  end;
+  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.None;
+ end;
+
+ // Both work from the motion of every pixel and from where the opaque surfaces are, whatever the
+ // antialiasing asks for, and so they ask for both themselves - frame generation even at native
+ // resolution and with multisampling, where nothing else would.
+ if (fActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) or
+    (fActiveFrameGeneration<>TpvScene3DRendererFrameGeneration.None) then begin
+  fVelocityBufferNeeded:=true;
+  fFinalResolvedDepthNeeded:=true;
  end;
 
  if fMotionBlurActive then begin

@@ -277,6 +277,11 @@ begin
  fRenderer.RCASSharpness:=UnitApplication.Application.RCASSharpness;
  fRenderer.AIUpscaleMode:=UnitApplication.Application.AIUpscaleMode;
  fRenderer.AIUpscaleQuality:=UnitApplication.Application.AIUpscaleQuality;
+ fRenderer.TemporalUpscaler:=UnitApplication.Application.TemporalUpscaler;
+ fRenderer.TemporalUpscalerQuality:=UnitApplication.Application.TemporalUpscalerQuality;
+ fRenderer.TemporalUpscalerSharpness:=UnitApplication.Application.TemporalUpscalerSharpness;
+ fRenderer.FrameGeneration:=UnitApplication.Application.FrameGeneration;
+ fRenderer.CountGeneratedFrames:=UnitApplication.Application.CountGeneratedFrames;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
@@ -617,6 +622,16 @@ begin
 
   Bounds:=(fScene3D.BoundingBox.Max-fScene3D.BoundingBox.Min)*0.5;
 
+  // An empty scene, without any model loaded, has an empty bounding box, infinite on both ends, which
+  // would put the orbit camera at not-a-number and leave the picture black instead of showing the sky.
+  // It orbits a unit box around the origin then.
+  if IsNaN(Center.x) or IsNaN(Center.y) or IsNaN(Center.z) or
+     IsInfinite(Bounds.x) or IsInfinite(Bounds.y) or IsInfinite(Bounds.z) or
+     (Bounds.x<0.0) or (Bounds.y<0.0) or (Bounds.z<0.0) then begin
+   Center:=TpvVector3.Origin;
+   Bounds:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+  end;
+
   case fCameraMode of
    TCameraMode.VelocityCamera:begin
     ViewMatrix:=fVelocityCamera.Matrix.SimpleInverse;//TpvMatrix4x4.CreateTranslation(-fCameraPosition)*TpvMatrix4x4.CreateFromQuaternion(fCameraOrientation);
@@ -669,6 +684,11 @@ begin
   end;
 
   fTime:=fTime+pvApplication.DeltaTime;
+
+  // A steady orbit for reproducible motion, as tests of the temporal upscaling and frame generation need.
+  if UnitApplication.Application.AutoOrbitSpeed<>0.0 then begin
+   fCameraRotationX:=frac(fCameraRotationX+(UnitApplication.Application.AutoOrbitSpeed*pvApplication.DeltaTime));
+  end;
 
  finally
   fUpdateLock.Release;

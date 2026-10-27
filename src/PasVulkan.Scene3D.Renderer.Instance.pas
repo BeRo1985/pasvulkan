@@ -1209,6 +1209,7 @@ type { TpvScene3DRendererInstance }
       private
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
+       function GetPostProcessingAtScaledResolution:Boolean;
        procedure SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
        function GetGlobalIlluminationDebugModeCount:TpvUInt32;
        procedure SetGlobalIlluminationDebugMode(const aGlobalIlluminationDebugMode:TpvUInt32);
@@ -1272,6 +1273,14 @@ type { TpvScene3DRendererInstance }
        procedure ResetFrame(const aInFlightFrameIndex:TpvInt32);
        function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
        function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
+       // The jitter a temporal upscaler gets, in pixels of the render resolution with each axis within
+       // [-0.5,0.5], and the length of the sequence it is taken from. GetJitterOffset turns the same into the
+       // clip space offset of the projection whenever a temporal upscaler is active.
+       function GetTemporalUpscalerJitterPhaseCount:TpvInt32;
+       function GetTemporalUpscalerJitterPixelOffset(const aFrameCounter:TpvInt64):TpvVector2;
+       // The texture LOD bias the final view is drawn with: none without a temporal upscaler, otherwise the
+       // one its vendor recommends for the current upscaling ratio.
+       function GetTemporalUpscalerTextureLODBias:TpvFloat;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
        function NeedsDrawDataRebuild(const aInFlightFrameIndex:TpvSizeInt):boolean;
@@ -2103,7 +2112,11 @@ type { TpvScene3DRendererInstance }
        property ZFar:TpvFloat read fZFar write fZFar;
        property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
        property SizeFactor:TpvDouble read fSizeFactor write fSizeFactor;
-       property PostProcessingAtScaledResolution:Boolean read fPostProcessingAtScaledResolution write fPostProcessingAtScaledResolution;
+       // Whether the lens effects run at render resolution before the upscaling (true) or at output resolution
+       // after it (false). With a temporal upscaler they always run after it, since the screen-fixed lens dirt,
+       // star and rain would otherwise be carried along by the upscaler with the motion of the scene; reading
+       // the property then says false, whatever was written into it.
+       property PostProcessingAtScaledResolution:Boolean read GetPostProcessingAtScaledResolution write fPostProcessingAtScaledResolution;
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
       public
        property WaterSimulationSemaphores:TInFlightFrameSemaphores read fWaterSimulationSemaphores;
@@ -2231,6 +2244,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ResamplingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.EASURCASComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CNNUpscalerComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
@@ -2393,6 +2407,7 @@ type TpvScene3DRendererInstancePasses=class
        fResamplingRenderPass:TpvScene3DRendererPassesResamplingRenderPass;
        fEASURCASComputePass:TpvScene3DRendererPassesEASURCASComputePass;
        fCNNUpscalerComputePass:TpvScene3DRendererPassesCNNUpscalerComputePass;
+       fTemporalUpscalerComputePass:TpvScene3DRendererPassesTemporalUpscalerComputePass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
@@ -4134,6 +4149,11 @@ begin
  fSizeFactor:=sqrt(aPixelAmountFactor);
 end;
 
+function TpvScene3DRendererInstance.GetPostProcessingAtScaledResolution:Boolean;
+begin
+ result:=fPostProcessingAtScaledResolution and (Renderer.ActiveTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None);
+end;
+
 procedure TpvScene3DRendererInstance.SetRaytracingFlags(const aRaytracingFlags:TRaytracingFlags);
 begin
  if fRaytracingFlags<>aRaytracingFlags then begin
@@ -4752,6 +4772,17 @@ begin
    fSizeFactor:=0.25;
   end;
   else begin
+  end;
+ end;
+
+ // With a temporal upscaler its quality preset decides how much smaller the picture is rendered, per axis.
+ // Custom keeps the size factor as it was given, only held within what the upscalers accept, which is
+ // anything from the output size down to a third of it.
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  if Renderer.TemporalUpscalerQuality=TpvScene3DRendererTemporalUpscalerQuality.Custom then begin
+   fSizeFactor:=Min(Max(fSizeFactor,1.0/3.0),1.0);
+  end else begin
+   fSizeFactor:=Renderer.TemporalUpscalerQuality.SizeFactor;
   end;
  end;
 
@@ -5983,7 +6014,9 @@ begin
   end;
  end;
 
- if (Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None) or (Renderer.ResamplingMode=TpvScene3DRendererResamplingMode.EASU) then begin
+ if (Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None) or
+    (Renderer.ResamplingMode=TpvScene3DRendererResamplingMode.EASU) or
+    (Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) then begin
   fFrameGraph.AddImageResourceType('resourcetype_color_fullres_optimized_non_alpha',
                                    false,
                                    VK_FORMAT_R16G16B16A16_SFLOAT,//Renderer.OptimizedNonAlphaFormat,
@@ -7765,7 +7798,13 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  end; //*)
 
- if not (fPostProcessingAtScaledResolution or SameValue(fSizeFactor,1.0)) then begin
+ // A temporal upscaler takes the place of the resampling, at native resolution as well, where it is the
+ // antialiasing alone. It stands behind the depth of field, which needs depth and color on the same
+ // jittered grid, and before the lens effects, which then run at output resolution.
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass:=TpvScene3DRendererPassesTemporalUpscalerComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+ end else if not (GetPostProcessingAtScaledResolution or SameValue(fSizeFactor,1.0)) then begin
   // Resampling BEFORE Lens passes
   if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin
    TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
@@ -7810,7 +7849,7 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   TpvScene3DRendererInstancePasses(fPasses).fLensRainRenderPass:=nil;
  end;
 
- if fPostProcessingAtScaledResolution and not SameValue(fSizeFactor,1.0) then begin
+ if GetPostProcessingAtScaledResolution and not SameValue(fSizeFactor,1.0) then begin
   // Resampling AFTER Lens passes
   if Renderer.AIUpscaleMode<>TpvScene3DRendererAIUpscaleMode.None then begin
    TpvScene3DRendererInstancePasses(fPasses).fCNNUpscalerComputePass:=TpvScene3DRendererPassesCNNUpscalerComputePass.Create(fFrameGraph,self);
@@ -9201,7 +9240,7 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fSceneMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fSceneMipmappedArray2DImage.ImageView');
 
-      if SameValue(fSizeFactor,1.0) or fPostProcessingAtScaledResolution then begin
+      if SameValue(fSizeFactor,1.0) or GetPostProcessingAtScaledResolution then begin
        fFullResSceneMipmappedArray2DImage:=fSceneMipmappedArray2DImage;
       end else begin
        fFullResSceneMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R16G16B16A16_SFLOAT{Renderer.OptimizedNonAlphaFormat},VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface,'TpvScene3DRendererInstance.fFullResSceneMipmappedArray2DImage');
@@ -10585,6 +10624,49 @@ begin
  fCascadedShadowMapBuilder.Calculate(aInFlightFrameIndex);
 end;
 
+function TpvScene3DRendererInstance.GetTemporalUpscalerJitterPhaseCount:TpvInt32;
+var Ratio:TpvDouble;
+begin
+ // Eight phases for every output pixel that one render pixel covers, so that within one cycle every output
+ // pixel gets samples from all over it at every upscaling ratio - eight at native resolution, 18 at 1.5
+ // times, 32 at twice and 72 at three times the render size. Rounded down, as FSR counts them, which
+ // compares its own count against this one.
+ Ratio:=Max(1,fWidth)/Max(1,fScaledWidth);
+ result:=Max(1,trunc(8.0*sqr(Ratio)));
+end;
+
+function TpvScene3DRendererInstance.GetTemporalUpscalerTextureLODBias:TpvFloat;
+begin
+ case Renderer.ActiveTemporalUpscaler of
+  TpvScene3DRendererTemporalUpscaler.None:begin
+   result:=0.0;
+  end;
+  TpvScene3DRendererTemporalUpscaler.FSR:begin
+   // AMD's formula, log2(render/display)-1, which is -1.0 at native resolution, -1.58 at 1.5 times,
+   // -2.0 at twice and -2.58 at three times the render size.
+   result:=(ln(Max(1,fScaledWidth)/Max(1,fWidth))/ln(2.0))-1.0;
+  end;
+  else begin
+   result:=ln(Max(1,fScaledWidth)/Max(1,fWidth))/ln(2.0);
+  end;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetTemporalUpscalerJitterPixelOffset(const aFrameCounter:TpvInt64):TpvVector2;
+var Phase:TpvInt64;
+begin
+ // Halton(2,3), the sequence the vendors of the temporal upscalers ask for, started at one, since index zero
+ // would be the pixel corner on both axes.
+ if aFrameCounter>=0 then begin
+  Phase:=aFrameCounter mod GetTemporalUpscalerJitterPhaseCount;
+  result:=TpvVector2.InlineableCreate(GetHaltonSequence(TpvUInt32(Phase+1),2)-0.5,
+                                      GetHaltonSequence(TpvUInt32(Phase+1),3)-0.5);
+ end else begin
+  result.x:=0.0;
+  result.y:=0.0;
+ end;
+end;
+
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
 const SMAAT2xOffsets:array[0..1] of TpvVector2=
        (
@@ -10592,6 +10674,12 @@ const SMAAT2xOffsets:array[0..1] of TpvVector2=
         (x:-0.25;y:-0.25)
        );
 begin
+ // A temporal upscaler brings its own jitter, whatever the antialiasing mode says, since it takes the place
+ // of the antialiasing. The pixel offset becomes a clip space offset the same way as for TAA below.
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  result:=(GetTemporalUpscalerJitterPixelOffset(aFrameCounter)*2.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
+  exit;
+ end;
  case Renderer.AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.SMAAT2x:begin
    if aFrameCounter>=0 then begin
@@ -10620,6 +10708,11 @@ function TpvScene3DRendererInstance.AddTemporalAntialiasingJitter(const aProject
 var Offset:TpvVector2;
 begin
  result:=aProjectionMatrix;
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+  Offset:=GetJitterOffset(aFrameCounter);
+  result:=result*TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y);
+  exit;
+ end;
  case Renderer.AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.SMAAT2x,
   TpvScene3DRendererAntialiasingMode.TAA:begin
@@ -11878,6 +11971,14 @@ begin
     MeshStagePushConstants^.MaximumDistance:=-1.0;
     MeshStagePushConstants^.AreaTooSmallThreshold:=-1.0;
    end;
+  end;
+  // The texture LOD bias of a temporal upscaler, for the final view only, so that the textures keep the
+  // detail of the output resolution rather than that of the smaller render resolution. Zero, which leaves
+  // the texture sampling exactly as it is, everywhere else.
+  if aRenderPass=TpvScene3DRendererRenderPass.View then begin
+   MeshStagePushConstants^.TextureLODBias:=GetTemporalUpscalerTextureLODBias;
+  end else begin
+   MeshStagePushConstants^.TextureLODBias:=0.0;
   end;
 
   fSetGlobalResourcesDone[aRenderPass]:=false;

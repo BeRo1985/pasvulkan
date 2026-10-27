@@ -17,7 +17,12 @@ layout (push_constant) uniform PushConstants {
   uint textureDepthIndex;
   uint meshDrawCommandsBDALow; // Low 32 bits of mesh draw commands buffer BDA (mesh shader path)
   uint meshDrawCommandsBDAHigh; // High 32 bits of mesh draw commands buffer BDA (mesh shader path)
-  
+
+  float maximumDistance; // read by the task and cull shaders through their own declaration
+  float areaTooSmallThreshold; // likewise
+
+  float textureLodBias; // log2 bias of the material texture sampling, non-zero only with a temporal upscaler
+
 } pushConstants;
 
 #endif

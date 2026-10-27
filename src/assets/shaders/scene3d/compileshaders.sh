@@ -157,6 +157,12 @@ fi
 #  exit 1
 #fi
 
+# AMD FidelityFX Super Resolution 3.1 upscaler passes (fsr3/, see the README.txt there): the arguments the FidelityFX
+# SDK v1.1.4 builds its Vulkan permutations with, fixed to what the renderer feeds it - HDR input, motion vectors at
+# render resolution and without jitter, no 16-bit math. The depth convention, the Lanczos LUT and the sharpening are
+# the permutations left, which every pass entry below picks on its own.
+FSR3UPSCALER_ARGUMENTS="-S comp --target-env vulkan1.2 -Ifsr3 -Ifsr3/fsr3upscaler -DFFX_GPU=1 -DFFX_GLSL=1 -DFFX_HALF=0 -DFFX_FSR3UPSCALER_OPTION_UPSAMPLE_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_ACCUMULATE_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_SAMPLERS_USE_DATA_HALF=1 -DFFX_FSR3UPSCALER_OPTION_POSTPROCESSLOCKSTATUS_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_UPSAMPLE_USE_LANCZOS_TYPE=2 -DFFX_FSR3UPSCALER_OPTION_HDR_COLOR_INPUT=1 -DFFX_FSR3UPSCALER_OPTION_LOW_RESOLUTION_MOTION_VECTORS=1 -DFFX_FSR3UPSCALER_OPTION_JITTERED_MOTION_VECTORS=0"
+
 #############################################
 #          Predefined shader list           #
 #############################################
@@ -614,6 +620,29 @@ compileshaderarguments=(
 
   "-V resampling_rcas.comp -o ${tempPath}/resampling_rcas_comp.spv"
   "-V resampling_rcas.comp -DMULTIVIEW -o ${tempPath}/resampling_rcas_multiview_comp.spv"
+
+  "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_luma_pyramid_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_luma_pyramid_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_luma_pyramid_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_luma_pyramid_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_shading_change_pyramid_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_shading_change_pyramid_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_shading_change_pyramid_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_shading_change_pyramid_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_shading_change_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_shading_change_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_shading_change_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_shading_change_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_prepare_reactivity_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_reactivity_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_prepare_reactivity_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_reactivity_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_luma_instability_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_luma_instability_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_luma_instability_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_luma_instability_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_accumulate_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_accumulate_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=1 -o ${tempPath}/fsr3upscaler_accumulate_sharpen_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=1 -o ${tempPath}/fsr3upscaler_accumulate_sharpen_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=1 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_accumulate_lut_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=1 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_accumulate_lut_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=1 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=1 -o ${tempPath}/fsr3upscaler_accumulate_lut_sharpen_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_accumulate_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=1 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=1 -o ${tempPath}/fsr3upscaler_accumulate_lut_sharpen_inverteddepth_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_rcas_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_rcas_comp.spv"
+  "-V fsr3/ffx_fsr3upscaler_rcas_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_rcas_inverteddepth_comp.spv"
 
   "-V cnn_conv_forward.comp -o ${tempPath}/cnn_conv_forward_comp.spv"
   "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"

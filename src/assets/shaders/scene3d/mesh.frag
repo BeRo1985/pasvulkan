@@ -352,6 +352,7 @@ uvec2 textureFlags;
 vec2 texCoords[2];
 vec2 texCoords_dFdx[2];
 vec2 texCoords_dFdy[2];
+float textureLodBiasScale; // exp2 of the texture LOD bias, which scales the gradients the material textures are sampled with
 
 int getTexCoordID(const in int textureIndex){
   return material.textures[textureIndex];
@@ -374,8 +375,8 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
     mat3x2 m = material.textureTransforms[textureIndex];
     return textureGrad(u2DTextures[nonuniformEXT(((textureID & 0x3fff) << 1) | (int(sRGB) & 1))], //
                         (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
-                        (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
-                        (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
+                        (m * vec3(texCoords_dFdx[texCoordIndex] * textureLodBiasScale, 0.0)).xy,  //
+                        (m * vec3(texCoords_dFdy[texCoordIndex] * textureLodBiasScale, 0.0)).xy);
   }else{
     return defaultValue;
   }
@@ -486,6 +487,8 @@ void main() {
   texCoords_dFdx[1] = dFdxFine(inTexCoord1);
   texCoords_dFdy[0] = dFdyFine(inTexCoord0);
   texCoords_dFdy[1] = dFdyFine(inTexCoord1);
+  // A negative bias makes the gradients smaller and so picks finer mip levels; zero leaves them as they are.
+  textureLodBiasScale = exp2(pushConstants.textureLodBias);
 #if !defined(VOXELIZATION)
   /*if(!any(notEqual(pushConstants.jitter.xy, vec2(0.0))))*/{
     texCoords[0] -= (texCoords_dFdx[0] * pushConstants.jitter.x) + (texCoords_dFdy[0] * pushConstants.jitter.y);
