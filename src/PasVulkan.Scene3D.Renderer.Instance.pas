@@ -14074,6 +14074,14 @@ begin
  if assigned(fFrameGenerationCompositor) then begin
   fFrameGenerationCompositor.CountGeneratedFrames:=Renderer.CountGeneratedFrames;
   fFrameGenerationCompositor.DebugView:=Renderer.FrameGenerationDebugView;
+  fFrameGenerationCompositor.Suspended:=Renderer.FrameGenerationSuspended;
+  fFrameGenerationCompositor.MinimumFrameRate:=Renderer.FrameGenerationMinimumFrameRate;
+  // The last of the timer query results is the whole frame, where the frame graph measures at all.
+  if assigned(fFrameGraph.LastTimerQueryResults) and (fFrameGraph.LastTimerQueryResults.Count>0) then begin
+   fFrameGenerationCompositor.GPUFrameTime:=fFrameGraph.LastTimerQueryResults[fFrameGraph.LastTimerQueryResults.Count-1].Duration;
+  end else begin
+   fFrameGenerationCompositor.GPUFrameTime:=0.0;
+  end;
   fFrameGenerationCompositor.BeginFrame(aFrameCounter,
                                         fInFlightFrameStates[aInFlightFrameIndex].CameraReset,
                                         pvApplication.DeltaTime);

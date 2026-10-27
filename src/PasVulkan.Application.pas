@@ -1989,6 +1989,7 @@ type EpvApplication=class(Exception)
        fFramePacingSleepWithDriftCompensation:TpvHighResolutionTimerSleepWithDriftCompensation;
        fFramePacingPresentTimingRefreshDuration:TpvUInt64; // from VK_EXT_present_timing, in nanoseconds
        fFramePacingPresentTimingTimeDomainID:TpvUInt64; // from vkGetSwapchainTimeDomainPropertiesEXT
+       fFramePacingPresentTimingTimeDomain:TVkTimeDomainKHR; // the kind of time domain behind it
        fFramePacingPresentTimingAvailable:boolean;
        fDisablePresentTiming:boolean; // set when a graphics capture/injection tool (Nsight, RenderDoc) or override is detected
        fFramePacingEffectiveInterval:TpvInt64; // computed pacing interval, consumed by FramePacingAndFrameRateLimiter
@@ -2130,6 +2131,51 @@ type EpvApplication=class(Exception)
        fQueuedGeneratedFrameImageIndices:array[0..MaxGeneratedFramesPerFrame-1] of TpvUInt32;
 
        fGeneratedFramePresentInterval:TpvDouble;
+
+       // Where the surface takes absolute target times, the presents of one interval get them evenly
+       // spaced, see SchedulePresentTargetTimes: the target times of the generated frames and then of the
+       // rendered one, and the target time of the rendered frame before, from which the next interval goes
+       // on.
+       fGeneratedFrameTargetTimes:array[0..MaxGeneratedFramesPerFrame] of TpvUInt64;
+
+       fCountGeneratedFrameTargetTimes:TpvInt32;
+
+       fGeneratedFrameCountPresents:TpvInt32;
+
+       fGeneratedFrameLastTargetTime:TpvUInt64;
+
+       // The reports of past presents, see SetupPresentTimingReports: the present stage whose times are
+       // asked for, and the last present seen. They tell whether frames with a target time miss it, and
+       // the lead the target times keep before now grows with each miss, see PollPresentTimingReports and
+       // SchedulePresentTargetTimes.
+       fPresentTimingReportStage:TVkPresentStageFlagsEXT;
+
+       fPresentTimingReportQueueState:TpvInt32; // 0 not set up yet, 1 set up, -1 not to be had
+
+       fPresentTimingReportLastPresentID:TpvUInt64;
+
+       fGeneratedFramePresentLead:TpvInt64;
+
+       // A test aid, see PresentIntervalStatistics: what has been gathered since the last log line. Bucket 0
+       // of the refresh multiples counts the intervals off the refresh grid, buckets 1 to 4 those of that
+       // many refresh periods and bucket 5 the longer ones.
+       fPresentIntervalStatistics:boolean;
+
+       fPresentIntervalStatisticsLastTime:TpvUInt64;
+
+       fPresentIntervalStatisticsCount:TpvInt64;
+
+       fPresentIntervalStatisticsSum:TpvDouble;
+
+       fPresentIntervalStatisticsSumSquares:TpvDouble;
+
+       fPresentIntervalStatisticsMinimum:TpvDouble;
+
+       fPresentIntervalStatisticsMaximum:TpvDouble;
+
+       fPresentIntervalStatisticsRefreshMultiples:array[0..5] of TpvInt64;
+
+       fPresentIntervalStatisticsLastLogTime:TpvHighResolutionTime;
 
        fVulkanDepthImageFormat:TVkFormat;
 
@@ -2315,6 +2361,12 @@ type EpvApplication=class(Exception)
        function WaitForSwapChainLatency:boolean;
 
        function AcquireVulkanBackBuffer:boolean;
+       function GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean;
+       procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
+       procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
+       procedure SetupPresentTimingReports;
+       function EnsurePresentTimingReportQueue:boolean;
+       procedure PollPresentTimingReports;
        function PresentGeneratedFrames:TpvInt32;
        function PresentVulkanBackBuffer:boolean;
 
@@ -2467,6 +2519,12 @@ type EpvApplication=class(Exception)
        // a screenshot of one of them while the rendered frame is drawn.
        function GetQueuedGeneratedFrameImageIndex(const aIndex:TpvInt32):TpvInt32;
        property CountQueuedGeneratedFrames:TpvInt32 read fCountQueuedGeneratedFrames;
+
+       // A test aid: where the surface reports the times of past presents, the intervals between the
+       // presented frames, generated ones included, go into the log every two seconds, with how many of them
+       // were one, two, three or more refresh periods long. Set before the swapchain is created; it stays
+       // off while the frame pacing works from the same reports itself.
+       property PresentIntervalStatistics:boolean read fPresentIntervalStatistics write fPresentIntervalStatistics;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
 
@@ -13272,6 +13330,7 @@ begin
 
  // Query time domain ID for VK_EXT_present_timing
  fFramePacingPresentTimingTimeDomainID:=0;
+ fFramePacingPresentTimingTimeDomain:=VK_TIME_DOMAIN_DEVICE_KHR;
  if fFramePacingPresentTimingAvailable and assigned(fVulkanDevice.Commands.Commands.GetSwapchainTimeDomainPropertiesEXT) then begin
   try
    FillChar(SwapchainTimeDomainProperties,SizeOf(TVkSwapchainTimeDomainPropertiesEXT),#0);
@@ -13286,7 +13345,8 @@ begin
                                                                  @TimeDomainCount)=VK_SUCCESS then begin
     if TimeDomainCount>0 then begin
      fFramePacingPresentTimingTimeDomainID:=TimeDomainIDs[0];
-     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: timeDomainID='+IntToStr(fFramePacingPresentTimingTimeDomainID));
+     fFramePacingPresentTimingTimeDomain:=TimeDomains[0];
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: timeDomainID='+IntToStr(fFramePacingPresentTimingTimeDomainID)+', time domain '+IntToStr(TpvInt64(fFramePacingPresentTimingTimeDomain)));
      fPresentTimingFeedbackTimeDomainCount:=1;
      fPresentTimingFeedbackTimeDomains[0]:=TimeDomains[0];
      fPresentTimingFeedbackTimeDomainIDs[0]:=TimeDomainIDs[0];
@@ -13369,6 +13429,10 @@ begin
  end;
  fGeneratedFrameAcquireIndex:=0;
  fCountQueuedGeneratedFrames:=0;
+ fCountGeneratedFrameTargetTimes:=0;
+ fGeneratedFrameLastTargetTime:=0;
+
+ SetupPresentTimingReports;
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
@@ -14918,6 +14982,307 @@ begin
  end;
 end;
 
+// The current time in the time domain the swapchain takes present target times in, through a calibrated
+// timestamp, so that host time and the time domain of the swapchain need no conversion of their own.
+function TpvApplication.GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean;
+var TimestampInfo:TVkCalibratedTimestampInfoKHR;
+    SwapchainCalibratedInfo:TVkSwapchainCalibratedTimestampInfoEXT;
+    MaxDeviation:TpvUInt64;
+begin
+ result:=false;
+ aTime:=0;
+ if (not assigned(fVulkanDevice)) or
+    (not fVulkanDevice.CalibratedTimestampsSupport) or
+    (not assigned(fVulkanSwapChain)) then begin
+  exit;
+ end;
+ FillChar(TimestampInfo,SizeOf(TVkCalibratedTimestampInfoKHR),#0);
+ TimestampInfo.sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR;
+ TimestampInfo.timeDomain:=fFramePacingPresentTimingTimeDomain;
+ if (fFramePacingPresentTimingTimeDomain=TVkTimeDomainKHR(VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT)) or
+    (fFramePacingPresentTimingTimeDomain=TVkTimeDomainKHR(VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT)) then begin
+  FillChar(SwapchainCalibratedInfo,SizeOf(TVkSwapchainCalibratedTimestampInfoEXT),#0);
+  SwapchainCalibratedInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT;
+  SwapchainCalibratedInfo.swapchain:=fVulkanSwapChain.Handle;
+  SwapchainCalibratedInfo.presentStage:=0;
+  SwapchainCalibratedInfo.timeDomainId:=fFramePacingPresentTimingTimeDomainID;
+  TimestampInfo.pNext:=@SwapchainCalibratedInfo;
+ end;
+ MaxDeviation:=0;
+ try
+  if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsKHR) then begin
+   result:=fVulkanDevice.Commands.GetCalibratedTimestampsKHR(fVulkanDevice.Handle,1,@TimestampInfo,@aTime,@MaxDeviation)=VK_SUCCESS;
+  end else if assigned(fVulkanDevice.Commands.Commands.GetCalibratedTimestampsEXT) then begin
+   result:=fVulkanDevice.Commands.GetCalibratedTimestampsEXT(fVulkanDevice.Handle,1,@TimestampInfo,@aTime,@MaxDeviation)=VK_SUCCESS;
+  end;
+ except
+  result:=false;
+ end;
+ // Target times are in nanoseconds in every time domain, but the device time domain counts in ticks of
+ // the timestamp period.
+ if result and
+    (fFramePacingPresentTimingTimeDomain=VK_TIME_DOMAIN_DEVICE_KHR) and
+    (abs(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod-1.0)>1e-6) then begin
+  aTime:=TpvUInt64(round(aTime*TpvDouble(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod)));
+ end;
+end;
+
+// Gives the presents of one interval - the generated frames and then the rendered one - absolute target
+// times at even distances over the interval between the rendered frames, where the surface takes them.
+// They go on from the target time of the rendered frame before, unless that lies behind already, as after
+// a hitch, or unreasonably far ahead, and then start from now. Now is always moved on by the lead, which
+// grows while frames miss their target times, see PollPresentTimingReports.
+procedure TpvApplication.SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
+var Index:TpvInt32;
+    Now,Step,Interval,First,Lead:TpvUInt64;
+begin
+ fCountGeneratedFrameTargetTimes:=0;
+ fGeneratedFrameCountPresents:=Max(1,aCountPresents);
+ if (aCountPresents<1) or
+    (aCountPresents>length(fGeneratedFrameTargetTimes)) or
+    (not fFramePacingPresentTimingAvailable) or
+    (not fVulkanDevice.PresentTimingSupport) or
+    (not fVulkanSwapChain.PresentAtAbsoluteTimeSupported) or
+    fDisablePresentTiming or
+    (fGeneratedFramePresentInterval<=0.0) or
+    (not GetPresentTimingCurrentTime(Now)) then begin
+  exit;
+ end;
+ Interval:=TpvUInt64(trunc(fGeneratedFramePresentInterval*1e9));
+ Step:=Interval div TpvUInt64(aCountPresents);
+ Lead:=TpvUInt64(Min(Max(fGeneratedFramePresentLead,0),TpvInt64(Interval)));
+ Now:=Now+Lead;
+ First:=fGeneratedFrameLastTargetTime+Step;
+ if (fGeneratedFrameLastTargetTime=0) or (First<Now) or (First>(Now+(Interval*2))) then begin
+  First:=Now;
+ end;
+ for Index:=0 to aCountPresents-1 do begin
+  fGeneratedFrameTargetTimes[Index]:=First+(TpvUInt64(Index)*Step);
+ end;
+ fCountGeneratedFrameTargetTimes:=aCountPresents;
+ fGeneratedFrameLastTargetTime:=fGeneratedFrameTargetTimes[aCountPresents-1];
+end;
+
+// Chains the target time of the aPresentIndex-th present of the interval into a present: the absolute
+// one from SchedulePresentTargetTimes, otherwise an even fraction of the interval after the present
+// before where the surface takes relative target times, otherwise none. It asks for the present stage of
+// the reports of past presents with it, see SetupPresentTimingReports. With an aPresentIndex of -1 it is
+// a present outside of frame generation, which only asks for that stage, and only for the statistics.
+procedure TpvApplication.ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
+var StageQueries:TVkPresentStageFlagsEXT;
+begin
+ if ((aPresentIndex>=0) or fPresentIntervalStatistics) and EnsurePresentTimingReportQueue then begin
+  StageQueries:=fPresentTimingReportStage;
+ end else begin
+  StageQueries:=0;
+ end;
+ FillChar(aPresentTimingInfo,SizeOf(TVkPresentTimingInfoEXT),#0);
+ aPresentTimingInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+ aPresentTimingInfo.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
+ if (aPresentIndex>=0) and (aPresentIndex<fCountGeneratedFrameTargetTimes) then begin
+  aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
+  aPresentTimingInfo.targetTime:=fGeneratedFrameTargetTimes[aPresentIndex];
+ end else if (aPresentIndex>=0) and
+             fFramePacingPresentTimingAvailable and
+             fVulkanDevice.PresentTimingSupport and
+             fVulkanSwapChain.PresentAtRelativeTimeSupported and
+             (not fDisablePresentTiming) and
+             (fGeneratedFramePresentInterval>0.0) then begin
+  aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
+  aPresentTimingInfo.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/fGeneratedFrameCountPresents));
+ end else if StageQueries=0 then begin
+  exit;
+ end;
+ // Without a target time, the present timing info still asks for the present stage of the reports.
+ aPresentTimingInfo.presentStageQueries:=StageQueries;
+ FillChar(aPresentTimingsInfo,SizeOf(TVkPresentTimingsInfoEXT),#0);
+ aPresentTimingsInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+ aPresentTimingsInfo.swapchainCount:=1;
+ aPresentTimingsInfo.pTimingInfos:=@aPresentTimingInfo;
+ aPresentTimingsInfo.pNext:=aNext;
+ aNext:=@aPresentTimingsInfo;
+end;
+
+// Picks the present stage for the reports of past presents, the one closest to what is actually seen, and
+// gives the swapchain a queue for them. They are asked for by the generated frames and their rendered
+// frames, and by every present with PresentIntervalStatistics. The frame pacing from present timing
+// feedback reads the same reports itself, so with that there are none here.
+procedure TpvApplication.SetupPresentTimingReports;
+var Index:TpvInt32;
+begin
+ fPresentTimingReportStage:=0;
+ fPresentTimingReportQueueState:=0;
+ fPresentTimingReportLastPresentID:=0;
+ fGeneratedFramePresentLead:=0;
+ fPresentIntervalStatisticsLastTime:=0;
+ fPresentIntervalStatisticsCount:=0;
+ fPresentIntervalStatisticsSum:=0.0;
+ fPresentIntervalStatisticsSumSquares:=0.0;
+ fPresentIntervalStatisticsMinimum:=0.0;
+ fPresentIntervalStatisticsMaximum:=0.0;
+ for Index:=Low(fPresentIntervalStatisticsRefreshMultiples) to High(fPresentIntervalStatisticsRefreshMultiples) do begin
+  fPresentIntervalStatisticsRefreshMultiples[Index]:=0;
+ end;
+ fPresentIntervalStatisticsLastLogTime:=fHighResolutionTimer.GetTime;
+ if (not fFramePacingPresentTimingAvailable) or
+    fDisablePresentTiming or
+    (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) or
+    (not assigned(fVulkanSwapChain)) or
+    (not assigned(fVulkanDevice.Commands.Commands.SetSwapchainPresentTimingQueueSizeEXT)) or
+    (not assigned(fVulkanDevice.Commands.Commands.GetPastPresentationTimingEXT)) then begin
+  if fPresentIntervalStatistics then begin
+   Log(LOG_INFO,'TpvApplication.SetupPresentTimingReports','No present interval statistics here, the surface reports no times of past presents');
+  end;
+  exit;
+ end;
+ if (fVulkanSwapChain.PresentStageQueries and TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT))<>0 then begin
+  fPresentTimingReportStage:=TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT);
+ end else if (fVulkanSwapChain.PresentStageQueries and TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT))<>0 then begin
+  fPresentTimingReportStage:=TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT);
+ end else if (fVulkanSwapChain.PresentStageQueries and TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_REQUEST_DEQUEUED_BIT_EXT))<>0 then begin
+  fPresentTimingReportStage:=TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_REQUEST_DEQUEUED_BIT_EXT);
+ end else begin
+  if fPresentIntervalStatistics then begin
+   Log(LOG_INFO,'TpvApplication.SetupPresentTimingReports','No present interval statistics here, the surface reports no usable present stage');
+  end;
+  exit;
+ end;
+ if fPresentIntervalStatistics then begin
+  if EnsurePresentTimingReportQueue then begin
+   Log(LOG_INFO,'TpvApplication.SetupPresentTimingReports','Present interval statistics at present stage $'+LowerCase(IntToHex(fPresentTimingReportStage,2)));
+  end else begin
+   Log(LOG_INFO,'TpvApplication.SetupPresentTimingReports','No present interval statistics here, the swapchain takes no queue for the reports');
+  end;
+ end;
+end;
+
+// The queue for the reports of past presents, given to the swapchain only once something asks for them:
+// the statistics, or the first generated frame. Without it, a present may not ask for a present stage.
+function TpvApplication.EnsurePresentTimingReportQueue:boolean;
+begin
+ if (fPresentTimingReportQueueState=0) and (fPresentTimingReportStage<>0) then begin
+  if fVulkanDevice.Commands.SetSwapchainPresentTimingQueueSizeEXT(fVulkanDevice.Handle,fVulkanSwapChain.Handle,64)=VK_SUCCESS then begin
+   fPresentTimingReportQueueState:=1;
+  end else begin
+   fPresentTimingReportQueueState:=-1;
+  end;
+ end;
+ result:=fPresentTimingReportQueueState>0;
+end;
+
+// Reads the reports of past presents. For presents with an absolute target time, how much later than that
+// they came is what SchedulePresentTargetTimes keeps as a lead: it follows a lateness at once and lets it
+// go again slowly. With PresentIntervalStatistics, the intervals between the presents also go into the
+// statistics, which are logged every two seconds.
+procedure TpvApplication.PollPresentTimingReports;
+var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
+    PastTimingProperties:TVkPastPresentationTimingPropertiesEXT;
+    PastTimings:array[0..15] of TVkPastPresentationTimingEXT;
+    PastStages:array[0..15] of TVkPresentStageTimeEXT;
+    Index,Bucket:TpvInt32;
+    Time:TpvUInt64;
+    Lateness:TpvInt64;
+    Interval,RefreshDuration,Multiple,Mean,Deviation:TpvDouble;
+    NowTime:TpvHighResolutionTime;
+    Text:TpvUTF8String;
+begin
+ if (fPresentTimingReportStage=0) or
+    (fPresentTimingReportQueueState<=0) or
+    (not assigned(fVulkanSwapChain)) then begin
+  exit;
+ end;
+ FillChar(PastTimingInfo,SizeOf(TVkPastPresentationTimingInfoEXT),#0);
+ PastTimingInfo.sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT;
+ PastTimingInfo.swapchain:=fVulkanSwapChain.Handle;
+ FillChar(PastStages,SizeOf(PastStages),#0);
+ for Index:=0 to 15 do begin
+  FillChar(PastTimings[Index],SizeOf(TVkPastPresentationTimingEXT),#0);
+  PastTimings[Index].sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
+  PastTimings[Index].presentStageCount:=1;
+  PastTimings[Index].pPresentStages:=@PastStages[Index];
+ end;
+ FillChar(PastTimingProperties,SizeOf(TVkPastPresentationTimingPropertiesEXT),#0);
+ PastTimingProperties.sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT;
+ PastTimingProperties.presentationTimingCount:=16;
+ PastTimingProperties.pPresentationTimings:=@PastTimings[0];
+ try
+  if fVulkanDevice.Commands.GetPastPresentationTimingEXT(fVulkanDevice.Handle,@PastTimingInfo,@PastTimingProperties)<>VK_SUCCESS then begin
+   exit;
+  end;
+ except
+  exit;
+ end;
+ RefreshDuration:=fFramePacingPresentTimingRefreshDuration*1e-6;
+ for Index:=0 to TpvInt32(PastTimingProperties.presentationTimingCount)-1 do begin
+  if (PastTimings[Index].reportComplete<>VK_FALSE) and
+     (PastTimings[Index].presentId>fPresentTimingReportLastPresentID) and
+     (PastTimings[Index].presentStageCount>0) and
+     (PastStages[Index].time<>0) then begin
+   Time:=PastStages[Index].time;
+   if PastTimings[Index].targetTime<>0 then begin
+    // Up to half a refresh period either way is the rounding to the nearest refresh cycle; beyond that,
+    // the frame was not ready in time and missed its refresh cycle.
+    Lateness:=TpvInt64(Time)-TpvInt64(PastTimings[Index].targetTime);
+    if Lateness>TpvInt64(fFramePacingPresentTimingRefreshDuration shr 1) then begin
+     fGeneratedFramePresentLead:=Min(fGeneratedFramePresentLead+Lateness,TpvInt64(250000000));
+    end else begin
+     fGeneratedFramePresentLead:=fGeneratedFramePresentLead-(fGeneratedFramePresentLead div 64);
+    end;
+   end;
+   if fPresentIntervalStatistics and (fPresentIntervalStatisticsLastTime<>0) and (Time>fPresentIntervalStatisticsLastTime) then begin
+    Interval:=(Time-fPresentIntervalStatisticsLastTime)*1e-6;
+    if fPresentIntervalStatisticsCount=0 then begin
+     fPresentIntervalStatisticsMinimum:=Interval;
+     fPresentIntervalStatisticsMaximum:=Interval;
+    end else begin
+     fPresentIntervalStatisticsMinimum:=Min(fPresentIntervalStatisticsMinimum,Interval);
+     fPresentIntervalStatisticsMaximum:=Max(fPresentIntervalStatisticsMaximum,Interval);
+    end;
+    inc(fPresentIntervalStatisticsCount);
+    fPresentIntervalStatisticsSum:=fPresentIntervalStatisticsSum+Interval;
+    fPresentIntervalStatisticsSumSquares:=fPresentIntervalStatisticsSumSquares+sqr(Interval);
+    if RefreshDuration>0.0 then begin
+     Multiple:=Interval/RefreshDuration;
+     if abs(Multiple-round(Multiple))>0.25 then begin
+      Bucket:=0;
+     end else begin
+      Bucket:=Min(Max(round(Multiple),1),5);
+     end;
+     inc(fPresentIntervalStatisticsRefreshMultiples[Bucket]);
+    end;
+   end;
+   fPresentTimingReportLastPresentID:=PastTimings[Index].presentId;
+   fPresentIntervalStatisticsLastTime:=Time;
+  end;
+ end;
+ NowTime:=fHighResolutionTimer.GetTime;
+ if fPresentIntervalStatistics and
+    (fPresentIntervalStatisticsCount>0) and
+    ((NowTime-fPresentIntervalStatisticsLastLogTime)>=(fHighResolutionTimer.SecondInterval*2)) then begin
+  Mean:=fPresentIntervalStatisticsSum/fPresentIntervalStatisticsCount;
+  Deviation:=sqrt(Max(0.0,(fPresentIntervalStatisticsSumSquares/fPresentIntervalStatisticsCount)-sqr(Mean)));
+  Text:='Present intervals: '+IntToStr(fPresentIntervalStatisticsCount)+
+        ', mean '+FloatToStrF(Mean,ffFixed,8,3)+' ms'+
+        ', deviation '+FloatToStrF(Deviation,ffFixed,8,3)+' ms'+
+        ', minimum '+FloatToStrF(fPresentIntervalStatisticsMinimum,ffFixed,8,3)+' ms'+
+        ', maximum '+FloatToStrF(fPresentIntervalStatisticsMaximum,ffFixed,8,3)+' ms'+
+        ', refresh periods 1x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[1])+
+        ' 2x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[2])+
+        ' 3x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[3])+
+        ' 4x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[4])+
+        ' more '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[5])+
+        ' off the grid '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[0]);
+  Log(LOG_INFO,'TpvApplication.PollPresentTimingReports',Text);
+  fPresentIntervalStatisticsCount:=0;
+  fPresentIntervalStatisticsSum:=0.0;
+  fPresentIntervalStatisticsSumSquares:=0.0;
+  for Bucket:=Low(fPresentIntervalStatisticsRefreshMultiples) to High(fPresentIntervalStatisticsRefreshMultiples) do begin
+   fPresentIntervalStatisticsRefreshMultiples[Bucket]:=0;
+  end;
+  fPresentIntervalStatisticsLastLogTime:=NowTime;
+ end;
+end;
+
 // Presents the frames generated for the current rendered frame, ahead of it. Where the device can time
 // presents, each of them and the rendered frame after them is shown a fraction of the interval between
 // the rendered frames after the one before, so that all of them come at even distances; otherwise they
@@ -14958,23 +15323,7 @@ begin
     PresentNext:=@PresentIdKHR;
    end;
 
-   if fFramePacingPresentTimingAvailable and
-      fVulkanDevice.PresentTimingSupport and
-      fVulkanSwapChain.PresentAtRelativeTimeSupported and
-      (not fDisablePresentTiming) and
-      (fGeneratedFramePresentInterval>0.0) then begin
-    FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
-    PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
-    PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
-    PresentTimingInfoEXT.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/(fCountQueuedGeneratedFrames+1)));
-    PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
-    FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
-    PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
-    PresentTimingsInfoEXT.swapchainCount:=1;
-    PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
-    PresentTimingsInfoEXT.pNext:=PresentNext;
-    PresentNext:=@PresentTimingsInfoEXT;
-   end;
+   ChainPresentTimingInfo(Index,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
 
 {$ifdef PasVulkanFrameTrace}
    pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(fGeneratedFrameRenderDoneSemaphores[ImageIndex].Handle));
@@ -15113,10 +15462,12 @@ begin
     fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
    end;
    CountIntervalParts:=fCountQueuedGeneratedFrames+1;
+   SchedulePresentTargetTimes(CountIntervalParts);
    CountGeneratedFramesPresented:=PresentGeneratedFrames;
   end else begin
    CountIntervalParts:=1;
    CountGeneratedFramesPresented:=0;
+   fCountGeneratedFrameTargetTimes:=0;
   end;
 
   PresentNext:=nil;
@@ -15149,26 +15500,11 @@ begin
   // Chain VK_EXT_present_timing info when available, to request
   // presentation at the nearest refresh cycle for consistent pacing
   // Present timing: either simple (nearest refresh cycle) or feedback-based
-  if (CountGeneratedFramesPresented>0) and
-     fFramePacingPresentTimingAvailable and
-     assigned(fVulkanDevice) and
-     fVulkanDevice.PresentTimingSupport and
-     fVulkanSwapChain.PresentAtRelativeTimeSupported and
-     (not fDisablePresentTiming) and
-     (fGeneratedFramePresentInterval>0.0) then begin
-   // After generated frames, the rendered frame comes the same fraction of the interval after the last of
-   // them, see PresentGeneratedFrames.
-   FillChar(PresentTimingInfoEXT,SizeOf(TVkPresentTimingInfoEXT),#0);
-   PresentTimingInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
-   PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
-   PresentTimingInfoEXT.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/CountIntervalParts));
-   PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
-   FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
-   PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
-   PresentTimingsInfoEXT.swapchainCount:=1;
-   PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
-   PresentTimingsInfoEXT.pNext:=PresentNext;
-   PresentNext:=@PresentTimingsInfoEXT;
+  if CountGeneratedFramesPresented>0 then begin
+   // After generated frames, the rendered frame gets its place in the interval as well, see
+   // SchedulePresentTargetTimes and ChainPresentTimingInfo; the frame pacing of the application stays out
+   // of it, it would only pull the other way.
+   ChainPresentTimingInfo(CountIntervalParts-1,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
   end else if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
      fPresentTimingFeedbackInitialized and
      assigned(fVulkanDevice) and
@@ -15190,7 +15526,11 @@ begin
    PresentTimingInfoEXT.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
    PresentTimingInfoEXT.targetTime:=0; // nearest refresh cycle
    PresentTimingInfoEXT.timeDomainID:=fFramePacingPresentTimingTimeDomainID;
-   PresentTimingInfoEXT.presentStageQueries:=0;
+   if fPresentIntervalStatistics then begin
+    PresentTimingInfoEXT.presentStageQueries:=fPresentTimingReportStage;
+   end else begin
+    PresentTimingInfoEXT.presentStageQueries:=0;
+   end;
    PresentTimingInfoEXT.targetTimeDomainPresentStage:=0;
    FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
    PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
@@ -15198,6 +15538,9 @@ begin
    PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
    PresentTimingsInfoEXT.pNext:=PresentNext;
    PresentNext:=@PresentTimingsInfoEXT;
+  end else if fPresentIntervalStatistics and (fPresentTimingReportStage<>0) then begin
+   // No target time, only the present stage of the statistics.
+   ChainPresentTimingInfo(-1,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
   end;
 
   // Chain present fence via VK_KHR_swapchain_maintenance1 when available
@@ -15299,6 +15642,8 @@ begin
   Log(LOG_VERBOSE,'TpvApplication.PresentVulkanBackBuffer','Exception');
   raise;
  end;
+
+ PollPresentTimingReports;
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_END_NV);
 

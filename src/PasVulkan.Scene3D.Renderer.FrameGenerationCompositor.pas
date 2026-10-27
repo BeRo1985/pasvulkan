@@ -128,6 +128,10 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        fBackend:TpvScene3DRendererFrameGenerationBackend;
        fCountGeneratedFrames:TpvInt32;
        fDebugView:boolean;
+       fSuspended:boolean;
+       fMinimumFrameRate:TpvFloat;
+       fGPUFrameTime:TpvDouble;
+       fBelowMinimumFrameRate:boolean;
        fName:TpvUTF8String;
        fRing:array[0..CountRingSlots-1] of TRingSlot;
        fCurrentSlot:TpvInt32;
@@ -188,6 +192,12 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        property Backend:TpvScene3DRendererFrameGenerationBackend read fBackend;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames write fCountGeneratedFrames;
        property DebugView:boolean read fDebugView write fDebugView;
+       // No generated frames while set, see TpvScene3DRenderer.FrameGenerationSuspended.
+       property Suspended:boolean read fSuspended write fSuspended;
+       // See TpvScene3DRenderer.FrameGenerationMinimumFrameRate, together with the GPU time of the last
+       // rendered frame that it goes by, in seconds, zero where there is none.
+       property MinimumFrameRate:TpvFloat read fMinimumFrameRate write fMinimumFrameRate;
+       property GPUFrameTime:TpvDouble read fGPUFrameTime write fGPUFrameTime;
      end;
 
 implementation
@@ -231,6 +241,10 @@ begin
  fSampler:=aSampler;
  fCountGeneratedFrames:=Min(Max(aCountGeneratedFrames,1),MaxGeneratedFramesPerFrame);
  fDebugView:=false;
+ fSuspended:=false;
+ fMinimumFrameRate:=0.0;
+ fGPUFrameTime:=0.0;
+ fBelowMinimumFrameRate:=false;
  fName:=aName;
 
  fCurrentSlot:=0;
@@ -682,9 +696,23 @@ begin
 
  CurrentSlot:=@fRing[fCurrentSlot];
 
+ // The minimum frame rate with a tenth of hysteresis, so that a GPU time right at the limit does not turn
+ // frame generation on and off from frame to frame.
+ if (fMinimumFrameRate>0.0) and (fGPUFrameTime>0.0) then begin
+  if fBelowMinimumFrameRate then begin
+   fBelowMinimumFrameRate:=(1.0/fGPUFrameTime)<(fMinimumFrameRate*1.1);
+  end else begin
+   fBelowMinimumFrameRate:=(1.0/fGPUFrameTime)<fMinimumFrameRate;
+  end;
+ end else begin
+  fBelowMinimumFrameRate:=false;
+ end;
+
  try
 
-  if (not CurrentSlot^.Captured) or
+  if fSuspended or
+     fBelowMinimumFrameRate or
+     (not CurrentSlot^.Captured) or
      CurrentSlot^.Reset or
      (fPreviousSlot<0) or
      (not fRing[fPreviousSlot].Captured) or

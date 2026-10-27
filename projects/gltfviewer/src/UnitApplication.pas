@@ -60,6 +60,7 @@ type TApplication=class(TpvApplication)
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
        fFrameGenerationDebugView:boolean;
+       fFrameGenerationMinimumFrameRate:TpvFloat;
        fSizeFactor:TpvDouble;
        fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
@@ -120,6 +121,7 @@ type TApplication=class(TpvApplication)
        property FrameGeneration:TpvScene3DRendererFrameGeneration read fFrameGeneration;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames;
        property FrameGenerationDebugView:boolean read fFrameGenerationDebugView;
+       property FrameGenerationMinimumFrameRate:TpvFloat read fFrameGenerationMinimumFrameRate;
        property SizeFactor:TpvDouble read fSizeFactor;
        property AutoOrbitSpeed:TpvDouble read fAutoOrbitSpeed;
        property TransparentColorKey:boolean read fTransparentColorKey;
@@ -180,6 +182,7 @@ begin
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
  fCountGeneratedFrames:=1;
  fFrameGenerationDebugView:=false;
+ fFrameGenerationMinimumFrameRate:=0.0;
  fSizeFactor:=1.0;
  fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
@@ -423,6 +426,26 @@ begin
               (Parameter='/framegen-debug') then begin
    // Generated frames tinted and numbered, see TpvScene3DRenderer.FrameGenerationDebugView
    fFrameGenerationDebugView:=true;
+  end else if (Parameter='--frame-generation-min-fps') or
+              (Parameter='/frame-generation-min-fps') or
+              (Parameter='--framegen-min-fps') or
+              (Parameter='/framegen-min-fps') then begin
+   // See TpvScene3DRenderer.FrameGenerationMinimumFrameRate
+   if Index<=ParamCount then begin
+    fFrameGenerationMinimumFrameRate:=Max(0,StrToIntDef(ParamStr(Index),0));
+    inc(Index);
+   end;
+  end else if (Parameter='--present-stats') or
+              (Parameter='/present-stats') then begin
+   // The intervals between the presented frames in the log, see TpvApplication.PresentIntervalStatistics
+   PresentIntervalStatistics:=true;
+  end else if (Parameter='--max-fps') or
+              (Parameter='/max-fps') then begin
+   // An upper limit for the rendered frames per second, for trying frame generation at rates of all kinds
+   if Index<=ParamCount then begin
+    MaximumFramesPerSecond:=Max(0,StrToIntDef(ParamStr(Index),0));
+    inc(Index);
+   end;
   end else if (Parameter='--auto-screenshot') or
               (Parameter='/auto-screenshot') then begin
    // For automated comparisons: after this many seconds a PNG screenshot is written and the viewer quits.

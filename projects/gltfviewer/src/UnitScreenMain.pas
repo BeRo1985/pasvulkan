@@ -285,6 +285,7 @@ begin
  fRenderer.FrameGeneration:=UnitApplication.Application.FrameGeneration;
  fRenderer.CountGeneratedFrames:=UnitApplication.Application.CountGeneratedFrames;
  fRenderer.FrameGenerationDebugView:=UnitApplication.Application.FrameGenerationDebugView;
+ fRenderer.FrameGenerationMinimumFrameRate:=UnitApplication.Application.FrameGenerationMinimumFrameRate;
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;

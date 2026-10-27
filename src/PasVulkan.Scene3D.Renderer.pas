@@ -210,6 +210,8 @@ type TpvScene3DRenderer=class;
        fCountGeneratedFrames:TpvInt32;
        fActiveFrameGeneration:TpvScene3DRendererFrameGeneration;
        fFrameGenerationDebugView:boolean;
+       fFrameGenerationSuspended:boolean;
+       fFrameGenerationMinimumFrameRate:TpvFloat;
       private
        fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
@@ -340,6 +342,14 @@ type TpvScene3DRenderer=class;
        // Generated frames get a tint and a row of boxes in the upper left corner, filled up to their place in
        // the interval, so that their order and their count can be seen. It can change from frame to frame.
        property FrameGenerationDebugView:boolean read fFrameGenerationDebugView write fFrameGenerationDebugView;
+       // Set by the application while it shows no game frames, as in menus, on loading screens or in a
+       // pause: then only the rendered frames are presented. It can change from frame to frame.
+       property FrameGenerationSuspended:boolean read fFrameGenerationSuspended write fFrameGenerationSuspended;
+       // Below this many rendered frames per second, as far as the GPU time of a rendered frame goes, no
+       // frames are generated, since too few rendered frames make poor generated ones and too much delay.
+       // Zero for always. The GPU time leaves the waiting for the presentation out, which frame generation
+       // brings with it, so turning frame generation on and off does not tip it back and forth.
+       property FrameGenerationMinimumFrameRate:TpvFloat read fFrameGenerationMinimumFrameRate write fFrameGenerationMinimumFrameRate;
 {      property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;}
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -579,6 +589,8 @@ begin
 
  fTemporalUpscalerDebugView:=false;
  fFrameGenerationDebugView:=false;
+ fFrameGenerationSuspended:=false;
+ fFrameGenerationMinimumFrameRate:=0.0;
 
  fFrameGenerationProbe:=false;
 

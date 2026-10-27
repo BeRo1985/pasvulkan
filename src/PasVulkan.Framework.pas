@@ -2881,6 +2881,7 @@ type EpvVulkanException=class(Exception);
        // Which target times of VK_EXT_present_timing the surface takes, the same way per surface.
        fPresentAtAbsoluteTimeSupported:boolean;
        fPresentAtRelativeTimeSupported:boolean;
+       fPresentStageQueries:TVkPresentStageFlagsEXT;
        function GetImage(const aImageIndex:TpvInt32):TpvVulkanImage;
        function GetPreviousImage:TpvVulkanImage;
        function GetCurrentImage:TpvVulkanImage;
@@ -2949,6 +2950,8 @@ type EpvVulkanException=class(Exception);
        property PresentWait2Enabled:boolean read fPresentWait2Enabled;
        property PresentAtAbsoluteTimeSupported:boolean read fPresentAtAbsoluteTimeSupported;
        property PresentAtRelativeTimeSupported:boolean read fPresentAtRelativeTimeSupported;
+       // The present stages whose times the surface reports back, see vkGetPastPresentationTimingEXT.
+       property PresentStageQueries:TVkPresentStageFlagsEXT read fPresentStageQueries;
      end;
 
      TpvVulkanRenderTarget=class(TpvVulkanObject)
@@ -24316,6 +24319,8 @@ begin
 
  fPresentAtRelativeTimeSupported:=false;
 
+ fPresentStageQueries:=0;
+
  try
 
   if (fDevice.fPresentQueueFamilyIndex<0) or not
@@ -24635,6 +24640,9 @@ begin
     fPresentAtRelativeTimeSupported:=(PresentTimingSurfaceCapabilitiesEXT.presentTimingSupported<>VK_FALSE) and
                                      (PresentTimingSurfaceCapabilitiesEXT.presentAtRelativeTimeSupported<>VK_FALSE) and
                                      (fDevice.PresentTimingFeatures.presentAtRelativeTime<>VK_FALSE);
+    if PresentTimingSurfaceCapabilitiesEXT.presentTimingSupported<>VK_FALSE then begin
+     fPresentStageQueries:=PresentTimingSurfaceCapabilitiesEXT.presentStageQueries;
+    end;
    end;
 
   end;
