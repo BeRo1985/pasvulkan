@@ -1,0 +1,29 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+// The built-in frame generation for testing: a plain cross-fade between the two rendered frames around the
+// generated one. It knows nothing about motion, so anything that moves shows up twice, but it lets the
+// presentation of generated frames be checked on its own, apart from any real frame generation.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D uTexturePrevious;
+layout(set = 0, binding = 1) uniform texture2D uTextureCurrent;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D uImageOutput;
+
+layout(push_constant) uniform PushConstants {
+  float factor; // how far from the previous to the current frame, 0.0 .. 1.0
+} pushConstants;
+
+void main(){
+  ivec2 position = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(uImageOutput);
+  if(all(lessThan(position, size))){
+    vec4 previousColor = texelFetch(uTexturePrevious, position, 0);
+    vec4 currentColor = texelFetch(uTextureCurrent, position, 0);
+    imageStore(uImageOutput, position, mix(previousColor, currentColor, pushConstants.factor));
+  }
+}
