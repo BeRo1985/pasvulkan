@@ -1441,6 +1441,13 @@ begin
   ClearImage(aCommandBuffer,TInternalImage.Luma1,0.0,0.0,0.0,0.0);
   ClearImage(aCommandBuffer,TInternalImage.Luma2,0.0,0.0,0.0,0.0);
 
+  // The reset of the first frame below clears some of these once more.
+  GlobalBarrier(aCommandBuffer,
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT));
+
  end;
 
  // Prepare per frame descriptor tables
@@ -1542,6 +1549,12 @@ begin
   ClearImage(aCommandBuffer,TInternalImage.SPDMips,0.0,0.0,0.0,0.0);
   // Auto exposure always used to track luma changes in locking logic
   ClearImage(aCommandBuffer,TInternalImage.FrameInfo,-1.0,1.0,0.0,0.0);
+  // The SPD mips are cleared once more below, as every frame.
+  GlobalBarrier(aCommandBuffer,
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT));
  end;
 
  // The reconstructed previous nearest depth holds the bits of a float as an unsigned integer, so it is

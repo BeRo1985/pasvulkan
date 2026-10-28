@@ -61,6 +61,7 @@ type TApplication=class(TpvApplication)
        fCountGeneratedFrames:TpvInt32;
        fFrameGenerationDebugView:boolean;
        fFrameGenerationMinimumFrameRate:TpvFloat;
+       fCountSwapChainImages:TpvInt32;
        fSizeFactor:TpvDouble;
        fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
@@ -142,6 +143,7 @@ var VirtualRealityMode:TpvVirtualReality.TMode;
     Index:TpvInt32;
     OriginalParameter,Parameter:String;
     OK:TPasDblStrUtilsBoolean;
+    LowLatencyModeGiven:boolean;
 {$ifend}
 begin
  inherited Create;
@@ -183,11 +185,13 @@ begin
  fCountGeneratedFrames:=1;
  fFrameGenerationDebugView:=false;
  fFrameGenerationMinimumFrameRate:=0.0;
+ fCountSwapChainImages:=0;
  fSizeFactor:=1.0;
  fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
  AcceptDragDropFiles:=true;
 {$if not (defined(Android) or defined(iOS))}
+ LowLatencyModeGiven:=false;
  Index:=1;
  while Index<=ParamCount do begin
   OriginalParameter:=ParamStr(Index);
@@ -435,6 +439,22 @@ begin
     fFrameGenerationMinimumFrameRate:=Max(0,StrToIntDef(ParamStr(Index),0));
     inc(Index);
    end;
+  end else if (Parameter='--frame-generation-pacing') or
+              (Parameter='/frame-generation-pacing') or
+              (Parameter='--framegen-pacing') or
+              (Parameter='/framegen-pacing') then begin
+   // How the presents of frame generation are spaced: auto, targettimes or cpu, see
+   // TpvApplication.GeneratedFramePacing
+   if Index<=ParamCount then begin
+    if LowerCase(ParamStr(Index))='cpu' then begin
+     GeneratedFramePacing:=TpvApplicationGeneratedFramePacing.CPU;
+    end else if LowerCase(ParamStr(Index))='targettimes' then begin
+     GeneratedFramePacing:=TpvApplicationGeneratedFramePacing.TargetTimes;
+    end else begin
+     GeneratedFramePacing:=TpvApplicationGeneratedFramePacing.Auto;
+    end;
+    inc(Index);
+   end;
   end else if (Parameter='--present-stats') or
               (Parameter='/present-stats') then begin
    // The intervals between the presented frames in the log, see TpvApplication.PresentIntervalStatistics
@@ -444,6 +464,29 @@ begin
    // An upper limit for the rendered frames per second, for trying frame generation at rates of all kinds
    if Index<=ParamCount then begin
     MaximumFramesPerSecond:=Max(0,StrToIntDef(ParamStr(Index),0));
+    inc(Index);
+   end;
+  end else if (Parameter='--swapchain-images') or
+              (Parameter='/swapchain-images') then begin
+   // How many swapchain images to ask for, at least as many as frame generation needs
+   if Index<=ParamCount then begin
+    fCountSwapChainImages:=Max(0,StrToIntDef(ParamStr(Index),0));
+    inc(Index);
+   end;
+  end else if (Parameter='--low-latency') or
+              (Parameter='/low-latency') then begin
+   // The low latency mode: none, auto, reflex or antilag, see TpvApplication.LowLatencyMode
+   if Index<=ParamCount then begin
+    if LowerCase(ParamStr(Index))='reflex' then begin
+     LowLatencyMode:=TpvApplicationLowLatencyMode.NVReflex;
+    end else if LowerCase(ParamStr(Index))='antilag' then begin
+     LowLatencyMode:=TpvApplicationLowLatencyMode.AMDAntiLag;
+    end else if LowerCase(ParamStr(Index))='auto' then begin
+     LowLatencyMode:=TpvApplicationLowLatencyMode.Auto;
+    end else begin
+     LowLatencyMode:=TpvApplicationLowLatencyMode.None;
+    end;
+    LowLatencyModeGiven:=true;
     inc(Index);
    end;
   end else if (Parameter='--auto-screenshot') or
@@ -491,9 +534,35 @@ begin
     end;
     inc(Index);
    end;
+  end else if (Parameter='--loglevel') or
+              (Parameter='/loglevel') or
+              (Parameter='--crashlog') or
+              (Parameter='/crashlog') or
+              (Parameter='--breadcrumbtracefile') or
+              (Parameter='/breadcrumbtracefile') or
+              (Parameter='--recordinput') or
+              (Parameter='/recordinput') or
+              (Parameter='--replayinput') or
+              (Parameter='/replayinput') or
+              (Parameter='--hangseconds') or
+              (Parameter='/hangseconds') or
+              (Parameter='--hangreports') or
+              (Parameter='/hangreports') or
+              (Parameter='--hangshutdownseconds') or
+              (Parameter='/hangshutdownseconds') then begin
+   // Options the engine takes itself, together with a value, which must not end up as the file name
+   if Index<=ParamCount then begin
+    inc(Index);
+   end;
+  end else if (length(Parameter)>2) and (Parameter[1]='-') and (Parameter[2]='-') then begin
+   // Further options the engine takes itself, such as --force-use-validation-layers, and no file name either
   end else begin
    GLTFFileName:=OriginalParameter;
   end;
+ end;
+ // DLSS frame generation goes with NVIDIA Reflex, unless asked otherwise.
+ if (fFrameGeneration=TpvScene3DRendererFrameGeneration.DLSS) and not LowLatencyModeGiven then begin
+  LowLatencyMode:=TpvApplicationLowLatencyMode.Auto;
  end;
 {$ifend}
  if VirtualRealityMode=TpvVirtualReality.TMode.Disabled then begin
@@ -582,6 +651,9 @@ begin
  // Generated frames take swapchain images of their own, see TpvApplication.AcquireGeneratedFrameImage
  if fFrameGeneration<>TpvScene3DRendererFrameGeneration.None then begin
   DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,3+fCountGeneratedFrames);
+ end;
+ if fCountSwapChainImages>0 then begin
+  DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,fCountSwapChainImages);
  end;
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
  VulkanAPIVersion:=0;//VK_API_VERSION_1_0;

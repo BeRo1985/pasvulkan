@@ -789,6 +789,10 @@ type { TpvScene3DRendererInstance }
        // Frame generation in this instance: only for output into the swapchain, so neither in VR nor into
        // external images. The compositor lives with the volatile resources.
        fFrameGenerationActive:boolean;
+       // Whether the backend of the frame generation reads the depth and the motion vectors, which then get
+       // captured as well, and which bring the velocity pass of the temporal upscaler along where there is no
+       // temporal upscaler.
+       fFrameGenerationNeedsDepthAndMotionVectors:boolean;
        fFrameGenerationCompositor:TpvScene3DRendererFrameGenerationCompositor;
        fReflectionProbeWidth:TpvInt32;
        fReflectionProbeHeight:TpvInt32;
@@ -1288,6 +1292,9 @@ type { TpvScene3DRendererInstance }
        function GetTemporalUpscalerTextureLODBias:TpvFloat;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
+       // Hands the camera of the rendered frame over to the frame generation, see
+       // TpvScene3DRendererFrameGenerationBackend.TFrame.
+       procedure SetFrameGenerationFrameView(const aInFlightFrameIndex:TpvInt32);
        function NeedsDrawDataRebuild(const aInFlightFrameIndex:TpvSizeInt):boolean;
        procedure PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPass:TpvScene3DRendererRenderPass);
@@ -2084,6 +2091,7 @@ type { TpvScene3DRendererInstance }
        property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
        property FrameGenerationActive:boolean read fFrameGenerationActive;
+       property FrameGenerationNeedsDepthAndMotionVectors:boolean read fFrameGenerationNeedsDepthAndMotionVectors;
        property FrameGenerationCompositor:TpvScene3DRendererFrameGenerationCompositor read fFrameGenerationCompositor;
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
@@ -3515,6 +3523,9 @@ begin
 
  fFrameGenerationActive:=(Renderer.ActiveFrameGeneration<>TpvScene3DRendererFrameGeneration.None) and
                          fFrameGraph.SurfaceIsSwapchain;
+
+ fFrameGenerationNeedsDepthAndMotionVectors:=fFrameGenerationActive and
+                                             TpvScene3DRendererFrameGenerationBackend.FindBackend(Renderer.ActiveFrameGeneration).NeedsDepthAndMotionVectors;
 
  fFrameGenerationCompositor:=nil;
 
@@ -6048,7 +6059,9 @@ begin
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
-                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   // Temporal upscaler backends may also clear it, such as DLSS does on a reset, see TpvScene3DRendererPassesTemporalUpscalerComputePass.
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                   IfThen(Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),TVkImageUsageFlags(0)),
                                    1
                                   );
  end else begin
@@ -6362,8 +6375,10 @@ begin
                                  );
 
  // The velocity as the temporal upscaler reads it, with the camera motion filled in where nothing was
- // drawn, see TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass.
- if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+ // drawn, see TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass. Frame generation copies it
+ // into its ring where its backend reads the motion vectors, with or without a temporal upscaler.
+ if (Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) or
+    fFrameGenerationNeedsDepthAndMotionVectors then begin
   // The colour attachment usage is there for the frame graph, which brings an image into its first layout
   // that way, as with the other compute outputs.
   fFrameGraph.AddImageResourceType('resourcetype_temporal_upscaler_velocity',
@@ -6372,9 +6387,12 @@ begin
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
+                                   IfThen(fFrameGenerationNeedsDepthAndMotionVectors,TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),TVkImageUsageFlags(0)),
                                    1
                                   );
+ end;
+ if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
   // How much each pixel should follow the current frame over its history, see
   // TpvScene3DRendererPassesTemporalUpscalerReactiveComputePass.
   fFrameGraph.AddImageResourceType('resourcetype_temporal_upscaler_reactive',
@@ -7885,6 +7903,14 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   end;
  end;
 
+ // Without a temporal upscaler, a frame generation that reads the motion vectors still wants them with the
+ // camera motion filled in where nothing was drawn, as they would be for the temporal upscaler.
+ if (Renderer.ActiveTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None) and
+    fFrameGenerationNeedsDepthAndMotionVectors then begin
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerVelocityComputePass:=TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fTemporalUpscalerVelocityComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+ end;
+
  if not assigned(VirtualReality) then begin
 
   case Renderer.LensMode of
@@ -8051,6 +8077,9 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Create(fFrameGraph,self,true);
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass);
+   if fFrameGenerationNeedsDepthAndMotionVectors and assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+   end;
   end else begin
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=nil;
   end;
@@ -8073,6 +8102,9 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   if fFrameGenerationActive then begin
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass:=TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Create(fFrameGraph,self,false);
    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass);
+   if fFrameGenerationNeedsDepthAndMotionVectors and assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
+    TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
+   end;
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fFrameGenerationCaptureCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDCustomPass);
    end;
@@ -10853,6 +10885,47 @@ begin
    result.RawComponents[2,1]:=Offset.y*result.RawComponents[2,3];}
   end;
  end;
+end;
+
+procedure TpvScene3DRendererInstance.SetFrameGenerationFrameView(const aInFlightFrameIndex:TpvInt32);
+var InFlightFrameState:PInFlightFrameState;
+    View:TpvScene3D.TView;
+    JitterOffset,MotionVectorScale:TpvVector2;
+    PeakBrightness:TpvFloat;
+begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ View:=fViews[aInFlightFrameIndex].Items[InFlightFrameState^.FinalViewIndex];
+
+ // The jitter as the clip space offset the projection got, back into pixels of the render resolution, and
+ // the motion vectors the other way round and in pixels, both as the temporal upscaler pass hands them on.
+ JitterOffset.x:=InFlightFrameState^.Jitter.x*fScaledWidth*0.5;
+ JitterOffset.y:=InFlightFrameState^.Jitter.y*fScaledHeight*0.5;
+ MotionVectorScale.x:=-fScaledWidth;
+ MotionVectorScale.y:=-fScaledHeight;
+
+ // The peak the tonemapping maps to, relative to diffuse white, see TpvScene3DRendererPassesTonemappingRenderPass.
+ if fFrameGraph.SurfaceColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR then begin
+  PeakBrightness:=1.0;
+ end else if Renderer.HDRPeakHeadroom>0.0 then begin
+  PeakBrightness:=Renderer.HDRPeakHeadroom;
+ end else if Renderer.HDRPaperWhiteNits>0.0 then begin
+  PeakBrightness:=Renderer.HDRMaxNits/Renderer.HDRPaperWhiteNits;
+ end else begin
+  PeakBrightness:=4.0;
+ end;
+
+ // The projection without its jitter, which AddTemporalAntialiasingJitter added as a translation by the
+ // offset that the in-flight frame state keeps.
+ fFrameGenerationCompositor.SetFrameView(View.ViewMatrix,
+                                         View.ProjectionMatrix*TpvMatrix4x4.CreateTranslation(-InFlightFrameState^.Jitter.x,-InFlightFrameState^.Jitter.y),
+                                         JitterOffset,
+                                         MotionVectorScale,
+                                         abs(fZNear),
+                                         abs(fZFar),
+                                         PeakBrightness);
+
 end;
 
 procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
@@ -14085,6 +14158,7 @@ begin
   fFrameGenerationCompositor.BeginFrame(aFrameCounter,
                                         fInFlightFrameStates[aInFlightFrameIndex].CameraReset,
                                         pvApplication.DeltaTime);
+  SetFrameGenerationFrameView(aInFlightFrameIndex);
  end;
 
  fFrameGraph.Draw(aSwapChainImageIndex,

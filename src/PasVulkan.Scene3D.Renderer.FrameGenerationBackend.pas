@@ -114,6 +114,9 @@ type TpvScene3DRendererFrameGenerationBackend=class;
              // The distances of the near and the far plane, both positive, the far one possibly infinite.
              ZNear:TpvFloat;
              ZFar:TpvFloat;
+             // The brightest value the color takes: 1.0 for SDR output, for HDR output the peak relative to
+             // diffuse white, which is at 1.0 in both.
+             PeakBrightness:TpvFloat;
              FrameTimeDelta:TpvFloat; // in seconds, since the rendered frame before
              FrameIndex:TpvInt64;     // counts the rendered frames
             end;

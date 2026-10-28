@@ -99,6 +99,7 @@ type { TScreenMain }
        fOldFPS:TpvInt32;
        fFPSTimeAccumulator:TpvDouble;
        fFrameTimeString:string;
+       fFrameGenerationTimeString:string;
        fLoadedFileName:string;
        fLoadDelay:TpvInt32;
        fResetCameraOnLoad:Boolean;
@@ -531,12 +532,19 @@ begin
    FrameTime:=0.0;
   end;
   Str(FrameTime*1000.0:1:5,fFrameTimeString);
+  // With frame generation, the GPU time of the generated frames after the rendered one as well.
+  if assigned(fRendererInstance.FrameGenerationCompositor) then begin
+   Str(fRendererInstance.FrameGenerationCompositor.GenerationGPUTime*1000.0:1:5,fFrameGenerationTimeString);
+   fFrameGenerationTimeString:=' ['+fFrameGenerationTimeString+' ms frame generation]';
+  end else begin
+   fFrameGenerationTimeString:='';
+  end;
  end;
 
  if abs(fOldFPS-FPS)>=100 then begin
   fOldFPS:=FPS;
   str((FPS*0.01):4:2,FPSString);
-  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]';
+  pvApplication.WindowTitle:=pvApplication.Title+' ['+FPSString+' FPS] ['+fFrameTimeString+' ms frame time]'+fFrameGenerationTimeString;
  end;
 
  fUpdateLock.Acquire;

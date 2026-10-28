@@ -8039,6 +8039,7 @@ end;
 
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
 var Index:TpvSizeInt;
+    SubmitNext:pointer;
 begin
  if (aQueue=fUniversalQueue) and
     (fDrawToWaitOnSemaphoreHandles[fDrawInFlightFrameIndex].Count>0) then begin
@@ -8056,6 +8057,16 @@ begin
   fUniversalQueue.fSubmitInfos[fUniversalQueue.fCountSubmitInfos-1]:=fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex];
  end;
  if aQueue.fCountSubmitInfos>0 then begin
+  // With NVIDIA Reflex, every submit of the frame goes with the present id of the frame, see
+  // TpvApplication.LowLatencySubmissionPresentIDNext; without it, the chains stay empty.
+  if assigned(pvApplication) then begin
+   SubmitNext:=pvApplication.LowLatencySubmissionPresentIDNext(fDrawInFlightFrameIndex,fDrawFrameIndex);
+   if assigned(SubmitNext) then begin
+    for Index:=0 to aQueue.fCountSubmitInfos-1 do begin
+     aQueue.fSubmitInfos[Index].pNext:=SubmitNext;
+    end;
+   end;
+  end;
   if fRootPhysicalPass.fQueue=aQueue then begin
    aQueue.fPhysicalQueue.Submit(aQueue.fCountSubmitInfos,@aQueue.fSubmitInfos[0],fDrawWaitFence);
   end else begin

@@ -64,8 +64,9 @@ unit PasVulkan.Scene3D.Renderer.FrameGenerationCompositor;
 //
 // Every rendered frame is captured into a ring outside of the frame graph, which aliases and reuses its own
 // images: the picture without the HUD, as it goes into the HUD composition at the end of the frame, and the
-// HUD. That happens in the frame graph, see TpvScene3DRendererPassesFrameGenerationCaptureCustomPass, while
-// the rendered frame goes on into its swapchain image as without frame generation.
+// HUD, and for backends that ask for them the depth and the motion vectors as well. That happens in the frame
+// graph, see TpvScene3DRendererPassesFrameGenerationCaptureCustomPass, while the rendered frame goes on into
+// its swapchain image as without frame generation.
 //
 // Right after the rendered frame, the frames generated between the previous one and it are made: for each,
 // the application hands out a further swapchain image (see TpvApplication.AcquireGeneratedFrameImage), the
@@ -83,6 +84,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
+     PasVulkan.TimerQuery,
      PasVulkan.Application,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D,
@@ -96,6 +98,10 @@ type { TpvScene3DRendererFrameGenerationCompositor }
              ColorSpaceExtendedSRGBLinear=1;
              FlagHUD=1;
              FlagDebug=2;
+             // The formats of the resolved depth and of the motion vectors in the renderer, which the copies
+             // into the ring keep.
+             DepthFormat=VK_FORMAT_R32_SFLOAT;
+             MotionVectorsFormat=VK_FORMAT_R16G16_SFLOAT;
        type TPushConstants=packed record
              ColorSpace:TpvUInt32;
              FrameCounter:TpvUInt32;
@@ -108,6 +114,8 @@ type { TpvScene3DRendererFrameGenerationCompositor }
             TRingSlot=record
              Color:TpvScene3DRendererImage2D;
              HUD:TpvScene3DRendererImage2D;
+             Depth:TpvScene3DRendererImage2D;
+             MotionVectors:TpvScene3DRendererImage2D;
              Frame:TpvScene3DRendererFrameGenerationBackend.TFrame;
              Captured:boolean;
              Reset:boolean;
@@ -119,7 +127,10 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        fCountInFlightFrames:TpvSizeInt;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
+       fRenderWidth:TpvInt32;
+       fRenderHeight:TpvInt32;
        fColorFormat:TVkFormat;
+       fNeedsDepthAndMotionVectors:boolean;
        fHasHUD:boolean;
        fHUDWidth:TpvInt32;
        fHUDHeight:TpvInt32;
@@ -131,6 +142,7 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        fSuspended:boolean;
        fMinimumFrameRate:TpvFloat;
        fGPUFrameTime:TpvDouble;
+       fGenerationGPUTime:TpvDouble;
        fBelowMinimumFrameRate:boolean;
        fName:TpvUTF8String;
        fRing:array[0..CountRingSlots-1] of TRingSlot;
@@ -139,6 +151,7 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        fFrameCounter:TpvInt64;
        fOutput:TpvScene3DRendererImage2D;
        fCommandPool:TpvVulkanCommandPool;
+       fTimerQueries:array[0..MaxInFlightFrames-1] of TpvTimerQuery;
        fCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
        fFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
        fFencesReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -180,16 +193,35 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        destructor Destroy; override;
        // Starts a rendered frame: picks its ring slot and keeps what is known of it on the CPU side.
        procedure BeginFrame(const aFrameIndex:TpvInt64;const aReset:boolean;const aFrameTimeDelta:TpvFloat);
+       // The camera of the current rendered frame, see TpvScene3DRendererFrameGenerationBackend.TFrame.
+       procedure SetFrameView(const aViewMatrix:TpvMatrix4x4;
+                              const aProjectionMatrix:TpvMatrix4x4;
+                              const aJitterOffset:TpvVector2;
+                              const aMotionVectorScale:TpvVector2;
+                              const aZNear:TpvFloat;
+                              const aZFar:TpvFloat;
+                              const aPeakBrightness:TpvFloat);
        // Records the capture of the current rendered frame into its ring slot, inside the frame graph. The
        // color is a layer of an array image and the HUD a 2D image, both in TRANSFER_SRC_OPTIMAL; the HUD
-       // is VK_NULL_HANDLE without one.
-       procedure Capture(const aCommandBuffer:TpvVulkanCommandBuffer;const aColorImage:TVkImage;const aColorLayer:TpvInt32;const aHUDImage:TVkImage);
+       // is VK_NULL_HANDLE without one. The depth and the motion vectors, at render resolution, are only
+       // taken where the backend asks for them: the depth is a layer of an array image that stays in
+       // SHADER_READ_ONLY_OPTIMAL around the capture, the motion vectors a layer of one in
+       // TRANSFER_SRC_OPTIMAL.
+       procedure Capture(const aCommandBuffer:TpvVulkanCommandBuffer;
+                         const aColorImage:TVkImage;
+                         const aColorLayer:TpvInt32;
+                         const aHUDImage:TVkImage;
+                         const aDepthImage:TVkImage;
+                         const aDepthLayer:TpvInt32;
+                         const aMotionVectorsImage:TVkImage;
+                         const aMotionVectorsLayer:TpvInt32);
        // Makes, submits and queues for presentation the frames generated between the previous rendered frame
        // and the current one, right after the current one has been submitted. aWaitSemaphore is what the
        // rendered frame signalled; afterwards it is what its present has to wait on instead.
        procedure DrawGeneratedFrames(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore);
       published
        property Backend:TpvScene3DRendererFrameGenerationBackend read fBackend;
+       property NeedsDepthAndMotionVectors:boolean read fNeedsDepthAndMotionVectors;
        property CountGeneratedFrames:TpvInt32 read fCountGeneratedFrames write fCountGeneratedFrames;
        property DebugView:boolean read fDebugView write fDebugView;
        // No generated frames while set, see TpvScene3DRenderer.FrameGenerationSuspended.
@@ -198,6 +230,9 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        // rendered frame that it goes by, in seconds, zero where there is none.
        property MinimumFrameRate:TpvFloat read fMinimumFrameRate write fMinimumFrameRate;
        property GPUFrameTime:TpvDouble read fGPUFrameTime write fGPUFrameTime;
+       // The GPU time of the last measured submit of generated frames, backend and composition together,
+       // in seconds, zero where there is none.
+       property GenerationGPUTime:TpvDouble read fGenerationGPUTime;
      end;
 
 implementation
@@ -233,7 +268,10 @@ begin
  fCountInFlightFrames:=aCountInFlightFrames;
  fWidth:=Max(1,aWidth);
  fHeight:=Max(1,aHeight);
+ fRenderWidth:=Max(1,aRenderWidth);
+ fRenderHeight:=Max(1,aRenderHeight);
  fColorFormat:=aColorFormat;
+ fNeedsDepthAndMotionVectors:=aBackendClass.NeedsDepthAndMotionVectors;
  fHasHUD:=aHasHUD;
  fHUDWidth:=Max(1,aHUDWidth);
  fHUDHeight:=Max(1,aHUDHeight);
@@ -244,6 +282,7 @@ begin
  fSuspended:=false;
  fMinimumFrameRate:=0.0;
  fGPUFrameTime:=0.0;
+ fGenerationGPUTime:=0.0;
  fBelowMinimumFrameRate:=false;
  fName:=aName;
 
@@ -290,6 +329,33 @@ begin
   end else begin
    fRing[SlotIndex].HUD:=nil;
   end;
+  if fNeedsDepthAndMotionVectors then begin
+   fRing[SlotIndex].Depth:=TpvScene3DRendererImage2D.Create(fDevice,
+                                                            fRenderWidth,
+                                                            fRenderHeight,
+                                                            DepthFormat,
+                                                            false,
+                                                            TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                            TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                            nil,
+                                                            0,
+                                                            fName+'.Ring['+IntToStr(SlotIndex)+'].Depth');
+   fRing[SlotIndex].MotionVectors:=TpvScene3DRendererImage2D.Create(fDevice,
+                                                                    fRenderWidth,
+                                                                    fRenderHeight,
+                                                                    MotionVectorsFormat,
+                                                                    false,
+                                                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                    TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                    nil,
+                                                                    0,
+                                                                    fName+'.Ring['+IntToStr(SlotIndex)+'].MotionVectors');
+  end else begin
+   fRing[SlotIndex].Depth:=nil;
+   fRing[SlotIndex].MotionVectors:=nil;
+  end;
  end;
 
  fOutput:=TpvScene3DRendererImage2D.Create(fDevice,
@@ -312,6 +378,7 @@ begin
   fDevice.DebugUtils.SetObjectName(fCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,fName+'.CommandBuffer['+IntToStr(InFlightFrameIndex)+']');
   fFences[InFlightFrameIndex]:=TpvVulkanFence.Create(fDevice);
   fFencesReady[InFlightFrameIndex]:=false;
+  fTimerQueries[InFlightFrameIndex]:=TpvTimerQuery.Create(fDevice,1);
   fPresentSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(fDevice);
   fDevice.DebugUtils.SetObjectName(fPresentSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,fName+'.PresentSemaphore['+IntToStr(InFlightFrameIndex)+']');
  end;
@@ -390,12 +457,15 @@ begin
  FreeAndNil(fVertexShaderModule);
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fPresentSemaphores[InFlightFrameIndex]);
+  FreeAndNil(fTimerQueries[InFlightFrameIndex]);
   FreeAndNil(fFences[InFlightFrameIndex]);
   FreeAndNil(fCommandBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fCommandPool);
  FreeAndNil(fOutput);
  for SlotIndex:=0 to CountRingSlots-1 do begin
+  FreeAndNil(fRing[SlotIndex].MotionVectors);
+  FreeAndNil(fRing[SlotIndex].Depth);
   FreeAndNil(fRing[SlotIndex].HUD);
   FreeAndNil(fRing[SlotIndex].Color);
  end;
@@ -579,44 +649,131 @@ begin
  Slot^.Frame.Color.Format:=fColorFormat;
  Slot^.Frame.Color.Width:=fWidth;
  Slot^.Frame.Color.Height:=fHeight;
+ if fNeedsDepthAndMotionVectors then begin
+  Slot^.Frame.Depth.Image:=Slot^.Depth.VulkanImage.Handle;
+  Slot^.Frame.Depth.ImageView:=Slot^.Depth.VulkanImageView.Handle;
+  Slot^.Frame.Depth.Format:=DepthFormat;
+  Slot^.Frame.Depth.Width:=fRenderWidth;
+  Slot^.Frame.Depth.Height:=fRenderHeight;
+  Slot^.Frame.MotionVectors.Image:=Slot^.MotionVectors.VulkanImage.Handle;
+  Slot^.Frame.MotionVectors.ImageView:=Slot^.MotionVectors.VulkanImageView.Handle;
+  Slot^.Frame.MotionVectors.Format:=MotionVectorsFormat;
+  Slot^.Frame.MotionVectors.Width:=fRenderWidth;
+  Slot^.Frame.MotionVectors.Height:=fRenderHeight;
+ end;
+ Slot^.Frame.ViewMatrix:=TpvMatrix4x4.Identity;
+ Slot^.Frame.ProjectionMatrix:=TpvMatrix4x4.Identity;
+ Slot^.Frame.PeakBrightness:=1.0;
  Slot^.Frame.FrameTimeDelta:=aFrameTimeDelta;
  Slot^.Frame.FrameIndex:=aFrameIndex;
 end;
 
-procedure TpvScene3DRendererFrameGenerationCompositor.Capture(const aCommandBuffer:TpvVulkanCommandBuffer;const aColorImage:TVkImage;const aColorLayer:TpvInt32;const aHUDImage:TVkImage);
+procedure TpvScene3DRendererFrameGenerationCompositor.SetFrameView(const aViewMatrix:TpvMatrix4x4;
+                                                                   const aProjectionMatrix:TpvMatrix4x4;
+                                                                   const aJitterOffset:TpvVector2;
+                                                                   const aMotionVectorScale:TpvVector2;
+                                                                   const aZNear:TpvFloat;
+                                                                   const aZFar:TpvFloat;
+                                                                   const aPeakBrightness:TpvFloat);
 var Slot:PRingSlot;
-    ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
+begin
+ Slot:=@fRing[fCurrentSlot];
+ Slot^.Frame.ViewMatrix:=aViewMatrix;
+ Slot^.Frame.ProjectionMatrix:=aProjectionMatrix;
+ Slot^.Frame.JitterOffset:=aJitterOffset;
+ Slot^.Frame.MotionVectorScale:=aMotionVectorScale;
+ Slot^.Frame.ZNear:=aZNear;
+ Slot^.Frame.ZFar:=aZFar;
+ Slot^.Frame.PeakBrightness:=aPeakBrightness;
+end;
+
+procedure TpvScene3DRendererFrameGenerationCompositor.Capture(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                              const aColorImage:TVkImage;
+                                                              const aColorLayer:TpvInt32;
+                                                              const aHUDImage:TVkImage;
+                                                              const aDepthImage:TVkImage;
+                                                              const aDepthLayer:TpvInt32;
+                                                              const aMotionVectorsImage:TVkImage;
+                                                              const aMotionVectorsLayer:TpvInt32);
+var Slot:PRingSlot;
+    ImageMemoryBarriers:array[0..4] of TVkImageMemoryBarrier;
     CountImageMemoryBarriers:TpvInt32;
     ImageCopy:TVkImageCopy;
-    WithHUD:boolean;
+    WithHUD,WithDepthAndMotionVectors:boolean;
+ procedure AddImageMemoryBarrier(const aImage:TVkImage;
+                                 const aBaseArrayLayer:TpvInt32;
+                                 const aSrcAccessMask:TVkAccessFlags;
+                                 const aDstAccessMask:TVkAccessFlags;
+                                 const aOldLayout:TVkImageLayout;
+                                 const aNewLayout:TVkImageLayout);
+ begin
+  FillChar(ImageMemoryBarriers[CountImageMemoryBarriers],SizeOf(TVkImageMemoryBarrier),#0);
+  ImageMemoryBarriers[CountImageMemoryBarriers].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  ImageMemoryBarriers[CountImageMemoryBarriers].srcAccessMask:=aSrcAccessMask;
+  ImageMemoryBarriers[CountImageMemoryBarriers].dstAccessMask:=aDstAccessMask;
+  ImageMemoryBarriers[CountImageMemoryBarriers].oldLayout:=aOldLayout;
+  ImageMemoryBarriers[CountImageMemoryBarriers].newLayout:=aNewLayout;
+  ImageMemoryBarriers[CountImageMemoryBarriers].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[CountImageMemoryBarriers].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  ImageMemoryBarriers[CountImageMemoryBarriers].image:=aImage;
+  ImageMemoryBarriers[CountImageMemoryBarriers].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageMemoryBarriers[CountImageMemoryBarriers].subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarriers[CountImageMemoryBarriers].subresourceRange.levelCount:=1;
+  ImageMemoryBarriers[CountImageMemoryBarriers].subresourceRange.baseArrayLayer:=aBaseArrayLayer;
+  ImageMemoryBarriers[CountImageMemoryBarriers].subresourceRange.layerCount:=1;
+  inc(CountImageMemoryBarriers);
+ end;
 begin
 
  Slot:=@fRing[fCurrentSlot];
 
  WithHUD:=fHasHUD and (aHUDImage<>VK_NULL_HANDLE) and assigned(Slot^.HUD);
 
+ WithDepthAndMotionVectors:=fNeedsDepthAndMotionVectors and
+                            (aDepthImage<>VK_NULL_HANDLE) and
+                            (aMotionVectorsImage<>VK_NULL_HANDLE) and
+                            assigned(Slot^.Depth) and
+                            assigned(Slot^.MotionVectors);
+
  // The slot was last read by the generated frames of two rendered frames ago, which came earlier in
  // submission order on the same queue, so waiting for every stage before is enough; what it holds is
- // overwritten anyway.
- FillChar(ImageMemoryBarriers,SizeOf(ImageMemoryBarriers),#0);
- ImageMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
- ImageMemoryBarriers[0].srcAccessMask:=0;
- ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
- ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
- ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
- ImageMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarriers[0].image:=Slot^.Color.VulkanImage.Handle;
- ImageMemoryBarriers[0].subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
- ImageMemoryBarriers[0].subresourceRange.baseMipLevel:=0;
- ImageMemoryBarriers[0].subresourceRange.levelCount:=1;
- ImageMemoryBarriers[0].subresourceRange.baseArrayLayer:=0;
- ImageMemoryBarriers[0].subresourceRange.layerCount:=1;
- CountImageMemoryBarriers:=1;
+ // overwritten anyway. The depth is not a resource of the frame graph and stays ready to be sampled
+ // between the passes, so it goes into TRANSFER_SRC_OPTIMAL here and back afterwards, after whatever wrote
+ // it or still reads it.
+ CountImageMemoryBarriers:=0;
+ AddImageMemoryBarrier(Slot^.Color.VulkanImage.Handle,
+                       0,
+                       0,
+                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                       VK_IMAGE_LAYOUT_UNDEFINED,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
  if WithHUD then begin
-  ImageMemoryBarriers[1]:=ImageMemoryBarriers[0];
-  ImageMemoryBarriers[1].image:=Slot^.HUD.VulkanImage.Handle;
-  CountImageMemoryBarriers:=2;
+  AddImageMemoryBarrier(Slot^.HUD.VulkanImage.Handle,
+                        0,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+ end;
+ if WithDepthAndMotionVectors then begin
+  AddImageMemoryBarrier(Slot^.Depth.VulkanImage.Handle,
+                        0,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  AddImageMemoryBarrier(Slot^.MotionVectors.VulkanImage.Handle,
+                        0,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  AddImageMemoryBarrier(aDepthImage,
+                        Max(0,aDepthLayer),
+                        TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
  end;
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -656,15 +813,55 @@ begin
                               @ImageCopy);
  end;
 
- ImageMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
- ImageMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
- ImageMemoryBarriers[0].oldLayout:=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
- ImageMemoryBarriers[0].newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+ if WithDepthAndMotionVectors then begin
+  ImageCopy.srcSubresource.baseArrayLayer:=Max(0,aDepthLayer);
+  ImageCopy.extent.width:=fRenderWidth;
+  ImageCopy.extent.height:=fRenderHeight;
+  aCommandBuffer.CmdCopyImage(aDepthImage,
+                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              Slot^.Depth.VulkanImage.Handle,
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              1,
+                              @ImageCopy);
+  ImageCopy.srcSubresource.baseArrayLayer:=Max(0,aMotionVectorsLayer);
+  aCommandBuffer.CmdCopyImage(aMotionVectorsImage,
+                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              Slot^.MotionVectors.VulkanImage.Handle,
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              1,
+                              @ImageCopy);
+ end;
+
+ // Everything into the ring is read by shaders from now on; the depth goes back to where it was, for the
+ // passes after this one.
+ CountImageMemoryBarriers:=0;
+ AddImageMemoryBarrier(Slot^.Color.VulkanImage.Handle,
+                       0,
+                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  if WithHUD then begin
-  ImageMemoryBarriers[1].srcAccessMask:=ImageMemoryBarriers[0].srcAccessMask;
-  ImageMemoryBarriers[1].dstAccessMask:=ImageMemoryBarriers[0].dstAccessMask;
-  ImageMemoryBarriers[1].oldLayout:=ImageMemoryBarriers[0].oldLayout;
-  ImageMemoryBarriers[1].newLayout:=ImageMemoryBarriers[0].newLayout;
+  AddImageMemoryBarrier(Slot^.HUD.VulkanImage.Handle,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+ end;
+ if WithDepthAndMotionVectors then begin
+  AddImageMemoryBarrier(Slot^.Depth.VulkanImage.Handle,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  AddImageMemoryBarrier(Slot^.MotionVectors.VulkanImage.Handle,
+                        0,
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
  end;
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
@@ -672,6 +869,22 @@ begin
                                    0,nil,
                                    0,nil,
                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+
+ if WithDepthAndMotionVectors then begin
+  CountImageMemoryBarriers:=0;
+  AddImageMemoryBarrier(aDepthImage,
+                        Max(0,aDepthLayer),
+                        TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    CountImageMemoryBarriers,@ImageMemoryBarriers[0]);
+ end;
 
  Slot^.Captured:=true;
 
@@ -737,6 +950,10 @@ begin
    fFences[aInFlightFrameIndex].WaitFor;
    fFences[aInFlightFrameIndex].Reset;
    fFencesReady[aInFlightFrameIndex]:=false;
+   // The submit of this in-flight frame before has finished, so its time can be read.
+   if assigned(fTimerQueries[aInFlightFrameIndex]) and fTimerQueries[aInFlightFrameIndex].Update then begin
+    fGenerationGPUTime:=fTimerQueries[aInFlightFrameIndex].Results[0].Duration;
+   end;
   end;
 
   CountFrames:=Min(Min(fCountGeneratedFrames,fBackend.GetMaximumCountGeneratedFrames(fDevice)),MaxGeneratedFramesPerFrame);
@@ -757,6 +974,11 @@ begin
   CommandBuffer:=fCommandBuffers[aInFlightFrameIndex];
   CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
   CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+  if assigned(fTimerQueries[aInFlightFrameIndex]) then begin
+   fTimerQueries[aInFlightFrameIndex].Reset;
+   fTimerQueries[aInFlightFrameIndex].Start(fDevice.UniversalQueue,CommandBuffer,'FrameGeneration');
+  end;
 
   fDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'FrameGeneration',[0.8,0.2,0.8,1.0]);
 
@@ -890,6 +1112,10 @@ begin
 
   fDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
 
+  if assigned(fTimerQueries[aInFlightFrameIndex]) then begin
+   fTimerQueries[aInFlightFrameIndex].Stop(fDevice.UniversalQueue,CommandBuffer);
+  end;
+
   CommandBuffer.EndRecording;
 
   // Waits on the rendered frame, which wrote the ring slot, and on every acquired image; signals every
@@ -913,6 +1139,8 @@ begin
 
   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  // With NVIDIA Reflex, the submit belongs to the rendered frame, as its own submits do.
+  SubmitInfo.pNext:=pvApplication.LowLatencySubmissionPresentIDNext(aInFlightFrameIndex,fFrameCounter);
   SubmitInfo.waitSemaphoreCount:=CountWaitSemaphores;
   SubmitInfo.pWaitSemaphores:=@WaitSemaphores[0];
   SubmitInfo.pWaitDstStageMask:=@WaitDstStageMasks[0];

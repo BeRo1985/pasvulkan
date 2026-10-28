@@ -163,6 +163,13 @@ fi
 # the permutations left, which every pass entry below picks on its own.
 FSR3UPSCALER_ARGUMENTS="-S comp --target-env vulkan1.2 -Ifsr3 -Ifsr3/fsr3upscaler -DFFX_GPU=1 -DFFX_GLSL=1 -DFFX_HALF=0 -DFFX_FSR3UPSCALER_OPTION_UPSAMPLE_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_ACCUMULATE_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_SAMPLERS_USE_DATA_HALF=1 -DFFX_FSR3UPSCALER_OPTION_POSTPROCESSLOCKSTATUS_SAMPLERS_USE_DATA_HALF=0 -DFFX_FSR3UPSCALER_OPTION_UPSAMPLE_USE_LANCZOS_TYPE=2 -DFFX_FSR3UPSCALER_OPTION_HDR_COLOR_INPUT=1 -DFFX_FSR3UPSCALER_OPTION_LOW_RESOLUTION_MOTION_VECTORS=1 -DFFX_FSR3UPSCALER_OPTION_JITTERED_MOTION_VECTORS=0"
 
+# The AMD FidelityFX Super Resolution 3.1 frame generation passes, the same way: the optical flow without any
+# permutation, the frame interpolation with motion vectors at render resolution and without jitter, which leaves
+# the depth convention. The callbacks test FFX_FRAMEINTERPOLATION_OPTION_JITTERED_MOTION_VECTORS, while the SDK's
+# build sets a ..._JITTER_... of another name, so it is given here under the name that is actually read.
+FSR3OPTICALFLOW_ARGUMENTS="-S comp --target-env vulkan1.2 -Ifsr3 -DFFX_GPU=1 -DFFX_GLSL=1 -DFFX_HALF=0"
+FSR3FRAMEINTERPOLATION_ARGUMENTS="-S comp --target-env vulkan1.2 -Ifsr3 -DFFX_GPU=1 -DFFX_GLSL=1 -DFFX_HALF=0 -DFFX_FRAMEINTERPOLATION_OPTION_LOW_RES_MOTION_VECTORS=1 -DFFX_FRAMEINTERPOLATION_OPTION_JITTERED_MOTION_VECTORS=0"
+
 #############################################
 #          Predefined shader list           #
 #############################################
@@ -627,6 +634,8 @@ compileshaderarguments=(
 
   "-V framegen_blend.comp -o ${tempPath}/framegen_blend_comp.spv"
   "-V framegen_compose.frag -o ${tempPath}/framegen_compose_frag.spv"
+  "-V framegen_display_transfer.comp -DENCODE -o ${tempPath}/framegen_display_encode_comp.spv"
+  "-V framegen_display_transfer.comp -DDECODE -o ${tempPath}/framegen_display_decode_comp.spv"
 
   "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_prepare_inputs_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_prepare_inputs_inverteddepth_comp.spv"
@@ -652,6 +661,37 @@ compileshaderarguments=(
   "-V fsr3/ffx_fsr3upscaler_rcas_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_rcas_inverteddepth_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_debug_view_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=0 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_debug_view_comp.spv"
   "-V fsr3/ffx_fsr3upscaler_debug_view_pass.glsl ${FSR3UPSCALER_ARGUMENTS} -DFFX_FSR3UPSCALER_OPTION_INVERTED_DEPTH=1 -DFFX_FSR3UPSCALER_OPTION_REPROJECT_USE_LANCZOS_TYPE=0 -DFFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=0 -o ${tempPath}/fsr3upscaler_debug_view_inverteddepth_comp.spv"
+
+  "-V fsr3/ffx_opticalflow_prepare_luma_pass.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_prepare_luma_comp.spv"
+  "-V fsr3/ffx_opticalflow_compute_luminance_pyramid_pass.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_compute_luminance_pyramid_comp.spv"
+  "-V fsr3/ffx_opticalflow_generate_scd_histogram_pass.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_generate_scd_histogram_comp.spv"
+  "-V fsr3/ffx_opticalflow_compute_scd_divergence_pass.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_compute_scd_divergence_comp.spv"
+  "-V fsr3/ffx_opticalflow_compute_optical_flow_advanced_pass_v5.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_compute_optical_flow_advanced_v5_comp.spv"
+  "-V fsr3/ffx_opticalflow_filter_optical_flow_pass_v5.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_filter_optical_flow_v5_comp.spv"
+  "-V fsr3/ffx_opticalflow_scale_optical_flow_advanced_pass_v5.glsl ${FSR3OPTICALFLOW_ARGUMENTS} -o ${tempPath}/fsr3opticalflow_scale_optical_flow_advanced_v5_comp.spv"
+
+  "-V fsr3/ffx_frameinterpolation_reconstruct_and_dilate_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_reconstruct_and_dilate_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_reconstruct_and_dilate_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_reconstruct_and_dilate_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_setup_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_setup_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_setup_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_setup_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_reconstruct_previous_depth_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_reconstruct_previous_depth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_reconstruct_previous_depth_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_reconstruct_previous_depth_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_game_motion_vector_field_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_game_motion_vector_field_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_game_motion_vector_field_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_game_motion_vector_field_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_optical_flow_vector_field_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_optical_flow_vector_field_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_optical_flow_vector_field_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_optical_flow_vector_field_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_disocclusion_mask_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_disocclusion_mask_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_disocclusion_mask_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_disocclusion_mask_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_interpolation_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_interpolation_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_compute_inpainting_pyramid_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_compute_inpainting_pyramid_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_compute_inpainting_pyramid_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_compute_inpainting_pyramid_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_inpainting_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_inpainting_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_inpainting_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_inpainting_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_compute_game_vector_field_inpainting_pyramid_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_compute_game_vector_field_inpainting_pyramid_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_compute_game_vector_field_inpainting_pyramid_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_compute_game_vector_field_inpainting_pyramid_inverteddepth_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_debug_view_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=0 -o ${tempPath}/fsr3frameinterpolation_debug_view_comp.spv"
+  "-V fsr3/ffx_frameinterpolation_debug_view_pass.glsl ${FSR3FRAMEINTERPOLATION_ARGUMENTS} -DFFX_FRAMEINTERPOLATION_OPTION_INVERTED_DEPTH=1 -o ${tempPath}/fsr3frameinterpolation_debug_view_inverteddepth_comp.spv"
 
   "-V cnn_conv_forward.comp -o ${tempPath}/cnn_conv_forward_comp.spv"
   "-V cnn_pixel_shuffle.comp -o ${tempPath}/cnn_pixel_shuffle_comp.spv"

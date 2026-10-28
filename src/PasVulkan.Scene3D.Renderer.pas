@@ -425,6 +425,7 @@ uses PasVulkan.Scene3D.Assets,
      PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend,
      PasVulkan.Scene3D.Renderer.TemporalUpscalerBackend.FSR3,
      PasVulkan.Scene3D.Renderer.FrameGenerationBackend,
+     PasVulkan.Scene3D.Renderer.FrameGenerationBackend.FSR3,
      PasVulkan.Scene3D.Renderer.FrameGenerationBackend.Blend;
 
 { TpvScene3DRendererBaseObject }

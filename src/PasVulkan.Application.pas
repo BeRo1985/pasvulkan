@@ -137,6 +137,10 @@ const // The most swapchain images asked for with DesiredCountSwapChainImages. T
       // TpvApplication.AcquireGeneratedFrameImage.
       MaxGeneratedFramesPerFrame=4;
 
+      // The present ids each rendered frame has, one for itself and one for each frame that can be
+      // generated before it, see TpvApplication.GetFramePresentID.
+      PresentIDsPerFrame=MaxGeneratedFramesPerFrame+1;
+
       FrameTimesHistorySize=1 shl 10;
       FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
@@ -1539,6 +1543,21 @@ type EpvApplication=class(Exception)
       );
 
      PpvApplicationFramePacingMode=^TpvApplicationFramePacingMode;
+     // How the presents of frame generation are spread over the interval between the rendered frames, see
+     // TpvApplication.AcquireGeneratedFrameImage.
+     TpvApplicationGeneratedFramePacing=
+      (
+       // Target times of present timing where the surface takes them, otherwise the CPU.
+       Auto=0,
+       // Only target times of present timing; without them, the presents go out as they come.
+       TargetTimes=1,
+       // Always the CPU: before each present but the first of an interval, it waits for the present before to
+       // be shown and then for the rest of the distance between them.
+       CPU=2
+      );
+
+     PpvApplicationGeneratedFramePacing=^TpvApplicationGeneratedFramePacing;
+
      TpvApplicationFramePacingMode=
       (
        None=0,
@@ -2019,10 +2038,15 @@ type EpvApplication=class(Exception)
 
        // Low latency mode
        fLowLatencyMode:TpvApplicationLowLatencyMode;
+       // The mode the swapchain was made for, so that a change at runtime brings a new swapchain.
+       fLowLatencyAppliedMode:TpvApplicationLowLatencyMode;
        fLowLatencyActive:boolean;
        fLowLatencyActiveMode:TpvApplicationLowLatencyMode;
        fLowLatencyFrameID:TpvUInt64;
        fLowLatencySleepSemaphore:TpvVulkanTimelineSemaphore;
+       // What VK_NV_low_latency2 ties the submits of a rendered frame to its present with, one per in-flight
+       // frame, see LowLatencySubmissionPresentIDNext.
+       fLowLatencySubmissionPresentIDs:array[0..MaxInFlightFrames-1] of TVkLatencySubmissionPresentIdNV;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
@@ -2079,6 +2103,10 @@ type EpvApplication=class(Exception)
        fVulkanPresentID:TpvUInt64;
 
        fVulkanPresentLastID:TpvUInt64;
+       // The ids of the last presents, which have gaps between rendered frames, see GetFramePresentID, so
+       // that the latency wait can still go back by a count of presents.
+       fVulkanPresentIDHistory:array[0..15] of TpvUInt64;
+       fVulkanPresentIDHistoryCount:TpvUInt64;
 
        fVulkanAPIVersion:TvkUInt32;
 
@@ -2134,27 +2162,51 @@ type EpvApplication=class(Exception)
 
        // Where the surface takes absolute target times, the presents of one interval get them evenly
        // spaced, see SchedulePresentTargetTimes: the target times of the generated frames and then of the
-       // rendered one, and the target time of the rendered frame before, from which the next interval goes
-       // on.
+       // rendered one.
        fGeneratedFrameTargetTimes:array[0..MaxGeneratedFramesPerFrame] of TpvUInt64;
 
        fCountGeneratedFrameTargetTimes:TpvInt32;
 
        fGeneratedFrameCountPresents:TpvInt32;
 
-       fGeneratedFrameLastTargetTime:TpvUInt64;
+       // Where the presents of an interval are spaced on the CPU instead, see TpvApplicationGeneratedFramePacing:
+       // whether they are, the distance between them, and when the last present went out.
+       fGeneratedFramePacing:TpvApplicationGeneratedFramePacing;
+
+       fGeneratedFrameCPUPacing:boolean;
+
+       fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
+
+       fGeneratedFrameCPUPacingLastPresentTime:TpvHighResolutionTime;
+
+       fGeneratedFrameLastPresentID:TpvUInt64;
+
+       fGeneratedFrameRefreshPeriod:TpvHighResolutionTime; // -1 not looked up yet, 0 not known
 
        // The reports of past presents, see SetupPresentTimingReports: the present stage whose times are
-       // asked for, and the last present seen. They tell whether frames with a target time miss it, and
-       // the lead the target times keep before now grows with each miss, see PollPresentTimingReports and
+       // asked for, and the last present seen. They give the refresh cycles the target times are laid on,
+       // and the lead the target times keep before now, see PollPresentTimingReports and
        // SchedulePresentTargetTimes.
        fPresentTimingReportStage:TVkPresentStageFlagsEXT;
+
+       // The stage at which the queue operations of a present are done, so its image ready, where the
+       // surface reports it, 0 otherwise. With it, the lead is how long the frames took to be ready;
+       // without it, the lead grows with each frame that missed its target time.
+       fPresentTimingReportReadyStage:TVkPresentStageFlagsEXT;
 
        fPresentTimingReportQueueState:TpvInt32; // 0 not set up yet, 1 set up, -1 not to be had
 
        fPresentTimingReportLastPresentID:TpvUInt64;
+       // When the present of the report before was shown, zero before the first; a refresh cycle.
+       fPresentTimingReportLastShownTime:TpvUInt64;
 
        fGeneratedFramePresentLead:TpvInt64;
+
+       // When the target times of the last intervals were worked out, by the id of the first present of
+       // the interval, for the lead from the ready times.
+       fGeneratedFrameScheduleIDs:array[0..15] of TpvUInt64;
+       fGeneratedFrameScheduleTimes:array[0..15] of TpvUInt64;
+       fGeneratedFrameScheduleIndex:TpvUInt32;
 
        // A test aid, see PresentIntervalStatistics: what has been gathered since the last log line. Bucket 0
        // of the refresh multiples counts the intervals off the refresh grid, buckets 1 to 4 those of that
@@ -2363,11 +2415,14 @@ type EpvApplication=class(Exception)
        function AcquireVulkanBackBuffer:boolean;
        function GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean;
        procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
+       function GeneratedFrameTargetTimesAvailable:boolean;
+       procedure PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
        procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
        procedure SetupPresentTimingReports;
        function EnsurePresentTimingReportQueue:boolean;
        procedure PollPresentTimingReports;
        function PresentGeneratedFrames:TpvInt32;
+       procedure RecordPresentID;
        function PresentVulkanBackBuffer:boolean;
 
        procedure SetScreen(const aScreen:TpvApplicationScreen);
@@ -2384,7 +2439,9 @@ type EpvApplication=class(Exception)
        procedure ComputePresentTimingTarget(var aTimingInfo:TVkPresentTimingInfoEXT);
        procedure InitializeLowLatencyMode;
        procedure ShutdownLowLatencyMode;
-       procedure SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV);
+       // The marker for the frame of the given frame counter, which goes by the present id that frame's
+       // present will have.
+       procedure SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV;const aFrameCounter:TpvInt64);
        procedure LowLatencySleep;
 
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
@@ -2520,11 +2577,24 @@ type EpvApplication=class(Exception)
        function GetQueuedGeneratedFrameImageIndex(const aIndex:TpvInt32):TpvInt32;
        property CountQueuedGeneratedFrames:TpvInt32 read fCountQueuedGeneratedFrames;
 
+       // The present id of the rendered frame of a frame counter. Each rendered frame has PresentIDsPerFrame
+       // of them, so that it is known from the start of the frame - the markers of NVIDIA Reflex need it then
+       // already - however many frames are generated and presented before it.
+       class function GetFramePresentID(const aFrameCounter:TpvInt64):TpvUInt64; static;
+
+       // What ties a queue submit of the rendered frame of a frame counter to its present for the low latency
+       // mode of VK_NV_low_latency2, to go into the pNext chain of its VkSubmitInfo, or nil without it. The
+       // record behind it is the in-flight frame's and stays valid until the next call for that in-flight frame.
+       function LowLatencySubmissionPresentIDNext(const aInFlightFrameIndex:TpvSizeInt;const aFrameCounter:TpvInt64):pointer;
+
        // A test aid: where the surface reports the times of past presents, the intervals between the
        // presented frames, generated ones included, go into the log every two seconds, with how many of them
        // were one, two, three or more refresh periods long. Set before the swapchain is created; it stays
        // off while the frame pacing works from the same reports itself.
        property PresentIntervalStatistics:boolean read fPresentIntervalStatistics write fPresentIntervalStatistics;
+
+       // How the presents of frame generation are spread over the interval, Auto by default.
+       property GeneratedFramePacing:TpvApplicationGeneratedFramePacing read fGeneratedFramePacing write fGeneratedFramePacing;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
 
@@ -11544,6 +11614,8 @@ begin
  fLowLatencyActiveMode:=TpvApplicationLowLatencyMode.None;
  fLowLatencyFrameID:=0;
  fLowLatencySleepSemaphore:=nil;
+ fLowLatencyAppliedMode:=TpvApplicationLowLatencyMode.None;
+ FillChar(fLowLatencySubmissionPresentIDs,SizeOf(fLowLatencySubmissionPresentIDs),#0);
 
  fFrameCounter:=0;
 
@@ -13273,6 +13345,11 @@ begin
 
  fVulkanPresentLastID:=0;
 
+ fVulkanPresentIDHistoryCount:=0;
+
+ // NVIDIA Reflex, the low latency mode of VK_NV_low_latency2, needs a swapchain made for it.
+ fVulkanDevice.SwapChainLatencyModeEnable:=fLowLatencyMode in [TpvApplicationLowLatencyMode.Auto,TpvApplicationLowLatencyMode.NVReflex];
+
 {$if defined(PasVulkanHeadless)}
  fVulkanSwapChain:=nil;
  fCountSwapChainImages:=0;
@@ -13320,7 +13397,7 @@ begin
     if SwapchainTimingProperties.refreshDuration>0 then begin
      fFramePacingPresentTimingRefreshDuration:=SwapchainTimingProperties.refreshDuration;
      fFramePacingPresentTimingAvailable:=true;
-     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true));
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true)+', present stages $'+LowerCase(IntToHex(fVulkanSwapChain.PresentStageQueries,2)));
     end;
    end;
   except
@@ -13430,9 +13507,13 @@ begin
  fGeneratedFrameAcquireIndex:=0;
  fCountQueuedGeneratedFrames:=0;
  fCountGeneratedFrameTargetTimes:=0;
- fGeneratedFrameLastTargetTime:=0;
+ fGeneratedFrameRefreshPeriod:=-1;
 
  SetupPresentTimingReports;
+
+ // The low latency mode is a matter of the swapchain, so it is brought up anew with every one.
+ InitializeLowLatencyMode;
+ fLowLatencyAppliedMode:=fLowLatencyMode;
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
@@ -13483,6 +13564,7 @@ begin
  for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanInFlightFenceIndices[Index]:=-1;
  end;
+ ShutdownLowLatencyMode;
  FreeAndNil(fVulkanSwapChain);
  fVulkanSwapChainQueueFamilyIndices.Finalize;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -14232,9 +14314,11 @@ begin
       (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
       (fVulkanDevice.PresentWaitSupport or fVulkanSwapChain.PresentWait2Enabled) and
       (fPresentFrameLatency<>0) and
-      (fVulkanPresentLastID>fPresentFrameLatency) and
+      (fPresentFrameLatency<=15) and
+      (fVulkanPresentIDHistoryCount>fPresentFrameLatency) and
       (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
-    Target:=fVulkanPresentLastID-fPresentFrameLatency;
+    // The present that many presents back, by the history, since the ids have gaps.
+    Target:=fVulkanPresentIDHistory[(fVulkanPresentIDHistoryCount-(fPresentFrameLatency+1)) and 15];
     if fBlocking then begin
      TimeOut:=1000000000; // one second for to avoid deadlock issue with nvidia
 (*{$ifdef Windows}
@@ -15034,7 +15118,7 @@ end;
 // grows while frames miss their target times, see PollPresentTimingReports.
 procedure TpvApplication.SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
 var Index:TpvInt32;
-    Now,Step,Interval,First,Lead:TpvUInt64;
+    Now,Step,Interval,First,Lead,Ready,Refresh,LastShown:TpvUInt64;
 begin
  fCountGeneratedFrameTargetTimes:=0;
  fGeneratedFrameCountPresents:=Max(1,aCountPresents);
@@ -15051,16 +15135,114 @@ begin
  Interval:=TpvUInt64(trunc(fGeneratedFramePresentInterval*1e9));
  Step:=Interval div TpvUInt64(aCountPresents);
  Lead:=TpvUInt64(Min(Max(fGeneratedFramePresentLead,0),TpvInt64(Interval)));
- Now:=Now+Lead;
- First:=fGeneratedFrameLastTargetTime+Step;
- if (fGeneratedFrameLastTargetTime=0) or (First<Now) or (First>(Now+(Interval*2))) then begin
-  First:=Now;
+ // The first frame of the interval as soon as it is ready, the queue puts it after the rendered frame of
+ // the interval before anyway. Going on from the target times of the interval before instead would carry
+ // the interval over from one rendered frame to the next, and since the loop waits for these presents,
+ // the loop would keep to any interval it once got to, a longer one after a hitch as well.
+ Ready:=Now+Lead;
+ // And on the first refresh cycle from then on, where the reports have given the refresh cycles, so that
+ // the frames after it come at the same distance from it in every interval.
+ Refresh:=fFramePacingPresentTimingRefreshDuration;
+ LastShown:=fPresentTimingReportLastShownTime;
+ if (Refresh>0) and (LastShown<>0) and (Ready>LastShown) then begin
+  First:=LastShown+((((Ready-LastShown)+Refresh)-1) div Refresh)*Refresh;
+ end else begin
+  First:=Ready;
  end;
  for Index:=0 to aCountPresents-1 do begin
   fGeneratedFrameTargetTimes[Index]:=First+(TpvUInt64(Index)*Step);
  end;
  fCountGeneratedFrameTargetTimes:=aCountPresents;
- fGeneratedFrameLastTargetTime:=fGeneratedFrameTargetTimes[aCountPresents-1];
+ // When, by the id the first of the presents will have, for the lead from the ready times, see
+ // PollPresentTimingReports.
+ fGeneratedFrameScheduleIDs[fGeneratedFrameScheduleIndex and 15]:=fVulkanPresentID+1;
+ fGeneratedFrameScheduleTimes[fGeneratedFrameScheduleIndex and 15]:=Now;
+ inc(fGeneratedFrameScheduleIndex);
+end;
+
+// Whether the presents of frame generation can be spread with target times of present timing.
+function TpvApplication.GeneratedFrameTargetTimesAvailable:boolean;
+begin
+ result:=fFramePacingPresentTimingAvailable and
+         assigned(fVulkanDevice) and
+         fVulkanDevice.PresentTimingSupport and
+         (not fDisablePresentTiming) and
+         assigned(fVulkanSwapChain) and
+         (fVulkanSwapChain.PresentAtAbsoluteTimeSupported or fVulkanSwapChain.PresentAtRelativeTimeSupported);
+end;
+
+// The CPU spacing of the presents of an interval, before every present but the first. A present in a FIFO
+// queue is shown for at least one refresh cycle, so it comes the distance after the present before as soon
+// as it goes out after the refresh cycle before that one: only the part of the distance beyond one refresh
+// cycle has to be waited for, and with a distance of one refresh cycle nothing at all. Without FIFO, or
+// with the refresh cycle unknown, it is the whole distance, a little less, so as to be in time for the
+// refresh cycle the present is meant for.
+//
+// The wait goes from when the present before was shown, which it waits for where the device can wait for
+// presents, and otherwise from when that one went out.
+procedure TpvApplication.PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
+const Margin=0.001; // one millisecond
+var PresentWait2Info:TVkPresentWait2InfoKHR;
+    WaitResult:TVkResult;
+    ShownTime,TargetTime,NowTime,WaitStartTime,Delay:TpvHighResolutionTime;
+    TimeOut:TpvUInt64;
+    RefreshRate:TpvDouble;
+begin
+ if fGeneratedFrameRefreshPeriod<0 then begin
+  if fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
+   fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromNanoseconds(fFramePacingPresentTimingRefreshDuration);
+  end else begin
+   RefreshRate:=GetNativeRefreshRate;
+   if RefreshRate>=1.0 then begin
+    fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromFloatSeconds(1.0/RefreshRate);
+   end else begin
+    fGeneratedFrameRefreshPeriod:=0;
+   end;
+  end;
+ end;
+ if (fGeneratedFrameRefreshPeriod>0) and
+    ((fVulkanSwapChain.PresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+     (fVulkanSwapChain.PresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR)) then begin
+  if fGeneratedFrameCPUPacingDistance<=(fGeneratedFrameRefreshPeriod+fHighResolutionTimer.FromFloatSeconds(Margin)) then begin
+   exit;
+  end;
+  Delay:=(fGeneratedFrameCPUPacingDistance-fGeneratedFrameRefreshPeriod)+fHighResolutionTimer.FromFloatSeconds(Margin);
+ end else begin
+  Delay:=fGeneratedFrameCPUPacingDistance-fHighResolutionTimer.FromFloatSeconds(Margin);
+ end;
+ ShownTime:=fGeneratedFrameCPUPacingLastPresentTime;
+ if aPreviousPresentID<>0 then begin
+  TimeOut:=TpvUInt64(Max(1000000,fHighResolutionTimer.ToNanoseconds(fGeneratedFrameCPUPacingDistance)*2));
+  WaitResult:=VK_NOT_READY;
+  WaitStartTime:=fHighResolutionTimer.GetTime;
+  try
+   if fVulkanSwapChain.PresentWait2Enabled and
+      assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR) then begin
+    FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
+    PresentWait2Info.sType:=VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR;
+    PresentWait2Info.presentId:=aPreviousPresentID;
+    PresentWait2Info.timeout:=TimeOut;
+    WaitResult:=fVulkanDevice.Commands.WaitForPresent2KHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,@PresentWait2Info);
+   end else if fVulkanDevice.PresentWaitSupport and
+               assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
+    WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,aPreviousPresentID,TimeOut);
+   end;
+  except
+   WaitResult:=VK_NOT_READY;
+  end;
+  // Only a wait that really waited tells when the present was shown; one that came back at once found it
+  // shown already, at some time since it went out.
+  NowTime:=fHighResolutionTimer.GetTime;
+  if ((WaitResult=VK_SUCCESS) or (WaitResult=VK_SUBOPTIMAL_KHR)) and
+     ((NowTime-WaitStartTime)>fHighResolutionTimer.FromFloatSeconds(0.0005)) then begin
+   ShownTime:=NowTime;
+  end;
+ end;
+ TargetTime:=ShownTime+Delay;
+ NowTime:=fHighResolutionTimer.GetTime;
+ if (TargetTime>NowTime) and ((TargetTime-NowTime)<=fGeneratedFrameCPUPacingDistance) then begin
+  fHighResolutionTimer.Sleep(TargetTime-NowTime);
+ end;
 end;
 
 // Chains the target time of the aPresentIndex-th present of the interval into a present: the absolute
@@ -15072,7 +15254,7 @@ procedure TpvApplication.ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var
 var StageQueries:TVkPresentStageFlagsEXT;
 begin
  if ((aPresentIndex>=0) or fPresentIntervalStatistics) and EnsurePresentTimingReportQueue then begin
-  StageQueries:=fPresentTimingReportStage;
+  StageQueries:=fPresentTimingReportStage or fPresentTimingReportReadyStage;
  end else begin
   StageQueries:=0;
  end;
@@ -15083,6 +15265,7 @@ begin
   aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
   aPresentTimingInfo.targetTime:=fGeneratedFrameTargetTimes[aPresentIndex];
  end else if (aPresentIndex>=0) and
+             (not fGeneratedFrameCPUPacing) and
              fFramePacingPresentTimingAvailable and
              fVulkanDevice.PresentTimingSupport and
              fVulkanSwapChain.PresentAtRelativeTimeSupported and
@@ -15113,6 +15296,11 @@ begin
  fPresentTimingReportStage:=0;
  fPresentTimingReportQueueState:=0;
  fPresentTimingReportLastPresentID:=0;
+ fPresentTimingReportLastShownTime:=0;
+ fPresentTimingReportReadyStage:=0;
+ FillChar(fGeneratedFrameScheduleIDs,SizeOf(fGeneratedFrameScheduleIDs),#0);
+ FillChar(fGeneratedFrameScheduleTimes,SizeOf(fGeneratedFrameScheduleTimes),#0);
+ fGeneratedFrameScheduleIndex:=0;
  fGeneratedFramePresentLead:=0;
  fPresentIntervalStatisticsLastTime:=0;
  fPresentIntervalStatisticsCount:=0;
@@ -15147,6 +15335,9 @@ begin
   end;
   exit;
  end;
+ if (fVulkanSwapChain.PresentStageQueries and TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_QUEUE_OPERATIONS_END_BIT_EXT))<>0 then begin
+  fPresentTimingReportReadyStage:=TVkPresentStageFlagsEXT(VK_PRESENT_STAGE_QUEUE_OPERATIONS_END_BIT_EXT);
+ end;
  if fPresentIntervalStatistics then begin
   if EnsurePresentTimingReportQueue then begin
    Log(LOG_INFO,'TpvApplication.SetupPresentTimingReports','Present interval statistics at present stage $'+LowerCase(IntToHex(fPresentTimingReportStage,2)));
@@ -15170,18 +15361,20 @@ begin
  result:=fPresentTimingReportQueueState>0;
 end;
 
-// Reads the reports of past presents. For presents with an absolute target time, how much later than that
-// they came is what SchedulePresentTargetTimes keeps as a lead: it follows a lateness at once and lets it
-// go again slowly. With PresentIntervalStatistics, the intervals between the presents also go into the
-// statistics, which are logged every two seconds.
+// Reads the reports of past presents. They give the refresh cycles the target times go on, and the lead
+// SchedulePresentTargetTimes keeps before now: where the surface reports when the image of a present was
+// ready, how long the first present of an interval took from its scheduling to that, a little more, and
+// otherwise how much later than their target time the presents came. Either way the lead follows a
+// growth at once and lets it go again slowly. With PresentIntervalStatistics, the intervals between the
+// presents also go into the statistics, which are logged every two seconds.
 procedure TpvApplication.PollPresentTimingReports;
 var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
     PastTimingProperties:TVkPastPresentationTimingPropertiesEXT;
     PastTimings:array[0..15] of TVkPastPresentationTimingEXT;
-    PastStages:array[0..15] of TVkPresentStageTimeEXT;
-    Index,Bucket:TpvInt32;
-    Time:TpvUInt64;
-    Lateness:TpvInt64;
+    PastStages:array[0..31] of TVkPresentStageTimeEXT;
+    Index,Bucket,StageIndex,ScheduleIndex:TpvInt32;
+    Time,ReadyTime,Expected:TpvUInt64;
+    Lateness,Needed:TpvInt64;
     Interval,RefreshDuration,Multiple,Mean,Deviation:TpvDouble;
     NowTime:TpvHighResolutionTime;
     Text:TpvUTF8String;
@@ -15198,8 +15391,12 @@ begin
  for Index:=0 to 15 do begin
   FillChar(PastTimings[Index],SizeOf(TVkPastPresentationTimingEXT),#0);
   PastTimings[Index].sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
-  PastTimings[Index].presentStageCount:=1;
-  PastTimings[Index].pPresentStages:=@PastStages[Index];
+  if fPresentTimingReportReadyStage<>0 then begin
+   PastTimings[Index].presentStageCount:=2;
+  end else begin
+   PastTimings[Index].presentStageCount:=1;
+  end;
+  PastTimings[Index].pPresentStages:=@PastStages[Index*2];
  end;
  FillChar(PastTimingProperties,SizeOf(TVkPastPresentationTimingPropertiesEXT),#0);
  PastTimingProperties.sType:=VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT;
@@ -15214,15 +15411,50 @@ begin
  end;
  RefreshDuration:=fFramePacingPresentTimingRefreshDuration*1e-6;
  for Index:=0 to TpvInt32(PastTimingProperties.presentationTimingCount)-1 do begin
+  // The times of the stages, in whatever order they come.
+  Time:=0;
+  ReadyTime:=0;
+  for StageIndex:=0 to Min(TpvInt32(PastTimings[Index].presentStageCount),2)-1 do begin
+   if PastStages[(Index*2)+StageIndex].stage=fPresentTimingReportStage then begin
+    Time:=PastStages[(Index*2)+StageIndex].time;
+   end else if (fPresentTimingReportReadyStage<>0) and
+               (PastStages[(Index*2)+StageIndex].stage=fPresentTimingReportReadyStage) then begin
+    ReadyTime:=PastStages[(Index*2)+StageIndex].time;
+   end;
+  end;
   if (PastTimings[Index].reportComplete<>VK_FALSE) and
      (PastTimings[Index].presentId>fPresentTimingReportLastPresentID) and
-     (PastTimings[Index].presentStageCount>0) and
-     (PastStages[Index].time<>0) then begin
-   Time:=PastStages[Index].time;
-   if PastTimings[Index].targetTime<>0 then begin
-    // Up to half a refresh period either way is the rounding to the nearest refresh cycle; beyond that,
-    // the frame was not ready in time and missed its refresh cycle.
-    Lateness:=TpvInt64(Time)-TpvInt64(PastTimings[Index].targetTime);
+     (Time<>0) then begin
+   if fPresentTimingReportReadyStage<>0 then begin
+    // How long the first present of an interval took to be ready from when its target times were worked
+    // out, and two milliseconds for the slack.
+    if ReadyTime<>0 then begin
+     for ScheduleIndex:=0 to 15 do begin
+      if (fGeneratedFrameScheduleIDs[ScheduleIndex]=PastTimings[Index].presentId) and
+         (fGeneratedFrameScheduleTimes[ScheduleIndex]<>0) then begin
+       Needed:=(TpvInt64(ReadyTime)-TpvInt64(fGeneratedFrameScheduleTimes[ScheduleIndex]))+2000000;
+       if Needed>fGeneratedFramePresentLead then begin
+        fGeneratedFramePresentLead:=Min(Needed,TpvInt64(250000000));
+       end else begin
+        fGeneratedFramePresentLead:=fGeneratedFramePresentLead-((fGeneratedFramePresentLead-Max(Needed,0)) div 16);
+       end;
+       fGeneratedFrameScheduleIDs[ScheduleIndex]:=0;
+       break;
+      end;
+     end;
+    end;
+   end else if PastTimings[Index].targetTime<>0 then begin
+    // The present was due at its target time, or a refresh cycle after the present before where that one
+    // came later, since the queue shows one after the other. Up to half a refresh period either way is
+    // the rounding to the nearest refresh cycle; beyond that, the frame was not ready in time and missed
+    // its refresh cycle. Lateness from the queue alone is none of the lead's business: a later start
+    // would not help there, only add to the latency.
+    Expected:=PastTimings[Index].targetTime;
+    if (fPresentTimingReportLastShownTime<>0) and
+       (Expected<(fPresentTimingReportLastShownTime+fFramePacingPresentTimingRefreshDuration)) then begin
+     Expected:=fPresentTimingReportLastShownTime+fFramePacingPresentTimingRefreshDuration;
+    end;
+    Lateness:=TpvInt64(Time)-TpvInt64(Expected);
     if Lateness>TpvInt64(fFramePacingPresentTimingRefreshDuration shr 1) then begin
      fGeneratedFramePresentLead:=Min(fGeneratedFramePresentLead+Lateness,TpvInt64(250000000));
     end else begin
@@ -15252,6 +15484,7 @@ begin
     end;
    end;
    fPresentTimingReportLastPresentID:=PastTimings[Index].presentId;
+   fPresentTimingReportLastShownTime:=Time;
    fPresentIntervalStatisticsLastTime:=Time;
   end;
  end;
@@ -15271,7 +15504,9 @@ begin
         ' 3x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[3])+
         ' 4x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[4])+
         ' more '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[5])+
-        ' off the grid '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[0]);
+        ' off the grid '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[0])+
+        ', frame generation interval '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms'+
+        ', lead '+FloatToStrF(fGeneratedFramePresentLead*1e-6,ffFixed,8,3)+' ms';
   Log(LOG_INFO,'TpvApplication.PollPresentTimingReports',Text);
   fPresentIntervalStatisticsCount:=0;
   fPresentIntervalStatisticsSum:=0.0;
@@ -15281,6 +15516,14 @@ begin
   end;
   fPresentIntervalStatisticsLastLogTime:=NowTime;
  end;
+end;
+
+// After a present went through: its id as the last one and into the history.
+procedure TpvApplication.RecordPresentID;
+begin
+ fVulkanPresentLastID:=fVulkanPresentID;
+ fVulkanPresentIDHistory[fVulkanPresentIDHistoryCount and 15]:=fVulkanPresentID;
+ inc(fVulkanPresentIDHistoryCount);
 end;
 
 // Presents the frames generated for the current rendered frame, ahead of it. Where the device can time
@@ -15325,6 +15568,10 @@ begin
 
    ChainPresentTimingInfo(Index,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
 
+   if fGeneratedFrameCPUPacing and (Index>0) then begin
+    PaceGeneratedFramePresentOnCPU(fGeneratedFrameLastPresentID);
+   end;
+
 {$ifdef PasVulkanFrameTrace}
    pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(fGeneratedFrameRenderDoneSemaphores[ImageIndex].Handle));
 {$endif}
@@ -15332,12 +15579,20 @@ begin
    case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,fGeneratedFrameRenderDoneSemaphores[ImageIndex],PresentNext) of
     VK_SUCCESS,
     VK_SUBOPTIMAL_KHR:begin
-     fVulkanPresentLastID:=fVulkanPresentID;
+     RecordPresentID;
      inc(result);
     end;
     else begin
     end;
    end;
+
+   // What the CPU spacing of the next present goes by.
+   if fVulkanSwapChain.PresentID2Enabled or fVulkanDevice.PresentIDSupport then begin
+    fGeneratedFrameLastPresentID:=fVulkanPresentID;
+   end else begin
+    fGeneratedFrameLastPresentID:=0;
+   end;
+   fGeneratedFrameCPUPacingLastPresentTime:=fHighResolutionTimer.GetTime;
 
   end;
 
@@ -15383,7 +15638,7 @@ var PresentIdKHR:TVkPresentIdKHR;
     CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
 begin
 
- SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV);
+ SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
 
  result:=false;
 
@@ -15453,6 +15708,13 @@ begin
 
   fVulkanBackBufferState:=TVulkanBackBufferState.Acquire;
 
+  // The present ids of this rendered frame and of the frames generated for it, which come right before
+  // it: the rendered frame gets the one of its frame counter, see GetFramePresentID, as long as that is
+  // ahead of every id used so far. Each present below counts up by one.
+  if fVulkanPresentID<(GetFramePresentID(fDrawFrameCounter)-TpvUInt64(fCountQueuedGeneratedFrames+1)) then begin
+   fVulkanPresentID:=GetFramePresentID(fDrawFrameCounter)-TpvUInt64(fCountQueuedGeneratedFrames+1);
+  end;
+
   // The frames generated for this rendered frame go out ahead of it, spread over the interval between the
   // rendered frames, which is smoothed over the last frames.
   if fCountQueuedGeneratedFrames>0 then begin
@@ -15462,12 +15724,21 @@ begin
     fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
    end;
    CountIntervalParts:=fCountQueuedGeneratedFrames+1;
-   SchedulePresentTargetTimes(CountIntervalParts);
+   fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
+                             ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
+   if fGeneratedFrameCPUPacing then begin
+    fCountGeneratedFrameTargetTimes:=0;
+    fGeneratedFrameCountPresents:=CountIntervalParts;
+    fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
+   end else begin
+    SchedulePresentTargetTimes(CountIntervalParts);
+   end;
    CountGeneratedFramesPresented:=PresentGeneratedFrames;
   end else begin
    CountIntervalParts:=1;
    CountGeneratedFramesPresented:=0;
    fCountGeneratedFrameTargetTimes:=0;
+   fGeneratedFrameCPUPacing:=false;
   end;
 
   PresentNext:=nil;
@@ -15563,11 +15834,17 @@ begin
    fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=true;
   end;
 
+  // With the CPU spacing, the rendered frame comes the distance after the last generated one as well.
+  if fGeneratedFrameCPUPacing and (CountGeneratedFramesPresented>0) then begin
+   PaceGeneratedFramePresentOnCPU(fGeneratedFrameLastPresentID);
+   fGeneratedFrameCPUPacingLastPresentTime:=fHighResolutionTimer.GetTime;
+  end;
+
   try
    case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
     VK_SUCCESS:begin
      //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
-     fVulkanPresentLastID:=fVulkanPresentID;
+     RecordPresentID;
      fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
      if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
       dec(fNextInFlightFrameIndex,fCountInFlightFrames);
@@ -15579,7 +15856,7 @@ begin
      result:=true;
     end;
     VK_SUBOPTIMAL_KHR:begin
-     fVulkanPresentLastID:=fVulkanPresentID;
+     RecordPresentID;
      if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                 TAcquireVulkanBackBufferState.RecreateSurface,
@@ -15645,7 +15922,7 @@ begin
 
  PollPresentTimingReports;
 
- SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_END_NV);
+ SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_END_NV,fDrawFrameCounter);
 
 end;
 
@@ -16582,7 +16859,8 @@ begin
   TpvApplicationLowLatencyMode.NVReflex:begin
    if fVulkanDevice.LowLatency2Support and
       assigned(fVulkanDevice.Commands.Commands.SetLatencySleepModeNV) and
-      assigned(fVulkanSwapChain) then begin
+      assigned(fVulkanSwapChain) and
+      fVulkanSwapChain.LatencyModeEnabled then begin
     FillChar(LatencySleepModeInfo,SizeOf(TVkLatencySleepModeInfoNV),#0);
     LatencySleepModeInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
     LatencySleepModeInfo.lowLatencyMode:=VK_TRUE;
@@ -16622,7 +16900,8 @@ begin
   TpvApplicationLowLatencyMode.Auto:begin
    if fVulkanDevice.LowLatency2Support and
       assigned(fVulkanDevice.Commands.Commands.SetLatencySleepModeNV) and
-      assigned(fVulkanSwapChain) then begin
+      assigned(fVulkanSwapChain) and
+      fVulkanSwapChain.LatencyModeEnabled then begin
     FillChar(LatencySleepModeInfo,SizeOf(TVkLatencySleepModeInfoNV),#0);
     LatencySleepModeInfo.sType:=VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
     LatencySleepModeInfo.lowLatencyMode:=VK_TRUE;
@@ -16704,7 +16983,30 @@ begin
 end;
 
 
-procedure TpvApplication.SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV);
+class function TpvApplication.GetFramePresentID(const aFrameCounter:TpvInt64):TpvUInt64;
+begin
+ result:=(TpvUInt64(Max(aFrameCounter,0))+1)*PresentIDsPerFrame;
+end;
+
+function TpvApplication.LowLatencySubmissionPresentIDNext(const aInFlightFrameIndex:TpvSizeInt;const aFrameCounter:TpvInt64):pointer;
+var SubmissionPresentID:PVkLatencySubmissionPresentIdNV;
+begin
+ if fLowLatencyActive and
+    (fLowLatencyActiveMode=TpvApplicationLowLatencyMode.NVReflex) and
+    (aInFlightFrameIndex>=0) and
+    (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  SubmissionPresentID:=@fLowLatencySubmissionPresentIDs[aInFlightFrameIndex];
+  FillChar(SubmissionPresentID^,SizeOf(TVkLatencySubmissionPresentIdNV),#0);
+  SubmissionPresentID^.sType:=VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV;
+  SubmissionPresentID^.pNext:=nil;
+  SubmissionPresentID^.presentID:=GetFramePresentID(aFrameCounter);
+  result:=SubmissionPresentID;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvApplication.SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV;const aFrameCounter:TpvInt64);
 var MarkerInfo:TVkSetLatencyMarkerInfoNV;
     AntiLagData:TVkAntiLagDataAMD;
     AntiLagPresInfo:TVkAntiLagPresentationInfoAMD;
@@ -16717,7 +17019,7 @@ begin
        assigned(fVulkanSwapChain) then begin
      FillChar(MarkerInfo,SizeOf(TVkSetLatencyMarkerInfoNV),#0);
      MarkerInfo.sType:=VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
-     MarkerInfo.presentID:=fVulkanPresentID;
+     MarkerInfo.presentID:=GetFramePresentID(aFrameCounter);
      MarkerInfo.marker:=aMarker;
      fVulkanDevice.Commands.SetLatencyMarkerNV(fVulkanDevice.Handle,
                                                fVulkanSwapChain.Handle,
@@ -16787,13 +17089,13 @@ var StartTime:TpvHighResolutionTime;
 begin
  if not TPasMPInterlocked.CompareExchange(fInUpdateJobFunction,TPasMPBool32(true),TPasMPBool32(false)) then begin
   try
-    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_START_NV);
+    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_START_NV,fUpdateFrameCounter);
     fTimingCPUUpdateStart:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
     StartTime:=fHighResolutionTimer.GetTime;
     Update(fUpdateDeltaTime);
     fTimingCPUUpdate:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
     fTimingCPUUpdateEnd:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
-    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_END_NV);
+    SetLowLatencyMarker(VK_LATENCY_MARKER_SIMULATION_END_NV,fUpdateFrameCounter);
   finally
    TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
   end;
@@ -16803,13 +17105,13 @@ end;
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 var StartTime:TpvHighResolutionTime;
 begin
- SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+ SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV,fDrawFrameCounter);
  fTimingCPUDrawStart:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
  StartTime:=fHighResolutionTimer.GetTime;
  Draw(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
  fTimingCPUDraw:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
  fTimingCPUDrawEnd:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-fTimingCPUFrameStartTime);
- SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
+ SetLowLatencyMarker(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV,fDrawFrameCounter);
 end;
 
 procedure TpvApplication.UpdateAudioHook;
@@ -17211,8 +17513,19 @@ begin
 
  DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
 
+ // A low latency mode changed at runtime needs a swapchain made for it, see CreateVulkanSwapChain.
+ if assigned(fVulkanSwapChain) and (fLowLatencyMode<>fLowLatencyAppliedMode) then begin
+  fLowLatencyAppliedMode:=fLowLatencyMode;
+  if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                            TAcquireVulkanBackBufferState.RecreateSurface,
+                                            TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+   fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+  end;
+ end;
+
  LowLatencySleep;
- SetLowLatencyMarker(VK_LATENCY_MARKER_INPUT_SAMPLE_NV);
+ // The input of the frame whose simulation comes next.
+ SetLowLatencyMarker(VK_LATENCY_MARKER_INPUT_SAMPLE_NV,fFrameCounter);
 
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 

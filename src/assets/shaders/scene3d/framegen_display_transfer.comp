@@ -1,0 +1,83 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+// For frame generation backends that work on the picture as it goes to the display rather than on the
+// linear one the renderer hands them: with ENCODE, the linear picture into a display-ready one in an
+// A2B10G10R10 image, with DECODE back again.
+//
+// SDR, where the linear picture stays within 0..1, goes through the sRGB transfer function. HDR, linear
+// scRGB with Rec.709 primaries, goes to HDR10: Rec.2020 primaries and the PQ transfer function of
+// SMPTE ST 2084, with 1.0 at nitsPerUnit nits.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform texture2D uTextureInput;
+#if defined(ENCODE)
+layout(set = 0, binding = 1, rgb10_a2) uniform writeonly image2D uImageOutput;
+#else
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2D uImageOutput;
+#endif
+
+layout(push_constant) uniform PushConstants {
+  uint mode;         // 0 = SDR with sRGB, 1 = HDR10
+  float nitsPerUnit; // HDR10: how many nits 1.0 of the linear picture is
+} pushConstants;
+
+const mat3 Rec709ToRec2020 = mat3(0.6274039, 0.0690973, 0.0163914,
+                                  0.3292830, 0.9195404, 0.0880133,
+                                  0.0433131, 0.0113623, 0.8955953);
+
+const mat3 Rec2020ToRec709 = mat3(1.6604910, -0.1245505, -0.0181508,
+                                  -0.5876411, 1.1328999, -0.1005789,
+                                  -0.0728499, -0.0083494, 1.1187297);
+
+const float PQ_M1 = 2610.0 / 16384.0;
+const float PQ_M2 = (2523.0 / 4096.0) * 128.0;
+const float PQ_C1 = 3424.0 / 4096.0;
+const float PQ_C2 = (2413.0 / 4096.0) * 32.0;
+const float PQ_C3 = (2392.0 / 4096.0) * 32.0;
+
+vec3 linearToSRGB(vec3 c){
+  c = clamp(c, vec3(0.0), vec3(1.0));
+  return mix(c * 12.92, (pow(c, vec3(1.0 / 2.4)) * 1.055) - vec3(0.055), step(vec3(0.0031308), c));
+}
+
+vec3 sRGBToLinear(vec3 c){
+  return mix(c / 12.92, pow((c + vec3(0.055)) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+}
+
+// Luminance in units of 10000 nits to the PQ signal, and back.
+vec3 linearToPQ(vec3 y){
+  vec3 p = pow(clamp(y, vec3(0.0), vec3(1.0)), vec3(PQ_M1));
+  return pow((vec3(PQ_C1) + (vec3(PQ_C2) * p)) / (vec3(1.0) + (vec3(PQ_C3) * p)), vec3(PQ_M2));
+}
+
+vec3 pqToLinear(vec3 e){
+  vec3 p = pow(clamp(e, vec3(0.0), vec3(1.0)), vec3(1.0 / PQ_M2));
+  return pow(max(p - vec3(PQ_C1), vec3(0.0)) / (vec3(PQ_C2) - (vec3(PQ_C3) * p)), vec3(1.0 / PQ_M1));
+}
+
+void main(){
+  ivec2 position = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size = imageSize(uImageOutput);
+  if(all(lessThan(position, size))){
+    vec3 color = texelFetch(uTextureInput, position, 0).xyz;
+#if defined(ENCODE)
+    if(pushConstants.mode == 0u){
+      color = linearToSRGB(color);
+    }else{
+      color = linearToPQ(max(Rec709ToRec2020 * color, vec3(0.0)) * (pushConstants.nitsPerUnit / 10000.0));
+    }
+#else
+    if(pushConstants.mode == 0u){
+      color = sRGBToLinear(color);
+    }else{
+      color = Rec2020ToRec709 * (pqToLinear(color) * (10000.0 / pushConstants.nitsPerUnit));
+    }
+#endif
+    imageStore(uImageOutput, position, vec4(color, 1.0));
+  }
+}

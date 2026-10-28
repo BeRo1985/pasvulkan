@@ -62,7 +62,9 @@ unit PasVulkan.Scene3D.Renderer.Passes.FrameGenerationCaptureCustomPass;
 
 // Captures the rendered frame for frame generation, see TpvScene3DRendererFrameGenerationCompositor: the
 // picture as it goes into the HUD composition, so with everything drawn into the scene but without the HUD,
-// and the HUD itself where the instance has one. Only in the frame graph with frame generation.
+// and the HUD itself where the instance has one. Where the backend reads them, the resolved depth and the
+// motion vectors with the camera motion filled in, as the temporal upscaler reads them, as well. Only in the
+// frame graph with frame generation.
 
 interface
 
@@ -86,6 +88,7 @@ type { TpvScene3DRendererPassesFrameGenerationCaptureCustomPass }
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceHUD:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceMotionVectors:TpvFrameGraph.TPass.TUsedImageResource;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aWithHUD:boolean); reintroduce;
        destructor Destroy; override;
@@ -120,6 +123,18 @@ begin
   fResourceHUD:=nil;
  end;
 
+ // The depth is not taken from the graph: it comes from FinalDepthArray2DImage, which the depth resolve
+ // leaves behind, and which the instance makes this pass wait for.
+ if fInstance.FrameGenerationNeedsDepthAndMotionVectors then begin
+  fResourceMotionVectors:=AddImageInput('resourcetype_temporal_upscaler_velocity',
+                                        'resource_temporal_upscaler_velocity',
+                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                        []
+                                       );
+ end else begin
+  fResourceMotionVectors:=nil;
+ end;
+
 end;
 
 destructor TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Destroy;
@@ -128,7 +143,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesFrameGenerationCaptureCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var HUDImage:TVkImage;
+var HUDImage,DepthImage,MotionVectorsImage:TVkImage;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  if assigned(fInstance.FrameGenerationCompositor) then begin
@@ -137,10 +152,21 @@ begin
   end else begin
    HUDImage:=VK_NULL_HANDLE;
   end;
+  if assigned(fResourceMotionVectors) and assigned(fInstance.FinalDepthArray2DImage) then begin
+   DepthImage:=fInstance.FinalDepthArray2DImage.VulkanImage.Handle;
+   MotionVectorsImage:=fResourceMotionVectors.VulkanImages[aInFlightFrameIndex].Handle;
+  end else begin
+   DepthImage:=VK_NULL_HANDLE;
+   MotionVectorsImage:=VK_NULL_HANDLE;
+  end;
   fInstance.FrameGenerationCompositor.Capture(aCommandBuffer,
                                               fResourceColor.VulkanImages[aInFlightFrameIndex].Handle,
                                               0,
-                                              HUDImage);
+                                              HUDImage,
+                                              DepthImage,
+                                              0,
+                                              MotionVectorsImage,
+                                              0);
  end;
 end;
 

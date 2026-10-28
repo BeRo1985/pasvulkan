@@ -865,6 +865,7 @@ type EpvVulkanException=class(Exception);
        fPresentWait2Support:boolean;
        fSwapchainMaintenance1Support:boolean;
        fLowLatency2Support:boolean;
+       fSwapChainLatencyModeEnable:boolean;
        fAntiLagSupport:boolean;
        fCalibratedTimestampsSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
@@ -978,6 +979,9 @@ type EpvVulkanException=class(Exception);
        property PresentWait2Support:boolean read fPresentWait2Support;
        property SwapchainMaintenance1Support:boolean read fSwapchainMaintenance1Support;
        property LowLatency2Support:boolean read fLowLatency2Support;
+       // Whether swapchains are created for the low latency mode of VK_NV_low_latency2, which they only
+       // take when they are, where the extension is enabled at all.
+       property SwapChainLatencyModeEnable:boolean read fSwapChainLatencyModeEnable write fSwapChainLatencyModeEnable;
        property AntiLagSupport:boolean read fAntiLagSupport;
        property CalibratedTimestampsSupport:boolean read fCalibratedTimestampsSupport;
        property OnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate read fOnBeforeDeviceCreate write fOnBeforeDeviceCreate;
@@ -2882,6 +2886,9 @@ type EpvVulkanException=class(Exception);
        fPresentAtAbsoluteTimeSupported:boolean;
        fPresentAtRelativeTimeSupported:boolean;
        fPresentStageQueries:TVkPresentStageFlagsEXT;
+       // Whether the swapchain was created for the low latency mode of VK_NV_low_latency2, see
+       // TpvVulkanDevice.SwapChainLatencyModeEnable.
+       fLatencyModeEnabled:boolean;
        function GetImage(const aImageIndex:TpvInt32):TpvVulkanImage;
        function GetPreviousImage:TpvVulkanImage;
        function GetCurrentImage:TpvVulkanImage;
@@ -2948,6 +2955,7 @@ type EpvVulkanException=class(Exception);
        property ExclusiveFullScreen:boolean read fExclusiveFullScreen;
        property PresentID2Enabled:boolean read fPresentID2Enabled;
        property PresentWait2Enabled:boolean read fPresentWait2Enabled;
+       property LatencyModeEnabled:boolean read fLatencyModeEnabled;
        property PresentAtAbsoluteTimeSupported:boolean read fPresentAtAbsoluteTimeSupported;
        property PresentAtRelativeTimeSupported:boolean read fPresentAtRelativeTimeSupported;
        // The present stages whose times the surface reports back, see vkGetPastPresentationTimingEXT.
@@ -24278,6 +24286,8 @@ var Index,TryIterationIndex:TpvInt32;
     SurfaceCapabilitiesPresentId2KHR:TVkSurfaceCapabilitiesPresentId2KHR;
     SurfaceCapabilitiesPresentWait2KHR:TVkSurfaceCapabilitiesPresentWait2KHR;
     PresentTimingSurfaceCapabilitiesEXT:TVkPresentTimingSurfaceCapabilitiesEXT;
+    SwapchainLatencyCreateInfoNV:TVkSwapchainLatencyCreateInfoNV;
+    LatencyNext:pointer;
 {$ifdef Windows}
     Monitor:HMONITOR;
     SurfaceFullScreenExclusiveWin32InfoEXT:TVkSurfaceFullScreenExclusiveWin32InfoEXT;
@@ -24320,6 +24330,8 @@ begin
  fPresentAtRelativeTimeSupported:=false;
 
  fPresentStageQueries:=0;
+
+ fLatencyModeEnabled:=false;
 
  try
 
@@ -24655,12 +24667,29 @@ begin
    SwapChainCreateInfo.flags:=SwapChainCreateInfo.flags or TVkSwapchainCreateFlagsKHR(VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR);
   end;
 
+  // The low latency mode of VK_NV_low_latency2 only works on a swapchain created for it.
+  fLatencyModeEnabled:=fDevice.fLowLatency2Support and fDevice.fSwapChainLatencyModeEnable;
+  if fLatencyModeEnabled then begin
+   FillChar(SwapchainLatencyCreateInfoNV,SizeOf(TVkSwapchainLatencyCreateInfoNV),#0);
+   SwapchainLatencyCreateInfoNV.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV;
+   SwapchainLatencyCreateInfoNV.pNext:=nil;
+   SwapchainLatencyCreateInfoNV.latencyModeEnable:=VK_TRUE;
+   LatencyNext:=@SwapchainLatencyCreateInfoNV;
+  end else begin
+   LatencyNext:=nil;
+  end;
+  SwapChainCreateInfo.pNext:=LatencyNext;
+
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
   VulkanDebugLn('Creating swap chain...');
 {$ifend}
 
 {$ifdef Windows}
   if fExclusiveFullScreen then begin
+
+   // Only now, since the chain of the exclusive full screen info went into the surface capability query
+   // above as well, where the latency info has no place.
+   SurfaceFullScreenExclusiveWin32InfoEXT.pNext:=LatencyNext;
 
    SwapChainCreateInfo.pNext:=@SurfaceFullScreenExclusiveInfoEXT;
 
@@ -24670,7 +24699,7 @@ begin
 
    if fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle)<>VK_SUCCESS then begin
 
-    SwapChainCreateInfo.pNext:=nil;
+    SwapChainCreateInfo.pNext:=LatencyNext;
 
     fExclusiveFullScreen:=false;
 
