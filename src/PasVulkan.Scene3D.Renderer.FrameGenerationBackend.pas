@@ -146,6 +146,7 @@ type TpvScene3DRendererFrameGenerationBackend=class;
        fColorFormat:TVkFormat;
        fInvertedDepth:boolean;
        fName:TpvUTF8String;
+       fFailed:boolean;
       public
        // The backend class that takes care of a frame generation, nil when none is registered for it.
        class function FindBackend(const aFrameGeneration:TpvScene3DRendererFrameGeneration):TpvScene3DRendererFrameGenerationBackendClass; static;
@@ -171,9 +172,13 @@ type TpvScene3DRendererFrameGenerationBackend=class;
                           const aName:TpvUTF8String); reintroduce; virtual;
        destructor Destroy; override;
        // Records the making of one generated frame. For one interval it is called for Index 1 to Count in
-       // this order, all in the same command buffer.
-       procedure Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription); virtual; abstract;
+       // this order, all in the same command buffer. False when the output was not written, as when the
+       // backend failed, and the compositor then shows the rendered frame in place of the generated one.
+       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean; virtual; abstract;
       published
+       // Whether the backend has failed for good, as when what it needs could not be created, so that it
+       // writes no output any more; the compositor then acquires no images for generated frames at all.
+       property Failed:boolean read fFailed;
        property Width:TpvInt32 read fWidth;
        property Height:TpvInt32 read fHeight;
        property RenderWidth:TpvInt32 read fRenderWidth;
@@ -235,6 +240,7 @@ begin
  fColorFormat:=aColorFormat;
  fInvertedDepth:=aInvertedDepth;
  fName:=aName;
+ fFailed:=false;
 end;
 
 destructor TpvScene3DRendererFrameGenerationBackend.Destroy;

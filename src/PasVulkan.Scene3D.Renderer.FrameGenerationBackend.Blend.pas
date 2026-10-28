@@ -110,7 +110,7 @@ type { TpvScene3DRendererFrameGenerationBackendBlend }
                           const aInvertedDepth:boolean;
                           const aName:TpvUTF8String); override;
        destructor Destroy; override;
-       procedure Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription); override;
+       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean; override;
      end;
 
 implementation
@@ -216,10 +216,12 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererFrameGenerationBackendBlend.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription);
+function TpvScene3DRendererFrameGenerationBackendBlend.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean;
 var DescriptorSet:TpvVulkanDescriptorSet;
     PushConstants:TPushConstants;
 begin
+
+ result:=false;
 
  if (aDescription.Index<1) or (aDescription.Index>MaximumCountGeneratedFrames) then begin
   exit;
@@ -280,6 +282,8 @@ begin
                                  SizeOf(TPushConstants),
                                  @PushConstants);
  aCommandBuffer.CmdDispatch((fWidth+15) shr 4,(fHeight+15) shr 4,1);
+
+ result:=true;
 
 end;
 

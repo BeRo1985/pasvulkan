@@ -14,6 +14,11 @@
 //
 // The temporal antialiasing reads the velocity buffer itself and never this one; it gets along without
 // motion for the sky in its own way.
+//
+// With MSAA, the velocity is not the resolved one, which is the average of the samples, but that of the
+// nearest sample, the same one the depth resolve takes, see final_depth_resolve.comp. At a silhouette the
+// average would be a motion of no surface at all, and the depth and the motion would belong to different
+// surfaces.
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -28,8 +33,13 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
+#ifdef MSAA
+layout(set = 0, binding = 1) uniform sampler2DMSArray uTextureVelocity;
+layout(set = 0, binding = 2) uniform sampler2DMSArray uTextureDepth;
+#else
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureVelocity;
 layout(set = 0, binding = 2) uniform sampler2DArray uTextureDepth;
+#endif
 
 layout(set = 0, binding = 3, rg16f) writeonly uniform image2DArray uDestinationTexture;
 
@@ -37,7 +47,7 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countAllViews; // the previous frame's views follow the current ones at this offset
   float farDepth;     // the depth of nothing drawn: 0.0 for the reversed depth, 1.0 for the ordinary one
-  float unused;
+  uint countSamples;  // the samples per pixel with MSAA
   vec4 jitter;        // xy of this frame, zw of the previous one, as clip space offsets
 } pushConstants;
 
@@ -54,6 +64,19 @@ void main(){
   vec2 velocity = texelFetch(uTextureVelocity, at, 0).xy;
 
   float depth = texelFetch(uTextureDepth, at, 0).x;
+
+#ifdef MSAA
+  // Nearest, whichever way the projection runs: with the reversed depth the largest value, with the
+  // ordinary one the smallest.
+  bool reversedDepth = pushConstants.farDepth == 0.0;
+  for(int sampleIndex = 1, countSamples = int(pushConstants.countSamples); sampleIndex < countSamples; sampleIndex++){
+    float sampleDepth = texelFetch(uTextureDepth, at, sampleIndex).x;
+    if(reversedDepth ? (sampleDepth > depth) : (sampleDepth < depth)){
+      depth = sampleDepth;
+      velocity = texelFetch(uTextureVelocity, at, sampleIndex).xy;
+    }
+  }
+#endif
 
   if(depth == pushConstants.farDepth){
 

@@ -397,7 +397,7 @@ type { TpvScene3DRendererFrameGenerationBackendFSR3 }
                           const aInvertedDepth:boolean;
                           const aName:TpvUTF8String); override;
        destructor Destroy; override;
-       procedure Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription); override;
+       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean; override;
      end;
 
 implementation
@@ -1782,7 +1782,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererFrameGenerationBackendFSR3.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription);
+function TpvScene3DRendererFrameGenerationBackendFSR3.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean;
 var Index,Half,Level:TpvSizeInt;
     InternalImage:TInternalImage;
     ImageMemoryBarriers:array of TVkImageMemoryBarrier;
@@ -1807,6 +1807,8 @@ var Index,Half,Level:TpvSizeInt;
   inc(Index);
  end;
 begin
+
+ result:=false;
 
  // FSR 3.1 makes the one frame halfway between the two rendered ones, and that needs the depth and the
  // motion vectors of the current one.
@@ -1883,6 +1885,8 @@ begin
  DispatchOpticalFlow(aCommandBuffer,aInFlightFrameIndex,aDescription,Reset,0.0,MaxLuminance);
 
  DispatchFrameInterpolation(aCommandBuffer,aInFlightFrameIndex,aDescription,Reset,0.0,MaxLuminance);
+
+ result:=true;
 
 end;
 

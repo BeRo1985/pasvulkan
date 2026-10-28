@@ -177,8 +177,9 @@ type TpvScene3DRendererTemporalUpscalerBackend=class;
        // Hands over the images of one in-flight frame. Called once per in-flight frame after creation,
        // and again whenever those images change.
        procedure SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TInputs); virtual; abstract;
-       // Records the whole upscaling of one frame.
-       procedure Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription); virtual; abstract;
+       // Records the whole upscaling of one frame. False when the output was not written, as when the
+       // backend failed, and the pass then scales the picture up by itself, see temporal_upscaler_fallback.comp.
+       function Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription):boolean; virtual; abstract;
       published
        property RenderWidth:TpvInt32 read fRenderWidth;
        property RenderHeight:TpvInt32 read fRenderHeight;

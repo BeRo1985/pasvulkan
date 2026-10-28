@@ -91,12 +91,14 @@ type { TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass }
              ViewBaseIndex:TpvUInt32;
              CountAllViews:TpvUInt32;
              FarDepth:TpvFloat;
-             Unused:TpvFloat;
+             CountSamples:TpvUInt32;
              Jitter:TpvVector4;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
+       fMSAA:boolean;
        fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceOutput:TpvFrameGraph.TPass.TUsedImageResource;
        fShaderModule:TpvVulkanShaderModule;
        fShaderStage:TpvVulkanPipelineShaderStage;
@@ -105,6 +107,7 @@ type { TpvScene3DRendererPassesTemporalUpscalerVelocityComputePass }
        fPipeline:TpvVulkanComputePipeline;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fVelocityImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fDepthImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fOutputImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       public
@@ -131,14 +134,37 @@ begin
 
  Name:='TemporalUpscalerVelocityComputePass';
 
- fResourceVelocity:=AddImageInput('resourcetype_velocity',
-                                  'resource_velocity_data',
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                  []
-                                 );
+ fMSAA:=fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 
- // The depth is not taken from the graph: it comes from FinalDepthArray2DImage, which the depth resolve
- // leaves behind, and which the instance makes this pass wait for.
+ if fMSAA then begin
+
+  // With MSAA, the samples themselves, so that the velocity is that of the nearest sample, see
+  // temporal_upscaler_velocity.comp.
+  fResourceVelocity:=AddImageInput('resourcetype_msaa_velocity',
+                                   'resource_forwardrendering_msaa_velocity',
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                   []
+                                  );
+
+  fResourceDepth:=AddImageInput('resourcetype_msaa_depth',
+                                'resource_msaa_depth_data',
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                               );
+
+ end else begin
+
+  fResourceVelocity:=AddImageInput('resourcetype_velocity',
+                                   'resource_velocity_data',
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                   []
+                                  );
+
+  // The depth is not taken from the graph: it comes from FinalDepthArray2DImage, which the depth resolve
+  // leaves behind, and which the instance makes this pass wait for.
+  fResourceDepth:=nil;
+
+ end;
 
  fResourceOutput:=AddImageOutput('resourcetype_temporal_upscaler_velocity',
                                  'resource_temporal_upscaler_velocity',
@@ -160,7 +186,11 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('temporal_upscaler_velocity_comp.spv');
+ if fMSAA then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('temporal_upscaler_velocity_msaa_comp.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('temporal_upscaler_velocity_comp.spv');
+ end;
  try
   fShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -263,6 +293,24 @@ begin
                                                                    0,
                                                                    CountViews);
 
+  if fMSAA then begin
+   fDepthImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                   fResourceDepth.VulkanImages[InFlightFrameIndex],
+                                                                   VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+                                                                   TpvFrameGraph.TImageResourceType(fResourceDepth.ResourceType).Format,
+                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                   0,
+                                                                   1,
+                                                                   0,
+                                                                   CountViews);
+  end else begin
+   fDepthImageViews[InFlightFrameIndex]:=nil;
+  end;
+
   fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                            0,
@@ -282,16 +330,29 @@ begin
                                                            [],
                                                            [],
                                                            false);
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                           [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                          fInstance.FinalDepthArray2DImage.VulkanArrayImageView.Handle,
-                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                           [],
-                                                           [],
-                                                           false);
+  if fMSAA then begin
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                            [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                           fDepthImageViews[InFlightFrameIndex].Handle,
+                                                                                           fResourceDepth.ResourceTransition.Layout)],
+                                                            [],
+                                                            [],
+                                                            false);
+  end else begin
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                            [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                           fInstance.FinalDepthArray2DImage.VulkanArrayImageView.Handle,
+                                                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                            [],
+                                                            [],
+                                                            false);
+  end;
   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                            0,
                                                            1,
@@ -314,6 +375,7 @@ begin
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fOutputImageViews[InFlightFrameIndex]);
+  FreeAndNil(fDepthImageViews[InFlightFrameIndex]);
   FreeAndNil(fVelocityImageViews[InFlightFrameIndex]);
  end;
  FreeAndNil(fDescriptorPool);
@@ -381,7 +443,7 @@ begin
  end else begin
   PushConstants.FarDepth:=1.0;
  end;
- PushConstants.Unused:=0.0;
+ PushConstants.CountSamples:=TpvUInt32(fInstance.Renderer.CountSurfaceMSAASamples);
  PushConstants.Jitter:=InFlightFrameState^.Jitter;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,

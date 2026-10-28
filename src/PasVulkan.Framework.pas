@@ -2874,6 +2874,7 @@ type EpvVulkanException=class(Exception);
        fPreviousImageIndex:TpvUInt32;
        fCurrentImageIndex:TpvUInt32;
        fCountImages:TpvUInt32;
+       fMinImageCount:TpvUInt32;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fExclusiveFullScreen:boolean;
@@ -2948,6 +2949,9 @@ type EpvVulkanException=class(Exception);
        property PreviousImageIndex:TpvUInt32 read fPreviousImageIndex;
        property CurrentImageIndex:TpvUInt32 read fCurrentImageIndex;
        property CountImages:TpvUInt32 read fCountImages;
+       // The minImageCount of the surface, of which the application can hold at most CountImages-MinImageCount+1
+       // images acquired at once without an acquire that waits for good.
+       property MinImageCount:TpvUInt32 read fMinImageCount;
        property PreviousImage:TpvVulkanImage read GetPreviousImage;
        property CurrentImage:TpvVulkanImage read GetCurrentImage;
        property Width:TpvInt32 read fWidth;
@@ -24317,6 +24321,8 @@ begin
 
  fCountImages:=0;
 
+ fMinImageCount:=0;
+
  fWidth:=0;
 
  fHeight:=0;
@@ -24402,6 +24408,8 @@ begin
    fExclusiveFullScreen:=false;
 
   end;
+
+  fMinImageCount:=SurfaceCapabilities.minImageCount;
 
   FillChar(SwapChainCreateInfo,SizeOf(TVkSwapChainCreateInfoKHR),#0);
   SwapChainCreateInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

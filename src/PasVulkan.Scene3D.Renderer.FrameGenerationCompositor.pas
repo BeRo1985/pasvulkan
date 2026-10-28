@@ -144,6 +144,7 @@ type { TpvScene3DRendererFrameGenerationCompositor }
        fGPUFrameTime:TpvDouble;
        fGenerationGPUTime:TpvDouble;
        fBelowMinimumFrameRate:boolean;
+       fLoggedCountFrames:TpvInt32;
        fName:TpvUTF8String;
        fRing:array[0..CountRingSlots-1] of TRingSlot;
        fCurrentSlot:TpvInt32;
@@ -284,6 +285,7 @@ begin
  fGPUFrameTime:=0.0;
  fGenerationGPUTime:=0.0;
  fBelowMinimumFrameRate:=false;
+ fLoggedCountFrames:=-1;
  fName:=aName;
 
  fCurrentSlot:=0;
@@ -905,6 +907,7 @@ var CurrentSlot,PreviousSlot:PRingSlot;
     DescriptorSet:TpvVulkanDescriptorSet;
     PushConstants:TPushConstants;
     SubmitInfo:TVkSubmitInfo;
+    Generated:boolean;
 begin
 
  CurrentSlot:=@fRing[fCurrentSlot];
@@ -925,6 +928,7 @@ begin
 
   if fSuspended or
      fBelowMinimumFrameRate or
+     fBackend.Failed or
      (not CurrentSlot^.Captured) or
      CurrentSlot^.Reset or
      (fPreviousSlot<0) or
@@ -957,6 +961,22 @@ begin
   end;
 
   CountFrames:=Min(Min(fCountGeneratedFrames,fBackend.GetMaximumCountGeneratedFrames(fDevice)),MaxGeneratedFramesPerFrame);
+
+  // No more than the swapchain lets be acquired besides the image of the rendered frame, since an acquire
+  // beyond that waits for an image that cannot become free, every frame anew until its time out; with too
+  // few images for even one, there are no generated frames at all. See TpvVulkanSwapChain.MinImageCount.
+  CountFrames:=Min(CountFrames,TpvInt32(fSwapChain.CountImages)-TpvInt32(fSwapChain.MinImageCount));
+  if fLoggedCountFrames<>CountFrames then begin
+   fLoggedCountFrames:=CountFrames;
+   if assigned(pvApplication) and (CountFrames<Min(fCountGeneratedFrames,MaxGeneratedFramesPerFrame)) then begin
+    pvApplication.Log(LOG_INFO,
+                      'TpvScene3DRendererFrameGenerationCompositor.DrawGeneratedFrames',
+                      'The swapchain with '+IntToStr(fSwapChain.CountImages)+' images, of which at least '+IntToStr(fSwapChain.MinImageCount)+' stay with the presentation, takes only '+IntToStr(Max(0,CountFrames))+' generated frame(s) per rendered frame');
+   end;
+  end;
+  if CountFrames<=0 then begin
+   exit;
+  end;
 
   CountAcquired:=0;
   while CountAcquired<CountFrames do begin
@@ -1020,7 +1040,7 @@ begin
                                     1,@ImageMemoryBarrier);
 
    Description.Index:=Index;
-   fBackend.Generate(CommandBuffer,aInFlightFrameIndex,Description);
+   Generated:=fBackend.Generate(CommandBuffer,aInFlightFrameIndex,Description);
 
    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
@@ -1033,17 +1053,32 @@ begin
                                     0,nil,
                                     1,@ImageMemoryBarrier);
 
+   // A backend that did not write the output, as when it failed, leaves the image already acquired with
+   // the rendered frame instead, so that what is presented is always a defined picture.
    DescriptorSet:=fDescriptorSets[aInFlightFrameIndex,Index-1];
-   DescriptorSet.WriteToDescriptorSet(0,
-                                      0,
-                                      1,
-                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-                                      [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                     fOutput.VulkanImageView.Handle,
-                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                      [],
-                                      [],
-                                      false);
+   if Generated then begin
+    DescriptorSet.WriteToDescriptorSet(0,
+                                       0,
+                                       1,
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                      fOutput.VulkanImageView.Handle,
+                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                       [],
+                                       [],
+                                       false);
+   end else begin
+    DescriptorSet.WriteToDescriptorSet(0,
+                                       0,
+                                       1,
+                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                      CurrentSlot^.Color.VulkanImageView.Handle,
+                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                       [],
+                                       [],
+                                       false);
+   end;
    if fHasHUD and assigned(CurrentSlot^.HUD) then begin
     DescriptorSet.WriteToDescriptorSet(1,
                                        0,

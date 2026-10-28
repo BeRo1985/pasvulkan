@@ -629,6 +629,8 @@ compileshaderarguments=(
   "-V resampling_rcas.comp -DMULTIVIEW -o ${tempPath}/resampling_rcas_multiview_comp.spv"
 
   "-V temporal_upscaler_velocity.comp -o ${tempPath}/temporal_upscaler_velocity_comp.spv"
+  "-V temporal_upscaler_velocity.comp -DMSAA -o ${tempPath}/temporal_upscaler_velocity_msaa_comp.spv"
+  "-V temporal_upscaler_fallback.comp -o ${tempPath}/temporal_upscaler_fallback_comp.spv"
   "-V temporal_upscaler_reactive.comp -o ${tempPath}/temporal_upscaler_reactive_comp.spv"
   "-V temporal_upscaler_reactive.comp -DDEPTHOFFIELD -o ${tempPath}/temporal_upscaler_reactive_depthoffield_comp.spv"
 

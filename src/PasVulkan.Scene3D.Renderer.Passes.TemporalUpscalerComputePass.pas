@@ -96,6 +96,7 @@ type { TpvScene3DRendererPassesTemporalUpscalerComputePass }
              Output:TpvVulkanImageView;
             end;
             TLayerImageViewsArray=array of TLayerImageViews;
+            TDescriptorSetArray=array of TpvVulkanDescriptorSet;
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
@@ -105,6 +106,14 @@ type { TpvScene3DRendererPassesTemporalUpscalerComputePass }
        fBackends:array of TpvScene3DRendererTemporalUpscalerBackend;
        fDepthImageViews:array of TpvVulkanImageView;
        fLayerImageViews:array[0..MaxInFlightFrames-1] of TLayerImageViewsArray;
+       // The scaling up for a view whose backend wrote nothing, see temporal_upscaler_fallback.comp.
+       fFallbackShaderModule:TpvVulkanShaderModule;
+       fFallbackShaderStage:TpvVulkanPipelineShaderStage;
+       fFallbackDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fFallbackPipelineLayout:TpvVulkanPipelineLayout;
+       fFallbackPipeline:TpvVulkanComputePipeline;
+       fFallbackDescriptorPool:TpvVulkanDescriptorPool;
+       fFallbackDescriptorSets:array[0..MaxInFlightFrames-1] of TDescriptorSetArray;
        function CreateLayerImageView(const aImage:TpvVulkanImage;const aFormat:TVkFormat;const aLayer:TpvSizeInt;const aName:TpvUTF8String):TpvVulkanImageView;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -172,12 +181,27 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesTemporalUpscalerComputePass.AcquirePersistentResources;
+var Stream:TStream;
 begin
+
  inherited AcquirePersistentResources;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('temporal_upscaler_fallback_comp.spv');
+ try
+  fFallbackShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFallbackShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TemporalUpscaler.Fallback.Shader');
+
+ fFallbackShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fFallbackShaderModule,'main');
+
 end;
 
 procedure TpvScene3DRendererPassesTemporalUpscalerComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fFallbackShaderStage);
+ FreeAndNil(fFallbackShaderModule);
  inherited ReleasePersistentResources;
 end;
 
@@ -225,7 +249,41 @@ begin
  SetLength(fDepthImageViews,CountViews);
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   SetLength(fLayerImageViews[InFlightFrameIndex],CountViews);
+  SetLength(fFallbackDescriptorSets[InFlightFrameIndex],CountViews);
  end;
+
+ fFallbackDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
+ fFallbackDescriptorSetLayout.AddBinding(0,
+                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                         1,
+                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                         []);
+ fFallbackDescriptorSetLayout.AddBinding(1,
+                                         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                         1,
+                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                         []);
+ fFallbackDescriptorSetLayout.Initialize;
+
+ fFallbackPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+ fFallbackPipelineLayout.AddDescriptorSetLayout(fFallbackDescriptorSetLayout);
+ fFallbackPipelineLayout.Initialize;
+
+ fFallbackPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
+                                                    fInstance.Renderer.VulkanPipelineCache,
+                                                    0,
+                                                    fFallbackShaderStage,
+                                                    fFallbackPipelineLayout,
+                                                    nil,
+                                                    0);
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFallbackPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TemporalUpscaler.Fallback.Pipeline');
+
+ fFallbackDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
+                                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                         FrameGraph.CountInFlightFrames*CountViews);
+ fFallbackDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,FrameGraph.CountInFlightFrames*CountViews);
+ fFallbackDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,FrameGraph.CountInFlightFrames*CountViews);
+ fFallbackDescriptorPool.Initialize;
 
  // The backend is the one registered for the active temporal upscaler, see
  // TpvScene3DRendererTemporalUpscalerBackend.RegisterBackend.
@@ -277,6 +335,29 @@ begin
                                                                                OutputFormat,
                                                                                ViewIndex,
                                                                                'TemporalUpscaler.Output['+IntToStr(InFlightFrameIndex)+','+IntToStr(ViewIndex)+']');
+
+   fFallbackDescriptorSets[InFlightFrameIndex,ViewIndex]:=TpvVulkanDescriptorSet.Create(fFallbackDescriptorPool,fFallbackDescriptorSetLayout);
+   fFallbackDescriptorSets[InFlightFrameIndex,ViewIndex].WriteToDescriptorSet(0,
+                                                                              0,
+                                                                              1,
+                                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                              [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                             fLayerImageViews[InFlightFrameIndex,ViewIndex].Color.Handle,
+                                                                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                              [],
+                                                                              [],
+                                                                              false);
+   fFallbackDescriptorSets[InFlightFrameIndex,ViewIndex].WriteToDescriptorSet(1,
+                                                                              0,
+                                                                              1,
+                                                                              TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                                                              [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                                             fLayerImageViews[InFlightFrameIndex,ViewIndex].Output.Handle,
+                                                                                                             VK_IMAGE_LAYOUT_GENERAL)],
+                                                                              [],
+                                                                              [],
+                                                                              false);
+   fFallbackDescriptorSets[InFlightFrameIndex,ViewIndex].Flush;
 
    if assigned(fBackends[ViewIndex]) then begin
 
@@ -335,6 +416,10 @@ begin
  end;
  fBackends:=nil;
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  for ViewIndex:=0 to length(fFallbackDescriptorSets[InFlightFrameIndex])-1 do begin
+   FreeAndNil(fFallbackDescriptorSets[InFlightFrameIndex,ViewIndex]);
+  end;
+  fFallbackDescriptorSets[InFlightFrameIndex]:=nil;
   for ViewIndex:=0 to length(fLayerImageViews[InFlightFrameIndex])-1 do begin
    FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].Output);
    FreeAndNil(fLayerImageViews[InFlightFrameIndex,ViewIndex].Reactive);
@@ -347,6 +432,10 @@ begin
   FreeAndNil(fDepthImageViews[ViewIndex]);
  end;
  fDepthImageViews:=nil;
+ FreeAndNil(fFallbackDescriptorPool);
+ FreeAndNil(fFallbackPipeline);
+ FreeAndNil(fFallbackPipelineLayout);
+ FreeAndNil(fFallbackDescriptorSetLayout);
  inherited ReleaseVolatileResources;
 end;
 
@@ -360,7 +449,9 @@ var ViewIndex,CountViews:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     Description:TpvScene3DRendererTemporalUpscalerBackend.TDispatchDescription;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    MemoryBarrier:TVkMemoryBarrier;
     View:TpvScene3D.TView;
+    Dispatched:boolean;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -397,6 +488,8 @@ begin
  end;
 
  for ViewIndex:=0 to CountViews-1 do begin
+
+  Dispatched:=false;
 
   if assigned(fBackends[ViewIndex]) then begin
 
@@ -437,8 +530,33 @@ begin
 
    Description.DebugView:=fInstance.Renderer.TemporalUpscalerDebugView;
 
-   fBackends[ViewIndex].Dispatch(aCommandBuffer,aInFlightFrameIndex,Description);
+   Dispatched:=fBackends[ViewIndex].Dispatch(aCommandBuffer,aInFlightFrameIndex,Description);
 
+  end;
+
+  // A view whose backend wrote nothing, as when it failed or there is none, gets the picture scaled up
+  // plainly, so that the output is always defined. Whatever the backend may have written of it before
+  // is finished first.
+  if not Dispatched then begin
+   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     1,@MemoryBarrier,
+                                     0,nil,
+                                     0,nil);
+   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fFallbackPipeline.Handle);
+   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        fFallbackPipelineLayout.Handle,
+                                        0,
+                                        1,
+                                        @fFallbackDescriptorSets[aInFlightFrameIndex,ViewIndex].Handle,
+                                        0,
+                                        nil);
+   aCommandBuffer.CmdDispatch((fInstance.Width+15) shr 4,(fInstance.Height+15) shr 4,1);
   end;
 
  end;

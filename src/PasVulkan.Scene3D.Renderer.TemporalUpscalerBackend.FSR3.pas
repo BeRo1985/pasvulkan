@@ -320,7 +320,7 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
        // twice and -2.58 at three times the render size.
        class function GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat; override;
        procedure SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TInputs); override;
-       procedure Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription); override;
+       function Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription):boolean; override;
      end;
 
 implementation
@@ -1363,7 +1363,7 @@ begin
                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
 end;
 
-procedure TpvScene3DRendererTemporalUpscalerBackendFSR3.Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription);
+function TpvScene3DRendererTemporalUpscalerBackendFSR3.Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription):boolean;
 const ThreadGroupWorkRegionDim=8;
       ThreadGroupWorkRegionDimRCAS=16;
 var InternalImage:TInternalImage;
@@ -1626,6 +1626,8 @@ begin
  end;
 
  fResourceFrameIndex:=(fResourceFrameIndex+1) and 15;
+
+ result:=true;
 
 end;
 

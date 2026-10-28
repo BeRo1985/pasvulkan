@@ -15053,6 +15053,26 @@ begin
  aAcquireSemaphore:=fGeneratedFrameAcquireSemaphores[SlotIndex];
  aRenderDoneSemaphore:=fGeneratedFrameRenderDoneSemaphores[ImageIndex];
 
+ // With present and graphics queues of different families, the image goes over to the graphics queue
+ // first, the same as the image of a rendered frame does in AcquireVulkanBackBuffer, and back again in
+ // PresentGeneratedFrames.
+ if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[ImageIndex]) and
+    assigned(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[ImageIndex]) then begin
+  fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[ImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                 aAcquireSemaphore,
+                                                                                 fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[ImageIndex],
+                                                                                 nil,
+                                                                                 false);
+  fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[ImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                  fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[ImageIndex],
+                                                                                  fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[ImageIndex],
+                                                                                  nil,
+                                                                                  false);
+  aAcquireSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[ImageIndex];
+ end;
+
  result:=true;
 
 end;
@@ -15072,6 +15092,9 @@ function TpvApplication.GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean
 var TimestampInfo:TVkCalibratedTimestampInfoKHR;
     SwapchainCalibratedInfo:TVkSwapchainCalibratedTimestampInfoEXT;
     MaxDeviation:TpvUInt64;
+{$if defined(Windows)}
+    Frequency:TpvInt64;
+{$ifend}
 begin
  result:=false;
  aTime:=0;
@@ -15109,6 +15132,18 @@ begin
     (abs(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod-1.0)>1e-6) then begin
   aTime:=TpvUInt64(round(aTime*TpvDouble(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod)));
  end;
+{$if defined(Windows)}
+ // And the query performance counter counts in ticks of its own frequency, taken apart into whole seconds
+ // and the rest, so that nothing overflows.
+ if result and
+    (fFramePacingPresentTimingTimeDomain=VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) and
+    QueryPerformanceFrequency(Frequency) and
+    (Frequency>0) and
+    (Frequency<>1000000000) then begin
+  aTime:=((aTime div TpvUInt64(Frequency))*TpvUInt64(1000000000))+
+         (((aTime mod TpvUInt64(Frequency))*TpvUInt64(1000000000)) div TpvUInt64(Frequency));
+ end;
+{$ifend}
 end;
 
 // Gives the presents of one interval - the generated frames and then the rendered one - absolute target
@@ -15538,6 +15573,7 @@ var Index:TpvInt32;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
     PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
     PresentNext:Pointer;
+    PresentWaitSemaphore:TpvVulkanSemaphore;
 begin
 
  result:=0;
@@ -15547,6 +15583,27 @@ begin
   for Index:=0 to fCountQueuedGeneratedFrames-1 do begin
 
    ImageIndex:=fQueuedGeneratedFrameImageIndices[Index];
+
+   PresentWaitSemaphore:=fGeneratedFrameRenderDoneSemaphores[ImageIndex];
+
+   // With present and graphics queues of different families, the image goes back over to the present
+   // queue, the same as the image of the rendered frame does in PresentVulkanBackBuffer.
+   if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[ImageIndex]) and
+      assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[ImageIndex]) then begin
+    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[ImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                    PresentWaitSemaphore,
+                                                                                    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[ImageIndex],
+                                                                                    nil,
+                                                                                    false);
+    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[ImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                   fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[ImageIndex],
+                                                                                   fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[ImageIndex],
+                                                                                   nil,
+                                                                                   false);
+    PresentWaitSemaphore:=fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[ImageIndex];
+   end;
 
    PresentNext:=nil;
 
@@ -15573,10 +15630,10 @@ begin
    end;
 
 {$ifdef PasVulkanFrameTrace}
-   pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(fGeneratedFrameRenderDoneSemaphores[ImageIndex].Handle));
+   pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(PresentWaitSemaphore.Handle));
 {$endif}
 
-   case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,fGeneratedFrameRenderDoneSemaphores[ImageIndex],PresentNext) of
+   case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext) of
     VK_SUCCESS,
     VK_SUBOPTIMAL_KHR:begin
      RecordPresentID;
@@ -16791,6 +16848,7 @@ procedure TpvApplication.ComputePresentTimingTarget(var aTimingInfo:TVkPresentTi
 var NowTime,TargetTime,CompensationTime:TpvUInt64;
     MeanError:TpvInt64;
     Index:TpvInt32;
+    NowInSwapChainTimeDomain:boolean;
 begin
  FillChar(aTimingInfo,SizeOf(TVkPresentTimingInfoEXT),#0);
  aTimingInfo.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
@@ -16826,7 +16884,13 @@ begin
   end;
   aTimingInfo.targetTime:=TargetTime;
  end else begin
-  NowTime:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
+  // Now in the time domain of the swapchain and in nanoseconds, as target times are, whichever domain that
+  // is, see GetPresentTimingCurrentTime; only without calibrated timestamps the host time, moved over by
+  // the calibration below.
+  NowInSwapChainTimeDomain:=GetPresentTimingCurrentTime(NowTime);
+  if not NowInSwapChainTimeDomain then begin
+   NowTime:=fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime);
+  end;
   TargetTime:=NowTime+fPresentTimingFeedbackRefreshDuration;
   if fPresentTimingFeedbackRefreshInterval>0 then begin
    TargetTime:=(((TargetTime+fPresentTimingFeedbackRefreshInterval)-1) div fPresentTimingFeedbackRefreshInterval)*fPresentTimingFeedbackRefreshInterval;
@@ -16835,7 +16899,8 @@ begin
    TargetTime:=TargetTime-CompensationTime;
   end;
   // Convert from host time domain to swapchain time domain using calibration offset
-  if (fPresentTimingFeedbackCalibratedHostTime>0) and
+  if (not NowInSwapChainTimeDomain) and
+     (fPresentTimingFeedbackCalibratedHostTime>0) and
      (fPresentTimingFeedbackCalibratedStageTime>0) and
      (fPresentTimingFeedbackCalibratedHostTime<>fPresentTimingFeedbackCalibratedStageTime) then begin
    TargetTime:=TpvUInt64(TpvInt64(TargetTime)+TpvInt64(fPresentTimingFeedbackCalibratedStageTime)-TpvInt64(fPresentTimingFeedbackCalibratedHostTime));
