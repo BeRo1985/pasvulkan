@@ -1544,7 +1544,8 @@ type EpvApplication=class(Exception)
        // FIFO without tearing which shows the newest ready image at every refresh cycle instead of holding
        // the application back, so that frame generation at a refresh rate below twice the frame rate does
        // not lock the frame rate to half the refresh rate. Where the device does not have it, MAILBOX, and
-       // FIFO at last, see TpvVulkanDevice.PresentModeFIFOLatestReadySupport.
+       // FIFO at last, see TpvVulkanDevice.PresentModeFIFOLatestReadySupport. And FIFO where the device
+       // cannot time presents, see TpvApplication.GetVulkanPresentModeToCreate.
        FIFOLatestReady=4,
        NoVSync={$ifdef fpc}0{$else}TpvApplicationPresentMode.Immediate{$endif},
        GreedyVSync={$ifdef fpc}1{$else}TpvApplicationPresentMode.Mailbox{$endif},
@@ -2517,6 +2518,7 @@ type EpvApplication=class(Exception)
 
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
        function GetCountSwapChainImagesToCreate:TpvInt32;
+       function GetVulkanPresentModeToCreate:TVkPresentModeKHR;
 
        function GetAndroidSeparateMouseAndTouch:boolean;
        procedure SetAndroidSeparateMouseAndTouch(const aValue:boolean);
@@ -3148,6 +3150,10 @@ var pvApplication:TpvApplication=nil;
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
     pvStdOut:Windows.THandle=0;
     pvIsStdOutUTF8:Boolean=false;
+    // Whether the output is a console at all: redirected into a file or a pipe it is not, and WriteConsole
+    // then writes nothing, see VulkanDebugLn.
+    pvIsStdOutConsole:Boolean=false;
+    pvStdOutConsoleMode:DWORD=0;
 {$ifend}
 
 {$if defined(fpc) and defined(android)}
@@ -3433,6 +3439,10 @@ procedure CloseTouchInputHandle(hTouchInput:THANDLE); stdcall; external 'user32.
 
 function SetPropA(h:HWND;p:LPCSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
 function SetPropW(h:HWND;p:LPWSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
+
+// The wide variant by name: GetMonitorInfo of the MultiMon unit of FPC is the ANSI one, which takes no
+// MONITORINFOEXW and then gives no device name, see TpvApplication.GetNativeRefreshRate.
+function pvGetMonitorInfoW(hMonitor:HMONITOR;lpmi:Pointer):BOOL; stdcall; external 'user32.dll' name 'GetMonitorInfoW';
 
 const XINPUT_DLL='xinput1_4.dll'; // >= Windows 8
 
@@ -12292,6 +12302,7 @@ class procedure TpvApplication.VulkanDebugLn(const What:TpvUTF8String);
 const AnsiCRLF:array[0..1] of AnsiChar=(#13,#10);
       WideCRLF:array[0..1] of WideChar=(#13,#10);
 var TemporaryString:WideString;
+    Written:DWORD;
 {$ifend}
 begin
 {$if defined(Debug) or not defined(Release)}
@@ -12303,7 +12314,14 @@ begin
    TemporaryString:='';
   end;
   if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
-   if pvIsStdOutUTF8 then begin
+   if not pvIsStdOutConsole then begin
+    // Redirected into a file or a pipe, which WriteConsole cannot write to: the UTF-8 bytes as they are.
+    Written:=0;
+    if length(What)>0 then begin
+     WriteFile(pvStdOut,@What[1],length(What),@Written,nil);
+    end;
+    WriteFile(pvStdOut,@AnsiCRLF[0],Length(AnsiCRLF),@Written,nil);
+   end else if pvIsStdOutUTF8 then begin
     WriteConsoleA(pvStdOut,PAnsiChar(What),length(What),PCardinal(nil)^,nil);
     WriteConsoleA(pvStdOut,PAnsiChar(@AnsiCRLF[0]),Length(AnsiCRLF),PCardinal(nil)^,nil);
    end else begin
@@ -12662,7 +12680,7 @@ begin
  if MonitorHandle<>0 then begin
   FillChar(MonitorInfoEx,SizeOf(MonitorInfoEx),#0);
   MonitorInfoEx.cbSize:=SizeOf(MonitorInfoEx);
-  if {$ifdef fpc}GetMonitorInfo{$else}GetMonitorInfoW{$endif}(MonitorHandle,@MonitorInfoEx) then begin
+  if pvGetMonitorInfoW(MonitorHandle,@MonitorInfoEx) then begin
    FillChar(devMode,SizeOf(devMode),#0);
    devMode.dmSize:=SizeOf(devMode);
    if EnumDisplaySettingsW(@MonitorInfoEx.szDevice[0],ENUM_CURRENT_SETTINGS,{$ifdef fpc}@{$endif}devMode) then begin
@@ -12724,6 +12742,22 @@ end;
 function TpvApplication.GetCountSwapChainImagesToCreate:TpvInt32;
 begin
  result:=Min(fDesiredCountSwapChainImages+fPresenterSwapChainImages,MaxSwapChainImages);
+end;
+
+// The present mode a swapchain is made with: the one of PresentMode, except for FIFO_LATEST_READY where the
+// device cannot time presents. That is there for the frames generated between the rendered ones, whose
+// presents, without target times, could only be spread on the CPU, holding swapchain images back while the
+// presentation holds its own, which does not go well with it everywhere: on Windows it held the frames back
+// to a fraction of their rate. FIFO shows them one refresh cycle each by itself, so there it is FIFO.
+function TpvApplication.GetVulkanPresentModeToCreate:TVkPresentModeKHR;
+begin
+ result:=PresentModeToVulkanPresentMode[fPresentMode];
+ if (result=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) and
+    ((not assigned(fVulkanDevice)) or
+     (not fVulkanDevice.PresentTimingSupport) or
+     fDisablePresentTiming) then begin
+  result:=VK_PRESENT_MODE_FIFO_KHR;
+ end;
 end;
 
 function TpvApplication.GetAndroidSeparateMouseAndTouch:boolean;
@@ -13944,7 +13978,7 @@ begin
                                              fVulkanSwapChainQueueFamilyIndices.Items,
                                              [VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR],
                                              false,
-                                             PresentModeToVulkanPresentMode[fPresentMode],
+                                             GetVulkanPresentModeToCreate,
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
@@ -15284,7 +15318,7 @@ begin
        if ((not fVulkanDelayResizeBugWorkaround) and
            ((fVulkanSwapChain.Width<>fWidth) or
             (fVulkanSwapChain.Height<>fHeight))) or
-          (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
+          (fVulkanSwapChain.PresentMode<>GetVulkanPresentModeToCreate) then begin
         VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected! Old width: '+IntToStr(fWidth)+' - Old height: '+IntToStr(fHeight)+' - Old preset mode: '+IntToStr(Int32(fPresentMode))+' - New width: '+IntToStr(fVulkanSwapChain.Width)+' - New height: '+IntToStr(fVulkanSwapChain.Height)+' - New preset mode: '+IntToStr(Int32(fVulkanSwapChain.PresentMode)));
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
        end else begin
@@ -15945,11 +15979,24 @@ end;
 // Unless something keeps to the refresh cycles all the same, a compositor with a window, which shows in
 // the reports of past presents, see fPresentShownOnRefreshGrid: then it is the same as with MAILBOX, and
 // spread out, which of them is shown at a refresh cycle would only go by how the phase drifts.
+//
+// Without the reports of past presents, as without VK_EXT_present_timing, IMMEDIATE cannot tell whether
+// something keeps to the refresh cycles all the same, and spacing its presents on the CPU then cost a third
+// of the frame rate on Windows, where the compositor holds swapchain images of its own on top of the one
+// the spacing holds back. There they always go out right away, at the full frame rate the frames are
+// rendered at, which is what a display without VSync is chosen for.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
     Refresh:TpvDouble;
 begin
  result:=false;
+ if assigned(fVulkanSwapChain) and
+    (aCountPresents>0) and
+    (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
+    ((fPresentTimingReportStage=0) or (fPresentTimingReportQueueState<0)) then begin
+  result:=true;
+  exit;
+ end;
  if assigned(fVulkanSwapChain) and
     (aCountPresents>0) and
     ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
@@ -16713,7 +16760,8 @@ var PresentIdKHR:TVkPresentIdKHR;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
     WorkInterval,RefreshSeconds:TpvDouble;
-    PresentPath:TpvInt32;
+    PresentPath,PresentCycles:TpvInt32;
+    RefreshPeriod:TpvHighResolutionTime;
 begin
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
@@ -16821,6 +16869,26 @@ begin
     fCountGeneratedFrameTargetTimes:=0;
     fGeneratedFrameCountPresents:=CountIntervalParts;
     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
+    // Where the presents are shown on the grid of the refresh cycles, the distance is whole refresh
+    // cycles, as many for each present as the frames take for all of them, by how long they take and not
+    // by the interval they come at: that interval is what this spacing holds them to, so going by it, a
+    // spacing beyond one refresh cycle, after a hitch or from the start, would hold itself, the frames
+    // waiting for the swapchain images the presents held back. For a frame which takes no longer than a
+    // refresh cycle for each of its presents, that is one refresh cycle each, which FIFO keeps by itself,
+    // with the presents going out one right after the other.
+    RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(RefreshPeriod);
+    if (RefreshSeconds>0.0) and
+       (fGeneratedFrameWorkInterval>0.0) and
+       ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
+        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
+        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
+        ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
+         (fPresentShownOnRefreshGrid>0.8))) then begin
+     PresentCycles:=Max(1,Ceil((fGeneratedFrameWorkInterval/(RefreshSeconds*CountIntervalParts))-0.05));
+     fGeneratedFrameCPUPacingDistance:=RefreshPeriod*PresentCycles;
+    end;
    end else begin
     SchedulePresentTargetTimes(CountIntervalParts);
    end;
@@ -23763,6 +23831,8 @@ initialization
  if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
   SetConsoleOutputCP(65001); // Set console output codepage to UTF-8 (CP_UTF8 / 65001)
   pvIsStdOutUTF8:=GetConsoleOutputCP=65001; // Check if console output codepage is UTF-8 (CP_UTF8 / 65001)
+  // A console only where the handle has a console mode; a file or a pipe has none
+  pvIsStdOutConsole:=GetConsoleMode(pvStdOut,pvStdOutConsoleMode);
  end;
 
 {$ifend}
