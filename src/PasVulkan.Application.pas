@@ -2040,6 +2040,8 @@ type EpvApplication=class(Exception)
        fLowLatencyMode:TpvApplicationLowLatencyMode;
        // The mode the swapchain was made for, so that a change at runtime brings a new swapchain.
        fLowLatencyAppliedMode:TpvApplicationLowLatencyMode;
+       // The same for the count of swapchain images asked for, which frame generation raises.
+       fDesiredCountSwapChainImagesApplied:TpvInt32;
        fLowLatencyActive:boolean;
        fLowLatencyActiveMode:TpvApplicationLowLatencyMode;
        fLowLatencyFrameID:TpvUInt64;
@@ -11615,6 +11617,7 @@ begin
  fLowLatencyFrameID:=0;
  fLowLatencySleepSemaphore:=nil;
  fLowLatencyAppliedMode:=TpvApplicationLowLatencyMode.None;
+ fDesiredCountSwapChainImagesApplied:=0;
  FillChar(fLowLatencySubmissionPresentIDs,SizeOf(fLowLatencySubmissionPresentIDs),#0);
 
  fFrameCounter:=0;
@@ -13514,6 +13517,8 @@ begin
  // The low latency mode is a matter of the swapchain, so it is brought up anew with every one.
  InitializeLowLatencyMode;
  fLowLatencyAppliedMode:=fLowLatencyMode;
+
+ fDesiredCountSwapChainImagesApplied:=fDesiredCountSwapChainImages;
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
@@ -17578,9 +17583,13 @@ begin
 
  DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
 
- // A low latency mode changed at runtime needs a swapchain made for it, see CreateVulkanSwapChain.
- if assigned(fVulkanSwapChain) and (fLowLatencyMode<>fLowLatencyAppliedMode) then begin
+ // A low latency mode or a count of swapchain images changed at runtime needs a swapchain made for it,
+ // see CreateVulkanSwapChain.
+ if assigned(fVulkanSwapChain) and
+    ((fLowLatencyMode<>fLowLatencyAppliedMode) or
+     (fDesiredCountSwapChainImages<>fDesiredCountSwapChainImagesApplied)) then begin
   fLowLatencyAppliedMode:=fLowLatencyMode;
+  fDesiredCountSwapChainImagesApplied:=fDesiredCountSwapChainImages;
   if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                             TAcquireVulkanBackBufferState.RecreateSurface,
                                             TAcquireVulkanBackBufferState.RecreateDevice]) then begin
