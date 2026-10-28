@@ -13412,6 +13412,8 @@ begin
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
 
+ Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','Present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+' (asked for '+IntToStr(TpvInt64(fVulkanSwapChain.PresentMode))+'), '+IntToStr(fCountSwapChainImages)+' images');
+
  // Query VK_EXT_present_timing refresh duration if available
  fFramePacingPresentTimingAvailable:=false;
  fFramePacingPresentTimingRefreshDuration:=0;
