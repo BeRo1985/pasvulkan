@@ -2194,6 +2194,10 @@ type EpvApplication=class(Exception)
        // The target time of the last present of the interval before, see SchedulePresentTargetTimes.
        fGeneratedFrameScheduledLastTargetTime:TpvUInt64;
 
+       // How much of a frame goes into waiting for the display in the frame latency wait, smoothed, see
+       // GeneratedFramesCloserThanRefresh.
+       fDisplayWaitFraction:TpvDouble;
+
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
 
        fGeneratedFrameCPUPacingLastPresentTime:TpvHighResolutionTime;
@@ -2436,6 +2440,7 @@ type EpvApplication=class(Exception)
        procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
        function GeneratedFrameTargetTimesAvailable:boolean;
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
+       procedure UpdateDisplayWaitFraction(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        procedure PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
        procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
@@ -14339,6 +14344,7 @@ var Target,TimeOut:TpvUInt64;
     RefreshRate:TpvDouble;
     PresentWait2Info:TVkPresentWait2InfoKHR;
     FrameFenceTimedOut:boolean;
+    DisplayWaitStartTime:TpvHighResolutionTime;
 begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
@@ -14368,6 +14374,7 @@ begin
     end else begin
      TimeOut:=1; // one nanosecond
     end;
+    DisplayWaitStartTime:=fHighResolutionTimer.GetTime;
     // Asked of the swapchain, not of the device: vkWaitForPresent2KHR requires the swapchain to carry
     // VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR, which it only does when the surface allowed it.
     if fVulkanSwapChain.PresentWait2Enabled and
@@ -14384,6 +14391,7 @@ begin
     end else begin
      WaitResult:=VK_SUCCESS;
     end;
+    UpdateDisplayWaitFraction(fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-DisplayWaitStartTime));
     case WaitResult of
      VK_SUCCESS,
      VK_SUBOPTIMAL_KHR:begin
@@ -14407,6 +14415,7 @@ begin
      end;
     end;
    end else begin
+    UpdateDisplayWaitFraction(0.0);
     result:=true;
    end;
 
@@ -15280,14 +15289,33 @@ begin
  result:=fGeneratedFrameRefreshPeriod;
 end;
 
-// Whether the presents of an interval come closer than a refresh cycle on a swapchain which does not
-// hold the application back to the refresh rate: FIFO_LATEST_READY and MAILBOX show the newest ready
-// image at every refresh cycle and drop the older ones, IMMEDIATE tears them all into the same one. Then
-// not all of them can be shown, and spreading them, by target times or on the CPU, would only decide by
-// chance which of them is: the generated frames would mostly push the rendered ones out, and the CPU
-// spacing would hold the rendering back on top. They go out right away instead, and the rendered frame,
-// the newest at every refresh cycle, is the one shown, at the full rate the frames are rendered at. A
-// tenth of margin keeps it from flipping right at the boundary.
+// The share of the frame time the frame latency wait spends waiting for the display, smoothed over
+// about ten frames.
+procedure TpvApplication.UpdateDisplayWaitFraction(const aWaitTime:TpvDouble);
+var Fraction:TpvDouble;
+begin
+ if fFloatDeltaTime>1e-4 then begin
+  Fraction:=Min(Max(aWaitTime/fFloatDeltaTime,0.0),1.0);
+ end else begin
+  Fraction:=0.0;
+ end;
+ fDisplayWaitFraction:=fDisplayWaitFraction+((Fraction-fDisplayWaitFraction)*0.1);
+end;
+
+// Whether the presents of an interval cannot all be shown on a swapchain which does not hold the
+// application back to the refresh rate: FIFO_LATEST_READY and MAILBOX show the newest ready image at
+// every refresh cycle and drop the older ones, IMMEDIATE tears them all into the same one.
+//
+// That is so where they come closer than a refresh cycle, with a tenth of margin, so that it does not
+// flip right at the boundary. And it is so where the frames could be rendered faster than the refresh
+// rate over the count of presents, which shows in the frame latency wait waiting for the display for a
+// good part of the frame: spreading the presents one refresh cycle apart each, to show them all, then
+// holds the rendering back to that, a hold which keeps itself, since then the presents never come closer.
+//
+// Then spreading them, by target times or on the CPU, would only decide by chance which of them is shown:
+// the generated frames would mostly push the rendered ones out, and the CPU spacing would hold the
+// rendering back on top. They go out right away instead, and the rendered frame, the newest at every
+// refresh cycle, is the one shown, at the full rate the frames are rendered at.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
 begin
@@ -15299,7 +15327,8 @@ begin
      (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR)) then begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
   result:=(RefreshPeriod>0) and
-          (fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10));
+          ((fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10)) or
+           (fDisplayWaitFraction>0.25));
  end;
 end;
 
