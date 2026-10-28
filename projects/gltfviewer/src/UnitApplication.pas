@@ -62,6 +62,7 @@ type TApplication=class(TpvApplication)
        fFrameGenerationDebugView:boolean;
        fFrameGenerationMinimumFrameRate:TpvFloat;
        fCountSwapChainImages:TpvInt32;
+       fForcedPresentMode:TpvInt32;
        fSizeFactor:TpvDouble;
        fTransparentColorKey:boolean;
        fMakeScreenshotJPEG:boolean;
@@ -186,6 +187,7 @@ begin
  fFrameGenerationDebugView:=false;
  fFrameGenerationMinimumFrameRate:=0.0;
  fCountSwapChainImages:=0;
+ fForcedPresentMode:=-1;
  fSizeFactor:=1.0;
  fTransparentColorKey:=false;
  VirtualRealityMode:=TpvVirtualReality.TMode.Disabled;
@@ -466,6 +468,24 @@ begin
     MaximumFramesPerSecond:=Max(0,StrToIntDef(ParamStr(Index),0));
     inc(Index);
    end;
+  end else if (Parameter='--present-mode') or
+              (Parameter='/present-mode') then begin
+   // The present mode, over whatever the rest would pick: immediate, mailbox, fifo, fiforelaxed or
+   // fifolatestready, for holding them against one another
+   if Index<=ParamCount then begin
+    if LowerCase(ParamStr(Index))='immediate' then begin
+     fForcedPresentMode:=TpvInt32(TpvApplicationPresentMode.Immediate);
+    end else if LowerCase(ParamStr(Index))='mailbox' then begin
+     fForcedPresentMode:=TpvInt32(TpvApplicationPresentMode.Mailbox);
+    end else if LowerCase(ParamStr(Index))='fifo' then begin
+     fForcedPresentMode:=TpvInt32(TpvApplicationPresentMode.FIFO);
+    end else if LowerCase(ParamStr(Index))='fiforelaxed' then begin
+     fForcedPresentMode:=TpvInt32(TpvApplicationPresentMode.FIFORelaxed);
+    end else if LowerCase(ParamStr(Index))='fifolatestready' then begin
+     fForcedPresentMode:=TpvInt32(TpvApplicationPresentMode.FIFOLatestReady);
+    end;
+    inc(Index);
+   end;
   end else if (Parameter='--swapchain-images') or
               (Parameter='/swapchain-images') then begin
    // How many swapchain images to ask for, at least as many as frame generation needs
@@ -659,6 +679,9 @@ begin
  end;
  if fCountSwapChainImages>0 then begin
   DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,fCountSwapChainImages);
+ end;
+ if fForcedPresentMode>=0 then begin
+  PresentMode:=TpvApplicationPresentMode(fForcedPresentMode);
  end;
 // VulkanAPIVersion:=VK_API_VERSION_1_0;
  VulkanAPIVersion:=0;//VK_API_VERSION_1_0;
