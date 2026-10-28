@@ -15137,7 +15137,7 @@ begin
  // and the rest, so that nothing overflows.
  if result and
     (fFramePacingPresentTimingTimeDomain=VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) and
-    QueryPerformanceFrequency(Frequency) and
+    Windows.QueryPerformanceFrequency(Frequency) and
     (Frequency>0) and
     (Frequency<>1000000000) then begin
   aTime:=((aTime div TpvUInt64(Frequency))*TpvUInt64(1000000000))+
