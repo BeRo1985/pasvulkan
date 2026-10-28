@@ -2058,6 +2058,11 @@ type EpvApplication=class(Exception)
 
        fFramesPerSecond:TpvDouble;
 
+       // The presents per second, the generated frames among them, see PresentedFramesPerSecond
+       fPresentedFramesPerSecond:TpvDouble;
+       fPresentedFramesCount:TpvInt64;
+       fPresentedFramesStartTime:TpvHighResolutionTime;
+
        fTimingCPUUpdate:TpvDouble;
        fTimingCPUDraw:TpvDouble;
        fTimingCPUBeginFrame:TpvDouble;
@@ -2871,6 +2876,10 @@ type EpvApplication=class(Exception)
        property DeltaTime:TpvDouble read fFloatDeltaTime;
 
        property FramesPerSecond:TpvDouble read fFramesPerSecond;
+
+       // How many frames per second actually go to the screen: the rendered ones and with frame generation
+       // the generated ones between them as well, measured over about half a second each.
+       property PresentedFramesPerSecond:TpvDouble read fPresentedFramesPerSecond;
 
        property TimingCPUUpdate:TpvDouble read fTimingCPUUpdate;
 
@@ -15558,12 +15567,22 @@ begin
  end;
 end;
 
-// After a present went through: its id as the last one and into the history.
+// After a present went through: its id as the last one and into the history, and one more for
+// PresentedFramesPerSecond.
 procedure TpvApplication.RecordPresentID;
+var Now,Elapsed:TpvHighResolutionTime;
 begin
  fVulkanPresentLastID:=fVulkanPresentID;
  fVulkanPresentIDHistory[fVulkanPresentIDHistoryCount and 15]:=fVulkanPresentID;
  inc(fVulkanPresentIDHistoryCount);
+ inc(fPresentedFramesCount);
+ Now:=fHighResolutionTimer.GetTime;
+ Elapsed:=Now-fPresentedFramesStartTime;
+ if Elapsed>=fHighResolutionTimer.FromFloatSeconds(0.5) then begin
+  fPresentedFramesPerSecond:=fPresentedFramesCount/Max(1e-6,fHighResolutionTimer.ToFloatSeconds(Elapsed));
+  fPresentedFramesCount:=0;
+  fPresentedFramesStartTime:=Now;
+ end;
 end;
 
 // Presents the frames generated for the current rendered frame, ahead of it. Where the device can time
@@ -20559,6 +20578,10 @@ begin
   fFrameTimesHistorySum:=0.0;
 
   fFramesPerSecond:=0.0;
+
+  fPresentedFramesPerSecond:=0.0;
+  fPresentedFramesCount:=0;
+  fPresentedFramesStartTime:=fHighResolutionTimer.GetTime;
 
   fSkipNextDrawFrame:=false;
 
