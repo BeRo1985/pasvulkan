@@ -1537,6 +1537,11 @@ type EpvApplication=class(Exception)
        Mailbox=1,
        FIFO=2,
        FIFORelaxed=3,
+       // FIFO without tearing which shows the newest ready image at every refresh cycle instead of holding
+       // the application back, so that frame generation at a refresh rate below twice the frame rate does
+       // not lock the frame rate to half the refresh rate. Where the device does not have it, MAILBOX, and
+       // FIFO at last, see TpvVulkanDevice.PresentModeFIFOLatestReadySupport.
+       FIFOLatestReady=4,
        NoVSync={$ifdef fpc}0{$else}TpvApplicationPresentMode.Immediate{$endif},
        GreedyVSync={$ifdef fpc}1{$else}TpvApplicationPresentMode.Mailbox{$endif},
        VSync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
@@ -1677,12 +1682,13 @@ type EpvApplication=class(Exception)
              TWin32TouchIDFreeList=TpvDynamicQueue<TpvUInt32>;
              TWin32TouchIDHashMap=class(TpvHashMap<TpvUInt32,TpvUInt32>)
              end;
-       const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFORelaxed] of TVkPresentModeKHR=
+       const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFOLatestReady] of TVkPresentModeKHR=
               (
                VK_PRESENT_MODE_IMMEDIATE_KHR,
                VK_PRESENT_MODE_MAILBOX_KHR,
                VK_PRESENT_MODE_FIFO_KHR,
-               VK_PRESENT_MODE_FIFO_RELAXED_KHR
+               VK_PRESENT_MODE_FIFO_RELAXED_KHR,
+               VK_PRESENT_MODE_FIFO_LATEST_READY_KHR
               );
       private
 
@@ -2182,6 +2188,9 @@ type EpvApplication=class(Exception)
 
        fGeneratedFrameCPUPacing:boolean;
 
+       // The presents of the interval go out right away, see GeneratedFramesCloserThanRefresh.
+       fGeneratedFramesRightAway:boolean;
+
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
 
        fGeneratedFrameCPUPacingLastPresentTime:TpvHighResolutionTime;
@@ -2423,6 +2432,8 @@ type EpvApplication=class(Exception)
        function GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean;
        procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
        function GeneratedFrameTargetTimesAvailable:boolean;
+       function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
+       function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        procedure PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
        procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
        procedure SetupPresentTimingReports;
@@ -12584,6 +12595,13 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
   end;
 
+  // For TpvApplicationPresentMode.FIFOLatestReady, the KHR extension where there is it, else its EXT forerunner
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME);
+  end else if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME);
+  end;
+
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_LOW_LATENCY_2_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
   end;
@@ -14330,7 +14348,8 @@ begin
       (fPresentFrameLatency<>0) and
       (fPresentFrameLatency<=15) and
       (fVulkanPresentIDHistoryCount>fPresentFrameLatency) and
-      (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) then begin
+      ((fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) or
+       (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady)) then begin
     // The present that many presents back, by the history, since the ids have gaps.
     Target:=fVulkanPresentIDHistory[(fVulkanPresentIDHistoryCount-(fPresentFrameLatency+1)) and 15];
     if fBlocking then begin
@@ -14398,7 +14417,8 @@ begin
        assigned(fVulkanSwapChain) and
        (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
        (fVulkanDevice.PresentWaitSupport or fVulkanSwapChain.PresentWait2Enabled) and
-       (fPresentMode=TpvApplicationPresentMode.VSync) and
+       ((fPresentMode=TpvApplicationPresentMode.VSync) or
+        (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady)) and
        (fPresentFrameLatency>0)) then begin
 
     result:=true;
@@ -15209,7 +15229,8 @@ begin
  inc(fGeneratedFrameScheduleIndex);
 end;
 
-// Whether the presents of frame generation can be spread with target times of present timing.
+// Whether the presents of frame generation can be spread with target times of present timing. Target
+// times are for the FIFO present modes only, a swapchain made with IMMEDIATE or MAILBOX must get none.
 function TpvApplication.GeneratedFrameTargetTimesAvailable:boolean;
 begin
  result:=fFramePacingPresentTimingAvailable and
@@ -15217,7 +15238,51 @@ begin
          fVulkanDevice.PresentTimingSupport and
          (not fDisablePresentTiming) and
          assigned(fVulkanSwapChain) and
+         ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+          (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
+          (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)) and
          (fVulkanSwapChain.PresentAtAbsoluteTimeSupported or fVulkanSwapChain.PresentAtRelativeTimeSupported);
+end;
+
+// The refresh cycle of the display, out of present timing where there is that, otherwise out of the
+// refresh rate the window system gives, zero when neither knows it.
+function TpvApplication.GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
+var RefreshRate:TpvDouble;
+begin
+ if fGeneratedFrameRefreshPeriod<0 then begin
+  if fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
+   fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromNanoseconds(fFramePacingPresentTimingRefreshDuration);
+  end else begin
+   RefreshRate:=GetNativeRefreshRate;
+   if RefreshRate>=1.0 then begin
+    fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromFloatSeconds(1.0/RefreshRate);
+   end else begin
+    fGeneratedFrameRefreshPeriod:=0;
+   end;
+  end;
+ end;
+ result:=fGeneratedFrameRefreshPeriod;
+end;
+
+// Whether the presents of an interval come closer than a refresh cycle on a swapchain which shows the
+// newest ready image at every refresh cycle and drops the older ones, as FIFO_LATEST_READY and MAILBOX
+// do. Then not all of them can be shown, and spreading them, by target times or on the CPU, would only
+// decide by chance which of them is: the generated frames would mostly push the rendered ones out. They
+// go out right away instead, and the rendered frame, the newest at every refresh cycle, is the one shown,
+// at the full rate the frames are rendered at. A tenth of margin keeps it from flipping right at the
+// boundary.
+function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
+var RefreshPeriod:TpvHighResolutionTime;
+begin
+ result:=false;
+ if assigned(fVulkanSwapChain) and
+    (aCountPresents>0) and
+    ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
+     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR)) then begin
+  RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+  result:=(RefreshPeriod>0) and
+          (fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10));
+ end;
 end;
 
 // The CPU spacing of the presents of an interval, before every present but the first. A present in a FIFO
@@ -15235,23 +15300,11 @@ var PresentWait2Info:TVkPresentWait2InfoKHR;
     WaitResult:TVkResult;
     ShownTime,TargetTime,NowTime,WaitStartTime,Delay:TpvHighResolutionTime;
     TimeOut:TpvUInt64;
-    RefreshRate:TpvDouble;
 begin
- if fGeneratedFrameRefreshPeriod<0 then begin
-  if fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
-   fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromNanoseconds(fFramePacingPresentTimingRefreshDuration);
-  end else begin
-   RefreshRate:=GetNativeRefreshRate;
-   if RefreshRate>=1.0 then begin
-    fGeneratedFrameRefreshPeriod:=fHighResolutionTimer.FromFloatSeconds(1.0/RefreshRate);
-   end else begin
-    fGeneratedFrameRefreshPeriod:=0;
-   end;
-  end;
- end;
+ GetGeneratedFrameRefreshPeriod;
  if (fGeneratedFrameRefreshPeriod>0) and
-    ((fVulkanSwapChain.PresentMode=VK_PRESENT_MODE_FIFO_KHR) or
-     (fVulkanSwapChain.PresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR)) then begin
+    ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR)) then begin
   if fGeneratedFrameCPUPacingDistance<=(fGeneratedFrameRefreshPeriod+fHighResolutionTimer.FromFloatSeconds(Margin)) then begin
    exit;
   end;
@@ -15315,10 +15368,9 @@ begin
   aPresentTimingInfo.targetTime:=fGeneratedFrameTargetTimes[aPresentIndex];
  end else if (aPresentIndex>=0) and
              (not fGeneratedFrameCPUPacing) and
-             fFramePacingPresentTimingAvailable and
-             fVulkanDevice.PresentTimingSupport and
+             (not fGeneratedFramesRightAway) and
+             GeneratedFrameTargetTimesAvailable and
              fVulkanSwapChain.PresentAtRelativeTimeSupported and
-             (not fDisablePresentTiming) and
              (fGeneratedFramePresentInterval>0.0) then begin
   aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
   aPresentTimingInfo.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/fGeneratedFrameCountPresents));
@@ -15807,7 +15859,12 @@ begin
    CountIntervalParts:=fCountQueuedGeneratedFrames+1;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
-   if fGeneratedFrameCPUPacing then begin
+   fGeneratedFramesRightAway:=GeneratedFramesCloserThanRefresh(CountIntervalParts);
+   if fGeneratedFramesRightAway then begin
+    // Not all of them can be shown, so they go out right away, see GeneratedFramesCloserThanRefresh.
+    fGeneratedFrameCPUPacing:=false;
+    fCountGeneratedFrameTargetTimes:=0;
+   end else if fGeneratedFrameCPUPacing then begin
     fCountGeneratedFrameTargetTimes:=0;
     fGeneratedFrameCountPresents:=CountIntervalParts;
     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
@@ -15820,6 +15877,7 @@ begin
    CountGeneratedFramesPresented:=0;
    fCountGeneratedFrameTargetTimes:=0;
    fGeneratedFrameCPUPacing:=false;
+   fGeneratedFramesRightAway:=false;
   end;
 
   PresentNext:=nil;
@@ -16879,6 +16937,15 @@ begin
  aTimingInfo.timeDomainID:=fPresentTimingFeedbackActiveTimeDomainID;
  aTimingInfo.presentStageQueries:=0;
  aTimingInfo.targetTimeDomainPresentStage:=0;
+ // Target times are for the FIFO present modes only, a swapchain made with IMMEDIATE or MAILBOX must
+ // get none at all.
+ if not ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
+         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)) then begin
+  aTimingInfo.flags:=0;
+  aTimingInfo.targetTime:=0;
+  exit;
+ end;
  // A target time the surface does not take is invalid usage, see TpvVulkanSwapChain.PresentAtRelativeTimeSupported
  // and PresentAtAbsoluteTimeSupported, so without it the present goes out at the nearest refresh cycle.
  if (not fPresentTimingFeedbackHasRefreshFeedback) or

@@ -543,6 +543,7 @@ type EpvVulkanException=class(Exception);
        fPresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR;
        fSwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR;
        fAntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD;
+       fPresentModeFIFOLatestReadyFeatures:TVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
        fProperties2KHR:TVkPhysicalDeviceProperties2KHR;
        fQueueFamilyProperties:TVkQueueFamilyPropertiesArray;
@@ -867,6 +868,7 @@ type EpvVulkanException=class(Exception);
        fLowLatency2Support:boolean;
        fSwapChainLatencyModeEnable:boolean;
        fAntiLagSupport:boolean;
+       fPresentModeFIFOLatestReadySupport:boolean;
        fCalibratedTimestampsSupport:boolean;
        fNVIDIADeviceDiagnosticsFlags:TVkDeviceDiagnosticsConfigFlagsNV;
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
@@ -895,6 +897,7 @@ type EpvVulkanException=class(Exception);
        fPresentWait2Features:TVkPhysicalDevicePresentWait2FeaturesKHR;
        fSwapchainMaintenance1Features:TVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR;
        fAntiLagFeatures:TVkPhysicalDeviceAntiLagFeaturesAMD;
+       fPresentModeFIFOLatestReadyFeatures:TVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR;
        fMultiView:boolean;
        fMultiViewTessellationShader:boolean;
        fMultiViewGeometryShader:boolean;
@@ -983,6 +986,10 @@ type EpvVulkanException=class(Exception);
        // take when they are, where the extension is enabled at all.
        property SwapChainLatencyModeEnable:boolean read fSwapChainLatencyModeEnable write fSwapChainLatencyModeEnable;
        property AntiLagSupport:boolean read fAntiLagSupport;
+       // VK_PRESENT_MODE_FIFO_LATEST_READY_KHR, of VK_KHR_present_mode_fifo_latest_ready or of its EXT
+       // forerunner: FIFO without tearing, which shows the newest ready image at every refresh cycle and
+       // drops the older ones instead of holding the application back.
+       property PresentModeFIFOLatestReadySupport:boolean read fPresentModeFIFOLatestReadySupport;
        property CalibratedTimestampsSupport:boolean read fCalibratedTimestampsSupport;
        property OnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate read fOnBeforeDeviceCreate write fOnBeforeDeviceCreate;
       public
@@ -2871,6 +2878,7 @@ type EpvVulkanException=class(Exception);
        fImageColorSpace:TVkColorSpaceKHR;
        fImages:TpvVulkanSwapChainImages;
        fPresentMode:TVkPresentModeKHR;
+       fCreatedPresentMode:TVkPresentModeKHR;
        fPreviousImageIndex:TpvUInt32;
        fCurrentImageIndex:TpvUInt32;
        fCountImages:TpvUInt32;
@@ -2945,7 +2953,10 @@ type EpvVulkanException=class(Exception);
        property Handle:TVkSwapChainKHR read fSwapChainHandle;
        property ImageFormat:TVkFormat read fImageFormat;
        property ImageColorSpace:TVkColorSpaceKHR read fImageColorSpace;
+       // The present mode asked for, and the one the swapchain was made with, which is another one where
+       // the surface or the device does not have the one asked for.
        property PresentMode:TVkPresentModeKHR read fPresentMode;
+       property CreatedPresentMode:TVkPresentModeKHR read fCreatedPresentMode;
        property PreviousImageIndex:TpvUInt32 read fPreviousImageIndex;
        property CurrentImageIndex:TpvUInt32 read fCurrentImageIndex;
        property CountImages:TpvUInt32 read fCountImages;
@@ -9944,7 +9955,18 @@ begin
     fFeatures2KHR.pNext:=@fAntiLagFeatures;
    end;
   end;
-  
+
+  begin
+   // The KHR and the EXT extension share the structure and the present mode.
+   FillChar(fPresentModeFIFOLatestReadyFeatures,SizeOf(TVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR),#0);
+   fPresentModeFIFOLatestReadyFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR;
+   if (AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0) or
+      (AvailableExtensionNames.IndexOf(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0) then begin
+    fPresentModeFIFOLatestReadyFeatures.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fPresentModeFIFOLatestReadyFeatures;
+   end;
+  end;
+
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -12909,6 +12931,16 @@ begin
     DeviceCreateInfo.pNext:=@fAntiLagFeatures;
    end;
 
+   FillChar(fPresentModeFIFOLatestReadyFeatures,SizeOf(TVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR),#0);
+   fPresentModeFIFOLatestReadyFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR;
+   if ((fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0) or
+       (fEnabledExtensionNames.IndexOf(VK_EXT_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME)>=0)) and
+      (PhysicalDevice.fPresentModeFIFOLatestReadyFeatures.presentModeFifoLatestReady<>VK_FALSE) then begin
+    fPresentModeFIFOLatestReadyFeatures.presentModeFifoLatestReady:=PhysicalDevice.fPresentModeFIFOLatestReadyFeatures.presentModeFifoLatestReady;
+    fPresentModeFIFOLatestReadyFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentModeFIFOLatestReadyFeatures;
+   end;
+
   end;
 
   /////////////////////////////////////////////////////////////////////////
@@ -12938,6 +12970,8 @@ begin
    fLowLatency2Support:=fEnabledExtensionNames.IndexOf(VK_NV_LOW_LATENCY_2_EXTENSION_NAME)>=0;
 
    fAntiLagSupport:=fAntiLagFeatures.antiLag<>VK_FALSE;
+
+   fPresentModeFIFOLatestReadySupport:=fPresentModeFIFOLatestReadyFeatures.presentModeFifoLatestReady<>VK_FALSE;
 
    fCalibratedTimestampsSupport:=(fEnabledExtensionNames.IndexOf(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)>=0) or
                                 (fEnabledExtensionNames.IndexOf(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)>=0);
@@ -24315,6 +24349,8 @@ begin
 
  fPresentMode:=aPresentMode;
 
+ fCreatedPresentMode:=aPresentMode;
+
  fPreviousImageIndex:=0;
 
  fCurrentImageIndex:=0;
@@ -24535,6 +24571,29 @@ begin
       end;
      end;
     end;
+    VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:begin
+     // Only with the device feature switched on, see TpvVulkanDevice.PresentModeFIFOLatestReadySupport;
+     // otherwise MAILBOX, which does not tear or hold the application back either, and FIFO at last.
+     SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
+     Found:=false;
+     if fDevice.fPresentModeFIFOLatestReadySupport then begin
+      for Index:=0 to length(SurfacePresentModes)-1 do begin
+       if SurfacePresentModes[Index]=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
+        SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR;
+        Found:=true;
+        break;
+       end;
+      end;
+     end;
+     if not Found then begin
+      for Index:=0 to length(SurfacePresentModes)-1 do begin
+       if SurfacePresentModes[Index]=VK_PRESENT_MODE_MAILBOX_KHR then begin
+        SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_MAILBOX_KHR;
+        break;
+       end;
+      end;
+     end;
+    end;
     else begin
      SwapChainCreateInfo.presentMode:=VK_PRESENT_MODE_FIFO_KHR;
      Found:=false;
@@ -24566,6 +24625,8 @@ begin
   finally
    SetLength(SurfacePresentModes,0);
   end;
+
+  fCreatedPresentMode:=SwapChainCreateInfo.presentMode;
 
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
   VulkanDebugLn('PresentMode: '+IntToStr(TpvInt64(SwapChainCreateInfo.presentMode)));

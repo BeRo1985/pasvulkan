@@ -651,6 +651,11 @@ begin
  // Generated frames take swapchain images of their own, see TpvApplication.AcquireGeneratedFrameImage
  if fFrameGeneration<>TpvScene3DRendererFrameGeneration.None then begin
   DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,3+fCountGeneratedFrames);
+  // A display that cannot show twice as many frames as are rendered would hold the rendered frames to
+  // half its refresh rate with FIFO, see TpvApplicationPresentMode.FIFOLatestReady.
+  if PresentMode=TpvApplicationPresentMode.FIFO then begin
+   PresentMode:=TpvApplicationPresentMode.FIFOLatestReady;
+  end;
  end;
  if fCountSwapChainImages>0 then begin
   DesiredCountSwapChainImages:=Max(DesiredCountSwapChainImages,fCountSwapChainImages);
