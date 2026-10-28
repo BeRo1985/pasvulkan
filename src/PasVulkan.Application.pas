@@ -2267,9 +2267,24 @@ type EpvApplication=class(Exception)
        // The target time of the last present of the interval before, see SchedulePresentTargetTimes.
        fGeneratedFrameScheduledLastTargetTime:TpvUInt64;
 
-       // How much of a frame goes into waiting for the display in the frame latency wait, smoothed, see
-       // GeneratedFramesCloserThanRefresh.
-       fDisplayWaitFraction:TpvDouble;
+       // How long a frame waited for the display, in the frame latency wait and at the presents, which
+       // wait for the presentation once its queue is full: the waits at the presents are summed up until
+       // the next frame latency wait takes them in, see RecordDisplayWait.
+       fDisplayWaitLastFrame:TpvDouble;
+
+       fDisplayWaitAtPresents:TpvDouble;
+
+       // How long the frames take without the waits for the display, the acquire and the frame rate
+       // limiter, smoothed: the interval they could come at, see GeneratedFramesCloserThanRefresh.
+       fGeneratedFrameWorkInterval:TpvDouble;
+
+       // How many refresh cycles a rendered frame is meant to take: one, or with the presents of its
+       // generated frames spread a refresh cycle apart each, one for each of them as well, which the frame
+       // rate limiter keeps the frames to, see FramePacingAndFrameRateLimiter.
+       fGeneratedFrameRefreshCycles:TpvInt32;
+
+       // Whether the frame before presented generated frames, see WaitForSwapChainLatency.
+       fGeneratedFramesPresented:boolean;
 
        // How many of the presents spaced on the CPU were shown on the grid of the refresh cycles, smoothed,
        // by the reports of past presents: an IMMEDIATE swapchain under a compositor which keeps to the
@@ -2533,7 +2548,7 @@ type EpvApplication=class(Exception)
        procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
        function GeneratedFrameTargetTimesAvailable:boolean;
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
-       procedure UpdateDisplayWaitFraction(const aWaitTime:TpvDouble);
+       procedure RecordDisplayWait(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        procedure LockSwapChain;
        procedure UnlockSwapChain;
@@ -14824,27 +14839,44 @@ var Target,TimeOut:TpvUInt64;
     PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
-    FrameFenceTimedOut:boolean;
+    FrameFenceTimedOut,PresentWaitForGeneratedFrames:boolean;
     DisplayWaitStartTime:TpvHighResolutionTime;
+    Latency:TpvInt32;
 begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
+   // With frames generated between the rendered ones, the present wait is always on: their presents are
+   // spread over the refresh cycles, and the next frame has to start in step with them, as FIFO would
+   // hold it back by itself. Without it, FIFO_LATEST_READY holds nothing back, the frames start whenever
+   // a swapchain image comes free, at a rate that averages out right but jumps from frame to frame, and the
+   // target times run far ahead, see SchedulePresentTargetTimes. Waited for is the present before the last
+   // one, the last generated frame of the frame before, so that the next frame starts as that is shown.
+   PresentWaitForGeneratedFrames:=fGeneratedFramesPresented and
+                                  ((fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) or
+                                   (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady));
+   if PresentWaitForGeneratedFrames then begin
+    Latency:=Max(1,fPresentFrameLatency);
+   end else begin
+    Latency:=fPresentFrameLatency;
+   end;
+
    // Frame present waiting part (prefer present_wait2, fallback to present_wait)
-   if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
-                                    TpvApplicationPresentFrameLatencyMode.PresentWait,
-                                    TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
+   if ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                     TpvApplicationPresentFrameLatencyMode.PresentWait,
+                                     TpvApplicationPresentFrameLatencyMode.CombinedWait]) or
+       PresentWaitForGeneratedFrames) and
       assigned(fVulkanDevice) and
       assigned(fVulkanSwapChain) and
       (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
       (fVulkanDevice.PresentWaitSupport or fVulkanSwapChain.PresentWait2Enabled) and
-      (fPresentFrameLatency<>0) and
-      (fPresentFrameLatency<=15) and
-      (fVulkanPresentIDHistoryCount>fPresentFrameLatency) and
+      (Latency<>0) and
+      (Latency<=15) and
+      (fVulkanPresentIDHistoryCount>Latency) and
       ((fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) or
        (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady)) then begin
     // The present that many presents back, by the history, since the ids have gaps.
-    Target:=fVulkanPresentIDHistory[(fVulkanPresentIDHistoryCount-(fPresentFrameLatency+1)) and 15];
+    Target:=fVulkanPresentIDHistory[(fVulkanPresentIDHistoryCount-(Latency+1)) and 15];
     if fBlocking then begin
      TimeOut:=1000000000; // one second for to avoid deadlock issue with nvidia
 (*{$ifdef Windows}
@@ -14860,7 +14892,7 @@ begin
     // VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR, which it only does when the surface allowed it, see
     // WaitForPresentID, which prefers present_wait2 and falls back to present_wait.
     WaitResult:=WaitForPresentID(Target,TimeOut);
-    UpdateDisplayWaitFraction(fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-DisplayWaitStartTime));
+    RecordDisplayWait(fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-DisplayWaitStartTime));
     case WaitResult of
      VK_SUCCESS,
      VK_SUBOPTIMAL_KHR:begin
@@ -14884,7 +14916,7 @@ begin
      end;
     end;
    end else begin
-    UpdateDisplayWaitFraction(0.0);
+    RecordDisplayWait(0.0);
     result:=true;
    end;
 
@@ -15817,33 +15849,34 @@ begin
  result:=fGeneratedFrameRefreshPeriod;
 end;
 
-// The share of the frame time the frame latency wait spends waiting for the display, smoothed over
-// about ten frames.
-procedure TpvApplication.UpdateDisplayWaitFraction(const aWaitTime:TpvDouble);
-var Fraction:TpvDouble;
+// The time the frame spent waiting for the display: in the frame latency wait, aWaitTime, and at the
+// presents of the frame before, see fDisplayWaitAtPresents.
+procedure TpvApplication.RecordDisplayWait(const aWaitTime:TpvDouble);
 begin
- if fFloatDeltaTime>1e-4 then begin
-  Fraction:=Min(Max(aWaitTime/fFloatDeltaTime,0.0),1.0);
- end else begin
-  Fraction:=0.0;
- end;
- fDisplayWaitFraction:=fDisplayWaitFraction+((Fraction-fDisplayWaitFraction)*0.1);
+ fDisplayWaitLastFrame:=aWaitTime+fDisplayWaitAtPresents;
+ fDisplayWaitAtPresents:=0.0;
 end;
 
 // Whether the presents of an interval cannot all be shown on a swapchain which does not hold the
 // application back to the refresh rate: FIFO_LATEST_READY and MAILBOX show the newest ready image at
 // every refresh cycle and drop the older ones.
 //
-// That is so where they come closer than a refresh cycle, with a tenth of margin, so that it does not
-// flip right at the boundary. And it is so where the frames could be rendered faster than the refresh
-// rate over the count of presents, which shows in the frame latency wait waiting for the display for a
-// good part of the frame: spreading the presents one refresh cycle apart each, to show them all, then
-// holds the rendering back to that, a hold which keeps itself, since then the presents never come closer.
+// It goes by whether the frames can be rendered at the refresh rate, by how long they take without the
+// waits for the display, the acquire and the frame rate limiter, see fGeneratedFrameWorkInterval, with a
+// tenth of margin. Spread one refresh cycle apart each, to show them all, the presents hold the rendering
+// back to that many refresh cycles per rendered frame, a hold which keeps itself, since then the presents
+// never come closer: so the time the frames take, not the interval they come at, is what tells.
 //
-// Then spreading them, by target times or on the CPU, would only decide by chance which of them is shown:
-// the generated frames would mostly push the rendered ones out. They go out right away instead, and the
-// rendered frame, the newest at every refresh cycle, is the one shown, at the full rate the frames are
-// rendered at.
+// Where they can, spreading them, by target times or on the CPU, would only decide by chance which of them
+// is shown: the generated frames would mostly push the rendered ones out. They go out right away instead,
+// and the rendered frame, the newest at every refresh cycle, is the one shown, at the full refresh rate.
+// Once there, they stay until the rendered frames fall behind the refresh rate by more than a bit, so
+// that it does not flip back and forth around the boundary.
+//
+// Where they cannot, they stay spread, a refresh cycle each: half the refresh rate rendered, and every
+// refresh cycle with a frame of its own, evenly. Right away they would come at whatever rate the
+// rendering manages between the full and the half refresh rate, with the refresh cycles which got no new
+// frame scattered over it, which looks far worse than the even half rate, although it counts higher.
 //
 // IMMEDIATE drops none, it shows every present from when it comes on, torn into the one before. Spread
 // out, each of them is on the screen for its part of the interval, while right away a generated frame
@@ -15854,6 +15887,7 @@ end;
 // spread out, which of them is shown at a refresh cycle would only go by how the phase drifts.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
+    Refresh:TpvDouble;
 begin
  result:=false;
  if assigned(fVulkanSwapChain) and
@@ -15863,9 +15897,14 @@ begin
      ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
       (fPresentShownOnRefreshGrid>0.8))) then begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
-  result:=(RefreshPeriod>0) and
-          ((fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10)) or
-           (fDisplayWaitFraction>0.25));
+  if RefreshPeriod>0 then begin
+   Refresh:=fHighResolutionTimer.ToFloatSeconds(RefreshPeriod);
+   if fGeneratedFramesRightAway then begin
+    result:=fGeneratedFramePresentInterval<=(Refresh*1.08);
+   end else begin
+    result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*0.9));
+   end;
+  end;
  end;
 end;
 
@@ -16334,6 +16373,8 @@ var Index:TpvInt32;
     PresentWaitSemaphore:TpvVulkanSemaphore;
     HasPresentID:boolean;
     Job:TpvApplicationPresenterJob;
+    PresentResult:TVkResult;
+    WaitStartTime:TpvHighResolutionTime;
 begin
 
  result:=0;
@@ -16419,7 +16460,10 @@ begin
     pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(PresentWaitSemaphore.Handle));
 {$endif}
 
-    case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext) of
+    WaitStartTime:=fHighResolutionTimer.GetTime;
+    PresentResult:=fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext);
+    fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+    case PresentResult of
      VK_SUCCESS,
      VK_SUBOPTIMAL_KHR:begin
       RecordPresentID;
@@ -16475,6 +16519,8 @@ var PresentIdKHR:TVkPresentIdKHR;
     CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
     OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence:boolean;
     Job:TpvApplicationPresenterJob;
+    WaitStartTime:TpvHighResolutionTime;
+    WorkInterval:TpvDouble;
 begin
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
@@ -16562,6 +16608,14 @@ begin
    end else begin
     fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
    end;
+   // The same without the waits for the display, the acquire and the frame rate limiter, all of them in
+   // the time from the start of the frame before to the start of this one, see GeneratedFramesCloserThanRefresh.
+   WorkInterval:=Min(Max(fFloatDeltaTime-(fDisplayWaitLastFrame+fTimingCPUAcquire+fTimingCPUFramePacing),0.001),0.25);
+   if fGeneratedFrameWorkInterval<=0.0 then begin
+    fGeneratedFrameWorkInterval:=WorkInterval;
+   end else begin
+    fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((WorkInterval-fGeneratedFrameWorkInterval)*0.1);
+   end;
    CountIntervalParts:=fCountQueuedGeneratedFrames+1;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
@@ -16582,6 +16636,11 @@ begin
    fCountGeneratedFrameTargetTimes:=0;
    fGeneratedFrameCPUPacing:=false;
    fGeneratedFramesRightAway:=false;
+  end;
+  if fGeneratedFramesRightAway then begin
+   fGeneratedFrameRefreshCycles:=1;
+  end else begin
+   fGeneratedFrameRefreshCycles:=CountIntervalParts;
   end;
 
   // The presents spaced on the CPU go out on the presenter thread, so that the waits between them do not
@@ -16607,6 +16666,7 @@ begin
   end else begin
    CountGeneratedFramesPresented:=0;
   end;
+  fGeneratedFramesPresented:=CountGeneratedFramesPresented>0;
 
   PresentNext:=nil;
 
@@ -16704,7 +16764,9 @@ begin
      (fSwapChainImageIndex<length(fVulkanPresentCompleteFences)) and
      assigned(fVulkanPresentCompleteFences[fSwapChainImageIndex]) then begin
    if fVulkanPresentCompleteFencesReady[fSwapChainImageIndex] then begin
+    WaitStartTime:=fHighResolutionTimer.GetTime;
     fVulkanPresentCompleteFences[fSwapChainImageIndex].WaitFor;
+    fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
     fVulkanPresentCompleteFences[fSwapChainImageIndex].Reset;
     fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=false;
    end;
@@ -16762,6 +16824,7 @@ begin
 
   end else begin
 
+   WaitStartTime:=fHighResolutionTimer.GetTime;
    try
     case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
      VK_SUCCESS:begin
@@ -16836,6 +16899,7 @@ begin
      end;
     end;
    end;
+   fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
 
   end;
 
@@ -17434,8 +17498,10 @@ begin
 
   // FIFO_LATEST_READY, and MAILBOX in its place, do not hold the application back to the refresh rate
   // as FIFO does, so the frame rate is held to it here, the way VSync would hold it. The present wait of
-  // the frame latency then puts the frames in step with the refresh cycles.
-  TargetInterval:=GetGeneratedFrameRefreshPeriod;
+  // the frame latency then puts the frames in step with the refresh cycles. With the presents of the
+  // generated frames spread a refresh cycle apart each, it is held to that many refresh cycles, so that
+  // the rendered frames come at an even interval too, and with them the time steps of what they show.
+  TargetInterval:=GetGeneratedFrameRefreshPeriod*Max(1,fGeneratedFrameRefreshCycles);
 
  end else begin
 
@@ -17466,9 +17532,12 @@ begin
   end else begin
 
    // Frame finished late => skip missed deadline slots so we do not accumulate
-   // an ever-growing delay or burst of short-sleeping catch-up frames.
+   // an ever-growing delay or burst of short-sleeping catch-up frames. The deadline
+   // goes to the last slot already passed, not to the next one: the next frame
+   // advances it by one interval first, so with the next slot here it would wait
+   // for the one after, and every frame a little late would cost two slots.
    LateAmount:=NowTime-fFramePacingNextPresentTarget;
-   Skipped:=(LateAmount div TargetInterval)+1;
+   Skipped:=LateAmount div TargetInterval;
    fFramePacingNextPresentTarget:=fFramePacingNextPresentTarget+(Skipped*TargetInterval);
 
   end;
