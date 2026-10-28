@@ -2191,6 +2191,9 @@ type EpvApplication=class(Exception)
        // The presents of the interval go out right away, see GeneratedFramesCloserThanRefresh.
        fGeneratedFramesRightAway:boolean;
 
+       // The target time of the last present of the interval before, see SchedulePresentTargetTimes.
+       fGeneratedFrameScheduledLastTargetTime:TpvUInt64;
+
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
 
        fGeneratedFrameCPUPacingLastPresentTime:TpvHighResolutionTime;
@@ -13538,6 +13541,7 @@ begin
  fCountQueuedGeneratedFrames:=0;
  fCountGeneratedFrameTargetTimes:=0;
  fGeneratedFrameRefreshPeriod:=-1;
+ fGeneratedFrameScheduledLastTargetTime:=0;
 
  SetupPresentTimingReports;
 
@@ -15218,10 +15222,20 @@ begin
  end else begin
   First:=Ready;
  end;
+ // FIFO_LATEST_READY shows only the last of the presents due at a refresh cycle and drops the others,
+ // where FIFO would show them one after the other, so the first present of the interval must not be due
+ // at the refresh cycle of the last one of the interval before.
+ if (Refresh>0) and
+    (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) and
+    (fGeneratedFrameScheduledLastTargetTime<>0) and
+    (First<(fGeneratedFrameScheduledLastTargetTime+Refresh)) then begin
+  First:=fGeneratedFrameScheduledLastTargetTime+Refresh;
+ end;
  for Index:=0 to aCountPresents-1 do begin
   fGeneratedFrameTargetTimes[Index]:=First+(TpvUInt64(Index)*Step);
  end;
  fCountGeneratedFrameTargetTimes:=aCountPresents;
+ fGeneratedFrameScheduledLastTargetTime:=fGeneratedFrameTargetTimes[aCountPresents-1];
  // When, by the id the first of the presents will have, for the lead from the ready times, see
  // PollPresentTimingReports.
  fGeneratedFrameScheduleIDs[fGeneratedFrameScheduleIndex and 15]:=fVulkanPresentID+1;
@@ -15264,13 +15278,14 @@ begin
  result:=fGeneratedFrameRefreshPeriod;
 end;
 
-// Whether the presents of an interval come closer than a refresh cycle on a swapchain which shows the
-// newest ready image at every refresh cycle and drops the older ones, as FIFO_LATEST_READY and MAILBOX
-// do. Then not all of them can be shown, and spreading them, by target times or on the CPU, would only
-// decide by chance which of them is: the generated frames would mostly push the rendered ones out. They
-// go out right away instead, and the rendered frame, the newest at every refresh cycle, is the one shown,
-// at the full rate the frames are rendered at. A tenth of margin keeps it from flipping right at the
-// boundary.
+// Whether the presents of an interval come closer than a refresh cycle on a swapchain which does not
+// hold the application back to the refresh rate: FIFO_LATEST_READY and MAILBOX show the newest ready
+// image at every refresh cycle and drop the older ones, IMMEDIATE tears them all into the same one. Then
+// not all of them can be shown, and spreading them, by target times or on the CPU, would only decide by
+// chance which of them is: the generated frames would mostly push the rendered ones out, and the CPU
+// spacing would hold the rendering back on top. They go out right away instead, and the rendered frame,
+// the newest at every refresh cycle, is the one shown, at the full rate the frames are rendered at. A
+// tenth of margin keeps it from flipping right at the boundary.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
 begin
@@ -15278,7 +15293,8 @@ begin
  if assigned(fVulkanSwapChain) and
     (aCountPresents>0) and
     ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
-     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR)) then begin
+     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
+     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR)) then begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
   result:=(RefreshPeriod>0) and
           (fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10));
@@ -16641,6 +16657,16 @@ begin
  end else if fFramePacingEffectiveInterval>0 then begin
 
   TargetInterval:=fFramePacingEffectiveInterval;
+
+ end else if (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady) and
+             assigned(fVulkanSwapChain) and
+             ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
+              (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR)) then begin
+
+  // FIFO_LATEST_READY, and MAILBOX in its place, do not hold the application back to the refresh rate
+  // as FIFO does, so the frame rate is held to it here, the way VSync would hold it. The present wait of
+  // the frame latency then puts the frames in step with the refresh cycles.
+  TargetInterval:=GetGeneratedFrameRefreshPeriod;
 
  end else begin
 
