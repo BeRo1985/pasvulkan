@@ -2550,6 +2550,7 @@ type EpvApplication=class(Exception)
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
        procedure RecordDisplayWait(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
+       function GeneratedFramePresentsOneRefreshApart:boolean;
        procedure LockSwapChain;
        procedure UnlockSwapChain;
        function PresenterBusy:boolean;
@@ -14846,15 +14847,21 @@ begin
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
-   // With frames generated between the rendered ones, the present wait is always on: their presents are
-   // spread over the refresh cycles, and the next frame has to start in step with them, as FIFO would
+   // With frames generated between the rendered ones and their presents spread a refresh cycle apart
+   // each, the present wait is always on: the next frame has to start in step with them, as FIFO would
    // hold it back by itself. Without it, FIFO_LATEST_READY holds nothing back, the frames start whenever
    // a swapchain image comes free, at a rate that averages out right but jumps from frame to frame, and the
    // target times run far ahead, see SchedulePresentTargetTimes. Waited for is the present before the last
    // one, the last generated frame of the frame before, so that the next frame starts as that is shown.
+   // Not where the presents come several refresh cycles apart, on a display of a high refresh rate: there
+   // that wait would hold every frame back by the lead and the rest of the refresh cycle on top of its
+   // time, which takes from the frame rate, while the target times keep the presents even by themselves.
    PresentWaitForGeneratedFrames:=fGeneratedFramesPresented and
+                                  (not fGeneratedFramesRightAway) and
+                                  (fGeneratedFrameRefreshCycles>1) and
                                   ((fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) or
-                                   (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady));
+                                   (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady)) and
+                                  GeneratedFramePresentsOneRefreshApart;
    if PresentWaitForGeneratedFrames then begin
     Latency:=Max(1,fPresentFrameLatency);
    end else begin
@@ -15906,6 +15913,20 @@ begin
    end;
   end;
  end;
+end;
+
+// Whether the presents of an interval come a refresh cycle apart each: so they do when a frame takes no
+// longer than a refresh cycle for each of its presents. Gone by the time the frames take, not by the
+// interval they come at, since that is what the present wait of WaitForSwapChainLatency, which hangs on
+// this, holds them to, so that going by it would switch the wait on and off by turns.
+function TpvApplication.GeneratedFramePresentsOneRefreshApart:boolean;
+var RefreshPeriod:TpvHighResolutionTime;
+begin
+ RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+ result:=(RefreshPeriod>0) and
+         (fGeneratedFrameRefreshCycles>0) and
+         (fGeneratedFrameWorkInterval>0.0) and
+         (fGeneratedFrameWorkInterval<=(fHighResolutionTimer.ToFloatSeconds(RefreshPeriod)*fGeneratedFrameRefreshCycles));
 end;
 
 // The swapchain is shared between the main loop and the presenter thread under a ticket lock, which takes
