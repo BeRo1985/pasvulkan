@@ -2286,6 +2286,36 @@ type EpvApplication=class(Exception)
        // Whether the frame before presented generated frames, see WaitForSwapChainLatency.
        fGeneratedFramesPresented:boolean;
 
+       // Whether the present wait for the generated frames was on for the frame before, and whether it held
+       // the frames back beyond their refresh cycles for long enough to stay off for this swapchain, as it
+       // does where the display shows the presents later than it says, see WaitForSwapChainLatency.
+       fGeneratedFramePresentWaitActive:boolean;
+
+       fGeneratedFramePresentWaitHurts:boolean;
+
+       fGeneratedFramePresentWaitSlowFrames:TpvInt32;
+
+       // The way the presents of the generated frames went last, for the log, see LogGeneratedFramePresentPath.
+       fGeneratedFrameLoggedPresentPath:TpvInt32;
+
+       // The intervals between the present calls, for PresentIntervalStatistics where there are no reports of
+       // past presents, see RecordPresentCallTime.
+       fPresentCallStatisticsLock:TPasMPCriticalSection;
+
+       fPresentCallStatisticsLastTime:TpvHighResolutionTime;
+
+       fPresentCallStatisticsLastLogTime:TpvHighResolutionTime;
+
+       fPresentCallStatisticsCount:TpvInt64;
+
+       fPresentCallStatisticsSum:TpvDouble;
+
+       fPresentCallStatisticsSumSquares:TpvDouble;
+
+       fPresentCallStatisticsMinimum:TpvDouble;
+
+       fPresentCallStatisticsMaximum:TpvDouble;
+
        // How many of the presents spaced on the CPU were shown on the grid of the refresh cycles, smoothed,
        // by the reports of past presents: an IMMEDIATE swapchain under a compositor which keeps to the
        // refresh cycles, see GeneratedFramesCloserThanRefresh.
@@ -2551,6 +2581,9 @@ type EpvApplication=class(Exception)
        procedure RecordDisplayWait(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        function GeneratedFramePresentsOneRefreshApart:boolean;
+       procedure LogGeneratedFramePresentPath(const aPath:TpvInt32);
+       procedure RecordPresentCallTime;
+       procedure LogPresentCallStatistics;
        procedure LockSwapChain;
        procedure UnlockSwapChain;
        function PresenterBusy:boolean;
@@ -11675,6 +11708,7 @@ begin
  finally
   fApplication.UnlockSwapChain;
  end;
+ fApplication.RecordPresentCallTime;
  fLastPresentID:=PresentID;
  fLastPresentTime:=fApplication.fHighResolutionTimer.GetTime;
  if PresentResult<>VK_SUCCESS then begin
@@ -11854,6 +11888,15 @@ begin
  fPresenterThread:=nil;
  fSwapChainLockNextTicket:=0;
  fSwapChainLockServingTicket:=0;
+ fGeneratedFrameLoggedPresentPath:=-1;
+ fPresentCallStatisticsLock:=TPasMPCriticalSection.Create;
+ fPresentCallStatisticsLastTime:=0;
+ fPresentCallStatisticsLastLogTime:=0;
+ fPresentCallStatisticsCount:=0;
+ fPresentCallStatisticsSum:=0.0;
+ fPresentCallStatisticsSumSquares:=0.0;
+ fPresentCallStatisticsMinimum:=0.0;
+ fPresentCallStatisticsMaximum:=0.0;
  fAcquireWaitStartTime:=0;
  fPresenterSwapChainImages:=0;
 
@@ -12204,6 +12247,7 @@ begin
  FreeAndNil(fRunnableListCriticalSection);
 
  DestroyPresenterThread;
+ FreeAndNil(fPresentCallStatisticsLock);
 
  FreeAndNil(fResourceManager);
 
@@ -14044,8 +14088,12 @@ begin
  fGeneratedFrameRefreshPeriod:=-1;
  fGeneratedFrameScheduledLastTargetTime:=0;
  // Anew with every swapchain, since a compositor may let a fullscreen window by, and keep to the refresh
- // cycles again for the window it became once more.
+ // cycles again for the window it became once more. The same goes for how late the display shows the
+ // presents, see WaitForSwapChainLatency, and the way of the presents goes into the log again.
  fPresentShownOnRefreshGrid:=0.0;
+ fGeneratedFramePresentWaitHurts:=false;
+ fGeneratedFramePresentWaitSlowFrames:=0;
+ fGeneratedFrameLoggedPresentPath:=-1;
 
  SetupPresentTimingReports;
 
@@ -14856,12 +14904,17 @@ begin
    // Not where the presents come several refresh cycles apart, on a display of a high refresh rate: there
    // that wait would hold every frame back by the lead and the rest of the refresh cycle on top of its
    // time, which takes from the frame rate, while the target times keep the presents even by themselves.
+   // And not where it turned out to hold the frames back beyond their refresh cycles, see
+   // PresentVulkanBackBuffer: that is so where the display shows the presents later than it reports, as
+   // a compositor or a laptop copying the picture over to another GPU may.
    PresentWaitForGeneratedFrames:=fGeneratedFramesPresented and
                                   (not fGeneratedFramesRightAway) and
+                                  (not fGeneratedFramePresentWaitHurts) and
                                   (fGeneratedFrameRefreshCycles>1) and
                                   ((fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) or
                                    (fPresentMode=TpvApplicationPresentMode.FIFOLatestReady)) and
                                   GeneratedFramePresentsOneRefreshApart;
+   fGeneratedFramePresentWaitActive:=PresentWaitForGeneratedFrames;
    if PresentWaitForGeneratedFrames then begin
     Latency:=Max(1,fPresentFrameLatency);
    end else begin
@@ -15929,6 +15982,123 @@ begin
          (fGeneratedFrameWorkInterval<=(fHighResolutionTimer.ToFloatSeconds(RefreshPeriod)*fGeneratedFrameRefreshCycles));
 end;
 
+// Which way the presents of the generated frames go, into the log whenever that changes: right away, at
+// target times or spaced on the CPU by the presenter thread, aPath shr 1 being one of these in that
+// order, and whether the present wait for them is on, the lowest bit. With what it was decided by.
+procedure TpvApplication.LogGeneratedFramePresentPath(const aPath:TpvInt32);
+var Way,Wait,Source:TpvUTF8String;
+    RefreshPeriod:TpvHighResolutionTime;
+begin
+ if (aPath<>fGeneratedFrameLoggedPresentPath) and assigned(fVulkanSwapChain) then begin
+  fGeneratedFrameLoggedPresentPath:=aPath;
+  case aPath shr 1 of
+   1:begin
+    Way:='right away';
+   end;
+   2:begin
+    Way:='at target times of present timing';
+   end;
+   else begin
+    Way:='spaced on the CPU by the presenter thread';
+   end;
+  end;
+  if (aPath and 1)<>0 then begin
+   Wait:='on';
+  end else if fGeneratedFramePresentWaitHurts then begin
+   Wait:='off, since it held the frames back';
+  end else begin
+   Wait:='off';
+  end;
+  RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+  if fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
+   Source:='present timing';
+  end else if RefreshPeriod>0 then begin
+   Source:='display mode';
+  end else begin
+   Source:='nothing, unknown';
+  end;
+  Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer',
+      'Generated frames go out '+Way+
+      ', present wait for them '+Wait+
+      ', present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+
+      ', '+IntToStr(fCountSwapChainImages)+' images, at least '+IntToStr(fVulkanSwapChain.MinImageCount)+' of them with the presentation'+
+      ', refresh cycle '+FloatToStrF(fHighResolutionTimer.ToFloatSeconds(RefreshPeriod)*1e3,ffFixed,8,3)+' ms by '+Source+
+      ', frames take '+FloatToStrF(fGeneratedFrameWorkInterval*1e3,ffFixed,8,3)+' ms'+
+      ' and come every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
+ end;
+end;
+
+// The time a present went out, for the intervals between the present calls of PresentIntervalStatistics,
+// from the main loop and from the presenter thread, see LogPresentCallStatistics.
+procedure TpvApplication.RecordPresentCallTime;
+var NowTime:TpvHighResolutionTime;
+    Interval:TpvDouble;
+begin
+ if fPresentIntervalStatistics then begin
+  NowTime:=fHighResolutionTimer.GetTime;
+  fPresentCallStatisticsLock.Acquire;
+  try
+   if fPresentCallStatisticsLastTime<>0 then begin
+    Interval:=fHighResolutionTimer.ToFloatSeconds(NowTime-fPresentCallStatisticsLastTime)*1e3;
+    if fPresentCallStatisticsCount=0 then begin
+     fPresentCallStatisticsMinimum:=Interval;
+     fPresentCallStatisticsMaximum:=Interval;
+    end else begin
+     fPresentCallStatisticsMinimum:=Min(fPresentCallStatisticsMinimum,Interval);
+     fPresentCallStatisticsMaximum:=Max(fPresentCallStatisticsMaximum,Interval);
+    end;
+    inc(fPresentCallStatisticsCount);
+    fPresentCallStatisticsSum:=fPresentCallStatisticsSum+Interval;
+    fPresentCallStatisticsSumSquares:=fPresentCallStatisticsSumSquares+sqr(Interval);
+   end;
+   fPresentCallStatisticsLastTime:=NowTime;
+  finally
+   fPresentCallStatisticsLock.Release;
+  end;
+ end;
+end;
+
+// With PresentIntervalStatistics, where there are no reports of past presents to tell when the presents
+// were shown, as without VK_EXT_present_timing: the intervals between the present calls, every two seconds,
+// which at least show how evenly they went out.
+procedure TpvApplication.LogPresentCallStatistics;
+var NowTime:TpvHighResolutionTime;
+    Count:TpvInt64;
+    Sum,SumSquares,Minimum,Maximum,Mean,Deviation:TpvDouble;
+begin
+ if fPresentIntervalStatistics and
+    ((fPresentTimingReportStage=0) or (fPresentTimingReportQueueState<=0)) then begin
+  NowTime:=fHighResolutionTimer.GetTime;
+  if (NowTime-fPresentCallStatisticsLastLogTime)>=(fHighResolutionTimer.SecondInterval*2) then begin
+   fPresentCallStatisticsLock.Acquire;
+   try
+    Count:=fPresentCallStatisticsCount;
+    Sum:=fPresentCallStatisticsSum;
+    SumSquares:=fPresentCallStatisticsSumSquares;
+    Minimum:=fPresentCallStatisticsMinimum;
+    Maximum:=fPresentCallStatisticsMaximum;
+    fPresentCallStatisticsCount:=0;
+    fPresentCallStatisticsSum:=0.0;
+    fPresentCallStatisticsSumSquares:=0.0;
+   finally
+    fPresentCallStatisticsLock.Release;
+   end;
+   if Count>0 then begin
+    Mean:=Sum/Count;
+    Deviation:=sqrt(Max(0.0,(SumSquares/Count)-sqr(Mean)));
+    Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer',
+        'Present call intervals (no reports of when they were shown): '+IntToStr(Count)+
+        ', mean '+FloatToStrF(Mean,ffFixed,8,3)+' ms'+
+        ', deviation '+FloatToStrF(Deviation,ffFixed,8,3)+' ms'+
+        ', minimum '+FloatToStrF(Minimum,ffFixed,8,3)+' ms'+
+        ', maximum '+FloatToStrF(Maximum,ffFixed,8,3)+' ms'+
+        ', frame generation interval '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
+   end;
+   fPresentCallStatisticsLastLogTime:=NowTime;
+  end;
+ end;
+end;
+
 // The swapchain is shared between the main loop and the presenter thread under a ticket lock, which takes
 // them in the order they came. A mutex would not: both sides take it again and again in short slices while
 // they wait, see PresenterSliceTimeOut, and the one which just gave it free mostly takes it again before
@@ -16484,6 +16654,7 @@ begin
     WaitStartTime:=fHighResolutionTimer.GetTime;
     PresentResult:=fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext);
     fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+    RecordPresentCallTime;
     case PresentResult of
      VK_SUCCESS,
      VK_SUBOPTIMAL_KHR:begin
@@ -16541,7 +16712,8 @@ var PresentIdKHR:TVkPresentIdKHR;
     OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence:boolean;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
-    WorkInterval:TpvDouble;
+    WorkInterval,RefreshSeconds:TpvDouble;
+    PresentPath:TpvInt32;
 begin
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
@@ -16662,6 +16834,37 @@ begin
    fGeneratedFrameRefreshCycles:=1;
   end else begin
    fGeneratedFrameRefreshCycles:=CountIntervalParts;
+  end;
+
+  // The present wait for the generated frames holds the frames to their refresh cycles, which they take
+  // no longer than by themselves, see GeneratedFramePresentsOneRefreshApart. When they come more than half
+  // a refresh cycle later than that all the same, for two seconds on end, the display shows the presents
+  // later than it reports, and the wait only holds the frames back on top. Then it stays off.
+  if fGeneratedFramePresentWaitActive and (fCountQueuedGeneratedFrames>0) then begin
+   RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+   if (RefreshSeconds>0.0) and
+      (fGeneratedFramePresentInterval>((fGeneratedFrameRefreshCycles+0.5)*RefreshSeconds)) then begin
+    inc(fGeneratedFramePresentWaitSlowFrames);
+    if fGeneratedFramePresentWaitSlowFrames>=120 then begin
+     fGeneratedFramePresentWaitHurts:=true;
+     Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','The present wait for the generated frames holds the frames to '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms instead of '+IntToStr(fGeneratedFrameRefreshCycles)+' refresh cycles of '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms, so it stays off for this swapchain');
+    end;
+   end else begin
+    fGeneratedFramePresentWaitSlowFrames:=0;
+   end;
+  end else begin
+   fGeneratedFramePresentWaitSlowFrames:=0;
+  end;
+
+  if fCountQueuedGeneratedFrames>0 then begin
+   if fGeneratedFramesRightAway then begin
+    PresentPath:=1;
+   end else if fCountGeneratedFrameTargetTimes>0 then begin
+    PresentPath:=2;
+   end else begin
+    PresentPath:=3;
+   end;
+   LogGeneratedFramePresentPath((PresentPath shl 1) or ord(fGeneratedFramePresentWaitActive));
   end;
 
   // The presents spaced on the CPU go out on the presenter thread, so that the waits between them do not
@@ -16921,6 +17124,7 @@ begin
     end;
    end;
    fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+   RecordPresentCallTime;
 
   end;
 
@@ -16930,6 +17134,8 @@ begin
  end;
 
  PollPresentTimingReports;
+
+ LogPresentCallStatistics;
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_END_NV,fDrawFrameCounter);
 
