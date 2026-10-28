@@ -141,6 +141,10 @@ const // The most swapchain images asked for with DesiredCountSwapChainImages. T
       // generated before it, see TpvApplication.GetFramePresentID.
       PresentIDsPerFrame=MaxGeneratedFramesPerFrame+1;
 
+      // The longest a wait on the swapchain may block inside TpvApplication.LockSwapChain while the
+      // other side may need the swapchain as well, in nanoseconds, see TpvApplicationPresenterThread.
+      PresenterSliceTimeOut=TpvUInt64(100000); // 0.1 milliseconds
+
       FrameTimesHistorySize=1 shl 10;
       FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
@@ -1649,6 +1653,70 @@ type EpvApplication=class(Exception)
        property Invoked:TPasMPBool32 read fInvoked;
      end;
 
+     // One present for TpvApplicationPresenterThread, with what goes along with it.
+     TpvApplicationPresenterJob=record
+      ImageIndex:TpvUInt32;
+      WaitSemaphore:TpvVulkanSemaphore;
+      PresentID:TpvUInt64; // zero for none
+      PresentTiming:boolean; // whether PresentTimingInfo goes along
+      PresentTimingInfo:TVkPresentTimingInfoEXT;
+      PresentFence:TVkFence; // VK_NULL_HANDLE for none
+      // How far after the present before this one is to be shown, zero for right after it, with the
+      // refresh cycle and whether the swapchain queues presents for it, see
+      // TpvApplicationPresenterThread.Pace.
+      Distance:TpvHighResolutionTime;
+      RefreshPeriod:TpvHighResolutionTime;
+      FIFO:boolean;
+      Rendered:boolean; // the present of a rendered frame, not of a generated one
+     end;
+
+     { TpvApplicationPresenterThread }
+
+     // Puts out the presents of frame generation which are spaced on the CPU, see
+     // TpvApplication.PresentVulkanBackBuffer. The waits between them, half a frame and more, run on this
+     // thread instead of in the main loop: there the next frame only starts once the present of the frame
+     // before went out, so it would wait them out on top of every frame, which halves the frame rate.
+     //
+     // The swapchain is shared with the main loop under TpvApplication.LockSwapChain, since present,
+     // acquire and present wait all need it externally synchronized. Neither side blocks inside the lock
+     // for longer than PresenterSliceTimeOut while the other one may need it, see
+     // TpvApplication.PresenterBusy.
+     TpvApplicationPresenterThread=class(TPasMPThread)
+      public
+       const CountJobSlots=16;
+      private
+       fApplication:TpvApplication;
+       fEvent:TPasMPSimpleEvent;
+       fIdleEvent:TPasMPSimpleEvent;
+       fJobLock:TPasMPCriticalSection;
+       fJobs:array[0..CountJobSlots-1] of TpvApplicationPresenterJob;
+       fJobReadIndex:TpvInt32;
+       fJobWriteIndex:TpvInt32;
+       fCountJobs:TPasMPInt32; // enqueued and not yet put out
+       fCountRenderedJobs:TPasMPInt32; // of them the presents of rendered frames
+       fFlush:TPasMPBool32;
+       fHurry:TPasMPBool32; // see Hurry
+       fWakeEvent:TPasMPSimpleEvent;
+       fResult:TPasMPInt32; // the first failed present since FetchResult, VK_SUCCESS otherwise
+       fLastPresentID:TpvUInt64;
+       fLastPresentTime:TpvHighResolutionTime;
+       procedure PauseUntil(const aTime:TpvHighResolutionTime);
+       function WaitForShown(const aPresentID:TpvUInt64;const aTimeOut:TpvHighResolutionTime):boolean;
+       procedure Pace(const aJob:TpvApplicationPresenterJob);
+       procedure Present(const aJob:TpvApplicationPresenterJob);
+      protected
+       procedure Execute; override;
+      public
+       constructor Create(const aApplication:TpvApplication); reintroduce;
+       destructor Destroy; override;
+       procedure Shutdown;
+       procedure Enqueue(const aJob:TpvApplicationPresenterJob);
+       function Busy:boolean;
+       procedure Hurry;
+       procedure WaitForIdle;
+       function FetchResult:TVkResult;
+     end;
+
      TpvApplicationDelayedObjectInstanceToFree=record
       ObjectInstance:TObject;
       IterationsLeft:TpvSizeInt;
@@ -2077,6 +2145,11 @@ type EpvApplication=class(Exception)
        fTimingCPUPresent:TpvDouble;
        fTimingCPUFramePacing:TpvDouble;
        fTimingCPUUpdateWait:TpvDouble;
+       fTimingCPULatencyWait:TpvDouble;
+       fTimingCPUAcquireSum:TpvDouble;
+       fTimingCPUPostPresent:TpvDouble;
+       fTimingCPUBetweenFrames:TpvDouble;
+       fTimingCPUFrameEndTime:TpvHighResolutionTime;
        fTimingCPUFrameStartTime:TpvHighResolutionTime;
        fTimingCPUUpdateStart:TpvDouble;
        fTimingCPUUpdateEnd:TpvDouble;
@@ -2183,7 +2256,7 @@ type EpvApplication=class(Exception)
        fGeneratedFrameCountPresents:TpvInt32;
 
        // Where the presents of an interval are spaced on the CPU instead, see TpvApplicationGeneratedFramePacing:
-       // whether they are, the distance between them, and when the last present went out.
+       // whether they are, and the distance between them, which TpvApplicationPresenterThread keeps.
        fGeneratedFramePacing:TpvApplicationGeneratedFramePacing;
 
        fGeneratedFrameCPUPacing:boolean;
@@ -2198,13 +2271,32 @@ type EpvApplication=class(Exception)
        // GeneratedFramesCloserThanRefresh.
        fDisplayWaitFraction:TpvDouble;
 
+       // How many of the presents spaced on the CPU were shown on the grid of the refresh cycles, smoothed,
+       // by the reports of past presents: an IMMEDIATE swapchain under a compositor which keeps to the
+       // refresh cycles, see GeneratedFramesCloserThanRefresh.
+       fPresentShownOnRefreshGrid:TpvDouble;
+
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
 
-       fGeneratedFrameCPUPacingLastPresentTime:TpvHighResolutionTime;
-
-       fGeneratedFrameLastPresentID:TpvUInt64;
-
        fGeneratedFrameRefreshPeriod:TpvHighResolutionTime; // -1 not looked up yet, 0 not known
+
+       // The presents spaced on the CPU go out on a thread of their own, made when first needed, see
+       // TpvApplicationPresenterThread, and the swapchain is shared with it under the lock.
+       fPresenterThread:TpvApplicationPresenterThread;
+
+       // The lock the swapchain is shared under, see LockSwapChain.
+       fSwapChainLockNextTicket:TPasMPInt32;
+
+       fSwapChainLockServingTicket:TPasMPInt32;
+
+       // Since when the acquire of the main loop finds no image free while the presenter thread is busy,
+       // zero when it does not, see TpvApplicationPresenterThread.Hurry.
+       fAcquireWaitStartTime:TpvHighResolutionTime;
+
+       // The swapchain images the presenter thread needs beyond DesiredCountSwapChainImages: one, for the
+       // rendered frame it holds back while the next one already takes its images, once it spaces
+       // generated frames at all, see GetCountSwapChainImagesToCreate.
+       fPresenterSwapChainImages:TpvInt32;
 
        // The reports of past presents, see SetupPresentTimingReports: the present stage whose times are
        // asked for, and the last present seen. They give the refresh cycles the target times are laid on,
@@ -2379,6 +2471,7 @@ type EpvApplication=class(Exception)
        procedure SetDesiredCountInFlightFrames(const aDesiredCountInFlightFrames:TpvInt32);
 
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
+       function GetCountSwapChainImagesToCreate:TpvInt32;
 
        function GetAndroidSeparateMouseAndTouch:boolean;
        procedure SetAndroidSeparateMouseAndTouch(const aValue:boolean);
@@ -2442,12 +2535,18 @@ type EpvApplication=class(Exception)
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
        procedure UpdateDisplayWaitFraction(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
-       procedure PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
+       procedure LockSwapChain;
+       procedure UnlockSwapChain;
+       function PresenterBusy:boolean;
+       procedure WaitForPresenterIdle;
+       procedure DestroyPresenterThread;
+       procedure ApplyPresenterResult;
+       function WaitForPresentID(const aPresentID,aTimeOut:TpvUInt64):TVkResult;
        procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
        procedure SetupPresentTimingReports;
        function EnsurePresentTimingReportQueue:boolean;
        procedure PollPresentTimingReports;
-       function PresentGeneratedFrames:TpvInt32;
+       function PresentGeneratedFrames(const aOnPresenterThread:boolean):TpvInt32;
        procedure RecordPresentID;
        function PresentVulkanBackBuffer:boolean;
 
@@ -2915,6 +3014,15 @@ type EpvApplication=class(Exception)
        property TimingCPUFramePacing:TpvDouble read fTimingCPUFramePacing;
 
        property TimingCPUUpdateWait:TpvDouble read fTimingCPUUpdateWait;
+
+       // The frame latency wait before the frame starts, see WaitForSwapChainLatency.
+       property TimingCPULatencyWait:TpvDouble read fTimingCPULatencyWait;
+
+       property TimingCPUPostPresent:TpvDouble read fTimingCPUPostPresent;
+
+       // From the end of the frame before, after its frame pacing, to the start of this one, with the
+       // events, the frame latency wait and the acquire in it.
+       property TimingCPUBetweenFrames:TpvDouble read fTimingCPUBetweenFrames;
 
        property TimingCPUUpdateStart:TpvDouble read fTimingCPUUpdateStart;
 
@@ -11267,6 +11375,352 @@ begin
  end;
 end;
 
+{ TpvApplicationPresenterThread }
+
+constructor TpvApplicationPresenterThread.Create(const aApplication:TpvApplication);
+begin
+ fApplication:=aApplication;
+ fEvent:=TPasMPSimpleEvent.Create;
+ fIdleEvent:=TPasMPSimpleEvent.Create;
+ fJobLock:=TPasMPCriticalSection.Create;
+ fJobReadIndex:=0;
+ fJobWriteIndex:=0;
+ fCountJobs:=0;
+ fCountRenderedJobs:=0;
+ fFlush:=TPasMPBool32(false);
+ fHurry:=TPasMPBool32(false);
+ fWakeEvent:=TPasMPSimpleEvent.Create;
+ fResult:=TPasMPInt32(VK_SUCCESS);
+ fLastPresentID:=0;
+ fLastPresentTime:=0;
+ inherited Create(false);
+end;
+
+destructor TpvApplicationPresenterThread.Destroy;
+begin
+ Shutdown;
+ FreeAndNil(fEvent);
+ FreeAndNil(fIdleEvent);
+ FreeAndNil(fWakeEvent);
+ FreeAndNil(fJobLock);
+ inherited Destroy;
+end;
+
+// Puts out what is still queued, without the spacing, and ends the thread.
+procedure TpvApplicationPresenterThread.Shutdown;
+begin
+ if not Finished then begin
+  TPasMPInterlocked.Write(fFlush,TPasMPBool32(true));
+  Terminate;
+  fWakeEvent.SetEvent;
+  fEvent.SetEvent;
+  WaitFor;
+ end;
+end;
+
+// For when the main loop waits for a swapchain image which only one of the presents still queued here
+// gives back: they go out right away then, without the rest of their spacing, since holding the main
+// loop back would make the interval longer, and with it the spacing, which holds it back the longer.
+procedure TpvApplicationPresenterThread.Hurry;
+begin
+ if Busy and not TPasMPInterlocked.Read(fHurry) then begin
+  TPasMPInterlocked.Write(fHurry,TPasMPBool32(true));
+  fWakeEvent.SetEvent;
+ end;
+end;
+
+// Waits until aTime, the most of it given back to the system, and only the last bit spun out for the
+// precision, see TpvHighResolutionTimer.Sleep, unless Hurry or the flush of WaitForIdle cut it short.
+procedure TpvApplicationPresenterThread.PauseUntil(const aTime:TpvHighResolutionTime);
+var Timer:TpvHighResolutionTimer;
+    NowTime,Remaining:TpvHighResolutionTime;
+    Milliseconds:TpvInt64;
+begin
+ Timer:=fApplication.fHighResolutionTimer;
+ repeat
+  if TPasMPInterlocked.Read(fHurry) or TPasMPInterlocked.Read(fFlush) then begin
+   break;
+  end;
+  NowTime:=Timer.GetTime;
+  if NowTime>=aTime then begin
+   break;
+  end;
+  Remaining:=aTime-NowTime;
+  Milliseconds:=Timer.ToMilliseconds(Remaining)-2;
+  if Milliseconds>0 then begin
+   fWakeEvent.WaitFor(Milliseconds);
+  end else begin
+   Timer.Sleep(Remaining);
+   break;
+  end;
+ until false;
+end;
+
+// The counts go up before the job is in the queue, so that Busy can never tell false for a job which is
+// queued but not yet put out. Only the main loop enqueues, so a full queue only waits for the thread.
+procedure TpvApplicationPresenterThread.Enqueue(const aJob:TpvApplicationPresenterJob);
+begin
+ while TPasMPInterlocked.Read(fCountJobs)>=CountJobSlots do begin
+  TPasMP.Yield;
+ end;
+ fJobLock.Acquire;
+ try
+  TPasMPInterlocked.Increment(fCountJobs);
+  if aJob.Rendered then begin
+   TPasMPInterlocked.Increment(fCountRenderedJobs);
+  end;
+  fJobs[fJobWriteIndex]:=aJob;
+  fJobWriteIndex:=(fJobWriteIndex+1) mod CountJobSlots;
+ finally
+  fJobLock.Release;
+ end;
+ fEvent.SetEvent;
+end;
+
+function TpvApplicationPresenterThread.Busy:boolean;
+begin
+ result:=TPasMPInterlocked.Read(fCountJobs)>0;
+end;
+
+// Waits until everything queued went out, which it then does without the spacing.
+procedure TpvApplicationPresenterThread.WaitForIdle;
+begin
+ if Busy then begin
+  TPasMPInterlocked.Write(fFlush,TPasMPBool32(true));
+  try
+   while Busy do begin
+    fIdleEvent.WaitFor(1);
+   end;
+  finally
+   TPasMPInterlocked.Write(fFlush,TPasMPBool32(false));
+  end;
+ end;
+end;
+
+function TpvApplicationPresenterThread.FetchResult:TVkResult;
+begin
+ result:=TVkResult(TPasMPInterlocked.Exchange(fResult,TPasMPInt32(VK_SUCCESS)));
+end;
+
+// Waits for a present to be shown, in slices of PresenterSliceTimeOut, so that the main loop gets the
+// swapchain in between, for at most aTimeOut. It only tells true when it really waited for it: a present
+// found shown already was shown at some time since it went out, which says nothing about when.
+function TpvApplicationPresenterThread.WaitForShown(const aPresentID:TpvUInt64;const aTimeOut:TpvHighResolutionTime):boolean;
+var Device:TpvVulkanDevice;
+    SwapChain:TpvVulkanSwapChain;
+    PresentWait2Info:TVkPresentWait2InfoKHR;
+    WaitResult:TVkResult;
+    StartTime,NowTime:TpvHighResolutionTime;
+    UsePresentWait2:boolean;
+begin
+ result:=false;
+ Device:=fApplication.fVulkanDevice;
+ SwapChain:=fApplication.fVulkanSwapChain;
+ UsePresentWait2:=SwapChain.PresentWait2Enabled and assigned(Device.Commands.Commands.WaitForPresent2KHR);
+ if not (UsePresentWait2 or
+         (Device.PresentWaitSupport and assigned(Device.Commands.Commands.WaitForPresentKHR))) then begin
+  exit;
+ end;
+ StartTime:=fApplication.fHighResolutionTimer.GetTime;
+ repeat
+  fApplication.LockSwapChain;
+  try
+   try
+    if UsePresentWait2 then begin
+     FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
+     PresentWait2Info.sType:=VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR;
+     PresentWait2Info.presentId:=aPresentID;
+     PresentWait2Info.timeout:=PresenterSliceTimeOut;
+     WaitResult:=Device.Commands.WaitForPresent2KHR(Device.Handle,SwapChain.Handle,@PresentWait2Info);
+    end else begin
+     WaitResult:=Device.Commands.WaitForPresentKHR(Device.Handle,SwapChain.Handle,aPresentID,PresenterSliceTimeOut);
+    end;
+   except
+    WaitResult:=VK_ERROR_UNKNOWN;
+   end;
+  finally
+   fApplication.UnlockSwapChain;
+  end;
+  NowTime:=fApplication.fHighResolutionTimer.GetTime;
+  if WaitResult<>VK_TIMEOUT then begin
+   break;
+  end;
+  if ((NowTime-StartTime)>=aTimeOut) or TPasMPInterlocked.Read(fFlush) or TPasMPInterlocked.Read(fHurry) then begin
+   exit;
+  end;
+  TPasMP.Yield;
+ until false;
+ result:=((WaitResult=VK_SUCCESS) or (WaitResult=VK_SUBOPTIMAL_KHR)) and
+         ((NowTime-StartTime)>fApplication.fHighResolutionTimer.FromFloatSeconds(0.00005));
+end;
+
+// The CPU spacing of a present after the one before. A present in a FIFO queue is shown for at least one
+// refresh cycle, so it comes the distance after the present before as soon as it goes out after the
+// refresh cycle before that one: only the part of the distance beyond one refresh cycle has to be waited
+// for, and with a distance of one refresh cycle nothing at all. Without FIFO, or with the refresh cycle
+// unknown, it is the whole distance, a little less, so as to be in time for the refresh cycle the present
+// is meant for.
+//
+// The wait goes from when the present before was shown, which it waits for where the device can wait for
+// presents, and otherwise from when that one went out.
+procedure TpvApplicationPresenterThread.Pace(const aJob:TpvApplicationPresenterJob);
+const Margin=0.001; // one millisecond
+var Timer:TpvHighResolutionTimer;
+    MarginTime,Delay,ShownTime,TargetTime,NowTime:TpvHighResolutionTime;
+begin
+ if (aJob.Distance<=0) or TPasMPInterlocked.Read(fFlush) or TPasMPInterlocked.Read(fHurry) then begin
+  exit;
+ end;
+ Timer:=fApplication.fHighResolutionTimer;
+ MarginTime:=Timer.FromFloatSeconds(Margin);
+ if (aJob.RefreshPeriod>0) and aJob.FIFO then begin
+  if aJob.Distance<=(aJob.RefreshPeriod+MarginTime) then begin
+   exit;
+  end;
+  Delay:=(aJob.Distance-aJob.RefreshPeriod)+MarginTime;
+ end else begin
+  Delay:=aJob.Distance-MarginTime;
+ end;
+ ShownTime:=fLastPresentTime;
+ if (fLastPresentID<>0) and
+    WaitForShown(fLastPresentID,Max(Timer.FromFloatSeconds(0.001),aJob.Distance*2)) then begin
+  ShownTime:=Timer.GetTime;
+ end;
+ TargetTime:=ShownTime+Delay;
+ NowTime:=Timer.GetTime;
+ if (TargetTime>NowTime) and ((TargetTime-NowTime)<=aJob.Distance) then begin
+  PauseUntil(TargetTime);
+ end;
+end;
+
+procedure TpvApplicationPresenterThread.Present(const aJob:TpvApplicationPresenterJob);
+var Device:TpvVulkanDevice;
+    SwapChain:TpvVulkanSwapChain;
+    PresentIdKHR:TVkPresentIdKHR;
+    PresentId2KHR:TVkPresentId2KHR;
+    PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
+    PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
+    PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
+    PresentFenceHandle:TVkFence;
+    PresentID:TpvUInt64;
+    PresentNext:Pointer;
+    PresentResult:TVkResult;
+begin
+ Device:=fApplication.fVulkanDevice;
+ SwapChain:=fApplication.fVulkanSwapChain;
+ PresentNext:=nil;
+ PresentID:=aJob.PresentID;
+ if PresentID<>0 then begin
+  if SwapChain.PresentID2Enabled then begin
+   FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
+   PresentId2KHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;
+   PresentId2KHR.swapchainCount:=1;
+   PresentId2KHR.pPresentIds:=@PresentID;
+   PresentNext:=@PresentId2KHR;
+  end else begin
+   FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
+   PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+   PresentIdKHR.swapchainCount:=1;
+   PresentIdKHR.pPresentIds:=@PresentID;
+   PresentNext:=@PresentIdKHR;
+  end;
+ end;
+ if aJob.PresentTiming then begin
+  PresentTimingInfoEXT:=aJob.PresentTimingInfo;
+  PresentTimingInfoEXT.pNext:=nil;
+  FillChar(PresentTimingsInfoEXT,SizeOf(TVkPresentTimingsInfoEXT),#0);
+  PresentTimingsInfoEXT.sType:=VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+  PresentTimingsInfoEXT.swapchainCount:=1;
+  PresentTimingsInfoEXT.pTimingInfos:=@PresentTimingInfoEXT;
+  PresentTimingsInfoEXT.pNext:=PresentNext;
+  PresentNext:=@PresentTimingsInfoEXT;
+ end;
+ if aJob.PresentFence<>VK_NULL_HANDLE then begin
+  PresentFenceHandle:=aJob.PresentFence;
+  FillChar(PresentFenceInfo,SizeOf(TVkSwapchainPresentFenceInfoKHR),#0);
+  PresentFenceInfo.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR;
+  PresentFenceInfo.swapchainCount:=1;
+  PresentFenceInfo.pFences:=@PresentFenceHandle;
+  PresentFenceInfo.pNext:=PresentNext;
+  PresentNext:=@PresentFenceInfo;
+ end;
+{$ifdef PasVulkanFrameTrace}
+ pvFrameTraceAdd(pvFrameTraceKindPresent,aJob.ImageIndex,PresentID,TpvUInt64(aJob.WaitSemaphore.Handle));
+{$endif}
+ fApplication.LockSwapChain;
+ try
+  try
+   PresentResult:=SwapChain.QueuePresentImage(Device.PresentQueue,aJob.ImageIndex,aJob.WaitSemaphore,PresentNext);
+  except
+   on VulkanResultException:EpvVulkanResultException do begin
+    PresentResult:=VulkanResultException.ResultCode;
+   end;
+  end;
+ finally
+  fApplication.UnlockSwapChain;
+ end;
+ fLastPresentID:=PresentID;
+ fLastPresentTime:=fApplication.fHighResolutionTimer.GetTime;
+ if PresentResult<>VK_SUCCESS then begin
+  TPasMPInterlocked.CompareExchange(fResult,TPasMPInt32(PresentResult),TPasMPInt32(VK_SUCCESS));
+ end;
+end;
+
+// Puts the queued presents out in order, each one spaced after the one before, except when it is behind
+// by a whole interval or more, which shows in a later rendered frame queued already, or when the main
+// loop waits for it, see Hurry: then it catches up right away instead of keeping everything that much
+// later.
+procedure TpvApplicationPresenterThread.Execute;
+var Job:TpvApplicationPresenterJob;
+    HasJob:boolean;
+    ExceptionString:String;
+begin
+{$ifdef HAS_NAMETHREADFORDEBUGGING}
+ NameThreadForDebugging('TpvApplicationPresenterThread');
+{$endif}
+ ReturnValue:=0;
+ Priority:=TThreadPriority.tpHigher;
+ try
+  while not Terminated do begin
+   fEvent.WaitFor;
+   repeat
+    fJobLock.Acquire;
+    try
+     HasJob:=fJobReadIndex<>fJobWriteIndex;
+     if HasJob then begin
+      Job:=fJobs[fJobReadIndex];
+      fJobReadIndex:=(fJobReadIndex+1) mod CountJobSlots;
+     end;
+    finally
+     fJobLock.Release;
+    end;
+    if not HasJob then begin
+     break;
+    end;
+    if TPasMPInterlocked.Read(fCountRenderedJobs)<=1 then begin
+     Pace(Job);
+    end;
+    Present(Job);
+    if Job.Rendered then begin
+     TPasMPInterlocked.Decrement(fCountRenderedJobs);
+    end;
+    if TPasMPInterlocked.Decrement(fCountJobs)=0 then begin
+     // Hurry is about the presents queued when it came, and these are all out now.
+     TPasMPInterlocked.Write(fHurry,TPasMPBool32(false));
+     fIdleEvent.SetEvent;
+    end;
+   until false;
+  end;
+ except
+  on e:Exception do begin
+   ExceptionString:=DumpExceptionCallStack(e);
+   TpvApplication.Log(LOG_ERROR,'TpvApplicationPresenterThread.Execute',ExceptionString);
+   LogCrash(ExceptionString,false);
+   raise;
+  end;
+ end;
+end;
+
 constructor TpvApplication.Create;
 var FrameIndex:TpvInt32;
 begin
@@ -11380,6 +11834,12 @@ begin
 
  fVulkanFrameFencesReady:=0;
  fVulkanFrameFenceCounter:=0;
+
+ fPresenterThread:=nil;
+ fSwapChainLockNextTicket:=0;
+ fSwapChainLockServingTicket:=0;
+ fAcquireWaitStartTime:=0;
+ fPresenterSwapChainImages:=0;
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -11662,6 +12122,11 @@ begin
  fTimingCPUPresent:=0.0;
  fTimingCPUFramePacing:=0.0;
  fTimingCPUUpdateWait:=0.0;
+ fTimingCPULatencyWait:=0.0;
+ fTimingCPUAcquireSum:=0.0;
+ fTimingCPUPostPresent:=0.0;
+ fTimingCPUBetweenFrames:=0.0;
+ fTimingCPUFrameEndTime:=0;
  fTimingCPUFrameStartTime:=0;
  fTimingCPUUpdateStart:=0.0;
  fTimingCPUUpdateEnd:=0.0;
@@ -11721,6 +12186,8 @@ begin
  fRunnableList:=nil;
  fRunnableListCount:=0;
  FreeAndNil(fRunnableListCriticalSection);
+
+ DestroyPresenterThread;
 
  FreeAndNil(fResourceManager);
 
@@ -12192,6 +12659,13 @@ begin
  end;
 end;
 
+// The count of images a swapchain is made with: DesiredCountSwapChainImages, and the one the presenter
+// thread needs on top, see fPresenterSwapChainImages.
+function TpvApplication.GetCountSwapChainImagesToCreate:TpvInt32;
+begin
+ result:=Min(fDesiredCountSwapChainImages+fPresenterSwapChainImages,MaxSwapChainImages);
+end;
+
 function TpvApplication.GetAndroidSeparateMouseAndTouch:boolean;
 begin
  result:=not (fAndroidMouseTouchEvents or fAndroidTouchMouseEvents);
@@ -12402,6 +12876,10 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
+   // Its presents wait on work of the device, and are not waited for by the device idle wait.
+   if assigned(fPresenterThread) then begin
+    fPresenterThread.WaitForIdle;
+   end;
    if fUpdateWaitsForGPU then begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
      fUpdateThread.WaitForDone;
@@ -13397,7 +13875,7 @@ begin
                                              fVulkanOldSwapChain,
                                              fWidth,
                                              fHeight,
-                                             fDesiredCountSwapChainImages, //IfThen(fPresentMode<>TpvApplicationPresentMode.Immediate,fDesiredCountSwapChainImages,1),
+                                             GetCountSwapChainImagesToCreate, //IfThen(fPresentMode<>TpvApplicationPresentMode.Immediate,fDesiredCountSwapChainImages,1),
                                              1,
                                              VK_FORMAT_UNDEFINED,
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
@@ -13417,7 +13895,7 @@ begin
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
 
- Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','Present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+' (asked for '+IntToStr(TpvInt64(fVulkanSwapChain.PresentMode))+'), '+IntToStr(fCountSwapChainImages)+' images');
+ Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','Present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+' (asked for '+IntToStr(TpvInt64(fVulkanSwapChain.PresentMode))+'), '+IntToStr(fCountSwapChainImages)+' images, at least '+IntToStr(fVulkanSwapChain.MinImageCount)+' of them with the presentation');
 
  // Query VK_EXT_present_timing refresh duration if available
  fFramePacingPresentTimingAvailable:=false;
@@ -13549,6 +14027,9 @@ begin
  fCountGeneratedFrameTargetTimes:=0;
  fGeneratedFrameRefreshPeriod:=-1;
  fGeneratedFrameScheduledLastTargetTime:=0;
+ // Anew with every swapchain, since a compositor may let a fullscreen window by, and keep to the refresh
+ // cycles again for the window it became once more.
+ fPresentShownOnRefreshGrid:=0.0;
 
  SetupPresentTimingReports;
 
@@ -13556,7 +14037,7 @@ begin
  InitializeLowLatencyMode;
  fLowLatencyAppliedMode:=fLowLatencyMode;
 
- fDesiredCountSwapChainImagesApplied:=fDesiredCountSwapChainImages;
+ fDesiredCountSwapChainImagesApplied:=GetCountSwapChainImagesToCreate;
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
@@ -13569,6 +14050,7 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanSwapChain');
 {$ifend}
+ DestroyPresenterThread;
  for Index:=0 to length(fVulkanWaitFencesReady)-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
  end;
@@ -14342,7 +14824,6 @@ var Target,TimeOut:TpvUInt64;
     PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
-    PresentWait2Info:TVkPresentWait2InfoKHR;
     FrameFenceTimedOut:boolean;
     DisplayWaitStartTime:TpvHighResolutionTime;
 begin
@@ -14376,21 +14857,9 @@ begin
     end;
     DisplayWaitStartTime:=fHighResolutionTimer.GetTime;
     // Asked of the swapchain, not of the device: vkWaitForPresent2KHR requires the swapchain to carry
-    // VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR, which it only does when the surface allowed it.
-    if fVulkanSwapChain.PresentWait2Enabled and
-       assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR) then begin
-     // VK_KHR_present_wait2 path
-     FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
-     PresentWait2Info.sType:=VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR;
-     PresentWait2Info.presentId:=Target;
-     PresentWait2Info.timeout:=TimeOut;
-     WaitResult:=fVulkanDevice.Commands.WaitForPresent2KHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,@PresentWait2Info);
-    end else if assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
-     // VK_KHR_present_wait fallback path
-     WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
-    end else begin
-     WaitResult:=VK_SUCCESS;
-    end;
+    // VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR, which it only does when the surface allowed it, see
+    // WaitForPresentID, which prefers present_wait2 and falls back to present_wait.
+    WaitResult:=WaitForPresentID(Target,TimeOut);
     UpdateDisplayWaitFraction(fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-DisplayWaitStartTime));
     case WaitResult of
      VK_SUCCESS,
@@ -14632,6 +15101,7 @@ function TpvApplication.AcquireVulkanBackBuffer:boolean;
 var RecreationTries,
     ImageIndex,FrameIndex,NextInFlightFrameIndex,InFlightFenceIndex:TpvInt32;
     TimeOut:TpvUInt64;
+    AcquireResult:TVkResult;
 begin
 
  result:=false;
@@ -14648,6 +15118,9 @@ begin
      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
      fVulkanSurfaceRecreated:=true;
     end;
+
+    // A present of the presenter thread may have found the swapchain out of date meanwhile.
+    ApplyPresenterResult;
 
     RecreationTries:=0;
 
@@ -14739,6 +15212,11 @@ begin
         end else begin
          TimeOut:=0;
         end;
+        // In slices while the presenter thread may need the swapchain, see PresenterBusy: a time out
+        // comes back here through the main loop, which calls again.
+        if PresenterBusy then begin
+         TimeOut:=Min(TimeOut,PresenterSliceTimeOut);
+        end;
         NextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
         if NextInFlightFrameIndex>=fCountInFlightFrames then begin
          dec(NextInFlightFrameIndex,fCountInFlightFrames);
@@ -14748,9 +15226,18 @@ begin
         // be matched against the acquire which should have made its wait come true
         pvFrameTraceAdd(pvFrameTraceKindAcquire,fSwapChainImageCounterIndex,TpvUInt64(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex].Handle));
 {$endif}
-        case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
-                                               fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
-                                               TimeOut) of
+        LockSwapChain;
+        try
+         AcquireResult:=fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
+                                                          fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
+                                                          TimeOut);
+        finally
+         UnlockSwapChain;
+        end;
+        if (AcquireResult<>VK_TIMEOUT) and (AcquireResult<>VK_NOT_READY) then begin
+         fAcquireWaitStartTime:=0;
+        end;
+        case AcquireResult of
          VK_SUCCESS:begin
           fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=true;
           fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
@@ -14782,6 +15269,15 @@ begin
           end;
          end;
          else {VK_TIMEOUT:}begin
+          // No image free for a millisecond already: when the presenter thread holds one back, it puts
+          // it out right away.
+          if PresenterBusy then begin
+           if fAcquireWaitStartTime=0 then begin
+            fAcquireWaitStartTime:=fHighResolutionTimer.GetTime;
+           end else if (fHighResolutionTimer.GetTime-fAcquireWaitStartTime)>fHighResolutionTimer.FromFloatSeconds(0.001) then begin
+            fPresenterThread.Hurry;
+           end;
+          end;
           break;
          end;
         end;
@@ -14922,6 +15418,9 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
+       // What the presenter thread still has goes out first, the fences of its presents waited on below.
+       WaitForPresenterIdle;
+
        if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
         fUpdateThread.WaitForDone;
        end else begin
@@ -15046,6 +15545,10 @@ const AcquireTimeOut=TpvUInt64(100000000); // 100 milliseconds, after which the 
 var SlotIndex:TpvInt32;
     ImageIndex:TpvUInt32;
     Fence:TpvVulkanFence;
+    AcquireResult:TVkResult;
+    TimeOut:TpvUInt64;
+    StartTime:TpvHighResolutionTime;
+    Sliced:boolean;
 begin
 
  result:=false;
@@ -15073,9 +15576,34 @@ begin
  // A finite time out, since an image that never becomes free would otherwise hang the frame: that is the
  // case when the swapchain has too few images for that many acquired at once. An image that is out of
  // date leaves the generated frame out as well, the present of the rendered frame then sees to the
- // recreation.
+ // recreation. In slices while the presenter thread may need the swapchain, see PresenterBusy, the
+ // more so as the image waited for may be one that only its next present gives back.
  try
-  case fVulkanSwapChain.AcquireNextImageIndex(ImageIndex,fGeneratedFrameAcquireSemaphores[SlotIndex],Fence,AcquireTimeOut) of
+  StartTime:=fHighResolutionTimer.GetTime;
+  repeat
+   Sliced:=PresenterBusy;
+   if Sliced then begin
+    TimeOut:=PresenterSliceTimeOut;
+   end else begin
+    TimeOut:=AcquireTimeOut;
+   end;
+   LockSwapChain;
+   try
+    AcquireResult:=fVulkanSwapChain.AcquireNextImageIndex(ImageIndex,fGeneratedFrameAcquireSemaphores[SlotIndex],Fence,TimeOut);
+   finally
+    UnlockSwapChain;
+   end;
+   if (not Sliced) or
+      ((AcquireResult<>VK_TIMEOUT) and (AcquireResult<>VK_NOT_READY)) or
+      (TpvUInt64(fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime-StartTime))>=AcquireTimeOut) then begin
+    break;
+   end;
+   if (fHighResolutionTimer.GetTime-StartTime)>fHighResolutionTimer.FromFloatSeconds(0.001) then begin
+    fPresenterThread.Hurry;
+   end;
+   TPasMP.Yield;
+  until false;
+  case AcquireResult of
    VK_SUCCESS,
    VK_SUBOPTIMAL_KHR:begin
     fGeneratedFrameAcquireFencesReady[SlotIndex]:=true;
@@ -15304,7 +15832,7 @@ end;
 
 // Whether the presents of an interval cannot all be shown on a swapchain which does not hold the
 // application back to the refresh rate: FIFO_LATEST_READY and MAILBOX show the newest ready image at
-// every refresh cycle and drop the older ones, IMMEDIATE tears them all into the same one.
+// every refresh cycle and drop the older ones.
 //
 // That is so where they come closer than a refresh cycle, with a tenth of margin, so that it does not
 // flip right at the boundary. And it is so where the frames could be rendered faster than the refresh
@@ -15313,9 +15841,17 @@ end;
 // holds the rendering back to that, a hold which keeps itself, since then the presents never come closer.
 //
 // Then spreading them, by target times or on the CPU, would only decide by chance which of them is shown:
-// the generated frames would mostly push the rendered ones out, and the CPU spacing would hold the
-// rendering back on top. They go out right away instead, and the rendered frame, the newest at every
-// refresh cycle, is the one shown, at the full rate the frames are rendered at.
+// the generated frames would mostly push the rendered ones out. They go out right away instead, and the
+// rendered frame, the newest at every refresh cycle, is the one shown, at the full rate the frames are
+// rendered at.
+//
+// IMMEDIATE drops none, it shows every present from when it comes on, torn into the one before. Spread
+// out, each of them is on the screen for its part of the interval, while right away a generated frame
+// would only be on it until the rendered frame right after it comes, a sliver of it at most. The spacing
+// costs the rendering nothing there, it runs on the presenter thread, see TpvApplicationPresenterThread.
+// Unless something keeps to the refresh cycles all the same, a compositor with a window, which shows in
+// the reports of past presents, see fPresentShownOnRefreshGrid: then it is the same as with MAILBOX, and
+// spread out, which of them is shown at a refresh cycle would only go by how the phase drifts.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
 begin
@@ -15324,7 +15860,8 @@ begin
     (aCountPresents>0) and
     ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
      (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
-     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR)) then begin
+     ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
+      (fPresentShownOnRefreshGrid>0.8))) then begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
   result:=(RefreshPeriod>0) and
           ((fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/aCountPresents)<((RefreshPeriod*9) div 10)) or
@@ -15332,66 +15869,142 @@ begin
  end;
 end;
 
-// The CPU spacing of the presents of an interval, before every present but the first. A present in a FIFO
-// queue is shown for at least one refresh cycle, so it comes the distance after the present before as soon
-// as it goes out after the refresh cycle before that one: only the part of the distance beyond one refresh
-// cycle has to be waited for, and with a distance of one refresh cycle nothing at all. Without FIFO, or
-// with the refresh cycle unknown, it is the whole distance, a little less, so as to be in time for the
-// refresh cycle the present is meant for.
-//
-// The wait goes from when the present before was shown, which it waits for where the device can wait for
-// presents, and otherwise from when that one went out.
-procedure TpvApplication.PaceGeneratedFramePresentOnCPU(const aPreviousPresentID:TpvUInt64);
-const Margin=0.001; // one millisecond
+// The swapchain is shared between the main loop and the presenter thread under a ticket lock, which takes
+// them in the order they came. A mutex would not: both sides take it again and again in short slices while
+// they wait, see PresenterSliceTimeOut, and the one which just gave it free mostly takes it again before
+// the other one even wakes up, so the main loop could keep the presenter thread from the very present it
+// waits for, until its wait ran out. It is held only briefly, so the wait for it spins with a yield.
+procedure TpvApplication.LockSwapChain;
+var Ticket:TPasMPInt32;
+begin
+ Ticket:=TPasMPInterlocked.Increment(fSwapChainLockNextTicket)-1;
+ while TPasMPInterlocked.Read(fSwapChainLockServingTicket)<>Ticket do begin
+  TPasMP.Yield;
+ end;
+end;
+
+procedure TpvApplication.UnlockSwapChain;
+begin
+ TPasMPInterlocked.Increment(fSwapChainLockServingTicket);
+end;
+
+// Whether the presenter thread has presents still to put out. Until then it may use the swapchain at any
+// time, so no wait on the swapchain in the main loop may block inside LockSwapChain for longer than a
+// slice of PresenterSliceTimeOut. Only the main loop gives it presents, so it cannot become busy while
+// the main loop is in such a wait itself.
+function TpvApplication.PresenterBusy:boolean;
+begin
+ result:=assigned(fPresenterThread) and fPresenterThread.Busy;
+end;
+
+// Puts out all presents of the presenter thread right away, before the main loop presents by itself again,
+// which keeps the order of the presents, or before the swapchain goes away.
+procedure TpvApplication.WaitForPresenterIdle;
+begin
+ if assigned(fPresenterThread) then begin
+  fPresenterThread.WaitForIdle;
+  ApplyPresenterResult;
+ end;
+end;
+
+// Before the swapchain goes away: what is still queued goes out first, so that every acquired image is
+// presented and every semaphore waited on, and what went wrong with it does not matter anymore.
+procedure TpvApplication.DestroyPresenterThread;
+begin
+ if assigned(fPresenterThread) then begin
+  try
+   fPresenterThread.Shutdown;
+  finally
+   FreeAndNil(fPresenterThread);
+  end;
+ end;
+end;
+
+// What went wrong with the presents of the presenter thread since the last look, taken over the same as
+// it is for a present of the main loop itself.
+procedure TpvApplication.ApplyPresenterResult;
+var PresentResult:TVkResult;
+begin
+ if assigned(fPresenterThread) then begin
+  PresentResult:=fPresenterThread.FetchResult;
+  case PresentResult of
+   VK_SUCCESS:begin
+   end;
+   VK_SUBOPTIMAL_KHR:begin
+    if fVulkanRecreateSwapChainOnSuboptimalSurface and
+       not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     VulkanDebugLn('Suboptimal surface detected!');
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    end;
+   end;
+   VK_ERROR_OUT_OF_DATE_KHR:begin
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    end;
+   end;
+   VK_ERROR_SURFACE_LOST_KHR,
+   VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+    end;
+   end;
+   else begin
+    if PresentResult<VK_SUCCESS then begin
+     raise EpvVulkanResultException.Create(PresentResult);
+    end;
+   end;
+  end;
+ end;
+end;
+
+// Waits for a present to be shown, for the main loop. While the presenter thread is busy, it does so in
+// slices of PresenterSliceTimeOut, see PresenterBusy.
+function TpvApplication.WaitForPresentID(const aPresentID,aTimeOut:TpvUInt64):TVkResult;
 var PresentWait2Info:TVkPresentWait2InfoKHR;
-    WaitResult:TVkResult;
-    ShownTime,TargetTime,NowTime,WaitStartTime,Delay:TpvHighResolutionTime;
+    UsePresentWait2,Sliced:boolean;
+    StartTime:TpvHighResolutionTime;
     TimeOut:TpvUInt64;
 begin
- GetGeneratedFrameRefreshPeriod;
- if (fGeneratedFrameRefreshPeriod>0) and
-    ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
-     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR)) then begin
-  if fGeneratedFrameCPUPacingDistance<=(fGeneratedFrameRefreshPeriod+fHighResolutionTimer.FromFloatSeconds(Margin)) then begin
-   exit;
-  end;
-  Delay:=(fGeneratedFrameCPUPacingDistance-fGeneratedFrameRefreshPeriod)+fHighResolutionTimer.FromFloatSeconds(Margin);
- end else begin
-  Delay:=fGeneratedFrameCPUPacingDistance-fHighResolutionTimer.FromFloatSeconds(Margin);
+ UsePresentWait2:=fVulkanSwapChain.PresentWait2Enabled and
+                  assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR);
+ if not (UsePresentWait2 or assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR)) then begin
+  result:=VK_SUCCESS;
+  exit;
  end;
- ShownTime:=fGeneratedFrameCPUPacingLastPresentTime;
- if aPreviousPresentID<>0 then begin
-  TimeOut:=TpvUInt64(Max(1000000,fHighResolutionTimer.ToNanoseconds(fGeneratedFrameCPUPacingDistance)*2));
-  WaitResult:=VK_NOT_READY;
-  WaitStartTime:=fHighResolutionTimer.GetTime;
+ StartTime:=fHighResolutionTimer.GetTime;
+ repeat
+  Sliced:=PresenterBusy;
+  if Sliced then begin
+   TimeOut:=Min(aTimeOut,PresenterSliceTimeOut);
+  end else begin
+   TimeOut:=aTimeOut;
+  end;
+  LockSwapChain;
   try
-   if fVulkanSwapChain.PresentWait2Enabled and
-      assigned(fVulkanDevice.Commands.Commands.WaitForPresent2KHR) then begin
+   if UsePresentWait2 then begin
     FillChar(PresentWait2Info,SizeOf(TVkPresentWait2InfoKHR),#0);
     PresentWait2Info.sType:=VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR;
-    PresentWait2Info.presentId:=aPreviousPresentID;
+    PresentWait2Info.presentId:=aPresentID;
     PresentWait2Info.timeout:=TimeOut;
-    WaitResult:=fVulkanDevice.Commands.WaitForPresent2KHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,@PresentWait2Info);
-   end else if fVulkanDevice.PresentWaitSupport and
-               assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
-    WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,aPreviousPresentID,TimeOut);
+    result:=fVulkanDevice.Commands.WaitForPresent2KHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,@PresentWait2Info);
+   end else begin
+    result:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,aPresentID,TimeOut);
    end;
-  except
-   WaitResult:=VK_NOT_READY;
+  finally
+   UnlockSwapChain;
   end;
-  // Only a wait that really waited tells when the present was shown; one that came back at once found it
-  // shown already, at some time since it went out.
-  NowTime:=fHighResolutionTimer.GetTime;
-  if ((WaitResult=VK_SUCCESS) or (WaitResult=VK_SUBOPTIMAL_KHR)) and
-     ((NowTime-WaitStartTime)>fHighResolutionTimer.FromFloatSeconds(0.0005)) then begin
-   ShownTime:=NowTime;
+  if (result<>VK_TIMEOUT) or
+     (not Sliced) or
+     (TpvUInt64(fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime-StartTime))>=aTimeOut) then begin
+   break;
   end;
- end;
- TargetTime:=ShownTime+Delay;
- NowTime:=fHighResolutionTimer.GetTime;
- if (TargetTime>NowTime) and ((TargetTime-NowTime)<=fGeneratedFrameCPUPacingDistance) then begin
-  fHighResolutionTimer.Sleep(TargetTime-NowTime);
- end;
+  TPasMP.Yield;
+ until false;
 end;
 
 // Chains the target time of the aPresentIndex-th present of the interval into a present: the absolute
@@ -15500,10 +16113,15 @@ end;
 function TpvApplication.EnsurePresentTimingReportQueue:boolean;
 begin
  if (fPresentTimingReportQueueState=0) and (fPresentTimingReportStage<>0) then begin
-  if fVulkanDevice.Commands.SetSwapchainPresentTimingQueueSizeEXT(fVulkanDevice.Handle,fVulkanSwapChain.Handle,64)=VK_SUCCESS then begin
-   fPresentTimingReportQueueState:=1;
-  end else begin
-   fPresentTimingReportQueueState:=-1;
+  LockSwapChain;
+  try
+   if fVulkanDevice.Commands.SetSwapchainPresentTimingQueueSizeEXT(fVulkanDevice.Handle,fVulkanSwapChain.Handle,64)=VK_SUCCESS then begin
+    fPresentTimingReportQueueState:=1;
+   end else begin
+    fPresentTimingReportQueueState:=-1;
+   end;
+  finally
+   UnlockSwapChain;
   end;
  end;
  result:=fPresentTimingReportQueueState>0;
@@ -15609,6 +16227,21 @@ begin
      fGeneratedFramePresentLead:=fGeneratedFramePresentLead-(fGeneratedFramePresentLead div 64);
     end;
    end;
+   // Spaced on the CPU, the presents of a swapchain which shows them when they come, as IMMEDIATE does
+   // when nothing stands between, come at fractions of a refresh cycle apart. Shown on the grid of the
+   // refresh cycles all the same, with some of them on the same one, something does keep to the refresh
+   // cycles, a compositor mostly, see GeneratedFramesCloserThanRefresh.
+   if fGeneratedFrameCPUPacing and
+      (RefreshDuration>0.0) and
+      (fPresentTimingReportLastShownTime<>0) and
+      (Time>=fPresentTimingReportLastShownTime) then begin
+    Multiple:=((Time-fPresentTimingReportLastShownTime)*1e-6)/RefreshDuration;
+    if abs(Multiple-round(Multiple))<=0.15 then begin
+     fPresentShownOnRefreshGrid:=fPresentShownOnRefreshGrid+((1.0-fPresentShownOnRefreshGrid)*(1.0/32.0));
+    end else begin
+     fPresentShownOnRefreshGrid:=fPresentShownOnRefreshGrid-(fPresentShownOnRefreshGrid*(1.0/32.0));
+    end;
+   end;
    if fPresentIntervalStatistics and (fPresentIntervalStatisticsLastTime<>0) and (Time>fPresentIntervalStatisticsLastTime) then begin
     Interval:=(Time-fPresentIntervalStatisticsLastTime)*1e-6;
     if fPresentIntervalStatisticsCount=0 then begin
@@ -15686,17 +16319,21 @@ end;
 
 // Presents the frames generated for the current rendered frame, ahead of it. Where the device can time
 // presents, each of them and the rendered frame after them is shown a fraction of the interval between
-// the rendered frames after the one before, so that all of them come at even distances; otherwise they
-// go out as fast as the present mode lets them.
-function TpvApplication.PresentGeneratedFrames:TpvInt32;
+// the rendered frames after the one before, so that all of them come at even distances. Where they are
+// spaced on the CPU instead, they go to the presenter thread with that distance, see
+// TpvApplicationPresenterThread, the same as all presents do with aOnPresenterThread. Otherwise they go
+// out as fast as the present mode lets them.
+function TpvApplication.PresentGeneratedFrames(const aOnPresenterThread:boolean):TpvInt32;
 var Index:TpvInt32;
     ImageIndex:TpvUInt32;
     PresentIdKHR:TVkPresentIdKHR;
     PresentId2KHR:TVkPresentId2KHR;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
     PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
-    PresentNext:Pointer;
+    PresentNext,PresentTimingNext:Pointer;
     PresentWaitSemaphore:TpvVulkanSemaphore;
+    HasPresentID:boolean;
+    Job:TpvApplicationPresenterJob;
 begin
 
  result:=0;
@@ -15730,6 +16367,7 @@ begin
 
    PresentNext:=nil;
 
+   HasPresentID:=false;
    if fVulkanSwapChain.PresentID2Enabled then begin
     FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
     PresentId2KHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;
@@ -15737,6 +16375,7 @@ begin
     PresentId2KHR.pPresentIds:=@fVulkanPresentID;
     inc(fVulkanPresentID);
     PresentNext:=@PresentId2KHR;
+    HasPresentID:=true;
    end else if fVulkanDevice.PresentIDSupport then begin
     FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
     PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
@@ -15744,35 +16383,53 @@ begin
     PresentIdKHR.pPresentIds:=@fVulkanPresentID;
     inc(fVulkanPresentID);
     PresentNext:=@PresentIdKHR;
+    HasPresentID:=true;
    end;
 
+   PresentTimingNext:=PresentNext;
    ChainPresentTimingInfo(Index,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
 
-   if fGeneratedFrameCPUPacing and (Index>0) then begin
-    PaceGeneratedFramePresentOnCPU(fGeneratedFrameLastPresentID);
-   end;
+   if aOnPresenterThread then begin
+
+    FillChar(Job,SizeOf(TpvApplicationPresenterJob),#0);
+    Job.ImageIndex:=ImageIndex;
+    Job.WaitSemaphore:=PresentWaitSemaphore;
+    if HasPresentID then begin
+     Job.PresentID:=fVulkanPresentID;
+    end;
+    Job.PresentTiming:=PresentNext<>PresentTimingNext;
+    if Job.PresentTiming then begin
+     Job.PresentTimingInfo:=PresentTimingInfoEXT;
+    end;
+    Job.PresentFence:=VK_NULL_HANDLE;
+    if fGeneratedFrameCPUPacing then begin
+     Job.Distance:=fGeneratedFrameCPUPacingDistance;
+    end;
+    Job.RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+    Job.FIFO:=(fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+              (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+    Job.Rendered:=false;
+    fPresenterThread.Enqueue(Job);
+    RecordPresentID;
+    inc(result);
+
+   end else begin
 
 {$ifdef PasVulkanFrameTrace}
-   pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(PresentWaitSemaphore.Handle));
+    pvFrameTraceAdd(pvFrameTraceKindPresent,ImageIndex,fVulkanPresentID,TpvUInt64(PresentWaitSemaphore.Handle));
 {$endif}
 
-   case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext) of
-    VK_SUCCESS,
-    VK_SUBOPTIMAL_KHR:begin
-     RecordPresentID;
-     inc(result);
+    case fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext) of
+     VK_SUCCESS,
+     VK_SUBOPTIMAL_KHR:begin
+      RecordPresentID;
+      inc(result);
+     end;
+     else begin
+     end;
     end;
-    else begin
-    end;
-   end;
 
-   // What the CPU spacing of the next present goes by.
-   if fVulkanSwapChain.PresentID2Enabled or fVulkanDevice.PresentIDSupport then begin
-    fGeneratedFrameLastPresentID:=fVulkanPresentID;
-   end else begin
-    fGeneratedFrameLastPresentID:=0;
    end;
-   fGeneratedFrameCPUPacingLastPresentTime:=fHighResolutionTimer.GetTime;
 
   end;
 
@@ -15812,10 +16469,12 @@ var PresentIdKHR:TVkPresentIdKHR;
     PresentId2KHR:TVkPresentId2KHR;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
     PresentTimingInfoEXT:TVkPresentTimingInfoEXT;
-    PresentNext:Pointer;
+    PresentNext,PresentTimingNext:Pointer;
     PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
     PresentFenceHandle:TVkFence;
     CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
+    OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence:boolean;
+    Job:TpvApplicationPresenterJob;
 begin
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
@@ -15918,19 +16577,42 @@ begin
    end else begin
     SchedulePresentTargetTimes(CountIntervalParts);
    end;
-   CountGeneratedFramesPresented:=PresentGeneratedFrames;
   end else begin
    CountIntervalParts:=1;
-   CountGeneratedFramesPresented:=0;
    fCountGeneratedFrameTargetTimes:=0;
    fGeneratedFrameCPUPacing:=false;
    fGeneratedFramesRightAway:=false;
+  end;
+
+  // The presents spaced on the CPU go out on the presenter thread, so that the waits between them do not
+  // hold the next frame back, see TpvApplicationPresenterThread. So do all others for as long as it still
+  // has presents of its own to put out, which keeps them all in order.
+  OnPresenterThread:=((fCountQueuedGeneratedFrames>0) and fGeneratedFrameCPUPacing) or PresenterBusy;
+  if OnPresenterThread and not assigned(fPresenterThread) then begin
+   fPresenterThread:=TpvApplicationPresenterThread.Create(self);
+  end;
+
+  // While it holds this rendered frame back, the next one acquires its own image and those of its generated
+  // frames already, one image more than without it, which the presentation may not have to spare: then
+  // the next swapchain gets one more, see GetCountSwapChainImagesToCreate and the check of the main loop.
+  if OnPresenterThread and
+     fGeneratedFrameCPUPacing and
+     (fPresenterSwapChainImages=0) and
+     (fCountSwapChainImages<(TpvInt32(fVulkanSwapChain.MinImageCount)+fCountQueuedGeneratedFrames+2)) then begin
+   fPresenterSwapChainImages:=1;
+  end;
+
+  if fCountQueuedGeneratedFrames>0 then begin
+   CountGeneratedFramesPresented:=PresentGeneratedFrames(OnPresenterThread);
+  end else begin
+   CountGeneratedFramesPresented:=0;
   end;
 
   PresentNext:=nil;
 
   // Same as for the waiting side: VkPresentId2KHR may only be chained when the swapchain was created
   // with VK_SWAPCHAIN_CREATE_PRESENT_ID_2_BIT_KHR, so the swapchain is what decides.
+  HasPresentID:=false;
   if fVulkanSwapChain.PresentID2Enabled then begin
    // VK_KHR_present_id2 path
    FillChar(PresentId2KHR,SizeOf(TVkPresentId2KHR),#0);
@@ -15939,6 +16621,7 @@ begin
    PresentId2KHR.pPresentIds:=@fVulkanPresentID;
    inc(fVulkanPresentID);
    PresentNext:=@PresentId2KHR;
+   HasPresentID:=true;
   end else if fVulkanDevice.PresentIDSupport then begin
    // VK_KHR_present_id fallback path
    FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
@@ -15947,7 +16630,13 @@ begin
    PresentIdKHR.pPresentIds:=@fVulkanPresentID;
    inc(fVulkanPresentID);
    PresentNext:=@PresentIdKHR;
+   HasPresentID:=true;
   end;
+
+  // Whether a present timing info goes along, as it is with every branch below but the two of
+  // ChainPresentTimingInfo, which chains none where there is nothing to ask for.
+  HasPresentTiming:=true;
+  PresentTimingNext:=PresentNext;
 
   if not VulkanPresentTimingDecisionLogged then begin
    VulkanPresentTimingDecisionLogged:=true;
@@ -15962,6 +16651,7 @@ begin
    // SchedulePresentTargetTimes and ChainPresentTimingInfo; the frame pacing of the application stays out
    // of it, it would only pull the other way.
    ChainPresentTimingInfo(CountIntervalParts-1,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
+   HasPresentTiming:=PresentNext<>PresentTimingNext;
   end else if (fFramePacingMode=TpvApplicationFramePacingMode.VulkanPresentTimingFeedback) and
      fPresentTimingFeedbackInitialized and
      assigned(fVulkanDevice) and
@@ -15998,10 +16688,18 @@ begin
   end else if fPresentIntervalStatistics and (fPresentTimingReportStage<>0) then begin
    // No target time, only the present stage of the statistics.
    ChainPresentTimingInfo(-1,PresentTimingsInfoEXT,PresentTimingInfoEXT,PresentNext);
+   HasPresentTiming:=PresentNext<>PresentTimingNext;
+  end else begin
+   HasPresentTiming:=false;
   end;
 
-  // Chain present fence via VK_KHR_swapchain_maintenance1 when available
-  if fVulkanDevice.SwapchainMaintenance1Support and
+  // Chain present fence via VK_KHR_swapchain_maintenance1 when available. Not with a present of the
+  // presenter thread: these fences are the acquire fences as well, see AcquireVulkanBackBuffer, which
+  // would then wait for the present that thread holds back to its place in the interval, and so hold the
+  // next frame back once again.
+  HasPresentFence:=false;
+  if (not OnPresenterThread) and
+     fVulkanDevice.SwapchainMaintenance1Support and
      (fSwapChainImageIndex>=0) and
      (fSwapChainImageIndex<length(fVulkanPresentCompleteFences)) and
      assigned(fVulkanPresentCompleteFences[fSwapChainImageIndex]) then begin
@@ -16018,40 +16716,57 @@ begin
    PresentFenceInfo.pNext:=PresentNext;
    PresentNext:=@PresentFenceInfo;
    fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=true;
+   HasPresentFence:=true;
   end;
 
-  // With the CPU spacing, the rendered frame comes the distance after the last generated one as well.
-  if fGeneratedFrameCPUPacing and (CountGeneratedFramesPresented>0) then begin
-   PaceGeneratedFramePresentOnCPU(fGeneratedFrameLastPresentID);
-   fGeneratedFrameCPUPacingLastPresentTime:=fHighResolutionTimer.GetTime;
-  end;
+  if OnPresenterThread then begin
 
-  try
-   case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
-    VK_SUCCESS:begin
-     //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
-     RecordPresentID;
-     fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
-     if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
-      dec(fNextInFlightFrameIndex,fCountInFlightFrames);
-     end;
-     inc(fSwapChainImageCounterIndex);
-     if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
-      dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
-     end;
-     result:=true;
-    end;
-    VK_SUBOPTIMAL_KHR:begin
-     RecordPresentID;
-     if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
-      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                                TAcquireVulkanBackBufferState.RecreateSurface,
-                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-       VulkanDebugLn('Suboptimal surface detected!');
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-      end;
-     end else begin
+   // With the CPU spacing, the rendered frame comes the distance after the last generated one as well.
+   FillChar(Job,SizeOf(TpvApplicationPresenterJob),#0);
+   Job.ImageIndex:=fSwapChainImageIndex;
+   Job.WaitSemaphore:=fVulkanWaitSemaphore;
+   if HasPresentID then begin
+    Job.PresentID:=fVulkanPresentID;
+   end;
+   Job.PresentTiming:=HasPresentTiming;
+   if HasPresentTiming then begin
+    Job.PresentTimingInfo:=PresentTimingInfoEXT;
+   end;
+   if HasPresentFence then begin
+    Job.PresentFence:=PresentFenceHandle;
+   end else begin
+    Job.PresentFence:=VK_NULL_HANDLE;
+   end;
+   if fGeneratedFrameCPUPacing and (CountGeneratedFramesPresented>0) then begin
+    Job.Distance:=fGeneratedFrameCPUPacingDistance;
+   end;
+   Job.RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+   Job.FIFO:=(fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
+             (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+   Job.Rendered:=true;
+   fPresenterThread.Enqueue(Job);
+
+   // Taken as gone through, as with VK_SUCCESS below, since what goes wrong with it only shows later,
+   // see ApplyPresenterResult, which brings in what went wrong with the presents before.
+   RecordPresentID;
+   fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+   if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+    dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+   end;
+   inc(fSwapChainImageCounterIndex);
+   if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+    dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
+   end;
+   result:=true;
+   ApplyPresenterResult;
+
+  end else begin
+
+   try
+    case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
+     VK_SUCCESS:begin
       //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+      RecordPresentID;
       fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
       if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
        dec(fNextInFlightFrameIndex,fCountInFlightFrames);
@@ -16062,43 +16777,66 @@ begin
       end;
       result:=true;
      end;
-    end;
-    else begin
-    end;
-   end;
-  except
-   on VulkanResultException:EpvVulkanResultException do begin
-    case VulkanResultException.ResultCode of
-     VK_ERROR_SURFACE_LOST_KHR,
-     VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
-      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
-                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
-      end;
-      VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
-     end;
-     VK_ERROR_OUT_OF_DATE_KHR,
      VK_SUBOPTIMAL_KHR:begin
-      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                                TAcquireVulkanBackBufferState.RecreateSurface,
-                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+      RecordPresentID;
+      if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
+       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                 TAcquireVulkanBackBufferState.RecreateSurface,
+                                                 TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+        VulkanDebugLn('Suboptimal surface detected!');
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       end;
+      end else begin
+       //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+       fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+       if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+        dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+       end;
+       inc(fSwapChainImageCounterIndex);
+       if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+        dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
+       end;
+       result:=true;
       end;
- {    inc(fCurrentInFlightFrameIndex);
-      if fCurrentInFlightFrameIndex>=fCountInFlightFrames then begin
-       dec(fCurrentInFlightFrameIndex,fCountInFlightFrames);
-      end;}
-      fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
-      if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
-       dec(fNextInFlightFrameIndex,fCountInFlightFrames);
-      end;
-      VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
      end;
      else begin
-      raise;
+     end;
+    end;
+   except
+    on VulkanResultException:EpvVulkanResultException do begin
+     case VulkanResultException.ResultCode of
+      VK_ERROR_SURFACE_LOST_KHR,
+      VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                                 TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+       end;
+       VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+      end;
+      VK_ERROR_OUT_OF_DATE_KHR,
+      VK_SUBOPTIMAL_KHR:begin
+       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                 TAcquireVulkanBackBufferState.RecreateSurface,
+                                                 TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       end;
+  {    inc(fCurrentInFlightFrameIndex);
+       if fCurrentInFlightFrameIndex>=fCountInFlightFrames then begin
+        dec(fCurrentInFlightFrameIndex,fCountInFlightFrames);
+       end;}
+       fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+       if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+        dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+       end;
+       VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+      end;
+      else begin
+       raise;
+      end;
      end;
     end;
    end;
+
   end;
 
  except
@@ -16953,6 +17691,7 @@ end;
 procedure TpvApplication.UpdatePresentTimingFeedbackProperties;
 var SwapchainTimingProperties:TVkSwapchainTimingPropertiesEXT;
     SwapchainTimingPropertiesCounter:TpvUInt64;
+    SwapchainTimingResult:TVkResult;
 begin
  if (not assigned(fVulkanDevice)) or
     (not fVulkanDevice.PresentTimingSupport) or
@@ -16964,10 +17703,16 @@ begin
  SwapchainTimingProperties.sType:=VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT;
  SwapchainTimingPropertiesCounter:=0;
  try
-  if fVulkanDevice.Commands.GetSwapchainTimingPropertiesEXT(fVulkanDevice.Handle,
-                                                            fVulkanSwapChain.Handle,
-                                                            @SwapchainTimingProperties,
-                                                            @SwapchainTimingPropertiesCounter)=VK_SUCCESS then begin
+  LockSwapChain;
+  try
+   SwapchainTimingResult:=fVulkanDevice.Commands.GetSwapchainTimingPropertiesEXT(fVulkanDevice.Handle,
+                                                                                 fVulkanSwapChain.Handle,
+                                                                                 @SwapchainTimingProperties,
+                                                                                 @SwapchainTimingPropertiesCounter);
+  finally
+   UnlockSwapChain;
+  end;
+  if SwapchainTimingResult=VK_SUCCESS then begin
    fPresentTimingFeedbackRefreshDuration:=SwapchainTimingProperties.refreshDuration;
    fPresentTimingFeedbackRefreshInterval:=SwapchainTimingProperties.refreshInterval;
    if SwapchainTimingProperties.refreshInterval=TpvUInt64($ffffffffffffffff) then begin
@@ -17708,7 +18453,7 @@ var Index,Counter,Tries:TpvInt32;
     MonitorInfo:TMonitorInfo;
  {$ifend}
 {$ifend}
-    OK,Found:boolean;
+    OK,Found,Acquired:boolean;
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
     CurrentJobWorkerThread:TPasMPJobWorkerThread;
     LocalNextScreen:TpvApplicationScreen;
@@ -17730,9 +18475,9 @@ begin
  // see CreateVulkanSwapChain.
  if assigned(fVulkanSwapChain) and
     ((fLowLatencyMode<>fLowLatencyAppliedMode) or
-     (fDesiredCountSwapChainImages<>fDesiredCountSwapChainImagesApplied)) then begin
+     (GetCountSwapChainImagesToCreate<>fDesiredCountSwapChainImagesApplied)) then begin
   fLowLatencyAppliedMode:=fLowLatencyMode;
-  fDesiredCountSwapChainImagesApplied:=fDesiredCountSwapChainImages;
+  fDesiredCountSwapChainImagesApplied:=GetCountSwapChainImagesToCreate;
   if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                             TAcquireVulkanBackBufferState.RecreateSurface,
                                             TAcquireVulkanBackBufferState.RecreateDevice]) then begin
@@ -17744,7 +18489,9 @@ begin
  // The input of the frame whose simulation comes next.
  SetLowLatencyMarker(VK_LATENCY_MARKER_INPUT_SAMPLE_NV,fFrameCounter);
 
+ StartTime:=fHighResolutionTimer.GetTime;
  ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
+ fTimingCPULatencyWait:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
 
  ClearDelayedObjectsToFreeIteration;
 
@@ -18989,7 +19736,20 @@ begin
 
       else {TpvApplicationProcessingMode.Strict:}begin
 
-       if (not assigned(fVulkanDevice)) or AcquireVulkanBackBuffer then begin
+       // The acquire comes back here until it has an image, so its time is summed up over the tries.
+       if assigned(fVulkanDevice) then begin
+        StartTime:=fHighResolutionTimer.GetTime;
+        Acquired:=AcquireVulkanBackBuffer;
+        fTimingCPUAcquireSum:=fTimingCPUAcquireSum+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+        if Acquired then begin
+         fTimingCPUAcquire:=fTimingCPUAcquireSum;
+         fTimingCPUAcquireSum:=0.0;
+        end;
+       end else begin
+        Acquired:=true;
+       end;
+
+       if Acquired then begin
 
         fNowTime:=fHighResolutionTimer.GetTime;
         if fHasLastTime then begin
@@ -19008,6 +19768,9 @@ begin
         try
 
          fTimingCPUFrameStartTime:=fHighResolutionTimer.GetTime;
+         if fTimingCPUFrameEndTime<>0 then begin
+          fTimingCPUBetweenFrames:=fHighResolutionTimer.ToFloatSeconds(fTimingCPUFrameStartTime-fTimingCPUFrameEndTime);
+         end;
 
          if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
 
@@ -19046,7 +19809,9 @@ begin
             end;
            finally
             try
+             StartTime:=fHighResolutionTimer.GetTime;
              fPasMPInstance.WaitRelease(fUpdateJob);
+             fTimingCPUUpdateWait:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
             finally
              fUpdateJob:=nil;
             end;
@@ -19095,7 +19860,9 @@ begin
            PresentVulkanBackBuffer;
            fTimingCPUPresent:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
           finally
+           StartTime:=fHighResolutionTimer.GetTime;
            PostPresent(fSwapChainImageIndex);
+           fTimingCPUPostPresent:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
           end;
          end;
         end;
@@ -19105,6 +19872,8 @@ begin
         StartTime:=fHighResolutionTimer.GetTime;
         FramePacingAndFrameRateLimiter;
         fTimingCPUFramePacing:=fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+
+        fTimingCPUFrameEndTime:=fHighResolutionTimer.GetTime;
 
        end;
 
