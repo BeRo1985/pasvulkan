@@ -2227,6 +2227,10 @@ type EpvApplication=class(Exception)
        fVulkanPresentIDHistory:array[0..15] of TpvUInt64;
        fVulkanPresentIDHistoryCount:TpvUInt64;
 
+       // How often a present wait failed, and when that was last said, see WaitForSwapChainLatency
+       fPresentWaitFailureCount:TpvInt64;
+       fPresentWaitFailureLogTime:TpvHighResolutionTime;
+
        fVulkanAPIVersion:TvkUInt32;
 
        fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
@@ -12416,6 +12420,10 @@ begin
 
  fVulkanPresentLastID:=0;
 
+ fPresentWaitFailureCount:=0;
+
+ fPresentWaitFailureLogTime:=0;
+
  fVulkanAPIVersion:=VK_API_VERSION_1_0;
 
  fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
@@ -15266,10 +15274,12 @@ var Target,TimeOut:TpvUInt64;
     PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
-    FrameFenceTimedOut,PresentWaitForGeneratedFrames:boolean;
+    FrameFenceTimedOut,PresentWaitForGeneratedFrames,PresentWaitFailed:boolean;
     DisplayWaitStartTime:TpvHighResolutionTime;
     Latency:TpvInt32;
 begin
+
+ PresentWaitFailed:=false;
 
  if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
@@ -15349,7 +15359,17 @@ begin
       result:=false;*)
      end;
      else begin
-      Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresent failed: '+VulkanErrorToString(WaitResult));
+      // Said the first time and then at most every ten seconds, with the count: a driver which keeps
+      // answering this way, frame after frame, would fill the log otherwise
+      inc(fPresentWaitFailureCount);
+      if (fPresentWaitFailureCount=1) or
+         ((fHighResolutionTimer.GetTime-fPresentWaitFailureLogTime)>=fHighResolutionTimer.FromFloatSeconds(10.0)) then begin
+       fPresentWaitFailureLogTime:=fHighResolutionTimer.GetTime;
+       Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresent failed: '+VulkanErrorToString(WaitResult)+', '+IntToStr(fPresentWaitFailureCount)+' time(s) so far');
+      end;
+      // Nothing waited for then, so the frame fence below does it instead, rather than the frame going
+      // on unheld
+      PresentWaitFailed:=true;
       result:=true;
      end;
     end;
@@ -15364,9 +15384,10 @@ begin
    result:=false;
 
    if (fVulkanBackBufferState=TVulkanBackBufferState.Present) or
-      (fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) or
+      ((fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) and not PresentWaitFailed) or
       ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
                                      TpvApplicationPresentFrameLatencyMode.PresentWait]) and
+       (not PresentWaitFailed) and
        assigned(fVulkanDevice) and
        assigned(fVulkanSwapChain) and
        (fVulkanDevice.PresentIDSupport or fVulkanSwapChain.PresentID2Enabled) and
