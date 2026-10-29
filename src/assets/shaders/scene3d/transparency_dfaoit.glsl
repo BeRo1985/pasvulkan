@@ -31,11 +31,15 @@
      (min(alpha, finalColor.w) > 0.0)
     ){
 
+     // The resolve and its neural network expect straight RGB in the average and nearest-fragment buffers.
+     // Only the accumulation buffer stores premultiplied RGB.
+     vec4 premultipliedColor = finalColor;
      if(!additiveBlending){
-       finalColor.xyz *= finalColor.w;
+       premultipliedColor.xyz *= premultipliedColor.w;
      }
 
      finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
+     premultipliedColor.xyz = clamp(premultipliedColor.xyz, vec3(-65504.0), vec3(65504.0));
 
 #ifdef SPINLOCK
     for(bool oitDone = gl_HelperInvocation || (oitStoreMask == 0); !oitDone; ){
@@ -53,7 +57,7 @@
         imageStore(uOITImgAverage, oitCoord SAMPLE_ID , vec4(imageLoad(uOITImgAverage, oitCoord SAMPLE_ID ) + finalColor));
         
         // Accumulated color
-        imageStore(uOITImgAccumulation, oitCoord SAMPLE_ID , vec4((imageLoad(uOITImgAccumulation, oitCoord SAMPLE_ID ) + vec4(finalColor.xyz, 0.0)) * vec2(1.0, 1.0 - finalColor.w).xxxy));
+        imageStore(uOITImgAccumulation, oitCoord SAMPLE_ID , vec4((imageLoad(uOITImgAccumulation, oitCoord SAMPLE_ID ) + vec4(premultipliedColor.xyz, 0.0)) * vec2(1.0, 1.0 - finalColor.w).xxxy));
 
         // Load the first and second fragments
         vec4 fragments[2];
