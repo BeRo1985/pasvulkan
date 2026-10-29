@@ -1871,6 +1871,13 @@ type EpvApplication=class(Exception)
        fCrashLog:boolean;
        fCrashDumps:boolean;
        fCrashDumpKind:TpvCrashReportMiniDumpKind;
+       fLogFile:boolean;
+       fLogFileName:TpvUTF8String;
+       // What the command line said about the log file: -1 nothing, 0 off, 1 on. Kept apart from
+       // fLogFile, so that a program which turns the file on by itself can still be told not to.
+       fLogFileCommandLine:TpvInt32;
+       fLogFileCommandLineName:TpvUTF8String;
+       fWindowGhosting:boolean;
        fAndroidMouseTouchEvents:boolean;
        fAndroidTouchMouseEvents:boolean;
        fAndroidBlockOnPause:boolean;
@@ -2086,6 +2093,7 @@ type EpvApplication=class(Exception)
        fFramePacingPresentTimingTimeDomain:TVkTimeDomainKHR; // the kind of time domain behind it
        fFramePacingPresentTimingAvailable:boolean;
        fDisablePresentTiming:boolean; // set when a graphics capture/injection tool (Nsight, RenderDoc) or override is detected
+       fPresentTimingRelativeOnly:boolean; // absolute target times are not used even where the surface takes them, see PresentAtAbsoluteTimeUsable
        fFramePacingEffectiveInterval:TpvInt64; // computed pacing interval, consumed by FramePacingAndFrameRateLimiter
 
        // Present timing feedback state (VulkanPresentTimingFeedback mode)
@@ -2323,6 +2331,10 @@ type EpvApplication=class(Exception)
        fPresentShownOnRefreshGrid:TpvDouble;
 
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
+
+       // The relative target time of the presents of the generated frames, in nanoseconds, where the
+       // surface takes relative target times only, see GeneratedFrameRelativeTargetTimes.
+       fGeneratedFrameRelativeTargetTime:TpvUInt64;
 
        fGeneratedFrameRefreshPeriod:TpvHighResolutionTime; // -1 not looked up yet, 0 not known
 
@@ -2579,6 +2591,9 @@ type EpvApplication=class(Exception)
        function GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean;
        procedure SchedulePresentTargetTimes(const aCountPresents:TpvInt32);
        function GeneratedFrameTargetTimesAvailable:boolean;
+       function PresentAtAbsoluteTimeUsable:boolean;
+       function GeneratedFrameRelativeTargetTimes:boolean;
+       function GeneratedFramePresentCycles(const aCountIntervalParts:TpvInt32;out aRefreshPeriod:TpvHighResolutionTime):TpvInt32;
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
        procedure RecordDisplayWait(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
@@ -2866,6 +2881,10 @@ type EpvApplication=class(Exception)
 
        property DisablePresentTiming:boolean read fDisablePresentTiming write fDisablePresentTiming; // force VK_EXT_present_timing off (e.g. via --disable-present-timing) for capture tools like Nsight
 
+       // Uses relative target times of VK_EXT_present_timing only, as if the surface took no absolute ones,
+       // which is what some drivers report. For testing that way on a machine whose driver takes both.
+       property PresentTimingRelativeOnly:boolean read fPresentTimingRelativeOnly write fPresentTimingRelativeOnly;
+
        property FramePacingStrategy:TpvApplicationFramePacingStrategy read fFramePacingStrategy write fFramePacingStrategy;
 
        property LowLatencyMode:TpvApplicationLowLatencyMode read fLowLatencyMode write fLowLatencyMode;
@@ -2919,6 +2938,27 @@ type EpvApplication=class(Exception)
        property CrashDumps:boolean read fCrashDumps write fCrashDumps;
 
        property CrashDumpKind:TpvCrashReportMiniDumpKind read fCrashDumpKind write fCrashDumpKind;
+
+       // Whether everything which goes through Log and VulkanDebugLn is also written into a text
+       // file, each line with the seconds since the start and the thread it came from. Set it in the
+       // constructor of the program, in its Setup or in its ReadConfig; --log-file and --no-log-file
+       // on the command line win over it either way. The file is opened right after ReadConfig, and
+       // whatever was logged before that is written into it then.
+       property LogFile:boolean read fLogFile write fLogFile;
+
+       // Where it goes. Empty means <local storage path>/<executable name>.log, where the crash logs
+       // are as well. The one of the run before is kept as <name>.previous.log. After the start this
+       // is the file actually written to, which differs from the one asked for when another running
+       // instance holds that one: the process number is then added to the name.
+       property LogFileName:TpvUTF8String read fLogFileName write fLogFileName;
+
+       // Windows only, and on by default, as Windows has it: a window whose thread has fetched no
+       // messages for five seconds is replaced by a ghost window, which says "not responding" and offers
+       // to end the program. A program which knowingly blocks its main thread for longer, a game while it
+       // loads or while the driver translates its shaders, turns this off, in its constructor or its Setup,
+       // so that a load does not look like a hang. A real hang is then for a watchdog of its own to deal
+       // with, see PasVulkan.HangWatchdog.
+       property WindowGhosting:boolean read fWindowGhosting write fWindowGhosting;
 
        property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
@@ -3769,6 +3809,238 @@ begin
  result:=pvCrashReportDumpException(e);
 end;
 {$ifend}
+
+{$if defined(Windows)}
+// By name and with plain pointers, because the Windows unit of Delphi and the jwawinbase unit of FPC
+// declare it with different parameter kinds, and this way the same call compiles under both.
+function pvWriteFile(hFile:THandle;lpBuffer:Pointer;nNumberOfBytesToWrite:DWORD;lpNumberOfBytesWritten:Pointer;lpOverlapped:Pointer):BOOL; stdcall; external 'kernel32.dll' name 'WriteFile';
+
+// See TpvApplication.WindowGhosting
+procedure pvDisableProcessWindowsGhosting; stdcall; external 'user32.dll' name 'DisableProcessWindowsGhosting';
+{$ifend}
+
+// The log file, see TpvApplication.LogFile. A plain unbuffered handle and no TextFile: every line is in
+// the hands of the operating system the moment it is written, so a crash one line later still finds it
+// in the file.
+//
+// Until the application has decided whether there is to be a file at all, which it does right after
+// ReadConfig, the lines are kept in LogFilePending, so that the start of a run is in the file as well.
+// Off throws them away and stops the collecting.
+const LogFileStatePending=0;
+      LogFileStateOpen=1;
+      LogFileStateOff=2;
+      // What is kept at most while the decision is still out, far more than any start logs
+      LogFilePendingLimit=1 shl 20;
+
+var LogFileState:TPasMPInt32=LogFileStatePending;
+    LogFileLock:TPasMPInt32=0;
+    LogFileLockOwner:TpvUInt64=0;
+    LogFileHandle:THandle=THandle(-1);
+    LogFilePending:TpvUTF8String='';
+    LogFileTimer:TpvHighResolutionTimer=nil;
+    LogFileStartTime:TpvInt64=0;
+
+function LogFileLockAcquire:boolean;
+var ThreadID:TpvUInt64;
+begin
+ ThreadID:=TpvUInt64(GetCurrentThreadId);
+ if (TPasMPInterlocked.Read(LogFileLock)<>0) and (LogFileLockOwner=ThreadID) then begin
+  // Logged from inside the writing of another line, which only a fault on this very thread can do:
+  // dropped rather than waited for forever
+  result:=false;
+ end else begin
+  while TPasMPInterlocked.CompareExchange(LogFileLock,1,0)<>0 do begin
+   TPasMP.Yield;
+  end;
+  LogFileLockOwner:=ThreadID;
+  result:=true;
+ end;
+end;
+
+procedure LogFileLockRelease;
+begin
+ LogFileLockOwner:=0;
+ TPasMPInterlocked.Write(LogFileLock,0);
+end;
+
+// Only with the lock held
+procedure LogFileWrite(const aText:TpvUTF8String);
+{$if defined(Windows)}
+var Written:DWORD;
+{$ifend}
+begin
+ if length(aText)>0 then begin
+{$if defined(Windows)}
+  Written:=0;
+  pvWriteFile(LogFileHandle,@aText[1],length(aText),@Written,nil);
+{$else}
+  FileWrite(LogFileHandle,aText[1],length(aText));
+{$ifend}
+ end;
+end;
+
+// A line as it goes into the file: the seconds since the start, with milliseconds and without a locale,
+// so that a decimal comma cannot get into it, and the thread it came from.
+function LogFileFormatLine(const aLine:TpvUTF8String):TpvUTF8String;
+const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
+var Milliseconds:TpvInt64;
+    Fraction,Thread:TpvUTF8String;
+begin
+ if assigned(LogFileTimer) then begin
+  Milliseconds:=LogFileTimer.ToMilliseconds(LogFileTimer.GetTime-LogFileStartTime);
+ end else begin
+  Milliseconds:=0;
+ end;
+ Fraction:=TpvUTF8String(IntToStr(Milliseconds mod 1000));
+ while length(Fraction)<3 do begin
+  Fraction:='0'+Fraction;
+ end;
+ if GetCurrentThreadId=MainThreadID then begin
+  Thread:='main';
+ end else begin
+  Thread:=TpvUTF8String(IntToStr(TpvInt64(GetCurrentThreadId)));
+ end;
+ result:='['+TpvUTF8String(IntToStr(Milliseconds div 1000))+'.'+Fraction+' '+Thread+'] '+aLine+LineEnding;
+end;
+
+procedure LogFileWriteLine(const aLine:TpvUTF8String);
+var Line:TpvUTF8String;
+begin
+ if TPasMPInterlocked.Read(LogFileState)<>LogFileStateOff then begin
+  Line:=LogFileFormatLine(aLine);
+  if LogFileLockAcquire then begin
+   try
+    case LogFileState of
+     LogFileStatePending:begin
+      if (length(LogFilePending)+length(Line))<=LogFilePendingLimit then begin
+       LogFilePending:=LogFilePending+Line;
+      end;
+     end;
+     LogFileStateOpen:begin
+      LogFileWrite(Line);
+     end;
+    end;
+   finally
+    LogFileLockRelease;
+   end;
+  end;
+ end;
+end;
+
+// For the paths of TpvApplication.Log which do not go through VulkanDebugLn, with the same prefixes
+procedure LogFileWriteLevelLine(const aLevel:TpvInt32;const aWhere,aWhat:TpvUTF8String);
+begin
+ case aLevel of
+  LOG_ERROR:begin
+   LogFileWriteLine('[Error] '+aWhere+': '+aWhat);
+  end;
+  LOG_INFO:begin
+   LogFileWriteLine('[Info] '+aWhere+': '+aWhat);
+  end;
+  LOG_VERBOSE:begin
+   LogFileWriteLine('[Verbose] '+aWhere+': '+aWhat);
+  end;
+  LOG_DEBUG:begin
+   LogFileWriteLine('[Debug] '+aWhere+': '+aWhat);
+  end;
+ end;
+end;
+
+procedure LogFileClose;
+begin
+ if LogFileLockAcquire then begin
+  try
+   TPasMPInterlocked.Write(LogFileState,LogFileStateOff);
+   LogFilePending:='';
+   if LogFileHandle<>THandle(-1) then begin
+{$if defined(Windows)}
+    CloseHandle(LogFileHandle);
+{$else}
+    FileClose(LogFileHandle);
+{$ifend}
+    LogFileHandle:=THandle(-1);
+   end;
+  finally
+   LogFileLockRelease;
+  end;
+ end;
+end;
+
+// Opens the log file and writes into it what was logged until now. Returns the file actually written
+// to, which is the one asked for, or one with the process number in its name where another running
+// instance holds that one, or an empty string where neither could be created, the logging into a file
+// then being off.
+function LogFileOpen(const aFileName:TpvUTF8String):TpvUTF8String;
+var FileName,PreviousFileName,Header:TpvUTF8String;
+{$if defined(Windows)}
+    WideFileName,WidePreviousFileName:WideString;
+{$ifend}
+    Handle:THandle;
+    Attempt:TpvInt32;
+begin
+ result:='';
+ Handle:=THandle(-1);
+ try
+  // The one of the run before is kept: whoever reports a problem has mostly started the program once
+  // more since. Replaced in one step, so that where the current one cannot be moved, because another
+  // instance holds it, the previous one stays as it is.
+  PreviousFileName:=TpvUTF8String(ChangeFileExt(String(aFileName),'.previous'+ExtractFileExt(String(aFileName))));
+  if FileExists(String(aFileName)) then begin
+{$if defined(Windows)}
+   WideFileName:=PUCUUTF8ToUTF16(aFileName);
+   WidePreviousFileName:=PUCUUTF8ToUTF16(PreviousFileName);
+   MoveFileExW(PWideChar(WideFileName),PWideChar(WidePreviousFileName),MOVEFILE_REPLACE_EXISTING);
+{$else}
+   RenameFile(String(aFileName),String(PreviousFileName));
+{$ifend}
+  end;
+  for Attempt:=0 to 1 do begin
+   if Attempt=0 then begin
+    FileName:=aFileName;
+   end else begin
+    FileName:=TpvUTF8String(ChangeFileExt(String(aFileName),'')+'-'+
+{$if defined(Windows)}
+                            IntToStr(GetCurrentProcessId)+
+{$else}
+                            IntToStr(TpvInt64(GetProcessID))+
+{$ifend}
+                            ExtractFileExt(String(aFileName)));
+   end;
+{$if defined(Windows)}
+   // Shared for reading, so that it can be looked into while the program runs
+   WideFileName:=PUCUUTF8ToUTF16(FileName);
+   Handle:=CreateFileW(PWideChar(WideFileName),GENERIC_WRITE,FILE_SHARE_READ,nil,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0);
+   if Handle=INVALID_HANDLE_VALUE then begin
+    Handle:=THandle(-1);
+   end;
+{$else}
+   Handle:=FileCreate(String(FileName));
+{$ifend}
+   if Handle<>THandle(-1) then begin
+    break;
+   end;
+  end;
+ except
+  Handle:=THandle(-1);
+ end;
+ if Handle<>THandle(-1) then begin
+  Header:='Log of '+TpvUTF8String(ParamStr(0))+', started '+TpvUTF8String(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss',Now))+{$ifdef Unix}#10{$else}#13#10{$endif};
+  if LogFileLockAcquire then begin
+   try
+    LogFileHandle:=Handle;
+    LogFileWrite(Header);
+    LogFileWrite(LogFilePending);
+    LogFilePending:='';
+    TPasMPInterlocked.Write(LogFileState,LogFileStateOpen);
+   finally
+    LogFileLockRelease;
+   end;
+  end;
+  result:=FileName;
+ end else begin
+  LogFileClose;
+ end;
+end;
 
 function GetCrashLogFileName:TpvUTF8String;
 var Index,Count:TpvInt32;
@@ -11980,6 +12252,11 @@ begin
  fCrashLog:=false;
  fCrashDumps:=false;
  fCrashDumpKind:=TpvCrashReportMiniDumpKind.Normal;
+ fLogFile:=false;
+ fLogFileName:='';
+ fLogFileCommandLine:=-1;
+ fLogFileCommandLineName:='';
+ fWindowGhosting:=true;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=false;
  fAndroidTouchMouseEvents:=false;
@@ -12147,6 +12424,7 @@ begin
  fFramePacingPresentTimingTimeDomainID:=0;
  fFramePacingPresentTimingAvailable:=false;
  fDisablePresentTiming:=false;
+ fPresentTimingRelativeOnly:=false;
  fFramePacingEffectiveInterval:=0;
 
  fPresentTimingFeedbackRefreshDuration:=0;
@@ -12305,6 +12583,10 @@ var TemporaryString:WideString;
     Written:DWORD;
 {$ifend}
 begin
+ // The file regardless of the kind of build: it is what a released program has instead of a console
+ if pvOutputLogLevel>LOG_NONE then begin
+  LogFileWriteLine(What);
+ end;
 {$if defined(Debug) or not defined(Release)}
  if pvOutputLogLevel>LOG_NONE then begin
   if pvDebuggerPresent then begin
@@ -12318,9 +12600,9 @@ begin
     // Redirected into a file or a pipe, which WriteConsole cannot write to: the UTF-8 bytes as they are.
     Written:=0;
     if length(What)>0 then begin
-     WriteFile(pvStdOut,@What[1],length(What),@Written,nil);
+     pvWriteFile(pvStdOut,@What[1],length(What),@Written,nil);
     end;
-    WriteFile(pvStdOut,@AnsiCRLF[0],Length(AnsiCRLF),@Written,nil);
+    pvWriteFile(pvStdOut,@AnsiCRLF[0],Length(AnsiCRLF),@Written,nil);
    end else if pvIsStdOutUTF8 then begin
     WriteConsoleA(pvStdOut,PAnsiChar(What),length(What),PCardinal(nil)^,nil);
     WriteConsoleA(pvStdOut,PAnsiChar(@AnsiCRLF[0]),Length(AnsiCRLF),PCardinal(nil)^,nil);
@@ -12338,6 +12620,9 @@ begin
 end;
 {$elseif defined(fpc) and defined(android)}
 begin
+ if pvOutputLogLevel>LOG_NONE then begin
+  LogFileWriteLine(What);
+ end;
 {$if defined(Debug) or not defined(Release)}
  if pvOutputLogLevel>LOG_NONE then begin
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
@@ -12346,6 +12631,9 @@ begin
 end;
 {$else}
 begin
+ if pvOutputLogLevel>LOG_NONE then begin
+  LogFileWriteLine(What);
+ end;
 {$if defined(Debug) or not defined(Release)}
  if pvOutputLogLevel>LOG_NONE then begin
   WriteLn({$ifdef Windows}WideString(What){$else}What{$endif});
@@ -12374,6 +12662,7 @@ begin
     __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(TpvUTF8String(aWhere)),PAnsiChar(TpvUTF8String(aWhat)));
    end;
   end;
+  LogFileWriteLevelLine(aLevel,aWhere,aWhat);
 {$elseif defined(Debug) or not defined(Release)}
   case aLevel of
    LOG_NONE:begin
@@ -12391,6 +12680,9 @@ begin
     VulkanDebugLn('[Debug] '+aWhere+': '+aWhat);
    end;
   end;
+{$else}
+  // No console in a released program, but the log file all the same
+  LogFileWriteLevelLine(aLevel,aWhere,aWhat);
 {$ifend}
  end;
 end;
@@ -12434,6 +12726,15 @@ begin
     fCrashLog:=true;
    end else if Parameter='nocrashlogging' then begin
     fCrashLog:=false;
+   end else if (Parameter='logfile') or (Parameter='log-file') then begin
+    // The file name is optional: what follows is taken as one unless it is the next switch
+    fLogFileCommandLine:=1;
+    if (Index<=Count) and not ((length(ParamStr(Index))>0) and (ParamStr(Index)[1]='-')) then begin
+     fLogFileCommandLineName:=TpvUTF8String(ParamStr(Index));
+     inc(Index);
+    end;
+   end else if (Parameter='nologfile') or (Parameter='no-log-file') then begin
+    fLogFileCommandLine:=0;
    end else if Parameter='recordinput' then begin
     // Both take the file name as the next argument, handled by the same mechanism the crash log
     // path uses for its own; see pvInputRecordFileName for what ends up in it.
@@ -14009,7 +14310,7 @@ begin
     if SwapchainTimingProperties.refreshDuration>0 then begin
      fFramePacingPresentTimingRefreshDuration:=SwapchainTimingProperties.refreshDuration;
      fFramePacingPresentTimingAvailable:=true;
-     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true)+', present stages $'+LowerCase(IntToHex(fVulkanSwapChain.PresentStageQueries,2)));
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+BoolToStr(fPresentTimingRelativeOnly and fVulkanSwapChain.PresentAtAbsoluteTimeSupported,' (unused, relative only)','')+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true)+', present stages $'+LowerCase(IntToHex(fVulkanSwapChain.PresentStageQueries,2)));
     end;
    end;
   except
@@ -15744,6 +16045,35 @@ begin
   end;
  end;
 
+ // The image is free only once its fence is signalled. Waited for right here, and not when the slot comes
+ // round again, since the time until then is a wait for the display just like the one in the acquire
+ // itself, and counted as one along with it, see RecordDisplayWait: left to the GPU semaphore or to the
+ // next use of the slot, it counted as work of the frame instead, and the spacing of the generated frames,
+ // which goes by that, held itself to the display it waited for. In slices with the presenter thread
+ // busy, as above. One that is not signalled in time is left for the next use of the slot, as before.
+ repeat
+  Sliced:=PresenterBusy;
+  if Sliced then begin
+   TimeOut:=PresenterSliceTimeOut;
+  end else begin
+   TimeOut:=AcquireTimeOut;
+  end;
+  if Fence.WaitFor(TimeOut)=VK_SUCCESS then begin
+   Fence.Reset;
+   fGeneratedFrameAcquireFencesReady[SlotIndex]:=false;
+   break;
+  end;
+  if (not Sliced) or
+     (TpvUInt64(fHighResolutionTimer.ToNanoseconds(fHighResolutionTimer.GetTime-StartTime))>=AcquireTimeOut) then begin
+   break;
+  end;
+  if (fHighResolutionTimer.GetTime-StartTime)>fHighResolutionTimer.FromFloatSeconds(0.001) then begin
+   fPresenterThread.Hurry;
+  end;
+  TPasMP.Yield;
+ until false;
+ fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-StartTime);
+
  inc(fGeneratedFrameAcquireIndex);
  if fGeneratedFrameAcquireIndex>=length(fGeneratedFrameAcquireSemaphores) then begin
   fGeneratedFrameAcquireIndex:=0;
@@ -15864,7 +16194,7 @@ begin
     (aCountPresents>length(fGeneratedFrameTargetTimes)) or
     (not fFramePacingPresentTimingAvailable) or
     (not fVulkanDevice.PresentTimingSupport) or
-    (not fVulkanSwapChain.PresentAtAbsoluteTimeSupported) or
+    (not PresentAtAbsoluteTimeUsable) or
     fDisablePresentTiming or
     (fGeneratedFramePresentInterval<=0.0) or
     (not GetPresentTimingCurrentTime(Now)) then begin
@@ -15920,7 +16250,43 @@ begin
          ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
           (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
           (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)) and
-         (fVulkanSwapChain.PresentAtAbsoluteTimeSupported or fVulkanSwapChain.PresentAtRelativeTimeSupported);
+         (PresentAtAbsoluteTimeUsable or fVulkanSwapChain.PresentAtRelativeTimeSupported);
+end;
+
+function TpvApplication.PresentAtAbsoluteTimeUsable:boolean;
+begin
+ result:=assigned(fVulkanSwapChain) and
+         fVulkanSwapChain.PresentAtAbsoluteTimeSupported and
+         not fPresentTimingRelativeOnly;
+end;
+
+// Whether the presents of the generated frames go out at relative target times: where target times are
+// to be had, but no absolute ones, which SchedulePresentTargetTimes plans with. The one condition for
+// ChainPresentTimingInfo and for what LogGeneratedFramePresentPath says.
+function TpvApplication.GeneratedFrameRelativeTargetTimes:boolean;
+begin
+ result:=(fCountGeneratedFrameTargetTimes=0) and
+         (not fGeneratedFrameCPUPacing) and
+         (not fGeneratedFramesRightAway) and
+         GeneratedFrameTargetTimesAvailable and
+         fVulkanSwapChain.PresentAtRelativeTimeSupported and
+         (fGeneratedFrameRelativeTargetTime>0);
+end;
+
+// How many refresh cycles each of the aCountIntervalParts presents of a rendered frame gets: as many as the
+// frames take for all of them, by how long they take and not by the interval they come at, since that
+// interval is what the spacing holds them to. Going by it, a spacing beyond one refresh cycle, after a
+// hitch or from the start, would hold itself. Zero where the refresh cycle or the work time is not known.
+function TpvApplication.GeneratedFramePresentCycles(const aCountIntervalParts:TpvInt32;out aRefreshPeriod:TpvHighResolutionTime):TpvInt32;
+var RefreshSeconds:TpvDouble;
+begin
+ aRefreshPeriod:=GetGeneratedFrameRefreshPeriod;
+ RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(aRefreshPeriod);
+ if (RefreshSeconds>0.0) and (fGeneratedFrameWorkInterval>0.0) and (aCountIntervalParts>0) then begin
+  result:=Max(1,Ceil((fGeneratedFrameWorkInterval/(RefreshSeconds*aCountIntervalParts))-0.05));
+ end else begin
+  result:=0;
+ end;
 end;
 
 // The refresh cycle of the display, out of present timing where there is that, otherwise out of the
@@ -16030,8 +16396,9 @@ begin
 end;
 
 // Which way the presents of the generated frames go, into the log whenever that changes: right away, at
-// target times or spaced on the CPU by the presenter thread, aPath shr 1 being one of these in that
-// order, and whether the present wait for them is on, the lowest bit. With what it was decided by.
+// absolute target times, spaced on the CPU by the presenter thread or at relative target times, aPath shr 1
+// being one of these in that order from 1 on, and whether the present wait for them is on, the lowest bit.
+// With what it was decided by.
 procedure TpvApplication.LogGeneratedFramePresentPath(const aPath:TpvInt32);
 var Way,Wait,Source:TpvUTF8String;
     RefreshPeriod:TpvHighResolutionTime;
@@ -16044,6 +16411,9 @@ begin
    end;
    2:begin
     Way:='at target times of present timing';
+   end;
+   4:begin
+    Way:='at relative target times of present timing';
    end;
    else begin
     Way:='spaced on the CPU by the presenter thread';
@@ -16303,14 +16673,10 @@ begin
  if (aPresentIndex>=0) and (aPresentIndex<fCountGeneratedFrameTargetTimes) then begin
   aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
   aPresentTimingInfo.targetTime:=fGeneratedFrameTargetTimes[aPresentIndex];
- end else if (aPresentIndex>=0) and
-             (not fGeneratedFrameCPUPacing) and
-             (not fGeneratedFramesRightAway) and
-             GeneratedFrameTargetTimesAvailable and
-             fVulkanSwapChain.PresentAtRelativeTimeSupported and
-             (fGeneratedFramePresentInterval>0.0) then begin
+ end else if (aPresentIndex>=0) and GeneratedFrameRelativeTargetTimes then begin
+  // By the work time and not by the interval the presents come at, see PresentVulkanBackBuffer
   aPresentTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT);
-  aPresentTimingInfo.targetTime:=TpvUInt64(trunc((fGeneratedFramePresentInterval*1e9)/fGeneratedFrameCountPresents));
+  aPresentTimingInfo.targetTime:=fGeneratedFrameRelativeTargetTime;
  end else if StageQueries=0 then begin
   exit;
  end;
@@ -16844,6 +17210,7 @@ begin
   // The frames generated for this rendered frame go out ahead of it, spread over the interval between the
   // rendered frames, which is smoothed over the last frames.
   if fCountQueuedGeneratedFrames>0 then begin
+   CountIntervalParts:=fCountQueuedGeneratedFrames+1;
    if fGeneratedFramePresentInterval<=0.0 then begin
     fGeneratedFramePresentInterval:=Min(Max(fFloatDeltaTime,0.001),0.25);
    end else begin
@@ -16853,11 +17220,20 @@ begin
    // the time from the start of the frame before to the start of this one, see GeneratedFramesCloserThanRefresh.
    WorkInterval:=Min(Max(fFloatDeltaTime-(fDisplayWaitLastFrame+fTimingCPUAcquire+fTimingCPUFramePacing),0.001),0.25);
    if fGeneratedFrameWorkInterval<=0.0 then begin
-    fGeneratedFrameWorkInterval:=WorkInterval;
+    // At most a refresh cycle for each present to begin with: the first frame comes after the loading
+    // screen or whatever else was before, and starting from that, the spacing it gives would hold itself.
+    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+    if RefreshSeconds>0.0 then begin
+     fGeneratedFrameWorkInterval:=Min(WorkInterval,RefreshSeconds*CountIntervalParts);
+    end else begin
+     fGeneratedFrameWorkInterval:=WorkInterval;
+    end;
    end else begin
-    fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((WorkInterval-fGeneratedFrameWorkInterval)*0.1);
+    // A hitch pulls it up by no more than twice its value per frame, so that a hitch cannot screw the
+    // spacing up for good. Downwards as it comes.
+    fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((Min(WorkInterval,fGeneratedFrameWorkInterval*2.0)-fGeneratedFrameWorkInterval)*0.1);
    end;
-   CountIntervalParts:=fCountQueuedGeneratedFrames+1;
+   fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
    fGeneratedFramesRightAway:=GeneratedFramesCloserThanRefresh(CountIntervalParts);
@@ -16870,33 +17246,45 @@ begin
     fGeneratedFrameCountPresents:=CountIntervalParts;
     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
     // Where the presents are shown on the grid of the refresh cycles, the distance is whole refresh
-    // cycles, as many for each present as the frames take for all of them, by how long they take and not
-    // by the interval they come at: that interval is what this spacing holds them to, so going by it, a
-    // spacing beyond one refresh cycle, after a hitch or from the start, would hold itself, the frames
-    // waiting for the swapchain images the presents held back. For a frame which takes no longer than a
-    // refresh cycle for each of its presents, that is one refresh cycle each, which FIFO keeps by itself,
-    // with the presents going out one right after the other.
-    RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
-    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(RefreshPeriod);
-    if (RefreshSeconds>0.0) and
-       (fGeneratedFrameWorkInterval>0.0) and
+    // cycles, see GeneratedFramePresentCycles, since the interval the frames come at is what this spacing
+    // holds them to, the frames waiting for the swapchain images the presents held back. For a frame which
+    // takes no longer than a refresh cycle for each of its presents, that is one refresh cycle each, which
+    // FIFO keeps by itself, with the presents going out one right after the other.
+    PresentCycles:=GeneratedFramePresentCycles(CountIntervalParts,RefreshPeriod);
+    if (PresentCycles>0) and
        ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
         ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
          (fPresentShownOnRefreshGrid>0.8))) then begin
-     PresentCycles:=Max(1,Ceil((fGeneratedFrameWorkInterval/(RefreshSeconds*CountIntervalParts))-0.05));
      fGeneratedFrameCPUPacingDistance:=RefreshPeriod*PresentCycles;
     end;
    end else begin
     SchedulePresentTargetTimes(CountIntervalParts);
+    // Where the surface takes no absolute target times, relative ones, by the same whole refresh cycles
+    // as the CPU spacing above and for the same reason: the interval reached halved, which this used to
+    // be, holds itself, since without the nearest refresh cycle flag the present rounds up to the next
+    // refresh cycle, so that from the loading screen or a hitch on it could only stay or grow. With the
+    // half cycle less as room against jitter, a present is shown at the PresentCycles-th refresh cycle
+    // after the one before.
+    if (fCountGeneratedFrameTargetTimes=0) and
+       GeneratedFrameTargetTimesAvailable and
+       fVulkanSwapChain.PresentAtRelativeTimeSupported then begin
+     PresentCycles:=GeneratedFramePresentCycles(CountIntervalParts,RefreshPeriod);
+     if PresentCycles>0 then begin
+      fGeneratedFrameRelativeTargetTime:=TpvUInt64(trunc((PresentCycles-0.5)*fHighResolutionTimer.ToFloatSeconds(RefreshPeriod)*1e9));
+     end else if fGeneratedFrameWorkInterval>0.0 then begin
+      fGeneratedFrameRelativeTargetTime:=TpvUInt64(trunc((fGeneratedFrameWorkInterval/CountIntervalParts)*1e9));
+     end;
+    end;
    end;
   end else begin
    CountIntervalParts:=1;
    fCountGeneratedFrameTargetTimes:=0;
    fGeneratedFrameCPUPacing:=false;
    fGeneratedFramesRightAway:=false;
+   fGeneratedFrameRelativeTargetTime:=0;
   end;
   if fGeneratedFramesRightAway then begin
    fGeneratedFrameRefreshCycles:=1;
@@ -16929,6 +17317,8 @@ begin
     PresentPath:=1;
    end else if fCountGeneratedFrameTargetTimes>0 then begin
     PresentPath:=2;
+   end else if GeneratedFrameRelativeTargetTimes then begin
+    PresentPath:=4;
    end else begin
     PresentPath:=3;
    end;
@@ -18117,7 +18507,7 @@ begin
  if (not fPresentTimingFeedbackHasRefreshFeedback) or
     (fPresentTimingFeedbackRefreshDuration=0) or
     ((fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and not fVulkanSwapChain.PresentAtRelativeTimeSupported) or
-    ((fPresentTimingFeedbackRefreshMode<>TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and not fVulkanSwapChain.PresentAtAbsoluteTimeSupported) then begin
+    ((fPresentTimingFeedbackRefreshMode<>TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and not PresentAtAbsoluteTimeUsable) then begin
   aTimingInfo.flags:=TVkPresentTimingInfoFlagsEXT(VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT);
   aTimingInfo.targetTime:=0;
   exit;
@@ -21220,6 +21610,7 @@ end;
 procedure TpvApplication.Run;
 var Index:TpvInt32;
     ExceptionString:String;
+    OpenedLogFileName:TpvUTF8String;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
@@ -21457,6 +21848,42 @@ begin
  CreatePathNames;
 
  ReadConfig;
+
+ // Here, because this is the first point where both the storage paths and the wishes of the program are
+ // known. Everything logged until now was kept for it.
+ if fLogFileCommandLine>=0 then begin
+  fLogFile:=fLogFileCommandLine<>0;
+  if length(fLogFileCommandLineName)>0 then begin
+   fLogFileName:=fLogFileCommandLineName;
+  end;
+ end;
+ if fLogFile then begin
+  if length(fLogFileName)=0 then begin
+   if length(fLocalStoragePath)>0 then begin
+    fLogFileName:=TpvUTF8String(IncludeTrailingPathDelimiter(String(fLocalStoragePath))+ExtractFileName(ChangeFileExt(ParamStr(0),'.log')));
+   end else begin
+    fLogFileName:=TpvUTF8String(ChangeFileExt(ParamStr(0),'.log'));
+   end;
+  end;
+  OpenedLogFileName:=LogFileOpen(fLogFileName);
+  if length(OpenedLogFileName)>0 then begin
+   fLogFileName:=OpenedLogFileName;
+   Log(LOG_INFO,'PasVulkanApplication','Log file: '+fLogFileName+', the one of the run before is beside it as '+TpvUTF8String(ExtractFileName(ChangeFileExt(String(fLogFileName),'.previous'+ExtractFileExt(String(fLogFileName))))));
+  end else begin
+   Log(LOG_ERROR,'PasVulkanApplication','Log file: could not be created: '+fLogFileName);
+  end;
+ end else begin
+  LogFileClose;
+  Log(LOG_INFO,'PasVulkanApplication','Log file: off, see --log-file');
+ end;
+
+{$if defined(Windows) and not defined(PasVulkanHeadless)}
+ // Process wide and before the window exists, see WindowGhosting
+ if not fWindowGhosting then begin
+  pvDisableProcessWindowsGhosting;
+  Log(LOG_INFO,'PasVulkanApplication','Window ghosting: off');
+ end;
+{$ifend}
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_GetVersion(fSDLVersion);
@@ -23806,6 +24233,10 @@ end;
 
 initialization
 
+ // Before anything which could log, so that the times in the log file count from here
+ LogFileTimer:=TpvHighResolutionTimer.Create;
+ LogFileStartTime:=LogFileTimer.GetTime;
+
  VulkanDisableFloatingPointExceptions;
 
  // Check if a debugger is present
@@ -23914,5 +24345,9 @@ finalization
   JclStopExceptionTracking;
  end;
 {$ifend}
+
+ // Last, so that whatever is still logged on the way out is in it
+ LogFileClose;
+ FreeAndNil(LogFileTimer);
 
 end.
