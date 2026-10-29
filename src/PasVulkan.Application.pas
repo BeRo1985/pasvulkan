@@ -1718,6 +1718,30 @@ type EpvApplication=class(Exception)
        function FetchResult:TVkResult;
      end;
 
+{$if defined(Windows) and defined(PasVulkanWin32WindowThread) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+     // The thread the window lives on with PasVulkanWin32WindowThread. It makes the window and does
+     // nothing else but fetch and dispatch its messages, so that Windows never takes the window for a hung
+     // one, however long the main loop is held up, by a load or by the driver translating its shaders:
+     // Windows judges that by the thread a window belongs to, and a window cannot change its thread. What
+     // the messages say goes over to the main loop through the native event queue, as before, and what has
+     // to happen on the window's own thread, see TpvApplication.Win32WindowCommand, is sent over to it.
+     // Nothing on this thread ever waits for the main loop, which is what keeps the sending free of
+     // deadlocks. Its modal loops, while the window is moved or sized, no longer stop the main loop either.
+     TpvApplicationWin32WindowThread=class(TPasMPThread)
+      private
+       fApplication:TpvApplication;
+       fReadyEvent:TPasMPSimpleEvent;
+       fErrorMessage:String;
+      protected
+       procedure Execute; override;
+      public
+       constructor Create(const aApplication:TpvApplication); reintroduce;
+       destructor Destroy; override;
+       property ReadyEvent:TPasMPSimpleEvent read fReadyEvent;
+       property ErrorMessage:String read fErrorMessage;
+     end;
+{$ifend}
+
      TpvApplicationDelayedObjectInstanceToFree=record
       ObjectInstance:TObject;
       IterationsLeft:TpvSizeInt;
@@ -2516,8 +2540,15 @@ type EpvApplication=class(Exception)
        fWin32GameInput:IGameInput;
        fWin32GameInputDeviceCallbackQueue:TpvApplicationWin32GameInputDeviceCallbackQueue;
        fWin32GameInputDeviceCallbackToken:TGameInputCallbackToken;
+{$if defined(PasVulkanWin32WindowThread)}
+       fWin32WindowThread:TpvApplicationWin32WindowThread;
+{$ifend}
 
        function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
+
+       procedure Win32CreateWindow;
+       procedure Win32ExecuteWindowCommand(const aCommand:TpvInt32);
+       procedure Win32WindowCommand(const aCommand:TpvInt32);
 
 {$ifend}
 {$ifend}
@@ -3817,6 +3848,18 @@ function pvWriteFile(hFile:THandle;lpBuffer:Pointer;nNumberOfBytesToWrite:DWORD;
 
 // See TpvApplication.WindowGhosting
 procedure pvDisableProcessWindowsGhosting; stdcall; external 'user32.dll' name 'DisableProcessWindowsGhosting';
+
+// By name as well, for the plain integer result: -1 on an error, 0 for WM_QUIT
+function pvGetMessageW(var lpMsg:TMsg;hWnd:HWND;wMsgFilterMin,wMsgFilterMax:UINT):TpvInt32; stdcall; external 'user32.dll' name 'GetMessageW';
+
+// What only the thread of the window may do to it, see TpvApplication.Win32WindowCommand. The message
+// carries the command in its wParam.
+const pvWin32WindowCommandMessage=WM_APP+$2a1;
+      pvWin32WindowCommandCatchMouse=1;
+      pvWin32WindowCommandReleaseMouse=2;
+      pvWin32WindowCommandSetCursor=3;
+      pvWin32WindowCommandSetFocus=4;
+      pvWin32WindowCommandDestroy=5;
 {$ifend}
 
 // The log file, see TpvApplication.LogFile. A plain unbuffered handle and no TextFile: every line is in
@@ -18902,7 +18945,13 @@ var WindowFlags:DWORD;
 begin
  WindowFlags:=GetWindowLong(fWin32Handle,GWL_STYLE);
  result:=((fCurrentFullScreen=0) or
+{$if defined(PasVulkanWin32WindowThread)}
+          // GetActiveWindow and GetFocus only know the windows of the calling thread, and the window is
+          // not one of this thread here, the foreground window is the same for all threads
+          (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and fWin32HasFocus and (Windows.GetForegroundWindow=fWin32Handle)) or
+{$else}
           (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and fWin32HasFocus and ((Windows.GetActiveWindow=fWin32Handle) or (Windows.GetFocus=fWin32Handle))) or
+{$ifend}
            ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
          (((WindowFlags and WS_MINIMIZE)=0) and not IsIconic(fWin32Handle));
 end;
@@ -19287,7 +19336,7 @@ begin
   end else begin
    fWin32Cursor:=fWin32HiddenCursor;
   end;
-  SetCursor(fWin32Cursor);
+  Win32WindowCommand(pvWin32WindowCommandSetCursor);
 {$else}
 {$ifend}
  end;
@@ -19319,19 +19368,9 @@ begin
   end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
   if fEffectiveCatchMouse then begin
-   SetForegroundWindow(fWin32Handle);
-   Windows.SetFocus(fWin32Handle);
-   SetCapture(fWin32Handle);
-   if GetClientRect(fWin32Handle,Rect) then begin
-    if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
-     ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
-    end;
-   end;
+   Win32WindowCommand(pvWin32WindowCommandCatchMouse);
   end else begin
-   if GetCapture<>0 then begin
-    ReleaseCapture;
-   end;
-   ClipCursor(nil);
+   Win32WindowCommand(pvWin32WindowCommandReleaseMouse);
   end;
 {$else}
 {$ifend}
@@ -20664,6 +20703,183 @@ end;
 
 {$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
 
+// Makes the window, on the main thread or, with PasVulkanWin32WindowThread, on the thread of the window.
+// The window class, the style and the size are set up before.
+procedure TpvApplication.Win32CreateWindow;
+begin
+
+ fWin32Handle:=CreateWindowW(Win32WindowClass.lpszClassName,
+                             PWideChar(fWin32Title),
+                             fWin32Style,
+                             ((fScreenWidth-fWidth)+1) div 2,
+                             ((fScreenHeight-fHeight)+1) div 2,
+                             fWin32Rect.Right-fWin32Rect.Left,
+                             fWin32Rect.Bottom-fWin32Rect.Top,
+                             0,
+                             0,
+                             fWin32HInstance,
+                             self
+                            );
+ if fWin32Handle=0 then begin
+  raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
+ end;
+
+ fCurrentFullscreen:=0;
+
+ if fAcceptDragDropFiles then begin
+  SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+ end else begin
+  SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+ end;
+
+ if Win32HasGetPointer then begin
+  EnableMouseInPointer(false);
+  fWin32TouchActive:=false;
+ end else begin
+  fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
+ end;
+
+ fWin32TouchInputs:=nil;
+
+ fWin32TouchIDHashMap:=TWin32TouchIDHashMap.Create(0);
+
+ fWin32TouchIDFreeList.Initialize;
+
+ fWin32TouchIDCounter:=0;
+
+ if fWin32TouchActive or Win32HasGetPointer then begin
+  SetPropA(fWin32Handle,
+           'MicrosoftTabletPenServiceProperty',
+           THANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
+                            $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
+                            $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
+                            $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
+                            $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
+                            $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
+                            $00010000 or   // TABLET_DISABLE_FLICKS
+                            $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
+                            $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
+                            $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
+ end;
+
+ fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
+
+ fWin32FullScreen:=false;
+
+ fWin32RealFullScreen:=false;
+
+ if fVisibleMouseCursor then begin
+  fWin32Cursor:=LoadCursor(0,IDC_ARROW);
+ end else begin
+  fWin32Cursor:=fWin32HiddenCursor;
+ end;
+ SetCursor(fWin32Cursor);
+
+end;
+
+// What only the thread a window belongs to may do with it: the mouse capture, the keyboard focus, the
+// cursor shown over it and its destruction. Everything else the main loop does with the window, from the
+// title to the fullscreen switch, Windows passes to that thread by itself.
+procedure TpvApplication.Win32ExecuteWindowCommand(const aCommand:TpvInt32);
+var Rect:TRect;
+begin
+ case aCommand of
+  pvWin32WindowCommandCatchMouse:begin
+   SetForegroundWindow(fWin32Handle);
+   Windows.SetFocus(fWin32Handle);
+   SetCapture(fWin32Handle);
+   if GetClientRect(fWin32Handle,Rect) then begin
+    if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
+     ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
+    end;
+   end;
+  end;
+  pvWin32WindowCommandReleaseMouse:begin
+   if GetCapture<>0 then begin
+    ReleaseCapture;
+   end;
+   ClipCursor(nil);
+  end;
+  pvWin32WindowCommandSetCursor:begin
+   SetCursor(fWin32Cursor);
+  end;
+  pvWin32WindowCommandSetFocus:begin
+   Windows.SetForegroundWindow(fWin32Handle);
+   Windows.SetFocus(fWin32Handle);
+  end;
+{$if defined(PasVulkanWin32WindowThread)}
+  pvWin32WindowCommandDestroy:begin
+   // The window with what was made for it on this thread, and then the message loop of the thread
+   if fWin32TouchActive then begin
+    UnregisterTouchWindow(fWin32Handle);
+   end;
+   DestroyWindow(fWin32Handle);
+   DestroyCursor(fWin32HiddenCursor);
+   PostQuitMessage(0);
+  end;
+{$ifend}
+ end;
+end;
+
+// Does what Win32ExecuteWindowCommand says right here or, with PasVulkanWin32WindowThread, on the thread
+// of the window, which is always fetching its messages, waiting until it is done.
+procedure TpvApplication.Win32WindowCommand(const aCommand:TpvInt32);
+begin
+{$if defined(PasVulkanWin32WindowThread)}
+ if fWin32Handle<>0 then begin
+  SendMessageW(fWin32Handle,pvWin32WindowCommandMessage,WPARAM(aCommand),0);
+ end;
+{$else}
+ Win32ExecuteWindowCommand(aCommand);
+{$ifend}
+end;
+
+{$if defined(PasVulkanWin32WindowThread)}
+constructor TpvApplicationWin32WindowThread.Create(const aApplication:TpvApplication);
+begin
+ fApplication:=aApplication;
+ fReadyEvent:=TPasMPSimpleEvent.Create;
+ fErrorMessage:='';
+ inherited Create(false);
+end;
+
+destructor TpvApplicationWin32WindowThread.Destroy;
+begin
+ if not Finished then begin
+  WaitFor;
+ end;
+ FreeAndNil(fReadyEvent);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationWin32WindowThread.Execute;
+var Msg:TMsg;
+begin
+ try
+  fApplication.Win32CreateWindow;
+ except
+  on e:Exception do begin
+   fErrorMessage:=e.Message;
+  end;
+ end;
+ fReadyEvent.SetEvent;
+ if length(fErrorMessage)=0 then begin
+  // Until the WM_QUIT of pvWin32WindowCommandDestroy
+  while pvGetMessageW(Msg,0,0,0)>0 do begin
+   try
+    TranslateMessage(Msg);
+    DispatchMessageW(Msg);
+   except
+    on e:Exception do begin
+     // The window must keep fetching its messages, whatever one of them ran into
+     TpvApplication.Log(LOG_ERROR,'TpvApplicationWin32WindowThread',DumpExceptionCallStack(e));
+    end;
+   end;
+  end;
+ end;
+end;
+{$ifend}
+
 function TpvApplicationWin32WndProc(aHWnd:HWND;uMsg:UINT;wParam:WParam;lParam:LParam):LRESULT; {$ifdef cpu386}stdcall;{$endif}
 var WindowPtr:LONG_PTR;
     Application:TpvApplication;
@@ -20679,6 +20895,13 @@ begin
   Application:=nil;
  end;
  if assigned(Application) then begin
+{$if defined(PasVulkanWin32WindowThread)}
+  if uMsg=pvWin32WindowCommandMessage then begin
+   Application.Win32ExecuteWindowCommand(TpvInt32(wParam));
+   result:=0;
+   exit;
+  end;
+{$ifend}
   ResultCode:=Application.Win32ProcessEvent(uMsg,wParam,lParam);
   if ResultCode>=0 then begin
    result:=ResultCode;
@@ -22132,72 +22355,17 @@ begin
 
   fWin32Callback:=nil;
 
-  fWin32Handle:=CreateWindowW(Win32WindowClass.lpszClassName,
-                              PWideChar(fWin32Title),
-                              fWin32Style,
-                              ((fScreenWidth-fWidth)+1) div 2,
-                              ((fScreenHeight-fHeight)+1) div 2,
-                              fWin32Rect.Right-fWin32Rect.Left,
-                              fWin32Rect.Bottom-fWin32Rect.Top,
-                              0,
-                              0,
-                              fWin32HInstance,
-                              self
-                             );
-  if fWin32Handle=0 then begin
-   raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
+{$if defined(PasVulkanWin32WindowThread)}
+  // On a thread of its own, see TpvApplicationWin32WindowThread, which makes it the same way as below
+  fWin32WindowThread:=TpvApplicationWin32WindowThread.Create(self);
+  fWin32WindowThread.ReadyEvent.WaitFor(INFINITE);
+  if length(fWin32WindowThread.ErrorMessage)>0 then begin
+   raise EpvApplication.Create('Windows',fWin32WindowThread.ErrorMessage,LOG_ERROR);
   end;
-
-  fCurrentFullscreen:=0;
-
-  if fAcceptDragDropFiles then begin
-   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
-  end else begin
-   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
-  end;
-
-  if Win32HasGetPointer then begin
-   EnableMouseInPointer(false);
-   fWin32TouchActive:=false;
-  end else begin
-   fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
-  end;
-
-  fWin32TouchInputs:=nil;
-
-  fWin32TouchIDHashMap:=TWin32TouchIDHashMap.Create(0);
-
-  fWin32TouchIDFreeList.Initialize;
-
-  fWin32TouchIDCounter:=0;
-
-  if fWin32TouchActive or Win32HasGetPointer then begin
-   SetPropA(fWin32Handle,
-            'MicrosoftTabletPenServiceProperty',
-            THANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
-                             $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
-                             $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
-                             $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
-                             $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
-                             $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
-                             $00010000 or   // TABLET_DISABLE_FLICKS
-                             $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
-                             $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
-                             $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
-  end;
-
-  fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
-
-  fWin32FullScreen:=false;
-
-  fWin32RealFullScreen:=false;
-
-  if fVisibleMouseCursor then begin
-   fWin32Cursor:=LoadCursor(0,IDC_ARROW);
-  end else begin
-   fWin32Cursor:=fWin32HiddenCursor;
-  end;
-  SetCursor(fWin32Cursor);
+  Log(LOG_INFO,'PasVulkanApplication','The window has a thread of its own');
+{$else}
+  Win32CreateWindow;
+{$ifend}
 
 { if fMaximized then begin
    ShowWindow(fWin32Handle,SW_MAXIMIZE);
@@ -22327,7 +22495,9 @@ begin
            end;
            try
 
-{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless) or defined(PasVulkanWin32WindowThread))}
+           // The modal loops of moving and sizing the window run in a fiber of their own then, so that the
+           // main loop goes on meanwhile. With the window on a thread of its own they hold up only that one.
            fWin32MainFiber:=LPVOID(ConvertThreadToFiberEx(nil,$1{FIBER_FLAG_FLOAT_SWITCH}));
            if not assigned(fWin32MainFiber) then begin
             raise EpvApplication.Create('Internal error','ConvertThreadToFiberEx failed',LOG_ERROR);
@@ -22506,9 +22676,21 @@ begin
     DestroyIcon(fWin32Icon);
    end;
 
+{$if defined(PasVulkanWin32WindowThread)}
+   // The window goes on its own thread, along with what was made for it there, and the thread ends with
+   // it, all before what its messages use is freed below
+   if assigned(fWin32WindowThread) then begin
+    if (fWin32Handle<>0) and not fWin32WindowThread.Finished then begin
+     PostMessageW(fWin32Handle,pvWin32WindowCommandMessage,WPARAM(pvWin32WindowCommandDestroy),0);
+    end;
+    fWin32WindowThread.WaitFor;
+    FreeAndNil(fWin32WindowThread);
+   end;
+{$else}
    if fWin32TouchActive then begin
     UnregisterTouchWindow(fWin32Handle);
    end;
+{$ifend}
 
    fWin32TouchInputs:=nil;
 
@@ -22516,7 +22698,9 @@ begin
 
    fWin32TouchIDFreeList.Finalize;
 
-
+{$if defined(PasVulkanWin32WindowThread)}
+   UnregisterClassW(Win32WindowClass.lpszClassName,fWin32HInstance);
+{$else}
    if assigned(fWin32Callback) then begin
 
     SetWindowLongPtrW(fWin32Handle,GWLP_WNDPROC,LONG_PTR(Pointer(Addr(fWin32Callback))));
@@ -22530,6 +22714,7 @@ begin
     DestroyCursor(fWin32HiddenCursor);
 
    end;
+{$ifend}
 
 {$else}
 {$ifend}
@@ -22556,8 +22741,7 @@ begin
  end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
  if fWin32Handle<>0 then begin
-  Windows.SetForegroundWindow(fWin32Handle);
-  Windows.SetFocus(fWin32Handle);
+  Win32WindowCommand(pvWin32WindowCommandSetFocus);
  end;
 {$ifend}
 end;
