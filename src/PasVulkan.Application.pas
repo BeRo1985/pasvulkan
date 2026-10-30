@@ -2315,6 +2315,10 @@ type EpvApplication=class(Exception)
        // limiter, smoothed: the interval they could come at, see GeneratedFramesCloserThanRefresh.
        fGeneratedFrameWorkInterval:TpvDouble;
 
+       // The same with the wait of the frame rate limiter in it, smoothed, see the spreading of the
+       // presents without VSync in PresentVulkanBackBuffer.
+       fGeneratedFrameCadenceInterval:TpvDouble;
+
        // How many refresh cycles a rendered frame is meant to take: one, or with the presents of its
        // generated frames spread a refresh cycle apart each, one for each of them as well, which the frame
        // rate limiter keeps the frames to, see FramePacingAndFrameRateLimiter.
@@ -2331,6 +2335,10 @@ type EpvApplication=class(Exception)
        fGeneratedFramePresentWaitHurts:boolean;
 
        fGeneratedFramePresentWaitSlowFrames:TpvInt32;
+
+       // How many rendered frames with generated ones the swapchain has presented, up to a limit: the first
+       // seconds after a world has loaded are too uneven to tell anything, see fGeneratedFramePresentWaitHurts.
+       fGeneratedFramePresentWaitWarmUpFrames:TpvInt32;
 
        // The way the presents of the generated frames went last, for the log, see LogGeneratedFramePresentPath.
        fGeneratedFrameLoggedPresentPath:TpvInt32;
@@ -2365,6 +2373,11 @@ type EpvApplication=class(Exception)
        fGeneratedFrameRelativeTargetTime:TpvUInt64;
 
        fGeneratedFrameRefreshPeriod:TpvHighResolutionTime; // -1 not looked up yet, 0 not known
+
+       // What GetNativeRefreshRate found last, for which monitor and from where, see there
+       fNativeRefreshRate:TpvDouble;
+       fNativeRefreshRateMonitor:TpvPtrUInt;
+       fNativeRefreshRateSource:TpvUTF8String;
 
        // The presents spaced on the CPU go out on a thread of their own, made when first needed, see
        // TpvApplicationPresenterThread, and the swapchain is shared with it under the lock.
@@ -2632,6 +2645,7 @@ type EpvApplication=class(Exception)
        function GetGeneratedFrameRefreshPeriod:TpvHighResolutionTime;
        procedure RecordDisplayWait(const aWaitTime:TpvDouble);
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
+       function GeneratedFramePresentsReplaceEachOther:boolean;
        function GeneratedFramePresentsOneRefreshApart:boolean;
        procedure LogGeneratedFramePresentPath(const aPath:TpvInt32);
        procedure RecordPresentCallTime;
@@ -3389,6 +3403,18 @@ uses PasVulkan.Utils,PasVulkan.Compression,PasVulkan.PasMP,PasVulkan.CrashReport
 
 var pvApplicationVulkanHooks:array of TpvApplicationVulkanHook=nil;
 
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+// The present trace of frame generation, into the log under FGDBG for a window of frames with generated
+// ones: the target times worked out for each interval, see SchedulePresentTargetTimes, the reports of the
+// presents, see PollPresentTimingReports, and per frame how long its present calls took, see
+// PresentVulkanBackBuffer.
+var FGDbgFrames:TpvInt32=0;
+    FGDbgGenPresent:TpvDouble=0.0;
+    FGDbgFenceWait:TpvDouble=0.0;
+    FGDbgPresent:TpvDouble=0.0;
+    FGDbgNow:TpvUInt64=0;
+{$endif}
+
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
@@ -3855,6 +3881,169 @@ procedure pvDisableProcessWindowsGhosting; stdcall; external 'user32.dll' name '
 
 // By name as well, for the plain integer result: -1 on an error, 0 for WM_QUIT
 function pvGetMessageW(var lpMsg:TMsg;hWnd:HWND;wMsgFilterMin,wMsgFilterMax:UINT):TpvInt32; stdcall; external 'user32.dll' name 'GetMessageW';
+
+// The exact refresh rate of a display, as QueryDisplayConfig and the desktop composition give it, a
+// fraction, where the display mode has only whole hertz: 59 for a display which runs at 59.94. All of it
+// is looked up at run time, see pvWin32LoadDisplayTimingFunctions.
+type TpvWin32DisplayConfigRational=record
+      Numerator:TpvUInt32;
+      Denominator:TpvUInt32;
+     end;
+     TpvWin32DisplayConfigPathSourceInfo=record
+      AdapterIDLowPart:TpvUInt32;
+      AdapterIDHighPart:TpvInt32;
+      ID:TpvUInt32;
+      ModeInfoIndex:TpvUInt32;
+      StatusFlags:TpvUInt32;
+     end;
+     TpvWin32DisplayConfigPathTargetInfo=record
+      AdapterIDLowPart:TpvUInt32;
+      AdapterIDHighPart:TpvInt32;
+      ID:TpvUInt32;
+      ModeInfoIndex:TpvUInt32;
+      OutputTechnology:TpvUInt32;
+      Rotation:TpvUInt32;
+      Scaling:TpvUInt32;
+      RefreshRate:TpvWin32DisplayConfigRational;
+      ScanLineOrdering:TpvUInt32;
+      TargetAvailable:TpvInt32;
+      StatusFlags:TpvUInt32;
+     end;
+     TpvWin32DisplayConfigPathInfo=record
+      SourceInfo:TpvWin32DisplayConfigPathSourceInfo;
+      TargetInfo:TpvWin32DisplayConfigPathTargetInfo;
+      Flags:TpvUInt32;
+     end;
+     // Only stored, never looked into: the 64 bytes of DISPLAYCONFIG_MODE_INFO
+     TpvWin32DisplayConfigModeInfo=record
+      Data:array[0..15] of TpvUInt32;
+     end;
+     TpvWin32DisplayConfigSourceDeviceName=record
+      HeaderType:TpvUInt32;
+      HeaderSize:TpvUInt32;
+      HeaderAdapterIDLowPart:TpvUInt32;
+      HeaderAdapterIDHighPart:TpvInt32;
+      HeaderID:TpvUInt32;
+      ViewGdiDeviceName:array[0..31] of WideChar;
+     end;
+     // DWM_TIMING_INFO is byte packed and has 292 bytes, of which only the first ones are of use here
+     TpvWin32DWMTimingInfo=packed record
+      Size:TpvUInt32;
+      RateRefresh:TpvWin32DisplayConfigRational;
+      QPCRefreshPeriod:TpvUInt64;
+      RateCompose:TpvWin32DisplayConfigRational;
+      QPCVBlank:TpvUInt64;
+      Rest:array[0..255] of TpvUInt8;
+     end;
+     TpvWin32GetDisplayConfigBufferSizes=function(aFlags:TpvUInt32;aNumPathArrayElements,aNumModeInfoArrayElements:PpvUInt32):TpvInt32; stdcall;
+     TpvWin32QueryDisplayConfig=function(aFlags:TpvUInt32;aNumPathArrayElements:PpvUInt32;aPathArray:Pointer;aNumModeInfoArrayElements:PpvUInt32;aModeInfoArray:Pointer;aCurrentTopologyId:Pointer):TpvInt32; stdcall;
+     TpvWin32DisplayConfigGetDeviceInfo=function(aRequestPacket:Pointer):TpvInt32; stdcall;
+     TpvWin32DwmGetCompositionTimingInfo=function(aHWnd:HWND;aTimingInfo:Pointer):HRESULT; stdcall;
+
+const pvWin32QDCOnlyActivePaths=2;
+      pvWin32DisplayConfigDeviceInfoGetSourceName=1;
+
+var pvWin32DisplayTimingFunctionsLoaded:TPasMPBool32=false;
+    pvWin32GetDisplayConfigBufferSizes:TpvWin32GetDisplayConfigBufferSizes=nil;
+    pvWin32QueryDisplayConfig:TpvWin32QueryDisplayConfig=nil;
+    pvWin32DisplayConfigGetDeviceInfo:TpvWin32DisplayConfigGetDeviceInfo=nil;
+    pvWin32DwmGetCompositionTimingInfo:TpvWin32DwmGetCompositionTimingInfo=nil;
+
+procedure pvWin32LoadDisplayTimingFunctions;
+var LibraryHandle:HMODULE;
+begin
+ if not TPasMPInterlocked.Read(pvWin32DisplayTimingFunctionsLoaded) then begin
+  // Windows 7 and later for the display config and Vista for the composition timing, so neither is
+  // linked against
+  LibraryHandle:=GetModuleHandleW('user32.dll');
+  if LibraryHandle<>0 then begin
+   @pvWin32GetDisplayConfigBufferSizes:=GetProcAddress(LibraryHandle,'GetDisplayConfigBufferSizes');
+   @pvWin32QueryDisplayConfig:=GetProcAddress(LibraryHandle,'QueryDisplayConfig');
+   @pvWin32DisplayConfigGetDeviceInfo:=GetProcAddress(LibraryHandle,'DisplayConfigGetDeviceInfo');
+  end;
+  LibraryHandle:=LoadLibraryW('dwmapi.dll');
+  if LibraryHandle<>0 then begin
+   @pvWin32DwmGetCompositionTimingInfo:=GetProcAddress(LibraryHandle,'DwmGetCompositionTimingInfo');
+  end;
+  TPasMPInterlocked.Write(pvWin32DisplayTimingFunctionsLoaded,TPasMPBool32(true));
+ end;
+end;
+
+// The refresh rate of the display a GDI device name like \\.\DISPLAY1 stands for, out of its active
+// display config path, zero where there is none
+function pvWin32DisplayConfigRefreshRate(const aGdiDeviceName:PWideChar):TpvDouble;
+var CountPaths,CountModes,Index:TpvUInt32;
+    Paths:array of TpvWin32DisplayConfigPathInfo;
+    Modes:array of TpvWin32DisplayConfigModeInfo;
+    SourceName:TpvWin32DisplayConfigSourceDeviceName;
+    Rational:TpvWin32DisplayConfigRational;
+begin
+ result:=0.0;
+ pvWin32LoadDisplayTimingFunctions;
+ if assigned(pvWin32GetDisplayConfigBufferSizes) and
+    assigned(pvWin32QueryDisplayConfig) and
+    assigned(pvWin32DisplayConfigGetDeviceInfo) and
+    (SizeOf(TpvWin32DisplayConfigPathInfo)=72) and
+    (SizeOf(TpvWin32DisplayConfigModeInfo)=64) and
+    (SizeOf(TpvWin32DisplayConfigSourceDeviceName)=84) then begin
+  Paths:=nil;
+  Modes:=nil;
+  try
+   CountPaths:=0;
+   CountModes:=0;
+   if (pvWin32GetDisplayConfigBufferSizes(pvWin32QDCOnlyActivePaths,@CountPaths,@CountModes)=0) and (CountPaths>0) then begin
+    SetLength(Paths,CountPaths);
+    SetLength(Modes,Max(CountModes,1));
+    if pvWin32QueryDisplayConfig(pvWin32QDCOnlyActivePaths,@CountPaths,@Paths[0],@CountModes,@Modes[0],nil)=0 then begin
+     for Index:=0 to TpvInt32(CountPaths)-1 do begin
+      FillChar(SourceName,SizeOf(SourceName),#0);
+      SourceName.HeaderType:=pvWin32DisplayConfigDeviceInfoGetSourceName;
+      SourceName.HeaderSize:=SizeOf(SourceName);
+      SourceName.HeaderAdapterIDLowPart:=Paths[Index].SourceInfo.AdapterIDLowPart;
+      SourceName.HeaderAdapterIDHighPart:=Paths[Index].SourceInfo.AdapterIDHighPart;
+      SourceName.HeaderID:=Paths[Index].SourceInfo.ID;
+      if (pvWin32DisplayConfigGetDeviceInfo(@SourceName)=0) and
+         (WideString(PWideChar(@SourceName.ViewGdiDeviceName[0]))=WideString(aGdiDeviceName)) then begin
+       Rational:=Paths[Index].TargetInfo.RefreshRate;
+       if (Rational.Numerator>0) and (Rational.Denominator>0) then begin
+        result:=Rational.Numerator/Rational.Denominator;
+       end;
+       break;
+      end;
+     end;
+    end;
+   end;
+  finally
+   Paths:=nil;
+   Modes:=nil;
+  end;
+ end;
+end;
+
+// The timing of the desktop composition: its refresh rate, and when its last vertical blank was, in
+// ticks of the performance counter. False where there is no composition, or it says nothing.
+function pvWin32DWMCompositionTiming(out aRefreshRate:TpvDouble;out aQPCVBlank,aQPCRefreshPeriod:TpvUInt64):boolean;
+var TimingInfo:TpvWin32DWMTimingInfo;
+begin
+ result:=false;
+ aRefreshRate:=0.0;
+ aQPCVBlank:=0;
+ aQPCRefreshPeriod:=0;
+ pvWin32LoadDisplayTimingFunctions;
+ if assigned(pvWin32DwmGetCompositionTimingInfo) and (SizeOf(TpvWin32DWMTimingInfo)=292) then begin
+  FillChar(TimingInfo,SizeOf(TimingInfo),#0);
+  TimingInfo.Size:=SizeOf(TimingInfo);
+  // A window is not taken here since Windows 8.1, the timing is the one of the composition
+  if (pvWin32DwmGetCompositionTimingInfo(0,@TimingInfo)=0) and
+     (TimingInfo.RateRefresh.Numerator>0) and
+     (TimingInfo.RateRefresh.Denominator>0) then begin
+   aRefreshRate:=TimingInfo.RateRefresh.Numerator/TimingInfo.RateRefresh.Denominator;
+   aQPCVBlank:=TimingInfo.QPCVBlank;
+   aQPCRefreshPeriod:=TimingInfo.QPCRefreshPeriod;
+   result:=true;
+  end;
+ end;
+end;
 
 // What only the thread of the window may do to it, see TpvApplication.Win32WindowCommand. The message
 // carries the command in its wParam.
@@ -13017,31 +13206,55 @@ var SDLDisplayMode:TSDL_DisplayMode;
 begin
  if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(pvApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
   result:=SDLDisplayMode.refresh_rate;
+  fNativeRefreshRateSource:='display mode';
  end else begin
   result:=0.0;
  end;
 end;
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
 const ENUM_CURRENT_SETTINGS=DWORD(-1);
+      MONITORINFOF_PRIMARY=1;
 var MonitorHandle:HMONITOR;
     MonitorInfoEx:{$ifdef fpc}TMONITORINFOEXW{$else}TMonitorInfoExW{$endif};
     devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
+    QPCVBlank,QPCRefreshPeriod:TpvUInt64;
 begin
  result:=0.0;
  MonitorHandle:=MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST);
+ // Asked often, every frame by the frame pacing, and looked up anew only for another display, or with a
+ // new swapchain, see CreateVulkanSwapChain
+ if (MonitorHandle<>0) and (TpvPtrUInt(MonitorHandle)=fNativeRefreshRateMonitor) and (fNativeRefreshRate>0.0) then begin
+  result:=fNativeRefreshRate;
+  exit;
+ end;
  if MonitorHandle<>0 then begin
   FillChar(MonitorInfoEx,SizeOf(MonitorInfoEx),#0);
   MonitorInfoEx.cbSize:=SizeOf(MonitorInfoEx);
   if pvGetMonitorInfoW(MonitorHandle,@MonitorInfoEx) then begin
-   FillChar(devMode,SizeOf(devMode),#0);
-   devMode.dmSize:=SizeOf(devMode);
-   if EnumDisplaySettingsW(@MonitorInfoEx.szDevice[0],ENUM_CURRENT_SETTINGS,{$ifdef fpc}@{$endif}devMode) then begin
-    if devMode.dmDisplayFrequency>1 then begin
-     result:=devMode.dmDisplayFrequency;
+   // The exact rate first, as a fraction, where the display mode only has whole hertz: 59 for a display
+   // which runs at 59.94, which takes a frame paced by it a refresh cycle about every second
+   result:=pvWin32DisplayConfigRefreshRate(PWideChar(@MonitorInfoEx.szDevice[0]));
+   if result>0.0 then begin
+    fNativeRefreshRateSource:='display config';
+   end else if ((MonitorInfoEx.dwFlags and MONITORINFOF_PRIMARY)<>0) and
+               pvWin32DWMCompositionTiming(result,QPCVBlank,QPCRefreshPeriod) then begin
+    // The composition keeps to the primary display
+    fNativeRefreshRateSource:='composition';
+   end else begin
+    result:=0.0;
+    FillChar(devMode,SizeOf(devMode),#0);
+    devMode.dmSize:=SizeOf(devMode);
+    if EnumDisplaySettingsW(@MonitorInfoEx.szDevice[0],ENUM_CURRENT_SETTINGS,{$ifdef fpc}@{$endif}devMode) then begin
+     if devMode.dmDisplayFrequency>1 then begin
+      result:=devMode.dmDisplayFrequency;
+      fNativeRefreshRateSource:='display mode';
+     end;
     end;
    end;
   end;
  end;
+ fNativeRefreshRateMonitor:=TpvPtrUInt(MonitorHandle);
+ fNativeRefreshRate:=result;
 end;
 {$else}
 begin
@@ -14472,6 +14685,8 @@ begin
  fCountQueuedGeneratedFrames:=0;
  fCountGeneratedFrameTargetTimes:=0;
  fGeneratedFrameRefreshPeriod:=-1;
+ // Looked up anew too, since the window may have moved to another display, or the display mode changed
+ fNativeRefreshRateMonitor:=0;
  fGeneratedFrameScheduledLastTargetTime:=0;
  // Anew with every swapchain, since a compositor may let a fullscreen window by, and keep to the refresh
  // cycles again for the window it became once more. The same goes for how late the display shows the
@@ -14479,6 +14694,7 @@ begin
  fPresentShownOnRefreshGrid:=0.0;
  fGeneratedFramePresentWaitHurts:=false;
  fGeneratedFramePresentWaitSlowFrames:=0;
+ fGeneratedFramePresentWaitWarmUpFrames:=0;
  fGeneratedFrameLoggedPresentPath:=-1;
 
  SetupPresentTimingReports;
@@ -16300,6 +16516,11 @@ begin
  fGeneratedFrameScheduleIDs[fGeneratedFrameScheduleIndex and 15]:=fVulkanPresentID+1;
  fGeneratedFrameScheduleTimes[fGeneratedFrameScheduleIndex and 15]:=Now;
  inc(fGeneratedFrameScheduleIndex);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+ if (FGDbgFrames>=450) and (FGDbgFrames<570) then begin
+  Log(LOG_INFO,'FGDBG','S id='+IntToStr(fVulkanPresentID+1)+' now='+IntToStr(Now)+' lead='+IntToStr(Lead div 1000)+' ready-now='+IntToStr((TpvInt64(Ready)-TpvInt64(Now)) div 1000)+' first-now='+IntToStr((TpvInt64(First)-TpvInt64(Now)) div 1000)+' step='+IntToStr(Step div 1000)+' lastshown-now='+IntToStr((TpvInt64(LastShown)-TpvInt64(Now)) div 1000));
+ end;
+{$endif}
 end;
 
 // Whether the presents of frame generation can be spread with target times of present timing. Target
@@ -16402,44 +16623,72 @@ end;
 // rendering manages between the full and the half refresh rate, with the refresh cycles which got no new
 // frame scattered over it, which looks far worse than the even half rate, although it counts higher.
 //
-// IMMEDIATE drops none, it shows every present from when it comes on, torn into the one before. Spread
-// out, each of them is on the screen for its part of the interval, while right away a generated frame
-// would only be on it until the rendered frame right after it comes, a sliver of it at most. The spacing
-// costs the rendering nothing there, it runs on the presenter thread, see TpvApplicationPresenterThread.
-// Unless something keeps to the refresh cycles all the same, a compositor with a window, which shows in
-// the reports of past presents, see fPresentShownOnRefreshGrid: then it is the same as with MAILBOX, and
-// spread out, which of them is shown at a refresh cycle would only go by how the phase drifts.
+// That is for FIFO_LATEST_READY, which is VSync. Without VSync nothing is to hold the rendering to the
+// refresh cycles, so where the newest present at a refresh cycle replaces the older ones, as with MAILBOX
+// or IMMEDIATE under a compositor, see GeneratedFramePresentsReplaceEachOther, it goes by all the presents
+// of a rendered frame instead: right away as soon as there are more of them than refresh cycles, which
+// shows about the rendered frames alone, as without frame generation, while all of them are counted.
+// Below that, they are spread evenly over the time the frames take, each with a refresh cycle of its own.
 //
-// Without the reports of past presents, as without VK_EXT_present_timing, IMMEDIATE cannot tell whether
-// something keeps to the refresh cycles all the same, and spacing its presents on the CPU then cost a third
-// of the frame rate on Windows, where the compositor holds swapchain images of its own on top of the one
-// the spacing holds back. There they always go out right away, at the full frame rate the frames are
-// rendered at, which is what a display without VSync is chosen for.
+// IMMEDIATE without a compositor drops none, it shows every present from when it comes on, torn into the
+// one before. Spread out, each of them is on the screen for its part of the interval, while right away a
+// generated frame would only be on it until the rendered frame right after it comes, a sliver of it at
+// most. So there they are always spread. The spacing costs the rendering nothing there, it runs on the
+// presenter thread, see TpvApplicationPresenterThread.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
     Refresh:TpvDouble;
 begin
  result:=false;
- if assigned(fVulkanSwapChain) and
-    (aCountPresents>0) and
-    (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
-    ((fPresentTimingReportStage=0) or (fPresentTimingReportQueueState<0)) then begin
-  result:=true;
-  exit;
- end;
- if assigned(fVulkanSwapChain) and
-    (aCountPresents>0) and
-    ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
-     (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
-     ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
-      (fPresentShownOnRefreshGrid>0.8))) then begin
+ if assigned(fVulkanSwapChain) and (aCountPresents>0) then begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
-  if RefreshPeriod>0 then begin
-   Refresh:=fHighResolutionTimer.ToFloatSeconds(RefreshPeriod);
-   if fGeneratedFramesRightAway then begin
-    result:=fGeneratedFramePresentInterval<=(Refresh*1.08);
+  Refresh:=fHighResolutionTimer.ToFloatSeconds(RefreshPeriod);
+  if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
+   // VSync: by the rendered frames alone, the presents of the frames which take longer than a refresh
+   // cycle keep to the refresh cycles, see SchedulePresentTargetTimes and the present wait
+   if Refresh>0.0 then begin
+    if fGeneratedFramesRightAway then begin
+     result:=fGeneratedFramePresentInterval<=(Refresh*1.08);
+    end else begin
+     result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*0.9));
+    end;
+   end;
+  end else if GeneratedFramePresentsReplaceEachOther then begin
+   // Without VSync, where only the newest present due at a refresh cycle is shown: by all the presents
+   // of a rendered frame, since as soon as there are more of them than refresh cycles, spreading them out
+   // only lets the phase decide which of them is shown, the motion then going on by turns by one and two
+   // steps. Right away, the generated ones are hardly ever shown and the rendered ones are, which looks as
+   // without frame generation. Without the refresh cycle known, it cannot be told, and they go out right
+   // away as well.
+   if Refresh>0.0 then begin
+    if fGeneratedFramesRightAway then begin
+     result:=fGeneratedFramePresentInterval<=(Refresh*aCountPresents*1.08);
+    end else begin
+     result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*aCountPresents*0.9));
+    end;
    end else begin
-    result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*0.9));
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+// Whether the presentation shows only the newest of the presents due at a refresh cycle and drops the
+// older ones, rather than showing each of them, either queued as with FIFO, or torn in as with IMMEDIATE
+// without a compositor. MAILBOX always does. IMMEDIATE does under a compositor, which shows in the reports
+// of past presents, see fPresentShownOnRefreshGrid. Without them, a window counts as one under a compositor,
+// as it always is on Windows, and fullscreen as one which may be flipped to the display directly.
+function TpvApplication.GeneratedFramePresentsReplaceEachOther:boolean;
+begin
+ result:=false;
+ if assigned(fVulkanSwapChain) then begin
+  if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR then begin
+   result:=true;
+  end else if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR then begin
+   if (fPresentTimingReportStage<>0) and (fPresentTimingReportQueueState>=0) then begin
+    result:=fPresentShownOnRefreshGrid>0.8;
+   end else begin
+    result:=fCurrentFullScreen=0;
    end;
   end;
  end;
@@ -16493,6 +16742,8 @@ begin
   RefreshPeriod:=GetGeneratedFrameRefreshPeriod;
   if fFramePacingPresentTimingAvailable and (fFramePacingPresentTimingRefreshDuration>0) then begin
    Source:='present timing';
+  end else if (RefreshPeriod>0) and (length(fNativeRefreshRateSource)>0) then begin
+   Source:=fNativeRefreshRateSource;
   end else if RefreshPeriod>0 then begin
    Source:='display mode';
   end else begin
@@ -16847,11 +17098,20 @@ var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
     PastStages:array[0..31] of TVkPresentStageTimeEXT;
     Index,Bucket,StageIndex,ScheduleIndex:TpvInt32;
     Time,ReadyTime,Expected:TpvUInt64;
-    Lateness,Needed:TpvInt64;
+    Lateness,Needed,LeadLimit:TpvInt64;
     Interval,RefreshDuration,Multiple,Mean,Deviation:TpvDouble;
     NowTime:TpvHighResolutionTime;
     Text:TpvUTF8String;
 begin
+ // A lead longer than the frames take is no lead of the frames any more, but a wait of the presents in a
+ // queue the target times themselves keep long: their swapchain images are held until then, the next
+ // frames wait for them, and their lead goes up by that. Going by it, the target times would run away
+ // later and later, see the warm up of fGeneratedFramePresentWaitHurts in PresentVulkanBackBuffer.
+ if fGeneratedFrameWorkInterval>0.0 then begin
+  LeadLimit:=Min(TpvInt64(trunc(fGeneratedFrameWorkInterval*1e9))+2000000,TpvInt64(250000000));
+ end else begin
+  LeadLimit:=250000000;
+ end;
  if (fPresentTimingReportStage=0) or
     (fPresentTimingReportQueueState<=0) or
     (not assigned(fVulkanSwapChain)) then begin
@@ -16907,7 +17167,7 @@ begin
          (fGeneratedFrameScheduleTimes[ScheduleIndex]<>0) then begin
        Needed:=(TpvInt64(ReadyTime)-TpvInt64(fGeneratedFrameScheduleTimes[ScheduleIndex]))+2000000;
        if Needed>fGeneratedFramePresentLead then begin
-        fGeneratedFramePresentLead:=Min(Needed,TpvInt64(250000000));
+        fGeneratedFramePresentLead:=Min(Needed,LeadLimit);
        end else begin
         fGeneratedFramePresentLead:=fGeneratedFramePresentLead-((fGeneratedFramePresentLead-Max(Needed,0)) div 16);
        end;
@@ -16929,7 +17189,7 @@ begin
     end;
     Lateness:=TpvInt64(Time)-TpvInt64(Expected);
     if Lateness>TpvInt64(fFramePacingPresentTimingRefreshDuration shr 1) then begin
-     fGeneratedFramePresentLead:=Min(fGeneratedFramePresentLead+Lateness,TpvInt64(250000000));
+     fGeneratedFramePresentLead:=Min(fGeneratedFramePresentLead+Lateness,LeadLimit);
     end else begin
      fGeneratedFramePresentLead:=fGeneratedFramePresentLead-(fGeneratedFramePresentLead div 64);
     end;
@@ -16971,6 +17231,11 @@ begin
      inc(fPresentIntervalStatisticsRefreshMultiples[Bucket]);
     end;
    end;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+   if (FGDbgFrames>=450) and (FGDbgFrames<575) then begin
+    Log(LOG_INFO,'FGDBG','R id='+IntToStr(PastTimings[Index].presentId)+' target='+IntToStr(PastTimings[Index].targetTime)+' ready='+IntToStr(ReadyTime)+' shown='+IntToStr(Time)+' shown-target='+IntToStr((TpvInt64(Time)-TpvInt64(PastTimings[Index].targetTime)) div 1000)+' shown-ready='+IntToStr((TpvInt64(Time)-TpvInt64(ReadyTime)) div 1000)+' shown-prev='+IntToStr((TpvInt64(Time)-TpvInt64(fPresentTimingReportLastShownTime)) div 1000)+' lead='+IntToStr(fGeneratedFramePresentLead div 1000));
+   end;
+{$endif}
    fPresentTimingReportLastPresentID:=PastTimings[Index].presentId;
    fPresentTimingReportLastShownTime:=Time;
    fPresentIntervalStatisticsLastTime:=Time;
@@ -17131,6 +17396,9 @@ begin
     WaitStartTime:=fHighResolutionTimer.GetTime;
     PresentResult:=fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext);
     fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    FGDbgGenPresent:=FGDbgGenPresent+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$endif}
     RecordPresentCallTime;
     case PresentResult of
      VK_SUCCESS,
@@ -17276,7 +17544,14 @@ begin
   if fCountQueuedGeneratedFrames>0 then begin
    CountIntervalParts:=fCountQueuedGeneratedFrames+1;
    if fGeneratedFramePresentInterval<=0.0 then begin
-    fGeneratedFramePresentInterval:=Min(Max(fFloatDeltaTime,0.001),0.25);
+    // As the work time below, at most a refresh cycle for each present to begin with, and not the length
+    // of the loading screen frame before
+    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+    if RefreshSeconds>0.0 then begin
+     fGeneratedFramePresentInterval:=Min(Min(Max(fFloatDeltaTime,0.001),0.25),RefreshSeconds*CountIntervalParts);
+    end else begin
+     fGeneratedFramePresentInterval:=Min(Max(fFloatDeltaTime,0.001),0.25);
+    end;
    end else begin
     fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
    end;
@@ -17297,6 +17572,14 @@ begin
     // spacing up for good. Downwards as it comes.
     fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((Min(WorkInterval,fGeneratedFrameWorkInterval*2.0)-fGeneratedFrameWorkInterval)*0.1);
    end;
+   // The same with the wait of the frame rate limiter in it: what the frames come at where nothing but
+   // the limiter holds them, the base for spreading the presents without VSync, see below
+   WorkInterval:=Min(Max(fFloatDeltaTime-(fDisplayWaitLastFrame+fTimingCPUAcquire),0.001),0.25);
+   if fGeneratedFrameCadenceInterval<=0.0 then begin
+    fGeneratedFrameCadenceInterval:=Max(WorkInterval,fGeneratedFrameWorkInterval);
+   end else begin
+    fGeneratedFrameCadenceInterval:=fGeneratedFrameCadenceInterval+((Min(WorkInterval,fGeneratedFrameCadenceInterval*2.0)-fGeneratedFrameCadenceInterval)*0.1);
+   end;
    fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
@@ -17309,20 +17592,24 @@ begin
     fCountGeneratedFrameTargetTimes:=0;
     fGeneratedFrameCountPresents:=CountIntervalParts;
     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
-    // Where the presents are shown on the grid of the refresh cycles, the distance is whole refresh
-    // cycles, see GeneratedFramePresentCycles, since the interval the frames come at is what this spacing
-    // holds them to, the frames waiting for the swapchain images the presents held back. For a frame which
-    // takes no longer than a refresh cycle for each of its presents, that is one refresh cycle each, which
-    // FIFO keeps by itself, with the presents going out one right after the other.
+    // With VSync, the distance is whole refresh cycles, see GeneratedFramePresentCycles, since the
+    // interval the frames come at is what this spacing holds them to, the frames waiting for the swapchain
+    // images the presents held back. For a frame which takes no longer than a refresh cycle for each of its
+    // presents, that is one refresh cycle each, which FIFO keeps by itself, with the presents going out one
+    // right after the other.
     PresentCycles:=GeneratedFramePresentCycles(CountIntervalParts,RefreshPeriod);
     if (PresentCycles>0) and
        ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
-        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR) or
-        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_MAILBOX_KHR) or
-        ((fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_IMMEDIATE_KHR) and
-         (fPresentShownOnRefreshGrid>0.8))) then begin
+        (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)) then begin
      fGeneratedFrameCPUPacingDistance:=RefreshPeriod*PresentCycles;
+    end else if fGeneratedFrameCadenceInterval>0.0 then begin
+     // Without VSync the frames are not to be held to the refresh cycles, so the presents are spread evenly
+     // over the time between the frames, which here, below the refresh rate, gives each of them a refresh
+     // cycle of its own anyway, see GeneratedFramesCloserThanRefresh. By the time they take with the wait
+     // of the frame rate limiter, but without the waits for the display and the acquire, which are what
+     // this spacing itself would add, and going by them, it would hold itself, as above.
+     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFrameCadenceInterval/CountIntervalParts);
     end;
    end else begin
     SchedulePresentTargetTimes(CountIntervalParts);
@@ -17360,7 +17647,17 @@ begin
   // no longer than by themselves, see GeneratedFramePresentsOneRefreshApart. When they come more than half
   // a refresh cycle later than that all the same, for two seconds on end, the display shows the presents
   // later than it reports, and the wait only holds the frames back on top. Then it stays off.
-  if fGeneratedFramePresentWaitActive and (fCountQueuedGeneratedFrames>0) then begin
+  //
+  // Not counted in the first ten seconds or so of frames with generated ones: right after a world has
+  // loaded, the frames still stall now and then, which is no reason at all, and off for good, the present
+  // wait no longer keeps the queue of the presents short, the lead grows with it, see
+  // PollPresentTimingReports, and the target times went ever later, down to a few frames per second.
+  if (fCountQueuedGeneratedFrames>0) and (fGeneratedFramePresentWaitWarmUpFrames<300) then begin
+   inc(fGeneratedFramePresentWaitWarmUpFrames);
+  end;
+  if fGeneratedFramePresentWaitActive and
+     (fCountQueuedGeneratedFrames>0) and
+     (fGeneratedFramePresentWaitWarmUpFrames>=300) then begin
    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
    if (RefreshSeconds>0.0) and
       (fGeneratedFramePresentInterval>((fGeneratedFrameRefreshCycles+0.5)*RefreshSeconds)) then begin
@@ -17513,6 +17810,9 @@ begin
     WaitStartTime:=fHighResolutionTimer.GetTime;
     fVulkanPresentCompleteFences[fSwapChainImageIndex].WaitFor;
     fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    FGDbgFenceWait:=FGDbgFenceWait+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$endif}
     fVulkanPresentCompleteFences[fSwapChainImageIndex].Reset;
     fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=false;
    end;
@@ -17646,6 +17946,9 @@ begin
     end;
    end;
    fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+   FGDbgPresent:=FGDbgPresent+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
+{$endif}
    RecordPresentCallTime;
 
   end;
@@ -17654,6 +17957,20 @@ begin
   Log(LOG_VERBOSE,'TpvApplication.PresentVulkanBackBuffer','Exception');
   raise;
  end;
+
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+ if fGeneratedFramesPresented then begin
+  if (FGDbgFrames>=450) and (FGDbgFrames<570) then begin
+   if GetPresentTimingCurrentTime(FGDbgNow) then begin
+   end;
+   Log(LOG_INFO,'FGDBG','F n='+IntToStr(FGDbgFrames)+' now='+IntToStr(FGDbgNow)+' gen='+FloatToStrF(FGDbgGenPresent*1e3,ffFixed,8,3)+' fence='+FloatToStrF(FGDbgFenceWait*1e3,ffFixed,8,3)+' present='+FloatToStrF(FGDbgPresent*1e3,ffFixed,8,3)+' W='+FloatToStrF(fGeneratedFrameWorkInterval*1e3,ffFixed,8,3)+' I='+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' dispwait='+FloatToStrF(fDisplayWaitLastFrame*1e3,ffFixed,8,3)+' delta='+FloatToStrF(fFloatDeltaTime*1e3,ffFixed,8,3)+' waiton='+BoolToStr(fGeneratedFramePresentWaitActive,true));
+  end;
+  inc(FGDbgFrames);
+ end;
+ FGDbgGenPresent:=0.0;
+ FGDbgFenceWait:=0.0;
+ FGDbgPresent:=0.0;
+{$endif}
 
  PollPresentTimingReports;
 
