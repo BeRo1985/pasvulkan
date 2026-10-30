@@ -1716,21 +1716,33 @@ begin
    Resource:=Node.Resource;
    Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Loading;
 
-   Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+   // A resource which raises an exception has failed to load, as one which says so. Out of here, the
+   // exception would leave this job unfinished, since PasMP does not catch it, and the resource loading
+   // for good, so that everything which waits for it would hang, down to the shutdown of the resource
+   // manager.
+   Stream:=nil;
    try
-    if assigned(Stream) then begin
-     Resource.LoadMetaData;
-     Success:=Resource.BeginLoad(Stream);
-     if Success then begin
-      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+    try
+     Stream:=Resource.GetStreamFromFileName(Resource.fFileName);
+     if assigned(Stream) then begin
+      Resource.LoadMetaData;
+      Success:=Resource.BeginLoad(Stream);
+      if Success then begin
+       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Success;
+      end else begin
+       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
+      end;
      end else begin
       Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
      end;
-    end else begin
+    finally
+     FreeAndNil(Stream);
+    end;
+   except
+    on e:Exception do begin
+     pvApplication.Log(LOG_ERROR,'TpvResourceBackgroundLoader.HandleLoadDependencyBatchMethod','"'+Resource.fFileName+'" failed to load: '+e.ClassName+': '+e.Message);
      Resource.fAsyncLoadState:=TpvResource.TAsyncLoadState.Fail;
     end;
-   finally
-    FreeAndNil(Stream);
    end;
 
    // Not safe here, must be done in the main thread, because finalization may involve GPU operations

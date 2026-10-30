@@ -2328,6 +2328,19 @@ type EpvApplication=class(Exception)
        // presents without VSync in PresentVulkanBackBuffer.
        fGeneratedFrameCadenceInterval:TpvDouble;
 
+       // Under VSync, the interval the rendered frames come at while their generated frames go right away,
+       // smoothed over just these frames, from a refresh cycle on as they start going right away, and for how
+       // many of them that has held so far, up to a limit. When it did not hold, it is not tried again for a
+       // number of frames, twice as many each time it did not hold for long once more, see
+       // GeneratedFramesCloserThanRefresh.
+       fGeneratedFrameRightAwayInterval:TpvDouble;
+
+       fGeneratedFrameRightAwayFrames:TpvInt32;
+
+       fGeneratedFrameRightAwayHoldOff:TpvInt32;
+
+       fGeneratedFrameRightAwayHoldOffLength:TpvInt32;
+
        // How many refresh cycles a rendered frame is meant to take: one, or with the presents of its
        // generated frames spread a refresh cycle apart each, one for each of them as well, which the frame
        // rate limiter keeps the frames to, see FramePacingAndFrameRateLimiter.
@@ -14881,11 +14894,14 @@ begin
  fGeneratedFrameScheduledLastTargetTime:=0;
  // Anew with every swapchain, since a compositor may let a fullscreen window by, and keep to the refresh
  // cycles again for the window it became once more. The same goes for how late the display shows the
- // presents, see WaitForSwapChainLatency, and the way of the presents goes into the log again.
+ // presents, see WaitForSwapChainLatency, for whether the generated frames going right away held, see
+ // GeneratedFramesCloserThanRefresh, and where it is logged, the way of the presents goes into the log again.
  fPresentShownOnRefreshGrid:=0.0;
  fGeneratedFramePresentWaitHurts:=false;
  fGeneratedFramePresentWaitSlowFrames:=0;
  fGeneratedFramePresentWaitWarmUpFrames:=0;
+ fGeneratedFrameRightAwayHoldOff:=0;
+ fGeneratedFrameRightAwayHoldOffLength:=0;
 {$ifdef PasVulkanFrameGenerationPresentPathLog}
  fGeneratedFrameLoggedPresentPath:=-1;
 {$endif}
@@ -16809,7 +16825,14 @@ end;
 // is shown: the generated frames would mostly push the rendered ones out. They go out right away instead,
 // and the rendered frame, the newest at every refresh cycle, is the one shown, at the full refresh rate.
 // Once there, they stay until the rendered frames fall behind the refresh rate by more than a bit, so
-// that it does not flip back and forth around the boundary.
+// that it does not flip back and forth around the boundary. That goes by the interval of just the frames
+// which went right away, see fGeneratedFrameRightAwayInterval: the interval of all frames still held the
+// frames spread before, two refresh cycles each, for some twenty frames after going right away, so that
+// they went back after the first, and from then on by turns, frame after frame, one and two refresh
+// cycles each, for good after a single hitch. Where it does not hold although the frames take short
+// enough, something else holds them back, and it is not tried again for a while, see
+// fGeneratedFrameRightAwayHoldOff. A frame rate limiter holds them back as well, to its rate, which is
+// why that counts too.
 //
 // Where they cannot, they stay spread, a refresh cycle each: half the refresh rate rendered, and every
 // refresh cycle with a frame of its own, evenly. Right away they would come at whatever rate the
@@ -16834,7 +16857,7 @@ end;
 // presenter thread, see TpvApplicationPresenterThread.
 function TpvApplication.GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
 var RefreshPeriod:TpvHighResolutionTime;
-    Refresh:TpvDouble;
+    Refresh,LimiterInterval:TpvDouble;
 begin
  result:=false;
  if assigned(fVulkanSwapChain) and (aCountPresents>0) then begin
@@ -16845,9 +16868,16 @@ begin
    // cycle keep to the refresh cycles, see SchedulePresentTargetTimes and the present wait
    if Refresh>0.0 then begin
     if fGeneratedFramesRightAway then begin
-     result:=fGeneratedFramePresentInterval<=(Refresh*1.08);
+     result:=fGeneratedFrameRightAwayInterval<=(Refresh*1.08);
     end else begin
-     result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*0.9));
+     if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
+      LimiterInterval:=1.0/fMaximumFramesPerSecond;
+     end else begin
+      LimiterInterval:=0.0;
+     end;
+     result:=(fGeneratedFrameRightAwayHoldOff=0) and
+             (fGeneratedFrameWorkInterval>0.0) and
+             (Max(fGeneratedFrameWorkInterval,LimiterInterval)<(Refresh*0.9));
     end;
    end;
   end else if GeneratedFramePresentsReplaceEachOther then begin
@@ -17663,7 +17693,7 @@ var PresentIdKHR:TVkPresentIdKHR;
     PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
     PresentFenceHandle:TVkFence;
     CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
-    OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence:boolean;
+    OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence,WasRightAway:boolean;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
     WorkInterval,RefreshSeconds:TpvDouble;
@@ -17797,7 +17827,35 @@ begin
    fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
+   // Whether going right away holds under VSync is told by the frames which went right away, see
+   // GeneratedFramesCloserThanRefresh, and this frame comes after one which did. A frame late by a refresh
+   // cycle or more counts as late by half of one, so that a single hitch is no reason to give up on it.
+   WasRightAway:=fGeneratedFramesRightAway;
+   RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+   if WasRightAway then begin
+    if RefreshSeconds>0.0 then begin
+     fGeneratedFrameRightAwayInterval:=fGeneratedFrameRightAwayInterval+((Min(Max(fFloatDeltaTime,0.001),RefreshSeconds*1.5)-fGeneratedFrameRightAwayInterval)*0.1);
+    end;
+    if fGeneratedFrameRightAwayFrames<600 then begin
+     inc(fGeneratedFrameRightAwayFrames);
+    end;
+   end else if fGeneratedFrameRightAwayHoldOff>0 then begin
+    dec(fGeneratedFrameRightAwayHoldOff);
+   end;
    fGeneratedFramesRightAway:=GeneratedFramesCloserThanRefresh(CountIntervalParts);
+   if fGeneratedFramesRightAway and not WasRightAway then begin
+    fGeneratedFrameRightAwayInterval:=RefreshSeconds;
+    fGeneratedFrameRightAwayFrames:=0;
+   end else if WasRightAway and not fGeneratedFramesRightAway then begin
+    // A second or so at first, and back to that once it held for ten seconds or so. Not holding
+    // again soon after, twice as long each time, up to half a minute or so.
+    if fGeneratedFrameRightAwayFrames>=600 then begin
+     fGeneratedFrameRightAwayHoldOffLength:=30;
+    end else begin
+     fGeneratedFrameRightAwayHoldOffLength:=Min(Max(fGeneratedFrameRightAwayHoldOffLength*2,30),960);
+    end;
+    fGeneratedFrameRightAwayHoldOff:=fGeneratedFrameRightAwayHoldOffLength;
+   end;
    if fGeneratedFramesRightAway then begin
     // Not all of them can be shown, so they go out right away, see GeneratedFramesCloserThanRefresh.
     fGeneratedFrameCPUPacing:=false;
