@@ -513,6 +513,7 @@ type EpvVulkanException=class(Exception);
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
+       fDeviceFaultFeaturesEXT:TVkPhysicalDeviceFaultFeaturesEXT;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
 {      fFloatControlsPropertiesKHR:TVkPhysicalDeviceFloatControlsPropertiesKHR;
@@ -606,6 +607,7 @@ type EpvVulkanException=class(Exception);
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property PhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT read fPhysicalDeviceAddressBindingReportFeaturesEXT;
+       property DeviceFaultFeaturesEXT:TVkPhysicalDeviceFaultFeaturesEXT read fDeviceFaultFeaturesEXT;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
        property SampleLocationsPropertiesEXT:TVkPhysicalDeviceSampleLocationsPropertiesEXT read fSampleLocationsPropertiesEXT;
@@ -880,6 +882,8 @@ type EpvVulkanException=class(Exception);
        fShader16BitStorageFeaturesKHR:TVkPhysicalDevice16BitStorageFeaturesKHR;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fPhysicalDeviceAddressBindingReportFeaturesEXT:TVkPhysicalDeviceAddressBindingReportFeaturesEXT;
+       fDeviceFaultFeaturesEXT:TVkPhysicalDeviceFaultFeaturesEXT;
+       fDeviceFault:boolean; // whether VK_EXT_device_fault is on, see TraceDeviceFault
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
@@ -926,6 +930,10 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure WaitIdle;
        procedure ThreadSafeWaitIdle; // WaitIdle while holding every queue lock
+       // What VK_EXT_device_fault says about a device loss, the kind and the address of the fault and
+       // what the vendor adds, into the log and beside the breadcrumbs into BreadcrumbTraceFileName.
+       // Nothing without the extension, which is asked for together with the breadcrumbs.
+       procedure TraceDeviceFault;
       public
        property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
@@ -973,6 +981,7 @@ type EpvVulkanException=class(Exception);
        property BreadcrumbForceSyncManual:boolean read fBreadcrumbForceSyncManual write fBreadcrumbForceSyncManual;
        property BreadcrumbTraceFileName:TpvUTF8String read fBreadcrumbTraceFileName write fBreadcrumbTraceFileName; // empty = no file, otherwise the device-lost breadcrumb report is appended to it
        property BreadcrumbTechnique:TpvVulkanBreadcrumbTechnique read fBreadcrumbTechnique;
+       property DeviceFault:boolean read fDeviceFault;
        property BreadcrumbBuffer:TpvVulkanBreadcrumbBuffer read fBreadcrumbBuffer;
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
        property PresentIDSupport:boolean read fPresentIDSupport;
@@ -8560,6 +8569,8 @@ begin
      end;
     end;
    end;
+   // What was under way says the breadcrumbs, what went wrong the device fault, if the driver tells.
+   BreadcrumbVulkanDevice.TraceDeviceFault;
   end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   s:='Vulkan error ['+IntToStr(TpvInt64(ResultCode))+']: '+VulkanErrorToString(ResultCode);
@@ -9819,6 +9830,15 @@ begin
   if AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_ADDRESS_BINDING_REPORT_EXTENSION_NAME)>=0 then begin
    fPhysicalDeviceAddressBindingReportFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fPhysicalDeviceAddressBindingReportFeaturesEXT;
+  end;
+ end;
+
+ begin
+  FillChar(fDeviceFaultFeaturesEXT,SizeOf(TVkPhysicalDeviceFaultFeaturesEXT),#0);
+  fDeviceFaultFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)>=0 then begin
+   fDeviceFaultFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fDeviceFaultFeaturesEXT;
   end;
  end;
 
@@ -12599,6 +12619,31 @@ begin
 
   begin
 
+   FillChar(fDeviceFaultFeaturesEXT,SizeOf(TVkPhysicalDeviceFaultFeaturesEXT),#0);
+   fDeviceFaultFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT;
+
+   fDeviceFault:=false;
+
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fDeviceFaultFeaturesEXT.deviceFault<>VK_FALSE) then begin
+
+    fDeviceFaultFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fDeviceFaultFeaturesEXT;
+
+    // The vendor binary is a crash dump for the vendor's own tools and is left out.
+    fDeviceFaultFeaturesEXT.deviceFault:=VK_TRUE;
+    fDeviceFaultFeaturesEXT.deviceFaultVendorBinary:=VK_FALSE;
+
+    fDeviceFault:=true;
+
+   end;
+
+  end;
+
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
+
    FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
    fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
 
@@ -13245,6 +13290,106 @@ begin
   end;
  end;
 {$endif}
+end;
+
+procedure TpvVulkanDevice.TraceDeviceFault;
+ procedure Emit(const aLine:TpvUTF8String);
+ var TraceFile:TextFile;
+ begin
+  VulkanDebugLn(aLine);
+  if length(fBreadcrumbTraceFileName)>0 then begin
+   AssignFile(TraceFile,String(fBreadcrumbTraceFileName));
+   if FileExists(String(fBreadcrumbTraceFileName)) then begin
+    Append(TraceFile);
+   end else begin
+    Rewrite(TraceFile);
+   end;
+   WriteLn(TraceFile,String(aLine));
+   CloseFile(TraceFile);
+  end;
+ end;
+ function AddressTypeName(const aAddressType:TVkDeviceFaultAddressTypeEXT):TpvUTF8String;
+ begin
+  case aAddressType of
+   VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_EXT:begin
+    result:='read of an invalid address';
+   end;
+   VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_EXT:begin
+    result:='write to an invalid address';
+   end;
+   VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_EXT:begin
+    result:='execution at an invalid address';
+   end;
+   VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_EXT:begin
+    result:='instruction pointer, fault unknown';
+   end;
+   VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_EXT:begin
+    result:='instruction pointer of an invalid instruction';
+   end;
+   VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_EXT:begin
+    result:='instruction pointer of the faulting instruction';
+   end;
+   else begin
+    result:='none';
+   end;
+  end;
+ end;
+var FaultCounts:TVkDeviceFaultCountsEXT;
+    FaultInfo:TVkDeviceFaultInfoEXT;
+    AddressInfos:array of TVkDeviceFaultAddressInfoEXT;
+    VendorInfos:array of TVkDeviceFaultVendorInfoEXT;
+    FaultResult:TVkResult;
+    Index:TpvSizeInt;
+begin
+ if not (fDeviceFault and assigned(fDeviceVulkan) and assigned(fDeviceVulkan.Commands.GetDeviceFaultInfoEXT)) then begin
+  exit;
+ end;
+ try
+  // First the counts alone, then everything with arrays of that size.
+  FillChar(FaultCounts,SizeOf(TVkDeviceFaultCountsEXT),#0);
+  FaultCounts.sType:=VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT;
+  FaultResult:=fDeviceVulkan.GetDeviceFaultInfoEXT(fDeviceHandle,@FaultCounts,nil);
+  if (FaultResult<>VK_SUCCESS) and (FaultResult<>VK_INCOMPLETE) then begin
+   Emit('--- device fault: no report ('+VulkanErrorToString(FaultResult)+')');
+   exit;
+  end;
+  AddressInfos:=nil;
+  VendorInfos:=nil;
+  SetLength(AddressInfos,FaultCounts.addressInfoCount);
+  SetLength(VendorInfos,FaultCounts.vendorInfoCount);
+  FaultCounts.vendorBinarySize:=0;
+  FillChar(FaultInfo,SizeOf(TVkDeviceFaultInfoEXT),#0);
+  FaultInfo.sType:=VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT;
+  if length(AddressInfos)>0 then begin
+   FillChar(AddressInfos[0],length(AddressInfos)*SizeOf(TVkDeviceFaultAddressInfoEXT),#0);
+   FaultInfo.pAddressInfos:=@AddressInfos[0];
+  end;
+  if length(VendorInfos)>0 then begin
+   FillChar(VendorInfos[0],length(VendorInfos)*SizeOf(TVkDeviceFaultVendorInfoEXT),#0);
+   FaultInfo.pVendorInfos:=@VendorInfos[0];
+  end;
+  FaultInfo.pVendorBinaryData:=nil;
+  FaultResult:=fDeviceVulkan.GetDeviceFaultInfoEXT(fDeviceHandle,@FaultCounts,@FaultInfo);
+  if (FaultResult<>VK_SUCCESS) and (FaultResult<>VK_INCOMPLETE) then begin
+   Emit('--- device fault: no report ('+VulkanErrorToString(FaultResult)+')');
+   exit;
+  end;
+  Emit('--- device fault: '+TpvUTF8String(PAnsiChar(@FaultInfo.description[0]))+', '+
+       IntToStr(FaultCounts.addressInfoCount)+' address(es), '+IntToStr(FaultCounts.vendorInfoCount)+' vendor report(s)');
+  // The fault lies within the precision, a power of two, around the reported address.
+  for Index:=0 to TpvSizeInt(Min(FaultCounts.addressInfoCount,TpvUInt32(length(AddressInfos))))-1 do begin
+   Emit('Device fault address '+IntToStr(Index)+': '+AddressTypeName(AddressInfos[Index].addressType)+
+        ' at 0x'+TpvUTF8String(LowerCase(IntToHex(AddressInfos[Index].reportedAddress,16)))+
+        ', precision '+IntToStr(AddressInfos[Index].addressPrecision));
+  end;
+  for Index:=0 to TpvSizeInt(Min(FaultCounts.vendorInfoCount,TpvUInt32(length(VendorInfos))))-1 do begin
+   Emit('Device fault vendor report '+IntToStr(Index)+': '+TpvUTF8String(PAnsiChar(@VendorInfos[Index].description[0]))+
+        ', code 0x'+TpvUTF8String(LowerCase(IntToHex(VendorInfos[Index].vendorFaultCode,16)))+
+        ', data 0x'+TpvUTF8String(LowerCase(IntToHex(VendorInfos[Index].vendorFaultData,16))));
+  end;
+ except
+  // Called on the way to an exception for the device loss, which must not become another one here.
+ end;
 end;
 
 constructor TpvVulkanDeviceQueueCreateInfo.Create(const aQueueFamilyIndex:TpvUInt32;const aQueuePriorities:array of TpvFloat);

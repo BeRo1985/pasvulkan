@@ -14057,6 +14057,12 @@ begin
    if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)>=0 then begin
     fVulkanDevice.EnabledExtensionNames.Add(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
    end;
+   // With the breadcrumbs, which say what was under way at a device loss, the device fault report, which
+   // says what went wrong and where, see TpvVulkanDevice.TraceDeviceFault.
+   if (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)>=0) and
+      (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)<0) then begin
+    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+   end;
    if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)>=0 then begin
     if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)<0 then begin
      fVulkanDevice.EnabledExtensionNames.Add(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
@@ -14136,6 +14142,14 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Initialized vulkan device');
 {$ifend}
+
+  if fVulkanDevice.UseBreadcrumbs then begin
+   if fVulkanDevice.DeviceFault then begin
+    Log(LOG_INFO,'PasVulkanApplication','Device fault report: on, with the breadcrumbs');
+   end else begin
+    Log(LOG_INFO,'PasVulkanApplication','Device fault report: not offered by the driver');
+   end;
+  end;
 
   if (length(fVulkanPipelineCacheFileName)>0) and FileExists(String(fVulkanPipelineCacheFileName)) then begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
