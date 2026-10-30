@@ -2349,8 +2349,10 @@ type EpvApplication=class(Exception)
        // seconds after a world has loaded are too uneven to tell anything, see fGeneratedFramePresentWaitHurts.
        fGeneratedFramePresentWaitWarmUpFrames:TpvInt32;
 
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
        // The way the presents of the generated frames went last, for the log, see LogGeneratedFramePresentPath.
        fGeneratedFrameLoggedPresentPath:TpvInt32;
+{$endif}
 
        // The intervals between the present calls, for PresentIntervalStatistics where there are no reports of
        // past presents, see RecordPresentCallTime.
@@ -2660,7 +2662,9 @@ type EpvApplication=class(Exception)
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        function GeneratedFramePresentsReplaceEachOther:boolean;
        function GeneratedFramePresentsOneRefreshApart:boolean;
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
        procedure LogGeneratedFramePresentPath(const aPath:TpvInt32);
+{$endif}
        procedure RecordPresentCallTime;
        procedure LogPresentCallStatistics;
        procedure LockSwapChain;
@@ -12590,7 +12594,9 @@ begin
  fPresenterThread:=nil;
  fSwapChainLockNextTicket:=0;
  fSwapChainLockServingTicket:=0;
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
  fGeneratedFrameLoggedPresentPath:=-1;
+{$endif}
  fPresentCallStatisticsLock:=TPasMPCriticalSection.Create;
  fPresentCallStatisticsLastTime:=0;
  fPresentCallStatisticsLastLogTime:=0;
@@ -14880,7 +14886,9 @@ begin
  fGeneratedFramePresentWaitHurts:=false;
  fGeneratedFramePresentWaitSlowFrames:=0;
  fGeneratedFramePresentWaitWarmUpFrames:=0;
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
  fGeneratedFrameLoggedPresentPath:=-1;
+{$endif}
 
  SetupPresentTimingReports;
 
@@ -16905,10 +16913,12 @@ begin
          (fGeneratedFrameWorkInterval<=(fHighResolutionTimer.ToFloatSeconds(RefreshPeriod)*fGeneratedFrameRefreshCycles));
 end;
 
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
 // Which way the presents of the generated frames go, into the log whenever that changes: right away, at
 // absolute target times, spaced on the CPU by the presenter thread or at relative target times, aPath shr 1
 // being one of these in that order from 1 on, and whether the present wait for them is on, the lowest bit.
-// With what it was decided by.
+// With what it was decided by. Only for diagnosis, since wherever the way changes from one frame to the
+// next, this is a line for each frame.
 procedure TpvApplication.LogGeneratedFramePresentPath(const aPath:TpvInt32);
 var Way,Wait,Source:TpvUTF8String;
     RefreshPeriod:TpvHighResolutionTime;
@@ -16956,6 +16966,7 @@ begin
       ' and come every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
  end;
 end;
+{$endif}
 
 // The time a present went out, for the intervals between the present calls of PresentIntervalStatistics,
 // from the main loop and from the presenter thread, see LogPresentCallStatistics.
@@ -17656,7 +17667,7 @@ var PresentIdKHR:TVkPresentIdKHR;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
     WorkInterval,RefreshSeconds:TpvDouble;
-    PresentPath,PresentCycles:TpvInt32;
+    {$ifdef PasVulkanFrameGenerationPresentPathLog}PresentPath,{$endif}PresentCycles:TpvInt32;
     RefreshPeriod:TpvHighResolutionTime;
 begin
 
@@ -17876,6 +17887,7 @@ begin
    fGeneratedFramePresentWaitSlowFrames:=0;
   end;
 
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
   if fCountQueuedGeneratedFrames>0 then begin
    if fGeneratedFramesRightAway then begin
     PresentPath:=1;
@@ -17888,6 +17900,7 @@ begin
    end;
    LogGeneratedFramePresentPath((PresentPath shl 1) or ord(fGeneratedFramePresentWaitActive));
   end;
+{$endif}
 
   // The presents spaced on the CPU go out on the presenter thread, so that the waits between them do not
   // hold the next frame back, see TpvApplicationPresenterThread. So do all others for as long as it still
