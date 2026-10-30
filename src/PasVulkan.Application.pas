@@ -16629,6 +16629,10 @@ end;
 // of a rendered frame instead: right away as soon as there are more of them than refresh cycles, which
 // shows about the rendered frames alone, as without frame generation, while all of them are counted.
 // Below that, they are spread evenly over the time the frames take, each with a refresh cycle of its own.
+// Whether there are more is told by the interval the frames come at with the wait of the frame rate
+// limiter in it, see fGeneratedFrameCadenceInterval, since nothing else holds them back here: by the time
+// they take alone, frames held to a lower rate by the limiter went right away, and then, coming slower
+// than that allows, back again, frame after frame.
 //
 // IMMEDIATE without a compositor drops none, it shows every present from when it comes on, torn into the
 // one before. Spread out, each of them is on the screen for its part of the interval, while right away a
@@ -16664,7 +16668,7 @@ begin
     if fGeneratedFramesRightAway then begin
      result:=fGeneratedFramePresentInterval<=(Refresh*aCountPresents*1.08);
     end else begin
-     result:=(fGeneratedFrameWorkInterval>0.0) and (fGeneratedFrameWorkInterval<(Refresh*aCountPresents*0.9));
+     result:=(fGeneratedFrameCadenceInterval>0.0) and (fGeneratedFrameCadenceInterval<(Refresh*aCountPresents*0.9));
     end;
    end else begin
     result:=true;
