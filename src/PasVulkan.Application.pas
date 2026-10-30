@@ -1672,6 +1672,9 @@ type EpvApplication=class(Exception)
       // Signalled once the GPU work of the frame this present belongs to is done, VK_NULL_HANDLE for none,
       // see TpvApplicationPresenterThread.Pace.
       ReadyFence:TVkFence;
+      // The rendered frame the out of band present markers around the present go by, zero for none, see
+      // TpvApplication.AddLowLatencyFrameGeneration.
+      LowLatencyOutOfBandPresentID:TpvUInt64;
      end;
 
      { TpvApplicationPresenterThread }
@@ -2165,6 +2168,11 @@ type EpvApplication=class(Exception)
        // What VK_NV_low_latency2 ties the submits of a rendered frame to its present with, one per in-flight
        // frame, see LowLatencySubmissionPresentIDNext.
        fLowLatencySubmissionPresentIDs:array[0..MaxInFlightFrames-1] of TVkLatencySubmissionPresentIdNV;
+       // How many frame generations go with the low latency mode, see AddLowLatencyFrameGeneration.
+       fLowLatencyFrameGenerations:TPasMPInt32;
+       // The rendered frame whose presents go out between the out of band present markers, zero for none,
+       // see PresentVulkanBackBuffer.
+       fLowLatencyOutOfBandPresentID:TpvUInt64;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
@@ -2469,6 +2477,9 @@ type EpvApplication=class(Exception)
 
        fPresentIntervalStatisticsRefreshMultiples:array[0..5] of TpvInt64;
 
+       // How many presents were shown before the present before them, see PollPresentTimingReports.
+       fPresentIntervalStatisticsOutOfOrder:TpvInt64;
+
        fPresentIntervalStatisticsLastLogTime:TpvHighResolutionTime;
 
        fVulkanDepthImageFormat:TVkFormat;
@@ -2712,6 +2723,9 @@ type EpvApplication=class(Exception)
        // The marker for the frame of the given frame counter, which goes by the present id that frame's
        // present will have.
        procedure SetLowLatencyMarker(const aMarker:TVkLatencyMarkerNV;const aFrameCounter:TpvInt64);
+       // An out of band present marker of NVIDIA Reflex for the rendered frame of the given present id, none
+       // for zero, see AddLowLatencyFrameGeneration.
+       procedure SetLowLatencyOutOfBandPresentMarker(const aMarker:TVkLatencyMarkerNV;const aPresentID:TpvUInt64);
        procedure LowLatencySleep;
 
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
@@ -2856,6 +2870,23 @@ type EpvApplication=class(Exception)
        // mode of VK_NV_low_latency2, to go into the pNext chain of its VkSubmitInfo, or nil without it. The
        // record behind it is the in-flight frame's and stays valid until the next call for that in-flight frame.
        function LowLatencySubmissionPresentIDNext(const aInFlightFrameIndex:TpvSizeInt;const aFrameCounter:TpvInt64):pointer;
+
+       // A frame generation which goes with the low latency mode, as DLSS frame generation goes with NVIDIA
+       // Reflex, signs in with AddLowLatencyFrameGeneration for as long as it exists, and out again with
+       // RemoveLowLatencyFrameGeneration. As long as one is signed in, the presents of a rendered frame
+       // with generated frames go out between the out of band present markers of VK_NV_low_latency2, all of
+       // them for that rendered frame, the generated ones included. That is what the specification asks of
+       // a frame generation which puts the presents out later or more than once: Reflex attributes each
+       // vkQueuePresentKHR to a rendered frame, otherwise by the last present start marker it has not
+       // attributed yet, and so took the first present of each interval, a generated frame, for the
+       // rendered one, and the rendered frame, coming later from the presenter thread, for a frame of its
+       // own without markers. Drivers below revision 3 of the extension, which ignore
+       // VkLatencySubmissionPresentIdNV, attribute the submits by these presents as well. Nor does the low
+       // latency mode take the frame rate limiter over on a display with a variable refresh rate then, see
+       // FramePacingAndFrameRateLimiter, so that the frames are paced as with any other frame generation.
+       // Without one signed in, nothing changes.
+       procedure AddLowLatencyFrameGeneration;
+       procedure RemoveLowLatencyFrameGeneration;
 
        // A test aid: where the surface reports the times of past presents, the intervals between the
        // presented frames, generated ones included, go into the log every two seconds, with how many of them
@@ -12382,12 +12413,17 @@ begin
 {$endif}
  fApplication.LockSwapChain;
  try
+  fApplication.SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_START_NV,aJob.LowLatencyOutOfBandPresentID);
   try
-   PresentResult:=SwapChain.QueuePresentImage(Queue,aJob.ImageIndex,aJob.WaitSemaphore,PresentNext);
-  except
-   on VulkanResultException:EpvVulkanResultException do begin
-    PresentResult:=VulkanResultException.ResultCode;
+   try
+    PresentResult:=SwapChain.QueuePresentImage(Queue,aJob.ImageIndex,aJob.WaitSemaphore,PresentNext);
+   except
+    on VulkanResultException:EpvVulkanResultException do begin
+     PresentResult:=VulkanResultException.ResultCode;
+    end;
    end;
+  finally
+   fApplication.SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV,aJob.LowLatencyOutOfBandPresentID);
   end;
  finally
   fApplication.UnlockSwapChain;
@@ -12898,6 +12934,8 @@ begin
  fLowLatencyAppliedMode:=TpvApplicationLowLatencyMode.None;
  fDesiredCountSwapChainImagesApplied:=0;
  FillChar(fLowLatencySubmissionPresentIDs,SizeOf(fLowLatencySubmissionPresentIDs),#0);
+ fLowLatencyFrameGenerations:=0;
+ fLowLatencyOutOfBandPresentID:=0;
 
  fFrameCounter:=0;
 
@@ -17268,6 +17306,7 @@ begin
  for Index:=Low(fPresentIntervalStatisticsRefreshMultiples) to High(fPresentIntervalStatisticsRefreshMultiples) do begin
   fPresentIntervalStatisticsRefreshMultiples[Index]:=0;
  end;
+ fPresentIntervalStatisticsOutOfOrder:=0;
  fPresentIntervalStatisticsLastLogTime:=fHighResolutionTimer.GetTime;
  if (not fFramePacingPresentTimingAvailable) or
     fDisablePresentTiming or
@@ -17468,6 +17507,9 @@ begin
      end;
      inc(fPresentIntervalStatisticsRefreshMultiples[Bucket]);
     end;
+   end else if fPresentIntervalStatistics and (fPresentIntervalStatisticsLastTime<>0) and (Time<fPresentIntervalStatisticsLastTime) then begin
+    // Shown before the present before it, as a generated frame shown after its rendered frame would be.
+    inc(fPresentIntervalStatisticsOutOfOrder);
    end;
 {$ifdef PasVulkanFrameGenerationPresentTrace}
    if (FGDbgFrames>=450) and (FGDbgFrames<575) then begin
@@ -17496,6 +17538,7 @@ begin
         ' 4x '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[4])+
         ' more '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[5])+
         ' off the grid '+IntToStr(fPresentIntervalStatisticsRefreshMultiples[0])+
+        ', shown out of order '+IntToStr(fPresentIntervalStatisticsOutOfOrder)+
         ', frame generation interval '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms'+
         ', lead '+FloatToStrF(fGeneratedFramePresentLead*1e-6,ffFixed,8,3)+' ms';
   Log(LOG_INFO,'TpvApplication.PollPresentTimingReports',Text);
@@ -17505,6 +17548,7 @@ begin
   for Bucket:=Low(fPresentIntervalStatisticsRefreshMultiples) to High(fPresentIntervalStatisticsRefreshMultiples) do begin
    fPresentIntervalStatisticsRefreshMultiples[Bucket]:=0;
   end;
+  fPresentIntervalStatisticsOutOfOrder:=0;
   fPresentIntervalStatisticsLastLogTime:=NowTime;
  end;
 end;
@@ -17622,6 +17666,7 @@ begin
               (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
     Job.Rendered:=false;
     Job.ReadyFence:=fPresentReadyFence;
+    Job.LowLatencyOutOfBandPresentID:=fLowLatencyOutOfBandPresentID;
     fPresenterThread.Enqueue(Job);
     RecordPresentID;
     inc(result);
@@ -17633,7 +17678,12 @@ begin
 {$endif}
 
     WaitStartTime:=fHighResolutionTimer.GetTime;
-    PresentResult:=fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext);
+    SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_START_NV,fLowLatencyOutOfBandPresentID);
+    try
+     PresentResult:=fVulkanSwapChain.QueuePresentImage(fVulkanDevice.PresentQueue,ImageIndex,PresentWaitSemaphore,PresentNext);
+    finally
+     SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV,fLowLatencyOutOfBandPresentID);
+    end;
     fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
 {$ifdef PasVulkanFrameGenerationPresentTrace}
     FGDbgGenPresent:=FGDbgGenPresent+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
@@ -17683,6 +17733,11 @@ begin
 end;
 
 var VulkanPresentTimingDecisionLogged:boolean=false; // one-shot diagnostic: prints the resolved present-timing chaining decision on the first present
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
+    // How many presents from the main loop after presents of the presenter thread went into the log, see
+    // PresentVulkanBackBuffer.
+    FrameGenerationMainLoopPresentsLogged:TpvInt32=0;
+{$endif}
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
 var PresentIdKHR:TVkPresentIdKHR;
@@ -17967,6 +18022,22 @@ begin
   if OnPresenterThread and not assigned(fPresenterThread) then begin
    fPresenterThread:=TpvApplicationPresenterThread.Create(self);
   end;
+{$ifdef PasVulkanFrameGenerationPresentPathLog}
+  // Only for diagnosis: a present from the main loop after the presenter thread put presents out, which
+  // may go to another queue than those, see TpvApplicationPresenterThread.Present.
+  if (not OnPresenterThread) and
+     assigned(fPresenterThread) and
+     (fPresenterThread.fLastPresentID<>0) and
+     (FrameGenerationMainLoopPresentsLogged<64) then begin
+   inc(FrameGenerationMainLoopPresentsLogged);
+   Log(LOG_INFO,
+       'TpvApplication.PresentVulkanBackBuffer',
+       'Present from the main loop after presents of the presenter thread: frame '+IntToStr(fDrawFrameCounter)+
+       ', '+IntToStr(fCountQueuedGeneratedFrames)+' generated frame(s)'+
+       ', CPU pacing '+BoolToStr(fGeneratedFrameCPUPacing,true)+
+       ', right away '+BoolToStr(fGeneratedFramesRightAway,true));
+  end;
+{$endif}
 
   // While it holds this rendered frame back, the next one acquires its own image and those of its generated
   // frames already, one image more than without it, which the presentation may not have to spare: then
@@ -17976,6 +18047,18 @@ begin
      (fPresenterSwapChainImages=0) and
      (fCountSwapChainImages<(TpvInt32(fVulkanSwapChain.MinImageCount)+fCountQueuedGeneratedFrames+2)) then begin
    fPresenterSwapChainImages:=1;
+  end;
+
+  // The presents of this rendered frame and of the frames generated for it go out between the out of
+  // band present markers, all of them for this rendered frame, where a frame generation going with the
+  // low latency mode asks for it, see AddLowLatencyFrameGeneration.
+  if (fCountQueuedGeneratedFrames>0) and
+     (fLowLatencyFrameGenerations>0) and
+     fLowLatencyActive and
+     (fLowLatencyActiveMode=TpvApplicationLowLatencyMode.NVReflex) then begin
+   fLowLatencyOutOfBandPresentID:=GetFramePresentID(fDrawFrameCounter);
+  end else begin
+   fLowLatencyOutOfBandPresentID:=0;
   end;
 
   if fCountQueuedGeneratedFrames>0 then begin
@@ -18127,6 +18210,7 @@ begin
              (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
    Job.Rendered:=true;
    Job.ReadyFence:=fPresentReadyFence;
+   Job.LowLatencyOutOfBandPresentID:=fLowLatencyOutOfBandPresentID;
    fPresenterThread.Enqueue(Job);
 
    // Taken as gone through, as with VK_SUCCESS below, since what goes wrong with it only shows later,
@@ -18146,6 +18230,7 @@ begin
   end else begin
 
    WaitStartTime:=fHighResolutionTimer.GetTime;
+   SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_START_NV,fLowLatencyOutOfBandPresentID);
    try
     case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
      VK_SUCCESS:begin
@@ -18220,6 +18305,7 @@ begin
      end;
     end;
    end;
+   SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV,fLowLatencyOutOfBandPresentID);
    fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
 {$ifdef PasVulkanFrameGenerationPresentTrace}
    FGDbgPresent:=FGDbgPresent+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
@@ -18229,6 +18315,9 @@ begin
   end;
 
  except
+  // An out of band present start marker left open would take every present after it for this frame,
+  // see SetLowLatencyOutOfBandPresentMarker.
+  SetLowLatencyOutOfBandPresentMarker(VK_LATENCY_MARKER_OUT_OF_BAND_PRESENT_END_NV,fLowLatencyOutOfBandPresentID);
   Log(LOG_VERBOSE,'TpvApplication.PresentVulkanBackBuffer','Exception');
   raise;
  end;
@@ -18790,8 +18879,11 @@ var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration,
 begin
 
  // VRR + low latency: when VRR display is detected and low latency mode is active,
- // skip CPU-side frame pacing to let the display adapt to the application frame rate
+ // skip CPU-side frame pacing to let the display adapt to the application frame rate.
+ // Not for a frame generation going with the low latency mode, which is paced here as
+ // any other, see AddLowLatencyFrameGeneration.
  if fLowLatencyActive and
+    (fLowLatencyFrameGenerations=0) and
     (fPresentTimingFeedbackRefreshMode=TpvApplicationPresentTimingFeedbackRefreshMode.VRR) and
     (not ((fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond))) then begin
   fFrameRateLimiterDeviation:=0;
@@ -19426,8 +19518,42 @@ begin
  end;
 end;
 
+// Called around a vkQueuePresentKHR from the main loop and from the presenter thread alike, which the
+// specification allows: the swapchain of vkSetLatencyMarkerNV may be used by other threads at the same
+// time, for anything but its destruction.
+procedure TpvApplication.SetLowLatencyOutOfBandPresentMarker(const aMarker:TVkLatencyMarkerNV;const aPresentID:TpvUInt64);
+var MarkerInfo:TVkSetLatencyMarkerInfoNV;
+begin
+ if (aPresentID<>0) and
+    fLowLatencyActive and
+    (fLowLatencyActiveMode=TpvApplicationLowLatencyMode.NVReflex) and
+    assigned(fVulkanDevice) and
+    fVulkanDevice.LowLatency2Support and
+    assigned(fVulkanDevice.Commands.Commands.SetLatencyMarkerNV) and
+    assigned(fVulkanSwapChain) then begin
+  FillChar(MarkerInfo,SizeOf(TVkSetLatencyMarkerInfoNV),#0);
+  MarkerInfo.sType:=VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
+  MarkerInfo.presentID:=aPresentID;
+  MarkerInfo.marker:=aMarker;
+  fVulkanDevice.Commands.SetLatencyMarkerNV(fVulkanDevice.Handle,
+                                            fVulkanSwapChain.Handle,
+                                            @MarkerInfo);
+ end;
+end;
+
+procedure TpvApplication.AddLowLatencyFrameGeneration;
+begin
+ TPasMPInterlocked.Increment(fLowLatencyFrameGenerations);
+end;
+
+procedure TpvApplication.RemoveLowLatencyFrameGeneration;
+begin
+ TPasMPInterlocked.Decrement(fLowLatencyFrameGenerations);
+end;
+
 procedure TpvApplication.LowLatencySleep;
 var SleepInfo:TVkLatencySleepInfoNV;
+    SleepResult:TVkResult;
 begin
  if fLowLatencyActive and
     assigned(fVulkanDevice) and
@@ -19441,9 +19567,19 @@ begin
   SleepInfo.signalSemaphore:=fLowLatencySleepSemaphore.Handle;
   SleepInfo.value:=fLowLatencyFrameID;
   try
-   if fVulkanDevice.Commands.LatencySleepNV(fVulkanDevice.Handle,
-                                            fVulkanSwapChain.Handle,
-                                            @SleepInfo)=VK_SUCCESS then begin
+   // The swapchain of vkLatencySleepNV is externally synchronized, unlike that of vkSetLatencyMarkerNV,
+   // and the presenter thread presents to it meanwhile, see TpvApplicationPresenterThread. The call does
+   // not wait itself, it only says when the semaphore is to be signalled, so the lock is held but briefly,
+   // and the wait for the semaphore goes without it.
+   LockSwapChain;
+   try
+    SleepResult:=fVulkanDevice.Commands.LatencySleepNV(fVulkanDevice.Handle,
+                                                       fVulkanSwapChain.Handle,
+                                                       @SleepInfo);
+   finally
+    UnlockSwapChain;
+   end;
+   if SleepResult=VK_SUCCESS then begin
     fLowLatencySleepSemaphore.WaitFor(fLowLatencyFrameID,
                                       fHighResolutionTimer.SecondInterval);
    end;
