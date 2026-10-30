@@ -206,6 +206,7 @@ type TpvScene3DRenderer=class;
        fTemporalUpscalerDebugView:boolean;
        fFrameGenerationProbe:boolean;
        fActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler;
+       fActiveTemporalUpscalingByTAA:boolean;
        fFrameGeneration:TpvScene3DRendererFrameGeneration;
        fCountGeneratedFrames:TpvInt32;
        fActiveFrameGeneration:TpvScene3DRendererFrameGeneration;
@@ -333,6 +334,10 @@ type TpvScene3DRenderer=class;
        // at all, long before anything presents its frames. Set before Prepare.
        property FrameGenerationProbe:boolean read fFrameGenerationProbe write fFrameGenerationProbe;
        property ActiveTemporalUpscaler:TpvScene3DRendererTemporalUpscaler read fActiveTemporalUpscaler;
+       // Whether TemporalUpscaler asked for the renderer's own one, the temporal antialiasing with EASU, see
+       // TpvScene3DRendererTemporalUpscaler.TAA: then Prepare set AntialiasingMode and ResamplingMode to these,
+       // and the quality preset decides the render size, while ActiveTemporalUpscaler is None.
+       property ActiveTemporalUpscalingByTAA:boolean read fActiveTemporalUpscalingByTAA;
        // Frame generation the same way, asked for before Prepare and resolved into ActiveFrameGeneration. It
        // is independent of the temporal upscaler. CountGeneratedFrames is how many frames are generated
        // between two rendered ones, at least one; a backend that cannot generate as many caps it.
@@ -597,6 +602,8 @@ begin
 
  fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
 
+ fActiveTemporalUpscalingByTAA:=false;
+
  fFrameGeneration:=TpvScene3DRendererFrameGeneration.None;
 
  fCountGeneratedFrames:=1;
@@ -666,8 +673,10 @@ var BackendClass:TpvScene3DRendererTemporalUpscalerBackendClass;
 begin
  // A temporal upscaler is available once a backend is registered for it and that backend accepts this
  // device. FSR 3.1 is part of PasVulkan and needs nothing vendor-specific; backends that live outside
- // register themselves the same way. Without one, the renderer falls back to none.
- if aTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None then begin
+ // register themselves the same way. Without one, the renderer falls back to none. The renderer's own
+ // one, TAA, needs no backend and is always there.
+ if (aTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.None) or
+    (aTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.TAA) then begin
   result:=true;
  end else begin
   BackendClass:=TpvScene3DRendererTemporalUpscalerBackend.FindBackend(aTemporalUpscaler);
@@ -1048,6 +1057,20 @@ begin
 //fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
  end;
 
+ // The renderer's own temporal upscaling, see TpvScene3DRendererTemporalUpscaler.TAA: the temporal
+ // antialiasing at render resolution and EASU up to the output size, whatever the antialiasing and the
+ // resampling were set to.
+ fActiveTemporalUpscalingByTAA:=fTemporalUpscaler=TpvScene3DRendererTemporalUpscaler.TAA;
+ if fActiveTemporalUpscalingByTAA then begin
+  if assigned(pvApplication) and
+     ((fAntialiasingMode<>TpvScene3DRendererAntialiasingMode.TAA) or
+      (fResamplingMode<>TpvScene3DRendererResamplingMode.EASU)) then begin
+   pvApplication.Log(LOG_INFO,'TpvScene3DRenderer','The temporal upscaler TAA takes TAA as the antialiasing and EASU as the resampling');
+  end;
+  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
+  fResamplingMode:=TpvScene3DRendererResamplingMode.EASU;
+ end;
+
  case AntialiasingMode of
   TpvScene3DRendererAntialiasingMode.SMAAT2x,
   TpvScene3DRendererAntialiasingMode.TAA:begin
@@ -1057,8 +1080,10 @@ begin
 
  // The temporal upscaler and the frame generation actually used: the ones asked for where there is
  // something to run them with on this device, otherwise none, which leaves the frame graph exactly as it
- // is without them.
- if (fTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and IsTemporalUpscalerAvailable(fTemporalUpscaler) then begin
+ // is without them. The renderer's own one runs no backend, so none is active for it, see above.
+ if fActiveTemporalUpscalingByTAA then begin
+  fActiveTemporalUpscaler:=TpvScene3DRendererTemporalUpscaler.None;
+ end else if (fTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and IsTemporalUpscalerAvailable(fTemporalUpscaler) then begin
   fActiveTemporalUpscaler:=fTemporalUpscaler;
  end else begin
   if (fTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) and assigned(pvApplication) then begin

@@ -4811,10 +4811,11 @@ begin
   end;
  end;
 
- // With a temporal upscaler its quality preset decides how much smaller the picture is rendered, per axis.
- // Custom keeps the size factor as it was given, only held within what the upscalers accept, which is
- // anything from the output size down to a third of it.
- if Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None then begin
+ // With a temporal upscaler its quality preset decides how much smaller the picture is rendered, per axis,
+ // with the renderer's own one as well. Custom keeps the size factor as it was given, only held within what
+ // the upscalers accept, which is anything from the output size down to a third of it.
+ if (Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) or
+    Renderer.ActiveTemporalUpscalingByTAA then begin
   if Renderer.TemporalUpscalerQuality=TpvScene3DRendererTemporalUpscalerQuality.Custom then begin
    fSizeFactor:=Min(Max(fSizeFactor,1.0/3.0),1.0);
   end else begin
@@ -6808,22 +6809,10 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass);
   end;
 
-  // The resolved depth the motion blur filter reads, taken here rather than at the end of the frame. What
-  // the filter needs is the opaque depth, and that is what stands in the buffer once the prepass is done -
-  // taking it later only keeps the depth resource alive across the whole post-processing chain, where the
-  // frame graph is otherwise free to hand its memory on to something else.
-  if Renderer.FinalResolvedDepthNeeded then begin
-   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=TpvScene3DRendererPassesFinalDepthResolveComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
-   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
-  end else begin
-   TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=nil;
-  end;
+  // The resolved depth comes after the forward pass, see there.
 
   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass:=TpvScene3DRendererPassesDepthMipMapComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
-  if assigned(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass);
-  end;
 
  end;
 
@@ -7344,6 +7333,20 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
  if Renderer.ScreenSpaceAmbientOcclusion then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionBlurRenderPasses[1]);
+ end;
+
+ // The resolved depth for the post-processing, the temporal upscaler, the frame generation, the motion
+ // blur and the volumetric scattering, all of which want the nearest surface of every pixel. Taken behind
+ // the forward pass and not behind the depth prepass, which leaves the masked surfaces and the grass of a
+ // planet out, since they are drawn with the forward pass alone: the leaves and the grass were missing
+ // in it, so that the motion vectors of the temporal upscaler took them for the sky, which turns with the
+ // camera only, see temporal_upscaler_velocity.comp, and its history smeared them as soon as anything
+ // moved.
+ if Renderer.FinalResolvedDepthNeeded then begin
+  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=TpvScene3DRendererPassesFinalDepthResolveComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
+  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fFinalDepthResolveComputePass:=nil;
  end;
 
  if fScene3D.EnableAtmosphere then begin

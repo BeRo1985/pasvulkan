@@ -203,9 +203,16 @@ type TpvScene3DRendererAntialiasingMode=
      // motion vectors, and puts out the picture at output resolution. None leaves the frame graph exactly as it
      // is without this setting. What is asked for and what a device actually gets can differ, see
      // TpvScene3DRenderer.ActiveTemporalUpscaler.
+     //
+     // TAA is no vendor technique but the renderer's own temporal antialiasing at render resolution with EASU
+     // for the way up to the output size, as the antialiasing and resampling settings would give them: chosen
+     // here, it sets both itself, and the quality preset decides the render size as for the others. Since
+     // nothing of a vendor runs for it, ActiveTemporalUpscaler stays None with it, see
+     // TpvScene3DRenderer.ActiveTemporalUpscalingByTAA.
      TpvScene3DRendererTemporalUpscaler=
       (
        None,
+       TAA,
        FSR,
        DLSS,
        DLSSRayReconstruction,
@@ -662,6 +669,9 @@ begin
   TpvScene3DRendererTemporalUpscaler.None:begin
    result:='none';
   end;
+  TpvScene3DRendererTemporalUpscaler.TAA:begin
+   result:='taa';
+  end;
   TpvScene3DRendererTemporalUpscaler.FSR:begin
    result:='fsr';
   end;
@@ -686,6 +696,8 @@ begin
  Value:=LowerCase(Trim(aValue));
  if (Value='none') or (Value='off') or (Value='disabled') then begin
   self:=TpvScene3DRendererTemporalUpscaler.None;
+ end else if (Value='taa') or (Value='taaeasu') or (Value='taa+easu') or (Value='taa-easu') then begin
+  self:=TpvScene3DRendererTemporalUpscaler.TAA;
  end else if (Value='fsr') or (Value='fsr3') or (Value='fsr4') then begin
   self:=TpvScene3DRendererTemporalUpscaler.FSR;
  end else if (Value='dlss') or (Value='dlsssr') then begin
