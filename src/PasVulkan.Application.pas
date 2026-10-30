@@ -1669,6 +1669,9 @@ type EpvApplication=class(Exception)
       RefreshPeriod:TpvHighResolutionTime;
       FIFO:boolean;
       Rendered:boolean; // the present of a rendered frame, not of a generated one
+      // Signalled once the GPU work of the frame this present belongs to is done, VK_NULL_HANDLE for none,
+      // see TpvApplicationPresenterThread.Pace.
+      ReadyFence:TVkFence;
      end;
 
      { TpvApplicationPresenterThread }
@@ -1701,6 +1704,12 @@ type EpvApplication=class(Exception)
        fResult:TPasMPInt32; // the first failed present since FetchResult, VK_SUCCESS otherwise
        fLastPresentID:TpvUInt64;
        fLastPresentTime:TpvHighResolutionTime;
+       fLastPresentReadyFence:TVkFence; // see TpvApplicationPresenterJob.ReadyFence
+       fPresentQueue:TpvVulkanQueue; // nil for the present queue of the device, see Present
+{$if defined(Windows)}
+       fWaitableTimer:THandle; // see PauseUntil
+       fWakeEventHandle:THandle; // see PauseUntil
+{$ifend}
        procedure PauseUntil(const aTime:TpvHighResolutionTime);
        function WaitForShown(const aPresentID:TpvUInt64;const aTimeOut:TpvHighResolutionTime):boolean;
        procedure Pace(const aJob:TpvApplicationPresenterJob);
@@ -2367,6 +2376,10 @@ type EpvApplication=class(Exception)
        fPresentShownOnRefreshGrid:TpvDouble;
 
        fGeneratedFrameCPUPacingDistance:TpvHighResolutionTime;
+
+       // The frame fence of the frame being presented, which goes along with its presents on the presenter
+       // thread, see TpvApplicationPresenterJob.ReadyFence.
+       fPresentReadyFence:TVkFence;
 
        // The relative target time of the presents of the generated frames, in nanoseconds, where the
        // surface takes relative target times only, see GeneratedFrameRelativeTargetTimes.
@@ -3413,6 +3426,10 @@ var FGDbgFrames:TpvInt32=0;
     FGDbgFenceWait:TpvDouble=0.0;
     FGDbgPresent:TpvDouble=0.0;
     FGDbgNow:TpvUInt64=0;
+    // On the presenter thread: how long its last wait for a present to be shown took, and whether it saw
+    // that present shown, see TpvApplicationPresenterThread.Pace and Execute
+    FGDbgShownWait:TpvDouble=0.0;
+    FGDbgShown:boolean=false;
 {$endif}
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
@@ -11944,6 +11961,24 @@ end;
 
 { TpvApplicationPresenterThread }
 
+{$if defined(Windows)}
+// A waitable timer of high resolution where the system has those, from Windows 10 1803 on, otherwise a
+// plain one, zero where neither could be made, see TpvApplicationPresenterThread.PauseUntil.
+function pvWin32CreatePresenterWaitableTimer:THandle;
+type TCreateWaitableTimerExW=function(lpTimerAttributes:Pointer;lpTimerName:PWideChar;dwFlags,dwDesiredAccess:DWORD):THandle; stdcall;
+var CreateWaitableTimerExW:TCreateWaitableTimerExW;
+begin
+ result:=0;
+ @CreateWaitableTimerExW:=Windows.GetProcAddress(Windows.GetModuleHandle('kernel32.dll'),'CreateWaitableTimerExW');
+ if assigned(CreateWaitableTimerExW) then begin
+  result:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
+ end;
+ if result=0 then begin
+  result:=Windows.CreateWaitableTimer(nil,false,nil);
+ end;
+end;
+{$ifend}
+
 constructor TpvApplicationPresenterThread.Create(const aApplication:TpvApplication);
 begin
  fApplication:=aApplication;
@@ -11960,6 +11995,22 @@ begin
  fResult:=TPasMPInt32(VK_SUCCESS);
  fLastPresentID:=0;
  fLastPresentTime:=0;
+ fLastPresentReadyFence:=VK_NULL_HANDLE;
+ // The last queue of the present queue family, where it has more than one: the device takes the first
+ // queue of each family as the one for its kind, PresentQueue, GraphicsQueue and so on, so the last one is
+ // never the one the frames are rendered on. Should something else submit to it as well, that is no harm:
+ // TpvVulkanQueue synchronizes its submits and presents by itself, which this thread relies on with the
+ // present queue of the device just the same, and the presents then only wait for that work instead of the
+ // rendering. See Present.
+ fPresentQueue:=nil;
+ if assigned(aApplication.fVulkanDevice) and
+    (length(aApplication.fVulkanDevice.PresentQueues)>=2) then begin
+  fPresentQueue:=aApplication.fVulkanDevice.PresentQueues[length(aApplication.fVulkanDevice.PresentQueues)-1];
+ end;
+{$if defined(Windows)}
+ fWaitableTimer:=pvWin32CreatePresenterWaitableTimer;
+ fWakeEventHandle:=Windows.CreateEvent(nil,false,false,nil);
+{$ifend}
  inherited Create(false);
 end;
 
@@ -11970,6 +12021,16 @@ begin
  FreeAndNil(fIdleEvent);
  FreeAndNil(fWakeEvent);
  FreeAndNil(fJobLock);
+{$if defined(Windows)}
+ if fWaitableTimer<>0 then begin
+  Windows.CloseHandle(fWaitableTimer);
+  fWaitableTimer:=0;
+ end;
+ if fWakeEventHandle<>0 then begin
+  Windows.CloseHandle(fWakeEventHandle);
+  fWakeEventHandle:=0;
+ end;
+{$ifend}
  inherited Destroy;
 end;
 
@@ -11980,6 +12041,11 @@ begin
   TPasMPInterlocked.Write(fFlush,TPasMPBool32(true));
   Terminate;
   fWakeEvent.SetEvent;
+{$if defined(Windows)}
+  if fWakeEventHandle<>0 then begin
+   Windows.SetEvent(fWakeEventHandle);
+  end;
+{$ifend}
   fEvent.SetEvent;
   WaitFor;
  end;
@@ -11993,15 +12059,29 @@ begin
  if Busy and not TPasMPInterlocked.Read(fHurry) then begin
   TPasMPInterlocked.Write(fHurry,TPasMPBool32(true));
   fWakeEvent.SetEvent;
+{$if defined(Windows)}
+  if fWakeEventHandle<>0 then begin
+   Windows.SetEvent(fWakeEventHandle);
+  end;
+{$ifend}
  end;
 end;
 
 // Waits until aTime, the most of it given back to the system, and only the last bit spun out for the
 // precision, see TpvHighResolutionTimer.Sleep, unless Hurry or the flush of WaitForIdle cut it short.
+//
+// On Windows the wake event alone would not do for that: its time out goes by the tick of the system,
+// which can be 15.6 milliseconds whatever resolution the timers were asked for, and the spacing came out
+// a whole tick or two long. There the wait is on a waitable timer of high resolution and on a wake event
+// of the system of its own, which Hurry and Shutdown set along with the other one, whichever comes first.
 procedure TpvApplicationPresenterThread.PauseUntil(const aTime:TpvHighResolutionTime);
 var Timer:TpvHighResolutionTimer;
     NowTime,Remaining:TpvHighResolutionTime;
     Milliseconds:TpvInt64;
+{$if defined(Windows)}
+    DueTime:TLargeInteger;
+    Handles:array[0..1] of THandle;
+{$ifend}
 begin
  Timer:=fApplication.fHighResolutionTimer;
  repeat
@@ -12015,7 +12095,21 @@ begin
   Remaining:=aTime-NowTime;
   Milliseconds:=Timer.ToMilliseconds(Remaining)-2;
   if Milliseconds>0 then begin
+{$if defined(Windows)}
+   DueTime:=-Timer.ToHundredNanoseconds(Remaining-(Timer.MillisecondInterval*2));
+   if (fWaitableTimer<>0) and
+      (fWakeEventHandle<>0) and
+      (DueTime<0) and
+      Windows.SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false) then begin
+    Handles[0]:=fWakeEventHandle;
+    Handles[1]:=fWaitableTimer;
+    Windows.WaitForMultipleObjects(2,@Handles[0],false,1000);
+   end else begin
+    fWakeEvent.WaitFor(Milliseconds);
+   end;
+{$else}
    fWakeEvent.WaitFor(Milliseconds);
+{$ifend}
   end else begin
    Timer.Sleep(Remaining);
    break;
@@ -12062,6 +12156,9 @@ begin
    TPasMPInterlocked.Write(fFlush,TPasMPBool32(false));
   end;
  end;
+ // The frame fences go with the swapchain, which this is waited for before it is made anew, see
+ // TpvApplication.WaitForPresenterIdle. Nothing here touches the field until the next job.
+ fLastPresentReadyFence:=VK_NULL_HANDLE;
 end;
 
 function TpvApplicationPresenterThread.FetchResult:TVkResult;
@@ -12128,12 +12225,20 @@ end;
 // unknown, it is the whole distance, a little less, so as to be in time for the refresh cycle the present
 // is meant for.
 //
-// The wait goes from when the present before was shown, which it waits for where the device can wait for
-// presents, and otherwise from when that one went out.
+// With FIFO the wait goes from when the present before was shown, which it waits for where the device can
+// wait for presents, and otherwise from when that one went out. Without FIFO a present is shown as soon as
+// it is ready, so there the wait goes from when the present before went out, or from when the GPU work of
+// its frame was done, if that came later, see TpvApplicationPresenterJob.ReadyFence: a generated frame
+// goes out as soon as it is queued, before the GPU has it, and shows only once the GPU is done with it, so
+// that the rendered frame, spaced from when the generated one went out, came right after it on the display.
+// Not by when the present was reported as shown: some drivers report that only a good while after it was
+// flipped, up to a refresh cycle and more, and waiting for it on top of the distance put the presents
+// behind for good, every rendered frame then going out right after its generated one to catch up.
 procedure TpvApplicationPresenterThread.Pace(const aJob:TpvApplicationPresenterJob);
 const Margin=0.001; // one millisecond
 var Timer:TpvHighResolutionTimer;
-    MarginTime,Delay,ShownTime,TargetTime,NowTime:TpvHighResolutionTime;
+    MarginTime,Delay,ShownTime,ShownTimeOut,TargetTime,NowTime:TpvHighResolutionTime;
+    Device:TpvVulkanDevice;
 begin
  if (aJob.Distance<=0) or TPasMPInterlocked.Read(fFlush) or TPasMPInterlocked.Read(fHurry) then begin
   exit;
@@ -12149,10 +12254,42 @@ begin
   Delay:=aJob.Distance-MarginTime;
  end;
  ShownTime:=fLastPresentTime;
- if (fLastPresentID<>0) and
-    WaitForShown(fLastPresentID,Max(Timer.FromFloatSeconds(0.001),aJob.Distance*2)) then begin
-  ShownTime:=Timer.GetTime;
+ if aJob.FIFO then begin
+  ShownTimeOut:=Max(Timer.FromFloatSeconds(0.001),aJob.Distance*2);
+ end else begin
+  ShownTimeOut:=0;
  end;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+ FGDbgShownWait:=0.0;
+ FGDbgShown:=false;
+ NowTime:=Timer.GetTime;
+{$endif}
+ if (fLastPresentID<>0) and
+    (ShownTimeOut>0) and
+    WaitForShown(fLastPresentID,ShownTimeOut) then begin
+  ShownTime:=Timer.GetTime;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+  FGDbgShown:=true;
+{$endif}
+ end;
+ // Only while the present before is recent, the fence then being still the one of its frame: the main loop
+ // reuses the frame fences a few frames later.
+ if (not aJob.FIFO) and
+    (fLastPresentReadyFence<>VK_NULL_HANDLE) and
+    ((Timer.GetTime-fLastPresentTime)<(aJob.Distance*2)) then begin
+  Device:=fApplication.fVulkanDevice;
+  if Device.Commands.GetFenceStatus(Device.Handle,fLastPresentReadyFence)=VK_NOT_READY then begin
+   if Device.Commands.WaitForFences(Device.Handle,1,@fLastPresentReadyFence,VK_TRUE,TpvUInt64(Timer.ToNanoseconds(aJob.Distance*2)))=VK_SUCCESS then begin
+    ShownTime:=Max(ShownTime,Timer.GetTime);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    FGDbgShown:=true;
+{$endif}
+   end;
+  end;
+ end;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+ FGDbgShownWait:=Timer.ToFloatSeconds(Timer.GetTime-NowTime);
+{$endif}
  TargetTime:=ShownTime+Delay;
  NowTime:=Timer.GetTime;
  if (TargetTime>NowTime) and ((TargetTime-NowTime)<=aJob.Distance) then begin
@@ -12160,9 +12297,16 @@ begin
  end;
 end;
 
+// Without FIFO the presents go out on a queue of their own, where the device has one to spare, see the
+// constructor: on the queue of the rendering, a present may only be carried out after everything submitted
+// to that queue before it, as on Windows, and a present held back by the spacing then waited there for the
+// GPU work of the next frame, which the main loop had submitted meanwhile, and came on the display right
+// before the next generated frame, as if not spaced at all. With FIFO the queue holds the presents to the
+// refresh cycles anyway, and there they stay on the present queue of the device.
 procedure TpvApplicationPresenterThread.Present(const aJob:TpvApplicationPresenterJob);
 var Device:TpvVulkanDevice;
     SwapChain:TpvVulkanSwapChain;
+    Queue:TpvVulkanQueue;
     PresentIdKHR:TVkPresentIdKHR;
     PresentId2KHR:TVkPresentId2KHR;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
@@ -12175,6 +12319,11 @@ var Device:TpvVulkanDevice;
 begin
  Device:=fApplication.fVulkanDevice;
  SwapChain:=fApplication.fVulkanSwapChain;
+ if assigned(fPresentQueue) and not aJob.FIFO then begin
+  Queue:=fPresentQueue;
+ end else begin
+  Queue:=Device.PresentQueue;
+ end;
  PresentNext:=nil;
  PresentID:=aJob.PresentID;
  if PresentID<>0 then begin
@@ -12217,7 +12366,7 @@ begin
  fApplication.LockSwapChain;
  try
   try
-   PresentResult:=SwapChain.QueuePresentImage(Device.PresentQueue,aJob.ImageIndex,aJob.WaitSemaphore,PresentNext);
+   PresentResult:=SwapChain.QueuePresentImage(Queue,aJob.ImageIndex,aJob.WaitSemaphore,PresentNext);
   except
    on VulkanResultException:EpvVulkanResultException do begin
     PresentResult:=VulkanResultException.ResultCode;
@@ -12229,6 +12378,7 @@ begin
  fApplication.RecordPresentCallTime;
  fLastPresentID:=PresentID;
  fLastPresentTime:=fApplication.fHighResolutionTimer.GetTime;
+ fLastPresentReadyFence:=aJob.ReadyFence;
  if PresentResult<>VK_SUCCESS then begin
   TPasMPInterlocked.CompareExchange(fResult,TPasMPInt32(PresentResult),TPasMPInt32(VK_SUCCESS));
  end;
@@ -12242,6 +12392,11 @@ procedure TpvApplicationPresenterThread.Execute;
 var Job:TpvApplicationPresenterJob;
     HasJob:boolean;
     ExceptionString:String;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    TraceStartTime,TracePreviousPresentTime:TpvHighResolutionTime;
+    TraceHurry,TraceFlush,TracePaced:boolean;
+    TraceCountRenderedJobs,TraceCountJobs:TpvInt32;
+{$endif}
 begin
 {$ifdef HAS_NAMETHREADFORDEBUGGING}
  NameThreadForDebugging('TpvApplicationPresenterThread');
@@ -12265,10 +12420,39 @@ begin
     if not HasJob then begin
      break;
     end;
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    TraceStartTime:=fApplication.fHighResolutionTimer.GetTime;
+    TracePreviousPresentTime:=fLastPresentTime;
+    TraceHurry:=TPasMPInterlocked.Read(fHurry);
+    TraceFlush:=TPasMPInterlocked.Read(fFlush);
+    TraceCountRenderedJobs:=TPasMPInterlocked.Read(fCountRenderedJobs);
+    TraceCountJobs:=TPasMPInterlocked.Read(fCountJobs);
+    TracePaced:=TraceCountRenderedJobs<=1;
+    FGDbgShownWait:=0.0;
+    FGDbgShown:=false;
+{$endif}
     if TPasMPInterlocked.Read(fCountRenderedJobs)<=1 then begin
      Pace(Job);
     end;
     Present(Job);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+    if (FGDbgFrames>=450) and (FGDbgFrames<570) then begin
+     TpvApplication.Log(LOG_INFO,'FGDBG','P rendered='+BoolToStr(Job.Rendered,true)+
+                                         ' id='+IntToStr(Job.PresentID)+
+                                         ' jobs='+IntToStr(TraceCountJobs)+
+                                         ' rjobs='+IntToStr(TraceCountRenderedJobs)+
+                                         ' paced='+BoolToStr(TracePaced,true)+
+                                         ' dist='+FloatToStrF(fApplication.fHighResolutionTimer.ToFloatSeconds(Job.Distance)*1e3,ffFixed,8,3)+
+                                         ' fifo='+BoolToStr(Job.FIFO,true)+
+                                         ' sinceprev='+FloatToStrF(fApplication.fHighResolutionTimer.ToFloatSeconds(TraceStartTime-TracePreviousPresentTime)*1e3,ffFixed,8,3)+
+                                         ' shownwait='+FloatToStrF(FGDbgShownWait*1e3,ffFixed,8,3)+
+                                         ' shown='+BoolToStr(FGDbgShown,true)+
+                                         ' pace='+FloatToStrF(fApplication.fHighResolutionTimer.ToFloatSeconds(fLastPresentTime-TraceStartTime)*1e3,ffFixed,8,3)+
+                                         ' gap='+FloatToStrF(fApplication.fHighResolutionTimer.ToFloatSeconds(fLastPresentTime-TracePreviousPresentTime)*1e3,ffFixed,8,3)+
+                                         ' hurry='+BoolToStr(TraceHurry,true)+'/'+BoolToStr(TPasMPInterlocked.Read(fHurry),true)+
+                                         ' flush='+BoolToStr(TraceFlush,true));
+    end;
+{$endif}
     if Job.Rendered then begin
      TPasMPInterlocked.Decrement(fCountRenderedJobs);
     end;
@@ -12417,6 +12601,7 @@ begin
  fPresentCallStatisticsMaximum:=0.0;
  fAcquireWaitStartTime:=0;
  fPresenterSwapChainImages:=0;
+ fPresentReadyFence:=VK_NULL_HANDLE;
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -16681,7 +16866,7 @@ end;
 // older ones, rather than showing each of them, either queued as with FIFO, or torn in as with IMMEDIATE
 // without a compositor. MAILBOX always does. IMMEDIATE does under a compositor, which shows in the reports
 // of past presents, see fPresentShownOnRefreshGrid. Without them, a window counts as one under a compositor,
-// as it always is on Windows, and fullscreen as one which may be flipped to the display directly.
+// and fullscreen as one which may be flipped to the display directly, except on Windows, see below.
 function TpvApplication.GeneratedFramePresentsReplaceEachOther:boolean;
 begin
  result:=false;
@@ -16692,7 +16877,15 @@ begin
    if (fPresentTimingReportStage<>0) and (fPresentTimingReportQueueState>=0) then begin
     result:=fPresentShownOnRefreshGrid>0.8;
    end else begin
+{$if defined(Windows)}
+    // The window of a flip model swapchain on Windows is mostly not composed, but flipped to the display
+    // directly or through an overlay plane, an independent flip, where IMMEDIATE tears each present in as
+    // it comes, as PresentMon shows: going out right away, a generated frame was on the screen for a tenth
+    // of a millisecond, right before the rendered one.
+    result:=false;
+{$else}
     result:=fCurrentFullScreen=0;
+{$ifend}
    end;
   end;
  end;
@@ -17387,6 +17580,7 @@ begin
     Job.FIFO:=(fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
               (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
     Job.Rendered:=false;
+    Job.ReadyFence:=fPresentReadyFence;
     fPresenterThread.Enqueue(Job);
     RecordPresentID;
     inc(result);
@@ -17483,6 +17677,11 @@ begin
                                                                                          fVulkanFrameFences[fVulkanFrameFenceCounter],
                                                                                          false);
   fVulkanWaitSemaphore:=fVulkanFrameFenceSemaphores[fSwapChainImageIndex,fVulkanFrameFenceCounter];
+
+  // Its submit waits on the semaphore the rendered frame is done with, which comes after the work of the
+  // generated frames of this frame, see TpvScene3DRendererFrameGenerationCompositor, so it is signalled
+  // only once they are done as well.
+  fPresentReadyFence:=fVulkanFrameFences[fVulkanFrameFenceCounter].Handle;
 
   fVulkanFrameFencesReady:=fVulkanFrameFencesReady or (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3));
 {$ifdef PasVulkanFrameTrace}
@@ -17856,6 +18055,7 @@ begin
    Job.FIFO:=(fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_KHR) or
              (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR);
    Job.Rendered:=true;
+   Job.ReadyFence:=fPresentReadyFence;
    fPresenterThread.Enqueue(Job);
 
    // Taken as gone through, as with VK_SUCCESS below, since what goes wrong with it only shows later,
