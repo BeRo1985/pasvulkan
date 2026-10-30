@@ -13878,7 +13878,16 @@ begin
   fVulkanDevice.UseBreadcrumbs:=fUseBreadcrumbs;
   fVulkanDevice.BreadcrumbForceManual:=fManualBreadcrumbs;
   fVulkanDevice.BreadcrumbForceSyncManual:=fManualSyncBreadcrumbs;
-  fVulkanDevice.BreadcrumbTraceFileName:=fBreadcrumbTraceFileName;
+  // With breadcrumbs on and no file given, the report of a device loss goes beside the crash log, as the
+  // hang report does, since a release build throws it away otherwise, see TpvVulkanBreadcrumbBuffer.TraceState.
+  if fUseBreadcrumbs and (length(fBreadcrumbTraceFileName)=0) then begin
+   fVulkanDevice.BreadcrumbTraceFileName:=TpvUTF8String(ChangeFileExt(String(GetCrashLogFileName),'.breadcrumbs'));
+  end else begin
+   fVulkanDevice.BreadcrumbTraceFileName:=fBreadcrumbTraceFileName;
+  end;
+  if fUseBreadcrumbs then begin
+   Log(LOG_INFO,'PasVulkanApplication','Breadcrumbs: on, a device loss is reported to '+fVulkanDevice.BreadcrumbTraceFileName);
+  end;
 
   fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
