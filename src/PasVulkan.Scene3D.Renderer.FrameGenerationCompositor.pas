@@ -926,6 +926,8 @@ begin
 
  try
 
+  // Nor where they would not be shown, see TpvApplication.GeneratedFramesUnseen: the rendered frames are
+  // still captured, so that generated frames can come again from the next one on.
   if fSuspended or
      fBelowMinimumFrameRate or
      fBackend.Failed or
@@ -934,7 +936,8 @@ begin
      (fPreviousSlot<0) or
      (not fRing[fPreviousSlot].Captured) or
      (not assigned(pvApplication)) or
-     (not assigned(pvApplication.VulkanSwapChain)) then begin
+     (not assigned(pvApplication.VulkanSwapChain)) or
+     pvApplication.GeneratedFramesUnseen then begin
    exit;
   end;
 

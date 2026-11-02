@@ -2318,6 +2318,14 @@ type EpvApplication=class(Exception)
        // The presents of the interval go out right away, see GeneratedFramesCloserThanRefresh.
        fGeneratedFramesRightAway:boolean;
 
+       // The generated frames would not be shown and are not made, see GeneratedFramesUnseen, and how many
+       // presents a rendered frame had as it came to that, see UpdateGeneratedFramesUnseen.
+       fGeneratedFramesUnseen:boolean;
+
+       fGeneratedFramesUnseenCountPresents:TpvInt32;
+
+       fSkipUnseenGeneratedFrames:boolean;
+
        // The target time of the last present of the interval before, see SchedulePresentTargetTimes.
        fGeneratedFrameScheduledLastTargetTime:TpvUInt64;
 
@@ -2688,6 +2696,7 @@ type EpvApplication=class(Exception)
        function GeneratedFramesCloserThanRefresh(const aCountPresents:TpvInt32):boolean;
        function GeneratedFramePresentsReplaceEachOther:boolean;
        function GeneratedFramePresentsOneRefreshApart:boolean;
+       procedure UpdateGeneratedFramesUnseen;
 {$ifdef PasVulkanFrameGenerationPresentPathLog}
        procedure LogGeneratedFramePresentPath(const aPath:TpvInt32);
 {$endif}
@@ -2898,6 +2907,18 @@ type EpvApplication=class(Exception)
 
        // How the presents of frame generation are spread over the interval, Auto by default.
        property GeneratedFramePacing:TpvApplicationGeneratedFramePacing read fGeneratedFramePacing write fGeneratedFramePacing;
+
+       // Whether generated frames would not be shown at present, and a frame generation is to make none: they
+       // would go out right away, see GeneratedFramesCloserThanRefresh, where the presentation shows only the
+       // newest present due at a refresh cycle, as a compositor, MAILBOX and FIFO_LATEST_READY do, or a
+       // generated frame for a sliver of the refresh cycle at most. Only with SkipUnseenGeneratedFrames, see
+       // TpvScene3DRendererFrameGenerationCompositor.DrawGeneratedFrames.
+       property GeneratedFramesUnseen:boolean read fGeneratedFramesUnseen;
+
+       // Whether generated frames which would not be shown are left out, which gives their time back to the
+       // rendering, while the presents per second then count only the rendered frames, see
+       // PresentedFramesPerSecond. On by default.
+       property SkipUnseenGeneratedFrames:boolean read fSkipUnseenGeneratedFrames write fSkipUnseenGeneratedFrames;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
 
@@ -12666,6 +12687,9 @@ begin
  fAcquireWaitStartTime:=0;
  fPresenterSwapChainImages:=0;
  fPresentReadyFence:=VK_NULL_HANDLE;
+ fGeneratedFramesUnseen:=false;
+ fGeneratedFramesUnseenCountPresents:=0;
+ fSkipUnseenGeneratedFrames:=true;
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -14966,7 +14990,9 @@ begin
  // cycles again for the window it became once more. The same goes for how late the display shows the
  // presents, see WaitForSwapChainLatency, for whether the generated frames going right away held, see
  // GeneratedFramesCloserThanRefresh, and where it is logged, the way of the presents goes into the log again.
+ // And whether they are shown at all, see GeneratedFramesUnseen.
  fPresentShownOnRefreshGrid:=0.0;
+ fGeneratedFramesUnseen:=false;
  fGeneratedFramePresentWaitHurts:=false;
  fGeneratedFramePresentWaitSlowFrames:=0;
  fGeneratedFramePresentWaitWarmUpFrames:=0;
@@ -17031,6 +17057,45 @@ begin
  end;
 end;
 
+// While the generated frames would not be shown and are not made, see GeneratedFramesUnseen: the rendered
+// frames are measured by the same intervals as with generated frames, and these are made again once the
+// rendered frames come too slowly for going right away even without them, by the same bounds as there,
+// see GeneratedFramesCloserThanRefresh. Made again, they only add their own time on top, so that they then
+// stay spread and shown, and with the bounds a tenth below and a twelfth or so above the boundary, it does
+// not go back and forth. Where the refresh cycle is not known, they would go right away throughout.
+procedure TpvApplication.UpdateGeneratedFramesUnseen;
+var WorkInterval,Refresh,LimiterInterval:TpvDouble;
+    Unseen:boolean;
+begin
+ Unseen:=fSkipUnseenGeneratedFrames;
+ if Unseen then begin
+  fGeneratedFramePresentInterval:=fGeneratedFramePresentInterval+((Min(Max(fFloatDeltaTime,0.001),0.25)-fGeneratedFramePresentInterval)*0.1);
+  WorkInterval:=Min(Max(fFloatDeltaTime-(fDisplayWaitLastFrame+fTimingCPUAcquire+fTimingCPUFramePacing),0.001),0.25);
+  if fGeneratedFrameWorkInterval<=0.0 then begin
+   fGeneratedFrameWorkInterval:=WorkInterval;
+  end else begin
+   fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((Min(WorkInterval,fGeneratedFrameWorkInterval*2.0)-fGeneratedFrameWorkInterval)*0.1);
+  end;
+  Refresh:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+  if (Refresh>0.0) and assigned(fVulkanSwapChain) then begin
+   if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
+    if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
+     LimiterInterval:=1.0/fMaximumFramesPerSecond;
+    end else begin
+     LimiterInterval:=0.0;
+    end;
+    Unseen:=Max(fGeneratedFrameWorkInterval,LimiterInterval)<=(Refresh*1.08);
+   end else begin
+    Unseen:=fGeneratedFramePresentInterval<=(Refresh*Max(fGeneratedFramesUnseenCountPresents,1)*1.08);
+   end;
+  end;
+ end;
+ if not Unseen then begin
+  fGeneratedFramesUnseen:=false;
+  Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames are made again, the rendered frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
+ end;
+end;
+
 // Whether the presents of an interval come a refresh cycle apart each: so they do when a frame takes no
 // longer than a refresh cycle for each of its presents. Gone by the time the frames take, not by the
 // interval they come at, since that is what the present wait of WaitForSwapChainLatency, which hangs on
@@ -17981,6 +18046,13 @@ begin
     end;
     fGeneratedFrameRightAwayHoldOff:=fGeneratedFrameRightAwayHoldOffLength;
    end;
+   // Going right away, the generated frames are as good as never shown, so from the next frame on they
+   // are not made at all, where that is asked for, see GeneratedFramesUnseen.
+   if fGeneratedFramesRightAway and fSkipUnseenGeneratedFrames and not fGeneratedFramesUnseen then begin
+    fGeneratedFramesUnseen:=true;
+    fGeneratedFramesUnseenCountPresents:=CountIntervalParts;
+    Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away and not be shown, so none are made for now, the frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
+   end;
    if fGeneratedFramesRightAway then begin
     // Not all of them can be shown, so they go out right away, see GeneratedFramesCloserThanRefresh.
     fGeneratedFrameCPUPacing:=false;
@@ -18043,6 +18115,9 @@ begin
    fGeneratedFrameCPUPacing:=false;
    fGeneratedFramesRightAway:=false;
    fGeneratedFrameRelativeTargetTime:=0;
+   if fGeneratedFramesUnseen then begin
+    UpdateGeneratedFramesUnseen;
+   end;
   end;
   if fGeneratedFramesRightAway then begin
    fGeneratedFrameRefreshCycles:=1;
