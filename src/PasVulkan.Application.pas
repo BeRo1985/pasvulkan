@@ -2336,10 +2336,11 @@ type EpvApplication=class(Exception)
        // presents without VSync in PresentVulkanBackBuffer.
        fGeneratedFrameCadenceInterval:TpvDouble;
 
-       // With VSync and without, the interval the rendered frames come at while their generated frames go
-       // right away, smoothed over just these frames, from a refresh cycle on as they start going right away,
-       // and for how many of them that has held so far, up to a limit. When it did not hold, it is not tried
-       // again for a number of frames, twice as many each time it did not hold for long once more, see
+       // The interval the rendered frames come at while their generated frames go right away, smoothed over
+       // just these frames, starting as they begin to go right away from the longest interval allowed for
+       // them: a refresh cycle under VSync, and one for each present without it. And for how many of them
+       // that has held so far, up to a limit. When it did not hold, it is not tried again for a number of
+       // frames, twice as many each time it did not hold for long once more, see
        // GeneratedFramesCloserThanRefresh.
        fGeneratedFrameRightAwayInterval:TpvDouble;
 
@@ -2428,9 +2429,10 @@ type EpvApplication=class(Exception)
        // zero when it does not, see TpvApplicationPresenterThread.Hurry.
        fAcquireWaitStartTime:TpvHighResolutionTime;
 
-       // The swapchain images the presenter thread needs beyond DesiredCountSwapChainImages: one, for the
-       // rendered frame it holds back while the next one already takes its images, once it spaces
-       // generated frames at all, see GetCountSwapChainImagesToCreate.
+       // The swapchain images the presenter thread needs beyond DesiredCountSwapChainImages: as many as
+       // it takes for the rendered frame it holds back while the next one already takes its images, beside
+       // those the presentation keeps, once it spaces generated frames at all, see
+       // GetCountSwapChainImagesToCreate.
        fPresenterSwapChainImages:TpvInt32;
 
        // The reports of past presents, see SetupPresentTimingReports: the present stage whose times are
@@ -3478,6 +3480,13 @@ var FGDbgFrames:TpvInt32=0;
     // that present shown, see TpvApplicationPresenterThread.Pace and Execute
     FGDbgShownWait:TpvDouble=0.0;
     FGDbgShown:boolean=false;
+    // For comparing the ways the presents can go without VSync under a compositor, read from the
+    // environment once: PASVULKAN_FG_TRACE_SPACING=cadence spaces them by the cadence instead of by the
+    // interval of the frames, PASVULKAN_FG_TRACE_RIGHTAWAY=1 sends them out right away throughout, see
+    // GeneratedFramesCloserThanRefresh and PresentVulkanBackBuffer
+    FGDbgSwitchesRead:boolean=false;
+    FGDbgSpacingByCadence:boolean=false;
+    FGDbgForceRightAway:boolean=false;
 {$endif}
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
@@ -16911,23 +16920,24 @@ end;
 //
 // That is for FIFO_LATEST_READY, which is VSync. Without VSync nothing is to hold the rendering to the
 // refresh cycles, so where the newest present at a refresh cycle replaces the older ones, as with MAILBOX
-// or IMMEDIATE under a compositor, see GeneratedFramePresentsReplaceEachOther, they go right away once the
-// rendered frames alone come faster than the refresh cycles, which shows about the rendered frames alone,
-// as without frame generation, while all of them are counted. Below that, they are spread evenly over the
-// time the frames take, so that every refresh cycle gets a new frame, the newest present due at it, now a
-// rendered and now a generated one where there are more presents than refresh cycles. Going right away
-// already as soon as there were more presents than refresh cycles, as it used to, the generated frames
-// were hardly ever shown there, and the rendered ones alone left refresh cycles without a new frame in
-// between, while twice their rate was counted.
-// Whether the rendered frames come faster is told by the interval they come at, with all the waits in it,
-// see fGeneratedFramePresentInterval: the frame rate limiter holds them back to its rate, and the GPU,
-// when it takes longer than the CPU, to its own, which the frames wait for in the acquire and the frame
-// latency wait. By the time the CPU took for them, such frames went right away, and back again a dozen
-// frames later, coming no faster there. Back they go, as under VSync, by the interval of just the frames
-// which went right away, and not again for a while after, see fGeneratedFrameRightAwayHoldOff. Gone back
-// by the interval of all frames instead, which still held the slower spread frames before, they went
-// back right after going right away, and with nothing holding them off, by turns frame after frame, the
-// frames then coming at about twice the time they took.
+// or IMMEDIATE under a compositor, see GeneratedFramePresentsReplaceEachOther, it goes by all the presents
+// of a rendered frame instead: right away as soon as there are more of them than refresh cycles, which
+// shows about the rendered frames alone, as without frame generation, while all of them are counted.
+// Below that, they are spread evenly over the time the frames take, each with a refresh cycle of its own.
+// Spread above that as well, so that the generated frames would be shown too, they made the motion less
+// steady under KWin with Mesa, at 40 to 56 rendered frames a second on 60 Hz and by any spacing, and left
+// no fewer refresh cycles without a new frame: the compositor takes the newest present at its refresh
+// cycle, now a rendered and now a generated one, by the phase, so that the motion went on by one, two and
+// three half steps, where right away it goes on by whole steps, with the same refresh cycles left out.
+// Whether there are more is told by the interval the frames come at, with all the waits in it, see
+// fGeneratedFramePresentInterval: the frame rate limiter holds them back to its rate, and the GPU, when
+// it takes longer than the CPU, to its own, which the frames wait for in the acquire, at the fences of the
+// frames before. Back they go, as under VSync, by the interval of just the frames which went right away,
+// against a refresh cycle for each present, and not again for a while after, see
+// fGeneratedFrameRightAwayHoldOff. Gone in by the time the CPU took for them, and back by the interval of
+// all frames, which still held the slower spread frames before, they went back right after going right
+// away, and with nothing holding them off, by turns frame after frame, the frames then coming at about
+// twice the time they took.
 //
 // IMMEDIATE without a compositor drops none, it shows every present from when it comes on, torn into the
 // one before. Spread out, each of them is on the screen for its part of the interval, while right away a
@@ -16960,19 +16970,30 @@ begin
     end;
    end;
   end else if GeneratedFramePresentsReplaceEachOther then begin
-   // Without VSync, where only the newest present due at a refresh cycle is shown: by the rendered frames
-   // alone, since only once they come faster than the refresh cycles, every refresh cycle gets a new frame
-   // without the generated ones as well, which then go out right away and look as without frame
-   // generation. Below that, spread out, the newest present at every refresh cycle is a new frame, now a
-   // rendered and now a generated one, where right away the rendered ones alone would leave refresh cycles
-   // without one. Without the refresh cycle known, it cannot be told, and they go out right away as well.
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+   if not FGDbgSwitchesRead then begin
+    FGDbgSwitchesRead:=true;
+    FGDbgSpacingByCadence:=GetEnvironmentVariable('PASVULKAN_FG_TRACE_SPACING')='cadence';
+    FGDbgForceRightAway:=GetEnvironmentVariable('PASVULKAN_FG_TRACE_RIGHTAWAY')='1';
+   end;
+   if FGDbgForceRightAway then begin
+    result:=true;
+    exit;
+   end;
+{$endif}
+   // Without VSync, where only the newest present due at a refresh cycle is shown: by all the presents
+   // of a rendered frame, since as soon as there are more of them than refresh cycles, spreading them out
+   // only lets the phase decide which of them is shown, the motion then going on unevenly, by one, two and
+   // three half steps. Right away, the generated ones are hardly ever shown and the rendered ones are,
+   // which looks as without frame generation, and steadier. Without the refresh cycle known, it cannot be
+   // told, and they go out right away as well.
    if Refresh>0.0 then begin
     if fGeneratedFramesRightAway then begin
-     result:=fGeneratedFrameRightAwayInterval<=(Refresh*1.08);
+     result:=fGeneratedFrameRightAwayInterval<=(Refresh*aCountPresents*1.08);
     end else begin
      result:=(fGeneratedFrameRightAwayHoldOff=0) and
              (fGeneratedFramePresentInterval>0.0) and
-             (fGeneratedFramePresentInterval<(Refresh*0.9));
+             (fGeneratedFramePresentInterval<(Refresh*aCountPresents*0.9));
     end;
    end else begin
     result:=true;
@@ -17795,7 +17816,7 @@ var PresentIdKHR:TVkPresentIdKHR;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
     WorkInterval,RefreshSeconds:TpvDouble;
-    {$ifdef PasVulkanFrameGenerationPresentPathLog}PresentPath,{$endif}PresentCycles:TpvInt32;
+    {$ifdef PasVulkanFrameGenerationPresentPathLog}PresentPath,{$endif}PresentCycles,RightAwayCycles,MissingSwapChainImages:TpvInt32;
     RefreshPeriod:TpvHighResolutionTime;
 begin
 
@@ -17925,15 +17946,20 @@ begin
    fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
-   // Whether going right away holds, with VSync and without, is told by the frames which went right away,
-   // see GeneratedFramesCloserThanRefresh, and this frame comes after one which did. A frame late by a
-   // refresh cycle or more counts as late by half of one, so that a single hitch is no reason to give up on
-   // it.
+   // Whether going right away holds is told by the frames which went right away, see
+   // GeneratedFramesCloserThanRefresh, and this frame comes after one which did: against a refresh cycle
+   // under VSync, and against one for each present without it. A frame late by a refresh cycle or more
+   // counts as late by half of one, so that a single hitch is no reason to give up on it.
    WasRightAway:=fGeneratedFramesRightAway;
    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
+   if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
+    RightAwayCycles:=1;
+   end else begin
+    RightAwayCycles:=CountIntervalParts;
+   end;
    if WasRightAway then begin
     if RefreshSeconds>0.0 then begin
-     fGeneratedFrameRightAwayInterval:=fGeneratedFrameRightAwayInterval+((Min(Max(fFloatDeltaTime,0.001),RefreshSeconds*1.5)-fGeneratedFrameRightAwayInterval)*0.1);
+     fGeneratedFrameRightAwayInterval:=fGeneratedFrameRightAwayInterval+((Min(Max(fFloatDeltaTime,0.001),RefreshSeconds*(RightAwayCycles+0.5))-fGeneratedFrameRightAwayInterval)*0.1);
     end;
     if fGeneratedFrameRightAwayFrames<600 then begin
      inc(fGeneratedFrameRightAwayFrames);
@@ -17943,7 +17969,7 @@ begin
    end;
    fGeneratedFramesRightAway:=GeneratedFramesCloserThanRefresh(CountIntervalParts);
    if fGeneratedFramesRightAway and not WasRightAway then begin
-    fGeneratedFrameRightAwayInterval:=RefreshSeconds;
+    fGeneratedFrameRightAwayInterval:=RefreshSeconds*RightAwayCycles;
     fGeneratedFrameRightAwayFrames:=0;
    end else if WasRightAway and not fGeneratedFramesRightAway then begin
     // A second or so at first, and back to that once it held for ten seconds or so. Not holding
@@ -17974,13 +18000,23 @@ begin
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_RELAXED_KHR) or
         (fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)) then begin
      fGeneratedFrameCPUPacingDistance:=RefreshPeriod*PresentCycles;
-    end else if fGeneratedFrameCadenceInterval>0.0 then begin
+    end else if fGeneratedFramePresentInterval>0.0 then begin
      // Without VSync the frames are not to be held to the refresh cycles, so the presents are spread evenly
-     // over the time between the frames, which here, with the rendered frames below the refresh rate, gives
-     // every refresh cycle a new frame, see GeneratedFramesCloserThanRefresh. By the time they take with
-     // the wait of the frame rate limiter, but without the waits for the display and the acquire, which are
-     // what this spacing itself would add, and going by them, it would hold itself, as above.
-     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFrameCadenceInterval/CountIntervalParts);
+     // over the time between the frames, which here, below the refresh rate under a compositor, gives each of
+     // them a refresh cycle of its own anyway, see GeneratedFramesCloserThanRefresh. By the interval the frames
+     // come at, with all the waits in it: the time without the waits for the display and the acquire,
+     // fGeneratedFrameCadenceInterval, which this went by before, misses the wait for the GPU, which lies
+     // in the acquire, so that with the GPU taking longer than the CPU, the rendered frame went out 6 ms
+     // after its generated one and the next generated one 12 ms after that, at 18 ms a frame. The spacing
+     // cannot hold the frames back through the acquire either, as it would by such an interval under FIFO:
+     // the presenter thread puts a held back present out at once, as soon as the main loop has waited a
+     // millisecond for a swapchain image, see the acquire in AcquireVulkanBackBuffer.
+     fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFramePresentInterval/CountIntervalParts);
+{$ifdef PasVulkanFrameGenerationPresentTrace}
+     if FGDbgSpacingByCadence and (fGeneratedFrameCadenceInterval>0.0) then begin
+      fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFrameCadenceInterval/CountIntervalParts);
+     end;
+{$endif}
     end;
    end else begin
     SchedulePresentTargetTimes(CountIntervalParts);
@@ -18085,12 +18121,17 @@ begin
 
   // While it holds this rendered frame back, the next one acquires its own image and those of its generated
   // frames already, one image more than without it, which the presentation may not have to spare: then
-  // the next swapchain gets one more, see GetCountSwapChainImagesToCreate and the check of the main loop.
-  if OnPresenterThread and
-     fGeneratedFrameCPUPacing and
-     (fPresenterSwapChainImages=0) and
-     (fCountSwapChainImages<(TpvInt32(fVulkanSwapChain.MinImageCount)+fCountQueuedGeneratedFrames+2)) then begin
-   fPresenterSwapChainImages:=1;
+  // the next swapchain gets as many more as are missing, see GetCountSwapChainImagesToCreate and the check
+  // of the main loop. By the count asked for, not by the count of the swapchain, which the surface may
+  // keep below it. One more only, as before, left the swapchain an image short where the presentation keeps
+  // three of them, as Mesa does under X11, so that the main loop waited for the held back present, and
+  // the presenter thread then put it out right after its generated frame, see the acquire in
+  // AcquireVulkanBackBuffer.
+  if OnPresenterThread and fGeneratedFrameCPUPacing then begin
+   MissingSwapChainImages:=(TpvInt32(fVulkanSwapChain.MinImageCount)+fCountQueuedGeneratedFrames+2)-fDesiredCountSwapChainImages;
+   if MissingSwapChainImages>fPresenterSwapChainImages then begin
+    fPresenterSwapChainImages:=MissingSwapChainImages;
+   end;
   end;
 
   // The presents of this rendered frame and of the frames generated for it go out between the out of
