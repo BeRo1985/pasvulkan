@@ -2336,10 +2336,10 @@ type EpvApplication=class(Exception)
        // presents without VSync in PresentVulkanBackBuffer.
        fGeneratedFrameCadenceInterval:TpvDouble;
 
-       // Under VSync, the interval the rendered frames come at while their generated frames go right away,
-       // smoothed over just these frames, from a refresh cycle on as they start going right away, and for how
-       // many of them that has held so far, up to a limit. When it did not hold, it is not tried again for a
-       // number of frames, twice as many each time it did not hold for long once more, see
+       // With VSync and without, the interval the rendered frames come at while their generated frames go
+       // right away, smoothed over just these frames, from a refresh cycle on as they start going right away,
+       // and for how many of them that has held so far, up to a limit. When it did not hold, it is not tried
+       // again for a number of frames, twice as many each time it did not hold for long once more, see
        // GeneratedFramesCloserThanRefresh.
        fGeneratedFrameRightAwayInterval:TpvDouble;
 
@@ -16911,14 +16911,23 @@ end;
 //
 // That is for FIFO_LATEST_READY, which is VSync. Without VSync nothing is to hold the rendering to the
 // refresh cycles, so where the newest present at a refresh cycle replaces the older ones, as with MAILBOX
-// or IMMEDIATE under a compositor, see GeneratedFramePresentsReplaceEachOther, it goes by all the presents
-// of a rendered frame instead: right away as soon as there are more of them than refresh cycles, which
-// shows about the rendered frames alone, as without frame generation, while all of them are counted.
-// Below that, they are spread evenly over the time the frames take, each with a refresh cycle of its own.
-// Whether there are more is told by the interval the frames come at with the wait of the frame rate
-// limiter in it, see fGeneratedFrameCadenceInterval, since nothing else holds them back here: by the time
-// they take alone, frames held to a lower rate by the limiter went right away, and then, coming slower
-// than that allows, back again, frame after frame.
+// or IMMEDIATE under a compositor, see GeneratedFramePresentsReplaceEachOther, they go right away once the
+// rendered frames alone come faster than the refresh cycles, which shows about the rendered frames alone,
+// as without frame generation, while all of them are counted. Below that, they are spread evenly over the
+// time the frames take, so that every refresh cycle gets a new frame, the newest present due at it, now a
+// rendered and now a generated one where there are more presents than refresh cycles. Going right away
+// already as soon as there were more presents than refresh cycles, as it used to, the generated frames
+// were hardly ever shown there, and the rendered ones alone left refresh cycles without a new frame in
+// between, while twice their rate was counted.
+// Whether the rendered frames come faster is told by the interval they come at, with all the waits in it,
+// see fGeneratedFramePresentInterval: the frame rate limiter holds them back to its rate, and the GPU,
+// when it takes longer than the CPU, to its own, which the frames wait for in the acquire and the frame
+// latency wait. By the time the CPU took for them, such frames went right away, and back again a dozen
+// frames later, coming no faster there. Back they go, as under VSync, by the interval of just the frames
+// which went right away, and not again for a while after, see fGeneratedFrameRightAwayHoldOff. Gone back
+// by the interval of all frames instead, which still held the slower spread frames before, they went
+// back right after going right away, and with nothing holding them off, by turns frame after frame, the
+// frames then coming at about twice the time they took.
 //
 // IMMEDIATE without a compositor drops none, it shows every present from when it comes on, torn into the
 // one before. Spread out, each of them is on the screen for its part of the interval, while right away a
@@ -16951,17 +16960,19 @@ begin
     end;
    end;
   end else if GeneratedFramePresentsReplaceEachOther then begin
-   // Without VSync, where only the newest present due at a refresh cycle is shown: by all the presents
-   // of a rendered frame, since as soon as there are more of them than refresh cycles, spreading them out
-   // only lets the phase decide which of them is shown, the motion then going on by turns by one and two
-   // steps. Right away, the generated ones are hardly ever shown and the rendered ones are, which looks as
-   // without frame generation. Without the refresh cycle known, it cannot be told, and they go out right
-   // away as well.
+   // Without VSync, where only the newest present due at a refresh cycle is shown: by the rendered frames
+   // alone, since only once they come faster than the refresh cycles, every refresh cycle gets a new frame
+   // without the generated ones as well, which then go out right away and look as without frame
+   // generation. Below that, spread out, the newest present at every refresh cycle is a new frame, now a
+   // rendered and now a generated one, where right away the rendered ones alone would leave refresh cycles
+   // without one. Without the refresh cycle known, it cannot be told, and they go out right away as well.
    if Refresh>0.0 then begin
     if fGeneratedFramesRightAway then begin
-     result:=fGeneratedFramePresentInterval<=(Refresh*aCountPresents*1.08);
+     result:=fGeneratedFrameRightAwayInterval<=(Refresh*1.08);
     end else begin
-     result:=(fGeneratedFrameCadenceInterval>0.0) and (fGeneratedFrameCadenceInterval<(Refresh*aCountPresents*0.9));
+     result:=(fGeneratedFrameRightAwayHoldOff=0) and
+             (fGeneratedFramePresentInterval>0.0) and
+             (fGeneratedFramePresentInterval<(Refresh*0.9));
     end;
    end else begin
     result:=true;
@@ -17914,9 +17925,10 @@ begin
    fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
-   // Whether going right away holds under VSync is told by the frames which went right away, see
-   // GeneratedFramesCloserThanRefresh, and this frame comes after one which did. A frame late by a refresh
-   // cycle or more counts as late by half of one, so that a single hitch is no reason to give up on it.
+   // Whether going right away holds, with VSync and without, is told by the frames which went right away,
+   // see GeneratedFramesCloserThanRefresh, and this frame comes after one which did. A frame late by a
+   // refresh cycle or more counts as late by half of one, so that a single hitch is no reason to give up on
+   // it.
    WasRightAway:=fGeneratedFramesRightAway;
    RefreshSeconds:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
    if WasRightAway then begin
@@ -17964,10 +17976,10 @@ begin
      fGeneratedFrameCPUPacingDistance:=RefreshPeriod*PresentCycles;
     end else if fGeneratedFrameCadenceInterval>0.0 then begin
      // Without VSync the frames are not to be held to the refresh cycles, so the presents are spread evenly
-     // over the time between the frames, which here, below the refresh rate, gives each of them a refresh
-     // cycle of its own anyway, see GeneratedFramesCloserThanRefresh. By the time they take with the wait
-     // of the frame rate limiter, but without the waits for the display and the acquire, which are what
-     // this spacing itself would add, and going by them, it would hold itself, as above.
+     // over the time between the frames, which here, with the rendered frames below the refresh rate, gives
+     // every refresh cycle a new frame, see GeneratedFramesCloserThanRefresh. By the time they take with
+     // the wait of the frame rate limiter, but without the waits for the display and the acquire, which are
+     // what this spacing itself would add, and going by them, it would hold itself, as above.
      fGeneratedFrameCPUPacingDistance:=fHighResolutionTimer.FromFloatSeconds(fGeneratedFrameCadenceInterval/CountIntervalParts);
     end;
    end else begin
