@@ -16675,6 +16675,7 @@ function TpvApplication.GetPresentTimingCurrentTime(out aTime:TpvUInt64):boolean
 var TimestampInfo:TVkCalibratedTimestampInfoKHR;
     SwapchainCalibratedInfo:TVkSwapchainCalibratedTimestampInfoEXT;
     MaxDeviation:TpvUInt64;
+    TimestampPeriod:TpvDouble;
 {$if defined(Windows)}
     Frequency:TpvInt64;
 {$ifend}
@@ -16713,7 +16714,10 @@ begin
  if result and
     (fFramePacingPresentTimingTimeDomain=VK_TIME_DOMAIN_DEVICE_KHR) and
     (abs(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod-1.0)>1e-6) then begin
-  aTime:=TpvUInt64(round(aTime*TpvDouble(fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod)));
+  // Widened by the assignment, since a value typecast between float types of different sizes is
+  // rejected by older compilers
+  TimestampPeriod:=fVulkanDevice.PhysicalDevice.Properties.limits.timestampPeriod;
+  aTime:=TpvUInt64(round(aTime*TimestampPeriod));
  end;
 {$if defined(Windows)}
  // And the query performance counter counts in ticks of its own frequency, taken apart into whole seconds
