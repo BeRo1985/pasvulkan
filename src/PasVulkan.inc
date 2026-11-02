@@ -51,6 +51,14 @@
  {$else}
   {$undef HAS_ANONYMOUS_METHODS}
  {$ifend}
+ // Explicit typecasts between float types of different sizes, such as TpvDouble(SingleValue), are accepted in mode
+ // Delphi only since the FPC 3.3.1 trunk of 2025-12-10, which carries the same version number as the older trunks.
+ // FPC_INITFINAL_HASUNITNAME came into the trunk on the same day, shortly before, and so tells the newer ones apart.
+ {$if defined(FPC_INITFINAL_HASUNITNAME)}
+  {$define HAS_FLOAT_TYPECASTS}
+ {$else}
+  {$undef HAS_FLOAT_TYPECASTS}
+ {$ifend}
 {$else}
  {$realcompatibility off}
  {$localsymbols on}
@@ -208,6 +216,10 @@
     {$define Delphi10Berlin}
    {$ifend}
    {$define Delphi10BerlinAndUp}
+  {$ifend}
+  {$if CompilerVersion>=32.0}
+   // Delphi accepts explicit typecasts between float types of different sizes since 10.2
+   {$define HAS_FLOAT_TYPECASTS}
   {$ifend}
  {$endif}
  {$ifndef Delphi4or5}
