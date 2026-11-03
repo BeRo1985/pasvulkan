@@ -14152,11 +14152,16 @@ begin
   fFrameGenerationCompositor.DebugView:=Renderer.FrameGenerationDebugView;
   fFrameGenerationCompositor.Suspended:=Renderer.FrameGenerationSuspended;
   fFrameGenerationCompositor.MinimumFrameRate:=Renderer.FrameGenerationMinimumFrameRate;
-  // The last of the timer query results is the whole frame, where the frame graph measures at all.
+  // The last of the timer query results is the whole frame, where the frame graph measures at all. The
+  // application takes it as well, for whether generated frames would be shown, see
+  // TpvApplication.RenderedFrameGPUTime.
   if assigned(fFrameGraph.LastTimerQueryResults) and (fFrameGraph.LastTimerQueryResults.Count>0) then begin
    fFrameGenerationCompositor.GPUFrameTime:=fFrameGraph.LastTimerQueryResults[fFrameGraph.LastTimerQueryResults.Count-1].Duration;
   end else begin
    fFrameGenerationCompositor.GPUFrameTime:=0.0;
+  end;
+  if assigned(pvApplication) then begin
+   pvApplication.RenderedFrameGPUTime:=fFrameGenerationCompositor.GPUFrameTime;
   end;
   fFrameGenerationCompositor.BeginFrame(aFrameCounter,
                                         fInFlightFrameStates[aInFlightFrameIndex].CameraReset,

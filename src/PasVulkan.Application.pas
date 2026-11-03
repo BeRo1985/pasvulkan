@@ -2344,6 +2344,13 @@ type EpvApplication=class(Exception)
        // presents without VSync in PresentVulkanBackBuffer.
        fGeneratedFrameCadenceInterval:TpvDouble;
 
+       // The time the GPU takes for a rendered frame, where the application tells it, see
+       // RenderedFrameGPUTime, and the same smoothed: the waits for the GPU lie in the acquire, which the
+       // work interval above leaves out, see GeneratedFramesCloserThanRefresh.
+       fRenderedFrameGPUTime:TpvDouble;
+
+       fGeneratedFrameGPUInterval:TpvDouble;
+
        // The interval the rendered frames come at while their generated frames go right away, smoothed over
        // just these frames, starting as they begin to go right away from the longest interval allowed for
        // them: a refresh cycle under VSync, and one for each present without it. And for how many of them
@@ -2919,6 +2926,12 @@ type EpvApplication=class(Exception)
        // rendering, while the presents per second then count only the rendered frames, see
        // PresentedFramesPerSecond. On by default.
        property SkipUnseenGeneratedFrames:boolean read fSkipUnseenGeneratedFrames write fSkipUnseenGeneratedFrames;
+
+       // The time the GPU takes for a rendered frame, in seconds, for the decisions about the generated
+       // frames, where the application measures it, as a renderer with timer queries does; zero where it is
+       // not known. Without it, a frame which waits for the GPU longer than it works on the CPU counts as
+       // short enough for the refresh rate under VSync, see GeneratedFramesCloserThanRefresh.
+       property RenderedFrameGPUTime:TpvDouble read fRenderedFrameGPUTime write fRenderedFrameGPUTime;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
 
@@ -12690,6 +12703,7 @@ begin
  fGeneratedFramesUnseen:=false;
  fGeneratedFramesUnseenCountPresents:=0;
  fSkipUnseenGeneratedFrames:=true;
+ fRenderedFrameGPUTime:=0.0;
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -16924,7 +16938,11 @@ end;
 // waits for the display, the acquire and the frame rate limiter, see fGeneratedFrameWorkInterval, with a
 // tenth of margin. Spread one refresh cycle apart each, to show them all, the presents hold the rendering
 // back to that many refresh cycles per rendered frame, a hold which keeps itself, since then the presents
-// never come closer: so the time the frames take, not the interval they come at, is what tells.
+// never come closer: so the time the frames take, not the interval they come at, is what tells. The time
+// on the CPU alone does not, where the GPU takes longer: the frames wait for it in the acquire, so that
+// by the CPU, a frame at 50 a second on 60 Hz would go for one short enough for the refresh rate, and with
+// SkipUnseenGeneratedFrames, no generated frames would be made for it. So the time the GPU takes counts
+// too, where the application tells it, see RenderedFrameGPUTime.
 //
 // Where they can, spreading them, by target times or on the CPU, would only decide by chance which of them
 // is shown: the generated frames would mostly push the rendered ones out. They go out right away instead,
@@ -16992,7 +17010,7 @@ begin
      end;
      result:=(fGeneratedFrameRightAwayHoldOff=0) and
              (fGeneratedFrameWorkInterval>0.0) and
-             (Max(fGeneratedFrameWorkInterval,LimiterInterval)<(Refresh*0.9));
+             (Max(Max(fGeneratedFrameWorkInterval,fGeneratedFrameGPUInterval),LimiterInterval)<(Refresh*0.9));
     end;
    end;
   end else if GeneratedFramePresentsReplaceEachOther then begin
@@ -17059,12 +17077,17 @@ end;
 
 // While the generated frames would not be shown and are not made, see GeneratedFramesUnseen: the rendered
 // frames are measured by the same intervals as with generated frames, and these are made again once the
-// rendered frames come too slowly for going right away even without them, by the same bounds as there,
-// see GeneratedFramesCloserThanRefresh. Made again, they only add their own time on top, so that they then
-// stay spread and shown, and with the bounds a tenth below and a twelfth or so above the boundary, it does
-// not go back and forth. Where the refresh cycle is not known, they would go right away throughout.
+// rendered frames come too slowly for going right away even without them, by the same bounds as for
+// going back from right away, see GeneratedFramesCloserThanRefresh: by the interval the rendered frames
+// come at, with all the waits in it. Under VSync, the time the frames take on the CPU, which this went by
+// before, leaves the GPU out, so that it would stay so at 50 frames a second on 60 Hz, where the GPU takes
+// longer. Nothing else holds the rendered frames back then: FIFO_LATEST_READY drops a present for a newer
+// one, and without generated frames, there is no spreading. Made again, they only add their own time on top, so that
+// they then stay spread and shown, and with the bounds a tenth below and a twelfth or so above the boundary,
+// and not going right away again for a while, as where going right away did not hold, it does not go back
+// and forth. Where the refresh cycle is not known, they would go right away throughout.
 procedure TpvApplication.UpdateGeneratedFramesUnseen;
-var WorkInterval,Refresh,LimiterInterval:TpvDouble;
+var WorkInterval,Refresh:TpvDouble;
     Unseen:boolean;
 begin
  Unseen:=fSkipUnseenGeneratedFrames;
@@ -17076,15 +17099,13 @@ begin
   end else begin
    fGeneratedFrameWorkInterval:=fGeneratedFrameWorkInterval+((Min(WorkInterval,fGeneratedFrameWorkInterval*2.0)-fGeneratedFrameWorkInterval)*0.1);
   end;
+  if fGeneratedFrameRightAwayFrames<600 then begin
+   inc(fGeneratedFrameRightAwayFrames);
+  end;
   Refresh:=fHighResolutionTimer.ToFloatSeconds(GetGeneratedFrameRefreshPeriod);
   if (Refresh>0.0) and assigned(fVulkanSwapChain) then begin
    if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
-    if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
-     LimiterInterval:=1.0/fMaximumFramesPerSecond;
-    end else begin
-     LimiterInterval:=0.0;
-    end;
-    Unseen:=Max(fGeneratedFrameWorkInterval,LimiterInterval)<=(Refresh*1.08);
+    Unseen:=fGeneratedFramePresentInterval<=(Refresh*1.08);
    end else begin
     Unseen:=fGeneratedFramePresentInterval<=(Refresh*Max(fGeneratedFramesUnseenCountPresents,1)*1.08);
    end;
@@ -17092,6 +17113,15 @@ begin
  end;
  if not Unseen then begin
   fGeneratedFramesUnseen:=false;
+  // Not right away again for a while, as in PresentVulkanBackBuffer where going right away did not hold:
+  // a second or so at first, and back to that once it held for ten seconds or so, twice as long each time
+  // otherwise, up to half a minute or so.
+  if fGeneratedFrameRightAwayFrames>=600 then begin
+   fGeneratedFrameRightAwayHoldOffLength:=30;
+  end else begin
+   fGeneratedFrameRightAwayHoldOffLength:=Min(Max(fGeneratedFrameRightAwayHoldOffLength*2,30),960);
+  end;
+  fGeneratedFrameRightAwayHoldOff:=fGeneratedFrameRightAwayHoldOffLength;
   Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames are made again, the rendered frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
  end;
 end;
@@ -17505,9 +17535,10 @@ var PastTimingInfo:TVkPastPresentationTimingInfoEXT;
     Index,Bucket,StageIndex,ScheduleIndex:TpvInt32;
     Time,ReadyTime,Expected:TpvUInt64;
     Lateness,Needed,LeadLimit:TpvInt64;
-    Interval,RefreshDuration,Multiple,Mean,Deviation:TpvDouble;
+    Interval,RefreshDuration,Multiple,Mean,Deviation,SpacingCycles:TpvDouble;
     NowTime:TpvHighResolutionTime;
     Text:TpvUTF8String;
+    SpacingTells:boolean;
 begin
  // A lead longer than the frames take is no lead of the frames any more, but a wait of the presents in a
  // queue the target times themselves keep long: their swapchain images are held until then, the next
@@ -17549,6 +17580,17 @@ begin
   exit;
  end;
  RefreshDuration:=fFramePacingPresentTimingRefreshDuration*1e-6;
+ // Presents spaced a whole number of refresh cycles apart, or nearly, are shown on the grid of the refresh
+ // cycles whether anything keeps to it or not, as at half the refresh rate with a generated frame each:
+ // counted, they let the generated frames go right away and be left out, see GeneratedFramesUnseen, where
+ // the display showed each of them. Only presents spaced by a fraction of a refresh cycle tell, see
+ // fPresentShownOnRefreshGrid below.
+ if RefreshDuration>0.0 then begin
+  SpacingCycles:=(fHighResolutionTimer.ToFloatSeconds(fGeneratedFrameCPUPacingDistance)*1e3)/RefreshDuration;
+  SpacingTells:=abs(SpacingCycles-round(SpacingCycles))>=0.25;
+ end else begin
+  SpacingTells:=false;
+ end;
  for Index:=0 to TpvInt32(PastTimingProperties.presentationTimingCount)-1 do begin
   // The times of the stages, in whatever order they come.
   Time:=0;
@@ -17605,7 +17647,7 @@ begin
    // refresh cycles all the same, with some of them on the same one, something does keep to the refresh
    // cycles, a compositor mostly, see GeneratedFramesCloserThanRefresh.
    if fGeneratedFrameCPUPacing and
-      (RefreshDuration>0.0) and
+      SpacingTells and
       (fPresentTimingReportLastShownTime<>0) and
       (Time>=fPresentTimingReportLastShownTime) then begin
     Multiple:=((Time-fPresentTimingReportLastShownTime)*1e-6)/RefreshDuration;
@@ -18008,6 +18050,15 @@ begin
    end else begin
     fGeneratedFrameCadenceInterval:=fGeneratedFrameCadenceInterval+((Min(WorkInterval,fGeneratedFrameCadenceInterval*2.0)-fGeneratedFrameCadenceInterval)*0.1);
    end;
+   // The time the GPU takes for the rendered frame, where the application tells it, smoothed the same
+   // way, see RenderedFrameGPUTime
+   if fRenderedFrameGPUTime>0.0 then begin
+    if fGeneratedFrameGPUInterval<=0.0 then begin
+     fGeneratedFrameGPUInterval:=Min(fRenderedFrameGPUTime,0.25);
+    end else begin
+     fGeneratedFrameGPUInterval:=fGeneratedFrameGPUInterval+((Min(fRenderedFrameGPUTime,0.25)-fGeneratedFrameGPUInterval)*0.1);
+    end;
+   end;
    fGeneratedFrameRelativeTargetTime:=0;
    fGeneratedFrameCPUPacing:=(fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.CPU) or
                              ((fGeneratedFramePacing=TpvApplicationGeneratedFramePacing.Auto) and not GeneratedFrameTargetTimesAvailable);
@@ -18051,7 +18102,18 @@ begin
    if fGeneratedFramesRightAway and fSkipUnseenGeneratedFrames and not fGeneratedFramesUnseen then begin
     fGeneratedFramesUnseen:=true;
     fGeneratedFramesUnseenCountPresents:=CountIntervalParts;
-    Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away and not be shown, so none are made for now, the frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms');
+    // Told from here on by the interval the rendered frames come at, see UpdateGeneratedFramesUnseen, from
+    // the longest one for going right away: under VSync, the presents spread a refresh cycle apart each
+    // held the frames to a refresh cycle for each present, which would make them go again from the very
+    // next frame.
+    if RefreshSeconds>0.0 then begin
+     fGeneratedFramePresentInterval:=Min(fGeneratedFramePresentInterval,RefreshSeconds*RightAwayCycles);
+    end;
+    if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
+     Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away under VSync and not be shown, so none are made for now, the frames taking '+FloatToStrF(fGeneratedFrameWorkInterval*1e3,ffFixed,8,3)+' ms on the CPU and '+FloatToStrF(fGeneratedFrameGPUInterval*1e3,ffFixed,8,3)+' ms on the GPU, refresh cycle '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms');
+    end else begin
+     Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away and not be shown, the presentation showing only the newest present of a refresh cycle, so none are made for now, the frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms, present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+', '+FloatToStrF(fPresentShownOnRefreshGrid*100.0,ffFixed,8,0)+' % of the presents on the grid of the refresh cycles'+BoolToStr((fPresentTimingReportStage<>0) and (fPresentTimingReportQueueState>=0),'',' (no reports of past presents)')+', refresh cycle '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms');
+    end;
    end;
    if fGeneratedFramesRightAway then begin
     // Not all of them can be shown, so they go out right away, see GeneratedFramesCloserThanRefresh.
