@@ -3152,8 +3152,7 @@ begin
 end;
 
 procedure TpvAudioSoundSampleVoice.MixTo(aBuffer:PpvAudioSoundSampleValues;aMixVolume:TpvInt32;const aRealVoice:Boolean);
-var Remain,ToDo,Counter,GeneratorFrames:TpvInt32;
-    GeneratorIncrement:TpvInt64;
+var Remain,ToDo,Counter,GeneratorFrames,ReadFrame:TpvInt32;
     Buf:PpvAudioInt32;
     BufEx:PpvAudioInt32s;
 begin
@@ -3177,26 +3176,36 @@ begin
    UpdateIncrementRamping;
 
    // A generator-backed voice makes the frames it is about to read, right before it reads them, so
-   // that the write position keeps the half ring of lead that SetupGenerator gave it. The block reads
-   // BufferSamples output frames, each of them advancing the read position by the increment, and the
-   // increment may still be ramping towards its target, so the larger of the two is what has to be
-   // covered.
+   // that the write position keeps the half ring of lead that SetupGenerator gave it. The lead is
+   // measured from where the read position actually stands, and the write position is brought back to
+   // half a ring in front of it. Whatever the previous block read, at whatever increment, is what gets
+   // made again. A fixed amount per block from the increment would not do: its rounding drifts away
+   // from what the reads take, until the write position overtakes the read position and the voice
+   // reads the wrong frames for good.
    if assigned(fGeneratorInstance) then begin
 
-    GeneratorIncrement:=fIncrementCurrent shr 16;
-    if GeneratorIncrement<fTargetIncrement then begin
-     GeneratorIncrement:=fTargetIncrement;
+    if fPosition>0 then begin
+     ReadFrame:=TpvInt32((fPosition shr PositionShift) mod fGeneratorRingFrames);
+    end else begin
+     ReadFrame:=0;
     end;
 
-    GeneratorFrames:=TpvInt32((GeneratorIncrement*fSample.AudioEngine.BufferSamples) shr PositionShift)+2;
-
-    // Never write further ahead than the lead itself, because past that point the block would be
-    // overwriting the very frames it is about to read.
-    if GeneratorFrames>((fGeneratorRingFrames shr 1)-1) then begin
-     GeneratorFrames:=(fGeneratorRingFrames shr 1)-1;
+    GeneratorFrames:=(ReadFrame+(fGeneratorRingFrames shr 1))-fGeneratorWritePosition;
+    if GeneratorFrames<0 then begin
+     inc(GeneratorFrames,fGeneratorRingFrames);
+    end else if GeneratorFrames>=fGeneratorRingFrames then begin
+     dec(GeneratorFrames,fGeneratorRingFrames);
     end;
 
-    GenerateAhead(GeneratorFrames);
+    // More than half a ring would mean that the write position already stands in front of its
+    // target, and then it waits for the read position instead of running further ahead.
+    if GeneratorFrames>(fGeneratorRingFrames shr 1) then begin
+     GeneratorFrames:=0;
+    end;
+
+    if GeneratorFrames>0 then begin
+     GenerateAhead(GeneratorFrames);
+    end;
 
    end;
 
