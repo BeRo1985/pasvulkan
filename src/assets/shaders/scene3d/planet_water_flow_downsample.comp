@@ -21,6 +21,11 @@
 // is therefore (east - west, south - north), in the local octahedral UV frame. Only the cell's own four values
 // are involved, never a neighbour's, so the octahedral seam handling (applyOctaCheckerboardFlip, which exists
 // solely for the compact vector layout) is not needed here.
+//
+// Beside the image, the same pass writes the mean speed of the cells of each block into a plain buffer, for the
+// CPU side (the water sounds read it back). That is the mean of the per cell magnitudes rather than the
+// magnitude of the mean: a stream that turns or splits inside a block is still moving water, even where the
+// directions cancel.
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -59,6 +64,10 @@ layout(set = 0, binding = 0, std430) readonly buffer InWaterFlowMap {
 
 layout(set = 0, binding = 1, rg16f) uniform writeonly image2D uImageWaterFlowMap;
 
+layout(set = 0, binding = 2, std430) writeonly buffer OutWaterFlowMagnitudeMap {
+  float values[];
+} outWaterFlowMagnitudeMap;
+
 /* clang-format on */
 
 // Same indexing as getFlowMapIndex in planet_water_simulation.glsl: shift by the border, then wrap inside the
@@ -85,6 +94,7 @@ void main(){
   // taking a maximum is deliberate: opposing flows inside a block really do cancel, and a block where the water
   // only sloshes back and forth carries no net transport for the ripples to follow.
   vec2 flowSum = vec2(0.0);
+  float flowMagnitudeSum = 0.0;
   float flowCount = 0.0;
   for(int dy = 0; dy < blockSize; dy++){
     const int y = blockOrigin.y + dy;
@@ -97,7 +107,9 @@ void main(){
         break;
       }
       const vec4 outFlow = vec4(inWaterFlowMap.values[getFlowMapIndex(ivec2(x, y))]);
-      flowSum += vec2(outFlow.x - outFlow.z, outFlow.y - outFlow.w);
+      const vec2 cellFlow = vec2(outFlow.x - outFlow.z, outFlow.y - outFlow.w);
+      flowSum += cellFlow;
+      flowMagnitudeSum += length(cellFlow);
       flowCount += 1.0;
     }
   }
@@ -105,5 +117,7 @@ void main(){
   const vec2 flow = (flowCount > 0.0) ? (flowSum / flowCount) : vec2(0.0);
 
   imageStore(uImageWaterFlowMap, flowTexel, vec4(flow, 0.0, 0.0));
+
+  outWaterFlowMagnitudeMap.values[(uint(flowTexel.y) * pushConstants.flowMapResolution) + uint(flowTexel.x)] = (flowCount > 0.0) ? (flowMagnitudeSum / flowCount) : 0.0;
 
 }

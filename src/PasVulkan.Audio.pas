@@ -325,6 +325,11 @@ type PpvAudioInt32=^TpvInt32;
        // must move the whole spectrum with it.
        procedure Generate(const aData:PpvAudioSoundSampleValues;const aCountFrames:TpvInt32;const aRate:TpvFloat); virtual; abstract;
 
+       // Called whenever a new playback starts on the voice, before its first Generate of that playback. The
+       // instance lives as long as the voice and is reused by every playback on it, so a source with a
+       // beginning, a one-shot that rings out, restarts itself here. Continuous sources need nothing.
+       procedure Restart; virtual;
+
      end;
 
      { TpvAudioSoundSampleGenerator }
@@ -873,6 +878,10 @@ type PpvAudioInt32=^TpvInt32;
        constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        function Load(Name:TpvRawByteString;Stream:TStream;DoFree:boolean=true;VirtualVoices:TpvInt32=1;Loop:TpvUInt32=1;RealVoices:TpvInt32=-1):TpvAudioSoundSample;
+       // A sample whose voices all play aGenerator, without any wave behind it. The sample takes ownership of
+       // the generator, also when a sample of that name exists already, in which case aGenerator is freed and
+       // the existing one is returned. Like Load, the result carries one reference for the caller.
+       function CreateGenerated(const aName:TpvRawByteString;const aGenerator:TpvAudioSoundSampleGenerator;const aSampleRate:TpvInt32;const aVirtualVoices:TpvInt32=1;const aRealVoices:TpvInt32=-1):TpvAudioSoundSample;
        property Items[Index:TpvInt32]:TpvAudioSoundSample read GetItem write SetItem; default;
      end;
 
@@ -990,6 +999,9 @@ type PpvAudioInt32=^TpvInt32;
        p2:TpvUInt32;
        InputPointer:TpvUInt32;
        Factor:TpvFloat;
+       // Keeps the shifting path running at Factor 1.0 too. That path delays the signal against the bypass, so a
+       // caller that glides the factor back to 1.0 sets this until it has crossfaded away from the output itself.
+       Engaged:Boolean;
        constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        procedure Reset;
@@ -1017,6 +1029,8 @@ type PpvAudioInt32=^TpvInt32;
        SampleBufferSize:TpvInt32;
        SampleBufferMask:TpvInt32;
        CutOff:TpvInt32;
+       LastDry:TpvFloat;
+       LastWet:TpvFloat;
       public
        AudioEngine:TpvAudio;
        PreDelay:TpvInt32;
@@ -1152,6 +1166,28 @@ type PpvAudioInt32=^TpvInt32;
 
      TpvAudioOnFillBuffer=procedure(const aBuffer:Pointer;const aCountSamples:TpvSizeInt) of object;
 
+     { TpvAudioUnderwaterSettings }
+
+     // The listener's underwater chain, which acts on the effect bus only: pitch shift, a boost of the middle
+     // band, a low-pass and the reverb. The values describe the fully submerged listener; in between, the mixer
+     // moves every stage by the faded ListenerUnderwaterFactor, so that a camera riding on the water line changes
+     // the sound gradually instead of switching it. The defaults are the constants the chain always had.
+     TpvAudioUnderwaterSettings=record
+      public
+       LowPassFrequency:TpvFloat;    // Hz, the cut-off when fully submerged
+       BoostStartFrequency:TpvFloat; // Hz, lower edge of the boosted band
+       BoostEndFrequency:TpvFloat;   // Hz, upper edge of the boosted band
+       BoostFactor:TpvFloat;         // gain of that band when fully submerged, 1.0 leaves it alone
+       PitchEnabled:Boolean;
+       PitchFactor:TpvFloat;         // playback rate when fully submerged, 2^(-4/12) by default
+       ReverbWet:TpvFloat;           // reverb send when fully submerged
+       FadeInTime:TpvFloat;          // seconds the faded factor takes from 0 to 1
+       FadeOutTime:TpvFloat;         // seconds the faded factor takes from 1 to 0
+       EngageTime:TpvFloat;          // seconds of the crossfade between the dry bus and the chain on entry and exit
+       class function Create:TpvAudioUnderwaterSettings; static;
+     end;
+     PpvAudioUnderwaterSettings=^TpvAudioUnderwaterSettings;
+
      { TpvAudio }
      TpvAudio=class
       private
@@ -1162,6 +1198,13 @@ type PpvAudioInt32=^TpvInt32;
        fOutputSampleFrames:TpvInt64; // total sample-frames pushed into the output ring buffer (the global playback clock)
        fOutputLatencyFrames:TpvInt32; // device-internal output latency in frames, set by the backend after the device is opened
        fPauseLockCount:TpvInt32; // number of outstanding Lock() calls (from any thread); >0 keeps the mixer parked. Guarded by CriticalSection.
+       fOnFillBufferMixToEffect:Boolean;
+       fOnSecondFillBufferMixToEffect:Boolean;
+       fOnThirdFillBufferMixToEffect:Boolean;
+       fUnderwaterFactor:TpvFloat; // the faded factor the mixer actually applies, 0..1
+       fUnderwaterEngage:TpvFloat; // crossfade position between the dry bus (0) and the chain output (1)
+       fUnderwaterDryBuffer:PpvAudioSoundSampleValues; // the effect bus before the chain, for that crossfade
+       procedure UpdateUnderwaterCoefficients;
        procedure CalcEvIndices(ev:TpvFloat;evidx:PpvAudioInt32s;var evmu:TpvFloat);
        procedure CalcAzIndices(evidx:TpvInt32;az:TpvFloat;azidx:PpvAudioInt32s;var azmu:TpvFloat);
        procedure GetLerpedHRTFCoefs(Elevation,Azimuth:TpvFloat;var LeftCoefs,RightCoefs:TpvAudioHRTFCoefs;var LeftDelay,RightDelay:TpvInt32);
@@ -1210,7 +1253,9 @@ type PpvAudioInt32=^TpvInt32;
        CubicSplineTable:TpvAudioResamplerCubicSplineArray;
        ListenerViewMatrix:TpvMatrix4x4;
        ListenerVelocity:TpvVector3;
-       ListenerUnderwater:LongBool;
+       ListenerUnderwater:LongBool; // true forces the full underwater state, whatever ListenerUnderwaterFactor says
+       ListenerUnderwaterFactor:TpvFloat; // 0 = in the air, 1 = submerged, values between for the water line
+       UnderwaterSettings:TpvAudioUnderwaterSettings; // read by the mixer thread, so change it from there or under Lock
        ListenerGeneration:TpvUInt64;
        LowPassLeft:TpvInt32;
        LowPassRight:TpvInt32;
@@ -1272,6 +1317,13 @@ type PpvAudioInt32=^TpvInt32;
        property OnFillBuffer:TpvAudioOnFillBuffer read fOnFillBuffer write fOnFillBuffer;
        property OnSecondFillBuffer:TpvAudioOnFillBuffer read fOnSecondFillBuffer write fOnSecondFillBuffer;
        property OnThirdFillBuffer:TpvAudioOnFillBuffer read fOnThirdFillBuffer write fOnThirdFillBuffer;
+       // Whether the corresponding fill buffer hook goes to the effect bus, and with it through the underwater
+       // chain, instead of straight into the dry mix.
+       property OnFillBufferMixToEffect:Boolean read fOnFillBufferMixToEffect write fOnFillBufferMixToEffect;
+       property OnSecondFillBufferMixToEffect:Boolean read fOnSecondFillBufferMixToEffect write fOnSecondFillBufferMixToEffect;
+       property OnThirdFillBufferMixToEffect:Boolean read fOnThirdFillBufferMixToEffect write fOnThirdFillBufferMixToEffect;
+       // The underwater factor as it is currently heard, after the fades of UnderwaterSettings.
+       property UnderwaterFactor:TpvFloat read fUnderwaterFactor;
      end;
 
 const AudioSpeakerLayoutMono:TpvAudioSpeakerLayout=
@@ -1736,6 +1788,10 @@ begin
  result:=Min(Max(AngleChange*25.0,GainChange)*2.0,1.0);
 end;
 
+procedure TpvAudioSoundSampleGeneratorInstance.Restart;
+begin
+end;
+
 function TpvAudioSoundSampleGenerator.RingFrames:TpvInt32;
 begin
  result:=4096;
@@ -1884,6 +1940,8 @@ begin
   fGeneratorInstance:=fSample.Generator.CreateInstance;
 
  end;
+
+ fGeneratorInstance.Restart;
 
  // Half a ring of lead, so that the frames written at the head of a block are always that far in
  // front of the frames the same block reads.
@@ -2089,6 +2147,8 @@ begin
   fSpatializationLowPassRampingRemain:=0;
  end;
  fSpatializationOcclusion:=1.0;
+ // Like the occlusion, the effect routing belongs to one playback and is set again after the play command
+ fMixToEffect:=false;
  fRampingSamples:=fAudioEngine.RampingSamples;
  fDynamicRateFactor:=65536;
  fDynamicVolume:=32768;
@@ -2307,11 +2367,8 @@ begin
   SPATIALIZATION_PSEUDO:begin
    fSpatializationDelayLeft:=0;
    fSpatializationDelayRight:=0;
-   if fAudioEngine.ListenerUnderwater then begin
-    SpatializationDelay:=fAudioEngine.SpatializationDelayUnderwater;
-   end else begin
-    SpatializationDelay:=fAudioEngine.SpatializationDelayAir;
-   end;
+   // The ear delay follows the speed of sound, which the underwater factor moves from air to water
+   SpatializationDelay:=fAudioEngine.SpatializationDelayAir+((fAudioEngine.SpatializationDelayUnderwater-fAudioEngine.SpatializationDelayAir)*fAudioEngine.fUnderwaterFactor);
    if Spatialization<0.0 then begin
     RightHFGain:=1.0+(Spatialization*HF_DAMP_HALF);
     fSpatializationDelayRight:=round((SpatializationDelay*(-Spatialization))*SpatializationDelayLength);
@@ -2382,11 +2439,7 @@ begin
 
  Factor:=DopplerFactor;
  if Factor>0.0 then begin
-  if fAudioEngine.ListenerUnderwater then begin
-   SpeedOfSound:=SpeedOfSoundUnderwater;
-  end else begin
-   SpeedOfSound:=SpeedOfSoundAir;
-  end;
+  SpeedOfSound:=SpeedOfSoundAir+((SpeedOfSoundUnderwater-SpeedOfSoundAir)*fAudioEngine.fUnderwaterFactor);
   SpeedOfSound:=SpeedOfSound*DopplerVelocity;
   if (SpeedOfSound>0.0) and (SpeedOfSound<1.0) then begin
    Factor:=Factor/SpeedOfSound;
@@ -6533,6 +6586,56 @@ begin
  end;
 end;
 
+function TpvAudioSoundSamples.CreateGenerated(const aName:TpvRawByteString;const aGenerator:TpvAudioSoundSampleGenerator;const aSampleRate:TpvInt32;const aVirtualVoices:TpvInt32;const aRealVoices:TpvInt32):TpvAudioSoundSample;
+var Name:TpvRawByteString;
+    DestSample:TpvAudioSoundSample;
+begin
+ result:=nil;
+ if not assigned(aGenerator) then begin
+  exit;
+ end;
+ Name:=aName+#0+'generated';
+ AudioEngine.CriticalSection.Enter;
+ try
+  result:=HashMap[Name];
+  if assigned(result) then begin
+   aGenerator.Free;
+  end else begin
+   DestSample:=TpvAudioSoundSample.Create(AudioEngine,self);
+   try
+    DestSample.SampleVirtualVoices:=Max(1,aVirtualVoices);
+    if aRealVoices<=0 then begin
+     DestSample.SampleRealVoices:=DestSample.SampleVirtualVoices;
+    end else begin
+     DestSample.SampleRealVoices:=aRealVoices;
+    end;
+    DestSample.SetVirtualVoices(DestSample.SampleVirtualVoices);
+    DestSample.SetRealVoices(aRealVoices);
+    if aSampleRate>0 then begin
+     DestSample.SampleRate:=aSampleRate;
+    end else begin
+     DestSample.SampleRate:=AudioEngine.SampleRate;
+    end;
+    DestSample.SetGenerator(aGenerator);
+    Add(DestSample);
+    DestSample.Name:=Name;
+    HashMap.Add(Name,DestSample);
+    result:=DestSample;
+    DestSample:=nil;
+   finally
+    if assigned(DestSample) then begin
+     DestSample.Free;
+    end;
+   end;
+  end;
+ finally
+  AudioEngine.CriticalSection.Leave;
+ end;
+ if assigned(result) then begin
+  result.IncRef;
+ end;
+end;
+
 constructor TpvAudioSoundMusics.Create(AAudioEngine:TpvAudio);
 begin
  inherited Create;
@@ -6658,6 +6761,7 @@ begin
  p2:=(PitchShifterBufferSize shr 1) shl PitchShifterOutputShift;
  InputPointer:=0;
  Factor:=1;
+ Engaged:=false;
 end;
 
 procedure TpvAudioPitchShifter.Process(Buffer:TpvPointer;Samples:TpvInt32);
@@ -6667,7 +6771,7 @@ var Sample:PpvAudioSoundSampleStereoValue;
 begin
  Sample:=Buffer;
  OutputIncrement:=round(Factor*PitchShifterOutputLen)-PitchShifterOutputLen;
- if Factor<>1.0 then begin
+ if (Factor<>1.0) or Engaged then begin
   for Counter:=1 to Samples do begin
    WorkBuffer[InputPointer and PitchShifterBufferMask]:=Sample^;
    up1:=p1 shr PitchShifterOutputShift;
@@ -6713,6 +6817,8 @@ begin
  Absortion:=1000;
  Dry:=0.75;
  Wet:=0.25;
+ LastDry:=Dry;
+ LastWet:=Wet;
  AllPassFilters:=16;
  FillChar(AllPassBuffer,SizeOf(AllPassBuffer),AnsiChar(#0));
  FillChar(Counter,SizeOf(Counter),AnsiChar(#0));
@@ -6789,13 +6895,41 @@ const ExtraAccurateBits=0;
       ExtraAccurateLength=1 shl ExtraAccurateBits;
 var Sample:PpvAudioSoundSampleStereoValue;
     SampleCounter,AllPassFilterCounter,WetFactor,DryFactor,FeedBackFactor,
-    OutputLeft,OutputRight,LeftOutput,RightOutput:TpvInt32;
+    OutputLeft,OutputRight,LeftOutput,RightOutput,
+    WetFraction,DryFraction,WetStep,DryStep:TpvInt32;
+    Ramping,Passthrough:Boolean;
 begin
  Sample:=Buffer;
- WetFactor:=round(Wet*4096);
- DryFactor:=round(Dry*4096);
+ // A changed mix glides from the previous one across this block, in 4096 steps with 12 more fraction bits,
+ // so that a send that is moved every block does not step audibly. An unchanged mix takes the plain path.
+ WetFactor:=round(LastWet*4096);
+ DryFactor:=round(LastDry*4096);
+ Ramping:=(Samples>0) and ((WetFactor<>round(Wet*4096)) or (DryFactor<>round(Dry*4096)));
+ if Ramping then begin
+  WetFraction:=WetFactor shl 12;
+  DryFraction:=DryFactor shl 12;
+  WetStep:=((round(Wet*4096)-WetFactor) shl 12) div Samples;
+  DryStep:=((round(Dry*4096)-DryFactor) shl 12) div Samples;
+ end else begin
+  WetFraction:=0;
+  DryFraction:=0;
+  WetStep:=0;
+  DryStep:=0;
+ end;
+ LastWet:=Wet;
+ LastDry:=Dry;
+ // A dry mix leaves the samples as they are, which is the same result as the multiplication below, but one
+ // that cannot overflow on a very loud bus. The delay lines keep running, so that a send that opens later
+ // starts from the recent signal and not from silence.
+ Passthrough:=(not Ramping) and (WetFactor=0) and (DryFactor=4096);
  FeedBackFactor:=round(FeedBack*4096);
  for SampleCounter:=1 to Samples do begin
+  if Ramping then begin
+   inc(WetFraction,WetStep);
+   inc(DryFraction,DryStep);
+   WetFactor:=SARLongint(WetFraction,12);
+   DryFactor:=SARLongint(DryFraction,12);
+  end;
   LeftBuffer[LeftCounter]:=Sample^[0] shl ExtraAccurateBits;
   RightBuffer[RightCounter]:=Sample^[1] shl ExtraAccurateBits;
 
@@ -6831,14 +6965,18 @@ begin
   inc(LastLowPassLeft,(CutOff*(OutputLeft-LastLowPassLeft)) div 4096);
   inc(LastLowPassRight,(CutOff*(OutputRight-LastLowPassRight)) div 4096);
 
-  Sample^[0]:=((Sample^[0]*DryFactor)+((LastLowPassLeft div ExtraAccurateLength)*WetFactor)) div 4096;
-  Sample^[1]:=((Sample^[1]*DryFactor)+((LastLowPassRight div ExtraAccurateLength)*WetFactor)) div 4096;
+  if not Passthrough then begin
+   Sample^[0]:=((Sample^[0]*DryFactor)+((LastLowPassLeft div ExtraAccurateLength)*WetFactor)) div 4096;
+   Sample^[1]:=((Sample^[1]*DryFactor)+((LastLowPassRight div ExtraAccurateLength)*WetFactor)) div 4096;
+  end;
 {$else}
   inc(LastLowPassLeft,SARLongint(CutOff*(OutputLeft-LastLowPassLeft),12));
   inc(LastLowPassRight,SARLongint(CutOff*(OutputRight-LastLowPassRight),12));
 
-  Sample^[0]:=SARLongint((Sample^[0]*DryFactor)+(SARLongint(LastLowPassLeft,ExtraAccurateBits)*WetFactor),12);
-  Sample^[1]:=SARLongint((Sample^[1]*DryFactor)+(SARLongint(LastLowPassRight,ExtraAccurateBits)*WetFactor),12);
+  if not Passthrough then begin
+   Sample^[0]:=SARLongint((Sample^[0]*DryFactor)+(SARLongint(LastLowPassLeft,ExtraAccurateBits)*WetFactor),12);
+   Sample^[1]:=SARLongint((Sample^[1]*DryFactor)+(SARLongint(LastLowPassRight,ExtraAccurateBits)*WetFactor),12);
+  end;
 {$endif}
 
   inc(Sample);
@@ -7787,6 +7925,23 @@ begin
  end;
 end;
 
+{ TpvAudioUnderwaterSettings }
+
+class function TpvAudioUnderwaterSettings.Create:TpvAudioUnderwaterSettings;
+begin
+ result.LowPassFrequency:=WATER_LOWPASS_FREQUENCY;
+ result.BoostStartFrequency:=WATER_BOOST_START_FREQUENCY;
+ result.BoostEndFrequency:=WATER_BOOST_END_FREQUENCY;
+ result.BoostFactor:=WATER_BOOST_FACTOR;
+ result.PitchEnabled:=true;
+ result.PitchFactor:=0.7937005; // 2^((-4)/12)
+ result.ReverbWet:=1.0;
+ // The low-pass used to close within the 10 ms ramp and to open again over a quarter of a second
+ result.FadeInTime:=0.01;
+ result.FadeOutTime:=0.25;
+ result.EngageTime:=0.02;
+end;
+
 { TpvAudio }
 
 constructor TpvAudio.Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
@@ -7819,6 +7974,14 @@ begin
  fOnFillBuffer:=nil;
  fOnSecondFillBuffer:=nil;
  fOnThirdFillBuffer:=nil;
+ fOnFillBufferMixToEffect:=false;
+ fOnSecondFillBufferMixToEffect:=false;
+ fOnThirdFillBufferMixToEffect:=false;
+ GetMem(fUnderwaterDryBuffer,MixingBufferSize);
+ FillChar(fUnderwaterDryBuffer^,MixingBufferSize,AnsiChar(#0));
+ UnderwaterSettings:=TpvAudioUnderwaterSettings.Create;
+ fUnderwaterFactor:=0.0;
+ fUnderwaterEngage:=0.0;
  SpatializationWaterLowPassCW:=Min(Max(2*sin(pi*(WATER_LOWPASS_FREQUENCY/SampleRate)),0.0),1.0);
  SpatializationWaterWaterBoostLowPassCW:=round(Min(Max(2*sin(pi*(WATER_BOOST_START_FREQUENCY/SampleRate)),0.0),1.0)*4096);
  SpatializationWaterWaterBoostHighPassCW:=round(Min(Max(2*sin(pi*(WATER_BOOST_END_FREQUENCY/SampleRate)),0.0),1.0)*4096);
@@ -7867,6 +8030,7 @@ begin
  ListenerViewMatrix:=TpvMatrix4x4.Identity;
  ListenerVelocity:=TpvVector3.Null;
  ListenerUnderwater:=false;
+ ListenerUnderwaterFactor:=0.0;
  ListenerGeneration:=0;
  LowPassLeft:=0;
  LowPassRight:=0;
@@ -7926,6 +8090,7 @@ begin
  FreeMem(MixingBuffer);
  FreeMem(MusicMixingBuffer);
  FreeMem(EffectMixingBuffer);
+ FreeMem(fUnderwaterDryBuffer);
  FreeMem(OutputBuffer);
  FreeAndNil(GlobalVoiceManager);
  FreeAndNil(CommandQueue);
@@ -7979,11 +8144,7 @@ begin
  b[1]:=mu[0]*(1.0-mu[2]);
  b[2]:=(1.0-mu[1])*mu[2];
  b[3]:=mu[1]*mu[2];
- if ListenerUnderwater then begin
-  Factor:=SpeedOfSoundAirToUnderwater;
- end else begin
-  Factor:=1;
- end;
+ Factor:=1.0+((SpeedOfSoundAirToUnderwater-1.0)*fUnderwaterFactor);
  LeftDelay:=trunc((((PpvAudioInt32s(HRTFPreset^.Delays)^[lidx[0]]*b[0])+
                     (PpvAudioInt32s(HRTFPreset^.Delays)^[lidx[1]]*b[1])+
                     (PpvAudioInt32s(HRTFPreset^.Delays)^[lidx[2]]*b[2])+
@@ -8133,6 +8294,16 @@ begin
  end;
 end;
 
+procedure TpvAudio.UpdateUnderwaterCoefficients;
+begin
+ // Recomputed for every block the chain runs in, so that UnderwaterSettings can change while it plays. The
+ // formulas are the ones the constructor used for the former constants.
+ SpatializationWaterLowPassCW:=Min(Max(2*sin(pi*(Max(UnderwaterSettings.LowPassFrequency,1.0)/SampleRate)),0.0),1.0);
+ SpatializationWaterWaterBoostLowPassCW:=round(Min(Max(2*sin(pi*(Max(UnderwaterSettings.BoostStartFrequency,1.0)/SampleRate)),0.0),1.0)*4096);
+ SpatializationWaterWaterBoostHighPassCW:=round(Min(Max(2*sin(pi*(Max(UnderwaterSettings.BoostEndFrequency,1.0)/SampleRate)),0.0),1.0)*4096);
+ SpatializationWaterWaterBoost:=round(Max(UnderwaterSettings.BoostFactor,0.0)*4096);
+end;
+
 procedure TpvAudio.FillBuffer;
 const OneDiv32768=1.0/32768.0;
 type pbyte=^TpvUInt8;
@@ -8149,6 +8320,11 @@ var i,jl,jr,SampleValue,HighPass,CountSamples,ToDo,LowPassCoef,Coef,SampleIndex,
     Sample:TpvAudioSoundSample;
     MixToEffect:Boolean;
     Factor:TpvFloat;
+    UnderwaterStart,UnderwaterEnd,UnderwaterTarget,EngageStart,EngageEnd,FadeTime,FadeStep,
+    LowPassFrequency,LowPassCW:TpvFloat;
+    UnderwaterChain:Boolean;
+    BoostValue,BoostFraction,BoostStep,EngageValue,EngageFraction,EngageStep:TpvInt32;
+    pd:PpvAudioInt32;
 begin
  CriticalSection.Enter;
  try
@@ -8170,6 +8346,48 @@ begin
 
   CommandQueue.Process;
 
+  // The underwater factor of this block, faded towards what the listener asks for. It is settled here, before the
+  // voices are prepared, because their ear delay and Doppler shift depend on it as well. The chain itself runs
+  // while the factor is above zero at either end of the block, and also while the crossfade between the dry bus
+  // and the chain output has not yet arrived back at the dry side.
+  UnderwaterStart:=fUnderwaterFactor;
+  if ListenerUnderwater then begin
+   UnderwaterTarget:=1.0;
+  end else if IsNaN(ListenerUnderwaterFactor) then begin
+   UnderwaterTarget:=0.0;
+  end else begin
+   UnderwaterTarget:=Min(Max(ListenerUnderwaterFactor,0.0),1.0);
+  end;
+  if UnderwaterTarget>UnderwaterStart then begin
+   FadeTime:=UnderwaterSettings.FadeInTime;
+  end else begin
+   FadeTime:=UnderwaterSettings.FadeOutTime;
+  end;
+  if FadeTime>0.0 then begin
+   FadeStep:=BufferSamples/(FadeTime*SampleRate);
+  end else begin
+   FadeStep:=1.0;
+  end;
+  if UnderwaterTarget>UnderwaterStart then begin
+   UnderwaterEnd:=Min(UnderwaterStart+FadeStep,UnderwaterTarget);
+  end else begin
+   UnderwaterEnd:=Max(UnderwaterStart-FadeStep,UnderwaterTarget);
+  end;
+  fUnderwaterFactor:=UnderwaterEnd;
+  EngageStart:=fUnderwaterEngage;
+  if UnderwaterSettings.EngageTime>0.0 then begin
+   FadeStep:=BufferSamples/(UnderwaterSettings.EngageTime*SampleRate);
+  end else begin
+   FadeStep:=1.0;
+  end;
+  if (UnderwaterStart>0.0) or (UnderwaterEnd>0.0) then begin
+   EngageEnd:=Min(EngageStart+FadeStep,1.0);
+  end else begin
+   EngageEnd:=Max(EngageStart-FadeStep,0.0);
+  end;
+  fUnderwaterEngage:=EngageEnd;
+  UnderwaterChain:=(UnderwaterStart>0.0) or (UnderwaterEnd>0.0) or (EngageStart>0.0) or (EngageEnd>0.0);
+
   // Clearing
   FillChar(MixingBuffer^,MixingBufferSize,AnsiChar(#0));
   FillChar(MusicMixingBuffer^,MixingBufferSize,AnsiChar(#0));
@@ -8178,7 +8396,11 @@ begin
   if assigned(fOnFillBuffer) then begin
    fOnFillBuffer(fTemporaryBuffer,BufferSamples);
    pf:=@fTemporaryBuffer[0];
-   pl:=pointer(MixingBuffer);
+   if fOnFillBufferMixToEffect then begin
+    pl:=pointer(EffectMixingBuffer);
+   end else begin
+    pl:=pointer(MixingBuffer);
+   end;
    for i:=1 to BufferSamples*2 do begin
     SampleValue:=round(pf^*32768.0);
     if SampleValue<-524288 then begin
@@ -8195,7 +8417,11 @@ begin
   if assigned(fOnSecondFillBuffer) then begin
    fOnSecondFillBuffer(fTemporaryBuffer,BufferSamples);
    pf:=@fTemporaryBuffer[0];
-   pl:=pointer(MixingBuffer);
+   if fOnSecondFillBufferMixToEffect then begin
+    pl:=pointer(EffectMixingBuffer);
+   end else begin
+    pl:=pointer(MixingBuffer);
+   end;
    for i:=1 to BufferSamples*2 do begin
     SampleValue:=round(pf^*32768.0);
     if SampleValue<-524288 then begin
@@ -8212,7 +8438,11 @@ begin
   if assigned(fOnThirdFillBuffer) then begin
    fOnThirdFillBuffer(fTemporaryBuffer,BufferSamples);
    pf:=@fTemporaryBuffer[0];
-   pl:=pointer(MixingBuffer);
+   if fOnThirdFillBufferMixToEffect then begin
+    pl:=pointer(EffectMixingBuffer);
+   end else begin
+    pl:=pointer(MixingBuffer);
+   end;
    for i:=1 to BufferSamples*2 do begin
     SampleValue:=round(pf^*32768.0);
     if SampleValue<-524288 then begin
@@ -8360,17 +8590,37 @@ begin
    WAVStreamDumpMusic.Dump(MusicMixingBuffer,MixingBufferSize);
   end;
 
-  if ListenerUnderwater then begin
-   PitchShifter.Factor:=0.7937005; // 2^((-4)/12)
+  if UnderwaterChain then begin
+   UpdateUnderwaterCoefficients;
+   // The bus as it enters the chain, for the crossfade on entry and exit
+   if (EngageStart<1.0) or (EngageEnd<1.0) then begin
+    Move(EffectMixingBuffer^,fUnderwaterDryBuffer^,MixingBufferSize);
+   end;
+  end;
+
+  // The pitch glides with the factor, from 1.0 in the air to PitchFactor when submerged. While the chain runs,
+  // the shifter stays on its shifting path even at 1.0, because falling back to the bypass would jump by its
+  // delay; the engage crossfade takes the output back to the dry bus before that happens.
+  if UnderwaterChain and UnderwaterSettings.PitchEnabled then begin
+   PitchShifter.Factor:=exp(ln(Min(Max(UnderwaterSettings.PitchFactor,0.25),4.0))*UnderwaterEnd);
+   PitchShifter.Engaged:=true;
   end else begin
    PitchShifter.Factor:=1.0;
+   PitchShifter.Engaged:=false;
   end;
   PitchShifter.Process(EffectMixingBuffer,BufferSamples);
 
-  if ListenerUnderwater then begin
+  if UnderwaterChain then begin
+   // The band gain glides from 1.0 (transparent) to BoostFactor with the factor, across the block, in 4096 steps
+   // with 8 more fraction bits.
+   BoostValue:=round((1.0+((SpatializationWaterWaterBoost*(1.0/4096.0))-1.0)*UnderwaterStart)*4096.0);
+   BoostFraction:=BoostValue shl 8;
+   BoostStep:=((round((1.0+((SpatializationWaterWaterBoost*(1.0/4096.0))-1.0)*UnderwaterEnd)*4096.0)-BoostValue) shl 8) div Max(1,BufferSamples);
    ClipBuffer(EffectMixingBuffer,524288);
    pl:=TpvPointer(EffectMixingBuffer);
    for i:=1 to BufferSamples do begin
+    inc(BoostFraction,BoostStep);
+    BoostValue:=SARLongint(BoostFraction,8);
 {$ifdef UseDIV}
     SampleValue:=pl^;
     inc(WaterBoostLowPassLeft[0],((SampleValue-WaterBoostLowPassLeft[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
@@ -8386,7 +8636,7 @@ begin
     WaterBoostHistoryLeft[3]:=WaterBoostHistoryLeft[2];
     WaterBoostHistoryLeft[2]:=WaterBoostHistoryLeft[1];
     WaterBoostHistoryLeft[1]:=SampleValue;
-    pl^:=WaterBoostLowPassLeft[3]+((WaterBoostMiddlePassLeft*SpatializationWaterWaterBoost) div 4096)+HighPass;
+    pl^:=WaterBoostLowPassLeft[3]+((WaterBoostMiddlePassLeft*BoostValue) div 4096)+HighPass;
     inc(pl);
     SampleValue:=pl^;
     inc(WaterBoostLowPassRight[0],((SampleValue-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW) div 4096);
@@ -8402,7 +8652,7 @@ begin
     WaterBoostHistoryRight[3]:=WaterBoostHistoryRight[2];
     WaterBoostHistoryRight[2]:=WaterBoostHistoryRight[1];
     WaterBoostHistoryRight[1]:=SampleValue;
-    pl^:=WaterBoostLowPassRight[3]+((WaterBoostMiddlePassRight*SpatializationWaterWaterBoost) div 4096)+HighPass;
+    pl^:=WaterBoostLowPassRight[3]+((WaterBoostMiddlePassRight*BoostValue) div 4096)+HighPass;
     inc(pl);
 {$else}
     SampleValue:=pl^;
@@ -8419,7 +8669,7 @@ begin
     WaterBoostHistoryLeft[3]:=WaterBoostHistoryLeft[2];
     WaterBoostHistoryLeft[2]:=WaterBoostHistoryLeft[1];
     WaterBoostHistoryLeft[1]:=SampleValue;
-    pl^:=WaterBoostLowPassLeft[3]+SARLongint(WaterBoostMiddlePassLeft*SpatializationWaterWaterBoost,12)+HighPass;
+    pl^:=WaterBoostLowPassLeft[3]+SARLongint(WaterBoostMiddlePassLeft*BoostValue,12)+HighPass;
     inc(pl);
     SampleValue:=pl^;
     inc(WaterBoostLowPassRight[0],SARLongint((SampleValue-WaterBoostLowPassRight[0])*SpatializationWaterWaterBoostLowPassCW,12));
@@ -8435,7 +8685,7 @@ begin
     WaterBoostHistoryRight[3]:=WaterBoostHistoryRight[2];
     WaterBoostHistoryRight[2]:=WaterBoostHistoryRight[1];
     WaterBoostHistoryRight[1]:=SampleValue;
-    pl^:=WaterBoostLowPassRight[3]+SARLongint(WaterBoostMiddlePassRight*SpatializationWaterWaterBoost,12)+HighPass;
+    pl^:=WaterBoostLowPassRight[3]+SARLongint(WaterBoostMiddlePassRight*BoostValue,12)+HighPass;
     inc(pl);
 {$endif}
    end;
@@ -8449,18 +8699,21 @@ begin
    FillChar(WaterBoostHistoryRight,SizeOf(WaterBoostHistoryRight),AnsiChar(#0));
   end;
 
-  if ListenerUnderwater then begin
+  // The cut-off moves on a logarithmic scale, from a sixth of the sample rate, where the one-pole coefficient
+  // reaches 1.0 and the filter is open, down to the configured frequency. The coefficient then ramps across the
+  // block towards that target, since the timing of the change already lies in the fade of the factor.
+  if UnderwaterEnd>=1.0 then begin
    LowPassCoef:=round(SpatializationWaterLowPassCW*LowPassLength) shl LowPassShift;
+  end else if UnderwaterEnd>0.0 then begin
+   LowPassFrequency:=exp(ln(SampleRate/6.0)+((ln(Max(UnderwaterSettings.LowPassFrequency,1.0))-ln(SampleRate/6.0))*UnderwaterEnd));
+   LowPassCW:=Min(Max(2*sin(pi*(LowPassFrequency/SampleRate)),0.0),1.0);
+   LowPassCoef:=round(LowPassCW*LowPassLength) shl LowPassShift;
   end else begin
    LowPassCoef:=LowPassLength shl LowPassShift;
   end;
   if LowPassLast<>LowPassCoef then begin
    LowPassLast:=LowPassCoef;
-   if ListenerUnderwater then begin
-    LowPassRampingLength:=RampingSamples;
-   end else begin
-    LowPassRampingLength:=Max(RampingSamples,(SampleRate+2) shr 2);
-   end;
+   LowPassRampingLength:=Max(1,BufferSamples);
    LowPassIncrement:=(LowPassCoef-LowPassCurrent) div LowPassRampingLength;
   end;
   pl:=TpvPointer(EffectMixingBuffer);
@@ -8535,14 +8788,33 @@ begin
    LowPassRight:=pl^;
   end;
 
-  if ListenerUnderwater then begin
-   Reverb.Dry:=1.0;
-   Reverb.Wet:=1.0;
+  Reverb.Dry:=1.0;
+  if UnderwaterChain then begin
+   Reverb.Wet:=Max(UnderwaterSettings.ReverbWet,0.0)*UnderwaterEnd;
   end else begin
-   Reverb.Dry:=1.0;
    Reverb.Wet:=0.0;
   end;
   Reverb.Process(EffectMixingBuffer,BufferSamples);
+
+  // On entry and exit the output crossfades between the bus as it entered the chain and what the chain made of
+  // it, which hides the delay of the pitch shifter and of the band split when they come in and go out.
+  if UnderwaterChain and ((EngageStart<1.0) or (EngageEnd<1.0)) then begin
+   EngageValue:=round(EngageStart*4096.0);
+   EngageFraction:=EngageValue shl 12;
+   EngageStep:=((round(EngageEnd*4096.0)-EngageValue) shl 12) div Max(1,BufferSamples);
+   pl:=TpvPointer(EffectMixingBuffer);
+   pd:=TpvPointer(fUnderwaterDryBuffer);
+   for i:=1 to BufferSamples do begin
+    inc(EngageFraction,EngageStep);
+    EngageValue:=SARLongint(EngageFraction,12);
+    pl^:=pd^+TpvInt32((TpvInt64(pl^-pd^)*EngageValue) div 4096);
+    inc(pl);
+    inc(pd);
+    pl^:=pd^+TpvInt32((TpvInt64(pl^-pd^)*EngageValue) div 4096);
+    inc(pl);
+    inc(pd);
+   end;
+  end;
 
   pl:=TpvPointer(MixingBuffer);
   pll:=TpvPointer(EffectMixingBuffer);

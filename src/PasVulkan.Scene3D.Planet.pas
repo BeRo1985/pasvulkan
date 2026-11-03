@@ -128,6 +128,10 @@ type TpvScene3DPlanets=class;
              // BrushSmoothLevels smoothed brush textures + 6 water and grass textures. Must match the
              // array size in the shaders and the number of the actually written descriptor image infos.
              CountPlanetTextureDescriptors=(11+BrushSmoothLevels)+8;
+             // Edge length of the window of full resolution water height texels that a water probe reads back.
+             // Four texels allow a bilinear lookup anywhere within one texel of the requested point, so the
+             // answer still holds while the point moves on before the readback arrives.
+             WaterProbeWindowSize=4;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -514,7 +518,10 @@ type TpvScene3DPlanets=class;
               fWaterFlowMapBuffer:TpvVulkanBuffer;
               fWaterMetricMapBuffer:TpvVulkanBuffer; // Static octahedral metric field (5 floats per texel); only allocated when the metric aware compensation is enabled, nil otherwise
               fWaterMiniMapBuffer:TpvVulkanBuffer; // DEVICE_LOCAL downsample output (the downsample compute shader must not scatter writes into host memory - that made a single 257x257 dispatch cost ~8 ms even on an RTX 5080)
-              fWaterMiniMapHostBuffer:TpvVulkanBuffer; // host-visible, persistent-mapped readback copy of fWaterMiniMapBuffer for the CPU puddle detection (filled by one contiguous device->host CmdCopyBuffer)
+              fWaterMiniMapHostBuffers:TPlanetDataVulkanBuffers; // host-visible, persistent-mapped readback copies of fWaterMiniMapBuffer for the CPU puddle detection (filled by one contiguous device->host CmdCopyBuffer), one per in-flight frame, so that the CPU only ever reads a copy whose frame has completed
+              fWaterFlowMagnitudeBuffer:TpvVulkanBuffer; // DEVICE_LOCAL mean flow speed per mini map texel, written by the flow downsample pass
+              fWaterFlowMagnitudeHostBuffers:TPlanetDataVulkanBuffers; // host-visible readback copies of fWaterFlowMagnitudeBuffer, one per in-flight frame
+              fWaterProbeHostBuffers:TPlanetDataVulkanBuffers; // host-visible readback of a small window of the full resolution water height around one requested point, one per in-flight frame
               fWaterMiniMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled watermap for foam suppression
               fWaterActivityMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT downsampled water activity map (dH/dt), GENERAL layout, read-write by the activity pass, sampled for the calm-surface normal blend
               fWaterFlowMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT downsampled water flow map (net pipe velocity in the local octahedral UV frame), GENERAL layout, written by the flow downsample pass, sampled for the flow driven ripple detail
@@ -552,6 +559,7 @@ type TpvScene3DPlanets=class;
               fAtmosphereMiniMapData:TAtmosphereMapData;
               fBlendMiniMapData:TBlendMapData;
               fWaterMiniMapData:TWaterMapData;
+              fWaterFlowMiniMapData:TWaterMapData; // mean flow speed per mini map texel, zero while the simulation sleeps
               fHeightMiniMapData:THeightMapData;
              private
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
@@ -737,6 +745,7 @@ type TpvScene3DPlanets=class;
               property AtmosphereMiniMapData:TAtmosphereMapData read fAtmosphereMiniMapData;
               property BlendMiniMapData:TBlendMapData read fBlendMiniMapData;
               property WaterMiniMapData:TWaterMapData read fWaterMiniMapData;
+              property WaterFlowMiniMapData:TWaterMapData read fWaterFlowMiniMapData;
               property HeightMiniMapData:THeightMapData read fHeightMiniMapData;
              public
               property DirtyHeightMap:TPasMPBool32 read fDirtyHeightMap write fDirtyHeightMap;
@@ -2097,6 +2106,17 @@ type TpvScene3DPlanets=class;
               fLevelBakeRefreshPhase:TpvUInt32;
               fDownsampleProcessedGeneration:TpvUInt64;
               fDownsampleDownloadedGeneration:TpvUInt64;
+              // The generation of the mini map copy recorded into each in-flight slot, 0 for none. A copy is read
+              // when its slot comes round again, since only then is its frame known to have completed.
+              fDownsampleSlotGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+              fFlowProcessedGeneration:TpvUInt64;
+              fFlowDownloadedGeneration:TpvUInt64;
+              fFlowSlotGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+              fFlowReadbackTimeAccumulator:TpvDouble;
+              fFlowMagnitudeCleared:Boolean; // the device buffer got its initial zero fill
+              fFlowZeroed:Boolean; // the CPU flow field has been cleared for the sleeping simulation
+              fProbeSlotTexels:array[0..MaxInFlightFrames-1] of TpvInt32; // requested texel whose window was copied in each slot, -1 for none
+              fProbeLastTexel:TpvInt32;
               fTimeAccumulator:TpvDouble;
               fLastTimeAccumulator:TpvDouble;
               fTimeStep:TpvDouble;
@@ -2106,7 +2126,7 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aDeltaTime:TpvDouble;const aInFlightFrameIndex:TpvSizeInt);
-              procedure PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
+              procedure PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence;const aInFlightFrameIndex:TpvSizeInt);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
               property WaterRipplesSimulation:TWaterRipplesSimulation read fWaterRipplesSimulation;
@@ -3732,6 +3752,15 @@ type TpvScene3DPlanets=class;
        fTiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups;
        fWaterMiniMapResolutionShift:TpvSizeInt;
        fWaterMiniMapResolution:TpvSizeInt;
+       fWaterFlowReadback:TPasMPBool32;
+       fWaterFlowReadbackInterval:TpvDouble;
+       fWaterProbeEnabled:TPasMPBool32;
+       fWaterProbeRequestedTexel:TPasMPInt32; // (y*fWaterMapResolution)+x of the requested window centre, -1 for none
+       fWaterProbeLock:TPasMPCriticalSection;
+       fWaterProbeResultValid:Boolean;
+       fWaterProbeResultOriginX:TpvInt32; // texel coordinates of the window's first texel, before wrapping
+       fWaterProbeResultOriginY:TpvInt32;
+       fWaterProbeResultValues:array[0..(WaterProbeWindowSize*WaterProbeWindowSize)-1] of TpvFloat;
        fBlendMiniMapResolutionShift:TpvSizeInt;
        fBlendMiniMapResolution:TpvSizeInt;
        fHeightMiniMapResolutionShift:TpvSizeInt;
@@ -4051,6 +4080,18 @@ type TpvScene3DPlanets=class;
        function GetAtmosphere(const aNormal:TpvVector3):TpvScalar; overload;
        function GetWater(const aUV:TpvVector2):TpvScalar; overload;
        function GetWater(const aNormal:TpvVector3):TpvScalar; overload;
+       // Mean flow speed of the water around a point, from the flow readback (see WaterFlowReadback); 0 where the
+       // water stands still, while the simulation sleeps, and while the readback is off.
+       function GetWaterFlow(const aUV:TpvVector2):TpvScalar; overload;
+       function GetWaterFlow(const aNormal:TpvVector3):TpvScalar; overload;
+       // Asks for the full resolution water depth around a point. The answer arrives once the frame that copies it
+       // has completed, usually a few frames later, and is then read with GetWaterProbeDepth. Each request replaces
+       // the previous one; only one point is probed at a time. Does nothing while WaterProbeEnabled is off.
+       procedure RequestWaterProbe(const aNormal:TpvVector3);
+       // The water depth at a point from the last completed probe, bilinear like GetWater but at the full
+       // resolution of the simulation. False when there is no probe result that covers the point, in which case
+       // the caller falls back to GetWater.
+       function GetWaterProbeDepth(const aNormal:TpvVector3;out aDepth:TpvScalar):Boolean;
        function GetBlendMap(const aUV:TpvVector2):TBlendMapValue; overload;
        function GetBlendMap(const aNormal:TpvVector3):TBlendMapValue; overload;
        function GetHeightMiniMap(const aUV:TpvVector2):TpvScalar; overload;
@@ -4265,6 +4306,12 @@ type TpvScene3DPlanets=class;
        property PrecipitationSimulationActive:TPasMPBool32 read fPrecipitationSimulationActive write fPrecipitationSimulationActive;
        property WaterMiniMapResolution:TpvSizeInt read fWaterMiniMapResolution;
        property HeightMiniMapResolution:TpvSizeInt read fHeightMiniMapResolution;
+       // Whether the flow downsample pass also runs, and is read back, for GetWaterFlow. It only runs on frames
+       // where the simulation steps, and at most once per WaterFlowReadbackInterval seconds (0 = every step).
+       property WaterFlowReadback:TPasMPBool32 read fWaterFlowReadback write fWaterFlowReadback;
+       property WaterFlowReadbackInterval:TpvDouble read fWaterFlowReadbackInterval write fWaterFlowReadbackInterval;
+       // Whether RequestWaterProbe copies anything at all
+       property WaterProbeEnabled:TPasMPBool32 read fWaterProbeEnabled write fWaterProbeEnabled;
      end;
 
      { TpvScene3DPlanets }
@@ -4918,7 +4965,7 @@ var ImageSharingMode:TVkSharingMode;
     ImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
     WaterHeightMapImageSharingMode:TVkSharingMode;
     WaterHeightMapImageQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
-    Index:TpvSizeInt;
+    Index,ReadbackIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -5046,7 +5093,13 @@ begin
 
  fWaterMiniMapBuffer:=nil;
 
- fWaterMiniMapHostBuffer:=nil;
+ fWaterFlowMagnitudeBuffer:=nil;
+
+ for ReadbackIndex:=0 to MaxInFlightFrames-1 do begin
+  fWaterMiniMapHostBuffers[ReadbackIndex]:=nil;
+  fWaterFlowMagnitudeHostBuffers[ReadbackIndex]:=nil;
+  fWaterProbeHostBuffers[ReadbackIndex]:=nil;
+ end;
 
  fWaterMiniMapImage:=nil;
 
@@ -5102,6 +5155,8 @@ begin
  fBlendMiniMapData:=nil;
 
  fWaterMiniMapData:=nil;
+
+ fWaterFlowMiniMapData:=nil;
 
  fHeightMiniMapData:=nil;
 
@@ -5602,6 +5657,9 @@ begin
    SetLength(fWaterMiniMapData,fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution);
    FillChar(fWaterMiniMapData[0],fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),#0);
 
+   SetLength(fWaterFlowMiniMapData,fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution);
+   FillChar(fWaterFlowMiniMapData[0],fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),#0);
+
    SetLength(fHeightMiniMapData,fPlanet.fHeightMiniMapResolution*fPlanet.fHeightMiniMapResolution);
    FillChar(fHeightMiniMapData[0],fPlanet.fHeightMiniMapResolution*fPlanet.fHeightMiniMapResolution*SizeOf(TpvFloat),#0);
 
@@ -5759,27 +5817,95 @@ begin
                                               );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapBuffer');
 
-   // host-visible, persistent-mapped readback copy for the CPU-side puddle detection (filled by one contiguous
-   // device->host CmdCopyBuffer after the downsample, so MemoryStaging.Download stays a cheap non-blocking Move)
-   fWaterMiniMapHostBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                   fPlanet.fGlobalBufferSharingMode,
-                                                   fPlanet.fGlobalBufferQueueFamilyIndices,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
-                                                   0,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
-                                                   0,
-                                                   pvAllocationGroupIDScene3DPlanetStatic,
-                                                   'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffer'
-                                                  );
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapHostBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffer');
+   // DEVICE_LOCAL like the mini map buffer above, for the same reason: the flow downsample pass writes it, and only
+   // a contiguous copy of it crosses into host memory.
+   fWaterFlowMagnitudeBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                     fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     fPlanet.fGlobalBufferSharingMode,
+                                                     fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DPlanetStatic,
+                                                     'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMagnitudeBuffer'
+                                                    );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMagnitudeBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMagnitudeBuffer');
+
+   // host-visible, persistent-mapped readback copies for the CPU side (filled by one contiguous device->host
+   // CmdCopyBuffer each, so MemoryStaging.Download stays a cheap non-blocking Move). One per in-flight frame: the
+   // copy recorded in a frame is read when that frame's slot comes round again, which is when the GPU is known to
+   // be done with it, instead of reading a single buffer that the GPU may not have written yet.
+   for ReadbackIndex:=0 to Min(Max(TpvScene3D(fPlanet.fScene3D).CountInFlightFrames,1),MaxInFlightFrames)-1 do begin
+
+    fWaterMiniMapHostBuffers[ReadbackIndex]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                    fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
+                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                    fPlanet.fGlobalBufferSharingMode,
+                                                                    fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                                    0,
+                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    0,
+                                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                    0,
+                                                                    pvAllocationGroupIDScene3DPlanetStatic,
+                                                                    'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffers['+IntToStr(ReadbackIndex)+']'
+                                                                   );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterMiniMapHostBuffers[ReadbackIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterMiniMapHostBuffers['+IntToStr(ReadbackIndex)+']');
+
+    fWaterFlowMagnitudeHostBuffers[ReadbackIndex]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                          fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat),
+                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                          fPlanet.fGlobalBufferSharingMode,
+                                                                          fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                                          0,
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                                                          0,
+                                                                          pvAllocationGroupIDScene3DPlanetStatic,
+                                                                          'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMagnitudeHostBuffers['+IntToStr(ReadbackIndex)+']'
+                                                                         );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterFlowMagnitudeHostBuffers[ReadbackIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterFlowMagnitudeHostBuffers['+IntToStr(ReadbackIndex)+']');
+
+    fWaterProbeHostBuffers[ReadbackIndex]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                  WaterProbeWindowSize*WaterProbeWindowSize*SizeOf(TpvFloat),
+                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                  fPlanet.fGlobalBufferSharingMode,
+                                                                  fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                                                  0,
+                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  0,
+                                                                  [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                  0,
+                                                                  pvAllocationGroupIDScene3DPlanetStatic,
+                                                                  'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterProbeHostBuffers['+IntToStr(ReadbackIndex)+']'
+                                                                 );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fWaterProbeHostBuffers[ReadbackIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fWaterProbeHostBuffers['+IntToStr(ReadbackIndex)+']');
+
+   end;
 
    fWaterMiniMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                         fPlanet.fWaterMiniMapResolution,
@@ -6424,6 +6550,7 @@ begin
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
+var ReadbackIndex:TpvSizeInt;
 begin
 
 //fHeightMap:=nil;
@@ -6532,7 +6659,13 @@ begin
 
  FreeAndNil(fWaterMiniMapBuffer);
 
- FreeAndNil(fWaterMiniMapHostBuffer);
+ FreeAndNil(fWaterFlowMagnitudeBuffer);
+
+ for ReadbackIndex:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fWaterMiniMapHostBuffers[ReadbackIndex]);
+  FreeAndNil(fWaterFlowMagnitudeHostBuffers[ReadbackIndex]);
+  FreeAndNil(fWaterProbeHostBuffers[ReadbackIndex]);
+ end;
 
  FreeAndNil(fWaterMiniMapImage);
 
@@ -6591,6 +6724,8 @@ begin
  fPrecipitationAdvectionMapBuffers[1]:=nil;
 
  fWaterMiniMapData:=nil;
+
+ fWaterFlowMiniMapData:=nil;
 
  fHeightMiniMapData:=nil;
 
@@ -20430,6 +20565,12 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 [],
                                                 0);
+  fFlowDownsampleDescriptorSetLayout.AddBinding(2, // OutWaterFlowMagnitudeMap
+                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                [],
+                                                0);
   fFlowDownsampleDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleDescriptorSetLayout');
 
@@ -20442,7 +20583,7 @@ begin
   fFlowDownsampleDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                 1);
-  fFlowDownsampleDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fFlowDownsampleDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2);
   fFlowDownsampleDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fFlowDownsampleDescriptorPool.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fFlowDownsampleDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TWaterSimulation.fFlowDownsampleDescriptorPool');
@@ -20464,6 +20605,14 @@ begin
                                                                                    fPlanet.fData.fWaterFlowMapImage.VulkanImageView.Handle,
                                                                                    VK_IMAGE_LAYOUT_GENERAL)],
                                                     [],
+                                                    [],
+                                                    false);
+  fFlowDownsampleDescriptorSet.WriteToDescriptorSet(2, // OutWaterFlowMagnitudeMap
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                    [],
+                                                    [fPlanet.fData.fWaterFlowMagnitudeBuffer.DescriptorBufferInfo],
                                                     [],
                                                     false);
   fFlowDownsampleDescriptorSet.Flush;
@@ -20691,6 +20840,24 @@ begin
 
  fDownsampleDownloadedGeneration:=0;
 
+ fFlowProcessedGeneration:=0;
+
+ fFlowDownloadedGeneration:=0;
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fDownsampleSlotGenerations[Index]:=0;
+  fFlowSlotGenerations[Index]:=0;
+  fProbeSlotTexels[Index]:=-1;
+ end;
+
+ fFlowReadbackTimeAccumulator:=0.0;
+
+ fFlowMagnitudeCleared:=false;
+
+ fFlowZeroed:=true;
+
+ fProbeLastTexel:=-1;
+
  fTimeAccumulator:=0.0;
 
  fLastTimeAccumulator:=-1.0;
@@ -20845,24 +21012,101 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence);
+procedure TpvScene3DPlanet.TWaterSimulation.PrepareSimulation(const aQueue:TpvVulkanQueue;const aCommandBuffer:TpvVulkanCommandBuffer;const aFence:TpvVulkanFence;const aInFlightFrameIndex:TpvSizeInt);
 var Value:TpvFloat;
+    Generation:TpvUInt64;
+    Texel,Index:TpvInt32;
+    ProbeValues:array[0..(WaterProbeWindowSize*WaterProbeWindowSize)-1] of TpvFloat;
+    FlowPending:Boolean;
 begin
 
- if fDownsampleDownloadedGeneration<>fDownsampleProcessedGeneration then begin  
-  try  
-   fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
-                                                aCommandBuffer,
-                                                aFence,
-                                                fPlanet.fData.fWaterMiniMapHostBuffer,
-                                                0,
-                                                fPlanet.fData.fWaterMiniMapData[0],
-                                                fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
+ // This runs when the slot of aInFlightFrameIndex comes round again, after the wait for that frame, so whatever
+ // was copied into this slot's host buffers is complete. Reading a copy before then could hand out the state
+ // from before the copy, and if the simulation fell asleep right after, that stale state would stay for good.
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
 
-  finally
-   fDownsampleDownloadedGeneration:=fDownsampleProcessedGeneration;
+  Generation:=fDownsampleSlotGenerations[aInFlightFrameIndex];
+  if Generation<>0 then begin
+   fDownsampleSlotGenerations[aInFlightFrameIndex]:=0;
+   if (Generation>fDownsampleDownloadedGeneration) and assigned(fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex]) then begin
+    try
+     fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                  aCommandBuffer,
+                                                  aFence,
+                                                  fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  fPlanet.fData.fWaterMiniMapData[0],
+                                                  fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
+    finally
+     fDownsampleDownloadedGeneration:=Generation;
+    end;
+   end;
   end;
- end; 
+
+  Generation:=fFlowSlotGenerations[aInFlightFrameIndex];
+  if Generation<>0 then begin
+   fFlowSlotGenerations[aInFlightFrameIndex]:=0;
+   if (Generation>fFlowDownloadedGeneration) and assigned(fPlanet.fData.fWaterFlowMagnitudeHostBuffers[aInFlightFrameIndex]) then begin
+    try
+     fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                  aCommandBuffer,
+                                                  aFence,
+                                                  fPlanet.fData.fWaterFlowMagnitudeHostBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  fPlanet.fData.fWaterFlowMiniMapData[0],
+                                                  fPlanet.fWaterMiniMapResolution*fPlanet.fWaterMiniMapResolution*SizeOf(TpvFloat));
+    finally
+     fFlowDownloadedGeneration:=Generation;
+     fFlowZeroed:=false;
+    end;
+   end;
+  end;
+
+  Texel:=fProbeSlotTexels[aInFlightFrameIndex];
+  if Texel>=0 then begin
+   fProbeSlotTexels[aInFlightFrameIndex]:=-1;
+   if assigned(fPlanet.fData.fWaterProbeHostBuffers[aInFlightFrameIndex]) then begin
+    fPlanet.fVulkanDevice.MemoryStaging.Download(aQueue,
+                                                 aCommandBuffer,
+                                                 aFence,
+                                                 fPlanet.fData.fWaterProbeHostBuffers[aInFlightFrameIndex],
+                                                 0,
+                                                 ProbeValues[0],
+                                                 SizeOf(ProbeValues));
+    fPlanet.fWaterProbeLock.Acquire;
+    try
+     // The window starts one texel before the requested one, see Execute
+     fPlanet.fWaterProbeResultOriginX:=(Texel mod fPlanet.fWaterMapResolution)-1;
+     fPlanet.fWaterProbeResultOriginY:=(Texel div fPlanet.fWaterMapResolution)-1;
+     Move(ProbeValues[0],fPlanet.fWaterProbeResultValues[0],SizeOf(ProbeValues));
+     fPlanet.fWaterProbeResultValid:=true;
+    finally
+     fPlanet.fWaterProbeLock.Release;
+    end;
+   end;
+  end;
+
+ end;
+
+ // A sleeping or switched off simulation leaves the flow buffer frozen with whatever residue the last step had,
+ // so the CPU side reports still water instead, once no copy from before the stop is still on its way.
+ if (not fPlanet.fWaterSimulationEnabled) or
+    (fPlanet.fData.fWaterSimulationCountUnderThresholdFrames>=fPlanet.fData.fWaterSimulationMaximumCountUnderThresholdFrames) or
+    (not fPlanet.fWaterFlowReadback) then begin
+  if not fFlowZeroed then begin
+   FlowPending:=false;
+   for Index:=0 to MaxInFlightFrames-1 do begin
+    if fFlowSlotGenerations[Index]<>0 then begin
+     FlowPending:=true;
+     break;
+    end;
+   end;
+   if (not FlowPending) and (length(fPlanet.fData.fWaterFlowMiniMapData)>0) then begin
+    FillChar(fPlanet.fData.fWaterFlowMiniMapData[0],length(fPlanet.fData.fWaterFlowMiniMapData)*SizeOf(TpvFloat),#0);
+    fFlowZeroed:=true;
+   end;
+  end;
+ end;
 
  Value:=0.0;
 
@@ -20893,8 +21137,11 @@ var SourceBufferIndex,DestinationBufferIndex:TpvSizeInt;
     BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     BufferImageCopy:TVkBufferImageCopy;
     WaterMiniMapBufferCopy:TVkBufferCopy;
+    WaterFlowMagnitudeBufferCopy:TVkBufferCopy;
+    WaterProbeBufferCopies:array[0..(WaterProbeWindowSize*WaterProbeWindowSize)-1] of TVkBufferCopy;
     WaterModificationItem:PWaterModificationItem;
-    DoDownsample,DoInterpolate,First,LevelBakeGated:Boolean;
+    DoDownsample,DoInterpolate,First,LevelBakeGated,DoFlowForRendering,DoFlowReadback,DoProbe,ValidSlot:Boolean;
+    ProbeTexel,ProbeX,ProbeY,ProbeDX,ProbeDY,ProbeTX,ProbeTY,ProbeResolution:TpvInt32;
     LevelBakeLevelStep:TpvInt32;
     MaximumTimeAccumulator:TpvDouble;
 begin
@@ -21553,10 +21800,44 @@ begin
 
  end;
 
+ ValidSlot:=(aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames);
+
+ // The flow magnitude buffer is read back, so it must not hand out uninitialised memory before the first flow
+ // pass, nor ever with a shader that predates its binding.
+ if not fFlowMagnitudeCleared then begin
+  fFlowMagnitudeCleared:=true;
+  aCommandBuffer.CmdFillBuffer(fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,0,VK_WHOLE_SIZE,0);
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+ end;
+
+ // The flow pass serves two readers: the flow driven ripple detail of the rendering, and the flow readback for
+ // the CPU side, which is throttled to its own interval. Both only want it on frames where the simulation ran.
+ DoFlowForRendering:=(fPlanet.fWaterDetailStrength>0.0) and (fPlanet.fWaterDetailFlowFactor>0.0);
+ DoFlowReadback:=false;
+ if fPlanet.fWaterFlowReadback and ValidSlot and assigned(fPlanet.fData.fWaterFlowMagnitudeHostBuffers[aInFlightFrameIndex]) then begin
+  fFlowReadbackTimeAccumulator:=Min(fFlowReadbackTimeAccumulator+aDeltaTime,Max(fPlanet.fWaterFlowReadbackInterval,0.0));
+  if DoDownsample and (fFlowReadbackTimeAccumulator>=fPlanet.fWaterFlowReadbackInterval) then begin
+   fFlowReadbackTimeAccumulator:=0.0;
+   DoFlowReadback:=true;
+  end;
+ end;
+
  // Update the water flow map for the flow driven ripple detail, when the detail asks for it and the simulation
  // actually ran this frame. A frozen simulation keeps its last flow, which is the settled (near zero) one, so a
  // still body of water keeps its mirror surface without any further update.
- if (fPlanet.fWaterDetailStrength>0.0) and (fPlanet.fWaterDetailFlowFactor>0.0) and DoDownsample then begin
+ if (DoFlowForRendering or DoFlowReadback) and DoDownsample then begin
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet WaterFlowDownsample',[0.5,0.5,0.5,1.0]);
 
@@ -21577,11 +21858,19 @@ begin
                                                    VK_QUEUE_FAMILY_IGNORED,
                                                    fPlanet.fData.fWaterFlowMapImage.VulkanImage.Handle,
                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,1));
+  // and the flow speed buffer write against the previous pass's write of it
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
-                                    1,@BufferMemoryBarriers[0],
+                                    2,@BufferMemoryBarriers[0],
                                     1,@ImageMemoryBarrier);
 
   fFlowDownsamplePushConstants.WaterHeightMapResolution:=fPlanet.fWaterMapResolution;
@@ -21634,6 +21923,63 @@ begin
                                      0,nil,
                                      0,nil,
                                      1,@ImageMemoryBarrier);
+  end;
+
+  if DoFlowReadback then begin
+
+   // One contiguous device->host copy of the flow speeds into this frame's slot, read by PrepareSimulation once
+   // the slot comes round again. The last barrier orders the next frame's shader write after this copy's read.
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
+
+   WaterFlowMagnitudeBufferCopy:=TVkBufferCopy.Create(0,0,fPlanet.fData.fWaterFlowMagnitudeBuffer.Size);
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,
+                                fPlanet.fData.fWaterFlowMagnitudeHostBuffers[aInFlightFrameIndex].Handle,
+                                1,
+                                @WaterFlowMagnitudeBufferCopy);
+
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fPlanet.fData.fWaterFlowMagnitudeHostBuffers[aInFlightFrameIndex].Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
+
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fPlanet.fData.fWaterFlowMagnitudeBuffer.Handle,
+                                                          0,
+                                                          VK_WHOLE_SIZE);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
+
+   inc(fFlowProcessedGeneration);
+   fFlowSlotGenerations[aInFlightFrameIndex]:=fFlowProcessedGeneration;
+
   end;
 
   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
@@ -21907,28 +22253,36 @@ begin
                                       1,
                                       @BufferImageCopy);
 
-  // One contiguous device->host copy of the downsampled minimap for the CPU-side puddle detection readback
-  // (PrepareSimulation reads fWaterMiniMapHostBuffer via a cheap persistent-mapped Move). fWaterMiniMapBuffer is
-  // still in TRANSFER_READ from the barrier above, so it feeds both the image copy and this buffer copy.
-  WaterMiniMapBufferCopy:=TVkBufferCopy.Create(0,0,fPlanet.fData.fWaterMiniMapBuffer.Size);
-  aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterMiniMapBuffer.Handle,
-                               fPlanet.fData.fWaterMiniMapHostBuffer.Handle,
-                               1,
-                               @WaterMiniMapBufferCopy);
+  // One contiguous device->host copy of the downsampled minimap for the CPU-side puddle detection readback, into
+  // this frame's slot (PrepareSimulation reads it via a cheap persistent-mapped Move once the slot comes round
+  // again). fWaterMiniMapBuffer is still in TRANSFER_READ from the barrier above, so it feeds both the image copy
+  // and this buffer copy.
+  inc(fDownsampleProcessedGeneration);
+  if ValidSlot and assigned(fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex]) then begin
 
-  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                         TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fPlanet.fData.fWaterMiniMapHostBuffer.Handle,
-                                                         0,
-                                                         fPlanet.fData.fWaterMiniMapHostBuffer.Size);
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
-                                    0,
-                                    0,nil,
-                                    1,@BufferMemoryBarriers[0],
-                                    0,nil);
+   WaterMiniMapBufferCopy:=TVkBufferCopy.Create(0,0,fPlanet.fData.fWaterMiniMapBuffer.Size);
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterMiniMapBuffer.Handle,
+                                fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex].Handle,
+                                1,
+                                @WaterMiniMapBufferCopy);
+
+   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                          TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex].Handle,
+                                                          0,
+                                                          fPlanet.fData.fWaterMiniMapHostBuffers[aInFlightFrameIndex].Size);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                     0,
+                                     0,nil,
+                                     1,@BufferMemoryBarriers[0],
+                                     0,nil);
+
+   fDownsampleSlotGenerations[aInFlightFrameIndex]:=fDownsampleProcessedGeneration;
+
+  end;
 
   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -21963,7 +22317,85 @@ begin
                                      1,@ImageMemoryBarrier);
   end;
 
-  inc(fDownsampleProcessedGeneration);
+ end;
+
+ // The water probe: a small window of the full resolution water height around the requested point, copied into
+ // this frame's slot when the request moved or the water itself changed. The window starts one texel before
+ // the requested texel in both directions and every texel of it is wrapped on its own, exactly like the
+ // neighbours of a bilinear lookup in GetWater, so the CPU side can look it up with the same logic.
+ ProbeTexel:=TPasMPInterlocked.Read(fPlanet.fWaterProbeRequestedTexel);
+ ProbeResolution:=fPlanet.fWaterMapResolution;
+ DoProbe:=fPlanet.fWaterProbeEnabled and
+          ValidSlot and
+          (ProbeTexel>=0) and
+          (ProbeTexel<(ProbeResolution*ProbeResolution)) and
+          assigned(fPlanet.fData.fWaterProbeHostBuffers[aInFlightFrameIndex]) and
+          ((ProbeTexel<>fProbeLastTexel) or DoDownsample);
+ if DoProbe then begin
+
+  fProbeLastTexel:=ProbeTexel;
+
+  SourceBufferIndex:=fPlanet.fData.fWaterBufferIndex and 1;
+
+  ProbeX:=ProbeTexel mod ProbeResolution;
+  ProbeY:=ProbeTexel div ProbeResolution;
+  for ProbeDY:=0 to WaterProbeWindowSize-1 do begin
+   for ProbeDX:=0 to WaterProbeWindowSize-1 do begin
+    WrapOctahedralTexelCoordinatesEx((ProbeX-1)+ProbeDX,(ProbeY-1)+ProbeDY,ProbeResolution,ProbeResolution,ProbeTX,ProbeTY);
+    WaterProbeBufferCopies[(ProbeDY*WaterProbeWindowSize)+ProbeDX]:=TVkBufferCopy.Create(((ProbeTY*ProbeResolution)+ProbeTX)*SizeOf(TpvFloat),
+                                                                                         ((ProbeDY*WaterProbeWindowSize)+ProbeDX)*SizeOf(TpvFloat),
+                                                                                         SizeOf(TpvFloat));
+   end;
+  end;
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                               fPlanet.fData.fWaterProbeHostBuffers[aInFlightFrameIndex].Handle,
+                               WaterProbeWindowSize*WaterProbeWindowSize,
+                               @WaterProbeBufferCopies[0]);
+
+  // Host visibility of the copy, and the next shader write of the height buffer ordered after this read of it
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterProbeHostBuffers[aInFlightFrameIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Handle,
+                                                         0,
+                                                         fPlanet.fData.fWaterHeightMapBuffers[SourceBufferIndex].Size);
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  fProbeSlotTexels[aInFlightFrameIndex]:=ProbeTexel;
 
  end;
 
@@ -35523,6 +35955,16 @@ begin
  fWaterMiniMapResolutionShift:=Min(Max(aWaterMiniMapResolutionShift,0),4);
  fWaterMiniMapResolution:=Max(1,fWaterMapResolution shr fWaterMiniMapResolutionShift);
 
+ fWaterFlowReadback:=false;
+ fWaterFlowReadbackInterval:=0.0;
+ fWaterProbeEnabled:=false;
+ fWaterProbeRequestedTexel:=-1;
+ fWaterProbeLock:=TPasMPCriticalSection.Create;
+ fWaterProbeResultValid:=false;
+ fWaterProbeResultOriginX:=0;
+ fWaterProbeResultOriginY:=0;
+ FillChar(fWaterProbeResultValues,SizeOf(fWaterProbeResultValues),#0);
+
  fBlendMiniMapResolutionShift:=Min(Max(aBlendMiniMapResolutionShift,0),4);
  fBlendMiniMapResolution:=Max(1,fBlendMapResolution shr fBlendMiniMapResolutionShift);
 
@@ -36630,6 +37072,8 @@ begin
  fGlobalBufferQueueFamilyIndices:=nil;
 
  fInFlightFrameQueueFamilyIndices:=nil;
+
+ FreeAndNil(fWaterProbeLock);
 
  inherited Destroy;
 
@@ -40529,7 +40973,7 @@ begin
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
   if assigned(InFlightFrameData) then begin
-   fWaterSimulation.PrepareSimulation(aQueue,aCommandBuffer,aFence);
+   fWaterSimulation.PrepareSimulation(aQueue,aCommandBuffer,aFence,aInFlightFrameIndex);
   end;
  end;
 end;
@@ -41391,6 +41835,115 @@ end;
 function TpvScene3DPlanet.GetWater(const aNormal:TpvVector3):TpvScalar;
 begin
  result:=GetWater(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+function TpvScene3DPlanet.GetWaterFlow(const aUV:TpvVector2):TpvScalar;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,tx,ty:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
+begin
+
+ // Same lookup as GetWater, on the flow speed field of the same resolution
+ if length(fData.fWaterFlowMiniMapData)>=(fWaterMiniMapResolution*fWaterMiniMapResolution) then begin
+
+  UV:=WrapOctahedralCoordinates(aUV);
+
+  TexelX:=UV.x*fWaterMiniMapResolution;
+  TexelY:=UV.y*fWaterMiniMapResolution;
+
+  xi:=Floor(TexelX);
+  yi:=Floor(TexelY);
+
+  xf:=TexelX-xi;
+  yf:=TexelY-yi;
+
+  xi:=Min(Max(xi,0),fWaterMiniMapResolution-1);
+  yi:=Min(Max(yi,0),fWaterMiniMapResolution-1);
+
+  v00:=fData.fWaterFlowMiniMapData[(yi*fWaterMiniMapResolution)+xi];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v01:=fData.fWaterFlowMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi,yi+1,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v10:=fData.fWaterFlowMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  WrapOctahedralTexelCoordinatesEx(xi+1,yi+1,fWaterMiniMapResolution,fWaterMiniMapResolution,tx,ty);
+  v11:=fData.fWaterFlowMiniMapData[(ty*fWaterMiniMapResolution)+tx];
+
+  ixf:=1.0-xf;
+  result:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+
+ end else begin
+
+  result:=0.0;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.GetWaterFlow(const aNormal:TpvVector3):TpvScalar;
+begin
+ result:=GetWaterFlow(OctEqualAreaUnsignedEncode(aNormal));
+end;
+
+procedure TpvScene3DPlanet.RequestWaterProbe(const aNormal:TpvVector3);
+var UV:TpvVector2;
+    xi,yi:TpvInt32;
+begin
+ if fWaterProbeEnabled and (fWaterMapResolution>0) then begin
+  UV:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(aNormal));
+  xi:=Min(Max(Floor(UV.x*fWaterMapResolution),0),fWaterMapResolution-1);
+  yi:=Min(Max(Floor(UV.y*fWaterMapResolution),0),fWaterMapResolution-1);
+  TPasMPInterlocked.Write(fWaterProbeRequestedTexel,(yi*fWaterMapResolution)+xi);
+ end else begin
+  TPasMPInterlocked.Write(fWaterProbeRequestedTexel,-1);
+ end;
+end;
+
+function TpvScene3DPlanet.GetWaterProbeDepth(const aNormal:TpvVector3;out aDepth:TpvScalar):Boolean;
+var UV:TpvVector2;
+    TexelX,TexelY:TpvFloat;
+    xi,yi,wx,wy:TpvInt32;
+    xf,yf,ixf:TpvFloat;
+    v00,v01,v10,v11:TpvScalar;
+begin
+ result:=false;
+ aDepth:=0.0;
+ if (not fWaterProbeEnabled) or (fWaterMapResolution<=0) then begin
+  exit;
+ end;
+ UV:=WrapOctahedralCoordinates(OctEqualAreaUnsignedEncode(aNormal));
+ TexelX:=UV.x*fWaterMapResolution;
+ TexelY:=UV.y*fWaterMapResolution;
+ xi:=Floor(TexelX);
+ yi:=Floor(TexelY);
+ xf:=TexelX-xi;
+ yf:=TexelY-yi;
+ xi:=Min(Max(xi,0),fWaterMapResolution-1);
+ yi:=Min(Max(yi,0),fWaterMapResolution-1);
+ fWaterProbeLock.Acquire;
+ try
+  if fWaterProbeResultValid then begin
+   // The window holds the texels (origin..origin+size-1) in both directions, each wrapped on its own the
+   // same way the neighbours below would be, so a lookup is valid while it and its +1 neighbours lie inside.
+   wx:=xi-fWaterProbeResultOriginX;
+   wy:=yi-fWaterProbeResultOriginY;
+   if (wx>=0) and (wy>=0) and (wx<(WaterProbeWindowSize-1)) and (wy<(WaterProbeWindowSize-1)) then begin
+    v00:=fWaterProbeResultValues[(wy*WaterProbeWindowSize)+wx];
+    v01:=fWaterProbeResultValues[(wy*WaterProbeWindowSize)+(wx+1)];
+    v10:=fWaterProbeResultValues[((wy+1)*WaterProbeWindowSize)+wx];
+    v11:=fWaterProbeResultValues[((wy+1)*WaterProbeWindowSize)+(wx+1)];
+    ixf:=1.0-xf;
+    aDepth:=(((v00*ixf)+(v01*xf))*(1.0-yf))+(((v10*ixf)+(v11*xf))*yf);
+    result:=true;
+   end;
+  end;
+ finally
+  fWaterProbeLock.Release;
+ end;
 end;
 
 function TpvScene3DPlanet.GetBlendMap(const aUV:TpvVector2):TpvScene3DPlanet.TBlendMapValue;
