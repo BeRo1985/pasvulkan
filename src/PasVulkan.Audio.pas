@@ -1057,6 +1057,9 @@ type PpvAudioInt32=^TpvInt32;
        Event:TEvent;
        ReadEvent:TEvent;
        Sleeping:TpvInt32;
+       Failed:TPasMPBool32; // Execute ended by an exception, FailureMessage says which; the ring is never filled again
+       FailureReported:TPasMPBool32; // for whoever reads the ring, so that the failure is reported only once
+       FailureMessage:TpvUTF8String;
        constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
        procedure Start;
@@ -6991,6 +6994,9 @@ begin
  FreeOnTerminate:=false;
  Event:=TEvent.Create(nil,false,false,'');
  ReadEvent:=TEvent.Create(nil,false,false,'');
+ Failed:=false;
+ FailureReported:=false;
+ FailureMessage:='';
  inherited Create(false);
  // The mixer thread has to survive CPU storms that starve everything else, above all the graphics driver translating
  // the shaders on the first start, which saturates every core for minutes: at normal priority the playback then
@@ -7064,6 +7070,10 @@ begin
  except
   on e:Exception do begin
 //   DumpExceptionCallStack(e);
+   // The thread ends here, and nothing fills the ring any more. Whoever waits for the ring has to know that,
+   // or it waits forever, and so would the closing of the output device behind it.
+   FailureMessage:=TpvUTF8String(e.ClassName)+': '+TpvUTF8String(e.Message);
+   TPasMPInterlocked.Write(Failed,true);
    raise;
   end;
  end;

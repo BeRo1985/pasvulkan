@@ -11909,7 +11909,7 @@ end;
 
 procedure AudioFillBuffer(AudioEngine:TpvAudio;Buffer:TpvPointer;Len:TpvInt32);
 begin
- while (AudioEngine.IsReady and AudioEngine.IsActive) and assigned(AudioEngine.Thread) and not AudioEngine.Thread.Terminated do begin
+ while (AudioEngine.IsReady and AudioEngine.IsActive) and assigned(AudioEngine.Thread) and not (AudioEngine.Thread.Terminated or TPasMPInterlocked.Read(AudioEngine.Thread.Failed)) do begin
   if AudioEngine.RingBuffer.AvailableForRead>=Len then begin
    AudioEngine.RingBuffer.Read(Buffer,Len);
    AudioEngine.Thread.ReadEvent.SetEvent;
@@ -11919,6 +11919,13 @@ begin
    AudioEngine.Thread.Event.SetEvent;
   end;
   Sleep(1);
+ end;
+ // A mixer thread that ended by an exception never fills the ring again, so waiting for it would hang this
+ // callback for good, and the closing of the device with it. Silence instead, and the reason once in the log.
+ if assigned(AudioEngine.Thread) and
+    TPasMPInterlocked.Read(AudioEngine.Thread.Failed) and
+    not TPasMPInterlocked.Exchange(AudioEngine.Thread.FailureReported,true) then begin
+  TpvApplication.Log(LOG_ERROR,'TpvAudio','The mixer thread has stopped: '+AudioEngine.Thread.FailureMessage);
  end;
  FillChar(Buffer^,Len,0);
 end;
