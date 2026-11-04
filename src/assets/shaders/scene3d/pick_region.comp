@@ -1,0 +1,88 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+// Region picking: marks every mesh object id that owns at least one pixel inside a set of row spans of the
+// pick id target, as one bit per id in a bitset (bit (id & 31) of word (id >> 5)). The bitset is cleared
+// before this dispatch, so afterwards a set bit means "visible somewhere in the region", and the host only
+// has to read the words back.
+//
+// One workgroup row per span (gl_WorkGroupID.y), the 64 invocations of a workgroup walking along the span.
+// Both directions loop by the dispatched size, so a span wider than the dispatch or more spans than the
+// dispatch has rows still get covered completely - the dispatch is clamped to the device limits on the
+// host side, and nothing here depends on how far.
+//
+// Only the first layer of the target is looked at, picking happens through the main eye.
+
+/* clang-format off */
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform usampler2D uPickIDTexture;
+
+// Mirrors TpvScene3DRendererInstance.TPickRegionSpan: three ints, so 12 bytes per span under std430.
+struct Span {
+  int y;  // row in pick target pixels
+  int x0; // first column, inclusive
+  int x1; // last column, exclusive
+};
+
+layout(set = 0, binding = 1, std430) readonly buffer Spans {
+  Span spans[];
+};
+
+// Coherent, so that the plain read below sees the bits other invocations have already set, see there.
+layout(set = 0, binding = 2, std430) coherent buffer BitSet {
+  uint bits[];
+};
+
+layout(push_constant, std140) uniform PushConstants {
+  uint countSpans; // number of spans in the span buffer
+  uint countWords; // number of words in the bitset, ids beyond it are dropped
+  int width;       // size of the pick target, the spans are clamped against it once more here
+  int height;
+} pushConstants;
+
+/* clang-format on */
+
+void main() {
+
+  int stride = int(gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+
+  for (uint spanIndex = gl_WorkGroupID.y; spanIndex < pushConstants.countSpans; spanIndex += gl_NumWorkGroups.y) {
+
+    Span span = spans[spanIndex];
+
+    if ((span.y >= 0) && (span.y < pushConstants.height)) {
+
+      int x1 = min(span.x1, pushConstants.width);
+
+      for (int x = max(span.x0, 0) + int(gl_GlobalInvocationID.x); x < x1; x += stride) {
+
+        uint id = texelFetch(uPickIDTexture, ivec2(x, span.y), 0).x;
+
+        // Zero is the cleared "nothing here" id, see the pick render pass.
+        if ((id != 0u) && ((id >> 5u) < pushConstants.countWords)) {
+
+          uint wordIndex = id >> 5u;
+          uint mask = 1u << (id & 31u);
+
+          // Looked at before the atomic, because a large object covers most of the region with one and
+          // the same id: hundreds of thousands of atomics on a single word would serialize, while the
+          // plain read lets every invocation after the first few skip it. A read that comes too early
+          // only costs one atomic that changes nothing.
+          if ((bits[wordIndex] & mask) == 0u) {
+            atomicOr(bits[wordIndex], mask);
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+}

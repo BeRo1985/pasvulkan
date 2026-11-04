@@ -201,6 +201,12 @@ type { TpvScene3DRendererInstance }
              MaxSolidPrimitives=1 shl 20;
              InitialCountSpaceLines=1 shl 10;
              MaxSpaceLines=1 shl 20;
+             // Region picking: what the span buffer and the bitset of every in-flight frame start out with.
+             // Enough for a rectangle over the full height at the usual resolutions and for the first 32768
+             // mesh object ids, and a request or a scene that needs more grows them while its frame is
+             // recorded.
+             PickRegionInitialCountSpans=1 shl 12;
+             PickRegionInitialCountWords=1 shl 10;
        type TRaytracingFlag=
              (
               SoftShadows,
@@ -777,6 +783,16 @@ type { TpvScene3DRendererInstance }
             TSpaceLinesIndexDynamicArrays=array[0..MaxInFlightFrames-1] of TSpaceLinesIndexDynamicArray;
             TSpaceLinesVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TInFlightFrameSemaphores=array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+            // Region picking, see RequestPickRegion: one row segment of the region. A rectangle is one span
+            // per row, a lasso or any other shape as many per row as it crosses that row. The layout is also
+            // the one the region pick shader reads, three ints in a row.
+            TPickRegionSpan=packed record
+             Y:TpvInt32;   // row in pick target pixels
+             X0:TpvInt32;  // first column, inclusive
+             X1:TpvInt32;  // last column, exclusive
+            end;
+            PPickRegionSpan=^TPickRegionSpan;
+            TPickRegionSpans=array of TPickRegionSpan;
       private
        fScene3D:TpvScene3D;
        fRendererInstanceIndex:TpvSizeInt;
@@ -1066,10 +1082,40 @@ type { TpvScene3DRendererInstance }
        fPickResultID:TpvUInt32;
        fPickResultDepth:TpvFloat;
        fPickHasResult:Boolean;
+       // Region picking, apart from the point pick above in everything but the drawn id target: its own
+       // request, its own per in-flight frame state and buffers, its own answer. The request is a copy of
+       // the caller's spans, taken over by the in-flight frame that is updated next, just like the point
+       // pick position.
+       fPickRegionRequestSpans:TPickRegionSpans;
+       fPickRegionRequestCountSpans:TpvSizeInt;
+       fPickRegionRequested:Boolean;
+       fPickRegionRequestGeneration:TpvUInt64;
+       fPickRegionSpans:array[0..MaxInFlightFrames-1] of TPickRegionSpans;
+       fPickRegionCountSpans:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+       fPickRegionActive:array[0..MaxInFlightFrames-1] of Boolean;
+       // Pending per in-flight frame and not as one slot like the point pick: asking again every frame,
+       // as dragging a selection rectangle does, then still gets an answer every frame, a full round of
+       // in-flight frames late, instead of each request pushing the previous one out before it is read.
+       fPickRegionPending:array[0..MaxInFlightFrames-1] of Boolean;
+       fPickRegionPendingFrameIndices:array[0..MaxInFlightFrames-1] of TpvInt64;
+       fPickRegionPendingGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+       // How many bitset words the pass cleared and copied out for that frame, set while it is recorded.
+       fPickRegionCountWords:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+       fPickRegionSpanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fPickRegionBitSetBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fPickRegionReadBackBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fPickRegionResultGeneration:TpvUInt64;
+       fPickRegionResultBits:TpvUInt32DynamicArray;
+       fPickRegionResultCountWords:TpvSizeInt;
+       fPickRegionHasResult:Boolean;
        function GetPickReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
        function GetPickDepthReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
        function GetPickPositionX(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
        function GetPickPositionY(const aInFlightFrameIndex:TpvSizeInt):TpvInt32;
+       function GetPickRegionSpanBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+       function GetPickRegionBitSetBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+       function GetPickRegionReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+       procedure AllocatePickRegionBuffers(const aInFlightFrameIndex,aCountSpans,aCountWords:TpvSizeInt);
       private
        fSizeFactor:TpvDouble;
        fPostProcessingAtScaledResolution:Boolean;
@@ -1582,6 +1628,25 @@ type { TpvScene3DRendererInstance }
        // that is in use, and the cleared far value where nothing was drawn. Unprojecting it gives
        // the point on the visible surface under the cursor. False when there is nothing to read.
        function PickDepthResult(out aDepth:TpvFloat):Boolean;
+       // Asks for one region pick in the next frame: every pixel covered by the spans (pick target pixels,
+       // i.e. ScaledWidth x ScaledHeight, like RequestPick) is looked at, and the answer is the set of mesh
+       // object ids that have at least one pixel there. Spans are clamped to the target; empty/degenerate
+       // spans are ignored; span order does not matter. The spans are copied, the caller may reuse its
+       // array. A newer request replaces a not yet recorded older one. Returns the generation of this
+       // request.
+       // Independent of RequestPick: both may be asked for in the same frame, the pick pass then draws
+       // once for both, and neither answer disturbs the other. Like the point pick it costs nothing in a
+       // frame without a request.
+       function RequestPickRegion(const aSpans:TpvScene3DRendererInstance.TPickRegionSpans;const aCountSpans:TpvSizeInt):TpvUInt64;
+       // Generation of the region pick whose answer is available (0 = none yet), analogous to
+       // PickResultAnsweredGeneration. It only ever grows, so a caller waits until it has caught up with
+       // the generation its own RequestPickRegion returned.
+       function PickRegionResultAnsweredGeneration:TpvUInt64;
+       // Copies the answer as a bitset over mesh object ids (bit (id and 31) of word (id shr 5)); returns
+       // false when no answer is available. aCountWords receives the number of valid words, aBits is grown
+       // to at least that and never shrunk, so a caller can keep one array for all its requests. Ids from
+       // aCountWords*32 upwards were not there when the region was looked at.
+       function GetPickRegionResult(var aBits:TpvUInt32DynamicArray;out aCountWords:TpvSizeInt):Boolean;
        // What ExecuteDraw would find for a render pass: how many batch ranges, and how many draw
        // commands they add up to. The indirect count the GPU finally draws by is decided on the GPU,
        // but if this is already zero there is nothing to draw and no need to look any further.
@@ -1595,6 +1660,18 @@ type { TpvScene3DRendererInstance }
        property PickDepthReadBackBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickDepthReadBackBuffer;
        property PickPositionX[const aInFlightFrameIndex:TpvSizeInt]:TpvInt32 read GetPickPositionX;
        property PickPositionY[const aInFlightFrameIndex:TpvSizeInt]:TpvInt32 read GetPickPositionY;
+       // For the pick passes as well; not meant for anything else either. PickRegionActive says whether
+       // that in-flight frame was asked for a region pick at all. PreparePickRegion is what the region pick
+       // pass calls while it records that frame: it clamps the frame's spans to the target size, grows the
+       // frame's three buffers where they are too small for those spans or for the mesh object ids there
+       // are by now, and writes the spans that are left into the span buffer. aCountSpans may come back as
+       // zero when every span was degenerate or off the target - the bitset is still to be cleared and
+       // copied out then, so that the answer is a defined empty one. False when there is nothing to record.
+       function PickRegionActive(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+       function PreparePickRegion(const aInFlightFrameIndex:TpvSizeInt;const aWidth,aHeight:TpvInt32;out aCountSpans,aCountWords:TpvSizeInt;out aMaxSpanWidth:TpvInt32):Boolean;
+       property PickRegionSpanBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickRegionSpanBuffer;
+       property PickRegionBitSetBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickRegionBitSetBuffer;
+       property PickRegionReadBackBuffers[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanBuffer read GetPickRegionReadBackBuffer;
       public
        property ImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps read fImageBasedLightingReflectionProbeCubeMaps;
       public
@@ -2155,6 +2232,7 @@ uses PasVulkan.Scene3D.Atmosphere,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineBuildRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SelectionOutlineFXAAComposeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.PickRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.PickRegionComputePass,
      PasVulkan.Scene3D.Renderer.Passes.PickReadBackCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
@@ -2317,6 +2395,7 @@ type TpvScene3DRendererInstancePasses=class
        fSelectionOutlineBuildRenderPass:TpvScene3DRendererPassesSelectionOutlineBuildRenderPass; // object-selection outline: builds the isolated premultiplied outline buffer from the mask
        fSelectionOutlineFXAAComposeRenderPass:TpvScene3DRendererPassesSelectionOutlineFXAAComposeRenderPass; // object-selection outline: FXAA the outline buffer + composite over the scene (under the UI)
        fPickRenderPass:TpvScene3DRendererPassesPickRenderPass; // object picking: id target, only created when the instance asked for it (Picking)
+       fPickRegionComputePass:TpvScene3DRendererPassesPickRegionComputePass; // object picking: which ids are visible inside a region, as a bitset copied into a host visible buffer
        fPickReadBackCustomPass:TpvScene3DRendererPassesPickReadBackCustomPass; // object picking: copies the pixel under the cursor into a host visible buffer
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
        fCullDepthResolveComputePass:TpvScene3DRendererPassesCullDepthResolveComputePass;
@@ -3245,6 +3324,35 @@ begin
  fPickResultDepth:=0.0;
 
  fPickHasResult:=false;
+
+ fPickRegionRequestSpans:=nil;
+
+ fPickRegionRequestCountSpans:=0;
+
+ fPickRegionRequested:=false;
+
+ fPickRegionRequestGeneration:=0;
+
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fPickRegionSpans[InFlightFrameIndex]:=nil;
+  fPickRegionCountSpans[InFlightFrameIndex]:=0;
+  fPickRegionActive[InFlightFrameIndex]:=false;
+  fPickRegionPending[InFlightFrameIndex]:=false;
+  fPickRegionPendingFrameIndices[InFlightFrameIndex]:=0;
+  fPickRegionPendingGenerations[InFlightFrameIndex]:=0;
+  fPickRegionCountWords[InFlightFrameIndex]:=0;
+  fPickRegionSpanBuffers[InFlightFrameIndex]:=nil;
+  fPickRegionBitSetBuffers[InFlightFrameIndex]:=nil;
+  fPickRegionReadBackBuffers[InFlightFrameIndex]:=nil;
+ end;
+
+ fPickRegionResultGeneration:=0;
+
+ fPickRegionResultBits:=nil;
+
+ fPickRegionResultCountWords:=0;
+
+ fPickRegionHasResult:=false;
 
  fSizeFactor:=1.0;
 
@@ -5684,13 +5792,15 @@ begin
  // project neither pays the memory nor gets the pass below.
  if fPicking then begin
 
+  // Copied from by the point pick's read back, and sampled by the region pick, which reads every pixel of
+  // its spans in a compute shader.
   fFrameGraph.AddImageResourceType('resourcetype_pick_id',
                                    false,
                                    VK_FORMAT_R32_UINT,
                                    TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                    TpvFrameGraph.TImageType.Color,
                                    TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),
-                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                    1
                                   );
 
@@ -8024,10 +8134,19 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
   end else if assigned(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass) then begin
    TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass);
   end;
+  // The region pick reads the same id target, in a shader readable layout where the read back wants it
+  // as a copy source. Both are only readers, so nothing would order them by itself, and the layout the
+  // target is left in would then depend on whichever the graph happens to put last. Ordering the read
+  // back after the region pick fixes it: drawn, read by the region pick, then copied from - and so left
+  // in TRANSFER_SRC at the end of the frame, exactly as before there was a region pick.
+  TpvScene3DRendererInstancePasses(fPasses).fPickRegionComputePass:=TpvScene3DRendererPassesPickRegionComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fPickRegionComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass:=TpvScene3DRendererPassesPickReadBackCustomPass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickRegionComputePass);
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fPickRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fPickRegionComputePass:=nil;
   TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass:=nil;
  end;
 
@@ -8039,7 +8158,8 @@ TpvScene3DRendererInstancePasses(fPasses).fPlanetWaterPrepassComputePass.AddExpl
 
  // Object picking: the read back reads the id target but produces nothing the rest of the graph wants,
  // so it needs an anchor of its own to stay reachable from the root pass. The canvas pass is the one
- // that exists in every configuration.
+ // that exists in every configuration. The region pick hangs on the read back's dependency on it, and
+ // stays reachable that way as well.
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fCanvasRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fPickReadBackCustomPass);
  end;
@@ -10012,6 +10132,11 @@ begin
    fPickPositionX[InFlightFrameIndex]:=0;
    fPickPositionY[InFlightFrameIndex]:=0;
    fPickActive[InFlightFrameIndex]:=false;
+   // Region picking: the spans, the bitset and its read back, at a size that covers the usual request.
+   // Allocated up front all the same, so that the first region pick does not have to create them while
+   // its frame is recorded - growing them later is the exception, see PreparePickRegion.
+   AllocatePickRegionBuffers(InFlightFrameIndex,PickRegionInitialCountSpans,PickRegionInitialCountWords);
+   fPickRegionActive[InFlightFrameIndex]:=false;
   end;
  end;
 
@@ -10049,7 +10174,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.ReleaseVolatileResources;
-var InFlightFrameIndex,PerInFlightFrameBufferIndex:TpvSizeInt;
+var InFlightFrameIndex,PerInFlightFrameBufferIndex,RearmIndex,CountSpans:TpvSizeInt;
 begin
 
  fFrameGraph.ReleaseVolatileResources;
@@ -10059,6 +10184,41 @@ begin
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
   FreeAndNil(fPickReadBackBuffers[InFlightFrameIndex]);
   FreeAndNil(fPickDepthReadBackBuffers[InFlightFrameIndex]);
+ end;
+
+ // A region pick still on its way is asked for anew rather than dropped: its answer was to be read from
+ // buffers that are freed right below, and a caller that asked once and waits for its generation would
+ // otherwise wait forever. Only the newest one is worth that, and only while nothing newer is queued -
+ // a queued request supersedes it anyway, and its answer satisfies the older generations as well.
+ RearmIndex:=-1;
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  if fPickRegionPending[InFlightFrameIndex] then begin
+   if (RearmIndex<0) or (fPickRegionPendingGenerations[RearmIndex]<fPickRegionPendingGenerations[InFlightFrameIndex]) then begin
+    RearmIndex:=InFlightFrameIndex;
+   end;
+   fPickRegionPending[InFlightFrameIndex]:=false;
+  end;
+  fPickRegionActive[InFlightFrameIndex]:=false;
+ end;
+ if (RearmIndex>=0) and
+    (not fPickRegionRequested) and
+    (fPickRegionPendingGenerations[RearmIndex]=fPickRegionRequestGeneration) then begin
+  CountSpans:=fPickRegionCountSpans[RearmIndex];
+  if length(fPickRegionRequestSpans)<CountSpans then begin
+   SetLength(fPickRegionRequestSpans,CountSpans);
+  end;
+  if CountSpans>0 then begin
+   Move(fPickRegionSpans[RearmIndex][0],fPickRegionRequestSpans[0],CountSpans*SizeOf(TPickRegionSpan));
+  end;
+  fPickRegionRequestCountSpans:=CountSpans;
+  fPickRegionRequested:=true;
+ end;
+
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  FreeAndNil(fPickRegionSpanBuffers[InFlightFrameIndex]);
+  FreeAndNil(fPickRegionBitSetBuffers[InFlightFrameIndex]);
+  FreeAndNil(fPickRegionReadBackBuffers[InFlightFrameIndex]);
+  fPickRegionCountWords[InFlightFrameIndex]:=0;
  end;
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
@@ -10534,6 +10694,127 @@ begin
  end;
 end;
 
+function TpvScene3DRendererInstance.GetPickRegionSpanBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickRegionSpanBuffers[aInFlightFrameIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetPickRegionBitSetBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickRegionBitSetBuffers[aInFlightFrameIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetPickRegionReadBackBuffer(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) then begin
+  result:=fPickRegionReadBackBuffers[aInFlightFrameIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvScene3DRendererInstance.AllocatePickRegionBuffers(const aInFlightFrameIndex,aCountSpans,aCountWords:TpvSizeInt);
+var CountSpans,CountWords:TpvSizeInt;
+begin
+
+ // Grown to the next power of two above what is asked for, so that a region dragged a little larger or
+ // a scene that hands out a few more ids does not replace the buffers again in the very next frame. A
+ // replaced one goes to the free queue rather than being freed on the spot, like the renderer's other
+ // buffers that grow while a frame is recorded.
+ if aCountSpans>1 then begin
+  CountSpans:=TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(aCountSpans)));
+ end else begin
+  CountSpans:=1;
+ end;
+ if aCountWords>1 then begin
+  CountWords:=TpvSizeInt(RoundUpToPowerOfTwoSizeUInt(TpvSizeUInt(aCountWords)));
+ end else begin
+  CountWords:=1;
+ end;
+
+ // The spans, written by the host while the frame is recorded and read once by the dispatch.
+ if (not assigned(fPickRegionSpanBuffers[aInFlightFrameIndex])) or
+    (fPickRegionSpanBuffers[aInFlightFrameIndex].Size<TVkDeviceSize(aCountSpans*SizeOf(TPickRegionSpan))) then begin
+  fScene3D.AddToFreeQueue(fPickRegionSpanBuffers[aInFlightFrameIndex]);
+  fPickRegionSpanBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                      CountSpans*SizeOf(TPickRegionSpan),
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                      [],
+                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                      0,
+                                                                      pvAllocationGroupIDScene3DDynamic,
+                                                                      'TpvScene3DRendererInstance.fPickRegionSpanBuffers['+IntToStr(aInFlightFrameIndex)+']');
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fPickRegionSpanBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPickRegionSpanBuffers['+IntToStr(aInFlightFrameIndex)+']');
+ end;
+
+ // The bitset itself, device local: it is cleared, set by atomics and copied out, all on the GPU.
+ if (not assigned(fPickRegionBitSetBuffers[aInFlightFrameIndex])) or
+    (fPickRegionBitSetBuffers[aInFlightFrameIndex].Size<TVkDeviceSize(aCountWords*SizeOf(TpvUInt32))) then begin
+  fScene3D.AddToFreeQueue(fPickRegionBitSetBuffers[aInFlightFrameIndex]);
+  fPickRegionBitSetBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                        CountWords*SizeOf(TpvUInt32),
+                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                        [],
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        0,
+                                                                        [],
+                                                                        0,
+                                                                        pvAllocationGroupIDScene3DDynamic,
+                                                                        'TpvScene3DRendererInstance.fPickRegionBitSetBuffers['+IntToStr(aInFlightFrameIndex)+']');
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fPickRegionBitSetBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPickRegionBitSetBuffers['+IntToStr(aInFlightFrameIndex)+']');
+ end;
+
+ // And its host visible copy, read in Update a full round of in-flight frames later, like the point
+ // pick's pixel.
+ if (not assigned(fPickRegionReadBackBuffers[aInFlightFrameIndex])) or
+    (fPickRegionReadBackBuffers[aInFlightFrameIndex].Size<TVkDeviceSize(aCountWords*SizeOf(TpvUInt32))) then begin
+  fScene3D.AddToFreeQueue(fPickRegionReadBackBuffers[aInFlightFrameIndex]);
+  fPickRegionReadBackBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                          CountWords*SizeOf(TpvUInt32),
+                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                          [],
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT), // cached is preferred, not required: this memory is only ever read by the host
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          0,
+                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                          0,
+                                                                          pvAllocationGroupIDScene3DDynamic,
+                                                                          'TpvScene3DRendererInstance.fPickRegionReadBackBuffers['+IntToStr(aInFlightFrameIndex)+']');
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fPickRegionReadBackBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPickRegionReadBackBuffers['+IntToStr(aInFlightFrameIndex)+']');
+ end;
+
+end;
+
 function TpvScene3DRendererInstance.RequestPick(const aX,aY:TpvInt32):TpvUInt64;
 begin
  fPickRequestX:=aX;
@@ -10541,6 +10822,30 @@ begin
  fPickRequested:=true;
  inc(fPickRequestGeneration);
  result:=fPickRequestGeneration;
+end;
+
+function TpvScene3DRendererInstance.RequestPickRegion(const aSpans:TpvScene3DRendererInstance.TPickRegionSpans;const aCountSpans:TpvSizeInt):TpvUInt64;
+var CountSpans:TpvSizeInt;
+begin
+ // Copied right away, so the caller may reuse its array at once. Clamping and dropping degenerate spans
+ // waits until the frame is recorded, because only then is the size of the target certain.
+ CountSpans:=aCountSpans;
+ if CountSpans>length(aSpans) then begin
+  CountSpans:=length(aSpans);
+ end;
+ if CountSpans<0 then begin
+  CountSpans:=0;
+ end;
+ if length(fPickRegionRequestSpans)<CountSpans then begin
+  SetLength(fPickRegionRequestSpans,CountSpans+((CountSpans+1) shr 1));
+ end;
+ if CountSpans>0 then begin
+  Move(aSpans[0],fPickRegionRequestSpans[0],CountSpans*SizeOf(TPickRegionSpan));
+ end;
+ fPickRegionRequestCountSpans:=CountSpans;
+ fPickRegionRequested:=true;
+ inc(fPickRegionRequestGeneration);
+ result:=fPickRegionRequestGeneration;
 end;
 
 procedure TpvScene3DRendererInstance.GetDrawChoreographyBatchRangeInfo(const aInFlightFrameIndex:TpvSizeInt;
@@ -10603,8 +10908,123 @@ begin
  end;
 end;
 
+function TpvScene3DRendererInstance.PickRegionActive(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+begin
+ result:=fPicking and
+         (aInFlightFrameIndex>=0) and
+         (aInFlightFrameIndex<MaxInFlightFrames) and
+         fPickRegionActive[aInFlightFrameIndex];
+end;
+
+function TpvScene3DRendererInstance.PreparePickRegion(const aInFlightFrameIndex:TpvSizeInt;const aWidth,aHeight:TpvInt32;out aCountSpans,aCountWords:TpvSizeInt;out aMaxSpanWidth:TpvInt32):Boolean;
+var Index,CountSpans:TpvSizeInt;
+    X0,X1:TpvInt32;
+    SourceSpan,DestinationSpan:PPickRegionSpan;
+    Buffer:TpvVulkanBuffer;
+    MappedData:PVkVoid;
+begin
+
+ aCountSpans:=0;
+ aCountWords:=0;
+ aMaxSpanWidth:=0;
+
+ if not PickRegionActive(aInFlightFrameIndex) then begin
+  result:=false;
+  exit;
+ end;
+
+ // Taken now, while the frame is recorded, and not when the region was asked for: the scene has been
+ // uploaded for this frame by now, so every id the pick pass draws in it lies below this bound, as mesh
+ // object ids are only ever handed out upwards. The same bound the per mesh object visibility buffers
+ // are sized by.
+ aCountWords:=TpvSizeInt((TpvUInt64(fScene3D.MaxMeshObjectID)+32) shr 5);
+
+ CountSpans:=fPickRegionCountSpans[aInFlightFrameIndex];
+
+ AllocatePickRegionBuffers(aInFlightFrameIndex,CountSpans,aCountWords);
+
+ // Clamped and filtered on the way into the span buffer, which is why the span count the dispatch gets
+ // can be lower than the one that was asked for. The widest span left decides how wide the dispatch is.
+ if CountSpans>0 then begin
+  Buffer:=fPickRegionSpanBuffers[aInFlightFrameIndex];
+  if not (assigned(Buffer) and assigned(Buffer.Memory)) then begin
+   result:=false;
+   exit;
+  end;
+  // MapMemory, not the memory block itself, see the remark on the point pick's read back in Update.
+  MappedData:=Buffer.Memory.MapMemory(0,CountSpans*SizeOf(TPickRegionSpan));
+  if not assigned(MappedData) then begin
+   result:=false;
+   exit;
+  end;
+  try
+   DestinationSpan:=MappedData;
+   for Index:=0 to CountSpans-1 do begin
+    SourceSpan:=@fPickRegionSpans[aInFlightFrameIndex][Index];
+    if (SourceSpan^.Y>=0) and (SourceSpan^.Y<aHeight) then begin
+     X0:=SourceSpan^.X0;
+     if X0<0 then begin
+      X0:=0;
+     end;
+     X1:=SourceSpan^.X1;
+     if X1>aWidth then begin
+      X1:=aWidth;
+     end;
+     if X0<X1 then begin
+      DestinationSpan^.Y:=SourceSpan^.Y;
+      DestinationSpan^.X0:=X0;
+      DestinationSpan^.X1:=X1;
+      inc(DestinationSpan);
+      inc(aCountSpans);
+      if aMaxSpanWidth<(X1-X0) then begin
+       aMaxSpanWidth:=X1-X0;
+      end;
+     end;
+    end;
+   end;
+   if aCountSpans>0 then begin
+    Buffer.Flush(MappedData,0,aCountSpans*SizeOf(TPickRegionSpan));
+   end;
+  finally
+   Buffer.Memory.UnmapMemory;
+  end;
+ end;
+
+ // What Update copies out later: exactly the words that are cleared and copied in this frame.
+ fPickRegionCountWords[aInFlightFrameIndex]:=aCountWords;
+
+ result:=true;
+
+end;
+
+function TpvScene3DRendererInstance.PickRegionResultAnsweredGeneration:TpvUInt64;
+begin
+ if fPicking and fPickRegionHasResult then begin
+  result:=fPickRegionResultGeneration;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvScene3DRendererInstance.GetPickRegionResult(var aBits:TpvUInt32DynamicArray;out aCountWords:TpvSizeInt):Boolean;
+begin
+ result:=fPicking and fPickRegionHasResult;
+ if result then begin
+  aCountWords:=fPickRegionResultCountWords;
+  if length(aBits)<aCountWords then begin
+   SetLength(aBits,aCountWords);
+  end;
+  if aCountWords>0 then begin
+   Move(fPickRegionResultBits[0],aBits[0],aCountWords*SizeOf(TpvUInt32));
+  end;
+ end else begin
+  aCountWords:=0;
+ end;
+end;
+
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-var Buffer:TpvVulkanBuffer;
+var Index,CountSpans,CountWords:TpvSizeInt;
+    Buffer:TpvVulkanBuffer;
     MappedData:PVkVoid;
 begin
 
@@ -10662,6 +11082,65 @@ begin
    fPickPendingSlot:=aInFlightFrameIndex;
    fPickPendingFrameIndex:=aFrameCounter;
    fPickPendingGeneration:=fPickRequestGeneration;
+  end;
+
+  // Region picks, the same way but with a pending state per in-flight frame. Fetch first: every frame
+  // that recorded one a full round of in-flight frames ago is through on the GPU, so its bitset is taken
+  // out now - the one of this very slot among them, before the request below can reuse it. An answer only
+  // replaces the one in hand when it belongs to a newer request, so the answered generation never goes
+  // backwards, whatever order the slots come in.
+  for Index:=0 to fScene3D.CountInFlightFrames-1 do begin
+   if fPickRegionPending[Index] and
+      ((aFrameCounter-fPickRegionPendingFrameIndices[Index])>=fScene3D.CountInFlightFrames) then begin
+    fPickRegionPending[Index]:=false;
+    if (not fPickRegionHasResult) or (fPickRegionResultGeneration<fPickRegionPendingGenerations[Index]) then begin
+     // Zero words, when the pass never got to record this frame, reads as an empty region rather than
+     // as whatever an older request left in the buffer.
+     CountWords:=fPickRegionCountWords[Index];
+     fPickRegionResultCountWords:=0;
+     Buffer:=fPickRegionReadBackBuffers[Index];
+     if (CountWords>0) and
+        assigned(Buffer) and
+        assigned(Buffer.Memory) and
+        (TVkDeviceSize(CountWords*SizeOf(TpvUInt32))<=Buffer.Size) then begin
+      // MapMemory again, for the reason given at the point pick above.
+      MappedData:=Buffer.Memory.MapMemory(0,CountWords*SizeOf(TpvUInt32));
+      if assigned(MappedData) then begin
+       try
+        Buffer.Invalidate(MappedData,0,CountWords*SizeOf(TpvUInt32));
+        if length(fPickRegionResultBits)<CountWords then begin
+         SetLength(fPickRegionResultBits,CountWords);
+        end;
+        Move(MappedData^,fPickRegionResultBits[0],CountWords*SizeOf(TpvUInt32));
+        fPickRegionResultCountWords:=CountWords;
+       finally
+        Buffer.Memory.UnmapMemory;
+       end;
+      end;
+     end;
+     fPickRegionResultGeneration:=fPickRegionPendingGenerations[Index];
+     fPickRegionHasResult:=true;
+    end;
+   end;
+  end;
+
+  // Ask second: the spans are copied over for this in-flight frame, for the pass to clamp and upload
+  // while it records it.
+  fPickRegionActive[aInFlightFrameIndex]:=fPickRegionRequested;
+  if fPickRegionRequested then begin
+   CountSpans:=fPickRegionRequestCountSpans;
+   if length(fPickRegionSpans[aInFlightFrameIndex])<CountSpans then begin
+    SetLength(fPickRegionSpans[aInFlightFrameIndex],CountSpans+((CountSpans+1) shr 1));
+   end;
+   if CountSpans>0 then begin
+    Move(fPickRegionRequestSpans[0],fPickRegionSpans[aInFlightFrameIndex][0],CountSpans*SizeOf(TPickRegionSpan));
+   end;
+   fPickRegionCountSpans[aInFlightFrameIndex]:=CountSpans;
+   fPickRegionCountWords[aInFlightFrameIndex]:=0;
+   fPickRegionRequested:=false;
+   fPickRegionPending[aInFlightFrameIndex]:=true;
+   fPickRegionPendingFrameIndices[aInFlightFrameIndex]:=aFrameCounter;
+   fPickRegionPendingGenerations[aInFlightFrameIndex]:=fPickRegionRequestGeneration;
   end;
 
  end;

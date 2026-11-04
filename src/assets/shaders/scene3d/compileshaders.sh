@@ -321,6 +321,7 @@ compileshaderarguments=(
   "-V mesh_selection_list.comp --target-env vulkan1.2 -o ${tempPath}/mesh_selection_list_comp.spv" # object-selection outline: builds the selected-only indirect draw list (vertex/index path)
   "-V mesh_selection_list.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -o ${tempPath}/mesh_selection_list_meshshader_comp.spv" # ... mesh-shader path, non-expand (builds 1 task-draw command per selected object)
   "-V mesh_selection_list.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -DMESHLET_EXPAND -o ${tempPath}/mesh_selection_list_meshshader_expand_comp.spv" # ... mesh-shader path, expand (1 mesh-draw command per meshlet)
+  "-V pick_region.comp -o ${tempPath}/pick_region_comp.spv" # object picking: marks the mesh object ids visible inside a set of row spans of the id target
   "-V mesh_cull_reset.comp --target-env vulkan1.2 -o ${tempPath}/mesh_cull_reset_comp.spv"
   "-V mesh_filter.comp --target-env vulkan1.2 -o ${tempPath}/mesh_filter_comp.spv"
   "-V mesh_filter.comp --target-env vulkan1.2 -DMESH_SHADER_PATH -o ${tempPath}/mesh_filter_ms_comp.spv"

@@ -46,10 +46,10 @@ type { TpvScene3DRendererPassesPickRenderPass }
      // out at all; and transparent surfaces never reach it, so a pane of glass would pick whatever
      // stands behind it. Its own target is single sampled and it draws blended materials as well.
      //
-     // It draws only in the frame a pick was actually asked for (TpvScene3DRendererInstance.RequestPick)
-     // and does nothing in every other one. One extra scene pass per click costs nothing anybody can
-     // feel, which is why there is no ray filtered draw list here: the normal cull output is drawn,
-     // and that is the geometry that is visible anyway.
+     // It draws only in the frame a pick was actually asked for (TpvScene3DRendererInstance.RequestPick
+     // or RequestPickRegion) and does nothing in every other one. One extra scene pass per click costs
+     // nothing anybody can feel, which is why there is no ray filtered draw list here: the normal cull
+     // output is drawn, and that is the geometry that is visible anyway.
      TpvScene3DRendererPassesPickRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        fOnSetRenderPassResourcesDone:boolean;
@@ -582,8 +582,10 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  // Nothing was asked for in this frame, so nothing is drawn - the attachments have been cleared by
- // their load ops either way, which leaves the "nothing here" id behind.
- if not fInstance.PickActive(aInFlightFrameIndex) then begin
+ // their load ops either way, which leaves the "nothing here" id behind. A point pick and a region pick
+ // read the same drawn target, so either one is reason enough to draw, and both in one frame still
+ // cost one draw.
+ if not (fInstance.PickActive(aInFlightFrameIndex) or fInstance.PickRegionActive(aInFlightFrameIndex)) then begin
   exit;
  end;
 
