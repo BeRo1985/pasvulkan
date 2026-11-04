@@ -189,6 +189,11 @@ type { TpvPasRISCVEmulatorMachineInstance }
        function GetNVMeImageFileName:TpvRawByteString; virtual; abstract;
        function GetVirtIOBlockImageInMemory:Boolean; virtual;
        function GetNVMeImageInMemory:Boolean; virtual;
+       // The host directories behind the 9P share and behind the VirtIO-FS share. An empty string
+       // attaches no file system, so that the guest's mount of it fails. Both default to riscv/extern
+       // beside the assets.
+       function Get9PFileSystemPath:TpvRawByteString; virtual;
+       function GetVirtIOFSFileSystemPath:TpvRawByteString; virtual;
        function LoadImageIntoMemoryStream(const aFileName:TpvRawByteString):TMemoryStream;
 {$ifdef PasRISCVVirtIOGPUVulkanVenus}
        procedure OnScanoutUpdate(const aScanoutID:TPasRISCVUInt32;const aPixels:Pointer;const aWidth,aHeight,aStride,aFormat:TPasRISCVUInt32);
@@ -1695,7 +1700,7 @@ end;
 
 constructor TpvPasRISCVEmulatorMachineInstance.Create;
 var Stream:TStream;
-    BIOSFile,KernelFile,INITRDFile,VirtIOBlockFile,NVMeFile:TpvRawByteString;
+    BIOSFile,KernelFile,INITRDFile,VirtIOBlockFile,NVMeFile,FileSystemPath:TpvRawByteString;
 begin
 
  fXCacheIntegers:=nil;
@@ -1769,14 +1774,24 @@ begin
  fMachine:=TPasRISCV.Create(fMachineConfiguration);
 
 {$if (defined(fpc) and defined(unix)) or defined(Windows)}
- f9PFileSystem:=TPasRISCV9PFileSystemNative.Create(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern');
+ FileSystemPath:=Get9PFileSystemPath;
+ if length(FileSystemPath)>0 then begin
+  f9PFileSystem:=TPasRISCV9PFileSystemNative.Create(FileSystemPath);
+ end else begin
+  f9PFileSystem:=nil;
+ end;
 {$else}
  f9PFileSystem:=nil;
 {$ifend}
  fMachine.VirtIO9PDevice.FileSystem:=f9PFileSystem;
 
 {$if (defined(fpc) and defined(unix)) or defined(Windows)}
- fFUSEFileSystem:=TPasRISCVFUSEFileSystemNative.Create(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern');
+ FileSystemPath:=GetVirtIOFSFileSystemPath;
+ if length(FileSystemPath)>0 then begin
+  fFUSEFileSystem:=TPasRISCVFUSEFileSystemNative.Create(FileSystemPath);
+ end else begin
+  fFUSEFileSystem:=nil;
+ end;
 {$else}
  fFUSEFileSystem:=nil;
 {$ifend}
@@ -1881,6 +1896,16 @@ begin
  // Override and return true to hold the NVMe image purely in memory
  // (TMemoryStream, all guest writes stay in RAM, nothing is written back to disk).
  result:=false;
+end;
+
+function TpvPasRISCVEmulatorMachineInstance.Get9PFileSystemPath:TpvRawByteString;
+begin
+ result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern';
+end;
+
+function TpvPasRISCVEmulatorMachineInstance.GetVirtIOFSFileSystemPath:TpvRawByteString;
+begin
+ result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(pvApplication.Assets.BasePath)+'riscv')+'extern';
 end;
 
 function TpvPasRISCVEmulatorMachineInstance.LoadImageIntoMemoryStream(const aFileName:TpvRawByteString):TMemoryStream;
