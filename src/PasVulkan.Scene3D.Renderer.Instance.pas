@@ -4896,6 +4896,7 @@ var PerInFlightFrameBufferIndex:TpvSizeInt;
     GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationVoxelConeTracingVisualizationTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
     GlobalIlluminationDUGIMasterData:TGlobalIlluminationDUGIMasterData;
+    GlobalIlluminationDUGIMasterDataArray:array[0..MaxInFlightFrames-1] of TGlobalIlluminationDUGIMasterData;
     DUGIClearCommandPool:TpvVulkanCommandPool;
     DUGIClearCommandBuffer:TpvVulkanCommandBuffer;
     DUGIClearFence:TpvVulkanFence;
@@ -5238,16 +5239,18 @@ begin
     // DUGI data buffer: ONE std430 SSBO holding the cascade globals (offset 0, CPU-written each frame) followed by the BDA
     // sub-buffer pointers (offset SizeOf(globals), written once below) — the unified `dugiData` block (global_illumination_dugi_data.glsl),
     // bound at the DUGI set's binding 0 in both the compute passes and the fragment consumers (replaces the old globals UBO
-    // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DUGI invocation / fragment) AND
-    // host-visible (CPU fills the pointers via UpdateData; the per-frame globals are staged into offset 0). No device-address
-    // needed for the block itself any more (only the sub-buffers it points to are BDA).
+    // AND the old master pointer buffer). BAR: device-local (fast SSBO reads by every DUGI invocation / fragment) and, where
+    // it can be had, host-visible (CPU fills the pointers via UpdateData; the per-frame globals are staged into offset 0).
+    // Host-visible is only preferred: without Resizable BAR that memory is a small heap of its own, and once it is full the
+    // buffer goes to ordinary device memory, where the pointers are written by the clear command buffer below instead. No
+    // device-address needed for the block itself any more (only the sub-buffers it points to are BDA).
     fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TGlobalIlluminationDUGIUniformBufferData)+SizeOf(TGlobalIlluminationDUGIMasterData),
                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                      [],
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                      0,0,0,0,0,0,
                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                      0,
@@ -5292,8 +5295,12 @@ begin
     end;
     GlobalIlluminationDUGIMasterData.Age:=fGlobalIlluminationDUGIAgeBuffer.DeviceAddress;
     // Pointers go AFTER the cascade globals (which the per-frame UploadGlobalIlluminationDUGI stages into offset 0). Written
-    // once here (the sub-buffer addresses are stable for the slot's lifetime).
-    fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDUGIMasterData,SizeOf(TGlobalIlluminationDUGIUniformBufferData),SizeOf(GlobalIlluminationDUGIMasterData));
+    // once here (the sub-buffer addresses are stable for the slot's lifetime), or, when the buffer did not get host-visible
+    // memory, by the clear command buffer below.
+    GlobalIlluminationDUGIMasterDataArray[InFlightFrameIndex]:=GlobalIlluminationDUGIMasterData;
+    if (fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+     fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].UpdateData(GlobalIlluminationDUGIMasterData,SizeOf(TGlobalIlluminationDUGIUniformBufferData),SizeOf(GlobalIlluminationDUGIMasterData));
+    end;
 
    end;
 
@@ -5338,6 +5345,14 @@ begin
       for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
        if assigned(fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex]) then begin
         DUGIClearCommandBuffer.CmdFillBuffer(fGlobalIlluminationDUGIRayDataBuffers[InFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+       end;
+       // A master buffer without host-visible memory gets its pointers here, since UpdateData above could not write them
+       if assigned(fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex]) and
+          ((fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0) then begin
+        DUGIClearCommandBuffer.CmdUpdateBuffer(fGlobalIlluminationDUGIMasterBuffers[InFlightFrameIndex].Handle,
+                                               SizeOf(TGlobalIlluminationDUGIUniformBufferData),
+                                               SizeOf(TGlobalIlluminationDUGIMasterData),
+                                               @GlobalIlluminationDUGIMasterDataArray[InFlightFrameIndex]);
        end;
       end;
       DUGIClearCommandBuffer.EndRecording;
@@ -8493,20 +8508,23 @@ begin
                                                                                                     );
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGPUDrawIndexedIndirectCommandCounterBuffers[PerInFlightFrameBufferIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CounterBuffer');
 
+   // Written by the GPU alone (mesh_cull_reset.comp) and read by vkCmdDispatchIndirect, so it has no need of
+   // memory the CPU can see. Asking for that anyway took it from the small CPU-visible heap of a machine
+   // without Resizable BAR, where an allocation which has nowhere else to go is one which can fail.
    fMeshCullIndirectDispatchBuffers[PerInFlightFrameBufferIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                          2*SizeOf(TVkDispatchIndirectCommand),
                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                          [],
-                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                         0,
+                                                                                         0,
+                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
                                                                                          0,
                                                                                          0,
                                                                                          0,
                                                                                          0,
-                                                                                         0,
-                                                                                         0,
-                                                                                         [TpvVulkanBufferFlag.PersistentMapped],
+                                                                                         [],
                                                                                          0,
                                                                                          pvAllocationGroupIDScene3DDynamic,
                                                                                          '3DRendererInstance.IndirectDispatchBuffer'
@@ -8628,20 +8646,25 @@ begin
                                                                                                     '3DRendererInstance.SelectionListCommandCountBuffers['+IntToStr(InFlightFrameIndex)+']');
    Renderer.VulkanDevice.DebugUtils.SetObjectName(fSelectionListDrawIndexedIndirectCommandCountBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.SelectionListCommandCountBuffers['+IntToStr(InFlightFrameIndex)+']');
 
+   // This one, the prefix sums and the expand range infos below are written by the CPU every frame through
+   // MemoryStaging.Upload, which writes straight into them where they are mapped and copies through the
+   // staging buffer where they are not. So CPU-visible device memory is what they would like to have, not
+   // what they need: on a machine without Resizable BAR that memory is a small heap of its own, and once it
+   // is full they go to ordinary device memory instead of failing. For the copy they need TRANSFER_DST.
    fPerInFlightFrameMeshCullBatchRangeBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                           MaxMultiIndirectDrawCalls*SizeOf(TpvScene3D.TGPUBatchRange),
-                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                           [],
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                           0,
                                                                                           0,
                                                                                           0,
                                                                                           0,
                                                                                           0,
                                                                                           0,
-                                                                                          [TpvVulkanBufferFlag.PersistentMapped],
+                                                                                          [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                           0,
                                                                                           pvAllocationGroupIDScene3DDynamic,
                                                                                           '3DRendererInstance.BatchRangeBuffers['+IntToStr(InFlightFrameIndex)+']'
@@ -8650,18 +8673,18 @@ begin
 
    fPerInFlightFrameMeshCullPrefixSumBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                          (MaxMultiIndirectDrawCalls+1)*SizeOf(TpvUInt32),
-                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                          [],
-                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                          0,
                                                                                          0,
                                                                                          0,
                                                                                          0,
                                                                                          0,
                                                                                          0,
-                                                                                         [TpvVulkanBufferFlag.PersistentMapped],
+                                                                                         [TpvVulkanBufferFlag.PersistentMappedIfPossible],
                                                                                          0,
                                                                                          pvAllocationGroupIDScene3DDynamic,
                                                                                          '3DRendererInstance.PrefixSumBuffers['+IntToStr(InFlightFrameIndex)+']'
@@ -8674,15 +8697,15 @@ begin
                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                        [],
-                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                        0,
                                                                                        0,
                                                                                        0,
                                                                                        0,
                                                                                        0,
                                                                                        0,
-                                                                                       [TpvVulkanBufferFlag.PersistentMapped,TpvVulkanBufferFlag.BufferDeviceAddress],
+                                                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.BufferDeviceAddress],
                                                                                        0,
                                                                                        pvAllocationGroupIDScene3DDynamic,
                                                                                        '3DRendererInstance.ExpandRangeInfoBuffers['+IntToStr(InFlightFrameIndex)+']'

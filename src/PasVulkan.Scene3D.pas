@@ -39002,20 +39002,24 @@ begin
 
   FreeAndNil(fGlobalBoundingSphereBuffers[aInFlightFrameIndex]);
 
+  // Written every frame through MemoryStaging.Upload below, which writes straight into the buffer where it
+  // is mapped and copies through the staging buffer where it is not. CPU-visible device memory is therefore
+  // what it would like to have, not what it needs. On a machine without Resizable BAR that memory is a small
+  // heap of its own, and this buffer, which asked for it as a requirement, was where it ran out first.
   fGlobalBoundingSphereBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                             Max(65536,Count)*SizeOf(TpvVector4)*2,
                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                             [],
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                             0,
                                                                             0,
                                                                             0,
                                                                             0,
                                                                             0,
                                                                             0,
-                                                                            [TpvVulkanBufferFlag.PersistentMapped],
+                                                                            [TpvVulkanBufferFlag.PersistentMappedIfPossible],
 {                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                             0,
                                                                             0,
@@ -43568,6 +43572,14 @@ begin
   SectionEndTime:=pvApplication.HighResolutionTimer.GetTime;
   UploadFrameCPUTimes^.Groups:=pvApplication.HighResolutionTimer.ToFloatSeconds(SectionEndTime-SectionStartTime)*1000.0;
   SectionStartTime:=SectionEndTime;
+
+{$ifdef PasVulkanMemoryFaultInjection}
+  // The place where a full graphics memory was first seen in the field, in the middle of a frame whose
+  // earlier submits have already gone out. Raised before any Vulkan call, so nothing is half created.
+  if TPasMPInterlocked.Exchange(pvVulkanFaultInjectionFrameOutOfDeviceMemory,0)<>0 then begin
+   raise EpvVulkanOutOfDeviceMemoryException.Create;
+  end;
+{$endif}
 
   UploadBoundingSphereBuffer(aInFlightFrameIndex);
 

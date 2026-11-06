@@ -107,6 +107,33 @@ var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 
     // are of course still followed at any size.
     VulkanMinimumPreferredDedicatedAllocationSize:TVkDeviceSize=TVkDeviceSize(1) shl 20; // 1 MB
 
+{$ifdef PasVulkanMemoryFaultInjection}
+    // Ways to make the memory manager run out of memory on purpose, for testing what happens then. Each
+    // one makes a real Vulkan call fail before it is made, or answers it as the driver would on a full
+    // heap, so that nothing is created only to be thrown away. All of them are off at zero or empty.
+    //
+    // Compiled in with the compiler option -dPasVulkanMemoryFaultInjection, which has to reach the engine
+    // units and the application alike, since the application is what sets these.
+
+    // The size the CPU-visible device memory is pretended to have, summed over all memory types which
+    // are both DEVICE_LOCAL and HOST_VISIBLE. 256 MB makes a machine with Resizable BAR behave like one
+    // without it.
+    pvVulkanFaultInjectionHostVisibleDeviceLocalCap:TVkDeviceSize=0;
+
+    // vkMapMemory answers VK_ERROR_OUT_OF_DEVICE_MEMORY for every range at least this large
+    pvVulkanFaultInjectionMapFailMinimumSize:TVkDeviceSize=0;
+
+    // A lower maxMemoryAllocationCount than the device reports
+    pvVulkanFaultInjectionMaxAllocationCount:TpvSizeInt=0;
+
+    // Every allocation whose name contains this text fails as out of device memory
+    pvVulkanFaultInjectionFailAllocationName:TpvUTF8String='';
+
+    // Nonzero: the next frame upload of a TpvScene3D raises out of device memory, once, at the place
+    // where such a failure was first seen in the field (see TpvScene3D.UploadFrame)
+    pvVulkanFaultInjectionFrameOutOfDeviceMemory:TPasMPInt32=0;
+{$endif}
+
 const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
 
@@ -165,6 +192,16 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
       published
        property ResultCode:TVkResult read fResultCode;
+     end;
+
+     // VK_ERROR_OUT_OF_DEVICE_MEMORY in particular, raised by VulkanCheckResult for that code and by the
+     // memory manager once all its ways around a full heap are exhausted. A class of its own, so that an
+     // application can tell a full graphics memory apart from every other Vulkan error and from an
+     // invalid allocation request (EpvVulkanMemoryAllocationException), and derived from the result
+     // exception, so that every handler for that one keeps catching it as before.
+     EpvVulkanOutOfDeviceMemoryException=class(EpvVulkanResultException)
+      public
+       constructor Create;
      end;
 
      PpvVulkanUUID=^TpvVulkanUUID;
@@ -1378,6 +1415,10 @@ type EpvVulkanException=class(Exception);
        // Every block inside then sits at fDeviceAddress+Block.Offset, which is what turns a faulting
        // address out of a GPU crash dump back into the name of an allocation.
        fDeviceAddress:TVkDeviceAddress;
+{$ifdef PasVulkanMemoryFaultInjection}
+       // What this chunk counts against pvVulkanFaultInjectionHostVisibleDeviceLocalCap
+       fInjectedHostVisibleDeviceLocalBytes:TVkDeviceSize;
+{$endif}
        procedure AcquireDeviceAddress;
        class procedure InitializeMemoryAllocateInfo(var aMemoryAllocateInfo:TVkMemoryAllocateInfo;
                                                     var aMemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
@@ -1640,6 +1681,31 @@ type EpvVulkanException=class(Exception);
        fMaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize;
        fDefragmentationPassesEnabled:boolean;
        fActiveDefragmentationPass:TpvVulkanDeviceMemoryDefragmentationPass;
+       // What the allocation under way has tried and what each failed attempt answered. Collected under
+       // fLock by the chunks while they fail, and turned into fLastAllocationFailure once the whole
+       // request has failed, so that a report can say why and not only that.
+       fAllocationAttempts:TpvUTF8String;
+       fLastAllocationFailure:TpvUTF8String;
+       // Per heap, the smallest chunk size whose allocation or mapping failed there, zero for none. A new
+       // chunk in that heap then starts out at half of it instead of asking for the same size again on
+       // every allocation. Forgotten as soon as memory of that heap is given back.
+       fFailedChunkSizes:array[0..VK_MAX_MEMORY_HEAPS-1] of TVkDeviceSize;
+{$ifdef PasVulkanMemoryFaultInjection}
+       fInjectedHostVisibleDeviceLocalBytes:TVkDeviceSize;
+{$endif}
+       procedure NoteAllocationAttempt(const aCall:TpvUTF8String;
+                                       const aMemoryTypeIndex:TpvUInt32;
+                                       const aMemoryHeapIndex:TpvUInt32;
+                                       const aSize:TVkDeviceSize;
+                                       const aResultCode:TVkResult);
+       procedure NoteFailedChunkSize(const aMemoryHeapIndex:TpvUInt32;const aSize:TVkDeviceSize);
+       procedure NoteAllocationFailure(const aName:TpvUTF8String;
+                                       const aSize:TVkDeviceSize;
+                                       const aAlignment:TVkDeviceSize;
+                                       const aMemoryTypeBits:TpvUInt32;
+                                       const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                       const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                       const aReason:TpvUTF8String);
       public
 
        constructor Create(const aDevice:TpvVulkanDevice);
@@ -1706,6 +1772,19 @@ type EpvVulkanException=class(Exception);
        procedure Dump(const aStringList:TStringList=nil);
 
        procedure DumpJSON(const aStringList:TStringList=nil);
+
+       // Budget and usage per heap through VK_EXT_memory_budget, false when the device does not have the
+       // extension enabled. Purely for diagnostics: the values are the driver's estimate of the moment.
+       function QueryMemoryBudget(out aMemoryBudget:TVkPhysicalDeviceMemoryBudgetPropertiesEXT):boolean;
+
+       // The memory of the device in words, for a log and a crash report: every heap with its size, flags
+       // and, where known, budget and usage, every memory type with its flags and heap, and how much of
+       // the device memory the CPU can see, which says whether Resizable BAR is in effect.
+       function MemorySummary:TpvUTF8String;
+
+       // Why the last allocation which failed as a whole failed: the request and every attempt with what
+       // Vulkan answered. Empty while no allocation has failed.
+       function LastAllocationFailure:TpvUTF8String;
 
       published
 
@@ -8579,7 +8658,11 @@ begin
 {$if defined(fpc) and not defined(Release)}
 //WriteLn(DumpCallStack);
 {$ifend}
-  raise EpvVulkanResultException.Create(ResultCode);
+  if ResultCode=VK_ERROR_OUT_OF_DEVICE_MEMORY then begin
+   raise EpvVulkanOutOfDeviceMemoryException.Create;
+  end else begin
+   raise EpvVulkanResultException.Create(ResultCode);
+  end;
  end;
 end;
 
@@ -8837,6 +8920,11 @@ constructor EpvVulkanResultException.Create(const aResultCode:TVkResult);
 begin
  fResultCode:=aResultCode;
  inherited Create(String(VulkanErrorToString(fResultCode)));
+end;
+
+constructor EpvVulkanOutOfDeviceMemoryException.Create;
+begin
+ inherited Create(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 end;
 
 destructor EpvVulkanResultException.Destroy;
@@ -14027,6 +14115,10 @@ begin
 
  fMutationGeneration:=0;
 
+{$ifdef PasVulkanMemoryFaultInjection}
+ fInjectedHostVisibleDeviceLocalBytes:=0;
+{$endif}
+
  TryCreate(aMemoryChunkFlags,
            aSize,
            aSizeIsMinimumSize,
@@ -14085,6 +14177,14 @@ begin
   end;
   fMemoryManager.fDevice.Commands.FreeMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMemoryManager.fDevice.fAllocationCallbacks);
   dec(fMemoryManager.fCountAllocations);
+  // Memory of this heap is free again, so a chunk of the size which failed there may fit now
+  if fMemoryHeapIndex<TpvUInt32(length(fMemoryManager.fFailedChunkSizes)) then begin
+   fMemoryManager.fFailedChunkSizes[fMemoryHeapIndex]:=0;
+  end;
+{$ifdef PasVulkanMemoryFaultInjection}
+  dec(fMemoryManager.fInjectedHostVisibleDeviceLocalBytes,fInjectedHostVisibleDeviceLocalBytes);
+  fInjectedHostVisibleDeviceLocalBytes:=0;
+{$endif}
  end;
 
  FreeAndNil(fOffsetRedBlackTree);
@@ -14550,12 +14650,15 @@ var Index,HeapIndex,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
     MemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
     PhysicalDevice:TpvVulkanPhysicalDevice;
     CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize,ChunkSize:TVkDeviceSize;
-    Found,OK:boolean;
+    Found,OK,MapPersistently:boolean;
     ResultCode,LastResultCode:TVkResult;
     PropertyFlags:TVkMemoryPropertyFlags;
     HeapFlags:TVkMemoryHeapFlags;
     BlacklistedHeaps:TBlacklistedHeaps;
+    MaximumAllocationCount:TpvUInt64;
 begin
+
+ result:=false;
 
  fMemoryChunkFlags:=aMemoryChunkFlags;
 
@@ -14651,6 +14754,13 @@ begin
         end;
        end;
 {$endif}
+       // A chunk of this size or larger has already failed in this heap, so start out at half of it
+       // rather than asking for the same thing on every allocation until something is given back
+       if (HeapIndex<length(fMemoryManager.fFailedChunkSizes)) and
+          (fMemoryManager.fFailedChunkSizes[HeapIndex]<>0) and
+          (CurrentWantedChunkSize>=fMemoryManager.fFailedChunkSizes[HeapIndex]) then begin
+        CurrentWantedChunkSize:=MaxUInt64(aSize,fMemoryManager.fFailedChunkSizes[HeapIndex] shr 1);
+       end;
       end else begin
        CurrentWantedChunkSize:=aSize;
       end;
@@ -14700,8 +14810,18 @@ begin
    end;
    if not Found then begin
     if aRaiseExceptions then begin
-     if LastResultCode<>VK_SUCCESS then begin
-      VulkanCheckResult(LastResultCode);
+     case LastResultCode of
+      VK_SUCCESS:begin
+      end;
+      VK_ERROR_OUT_OF_DEVICE_MEMORY,
+      VK_ERROR_MEMORY_MAP_FAILED:begin
+       // A mapping which failed means that the part of the device memory which the CPU can see is
+       // used up, which is a full graphics memory as far as anyone using it is concerned
+       raise EpvVulkanOutOfDeviceMemoryException.Create;
+      end;
+      else begin
+       VulkanCheckResult(LastResultCode);
+      end;
      end;
      raise EpvVulkanMemoryAllocationException.Create('No suitable device memory heap available');
     end else begin
@@ -14728,6 +14848,19 @@ begin
     end;
    end;
 
+   // A chunk which is to stay mapped needs a memory type which the host can see. Settled before the
+   // memory is allocated, so that nothing is allocated only to be given back again.
+   MapPersistently:=((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) and
+                    ((aMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,
+                                         TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe])<>[]);
+   if (TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in aMemoryChunkFlags) and not MapPersistently then begin
+    if aRaiseExceptions then begin
+     raise EpvVulkanMemoryAllocationException.Create('Memory can''t mapped');
+    end else begin
+     exit;
+    end;
+   end;
+
    InitializeMemoryAllocateInfo(MemoryAllocateInfo,
                                 MemoryAllocateFlagsInfoKHR,
                                 BestWantedChunkSize,
@@ -14735,8 +14868,15 @@ begin
                                 aMemoryChunkFlags,
                                 aMemoryDedicatedAllocateInfo);
 
-   if TpvUInt64(fMemoryManager.fCountAllocations)>=TpvUInt64(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount) then begin
+   MaximumAllocationCount:=TpvUInt64(fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.maxMemoryAllocationCount);
+{$ifdef PasVulkanMemoryFaultInjection}
+   if (pvVulkanFaultInjectionMaxAllocationCount>0) and (TpvUInt64(pvVulkanFaultInjectionMaxAllocationCount)<MaximumAllocationCount) then begin
+    MaximumAllocationCount:=TpvUInt64(pvVulkanFaultInjectionMaxAllocationCount);
+   end;
+{$endif}
+   if TpvUInt64(fMemoryManager.fCountAllocations)>=MaximumAllocationCount then begin
     LastResultCode:=VK_ERROR_TOO_MANY_OBJECTS;
+    fMemoryManager.NoteAllocationAttempt('vkAllocateMemory',fMemoryTypeIndex,fMemoryHeapIndex,BestWantedChunkSize,VK_ERROR_TOO_MANY_OBJECTS);
     if aRaiseExceptions then begin
      raise EpvVulkanMemoryAllocationException.Create('Maximum Vulkan device memory allocation count reached');
     end else begin
@@ -14744,14 +14884,28 @@ begin
     end;
    end;
 
+{$ifdef PasVulkanMemoryFaultInjection}
+   if (pvVulkanFaultInjectionHostVisibleDeviceLocalCap>0) and
+      ((fMemoryPropertyFlags and (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)))=
+       (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) and
+      ((fMemoryManager.fInjectedHostVisibleDeviceLocalBytes+BestWantedChunkSize)>pvVulkanFaultInjectionHostVisibleDeviceLocalCap) then begin
+    ResultCode:=VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   end else begin
+    ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
+   end;
+{$else}
    ResultCode:=fMemoryManager.fDevice.Commands.AllocateMemory(fMemoryManager.fDevice.fDeviceHandle,@MemoryAllocateInfo,fMemoryManager.fDevice.fAllocationCallbacks,@fMemoryHandle);
+{$endif}
 
    case ResultCode of
     VK_ERROR_FRAGMENTED_POOL,
     VK_ERROR_OUT_OF_POOL_MEMORY,
     VK_ERROR_OUT_OF_HOST_MEMORY,
     VK_ERROR_OUT_OF_DEVICE_MEMORY:begin
+     fMemoryHandle:=VK_NULL_HANDLE;
      LastResultCode:=ResultCode;
+     fMemoryManager.NoteAllocationAttempt('vkAllocateMemory',fMemoryTypeIndex,fMemoryHeapIndex,BestWantedChunkSize,ResultCode);
+     fMemoryManager.NoteFailedChunkSize(fMemoryHeapIndex,BestWantedChunkSize);
      if length(BlacklistedHeaps)<(CountBlacklistedHeaps+1) then begin
       SetLength(BlacklistedHeaps,(CountBlacklistedHeaps+1)*2);
      end;
@@ -14760,14 +14914,70 @@ begin
      continue;
     end;
     else begin
-     VulkanCheckResult(ResultCode);
-     inc(fMemoryManager.fCountAllocations);
-     if assigned(aCostThreshold) then begin
-      aCostThreshold^:=BestCost;
+     if ResultCode<>VK_SUCCESS then begin
+      // Nothing was allocated, so nothing may be given back for it later on
+      fMemoryHandle:=VK_NULL_HANDLE;
      end;
-     break;
+     VulkanCheckResult(ResultCode);
     end;
    end;
+
+   inc(fMemoryManager.fCountAllocations);
+
+   // Mapped right here, while a failure can still go on to the next heap and to the smaller attempts
+   // of the memory manager, exactly like a failed allocation. Mapping can fail where allocating did
+   // not: the window through which the CPU sees device memory is often far smaller than the memory.
+   if MapPersistently then begin
+    fMappedOffset:=0;
+    fMappedSize:=BestWantedChunkSize;
+{$ifdef PasVulkanMemoryFaultInjection}
+    if (pvVulkanFaultInjectionMapFailMinimumSize>0) and (fMappedSize>=pvVulkanFaultInjectionMapFailMinimumSize) then begin
+     ResultCode:=VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    end else begin
+     ResultCode:=fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory);
+    end;
+{$else}
+    ResultCode:=fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory);
+{$endif}
+    if ResultCode<>VK_SUCCESS then begin
+     fMemory:=nil;
+     fMemoryManager.fDevice.Commands.FreeMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMemoryManager.fDevice.fAllocationCallbacks);
+     fMemoryHandle:=VK_NULL_HANDLE;
+     dec(fMemoryManager.fCountAllocations);
+     case ResultCode of
+      VK_ERROR_OUT_OF_HOST_MEMORY,
+      VK_ERROR_OUT_OF_DEVICE_MEMORY,
+      VK_ERROR_MEMORY_MAP_FAILED:begin
+       LastResultCode:=ResultCode;
+       fMemoryManager.NoteAllocationAttempt('vkMapMemory',fMemoryTypeIndex,fMemoryHeapIndex,BestWantedChunkSize,ResultCode);
+       fMemoryManager.NoteFailedChunkSize(fMemoryHeapIndex,BestWantedChunkSize);
+       if length(BlacklistedHeaps)<(CountBlacklistedHeaps+1) then begin
+        SetLength(BlacklistedHeaps,(CountBlacklistedHeaps+1)*2);
+       end;
+       BlacklistedHeaps[CountBlacklistedHeaps]:=fMemoryHeapIndex;
+       inc(CountBlacklistedHeaps);
+       continue;
+      end;
+      else begin
+       VulkanCheckResult(ResultCode);
+      end;
+     end;
+    end;
+   end;
+
+{$ifdef PasVulkanMemoryFaultInjection}
+   if (fMemoryPropertyFlags and (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)))=
+      (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) then begin
+    fInjectedHostVisibleDeviceLocalBytes:=BestWantedChunkSize;
+    inc(fMemoryManager.fInjectedHostVisibleDeviceLocalBytes,BestWantedChunkSize);
+   end;
+{$endif}
+
+   if assigned(aCostThreshold) then begin
+    aCostThreshold^:=BestCost;
+   end;
+
+   break;
 
   until false;
 
@@ -14797,39 +15007,12 @@ begin
  fMemoryChunkList^.First:=self;
  fPreviousMemoryChunk:=nil;
 
+ // The mapping itself already happened in the loop above, where a failure could still go elsewhere.
+ // What is left is to say in the flags what came out of it.
  if TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in fMemoryChunkFlags then begin
   Exclude(fMemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe);
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
    Include(fMemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
-  end;
- end;
-
- if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
-  fLock.Acquire;
-  try
-   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
-    if assigned(fMemory) then begin
-     if aRaiseExceptions then begin
-      raise EpvVulkanMemoryAllocationException.Create('Memory is already mapped');
-     end else begin
-      result:=false;
-      exit;
-     end;
-    end else begin
-     fMappedOffset:=0;
-     fMappedSize:=BestWantedChunkSize;
-     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,fMappedOffset,fMappedSize,0,@fMemory));
-    end;
-   end else begin
-    if aRaiseExceptions then begin
-     raise EpvVulkanMemoryAllocationException.Create('Memory can''t mapped');
-    end else begin
-     result:=false;
-     exit;
-    end;
-   end;
-  finally
-   fLock.Release;
   end;
  end;
 
@@ -16988,6 +17171,68 @@ begin
  end;
 end;
 
+function VulkanFlagTextAppend(const aText,aName:TpvUTF8String):TpvUTF8String;
+begin
+ if length(aText)>0 then begin
+  result:=aText+'|'+aName;
+ end else begin
+  result:=aName;
+ end;
+end;
+
+// The memory property flags in words, for logs and reports
+function VulkanMemoryPropertyFlagsToText(const aFlags:TVkMemoryPropertyFlags):TpvUTF8String;
+const Flags:array[0..8] of TVkMemoryPropertyFlags=
+       (
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_PROTECTED_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_RDMA_CAPABLE_BIT_NV)
+       );
+      Names:array[0..8] of TpvUTF8String=
+       (
+        'DEVICE_LOCAL',
+        'HOST_VISIBLE',
+        'HOST_COHERENT',
+        'HOST_CACHED',
+        'LAZILY_ALLOCATED',
+        'PROTECTED',
+        'DEVICE_COHERENT_AMD',
+        'DEVICE_UNCACHED_AMD',
+        'RDMA_CAPABLE_NV'
+       );
+var Index:TpvSizeInt;
+begin
+ result:='';
+ for Index:=0 to length(Flags)-1 do begin
+  if (aFlags and Flags[Index])<>0 then begin
+   result:=VulkanFlagTextAppend(result,Names[Index]);
+  end;
+ end;
+ if length(result)=0 then begin
+  result:='-';
+ end;
+end;
+
+function VulkanMemoryHeapFlagsToText(const aFlags:TVkMemoryHeapFlags):TpvUTF8String;
+begin
+ result:='';
+ if (aFlags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))<>0 then begin
+  result:=VulkanFlagTextAppend(result,'DEVICE_LOCAL');
+ end;
+ if (aFlags and TVkMemoryHeapFlags(VK_MEMORY_HEAP_MULTI_INSTANCE_BIT))<>0 then begin
+  result:=VulkanFlagTextAppend(result,'MULTI_INSTANCE');
+ end;
+ if length(result)=0 then begin
+  result:='-';
+ end;
+end;
+
 constructor TpvVulkanDeviceMemoryManager.Create(const aDevice:TpvVulkanDevice);
 begin
  inherited Create;
@@ -16995,6 +17240,16 @@ begin
  fDevice:=aDevice;
 
  fLock:=TPasMPCriticalSection.Create;
+
+ fAllocationAttempts:='';
+
+ fLastAllocationFailure:='';
+
+ FillChar(fFailedChunkSizes,SizeOf(fFailedChunkSizes),#0);
+
+{$ifdef PasVulkanMemoryFaultInjection}
+ fInjectedHostVisibleDeviceLocalBytes:=0;
+{$endif}
 
  FillChar(fMemoryChunkList,SizeOf(TpvVulkanDeviceMemoryManagerChunkList),#0);
 
@@ -17122,6 +17377,168 @@ begin
   end;
  finally
   HeapMemoryPropertyFlags:=nil;
+ end;
+
+end;
+
+// Called by a chunk under fLock for every attempt which Vulkan refused. Bounded, so that a request which
+// tries every heap many times over cannot grow the text without end.
+procedure TpvVulkanDeviceMemoryManager.NoteAllocationAttempt(const aCall:TpvUTF8String;
+                                                             const aMemoryTypeIndex:TpvUInt32;
+                                                             const aMemoryHeapIndex:TpvUInt32;
+                                                             const aSize:TVkDeviceSize;
+                                                             const aResultCode:TVkResult);
+begin
+ if length(fAllocationAttempts)<8192 then begin
+  fAllocationAttempts:=fAllocationAttempts+
+                       '  '+aCall+
+                       ' memory type '+TpvUTF8String(IntToStr(aMemoryTypeIndex))+
+                       ' heap '+TpvUTF8String(IntToStr(aMemoryHeapIndex))+
+                       ' size '+TpvUTF8String(SizeToHumanReadableString(aSize))+
+                       ': '+TpvUTF8String(VulkanErrorToString(aResultCode))+
+                       LineEnding;
+ end;
+end;
+
+procedure TpvVulkanDeviceMemoryManager.NoteFailedChunkSize(const aMemoryHeapIndex:TpvUInt32;const aSize:TVkDeviceSize);
+begin
+ if aMemoryHeapIndex<TpvUInt32(length(fFailedChunkSizes)) then begin
+  if (fFailedChunkSizes[aMemoryHeapIndex]=0) or (aSize<fFailedChunkSizes[aMemoryHeapIndex]) then begin
+   fFailedChunkSizes[aMemoryHeapIndex]:=aSize;
+  end;
+ end;
+end;
+
+// Called under fLock once a request has failed as a whole. Only text is put together here, nothing is
+// asked of Vulkan, since the device may have no memory left for anything.
+procedure TpvVulkanDeviceMemoryManager.NoteAllocationFailure(const aName:TpvUTF8String;
+                                                             const aSize:TVkDeviceSize;
+                                                             const aAlignment:TVkDeviceSize;
+                                                             const aMemoryTypeBits:TpvUInt32;
+                                                             const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                                             const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                                             const aReason:TpvUTF8String);
+var Name:TpvUTF8String;
+begin
+ if length(aName)>0 then begin
+  Name:=aName;
+ end else begin
+  Name:='(unnamed)';
+ end;
+ fLastAllocationFailure:='Allocation "'+Name+'" of '+TpvUTF8String(SizeToHumanReadableString(aSize))+
+                         ' (alignment '+TpvUTF8String(IntToStr(aAlignment))+
+                         ', memory type bits $'+TpvUTF8String(LowerCase(IntToHex(aMemoryTypeBits,8)))+
+                         ', required '+VulkanMemoryPropertyFlagsToText(aMemoryRequiredPropertyFlags)+
+                         ', preferred '+VulkanMemoryPropertyFlagsToText(aMemoryPreferredPropertyFlags)+
+                         ') failed: '+aReason+LineEnding;
+ if length(fAllocationAttempts)>0 then begin
+  fLastAllocationFailure:=fLastAllocationFailure+'Attempts which Vulkan refused:'+LineEnding+fAllocationAttempts;
+ end else begin
+  fLastAllocationFailure:=fLastAllocationFailure+'No attempt reached Vulkan.'+LineEnding;
+ end;
+end;
+
+function TpvVulkanDeviceMemoryManager.LastAllocationFailure:TpvUTF8String;
+begin
+ fLock.Acquire;
+ try
+  result:=fLastAllocationFailure;
+ finally
+  fLock.Release;
+ end;
+end;
+
+function TpvVulkanDeviceMemoryManager.QueryMemoryBudget(out aMemoryBudget:TVkPhysicalDeviceMemoryBudgetPropertiesEXT):boolean;
+var MemoryProperties2:TVkPhysicalDeviceMemoryProperties2;
+begin
+
+ FillChar(aMemoryBudget,SizeOf(TVkPhysicalDeviceMemoryBudgetPropertiesEXT),#0);
+ aMemoryBudget.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+
+ result:=false;
+
+ if not (assigned(fDevice) and
+         assigned(fDevice.fInstance) and
+         assigned(fDevice.fPhysicalDevice) and
+         assigned(fDevice.fEnabledExtensionNames) and
+         (fDevice.fEnabledExtensionNames.IndexOf(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)>=0)) then begin
+  exit;
+ end;
+
+ FillChar(MemoryProperties2,SizeOf(TVkPhysicalDeviceMemoryProperties2),#0);
+ MemoryProperties2.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+ MemoryProperties2.pNext:=@aMemoryBudget;
+
+ if ((fDevice.fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) then begin
+  if assigned(fDevice.fInstance.Commands.Commands.GetPhysicalDeviceMemoryProperties2KHR) then begin
+   fDevice.fInstance.Commands.GetPhysicalDeviceMemoryProperties2KHR(fDevice.fPhysicalDevice.Handle,@MemoryProperties2);
+   result:=true;
+  end;
+ end else begin
+  if assigned(fDevice.fInstance.Commands.Commands.GetPhysicalDeviceMemoryProperties2) then begin
+   fDevice.fInstance.Commands.GetPhysicalDeviceMemoryProperties2(fDevice.fPhysicalDevice.Handle,@MemoryProperties2);
+   result:=true;
+  end;
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryManager.MemorySummary:TpvUTF8String;
+var Index:TpvSizeInt;
+    HeapIndex:TpvUInt32;
+    MemoryProperties:TVkPhysicalDeviceMemoryProperties;
+    MemoryBudget:TVkPhysicalDeviceMemoryBudgetPropertiesEXT;
+    HasBudget:boolean;
+    Line:TpvUTF8String;
+begin
+
+ result:='';
+
+ if not (assigned(fDevice) and assigned(fDevice.fPhysicalDevice)) then begin
+  exit;
+ end;
+
+ MemoryProperties:=fDevice.fPhysicalDevice.fMemoryProperties;
+
+ HasBudget:=QueryMemoryBudget(MemoryBudget);
+
+ // First the one line which answers the usual question at a glance: how much the card has, and how
+ // much of it the CPU can write into directly
+ result:='Vulkan memory: video memory '+TpvUTF8String(SizeToHumanReadableString(fVideoRAMSize))+
+         ', largest CPU-visible device-local heap ';
+ if fMaximumMemoryMappableDeviceLocalHeapSize>0 then begin
+  result:=result+TpvUTF8String(SizeToHumanReadableString(fMaximumMemoryMappableDeviceLocalHeapSize));
+ end else begin
+  result:=result+'none';
+ end;
+ if fReBAR then begin
+  result:=result+' (Resizable BAR or equivalent: yes)';
+ end else begin
+  result:=result+' (Resizable BAR or equivalent: no)';
+ end;
+ if fUMA then begin
+  result:=result+', unified memory';
+ end;
+ if not HasBudget then begin
+  result:=result+', no VK_EXT_memory_budget';
+ end;
+ result:=result+LineEnding;
+
+ for Index:=0 to TpvSizeInt(MemoryProperties.memoryHeapCount)-1 do begin
+  Line:='  Heap '+TpvUTF8String(IntToStr(Index))+': '+
+        TpvUTF8String(SizeToHumanReadableString(MemoryProperties.memoryHeaps[Index].size))+
+        ', '+VulkanMemoryHeapFlagsToText(MemoryProperties.memoryHeaps[Index].flags);
+  if HasBudget then begin
+   Line:=Line+', budget '+TpvUTF8String(SizeToHumanReadableString(MemoryBudget.heapBudget[Index]))+
+              ', usage '+TpvUTF8String(SizeToHumanReadableString(MemoryBudget.heapUsage[Index]));
+  end;
+  result:=result+Line+LineEnding;
+ end;
+
+ for Index:=0 to TpvSizeInt(MemoryProperties.memoryTypeCount)-1 do begin
+  HeapIndex:=MemoryProperties.memoryTypes[Index].heapIndex;
+  result:=result+'  Memory type '+TpvUTF8String(IntToStr(Index))+': heap '+TpvUTF8String(IntToStr(HeapIndex))+', '+
+          VulkanMemoryPropertyFlagsToText(MemoryProperties.memoryTypes[Index].propertyFlags)+LineEnding;
  end;
 
 end;
@@ -17298,6 +17715,20 @@ begin
   raise EpvVulkanMemoryAllocationException.Create('Can''t allocate zero-sized memory block');
  end;
 
+{$ifdef PasVulkanMemoryFaultInjection}
+ if (length(pvVulkanFaultInjectionFailAllocationName)>0) and
+    (Pos(pvVulkanFaultInjectionFailAllocationName,aName)>0) then begin
+  fLock.Acquire;
+  try
+   fAllocationAttempts:='';
+   NoteAllocationFailure(aName,aMemoryBlockSize,aMemoryBlockAlignment,aMemoryTypeBits,aMemoryRequiredPropertyFlags,aMemoryPreferredPropertyFlags,'injected by pvVulkanFaultInjectionFailAllocationName');
+  finally
+   fLock.Release;
+  end;
+  raise EpvVulkanOutOfDeviceMemoryException.Create;
+ end;
+{$endif}
+
  MemoryChunkFlags:=[];
 
  if TpvVulkanDeviceMemoryBlockFlag.PersistentMapped in aMemoryBlockFlags then begin
@@ -17365,23 +17796,31 @@ begin
 
   fLock.Acquire;
   try
+   fAllocationAttempts:='';
    // Allocate a block inside a new chunk
-   MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                  MemoryChunkFlags,
-                                                  aMemoryBlockSize,
-                                                  false,
-                                                  aMemoryTypeBits,
-                                                  aMemoryRequiredPropertyFlags,
-                                                  aMemoryPreferredPropertyFlags,
-                                                  aMemoryAvoidPropertyFlags,
-                                                  aMemoryPreferredNotPropertyFlags,
-                                                  aMemoryRequiredHeapFlags,
-                                                  aMemoryPreferredHeapFlags,
-                                                  aMemoryAvoidHeapFlags,
-                                                  aMemoryPreferredNotHeapFlags,
-                                                  @fMemoryChunkList,
-                                                  MemoryDedicatedAllocateInfoKHRPointer,
-                                                  aAllocationGroupID);
+   try
+    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
+                                                   MemoryChunkFlags,
+                                                   aMemoryBlockSize,
+                                                   false,
+                                                   aMemoryTypeBits,
+                                                   aMemoryRequiredPropertyFlags,
+                                                   aMemoryPreferredPropertyFlags,
+                                                   aMemoryAvoidPropertyFlags,
+                                                   aMemoryPreferredNotPropertyFlags,
+                                                   aMemoryRequiredHeapFlags,
+                                                   aMemoryPreferredHeapFlags,
+                                                   aMemoryAvoidHeapFlags,
+                                                   aMemoryPreferredNotHeapFlags,
+                                                   @fMemoryChunkList,
+                                                   MemoryDedicatedAllocateInfoKHRPointer,
+                                                   aAllocationGroupID);
+   except
+    on E:Exception do begin
+     NoteAllocationFailure(aName,aMemoryBlockSize,aMemoryBlockAlignment,aMemoryTypeBits,aMemoryRequiredPropertyFlags,aMemoryPreferredPropertyFlags,TpvUTF8String(E.ClassName+': '+E.Message));
+     raise;
+    end;
+   end;
    if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
     result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize,aName);
    end;
@@ -17401,6 +17840,8 @@ begin
 
   fLock.Acquire;
   try
+
+   fAllocationAttempts:='';
 
    // Try first to find the best already existent overall suitable memory chunk
    if assigned(fMemoryChunkList.First) then begin
@@ -17487,6 +17928,10 @@ begin
         on E:EpvVulkanMemoryAllocationException do begin
          result:=nil;
         end;
+        on E:EpvVulkanOutOfDeviceMemoryException do begin
+         // Not a reason to give up yet, the attempts below are smaller
+         result:=nil;
+        end;
        end;
       finally
        if not assigned(result) then begin
@@ -17541,6 +17986,10 @@ begin
        on E:EpvVulkanMemoryAllocationException do begin
         result:=nil;
        end;
+       on E:EpvVulkanOutOfDeviceMemoryException do begin
+        // Not a reason to give up yet, the single chunk of exactly the size below is smaller still
+        result:=nil;
+       end;
       end;
      finally
       if not assigned(result) then begin
@@ -17552,22 +18001,29 @@ begin
     // If also failed, try to allocate separate single chunk allocation, as a last resort before giving up
     if not assigned(result) then begin
      Alignment:=1; // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1
-     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                    MemoryChunkFlags+[TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk],
-                                                    aMemoryBlockSize,
-                                                    false,
-                                                    aMemoryTypeBits,
-                                                    aMemoryRequiredPropertyFlags,
-                                                    aMemoryPreferredPropertyFlags,
-                                                    aMemoryAvoidPropertyFlags,
-                                                    aMemoryPreferredNotPropertyFlags,
-                                                    aMemoryRequiredHeapFlags,
-                                                    aMemoryPreferredHeapFlags,
-                                                    aMemoryAvoidHeapFlags,
-                                                    aMemoryPreferredNotHeapFlags,
-                                                    @fMemoryChunkList,
-                                                    nil,
-                                                    aAllocationGroupID);
+     try
+      MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
+                                                     MemoryChunkFlags+[TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk],
+                                                     aMemoryBlockSize,
+                                                     false,
+                                                     aMemoryTypeBits,
+                                                     aMemoryRequiredPropertyFlags,
+                                                     aMemoryPreferredPropertyFlags,
+                                                     aMemoryAvoidPropertyFlags,
+                                                     aMemoryPreferredNotPropertyFlags,
+                                                     aMemoryRequiredHeapFlags,
+                                                     aMemoryPreferredHeapFlags,
+                                                     aMemoryAvoidHeapFlags,
+                                                     aMemoryPreferredNotHeapFlags,
+                                                     @fMemoryChunkList,
+                                                     nil,
+                                                     aAllocationGroupID);
+     except
+      on E:Exception do begin
+       NoteAllocationFailure(aName,aMemoryBlockSize,aMemoryBlockAlignment,aMemoryTypeBits,aMemoryRequiredPropertyFlags,aMemoryPreferredPropertyFlags,TpvUTF8String(E.ClassName+': '+E.Message));
+       raise;
+      end;
+     end;
      if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
       result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize,aName);
      end;
@@ -17603,6 +18059,12 @@ begin
 
  // Give up, when everything else failed
  if not assigned(result) then begin
+  fLock.Acquire;
+  try
+   NoteAllocationFailure(aName,aMemoryBlockSize,aMemoryBlockAlignment,aMemoryTypeBits,aMemoryRequiredPropertyFlags,aMemoryPreferredPropertyFlags,'no block in the chunk which was allocated for it');
+  finally
+   fLock.Release;
+  end;
   raise EpvVulkanMemoryAllocationException.Create('Couldn''t allocate memory block');
  end;
 
@@ -17734,39 +18196,52 @@ begin
 
  Index:=0;
 
- // Loop over all memory chunks
- MemoryChunk:=fMemoryChunkList.Last;
- while assigned(MemoryChunk) do begin
+ // Under the lock, so that a dump taken while another thread allocates, as after a failed allocation,
+ // does not walk a list which is being changed
+ fLock.Acquire;
+ try
 
-  s:='Memory chunk #'+IntToStr(Index)+': ';
-  if fUseAllocationGroupIDs then begin
-   s:=s+'AllocationGroupID '+IntToHex(MemoryChunk.fAllocationGroupID)+' - ';
+  // Loop over all memory chunks
+  MemoryChunk:=fMemoryChunkList.Last;
+  while assigned(MemoryChunk) do begin
+
+   s:='Memory chunk #'+IntToStr(Index)+': ';
+   if fUseAllocationGroupIDs then begin
+    s:=s+'AllocationGroupID '+IntToHex(MemoryChunk.fAllocationGroupID)+' - ';
+   end;
+
+   // Which memory type and heap, since a full heap is a full heap whatever the others still have
+   s:=s+'Type '+IntToStr(MemoryChunk.fMemoryTypeIndex)+' Heap '+IntToStr(MemoryChunk.fMemoryHeapIndex)+
+        ' '+TpvRawByteString(VulkanMemoryPropertyFlagsToText(MemoryChunk.fMemoryPropertyFlags))+' - ';
+
+   // Where this chunk begins on the GPU. A faulting address out of a GPU crash dump lies in this chunk
+   // when it falls between here and here plus Size, and the allocation it belonged to is the block
+   // whose offset covers the difference.
+   if MemoryChunk.fDeviceAddress<>0 then begin
+    s:=s+'DeviceAddress 0x'+LowerCase(IntToHex(TpvUInt64(MemoryChunk.fDeviceAddress),16))+' - ';
+   end;
+
+   s:=s+'Size '+SizeToHumanReadableString(MemoryChunk.fSize)+' - '+
+        'Used '+SizeToHumanReadableString(MemoryChunk.fUsed)+' - '+
+        'Non-used '+SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed);
+
+   if assigned(aStringList) then begin
+    aStringList.Add(s);
+   end else begin
+    WriteLn(s);
+   end;
+
+   inc(Size,MemoryChunk.fSize);
+   inc(Used,MemoryChunk.fUsed);
+
+   inc(Index);
+
+   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+
   end;
 
-  // Where this chunk begins on the GPU. A faulting address out of a GPU crash dump lies in this chunk
-  // when it falls between here and here plus Size, and the allocation it belonged to is the block
-  // whose offset covers the difference.
-  if MemoryChunk.fDeviceAddress<>0 then begin
-   s:=s+'DeviceAddress 0x'+LowerCase(IntToHex(TpvUInt64(MemoryChunk.fDeviceAddress),16))+' - ';
-  end;
-
-  s:=s+'Size '+SizeToHumanReadableString(MemoryChunk.fSize)+' - '+
-       'Used '+SizeToHumanReadableString(MemoryChunk.fUsed)+' - '+
-       'Non-used '+SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed);
-
-  if assigned(aStringList) then begin
-   aStringList.Add(s);
-  end else begin
-   WriteLn(s);
-  end;
-
-  inc(Size,MemoryChunk.fSize);
-  inc(Used,MemoryChunk.fUsed);
-
-  inc(Index);
-
-  MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
-
+ finally
+  fLock.Release;
  end;
 
  // Total memory usage
@@ -17904,7 +18379,13 @@ var HeapIndex,TypeIndex,ChunkIndex,BlockIndex:TpvSizeInt;
     First:Boolean;
     CountAddressBindings:TpvSizeInt;
     AddressBinding:TpvVulkanDeviceAddressBinding;
+    MemoryBudget:TVkPhysicalDeviceMemoryBudgetPropertiesEXT;
+    HasMemoryBudget:Boolean;
 begin
+
+ // The driver's own figures where it gives them. Without them the size of the heap stands in for the
+ // budget as before, but marked as such, since it would otherwise claim that all of it was available.
+ HasMemoryBudget:=QueryMemoryBudget(MemoryBudget);
 
  MemoryChunk:=fMemoryChunkList.First;
  while assigned(MemoryChunk) do begin
@@ -18033,7 +18514,14 @@ begin
      AddLine('      "Size": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
      AddLine('      "Budget": {');
      begin
-      AddLine('        "BudgetBytes": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
+      // BudgetBytes stays in either case, since tools which read this format expect it
+      if HasMemoryBudget then begin
+       AddLine('        "BudgetBytes": '+IntToStr(MemoryBudget.heapBudget[HeapIndex])+',');
+       AddLine('        "DriverUsageBytes": '+IntToStr(MemoryBudget.heapUsage[HeapIndex])+',');
+      end else begin
+       AddLine('        "BudgetBytes": '+IntToStr(fDevice.fPhysicalDevice.fMemoryProperties.memoryHeaps[HeapIndex].size)+',');
+       AddLine('        "BudgetIsHeapSize": true,');
+      end;
       AddLine('        "UsageBytes": '+IntToStr(BlockBytes));
      end;
      AddLine('      },');
@@ -19587,6 +20075,7 @@ begin
    finally
     aDestinationBuffer.Memory.UnmapMemory;
    end;
+   result:=aSize;
   end else begin
    raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
   end;

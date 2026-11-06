@@ -2941,6 +2941,15 @@ type EpvApplication=class(Exception)
 
        procedure DumpVulkanMemoryManager; virtual;
 
+       // The heaps and memory types of the device with their budget of the moment, line by line into the log
+       procedure LogVulkanMemorySummary(const aLevel:TpvInt32;const aWhere:TpvUTF8String);
+
+       // Everything there is to say after the device ran out of memory: the summary above, what the
+       // last failed allocation asked for and what each of its attempts was answered, and the chunks
+       // of the memory manager. Meant for the place which caught the exception, once its stack has
+       // unwound, so that no lock of the memory manager is still held.
+       procedure LogVulkanMemoryFailure(const aLevel:TpvInt32;const aWhere:TpvUTF8String);
+
        procedure SaveVulkanPipelineCache;
 
        function GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
@@ -3445,6 +3454,12 @@ var // Unassigned means nothing is attempted, which is what a program which neve
     // is the one that says what actually went wrong. The first crash of a run
     // is therefore always in <name>-1.crashlog.
     pvCrashLogCounter:TPasMPInt32=0;
+
+    // The memory of the Vulkan device in words (TpvVulkanDeviceMemoryManager.MemorySummary), taken
+    // once when the device has been created and written into every crash log from then on. Taken
+    // then and not at the crash, since a crash handler must not ask a device which may already be
+    // lost, and since it is the one thing which tells a full heap apart from a small one.
+    pvCrashReportVulkanMemorySummary:TpvUTF8String='';
 
     // Input recording and replay. Set from the command line, see the parameter parsing.
     //
@@ -4871,12 +4886,14 @@ begin
          DateTimeToStr(Now)+':'+LineEnding+
          LineEnding+
          aExceptionString+LineEnding+
-         LineEnding+
-         // Everything else the crash report backend knows, in one call, so that
-         // nothing is left out here by having been forgotten. The exception
-         // itself was already formatted into aExceptionString by the caller.
-         pvCrashReportContext+
          LineEnding;
+   if length(pvCrashReportVulkanMemorySummary)>0 then begin
+    Text:=Text+pvCrashReportVulkanMemorySummary+LineEnding;
+   end;
+   // Everything else the crash report backend knows, in one call, so that
+   // nothing is left out here by having been forgotten. The exception
+   // itself was already formatted into aExceptionString by the caller.
+   Text:=Text+pvCrashReportContext+LineEnding;
 
 {$ifdef fpc}
    RawText:=TpvRawByteString(Text);
@@ -14163,6 +14180,16 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
   end;
 
+  // Budget and usage per memory heap, for the diagnostics of the memory manager alone (see
+  // TpvVulkanDeviceMemoryManager.QueryMemoryBudget); nothing depends on it. It needs the second
+  // generation of the physical device queries, from Vulkan 1.1 or from the instance extension.
+  if (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)>=0) and
+     (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)<0) and
+     (((fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<>VK_API_VERSION_1_0) or
+      (fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0)) then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+  end;
+
   for Index:=0 to length(pvApplicationVulkanHooks)-1 do begin
    pvApplicationVulkanHooks[Index].SetupVulkanDevice(self,fVulkanDevice);
   end;
@@ -14204,6 +14231,12 @@ begin
     Log(LOG_INFO,'PasVulkanApplication','Device fault report: not offered by the driver');
    end;
   end;
+
+  // How much memory the device has and how much of it the CPU can see, once into the log and kept for
+  // every crash log from here on. Without it a report of a full graphics memory cannot tell a full
+  // twelve gigabyte heap apart from a full 256 megabyte window.
+  pvCrashReportVulkanMemorySummary:=fVulkanDevice.MemoryManager.MemorySummary;
+  LogVulkanMemorySummary(LOG_INFO,'PasVulkanApplication');
 
   if (length(fVulkanPipelineCacheFileName)>0) and FileExists(String(fVulkanPipelineCacheFileName)) then begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -17358,7 +17391,10 @@ begin
     end;
    end;
    else begin
-    if PresentResult<VK_SUCCESS then begin
+    if PresentResult=VK_ERROR_OUT_OF_DEVICE_MEMORY then begin
+     // As its own class, like every other full graphics memory, see VulkanCheckResult
+     raise EpvVulkanOutOfDeviceMemoryException.Create;
+    end else if PresentResult<VK_SUCCESS then begin
      raise EpvVulkanResultException.Create(PresentResult);
     end;
    end;
@@ -23570,6 +23606,16 @@ begin
          except
           on e:Exception do begin
            ExceptionString:=DumpExceptionCallStack(e);
+           // A full graphics memory says why in the crash log as well, as far as the memory manager
+           // knows it: what the failed allocation asked for and what each attempt was answered. The
+           // stack has unwound by now, so the lock which this reads under is free again.
+           if (e is EpvVulkanOutOfDeviceMemoryException) and assigned(fVulkanDevice) and assigned(fVulkanDevice.MemoryManager) then begin
+            try
+             ExceptionString:=ExceptionString+LineEnding+fVulkanDevice.MemoryManager.LastAllocationFailure;
+            except
+             // Deliberately silent, the exception itself is what has to be reported
+            end;
+           end;
 {$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
            __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
@@ -24033,6 +24079,56 @@ begin
    for Index:=0 to StringList.Count-1 do begin
     Line:=StringList[Index];
     TpvApplication.Log(LOG_INFO,'TpvApplication',Line);
+   end;
+  finally
+   FreeAndNil(StringList);
+  end;
+ end;
+end;
+
+procedure TpvApplication.LogVulkanMemorySummary(const aLevel:TpvInt32;const aWhere:TpvUTF8String);
+var StringList:TStringList;
+    Index:TpvSizeInt;
+begin
+ if assigned(fVulkanDevice) and assigned(fVulkanDevice.MemoryManager) then begin
+  StringList:=TStringList.Create;
+  try
+   StringList.Text:=String(fVulkanDevice.MemoryManager.MemorySummary);
+   for Index:=0 to StringList.Count-1 do begin
+    TpvApplication.Log(aLevel,aWhere,TpvUTF8String(StringList[Index]));
+   end;
+  finally
+   FreeAndNil(StringList);
+  end;
+ end;
+end;
+
+procedure TpvApplication.LogVulkanMemoryFailure(const aLevel:TpvInt32;const aWhere:TpvUTF8String);
+var StringList:TStringList;
+    Index:TpvSizeInt;
+begin
+ if assigned(fVulkanDevice) and assigned(fVulkanDevice.MemoryManager) then begin
+  // Each part on its own, so that one which fails does not take the others with it
+  try
+   LogVulkanMemorySummary(aLevel,aWhere);
+  except
+  end;
+  StringList:=TStringList.Create;
+  try
+   try
+    StringList.Text:=String(fVulkanDevice.MemoryManager.LastAllocationFailure);
+    for Index:=0 to StringList.Count-1 do begin
+     TpvApplication.Log(aLevel,aWhere,TpvUTF8String(StringList[Index]));
+    end;
+   except
+   end;
+   try
+    StringList.Clear;
+    fVulkanDevice.MemoryManager.Dump(StringList);
+    for Index:=0 to StringList.Count-1 do begin
+     TpvApplication.Log(aLevel,aWhere,TpvUTF8String(StringList[Index]));
+    end;
+   except
    end;
   finally
    FreeAndNil(StringList);
