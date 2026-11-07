@@ -440,7 +440,12 @@ var SlotIndex:TpvInt32;
 begin
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   if fFencesReady[InFlightFrameIndex] then begin
-   fFences[InFlightFrameIndex].WaitFor;
+   // Bounded, see TpvApplication.SettleFence
+   if assigned(pvApplication) then begin
+    pvApplication.SettleFence(fFences[InFlightFrameIndex],'frame generation compositor: destroying');
+   end else begin
+    fFences[InFlightFrameIndex].WaitFor;
+   end;
    fFencesReady[InFlightFrameIndex]:=false;
   end;
  end;
@@ -954,7 +959,8 @@ begin
   end;
 
   if fFencesReady[aInFlightFrameIndex] then begin
-   fFences[aInFlightFrameIndex].WaitFor;
+   // Bounded, see TpvApplication.SettleFence
+   pvApplication.SettleFence(fFences[aInFlightFrameIndex],'frame generation compositor: fence of the in-flight frame');
    fFences[aInFlightFrameIndex].Reset;
    fFencesReady[aInFlightFrameIndex]:=false;
    // The submit of this in-flight frame before has finished, so its time can be read.

@@ -1723,11 +1723,15 @@ type EpvApplication=class(Exception)
        constructor Create(const aApplication:TpvApplication); reintroduce;
        destructor Destroy; override;
        procedure Shutdown;
-       procedure Enqueue(const aJob:TpvApplicationPresenterJob);
+       // False when the queue stayed full for aTimeOut, or the thread is gone
+       function Enqueue(const aJob:TpvApplicationPresenterJob;const aTimeOut:TpvHighResolutionTime):boolean;
        function Busy:boolean;
        procedure Hurry;
-       procedure WaitForIdle;
+       // False when it was still busy after aTimeOut; true as well when the thread is gone
+       function WaitForIdle(const aTimeOut:TpvHighResolutionTime):boolean;
        function FetchResult:TVkResult;
+       // Whether the thread has ended, which outside of Shutdown only an exception makes it do
+       function Gone:boolean;
      end;
 
 {$if defined(Windows) and defined(PasVulkanWin32WindowThread) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
@@ -2444,6 +2448,32 @@ type EpvApplication=class(Exception)
        // zero when it does not, see TpvApplicationPresenterThread.Hurry.
        fAcquireWaitStartTime:TpvHighResolutionTime;
 
+       // How long a wait for the GPU or the presentation may take, in seconds, see PresentationTimeOut,
+       // LoadingPresentationTimeOut and DeviceHangTimeOut.
+       fPresentationTimeOut:TpvDouble;
+       fLoadingPresentationTimeOut:TpvDouble;
+       fDeviceHangTimeOut:TpvDouble;
+
+       // How many holds of the long time out there are besides the pauses of the hang watchdog, see
+       // BeginLoadingPresentationTimeOut.
+       fLoadingPresentationTimeOutCounter:TPasMPInt32;
+
+       // The device did not finish its work in time or was lost, see HandleDeviceHang. From then on
+       // nothing waits for it any more, and the way out reads nothing back from it.
+       fDeviceHung:boolean;
+
+       // And the crash report, the rescue save and the word to the player for it are done
+       fDeviceHangReported:boolean;
+
+       // How often in a row the presentation was started over because a wait for it ran out, with no
+       // frame presented since, see RequestPresentationResync.
+       fPresentationResyncCount:TpvInt32;
+
+       // Fences and semaphores which may still be pending somewhere while nothing waits for them any
+       // more, see AbandonVulkanObject.
+       fAbandonedVulkanObjects:array of TpvVulkanObject;
+       fCountAbandonedVulkanObjects:TpvSizeInt;
+
        // The swapchain images the presenter thread needs beyond DesiredCountSwapChainImages: as many as
        // it takes for the rendered frame it holds back while the next one already takes its images, beside
        // those the presentation keeps, once it spaces generated frames at all, see
@@ -2667,6 +2697,8 @@ type EpvApplication=class(Exception)
 
        procedure VulkanWaitIdle;
 
+       procedure VulkanWaitIdleOnTheWayOut;
+
        procedure CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 
        procedure CreateVulkanInstance;
@@ -2712,9 +2744,19 @@ type EpvApplication=class(Exception)
        procedure LockSwapChain;
        procedure UnlockSwapChain;
        function PresenterBusy:boolean;
+       function PresenterIdleTimeOut:TpvHighResolutionTime;
+       procedure WaitForPresenterThread;
        procedure WaitForPresenterIdle;
        procedure DestroyPresenterThread;
        procedure ApplyPresenterResult;
+       function GetEffectivePresentationTimeOut:TpvDouble;
+       function PresentationTimeOutNanoseconds:TpvUInt64;
+       function DeviceHangTimeOutNanoseconds:TpvUInt64;
+       procedure AbandonVulkanObject(const aObject:TpvVulkanObject);
+       procedure FreeAbandonedVulkanObjects(const aAll:boolean);
+       procedure HandleDeviceHang(const aSite:PAnsiChar;const aLost:boolean);
+       procedure RequestPresentationResync(const aSite:PAnsiChar);
+       function SettleAcquireFence(var aFence:TpvVulkanFence;var aSemaphore:TpvVulkanSemaphore;const aSite:PAnsiChar):boolean;
        function WaitForPresentID(const aPresentID,aTimeOut:TpvUInt64):TVkResult;
        procedure ChainPresentTimingInfo(const aPresentIndex:TpvInt32;var aPresentTimingsInfo:TVkPresentTimingsInfoEXT;var aPresentTimingInfo:TVkPresentTimingInfoEXT;var aNext:Pointer);
        procedure SetupPresentTimingReports;
@@ -2950,6 +2992,31 @@ type EpvApplication=class(Exception)
        // unwound, so that no lock of the memory manager is still held.
        procedure LogVulkanMemoryFailure(const aLevel:TpvInt32;const aWhere:TpvUTF8String);
 
+       // Waits for aFence, which the caller took for submitted, at most the presentation time out of the
+       // moment. Should it not have signalled by then, the device is asked whether it is still at work,
+       // see WaitForDeviceIdleBounded, which raises EpvVulkanDeviceHangException when it does not finish.
+       // Done with everything submitted to it and the fence still not signalled, the fence never really
+       // went out with a submit, or the presentation holds on to it: then it is replaced by a new one, the
+       // old one kept until the end, since it may still be pending somewhere, and the result is false.
+       // True when it signalled. aSite names the place for the log and the hang report.
+       function SettleFence(var aFence:TpvVulkanFence;const aSite:PAnsiChar):boolean;
+
+       // Waits until the device has done everything submitted to it so far, for at most DeviceHangTimeOut,
+       // and at least the presentation time out of the moment. Raises EpvVulkanDeviceHangException when it
+       // does not get there, or when the device is lost. Does nothing once the device was found hung.
+       procedure WaitForDeviceIdleBounded(const aSite:PAnsiChar);
+
+       // Called once when the program leaves because the device stopped responding, after the crash
+       // report and the crash save, before anything is torn down. For a word to the player, which only
+       // the program can find; does nothing here.
+       procedure DeviceHangNotice; virtual;
+
+       // The long time out of the loading, see LoadingPresentationTimeOut, also outside of a pause of
+       // the hang watchdog, such as for the first frames after a loading screen, which the driver may
+       // still hold up with compiling shaders. Nestable, each begin paired with an end.
+       procedure BeginLoadingPresentationTimeOut;
+       procedure EndLoadingPresentationTimeOut;
+
        procedure SaveVulkanPipelineCache;
 
        function GetSupportedDisplayModes(const aDisplayIndex:TpvInt32=0):TpvApplicationDisplayModes;
@@ -3027,6 +3094,25 @@ type EpvApplication=class(Exception)
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
 
        property StayActiveRegardlessOfVisibility:boolean read fStayActiveRegardlessOfVisibility write fStayActiveRegardlessOfVisibility;
+
+       // How long a wait for the GPU or for the presentation may take before it counts as stuck, in
+       // seconds. Then the presentation is started over, see SettleFence and RequestPresentationResync,
+       // instead of waiting on forever. One second by default, far beyond any frame. Only time spent
+       // waiting counts: the CPU stalling on loading or compiling shaders does not run it out.
+       property PresentationTimeOut:TpvDouble read fPresentationTimeOut write fPresentationTimeOut;
+
+       // The same while the hang watchdog is paused, see pvHangWatchdogBeginPause, which is how a program
+       // marks its loading screens and whatever else may keep the GPU busy for a long time, such as
+       // uploading a whole world or the driver compiling shaders, and while BeginLoadingPresentationTimeOut
+       // holds it. A minute by default.
+       property LoadingPresentationTimeOut:TpvDouble read fLoadingPresentationTimeOut write fLoadingPresentationTimeOut;
+
+       // How long the device gets to finish what was submitted to it once a wait ran out, at least the
+       // presentation time out of the moment, before it counts as hung, see WaitForDeviceIdleBounded.
+       property DeviceHangTimeOut:TpvDouble read fDeviceHangTimeOut write fDeviceHangTimeOut;
+
+       // Whether the device was found hung or lost, see EpvVulkanDeviceHangException
+       property DeviceHung:boolean read fDeviceHung;
 
        property ReinitializeGraphics:boolean read fReinitializeGraphics write fReinitializeGraphics;
 
@@ -4471,15 +4557,28 @@ begin
  result:=TpvUTF8String(ChangeFileExt(String(GetCrashLogFileName),'.hangreport'));
 end;
 
+// Where the main loop waits for the GPU or the presentation at the moment, nil
+// when it does not, see TpvApplication.SettleFence. Always a constant text, so
+// the watchdog thread may read it at any time without a lock.
+var PresentationWaitSite:PAnsiChar=nil;
+
 // What the engine itself can say about a freeze, see TpvHangWatchdogDetailsHook
 // for why this does as little as it does. Both values are read without a lock
 // and are meant to be: they are numbers left behind by threads which are, by
 // the time this runs, no longer moving.
 function HangWatchdogEngineDetails:TpvUTF8String;
+var Site:PAnsiChar;
 begin
  result:='';
  if assigned(pvApplication) then begin
   result:='frame='+TpvUTF8String(IntToStr(pvApplication.FrameCounter));
+ end;
+ Site:=PresentationWaitSite;
+ if assigned(Site) then begin
+  if length(result)>0 then begin
+   result:=result+' ';
+  end;
+  result:=result+'wait="'+TpvUTF8String(AnsiString(Site))+'"';
  end;
  // The engine tags the update thread densely on its way through a frame, and
  // WaitForDone prints the same value when it gives up. Taking it along costs
@@ -12233,12 +12332,26 @@ begin
 end;
 
 // The counts go up before the job is in the queue, so that Busy can never tell false for a job which is
-// queued but not yet put out. Only the main loop enqueues, so a full queue only waits for the thread.
-procedure TpvApplicationPresenterThread.Enqueue(const aJob:TpvApplicationPresenterJob);
+// queued but not yet put out. Only the main loop enqueues, so a full queue only waits for the thread, and
+// for no longer than aTimeOut: a thread which does not get its presents out, or is gone, would hold the
+// main loop for good otherwise.
+function TpvApplicationPresenterThread.Enqueue(const aJob:TpvApplicationPresenterJob;const aTimeOut:TpvHighResolutionTime):boolean;
+var StartTime:TpvHighResolutionTime;
 begin
+ result:=false;
+ StartTime:=0;
  while TPasMPInterlocked.Read(fCountJobs)>=CountJobSlots do begin
+  if Finished then begin
+   exit;
+  end;
+  if StartTime=0 then begin
+   StartTime:=fApplication.fHighResolutionTimer.GetTime;
+  end else if (fApplication.fHighResolutionTimer.GetTime-StartTime)>=aTimeOut then begin
+   exit;
+  end;
   TPasMP.Yield;
  end;
+ result:=true;
  fJobLock.Acquire;
  try
   TPasMPInterlocked.Increment(fCountJobs);
@@ -12258,27 +12371,43 @@ begin
  result:=TPasMPInterlocked.Read(fCountJobs)>0;
 end;
 
-// Waits until everything queued went out, which it then does without the spacing.
-procedure TpvApplicationPresenterThread.WaitForIdle;
+// Waits until everything queued went out, which it then does without the spacing, for at most aTimeOut.
+// A thread which is gone, after an exception which ended it, puts nothing out any more and is not
+// waited for, see TpvApplication.ApplyPresenterResult.
+function TpvApplicationPresenterThread.WaitForIdle(const aTimeOut:TpvHighResolutionTime):boolean;
+var StartTime:TpvHighResolutionTime;
 begin
+ result:=true;
  if Busy then begin
   TPasMPInterlocked.Write(fFlush,TPasMPBool32(true));
   try
-   while Busy do begin
+   StartTime:=fApplication.fHighResolutionTimer.GetTime;
+   while Busy and not Finished do begin
+    if (fApplication.fHighResolutionTimer.GetTime-StartTime)>=aTimeOut then begin
+     result:=false;
+     break;
+    end;
     fIdleEvent.WaitFor(1);
    end;
   finally
    TPasMPInterlocked.Write(fFlush,TPasMPBool32(false));
   end;
  end;
- // The frame fences go with the swapchain, which this is waited for before it is made anew, see
- // TpvApplication.WaitForPresenterIdle. Nothing here touches the field until the next job.
- fLastPresentReadyFence:=VK_NULL_HANDLE;
+ if result then begin
+  // The frame fences go with the swapchain, which this is waited for before it is made anew, see
+  // TpvApplication.WaitForPresenterIdle. Nothing here touches the field until the next job.
+  fLastPresentReadyFence:=VK_NULL_HANDLE;
+ end;
 end;
 
 function TpvApplicationPresenterThread.FetchResult:TVkResult;
 begin
  result:=TVkResult(TPasMPInterlocked.Exchange(fResult,TPasMPInt32(VK_SUCCESS)));
+end;
+
+function TpvApplicationPresenterThread.Gone:boolean;
+begin
+ result:=Finished;
 end;
 
 // Waits for a present to be shown, in slices of PresenterSliceTimeOut, so that the main loop gets the
@@ -12837,6 +12966,16 @@ begin
  fSkipNextDrawFrame:=false;
 
  fStayActiveRegardlessOfVisibility:=false;
+
+ fPresentationTimeOut:=1.0;
+ fLoadingPresentationTimeOut:=60.0;
+ fDeviceHangTimeOut:=10.0;
+ fLoadingPresentationTimeOutCounter:=0;
+ fDeviceHung:=false;
+ fDeviceHangReported:=false;
+ fPresentationResyncCount:=0;
+ fAbandonedVulkanObjects:=nil;
+ fCountAbandonedVulkanObjects:=0;
 
  fWindowMinimizedOrHidden:=false;
 
@@ -13841,7 +13980,7 @@ begin
 end;
 
 procedure TpvApplication.VulkanWaitIdle;
-var Index,SubIndex:TpvInt32;
+var Index:TpvInt32;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.VulkanWaitIdle');
@@ -13849,9 +13988,7 @@ begin
  try
   if assigned(fVulkanDevice) then begin
    // Its presents wait on work of the device, and are not waited for by the device idle wait.
-   if assigned(fPresenterThread) then begin
-    fPresenterThread.WaitForIdle;
-   end;
+   WaitForPresenterThread;
    if fUpdateWaitsForGPU then begin
     if fUseExtraUpdateThread and assigned(fUpdateThread) then begin
      fUpdateThread.WaitForDone;
@@ -13868,40 +14005,329 @@ begin
      end;
     end;
    end;
-{$ifdef PasVulkanNoThreadSafeQueue}
-   fVulkanDevice.WaitIdle;
-{$else}
-   fVulkanDevice.ThreadSafeWaitIdle;
-{$endif}
+   // Bounded, and instead of the device wait idle, which can neither be given a time out nor be left
+   // to other threads, since it held every queue lock for as long as it took. The probe covers every
+   // queue, so that the fences below are done with at once, except those of the presentation.
+   WaitForDeviceIdleBounded('VulkanWaitIdle');
    for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
     if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
-     fVulkanPresentCompleteFences[Index].WaitFor;
+     SettleAcquireFence(fVulkanPresentCompleteFences[Index],fVulkanPresentCompleteSemaphores[Index],'VulkanWaitIdle: present complete fence');
      fVulkanPresentCompleteFences[Index].Reset;
      fVulkanPresentCompleteFencesReady[Index]:=false;
     end;
     if (Index<length(fVulkanWaitFencesReady)) and fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
-     fVulkanWaitFences[Index].WaitFor;
+     SettleFence(fVulkanWaitFences[Index],'VulkanWaitIdle: in-flight fence');
      fVulkanWaitFences[Index].Reset;
      fVulkanWaitFencesReady[Index]:=false;
     end;
    end;
-   for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
-    for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
-     if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
-      fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
-     end;
-    end;
-   end;
-{$ifdef PasVulkanNoThreadSafeQueue}
-   fVulkanDevice.WaitIdle;
-{$else}
-   fVulkanDevice.ThreadSafeWaitIdle;
-{$endif}
   end;
  finally
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.VulkanWaitIdle');
 {$ifend}
+ end;
+end;
+
+// On the way out, after the main loop: a device which stops responding just then is only noted, see
+// HandleDeviceHang, and the teardown goes on without waiting for it any more, instead of being cut short
+// by the exception.
+procedure TpvApplication.VulkanWaitIdleOnTheWayOut;
+begin
+ try
+  VulkanWaitIdle;
+ except
+  on EpvVulkanDeviceHangException do begin
+   fDeviceHung:=true;
+  end;
+ end;
+end;
+
+// The time out of the moment: the long one for the stretches the hang watchdog is paused for, since
+// those are the ones where loading and compiling shaders may keep the GPU busy for a long time, see
+// pvHangWatchdogBeginPause, and for those held by BeginLoadingPresentationTimeOut, and the short one
+// everywhere else.
+function TpvApplication.GetEffectivePresentationTimeOut:TpvDouble;
+begin
+ if pvHangWatchdogPaused or (TPasMPInterlocked.Read(fLoadingPresentationTimeOutCounter)>0) then begin
+  result:=Max(fPresentationTimeOut,fLoadingPresentationTimeOut);
+ end else begin
+  result:=fPresentationTimeOut;
+ end;
+ result:=Min(Max(result,0.001),86400.0);
+end;
+
+function TpvApplication.PresentationTimeOutNanoseconds:TpvUInt64;
+begin
+ result:=TpvUInt64(round(GetEffectivePresentationTimeOut*1e9));
+end;
+
+// At least as long as the wait which led to the question
+function TpvApplication.DeviceHangTimeOutNanoseconds:TpvUInt64;
+begin
+ result:=TpvUInt64(round(Min(Max(fDeviceHangTimeOut,GetEffectivePresentationTimeOut),86400.0)*1e9));
+end;
+
+// Kept until the device goes, see FreeAbandonedVulkanObjects, rather than destroyed: an object which may
+// still be pending in the presentation or in a submit must not be destroyed under it, and nothing waits
+// for it any more which would tell when that is over.
+procedure TpvApplication.AbandonVulkanObject(const aObject:TpvVulkanObject);
+begin
+ if assigned(aObject) then begin
+  if length(fAbandonedVulkanObjects)<=fCountAbandonedVulkanObjects then begin
+   SetLength(fAbandonedVulkanObjects,(fCountAbandonedVulkanObjects+1)*2);
+  end;
+  fAbandonedVulkanObjects[fCountAbandonedVulkanObjects]:=aObject;
+  inc(fCountAbandonedVulkanObjects);
+ end;
+end;
+
+// All of them right before the device goes, otherwise only the fences which have signalled after all:
+// a semaphore cannot be asked whether it is still pending.
+procedure TpvApplication.FreeAbandonedVulkanObjects(const aAll:boolean);
+var Index,Count:TpvSizeInt;
+    VulkanObject:TpvVulkanObject;
+    FreeNow:boolean;
+begin
+ Count:=0;
+ for Index:=0 to fCountAbandonedVulkanObjects-1 do begin
+  VulkanObject:=fAbandonedVulkanObjects[Index];
+  FreeNow:=aAll;
+  if (not FreeNow) and (VulkanObject is TpvVulkanFence) then begin
+   try
+    FreeNow:=TpvVulkanFence(VulkanObject).GetStatus=VK_SUCCESS;
+   except
+    FreeNow:=false;
+   end;
+  end;
+  if FreeNow then begin
+   try
+    VulkanObject.Free;
+   except
+    // Nothing to be done about it on the way out of a broken presentation
+   end;
+  end else begin
+   fAbandonedVulkanObjects[Count]:=VulkanObject;
+   inc(Count);
+  end;
+ end;
+ for Index:=Count to fCountAbandonedVulkanObjects-1 do begin
+  fAbandonedVulkanObjects[Index]:=nil;
+ end;
+ fCountAbandonedVulkanObjects:=Count;
+ if Count=0 then begin
+  fAbandonedVulkanObjects:=nil;
+ end;
+end;
+
+// The device did not finish its work in time, or was lost. From here on nothing waits for it any more,
+// and the exception takes the program out of its main loop.
+//
+// The crash report, the rescue save and the word to the player come first, right here, while the program
+// is still whole: on its way out of the main loop the exception passes the teardown of the current
+// screen, which takes the game with it before Run gets to see the exception. The rescue save reads
+// nothing back from the device, which the hard crash flag tells it, and the watch is held while the
+// player reads the notice.
+procedure TpvApplication.HandleDeviceHang(const aSite:PAnsiChar;const aLost:boolean);
+var Text,Report:String;
+    Site:String;
+    FirstTime:boolean;
+begin
+ FirstTime:=not fDeviceHung;
+ fDeviceHung:=true;
+ if assigned(aSite) then begin
+  Site:=String(AnsiString(aSite));
+ end else begin
+  Site:='?';
+ end;
+ if aLost then begin
+  Text:='The Vulkan device was lost while waiting at '+Site;
+ end else begin
+  Text:='The GPU did not finish its work within '+FloatToStrF(Min(Max(fDeviceHangTimeOut,GetEffectivePresentationTimeOut),86400.0),ffFixed,8,1)+' s, waiting at '+Site;
+ end;
+ if FirstTime then begin
+  pvHangWatchdogWriteNote(TpvUTF8String(Text));
+  Report:=EpvVulkanDeviceHangException.ClassName+': '+Text;
+{$ifdef fpc}
+  Report:=Report+LineEnding+DumpCallStack;
+{$endif}
+  try
+   LogCrash(TpvUTF8String(Report),true);
+  except
+   // The report is a help, not a condition for the way out
+  end;
+  fDeviceHangReported:=true;
+  if GetCurrentThreadId=MainThreadID then begin
+   pvHangWatchdogBeginPause;
+   try
+    try
+     DeviceHangNotice;
+    except
+     // A notice which fails is not worth anything on the way out
+    end;
+   finally
+    pvHangWatchdogEndPause;
+   end;
+  end;
+ end;
+ raise EpvVulkanDeviceHangException.Create(Text);
+end;
+
+// A wait for the presentation ran out and it is started over: with a new swapchain, which brings new
+// fences and semaphores, and when that does not help either, with a new surface. Never given up on, so
+// long as the device itself still works, see WaitForDeviceIdleBounded; the main loop keeps turning in
+// between, so the window stays alive.
+procedure TpvApplication.RequestPresentationResync(const aSite:PAnsiChar);
+var Site:TpvUTF8String;
+begin
+ if assigned(aSite) then begin
+  Site:=TpvUTF8String(AnsiString(aSite));
+ end else begin
+  Site:='?';
+ end;
+ if fPresentationResyncCount<High(TpvInt32) then begin
+  inc(fPresentationResyncCount);
+ end;
+ pvHangWatchdogWriteNote('presentation wait at '+Site+' ran out after '+TpvUTF8String(FloatToStrF(GetEffectivePresentationTimeOut,ffFixed,8,1))+' s, starting the presentation over ('+TpvUTF8String(IntToStr(fPresentationResyncCount))+' in a row)');
+ if fPresentationResyncCount>=3 then begin
+  if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                            TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+   fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+  end;
+ end else begin
+  if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                            TAcquireVulkanBackBufferState.RecreateSurface,
+                                            TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+   fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+  end;
+ end;
+end;
+
+function TpvApplication.SettleFence(var aFence:TpvVulkanFence;const aSite:PAnsiChar):boolean;
+var WaitResult:TVkResult;
+    PreviousSite:PAnsiChar;
+    Site:TpvUTF8String;
+begin
+ result:=true;
+ if not assigned(aFence) then begin
+  exit;
+ end;
+ PreviousSite:=PresentationWaitSite;
+ PresentationWaitSite:=aSite;
+ try
+  try
+   if fDeviceHung then begin
+    WaitResult:=aFence.GetStatus;
+   end else begin
+    WaitResult:=aFence.WaitFor(PresentationTimeOutNanoseconds);
+   end;
+  except
+   on e:EpvVulkanResultException do begin
+    if e.ResultCode=VK_ERROR_DEVICE_LOST then begin
+     WaitResult:=VK_ERROR_DEVICE_LOST;
+    end else begin
+     raise;
+    end;
+   end;
+  end;
+  if WaitResult=VK_SUCCESS then begin
+   exit;
+  end;
+  if assigned(aSite) then begin
+   Site:=TpvUTF8String(AnsiString(aSite));
+  end else begin
+   Site:='?';
+  end;
+  if (WaitResult=VK_ERROR_DEVICE_LOST) and not fDeviceHung then begin
+   HandleDeviceHang(aSite,true);
+  end;
+  if not fDeviceHung then begin
+   // Ran out. Whether the device is merely slow or done with everything is what the probe tells,
+   // and it raises when the device is neither.
+   pvHangWatchdogWriteNote('fence at '+Site+' not signalled after '+TpvUTF8String(FloatToStrF(GetEffectivePresentationTimeOut,ffFixed,8,1))+' s, asking the device whether it is still at work');
+   WaitForDeviceIdleBounded(aSite);
+   if aFence.GetStatus=VK_SUCCESS then begin
+    exit;
+   end;
+   pvHangWatchdogWriteNote('fence at '+Site+' never signalled although the device is done, replaced by a new one');
+  end;
+  // The device is done with everything submitted to it, or nothing is asked of it any more, and the
+  // fence is still not signalled: it never really went out with a submit, or the presentation holds on
+  // to it. Kept rather than destroyed, see AbandonVulkanObject, and a new one in its place.
+  AbandonVulkanObject(aFence);
+  aFence:=nil;
+  aFence:=TpvVulkanFence.Create(fVulkanDevice);
+  result:=false;
+ finally
+  PresentationWaitSite:=PreviousSite;
+ end;
+end;
+
+// The same for a fence of an acquire, whose semaphore the presentation may still signal just as well, so
+// that it is given up along with the fence.
+function TpvApplication.SettleAcquireFence(var aFence:TpvVulkanFence;var aSemaphore:TpvVulkanSemaphore;const aSite:PAnsiChar):boolean;
+begin
+ result:=SettleFence(aFence,aSite);
+ if (not result) and assigned(aSemaphore) then begin
+  AbandonVulkanObject(aSemaphore);
+  aSemaphore:=nil;
+  aSemaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+ end;
+end;
+
+procedure TpvApplication.WaitForDeviceIdleBounded(const aSite:PAnsiChar);
+var ProbeResult:TVkResult;
+    PreviousSite:PAnsiChar;
+begin
+ if (not assigned(fVulkanDevice)) or fDeviceHung then begin
+  exit;
+ end;
+ PreviousSite:=PresentationWaitSite;
+ PresentationWaitSite:=aSite;
+ try
+  try
+   ProbeResult:=fVulkanDevice.ProbeIdle(DeviceHangTimeOutNanoseconds);
+  except
+   on e:EpvVulkanResultException do begin
+    if e.ResultCode=VK_ERROR_DEVICE_LOST then begin
+     ProbeResult:=VK_ERROR_DEVICE_LOST;
+    end else begin
+     raise;
+    end;
+   end;
+  end;
+  case ProbeResult of
+   VK_SUCCESS:begin
+    FreeAbandonedVulkanObjects(false);
+   end;
+   VK_TIMEOUT:begin
+    HandleDeviceHang(aSite,false);
+   end;
+   VK_ERROR_DEVICE_LOST:begin
+    HandleDeviceHang(aSite,true);
+   end;
+   else begin
+    VulkanCheckResult(ProbeResult);
+   end;
+  end;
+ finally
+  PresentationWaitSite:=PreviousSite;
+ end;
+end;
+
+procedure TpvApplication.DeviceHangNotice;
+begin
+end;
+
+procedure TpvApplication.BeginLoadingPresentationTimeOut;
+begin
+ TPasMPInterlocked.Increment(fLoadingPresentationTimeOutCounter);
+end;
+
+procedure TpvApplication.EndLoadingPresentationTimeOut;
+begin
+ if TPasMPInterlocked.Read(fLoadingPresentationTimeOutCounter)>0 then begin
+  TPasMPInterlocked.Decrement(fLoadingPresentationTimeOutCounter);
  end;
 end;
 
@@ -14668,6 +15094,9 @@ begin
    pvApplicationVulkanHooks[Index].BeforeDestroyVulkanDevice(self,fVulkanDevice);
   end;
  end;
+ // Whatever was given up while it may still have been pending, see AbandonVulkanObject: the swapchain
+ // and with it the presentation are gone by now, and so is everything submitted
+ FreeAbandonedVulkanObjects(true);
  FreeAndNil(fVulkanDevice);
  FreeAndNil(fVulkanInstance);
 //VulkanPresentationSurface:=nil;
@@ -15098,7 +15527,9 @@ begin
  fVulkanPresentCompleteFencesReady:=nil;
  for Index:=0 to length(fGeneratedFrameAcquireFences)-1 do begin
   if fGeneratedFrameAcquireFencesReady[Index] then begin
-   fGeneratedFrameAcquireFences[Index].WaitFor;
+   // Bounded, see SettleFence: one which never signals is kept along with its semaphore instead of
+   // being destroyed under the presentation, and what is freed below are the new ones in their place
+   SettleAcquireFence(fGeneratedFrameAcquireFences[Index],fGeneratedFrameAcquireSemaphores[Index],'destroying the swapchain: generated frame acquire fence');
   end;
   FreeAndNil(fGeneratedFrameAcquireFences[Index]);
   FreeAndNil(fGeneratedFrameAcquireSemaphores[Index]);
@@ -15794,9 +16225,12 @@ begin
     fVulkanWaitFencesReady[InFlightFenceIndex] then begin
   fVulkanEventLock.Acquire;
   try
+   // Signalled already is just as good as waited for
+   OK:=true;
    if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
     if fBlocking then begin
-     fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+     // Bounded, see SettleFence
+     SettleFence(fVulkanWaitFences[InFlightFenceIndex],'wait for the previous frame');
      OK:=true;
     end else begin
      OK:=false;
@@ -15825,7 +16259,8 @@ begin
    if (InFlightFenceIndex>=0) and
       fVulkanWaitFencesReady[InFlightFenceIndex] then begin
     if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
-     fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+     // Bounded, see SettleFence
+     SettleFence(fVulkanWaitFences[InFlightFenceIndex],'wait for all in-flight frames');
     end;
     fVulkanWaitFences[InFlightFenceIndex].Reset;
     fVulkanWaitFencesReady[InFlightFenceIndex]:=false;
@@ -15849,7 +16284,7 @@ var Target,TimeOut:TpvUInt64;
     PacingSorted:array[0..FramePacingHistorySize-1] of TpvInt64;
     PacingTemp:TpvInt64;
     RefreshRate:TpvDouble;
-    FrameFenceTimedOut,PresentWaitForGeneratedFrames,PresentWaitFailed:boolean;
+    PresentWaitForGeneratedFrames,PresentWaitFailed:boolean;
     DisplayWaitStartTime:TpvHighResolutionTime;
     Latency:TpvInt32;
 begin
@@ -16017,25 +16452,20 @@ begin
       if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
        fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
        if assigned(PrepreviousFrameFrence) then begin
-        FrameFenceTimedOut:=false;
         if fBlocking then begin
          // Bounded on purpose. An unbounded wait here takes the whole application down when the
          // fence never signals, which does happen: the frame it belongs to may never have been
-         // presented at all. One second is far beyond any legitimate frame, so reaching it means
-         // something upstream went wrong, and freezing is the worst possible answer to that.
-         FrameFenceTimedOut:=PrepreviousFrameFrence.WaitFor(1000000000)=VK_TIMEOUT;
-        end;
-        if FrameFenceTimedOut then begin
-         // Left pending and untouched, because resetting a fence which may still be in use would
-         // be a far worse answer than one unsynchronised frame. The next frame waits for it again.
-         fVulkanFrameFencesReady:=fVulkanFrameFencesReady or PrepreviousFrameFrenceMask;
-         Log(LOG_VERBOSE,'TpvApplication.WaitForSwapChainLatency','Frame fence did not signal within one second, continuing unsynchronised');
+         // presented at all. See SettleFence: the presentation time out is far beyond any legitimate
+         // frame, then the device is asked, and a fence which still has not signalled once the device
+         // is done with everything else is replaced, instead of being waited for again by every frame,
+         // and a device which is not done is a hung one.
+         if not SettleFence(fVulkanFrameFences[PrepreviousFrameFrenceIndex],'frame latency: frame fence before the previous frame') then begin
 {$ifdef PasVulkanFrameTrace}
-         pvFrameTraceAdd(pvFrameTraceKindFenceStuck,PrepreviousFrameFrenceIndex,TpvUInt64(PrepreviousFrameFrence.Handle),TpvUInt64(fVulkanWaitSemaphore.Handle));
+          pvFrameTraceAdd(pvFrameTraceKindFenceStuck,PrepreviousFrameFrenceIndex,TpvUInt64(PrepreviousFrameFrence.Handle),TpvUInt64(fVulkanWaitSemaphore.Handle));
 {$endif}
-        end else begin
-         PrepreviousFrameFrence.Reset;
+         end;
         end;
+        fVulkanFrameFences[PrepreviousFrameFrenceIndex].Reset;
        end;
       end;
      except
@@ -16168,11 +16598,19 @@ var RecreationTries,
     ImageIndex,FrameIndex,NextInFlightFrameIndex,InFlightFenceIndex:TpvInt32;
     TimeOut:TpvUInt64;
     AcquireResult:TVkResult;
+    AcquireStartTime:TpvHighResolutionTime;
+    Resync:boolean;
 begin
 
  result:=false;
 
  fVulkanSurfaceRecreated:=false;
+
+ // A device found hung is not asked for anything any more. Should the exception which said so have been
+ // caught somewhere on its way out of the main loop, it is raised here once more.
+ if fDeviceHung then begin
+  raise EpvVulkanDeviceHangException.Create('The Vulkan device stopped responding');
+ end;
 
  try
 
@@ -16200,12 +16638,17 @@ begin
       end;
 
       TAcquireVulkanBackBufferState.WaitOnPreviousFrames:begin
+       // Every wait here is bounded, see SettleFence: one which runs out without the device being
+       // at work leaves a fence which never signals, and the presentation is started over.
+       Resync:=false;
        if fWaitOnPreviousFrames then begin
         for ImageIndex:=0 to fCountSwapChainImages-1 do begin
          if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
           if fVulkanPresentCompleteFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
            if fBlocking then begin
-            fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+            if not SettleAcquireFence(fVulkanPresentCompleteFences[ImageIndex],fVulkanPresentCompleteSemaphores[ImageIndex],'acquire: previous present complete fence') then begin
+             Resync:=true;
+            end;
            end else begin
             exit;
            end;
@@ -16216,7 +16659,7 @@ begin
          if fVulkanWaitFencesReady[ImageIndex] then begin
           if fVulkanWaitFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
            if fBlocking then begin
-            fVulkanWaitFences[ImageIndex].WaitFor;
+            SettleFence(fVulkanWaitFences[ImageIndex],'acquire: previous in-flight fence');
            end else begin
             exit;
            end;
@@ -16225,24 +16668,29 @@ begin
           fVulkanWaitFencesReady[ImageIndex]:=false;
          end;
         end;
-{$ifdef PasVulkanNoThreadSafeQueue}
-        fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
-{$else}
-        fVulkanDevice.ThreadSafeWaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
-{$endif}
+        // Even when fBlocking is false, for to satisfy the validation layers in some edge-cases. Bounded,
+        // see WaitForDeviceIdleBounded.
+        WaitForDeviceIdleBounded('acquire: wait on previous frames');
         for FrameIndex:=0 to MaxInFlightFrames-1 do begin
          fVulkanInFlightFenceIndices[FrameIndex]:=-1;
         end;
        end;
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
+       if Resync then begin
+        RequestPresentationResync('acquire: previous present complete fence');
+       end else begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
+       end;
        continue;
       end;
 
       TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence:begin
+       Resync:=false;
        if fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex] then begin
         if fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].GetStatus<>VK_SUCCESS then begin
          if fBlocking then begin
-          fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].WaitFor;
+          if not SettleAcquireFence(fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],'acquire: present complete fence') then begin
+           Resync:=true;
+          end;
          end else begin
           break;
          end;
@@ -16250,7 +16698,11 @@ begin
         fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].Reset;
         fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=false;
        end;
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.CheckSettings;
+       if Resync then begin
+        RequestPresentationResync('acquire: present complete fence');
+       end else begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.CheckSettings;
+       end;
        continue;
       end;
 
@@ -16270,10 +16722,12 @@ begin
       TAcquireVulkanBackBufferState.Acquire:begin
        try
         if fBlocking then begin
-         if fCountSwapChainImages>1 then begin
-          TimeOut:=TpvUInt64(high(TpvUInt64));
-         end else begin
-          TimeOut:=1000000000; // 1e+9 nanoseconds = 1000 milliseconds = 1 second, for AMD drivers, which have a immediate-present-mode deadlock problem at fullscreen otherwise
+         // Never without a time out: an image which never comes free, as with a presentation which holds
+         // on to its images or a lost device, held the whole program forever. Running out starts the
+         // presentation over below.
+         TimeOut:=PresentationTimeOutNanoseconds;
+         if (fCountSwapChainImages<=1) and (TimeOut>TpvUInt64(1000000000)) then begin
+          TimeOut:=1000000000; // at most 1 second, for AMD drivers, which have a immediate-present-mode deadlock problem at fullscreen otherwise
          end;
         end else begin
          TimeOut:=0;
@@ -16292,13 +16746,19 @@ begin
         // be matched against the acquire which should have made its wait come true
         pvFrameTraceAdd(pvFrameTraceKindAcquire,fSwapChainImageCounterIndex,TpvUInt64(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex].Handle));
 {$endif}
-        LockSwapChain;
+        AcquireStartTime:=fHighResolutionTimer.GetTime;
+        PresentationWaitSite:='acquire: next swapchain image';
         try
-         AcquireResult:=fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
-                                                          fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
-                                                          TimeOut);
+         LockSwapChain;
+         try
+          AcquireResult:=fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
+                                                           fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
+                                                           TimeOut);
+         finally
+          UnlockSwapChain;
+         end;
         finally
-         UnlockSwapChain;
+         PresentationWaitSite:=nil;
         end;
         if (AcquireResult<>VK_TIMEOUT) and (AcquireResult<>VK_NOT_READY) then begin
          fAcquireWaitStartTime:=0;
@@ -16335,14 +16795,21 @@ begin
           end;
          end;
          else {VK_TIMEOUT:}begin
+          if fAcquireWaitStartTime=0 then begin
+           fAcquireWaitStartTime:=AcquireStartTime;
+          end;
+          if (fHighResolutionTimer.GetTime-fAcquireWaitStartTime)>=fHighResolutionTimer.FromNanoseconds(TpvInt64(PresentationTimeOutNanoseconds)) then begin
+           // No image for the whole time out, over however many tries: the presentation holds on to its
+           // images and does not give them back. It is started over, rather than waited for any longer.
+           fAcquireWaitStartTime:=0;
+           RequestPresentationResync('acquire: next swapchain image');
+           continue;
+          end;
           // No image free for a millisecond already: when the presenter thread holds one back, it puts
           // it out right away.
-          if PresenterBusy then begin
-           if fAcquireWaitStartTime=0 then begin
-            fAcquireWaitStartTime:=fHighResolutionTimer.GetTime;
-           end else if (fHighResolutionTimer.GetTime-fAcquireWaitStartTime)>fHighResolutionTimer.FromFloatSeconds(0.001) then begin
-            fPresenterThread.Hurry;
-           end;
+          if PresenterBusy and
+             ((fHighResolutionTimer.GetTime-fAcquireWaitStartTime)>fHighResolutionTimer.FromFloatSeconds(0.001)) then begin
+           fPresenterThread.Hurry;
           end;
           break;
          end;
@@ -16369,13 +16836,15 @@ begin
       end;
 
       TAcquireVulkanBackBufferState.WaitOnFence:begin
+       // Bounded, see SettleFence. A fence replaced there was never submitted, and the device is done
+       // with everything else, so the frame may go on with the new one.
        if fWaitOnPreviousFrame then begin
         InFlightFenceIndex:=fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex];
         if (InFlightFenceIndex>=0) and
            fVulkanWaitFencesReady[InFlightFenceIndex] then begin
          if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
           if fBlocking then begin
-           fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+           SettleFence(fVulkanWaitFences[InFlightFenceIndex],'acquire: in-flight fence of the previous frame');
           end else begin
            break;
           end;
@@ -16390,7 +16859,7 @@ begin
           fVulkanWaitFencesReady[InFlightFenceIndex] then begin
         if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
          if fBlocking then begin
-          fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+          SettleFence(fVulkanWaitFences[InFlightFenceIndex],'acquire: in-flight fence of this in-flight frame');
          end else begin
           break;
          end;
@@ -16402,7 +16871,7 @@ begin
        if fVulkanWaitFencesReady[fSwapChainImageIndex] then begin
         if fVulkanWaitFences[fSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
          if fBlocking then begin
-          fVulkanWaitFences[fSwapChainImageIndex].WaitFor;
+          SettleFence(fVulkanWaitFences[fSwapChainImageIndex],'acquire: in-flight fence of the swapchain image');
          end else begin
           break;
          end;
@@ -16502,24 +16971,22 @@ begin
         end;
        end;
 
+       // Bounded, and the device first, so that the fences of its work are done with at once. What is left
+       // are the fences of the presentation, and one which never signals is replaced, see SettleFence: it
+       // waited forever here before, and this is the very place a resize or a broken present comes to.
+       WaitForDeviceIdleBounded('recreating the swapchain');
        for ImageIndex:=0 to fCountSwapChainImages-1 do begin
         if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
-         fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+         SettleAcquireFence(fVulkanPresentCompleteFences[ImageIndex],fVulkanPresentCompleteSemaphores[ImageIndex],'recreating the swapchain: present complete fence');
          fVulkanPresentCompleteFences[ImageIndex].Reset;
          fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
         end;
         if fVulkanWaitFencesReady[ImageIndex] then begin
-         fVulkanWaitFences[ImageIndex].WaitFor;
+         SettleFence(fVulkanWaitFences[ImageIndex],'recreating the swapchain: in-flight fence');
          fVulkanWaitFences[ImageIndex].Reset;
          fVulkanWaitFencesReady[ImageIndex]:=false;
         end;
        end;
-
-{$ifdef PasVulkanNoThreadSafeQueue}
-       fVulkanDevice.WaitIdle;
-{$else}
-       fVulkanDevice.ThreadSafeWaitIdle;
-{$endif}
 
        if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
         VulkanDebugLn('Recreating vulkan surface... ');
@@ -16632,12 +17099,13 @@ begin
 
  SlotIndex:=fGeneratedFrameAcquireIndex;
 
- Fence:=fGeneratedFrameAcquireFences[SlotIndex];
  if fGeneratedFrameAcquireFencesReady[SlotIndex] then begin
-  Fence.WaitFor;
-  Fence.Reset;
+  // Bounded, see SettleFence; one which never signals is replaced along with its semaphore
+  SettleAcquireFence(fGeneratedFrameAcquireFences[SlotIndex],fGeneratedFrameAcquireSemaphores[SlotIndex],'generated frame: acquire fence of the slot');
+  fGeneratedFrameAcquireFences[SlotIndex].Reset;
   fGeneratedFrameAcquireFencesReady[SlotIndex]:=false;
  end;
+ Fence:=fGeneratedFrameAcquireFences[SlotIndex];
 
  // A finite time out, since an image that never becomes free would otherwise hang the frame: that is the
  // case when the swapchain has too few images for that many acquired at once. An image that is out of
@@ -17311,11 +17779,26 @@ end;
 // they wait, see PresenterSliceTimeOut, and the one which just gave it free mostly takes it again before
 // the other one even wakes up, so the main loop could keep the presenter thread from the very present it
 // waits for, until its wait ran out. It is held only briefly, so the wait for it spins with a yield.
+//
+// On the main thread for no longer than PresenterIdleTimeOut: the presenter thread holds it around a
+// present only, so one which does not come back from the driver for that long is a presentation which
+// is stuck for good, see HandleDeviceHang.
 procedure TpvApplication.LockSwapChain;
 var Ticket:TPasMPInt32;
+    StartTime:TpvHighResolutionTime;
+    OnMainThread:boolean;
 begin
  Ticket:=TPasMPInterlocked.Increment(fSwapChainLockNextTicket)-1;
+ StartTime:=0;
+ OnMainThread:=GetCurrentThreadId=MainThreadID;
  while TPasMPInterlocked.Read(fSwapChainLockServingTicket)<>Ticket do begin
+  if OnMainThread and not fDeviceHung then begin
+   if StartTime=0 then begin
+    StartTime:=fHighResolutionTimer.GetTime;
+   end else if (fHighResolutionTimer.GetTime-StartTime)>=PresenterIdleTimeOut then begin
+    HandleDeviceHang('swapchain lock, held by the presenter thread',false);
+   end;
+  end;
   TPasMP.Yield;
  end;
 end;
@@ -17331,7 +17814,26 @@ end;
 // the main loop is in such a wait itself.
 function TpvApplication.PresenterBusy:boolean;
 begin
- result:=assigned(fPresenterThread) and fPresenterThread.Busy;
+ result:=assigned(fPresenterThread) and fPresenterThread.Busy and not fPresenterThread.Gone;
+end;
+
+// How long the presenter thread gets to put its presents out: the time a present may wait for the
+// presentation, and the time the device then gets on top, see WaitForDeviceIdleBounded.
+function TpvApplication.PresenterIdleTimeOut:TpvHighResolutionTime;
+begin
+ result:=fHighResolutionTimer.FromFloatSeconds(GetEffectivePresentationTimeOut+Min(Max(fDeviceHangTimeOut,GetEffectivePresentationTimeOut),86400.0));
+end;
+
+// Waits until the presenter thread has put out everything queued, for at most PresenterIdleTimeOut: one
+// which is still busy by then is stuck in the driver, see HandleDeviceHang. Nothing is waited for once
+// the device was found hung.
+procedure TpvApplication.WaitForPresenterThread;
+begin
+ if assigned(fPresenterThread) and not fDeviceHung then begin
+  if not fPresenterThread.WaitForIdle(PresenterIdleTimeOut) then begin
+   HandleDeviceHang('presenter thread, putting out its presents',false);
+  end;
+ end;
 end;
 
 // Puts out all presents of the presenter thread right away, before the main loop presents by itself again,
@@ -17339,7 +17841,7 @@ end;
 procedure TpvApplication.WaitForPresenterIdle;
 begin
  if assigned(fPresenterThread) then begin
-  fPresenterThread.WaitForIdle;
+  WaitForPresenterThread;
   ApplyPresenterResult;
  end;
 end;
@@ -17362,6 +17864,18 @@ end;
 procedure TpvApplication.ApplyPresenterResult;
 var PresentResult:TVkResult;
 begin
+ // Ended by an exception, which it reported itself on its way out. Its presents never go out, so the
+ // swapchain is made anew, and a new thread takes over with the next present that needs one.
+ if assigned(fPresenterThread) and fPresenterThread.Gone then begin
+  pvHangWatchdogWriteNote('the presenter thread has ended unexpectedly, starting the presentation over');
+  FreeAndNil(fPresenterThread);
+  if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                            TAcquireVulkanBackBufferState.RecreateSurface,
+                                            TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+   fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+  end;
+  exit;
+ end;
  if assigned(fPresenterThread) then begin
   PresentResult:=fPresenterThread.FetchResult;
   case PresentResult of
@@ -17881,7 +18395,10 @@ begin
     Job.Rendered:=false;
     Job.ReadyFence:=fPresentReadyFence;
     Job.LowLatencyOutOfBandPresentID:=fLowLatencyOutOfBandPresentID;
-    fPresenterThread.Enqueue(Job);
+    if not fPresenterThread.Enqueue(Job,PresenterIdleTimeOut) then begin
+     // Its queue stayed full: it does not get its presents out, and will not
+     HandleDeviceHang('present: queue of the presenter thread, generated frame',false);
+    end;
     RecordPresentID;
     inc(result);
 
@@ -17962,13 +18479,23 @@ var PresentIdKHR:TVkPresentIdKHR;
     PresentFenceInfo:TVkSwapchainPresentFenceInfoKHR;
     PresentFenceHandle:TVkFence;
     CountGeneratedFramesPresented,CountIntervalParts:TpvInt32;
-    OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence,WasRightAway:boolean;
+    OnPresenterThread,HasPresentID,HasPresentTiming,HasPresentFence,WasRightAway,PresentFenceResync:boolean;
     Job:TpvApplicationPresenterJob;
     WaitStartTime:TpvHighResolutionTime;
     WorkInterval,RefreshSeconds:TpvDouble;
-    {$ifdef PasVulkanFrameGenerationPresentPathLog}PresentPath,{$endif}PresentCycles,RightAwayCycles,MissingSwapChainImages:TpvInt32;
+    {$ifdef PasVulkanFrameGenerationPresentPathLog}PresentPath,{$endif}PresentCycles,RightAwayCycles,MissingSwapChainImages,PresentFenceIndex:TpvInt32;
     RefreshPeriod:TpvHighResolutionTime;
 begin
+
+ // Nothing goes out to a device found hung, see HandleDeviceHang: the exception which said so is on its
+ // way out of the main loop, through the finally which brings the frame here.
+ if fDeviceHung then begin
+  result:=false;
+  exit;
+ end;
+
+ PresentFenceResync:=false;
+ PresentFenceIndex:=-1;
 
  SetLowLatencyMarker(VK_LATENCY_MARKER_PRESENT_START_NV,fDrawFrameCounter);
 
@@ -18430,7 +18957,11 @@ begin
      assigned(fVulkanPresentCompleteFences[fSwapChainImageIndex]) then begin
    if fVulkanPresentCompleteFencesReady[fSwapChainImageIndex] then begin
     WaitStartTime:=fHighResolutionTimer.GetTime;
-    fVulkanPresentCompleteFences[fSwapChainImageIndex].WaitFor;
+    // Bounded, see SettleFence. One which never signals is replaced, and the new one goes with this
+    // present, which is followed by starting the presentation over, see below.
+    if not SettleAcquireFence(fVulkanPresentCompleteFences[fSwapChainImageIndex],fVulkanPresentCompleteSemaphores[fSwapChainImageIndex],'present: present fence of the swapchain image') then begin
+     PresentFenceResync:=true;
+    end;
     fDisplayWaitAtPresents:=fDisplayWaitAtPresents+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
 {$ifdef PasVulkanFrameGenerationPresentTrace}
     FGDbgFenceWait:=FGDbgFenceWait+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
@@ -18445,7 +18976,10 @@ begin
    PresentFenceInfo.pFences:=@PresentFenceHandle;
    PresentFenceInfo.pNext:=PresentNext;
    PresentNext:=@PresentFenceInfo;
-   fVulkanPresentCompleteFencesReady[fSwapChainImageIndex]:=true;
+   // Taken for pending only once the present was really queued, see below: one which failed before
+   // that never signals it, and every wait on it would have hung, the one when the swapchain is made
+   // anew included.
+   PresentFenceIndex:=fSwapChainImageIndex;
    HasPresentFence:=true;
   end;
 
@@ -18476,11 +19010,15 @@ begin
    Job.Rendered:=true;
    Job.ReadyFence:=fPresentReadyFence;
    Job.LowLatencyOutOfBandPresentID:=fLowLatencyOutOfBandPresentID;
-   fPresenterThread.Enqueue(Job);
+   if not fPresenterThread.Enqueue(Job,PresenterIdleTimeOut) then begin
+    // Its queue stayed full: it does not get its presents out, and will not
+    HandleDeviceHang('present: queue of the presenter thread',false);
+   end;
 
    // Taken as gone through, as with VK_SUCCESS below, since what goes wrong with it only shows later,
    // see ApplyPresenterResult, which brings in what went wrong with the presents before.
    RecordPresentID;
+   fPresentationResyncCount:=0;
    fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
    if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
     dec(fNextInFlightFrameIndex,fCountInFlightFrames);
@@ -18500,6 +19038,10 @@ begin
     case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
      VK_SUCCESS:begin
       //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+      if PresentFenceIndex>=0 then begin
+       fVulkanPresentCompleteFencesReady[PresentFenceIndex]:=true;
+      end;
+      fPresentationResyncCount:=0;
       RecordPresentID;
       fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
       if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
@@ -18512,6 +19054,10 @@ begin
       result:=true;
      end;
      VK_SUBOPTIMAL_KHR:begin
+      if PresentFenceIndex>=0 then begin
+       fVulkanPresentCompleteFencesReady[PresentFenceIndex]:=true;
+      end;
+      fPresentationResyncCount:=0;
       RecordPresentID;
       if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
        if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
@@ -18541,6 +19087,11 @@ begin
      case VulkanResultException.ResultCode of
       VK_ERROR_SURFACE_LOST_KHR,
       VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+       // Still queued by the rules of VK_KHR_swapchain_maintenance1, so its fence is signalled all the
+       // same; waited for bounded anyway, see SettleFence
+       if PresentFenceIndex>=0 then begin
+        fVulkanPresentCompleteFencesReady[PresentFenceIndex]:=true;
+       end;
        if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
                                                  TAcquireVulkanBackBufferState.RecreateDevice]) then begin
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
@@ -18549,6 +19100,10 @@ begin
       end;
       VK_ERROR_OUT_OF_DATE_KHR,
       VK_SUBOPTIMAL_KHR:begin
+       // The same, see above
+       if PresentFenceIndex>=0 then begin
+        fVulkanPresentCompleteFencesReady[PresentFenceIndex]:=true;
+       end;
        if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                  TAcquireVulkanBackBufferState.RecreateSurface,
                                                  TAcquireVulkanBackBufferState.RecreateDevice]) then begin
@@ -18576,6 +19131,11 @@ begin
    FGDbgPresent:=FGDbgPresent+fHighResolutionTimer.ToFloatSeconds(fHighResolutionTimer.GetTime-WaitStartTime);
 {$endif}
    RecordPresentCallTime;
+
+   // Its present fence had never signalled, see above
+   if PresentFenceResync then begin
+    RequestPresentationResync('present: present fence of the swapchain image');
+   end;
 
   end;
 
@@ -23620,9 +24180,33 @@ begin
            __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
 {$ifend}
            TpvApplication.Log(LOG_ERROR,'TpvApplication.Run',ExceptionString);
-           // Caught by the frame loop, so the process is still whole and only on
-           // its way out, see the same argument at the update thread above.
-           LogCrash(ExceptionString,false);
+           if (e is EpvVulkanDeviceHangException) or fDeviceHung then begin
+            // The device stopped responding, see HandleDeviceHang, which reported it
+            // already, while the program was still whole. Only where that did not
+            // happen, it is done here: a crash save which reads nothing back from the
+            // device, which is what the hard crash flag tells it, and the word to the
+            // player after it, with the clock of the way out held while it is read.
+            // Nothing below waits for the device any more.
+            fDeviceHung:=true;
+            if not fDeviceHangReported then begin
+             fDeviceHangReported:=true;
+             LogCrash(ExceptionString,true);
+             pvHangWatchdogHoldShutdown(true);
+             try
+              try
+               DeviceHangNotice;
+              except
+               // A notice which fails is not worth anything on the way out
+              end;
+             finally
+              pvHangWatchdogHoldShutdown(false);
+             end;
+            end;
+           end else begin
+            // Caught by the frame loop, so the process is still whole and only on
+            // its way out, see the same argument at the update thread above.
+            LogCrash(ExceptionString,false);
+           end;
            //raise;
            if fVulkanDevice.UseNVIDIADeviceDiagnostics then begin
             // Device lost notification is asynchronous to the NVIDIA display
@@ -23637,7 +24221,7 @@ begin
 
         finally
 
-         VulkanWaitIdle;
+         VulkanWaitIdleOnTheWayOut;
 
          try
 
@@ -23645,7 +24229,7 @@ begin
 
          finally
 
-          VulkanWaitIdle;
+          VulkanWaitIdleOnTheWayOut;
 
           Unload;
 

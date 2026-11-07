@@ -207,6 +207,21 @@ procedure pvHangWatchdogNoteCrashReported;
 procedure pvHangWatchdogBeginPause;
 procedure pvHangWatchdogEndPause;
 
+// Whether such a pause is on at the moment. Read by TpvApplication as well, for which the same
+// stretches are the ones where a wait for the GPU or the presentation may take far longer than in a
+// running game, see TpvApplication.LoadingPresentationTimeOut.
+function pvHangWatchdogPaused:Boolean;
+
+// A line of its own in the report file and in the log, for something the program noticed by itself and
+// got over: a wait which ran out and was answered by starting over, say. Counts as no hang and ends
+// nothing; it goes into the report file because that one is there even where no log is written.
+procedure pvHangWatchdogWriteNote(const aText:TpvUTF8String);
+
+// Holds the clock of the way out, see pvHangWatchdogBeginShutdown, for as long as the program waits for
+// somebody on purpose, such as for a message box being read, and starts it over once that is done.
+// Nestable.
+procedure pvHangWatchdogHoldShutdown(const aHold:Boolean);
+
 implementation
 
 const // How often the thread looks. Also how long a shutdown waits for it to notice that it is
@@ -235,6 +250,11 @@ var WatchdogThread:TpvHangWatchdogThread=nil;
 
     // And the same for the way out, see pvHangWatchdogBeginShutdown.
     ShutdownStarted:TPasMPInt32=0;
+
+    // How many holds of the clock of the way out there are, see pvHangWatchdogHoldShutdown, and whether
+    // it is to start over, set when the last of them goes.
+    ShutdownHoldCounter:TPasMPInt32=0;
+    ShutdownClockRestart:TPasMPInt32=0;
 
     // Watchdog-only, needs no protection.
     LastSeenHeartbeat:TpvInt32=0;
@@ -277,6 +297,22 @@ procedure pvHangWatchdogEndPause;
 begin
  if TPasMPInterlocked.Read(PauseCounter)>0 then begin
   TPasMPInterlocked.Decrement(PauseCounter);
+ end;
+end;
+
+function pvHangWatchdogPaused:Boolean;
+begin
+ result:=TPasMPInterlocked.Read(PauseCounter)>0;
+end;
+
+procedure pvHangWatchdogHoldShutdown(const aHold:Boolean);
+begin
+ if aHold then begin
+  TPasMPInterlocked.Increment(ShutdownHoldCounter);
+ end else if TPasMPInterlocked.Read(ShutdownHoldCounter)>0 then begin
+  if TPasMPInterlocked.Decrement(ShutdownHoldCounter)=0 then begin
+   TPasMPInterlocked.Write(ShutdownClockRestart,TPasMPInt32(1));
+  end;
  end;
 end;
 
@@ -334,6 +370,14 @@ begin
   end;
  except
  end;
+end;
+
+procedure pvHangWatchdogWriteNote(const aText:TpvUTF8String);
+var Line:TpvUTF8String;
+begin
+ Line:=TpvUTF8String(FormatDateTime('yyyy"-"mm"-"dd" "hh":"nn":"ss',Now))+' note '+aText;
+ WriteReportFileLine(Line);
+ WriteReportLogLine(Line);
 end;
 
 function BuildHangReportLine(const aReportIndex:TpvInt32;const aStalledSeconds:TpvDouble):TpvUTF8String;
@@ -444,6 +488,14 @@ end;
 // more than the deadline has gone by, whatever is still standing is ended.
 procedure CheckShutdown(const aElapsedSeconds:TpvDouble);
 begin
+
+ // Held while the program waits for somebody on purpose, and counted from zero again afterwards
+ if TPasMPInterlocked.Exchange(ShutdownClockRestart,TPasMPInt32(0))<>0 then begin
+  ShutdownSeconds:=0.0;
+ end;
+ if TPasMPInterlocked.Read(ShutdownHoldCounter)>0 then begin
+  exit;
+ end;
 
  ShutdownSeconds:=ShutdownSeconds+aElapsedSeconds;
 

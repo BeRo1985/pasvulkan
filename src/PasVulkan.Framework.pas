@@ -204,6 +204,16 @@ type EpvVulkanException=class(Exception);
        constructor Create;
      end;
 
+     // The device did not finish the work submitted to it within the time it was given, or it reported
+     // itself lost while it was waited for. Nothing more can be asked of it then, which is why this goes
+     // with VK_ERROR_DEVICE_LOST, and derived from the result exception, so that every handler for that
+     // one keeps catching it. A class of its own, so that the way out can tell it apart: whatever is
+     // still done there must not wait for the device or read anything back from it.
+     EpvVulkanDeviceHangException=class(EpvVulkanResultException)
+      public
+       constructor Create(const aText:String); reintroduce;
+     end;
+
      PpvVulkanUUID=^TpvVulkanUUID;
      TpvVulkanUUID=array[0..VK_UUID_SIZE-1] of TpvUInt8;
 
@@ -967,6 +977,13 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure WaitIdle;
        procedure ThreadSafeWaitIdle; // WaitIdle while holding every queue lock
+       // Whether everything submitted to the queues of the device so far is done, waited for at most
+       // aTimeOut nanoseconds: VK_SUCCESS, VK_TIMEOUT, or what the device answered otherwise, such as
+       // VK_ERROR_DEVICE_LOST. Unlike WaitIdle it cannot hang, and each queue lock is held only for the
+       // empty submit of the probe, not for the wait, so that other threads may go on submitting
+       // meanwhile; their work is not waited for then. From one thread at a time, see
+       // TpvVulkanQueue.SubmitIdleProbe.
+       function ProbeIdle(const aTimeOut:TpvUInt64):TVkResult;
        // What VK_EXT_device_fault says about a device loss, the kind and the address of the fault and
        // what the vendor adds, into the log and beside the breadcrumbs into BreadcrumbTraceFileName.
        // Nothing without the extension, which is asked for together with the breadcrumbs.
@@ -2338,6 +2355,11 @@ type EpvVulkanException=class(Exception);
 {$ifndef PasVulkanNoThreadSafeQueue}
        fLock:TPasMPCriticalSection; // VkQueue must be externally synchronized
 {$endif}
+       // The fences of the empty batches of SubmitIdleProbe, and which of them are still out. One which
+       // did not signal in time stays out and is taken back once it has, and a new probe takes another
+       // fence meanwhile: a probe submitted before stands only for the work submitted before it.
+       fIdleProbeFences:array of TpvVulkanFence;
+       fIdleProbePending:array of boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aQueue:TVkQueue;
@@ -2346,6 +2368,12 @@ type EpvVulkanException=class(Exception);
        procedure Submit(const aSubmitCount:TpvUInt32;const aSubmits:PVkSubmitInfo;const aFence:TpvVulkanFence=nil);
        procedure BindSparse(const aBindInfoCount:TpvUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TpvVulkanFence=nil);
        procedure WaitIdle;
+       // Submits an empty batch with a fence of its own, which signals once everything submitted to this
+       // queue before it is done, see TpvVulkanDevice.ProbeIdle. aIndex names the probe for the two below.
+       function SubmitIdleProbe(out aIndex:TpvSizeInt):TVkResult;
+       function IdleProbeFence(const aIndex:TpvSizeInt):TpvVulkanFence;
+       // Takes the probe back once its fence has signalled
+       procedure FinishIdleProbe(const aIndex:TpvSizeInt);
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkQueue read fQueueHandle;
@@ -8927,6 +8955,12 @@ begin
  inherited Create(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 end;
 
+constructor EpvVulkanDeviceHangException.Create(const aText:String);
+begin
+ inherited Create(VK_ERROR_DEVICE_LOST);
+ Message:=aText;
+end;
+
 destructor EpvVulkanResultException.Destroy;
 begin
  inherited Destroy;
@@ -13378,6 +13412,55 @@ begin
   end;
  end;
 {$endif}
+end;
+
+function TpvVulkanDevice.ProbeIdle(const aTimeOut:TpvUInt64):TVkResult;
+var FamilyIndex,SubIndex,Count,Index:TpvSizeInt;
+    Queue:TpvVulkanQueue;
+    Queues:array of TpvVulkanQueue;
+    ProbeIndices:array of TpvSizeInt;
+    Handles:array of TVkFence;
+begin
+ result:=VK_SUCCESS;
+ Queues:=nil;
+ ProbeIndices:=nil;
+ Handles:=nil;
+ try
+  Count:=0;
+  // One probe on every queue first, and only then the wait for all of them together, so that the
+  // queues work through their part at the same time
+  for FamilyIndex:=0 to length(fQueueFamilyQueues)-1 do begin
+   for SubIndex:=0 to length(fQueueFamilyQueues[FamilyIndex])-1 do begin
+    Queue:=fQueueFamilyQueues[FamilyIndex,SubIndex];
+    if assigned(Queue) then begin
+     if length(Queues)<=Count then begin
+      SetLength(Queues,(Count+1)*2);
+      SetLength(ProbeIndices,(Count+1)*2);
+      SetLength(Handles,(Count+1)*2);
+     end;
+     result:=Queue.SubmitIdleProbe(ProbeIndices[Count]);
+     if result<>VK_SUCCESS then begin
+      exit;
+     end;
+     Queues[Count]:=Queue;
+     Handles[Count]:=Queue.IdleProbeFence(ProbeIndices[Count]).Handle;
+     inc(Count);
+    end;
+   end;
+  end;
+  if Count>0 then begin
+   result:=fDeviceVulkan.WaitForFences(fDeviceHandle,Count,@Handles[0],VK_TRUE,aTimeOut);
+   if result=VK_SUCCESS then begin
+    for Index:=0 to Count-1 do begin
+     Queues[Index].FinishIdleProbe(ProbeIndices[Index]);
+    end;
+   end;
+  end;
+ finally
+  Queues:=nil;
+  ProbeIndices:=nil;
+  Handles:=nil;
+ end;
 end;
 
 procedure TpvVulkanDevice.TraceDeviceFault;
@@ -22089,10 +22172,19 @@ begin
  fLock:=TPasMPCriticalSection.Create;
 {$endif}
 
+ fIdleProbeFences:=nil;
+ fIdleProbePending:=nil;
+
 end;
 
 destructor TpvVulkanQueue.Destroy;
+var Index:TpvSizeInt;
 begin
+ for Index:=0 to length(fIdleProbeFences)-1 do begin
+  FreeAndNil(fIdleProbeFences[Index]);
+ end;
+ fIdleProbeFences:=nil;
+ fIdleProbePending:=nil;
 {$ifndef PasVulkanNoThreadSafeQueue}
  FreeAndNil(fLock);
 {$endif}
@@ -22172,6 +22264,65 @@ begin
   fLock.Release;
  end;
 {$endif}
+end;
+
+function TpvVulkanQueue.SubmitIdleProbe(out aIndex:TpvSizeInt):TVkResult;
+var Index:TpvSizeInt;
+    FenceHandle:TVkFence;
+begin
+
+ // Probes which signalled since are taken back, and the first free one is used
+ aIndex:=-1;
+ for Index:=0 to length(fIdleProbeFences)-1 do begin
+  if fIdleProbePending[Index] and (fIdleProbeFences[Index].GetStatus=VK_SUCCESS) then begin
+   FinishIdleProbe(Index);
+  end;
+  if (aIndex<0) and not fIdleProbePending[Index] then begin
+   aIndex:=Index;
+  end;
+ end;
+ if aIndex<0 then begin
+  aIndex:=length(fIdleProbeFences);
+  SetLength(fIdleProbeFences,aIndex+1);
+  SetLength(fIdleProbePending,aIndex+1);
+  fIdleProbeFences[aIndex]:=nil;
+  fIdleProbePending[aIndex]:=false;
+  fIdleProbeFences[aIndex]:=TpvVulkanFence.Create(fDevice);
+ end;
+
+ FenceHandle:=fIdleProbeFences[aIndex].Handle;
+
+ // Straight to the queue, past the timeline semaphore emulation, since there is nothing in it for that:
+ // no batch, no semaphore, only the fence. A submit which the emulation still holds back on the CPU is
+ // not on the queue yet and so not waited for, which is no different from one which comes later.
+{$ifdef PasVulkanNoThreadSafeQueue}
+ result:=fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,0,nil,FenceHandle);
+{$else}
+ fLock.Acquire;
+ try
+  result:=fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,0,nil,FenceHandle);
+ finally
+  fLock.Release;
+ end;
+{$endif}
+
+ if result=VK_SUCCESS then begin
+  fIdleProbePending[aIndex]:=true;
+ end;
+
+end;
+
+function TpvVulkanQueue.IdleProbeFence(const aIndex:TpvSizeInt):TpvVulkanFence;
+begin
+ result:=fIdleProbeFences[aIndex];
+end;
+
+procedure TpvVulkanQueue.FinishIdleProbe(const aIndex:TpvSizeInt);
+begin
+ if fIdleProbePending[aIndex] then begin
+  fIdleProbeFences[aIndex].Reset;
+  fIdleProbePending[aIndex]:=false;
+ end;
 end;
 
 constructor TpvVulkanCommandPool.Create(const aDevice:TpvVulkanDevice;
