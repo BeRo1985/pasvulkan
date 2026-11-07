@@ -1902,6 +1902,7 @@ type EpvApplication=class(Exception)
        fCatchMouse:boolean;
        fEffectiveCatchMouse:boolean;
        fRelativeMouse:boolean;
+       fCoalescePointerMotion:boolean;
        fHideSystemBars:boolean;
        fAcceptDragDropFiles:boolean;
        fUseBreadcrumbs:boolean;
@@ -3159,6 +3160,14 @@ type EpvApplication=class(Exception)
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
        property RelativeMouse:boolean read fRelativeMouse write fRelativeMouse;
+
+       // Folds mouse motions which come one right after another, with the same buttons held, into one
+       // motion each time events are processed: the newest position, with the relative motions summed up.
+       // A mouse reporting a thousand times a second and more, as SDL passes every report on, otherwise
+       // brings dozens of motion events per frame, each of which runs through the whole pointer handling,
+       // and when that is expensive, the frames get longer, bring yet more of them and fall behind the
+       // mouse. Off by default, for whatever wants every single sample, such as a drawing tool.
+       property CoalescePointerMotion:boolean read fCoalescePointerMotion write fCoalescePointerMotion;
 
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
 
@@ -10333,7 +10342,46 @@ const SDL_KEYTYPED=$30000;
 {$ifend}
 
 procedure TpvApplicationInput.AddEvent(const aEvent:TpvApplicationEvent);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+var LastEvent:PSDL_Event;
+{$else}
+var LastEvent:PpvApplicationNativeEvent;
+{$ifend}
 begin
+ // A motion right after a motion of the same mouse with the same buttons held is folded into it, see
+ // TpvApplication.CoalescePointerMotion: the position is the newest one, the relative motion the sum of
+ // both, so nothing of the way the mouse went is lost, only the steps in between.
+ if fVulkanApplication.fCoalescePointerMotion and (fEventCount>0) then begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  LastEvent:=@fEvents[fEventCount-1].SDLEvent;
+  if (aEvent.SDLEvent.type_=SDL_MOUSEMOTION) and
+     (LastEvent^.type_=SDL_MOUSEMOTION) and
+     (LastEvent^.motion.windowID=aEvent.SDLEvent.motion.windowID) and
+     (LastEvent^.motion.which=aEvent.SDLEvent.motion.which) and
+     (LastEvent^.motion.state=aEvent.SDLEvent.motion.state) then begin
+   LastEvent^.motion.timestamp:=aEvent.SDLEvent.motion.timestamp;
+   LastEvent^.motion.x:=aEvent.SDLEvent.motion.x;
+   LastEvent^.motion.y:=aEvent.SDLEvent.motion.y;
+   inc(LastEvent^.motion.xrel,aEvent.SDLEvent.motion.xrel);
+   inc(LastEvent^.motion.yrel,aEvent.SDLEvent.motion.yrel);
+   fEventTimes[fEventCount-1]:=pvApplication.fHighResolutionTimer.ToNanoseconds(pvApplication.fHighResolutionTimer.GetTime);
+   exit;
+  end;
+{$else}
+  LastEvent:=@fEvents[fEventCount-1].NativeEvent;
+  if (aEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.MouseMoved) and
+     (LastEvent^.Kind=TpvApplicationNativeEventKind.MouseMoved) and
+     (LastEvent^.MouseButtons=aEvent.NativeEvent.MouseButtons) and
+     (LastEvent^.MouseKeyModifiers=aEvent.NativeEvent.MouseKeyModifiers) then begin
+   LastEvent^.MouseCoordX:=aEvent.NativeEvent.MouseCoordX;
+   LastEvent^.MouseCoordY:=aEvent.NativeEvent.MouseCoordY;
+   inc(LastEvent^.MouseDeltaX,aEvent.NativeEvent.MouseDeltaX);
+   inc(LastEvent^.MouseDeltaY,aEvent.NativeEvent.MouseDeltaY);
+   fEventTimes[fEventCount-1]:=pvApplication.fHighResolutionTimer.ToNanoseconds(pvApplication.fHighResolutionTimer.GetTime);
+   exit;
+  end;
+{$ifend}
+ end;
  if fEventCount>=length(fEvents) then begin
   SetLength(fEvents,(fEventCount+1)*2);
   SetLength(fEventTimes,(fEventCount+1)*2);
@@ -10359,7 +10407,7 @@ begin
    for Index:=0 to fEventCount-1 do begin
     Event:=@fEvents[Index];
     SDLEvent:=@Event^.SDLEvent;
-    fCurrentEventTime:=fEventTimes[fEventCount];
+    fCurrentEventTime:=fEventTimes[Index];
     case SDLEvent^.type_ of
      SDL_QUITEV:begin
       KeyShortcut:=nil;
@@ -10606,7 +10654,7 @@ begin
    for Index:=0 to fEventCount-1 do begin
     Event:=@fEvents[Index];
     NativeEvent:=@Event^.NativeEvent;
-    fCurrentEventTime:=fEventTimes[fEventCount];
+    fCurrentEventTime:=fEventTimes[Index];
     case NativeEvent^.Kind of
      TpvApplicationNativeEventKind.Quit:begin
       KeyShortcut:=nil;
@@ -12924,6 +12972,7 @@ begin
  fCatchMouse:=false;
  fEffectiveCatchMouse:=false;
  fRelativeMouse:=false;
+ fCoalescePointerMotion:=false;
  fHideSystemBars:=false;
  fAcceptDragDropFiles:=false;
  fUseBreadcrumbs:=false;

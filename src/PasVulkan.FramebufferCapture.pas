@@ -109,6 +109,7 @@ type EpvFramebufferCapture=class(Exception);
        fWidth:TpvSizeInt;
        fHeight:TpvSizeInt;
        fImageFormat:TVkFormat;
+       fImageColorSpace:TVkColorSpaceKHR;
        fReady:boolean;
        procedure AllocateResources;
        procedure ReleaseResources;
@@ -166,10 +167,16 @@ begin
   fHeight:=fSwapChain.Height;
   
   fImageFormat:=fSwapChain.ImageFormat;
-  
+
+  fImageColorSpace:=fSwapChain.ImageColorSpace;
+
   fSrcColorFormatProperties:=fDevice.PhysicalDevice.GetFormatProperties(fImageFormat);
-  
-  if fImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB] then begin
+
+  // Linear values, such as the scRGB ones of an HDR swapchain, have to be encoded to sRGB by the blit,
+  // or they would land unencoded in the picture and it would come out far too dark
+  if (fImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB]) or
+     (fImageColorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
+     (fImageColorSpace=VK_COLOR_SPACE_BT709_LINEAR_EXT) then begin
    fDestColorFormat:=VK_FORMAT_R8G8B8A8_SRGB;
   end else begin
    fDestColorFormat:=VK_FORMAT_R8G8B8A8_UNORM;
@@ -366,6 +373,8 @@ begin
 
   fImageFormat:=VK_FORMAT_UNDEFINED;
 
+  fImageColorSpace:=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
   fDestColorFormat:=VK_FORMAT_UNDEFINED;
 
   fSwapChain:=nil;
@@ -381,7 +390,8 @@ begin
  result:=(fSwapChain=aSwapChain) and
          (fWidth=aSwapChain.Width) and
          (fHeight=aSwapChain.Height) and
-         (fImageFormat=aSwapChain.ImageFormat);
+         (fImageFormat=aSwapChain.ImageFormat) and
+         (fImageColorSpace=aSwapChain.ImageColorSpace);
 end;
 
 procedure TpvFramebufferCapture.SetSwapChain(const aSwapChain:TpvVulkanSwapChain);

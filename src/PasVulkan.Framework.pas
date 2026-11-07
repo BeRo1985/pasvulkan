@@ -25842,7 +25842,13 @@ begin
  fDevice.ThreadSafeWaitIdle;
 {$endif}
 
- if ImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB] then begin
+ // A swapchain in a linear color space, such as the scRGB one of an HDR swapchain, holds linear values.
+ // The blit into an sRGB image encodes them just like it does for the 8-bit sRGB swapchain formats,
+ // whereas into a UNORM image they would land unencoded and the picture would come out far too dark.
+ // Diffuse white sits at 1.0 there, so the clamping of the blit only cuts off the highlights above it.
+ if (ImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB]) or
+    (fImageColorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
+    (fImageColorSpace=VK_COLOR_SPACE_BT709_LINEAR_EXT) then begin
   DestColorFormat:=VK_FORMAT_R8G8B8A8_SRGB;
  end else begin
   DestColorFormat:=VK_FORMAT_R8G8B8A8_UNORM;
