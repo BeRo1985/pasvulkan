@@ -3008,8 +3008,13 @@ type EpvApplication=class(Exception)
 
        // Called once when the program leaves because the device stopped responding, after the crash
        // report and the crash save, before anything is torn down. For a word to the player, which only
-       // the program can find; does nothing here.
+       // the program can find, for example with ShowSystemMessageBox; does nothing here.
        procedure DeviceHangNotice; virtual;
+
+       // A message box of the system with an OK button, for what has to be said where nothing can be
+       // drawn any more, such as in DeviceHangNotice. Blocks until it is closed; does nothing where the
+       // system offers none.
+       procedure ShowSystemMessageBox(const aTitle,aText:TpvUTF8String);
 
        // The long time out of the loading, see LoadingPresentationTimeOut, also outside of a pause of
        // the hang watchdog, such as for the first frames after a loading screen, which the driver may
@@ -14317,6 +14322,22 @@ end;
 
 procedure TpvApplication.DeviceHangNotice;
 begin
+end;
+
+procedure TpvApplication.ShowSystemMessageBox(const aTitle,aText:TpvUTF8String);
+{$if defined(Windows)}
+var WideTitle,WideText:TPUCUUTF16String;
+{$ifend}
+begin
+{$if defined(Windows)}
+ WideTitle:=PUCUUTF8ToUTF16(aTitle);
+ WideText:=PUCUUTF8ToUTF16(aText);
+ // Without an owner, the window may belong to another thread, see PasVulkanWin32WindowThread, and kept in
+ // front of a fullscreen window
+ MessageBoxW(0,PWideChar(WideText),PWideChar(WideTitle),MB_OK or MB_ICONERROR or MB_TOPMOST or MB_SETFOREGROUND or MB_TASKMODAL);
+{$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,PAnsiChar(aTitle),PAnsiChar(aText),nil);
+{$ifend}
 end;
 
 procedure TpvApplication.BeginLoadingPresentationTimeOut;
