@@ -772,6 +772,18 @@ type TpvScene3DAtmosphere=class;
               procedure Assign(const aAtmosphereParameters:TAtmosphereParameters;const aScene3D:TObject;const aInFlightFrameIndex:TpvSizeInt);
             end;
             PGPUAtmosphereParameters=^TGPUAtmosphereParameters;
+            { TGPUMotion }
+            // What the motion vectors of the pixels with nothing drawn into them need to know of an
+            // atmosphere, see background_velocity.glsl, which declares the same layout.
+            TGPUMotion=packed record
+             public
+              InverseTransform:TpvMatrix4x4; // world space of this frame into the space of the atmosphere
+              PreviousTransform:TpvMatrix4x4; // the space of the atmosphere into world space of the previous frame
+              RayleighExtinction:TpvVector4; // xyz = extinction at the bottom, w = scale of the exponent of the density over the altitude
+              MieExtinction:TpvVector4; // the same for the Mie part
+              Radii:TpvVector4; // x = bottom radius, y = top radius, z = density scale, w = unused
+            end;
+            PGPUMotion=^TGPUMotion;
             { TRendererInstance }
             TRendererInstance=class
              public
@@ -937,6 +949,9 @@ type TpvScene3DAtmosphere=class;
        fAtmosphereParameters:TAtmosphereParameters;
        fPointerToAtmosphereParameters:PAtmosphereParameters;
        fGPUAtmosphereParameters:array[0..MaxInFlightFrames-1] of TGPUAtmosphereParameters;
+       fPreviousTransforms:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
+       fLastTransform:TpvMatrix4x4;
+       fLastTransformValid:boolean;
        fAtmosphereParametersBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fAtmosphereMapMinMaxBuffer:TpvVulkanBuffer;
        fWeatherMapTexture:TpvScene3DRendererImageCubeMap;
@@ -978,6 +993,7 @@ type TpvScene3DAtmosphere=class;
                              const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                              const aTransferFence:TpvVulkanFence);
        function IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+       procedure GetGPUMotion(const aInFlightFrameIndex:TpvSizeInt;out aGPUMotion:TGPUMotion);
        function GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
        procedure ProcessSimulation(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameIndex:TpvSizeInt;
@@ -1034,6 +1050,19 @@ type TpvScene3DAtmosphere=class;
 
      { TpvScene3DAtmospheres }
      TpvScene3DAtmospheres=class(TpvObjectGenericList<TpvScene3DAtmosphere>)
+      public
+       const MaxGPUMotions=16; // MAX_ATMOSPHERE_MOTIONS in background_velocity.glsl
+       type { TGPUMotions }
+            // The uniform buffer of background_velocity.glsl
+            TGPUMotions=packed record
+             public
+              Count:TpvUInt32;
+              Unused0:TpvUInt32;
+              Unused1:TpvUInt32;
+              Unused2:TpvUInt32;
+              Items:array[0..MaxGPUMotions-1] of TpvScene3DAtmosphere.TGPUMotion;
+            end;
+            PGPUMotions=^TGPUMotions;
       private
        fScene3D:TObject;
        fLock:TPasMPMultipleReaderSingleWriterLock;
@@ -1041,6 +1070,7 @@ type TpvScene3DAtmosphere=class;
        constructor Create(const aScene3D:TObject); reintroduce;
        destructor Destroy; override;
        procedure ProcessReleases;
+       procedure GetGPUMotions(const aInFlightFrameIndex:TpvSizeInt;out aGPUMotions:TGPUMotions);
        procedure DrawClouds(const aPassIndex:TpvSizeInt;
                             const aInFlightFrameIndex:TpvSizeInt;
                             const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -4968,6 +4998,9 @@ begin
  fAtmosphereParameters.InitializeEarthAtmosphere;
  fPointerToAtmosphereParameters:=@fAtmosphereParameters;
 
+ fLastTransform:=TpvMatrix4x4.Identity;
+ fLastTransformValid:=false;
+
  fWeatherMapTime:=0.0;
 
  fWeatherMapDynamicUpdate:=true;
@@ -5226,6 +5259,16 @@ begin
 
   fGPUAtmosphereParameters[aInFlightFrameIndex].Assign(fAtmosphereParameters,fScene3D,aInFlightFrameIndex);
 
+  // The transform of the frame before, for the motion vectors of the atmosphere, see GetGPUMotion. The first
+  // frame has none and takes its own, so that it stands still.
+  if fLastTransformValid then begin
+   fPreviousTransforms[aInFlightFrameIndex]:=fLastTransform;
+  end else begin
+   fPreviousTransforms[aInFlightFrameIndex]:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
+  end;
+  fLastTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform;
+  fLastTransformValid:=true;
+
   // The sun disc bit is about the ON-SCREEN ray march only. The cube map baked from this atmosphere for
   // image based lighting has no background to composite over, so it draws the sun whatever this says.
   fGPUAtmosphereParameters[aInFlightFrameIndex].Flags:=IfThen(assigned(fPrecipitationMap.fTextureSourceImage) and fUsePrecipitationMap,1 shl 0,0) or
@@ -5236,6 +5279,10 @@ begin
   fGPUAtmosphereParameters[aInFlightFrameIndex].InverseTransform:=fGPUAtmosphereParameters[aInFlightFrameIndex].Transform.Inverse;}
 
   IsVisible:=fGPUAtmosphereParameters[aInFlightFrameIndex].AbsorptionExtinction.w>1e-7;
+
+ end else begin
+
+  fLastTransformValid:=false;
 
  end;
 
@@ -5270,6 +5317,24 @@ end;
 function TpvScene3DAtmosphere.IsInFlightFrameVisible(const aInFlightFrameIndex:TpvSizeInt):Boolean;
 begin
  result:=fInFlightFrameVisible[aInFlightFrameIndex];
+end;
+
+procedure TpvScene3DAtmosphere.GetGPUMotion(const aInFlightFrameIndex:TpvSizeInt;out aGPUMotion:TGPUMotion);
+var GPUAtmosphereParameters:PGPUAtmosphereParameters;
+begin
+ GPUAtmosphereParameters:=@fGPUAtmosphereParameters[aInFlightFrameIndex];
+ aGPUMotion.InverseTransform:=GPUAtmosphereParameters^.InverseTransform;
+ aGPUMotion.PreviousTransform:=fPreviousTransforms[aInFlightFrameIndex];
+ aGPUMotion.RayleighExtinction:=TpvVector4.InlineableCreate(GPUAtmosphereParameters^.RayleighScattering.xyz,GPUAtmosphereParameters^.RayleighDensityExpScale);
+ aGPUMotion.MieExtinction:=TpvVector4.InlineableCreate(GPUAtmosphereParameters^.MieExtinction.xyz,GPUAtmosphereParameters^.MieDensityExpScale);
+ // The density goes by the sun angle at each point, between the day and the night scale. The larger of the
+ // two errs on the side of the atmosphere, whose rim is densest towards the terminator. The fade factor thins
+ // it all out the way it does the light of the atmosphere.
+ aGPUMotion.Radii:=TpvVector4.InlineableCreate(GPUAtmosphereParameters^.BottomRadius,
+                                               GPUAtmosphereParameters^.TopRadius,
+                                               Max(GPUAtmosphereParameters^.AtmosphereDensityScaleDay,GPUAtmosphereParameters^.AtmosphereDensityScaleNight)*
+                                               Min(Max(GPUAtmosphereParameters^.AbsorptionExtinction.w,0.0),1.0),
+                                               0.0);
 end;
 
 function TpvScene3DAtmosphere.GetRenderInstance(const aRendererInstance:TObject):TpvScene3DAtmosphere.TRendererInstance;
@@ -5666,7 +5731,32 @@ begin
   end;
  finally
   fLock.ReleaseRead;
- end; 
+ end;
+end;
+
+procedure TpvScene3DAtmospheres.GetGPUMotions(const aInFlightFrameIndex:TpvSizeInt;out aGPUMotions:TGPUMotions);
+var Index:TpvSizeInt;
+    Atmosphere:TpvScene3DAtmosphere;
+begin
+ aGPUMotions.Count:=0;
+ aGPUMotions.Unused0:=0;
+ aGPUMotions.Unused1:=0;
+ aGPUMotions.Unused2:=0;
+ fLock.AcquireRead;
+ try
+  for Index:=0 to Count-1 do begin
+   Atmosphere:=Items[Index];
+   if assigned(Atmosphere) and
+      Atmosphere.fReady and
+      Atmosphere.fInFlightFrameVisible[aInFlightFrameIndex] and
+      (aGPUMotions.Count<MaxGPUMotions) then begin
+    Atmosphere.GetGPUMotion(aInFlightFrameIndex,aGPUMotions.Items[aGPUMotions.Count]);
+    inc(aGPUMotions.Count);
+   end;
+  end;
+ finally
+  fLock.ReleaseRead;
+ end;
 end;
 
 procedure TpvScene3DAtmospheres.DrawClouds(const aPassIndex:TpvSizeInt;

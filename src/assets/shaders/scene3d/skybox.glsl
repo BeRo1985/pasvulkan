@@ -8,7 +8,9 @@ layout(push_constant) uniform PushConstants {
   
   vec4 lightDirection;
 
-  uint viewBaseIndex;  //
+  uint viewBaseIndex;  // low 16 bits: the views the sky box is drawn with, high 16 bits: the same views without
+                       // the jitter of a temporal antialiasing or upscaling, in which the cached reprojection
+                       // keeps its history, see skybox.frag. Both halves are equal where there is no jitter.
   uint countViews;     //
   float skyBoxBrightnessFactor; //
   uint widthHeight;    // low 16 bits: width, high 16 bits: height

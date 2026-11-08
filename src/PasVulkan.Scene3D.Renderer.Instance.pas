@@ -680,6 +680,7 @@ type { TpvScene3DRendererInstance }
             TViews=array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
             TPerInFlightFrameVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TColorGradingSettingUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TAtmosphereMotionUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             { TSolidPrimitiveVertex }
             TSolidPrimitiveVertex=packed record
              public
@@ -1203,6 +1204,8 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettingsArray;
        fPointerToPerInFlightFrameColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray;
        fColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers;
+      private
+       fAtmosphereMotionUniformBuffers:TAtmosphereMotionUniformBuffers;
       private
        fSolidPrimitivePrimitiveDynamicArrays:TSolidPrimitivePrimitiveDynamicArrays;
        fSolidPrimitivePrimitiveBuffers:TSolidPrimitiveVulkanBuffers;
@@ -2159,6 +2162,9 @@ type { TpvScene3DRendererInstance }
        property ColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettings read fPointerToColorGradingSettings;
        property PerInFlightFrameColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray read fPointerToPerInFlightFrameColorGradingSettings;
        property ColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers read fColorGradingSettingUniformBuffers;
+       // The atmospheres as the motion vectors of the pixels with nothing drawn into them need them, see
+       // background_velocity.glsl and TpvScene3DAtmospheres.GetGPUMotions.
+       property AtmosphereMotionUniformBuffers:TAtmosphereMotionUniformBuffers read fAtmosphereMotionUniformBuffers;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property RendererInstanceIndex:TpvSizeInt read fRendererInstanceIndex;
@@ -3941,6 +3947,27 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fAtmosphereMotionUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                              SizeOf(TpvScene3DAtmospheres.TGPUMotions),
+                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                              [],
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                                                              0,
+                                                                              pvAllocationGroupIDScene3DStatic,
+                                                                              'TpvScene3DRendererInstance.fAtmosphereMotionUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fAtmosphereMotionUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fAtmosphereMotionUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   for RenderPass:=TpvScene3DRendererRenderPassFirst to TpvScene3DRendererRenderPassLast do begin
    for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
     for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
@@ -4075,6 +4102,10 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fColorGradingSettingUniformBuffers[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fAtmosphereMotionUniformBuffers[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -13397,6 +13428,7 @@ var PreviousInFlightFrameIndex,NextInFlightFrameIndex,Index,CountViews,Count,
     MeshShaderOutputNeeded:TpvSizeInt;
     OutputNeeded:TpvSizeInt;
     PreviousFrameFinished:boolean;
+    AtmosphereGPUMotions:TpvScene3DAtmospheres.TGPUMotions;
     ExpandRangeInfoTotalWeight:TpvSizeInt;
     ExpandRangeInfoMaxOutputCommands:TpvSizeInt;
     ExpandRangeInfoRunningBase:TpvUInt32;
@@ -13465,7 +13497,10 @@ begin
     end;
    end;
   end;
-  fLastUploadedViews[PreviousInFlightFrameIndex].Assign(fViews[aInFlightFrameIndex]);
+  // For the next in-flight frame, which is the next frame, and not for the previous one, which is the next
+  // frame only with two in-flight frames. With three it would be the frame after next, which would then take
+  // the views of two frames back as those of the previous frame, and every motion vector twice as long.
+  fLastUploadedViews[NextInFlightFrameIndex].Assign(fViews[aInFlightFrameIndex]);
  end;
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
@@ -13475,6 +13510,16 @@ begin
                                             fColorGradingSettingUniformBuffers[aInFlightFrameIndex],
                                             0,
                                             SizeOf(TpvScene3DRendererInstanceColorGradingSettings));
+
+ // Only as many of the atmospheres as there are, the shader goes by the count in front of them.
+ TpvScene3DAtmospheres(fScene3D.Atmospheres).GetGPUMotions(aInFlightFrameIndex,AtmosphereGPUMotions);
+ Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
+                                            fScene3D.VulkanStagingCommandBuffer,
+                                            fScene3D.VulkanStagingFence,
+                                            AtmosphereGPUMotions,
+                                            fAtmosphereMotionUniformBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TpvScene3DAtmospheres.TGPUMotions)-((TpvScene3DAtmospheres.MaxGPUMotions-AtmosphereGPUMotions.Count)*SizeOf(TpvScene3DAtmosphere.TGPUMotion)));
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,

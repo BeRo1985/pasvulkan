@@ -61,9 +61,10 @@ unit PasVulkan.Scene3D.Renderer.Passes.TemporalUpscalerVelocityComputePass;
 {$m+}
 
 // The motion vectors the temporal upscaler works from: a copy of the velocity buffer in which every pixel
-// without anything drawn into it gets the motion of the camera, see temporal_upscaler_velocity.comp. The
-// sky, the atmosphere and the clouds write no velocity, and with none a temporal upscaler takes them for
-// standing still on the screen and smears them whenever the camera turns.
+// without anything drawn into it gets the motion of the camera, or of an atmosphere seen from afar where one
+// dominates the pixel, see temporal_upscaler_velocity.comp and background_velocity.glsl. The sky, the
+// atmosphere and the clouds write no velocity, and with none a temporal upscaler takes them for standing
+// still on the screen and smears them whenever the camera turns.
 //
 // It writes a resource of its own instead of changing the velocity buffer, so that nothing else that reads
 // the velocity buffer sees any difference.
@@ -239,6 +240,11 @@ begin
                                  1,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  []);
+ fDescriptorSetLayout.AddBinding(4,
+                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                 1,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 []);
  fDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -258,7 +264,7 @@ begin
  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                  FrameGraph.CountInFlightFrames);
- fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,FrameGraph.CountInFlightFrames);
+ fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,FrameGraph.CountInFlightFrames*2);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,FrameGraph.CountInFlightFrames*2);
  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,FrameGraph.CountInFlightFrames);
  fDescriptorPool.Initialize;
@@ -361,6 +367,14 @@ begin
                                                                                           fOutputImageViews[InFlightFrameIndex].Handle,
                                                                                           VK_IMAGE_LAYOUT_GENERAL)],
                                                            [],
+                                                           [],
+                                                           false);
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                           [],
+                                                           [fInstance.AtmosphereMotionUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                            [],
                                                            false);
   fDescriptorSets[InFlightFrameIndex].Flush;

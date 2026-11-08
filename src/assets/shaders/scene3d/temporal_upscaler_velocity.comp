@@ -2,18 +2,18 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 // The motion vectors as a temporal upscaler gets them: those of the velocity buffer, and for every pixel
 // with nothing drawn into it - the sky, the atmosphere, the clouds, the skybox, which all write no velocity -
-// the motion of the camera alone, as if the pixel were a point at the far plane.
+// the motion of the camera, and where an atmosphere seen from afar dominates the pixel, the motion of that
+// atmosphere, see background_velocity.glsl.
 //
-// Such a pixel is unprojected with the current view and projected again with the previous one, which for an
-// infinite far plane is a direction and so takes the rotation of the camera only, as it should for the sky.
 // The result is written in the convention of the velocity buffer: half the difference of the current and
 // the previous position in clip space, each without its jitter.
 //
-// The temporal antialiasing reads the velocity buffer itself and never this one; it gets along without
-// motion for the sky in its own way.
+// The temporal antialiasing reads the velocity buffer itself and never this one, but takes the same motion
+// for its background from background_velocity.glsl.
 //
 // With MSAA, the velocity is not the resolved one, which is the average of the samples, but that of the
 // nearest sample, the same one the depth resolve takes, see final_depth_resolve.comp. At a silhouette the
@@ -42,6 +42,10 @@ layout(set = 0, binding = 2) uniform sampler2DArray uTextureDepth;
 #endif
 
 layout(set = 0, binding = 3, rg16f) writeonly uniform image2DArray uDestinationTexture;
+
+#define BACKGROUND_VELOCITY_SET 0
+#define BACKGROUND_VELOCITY_BINDING 4
+#include "background_velocity.glsl"
 
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
@@ -80,19 +84,12 @@ void main(){
 
   if(depth == pushConstants.farDepth){
 
-    View view = uView.views[pushConstants.viewBaseIndex + uint(at.z)];
-    View previousView = uView.views[pushConstants.viewBaseIndex + uint(at.z) + pushConstants.countAllViews];
-
     // The pixel centre in clip space, through the jittered projection the frame was rendered with.
-    vec2 clipSpacePosition = fma((vec2(at.xy) + vec2(0.5)) / vec2(size.xy), vec2(2.0), vec2(-1.0));
-
-    vec4 worldSpacePosition = view.inverseViewMatrix * (view.inverseProjectionMatrix * vec4(clipSpacePosition, depth, 1.0));
-
-    vec4 previousClipSpacePosition = previousView.projectionMatrix * (previousView.viewMatrix * worldSpacePosition);
-
-    if(abs(previousClipSpacePosition.w) > 1e-7){
-      velocity = ((clipSpacePosition - pushConstants.jitter.xy) - ((previousClipSpacePosition.xy / previousClipSpacePosition.w) - pushConstants.jitter.zw)) * 0.5;
-    }
+    velocity = GetBackgroundVelocity(uView.views[pushConstants.viewBaseIndex + uint(at.z)],
+                                     uView.views[pushConstants.viewBaseIndex + uint(at.z) + pushConstants.countAllViews],
+                                     fma((vec2(at.xy) + vec2(0.5)) / vec2(size.xy), vec2(2.0), vec2(-1.0)),
+                                     pushConstants.farDepth,
+                                     pushConstants.jitter);
 
   }
 

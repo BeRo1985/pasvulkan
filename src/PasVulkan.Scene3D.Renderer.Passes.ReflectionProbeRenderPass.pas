@@ -1059,6 +1059,7 @@ begin
 
 {}fSkyBox.Draw(aInFlightFrameIndex,
                InFlightFrameState^.ReflectionProbeViewIndex,
+               InFlightFrameState^.ReflectionProbeViewIndex,
                InFlightFrameState^.CountReflectionProbeViews,
                InFlightFrameState^.CountViews,
                aCommandBuffer,

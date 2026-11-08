@@ -68,12 +68,19 @@ vec3 getStarlightDebug(const vec3 worldDirection){
 #endif
 
 // Reprojection for cached starlight rendering
-// Uses previous clip space position from vertex shader (interpolated)
-vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const ivec2 screenSize) {
-  
-  // Previous clip position comes from vertex shader, properly interpolated
-  vec4 previousClip = inPreviousClipSpacePosition;
-  
+//
+// The history is kept on the grid without the jitter of a temporal antialiasing or upscaling. On the jittered
+// grid every frame would land between the texels of the frame before, even with the camera at rest, and the
+// bilinear lookup, fed back into the history frame after frame, would blur the stars away. So each pixel keeps
+// the history for its own centre without the jitter, which reprojects exactly onto itself while nothing moves,
+// and what the pixel shows is looked up once from the history at its actual, jittered direction. Without any
+// jitter both are one and the same.
+//
+// Looks the starlight up in the history of the frame before, where the given previous clip space position of a
+// direction lands. False where there is nothing usable there, so that the caller computes it afresh: off the
+// screen or behind the camera, moved too far, not written in the frame before, or picked for the refresh.
+bool fetchStarlightHistory(const vec4 previousClip, const vec2 currentUV, const ivec2 screenSize, const bool allowRefresh, out vec4 historySample) {
+
   // Perspective divide
   vec2 previousNDC = previousClip.xy / previousClip.w;
   
@@ -97,44 +104,46 @@ vec4 reprojectStarlight(const vec3 worldDirection, const vec2 currentUV, const i
   
   // Stochastic refresh: periodically recompute some pixels to avoid precision drift
   // Using a simple pattern based on frame index and pixel position
+  // Only for what goes back into the history, since a lookup which does not is not drifting anywhere.
   uvec2 pixelCoord = uvec2(currentUV * vec2(screenSize));
   uint refreshPattern = (pixelCoord.x ^ pixelCoord.y ^ pushConstants.frameIndex) & 0x3fu; // Every 64 frames per pixel
-  bool forceRefresh = (refreshPattern == 0u);
-  
+  bool forceRefresh = allowRefresh && (refreshPattern == 0u);
+
   if(isValid && !forceRefresh){
     // Sample from history buffer
     vec3 historyCoord = vec3(previousUV, float(gl_ViewIndex));
-    vec4 historySample = texture(uHistoryTexture, historyCoord);
+    historySample = texture(uHistoryTexture, historyCoord);
 #ifdef SKYBOX_CACHED_REPROJECTION_RGBA16F
     // For RGBA16F: alpha = 0 means pixel was never written (cleared before draw)
     // This catches hidden/off-screen pixels from previous frame
     if(historySample.a < 0.5){
       // Pixel was not rendered in previous frame, recompute
-      return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      return false;
     }else{
-#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
-      historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
+#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG
+      historySample.xy = vec2(0.0); // debug scaling to visualize history usage
 #endif
-      return historySample;
+      return true;
     }
 #elif defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
     // For RGB9E5: all zeros means pixel was never written (cleared before draw)
     // Pure black sky is physically impossible, so this is a safe sentinel
     if(all(equal(historySample.rgb, vec3(0.0)))){
       // Pixel was not rendered in previous frame, recompute
-      return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      return false;
     }else{
-#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG       
-      historySample.xy = vec2(0.0); // debug scaling to visualize history usage 
+#ifdef SKYBOX_CACHED_REPROJECTION_DEBUG
+      historySample.xy = vec2(0.0); // debug scaling to visualize history usage
 #endif
-      return historySample;
+      return true;
     }
-#else    
-    return historySample;
+#else
+    return true;
 #endif
   }else{
-    // Compute fresh starlight for this pixel (alpha = 1.0 marks as valid)
-    return vec4(clamp(getStarlight(worldDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+    // Compute fresh starlight for this pixel
+    historySample = vec4(0.0);
+    return false;
   }
 }
 
@@ -149,14 +158,46 @@ void main(){
       // Cached reprojection mode: reuse previous frame where possible
       ivec2 screenSize = ivec2(pushConstants.widthHeight & 0xFFFFu, pushConstants.widthHeight >> 16u);
       vec2 currentUV = gl_FragCoord.xy / vec2(screenSize);
-      outFragColor = reprojectStarlight(direction, currentUV, screenSize);
+      bool jittered = (pushConstants.viewBaseIndex & 0xffffu) != (pushConstants.viewBaseIndex >> 16u);
+      // The direction through the centre of this pixel without the jitter, which the history is kept for, and
+      // where it was in the frame before. Without jitter that is the direction of the pixel itself.
+      vec3 historyDirection = direction;
+      vec4 historyPreviousClipSpacePosition = inPreviousClipSpacePosition;
+      if(jittered){
+        uint unjitteredViewIndex = (pushConstants.viewBaseIndex >> 16u) + uint(gl_ViewIndex);
+        View unjitteredView = uView.views[unjitteredViewIndex];
+        View previousUnjitteredView = uView.views[unjitteredViewIndex + pushConstants.countAllViews];
+        // Any depth in front of the camera will do, the direction is all that is wanted
+        vec4 viewSpacePosition = unjitteredView.inverseProjectionMatrix * vec4(fma(currentUV, vec2(2.0), vec2(-1.0)), 0.5, 1.0);
+        // Back from the world into the celestial sphere, the way the vertex shader went the other way round
+        historyDirection = normalize(transformVectorByQuaternion(mat3(unjitteredView.inverseViewMatrix) * (viewSpacePosition.xyz / viewSpacePosition.w),
+                                                                 vec4(-pushConstants.currentOrientation.xyz, pushConstants.currentOrientation.w)));
+        historyPreviousClipSpacePosition = ((previousUnjitteredView.projectionMatrix *                                   //
+                                             mat4(vec4(previousUnjitteredView.viewMatrix[0].xyz, 0.0),                   //
+                                                  vec4(previousUnjitteredView.viewMatrix[1].xyz, 0.0),                   //
+                                                  vec4(previousUnjitteredView.viewMatrix[2].xyz, 0.0),                   //
+                                                  vec4(vec3(0.0, 0.0, 0.0), previousUnjitteredView.viewMatrix[2].w))) *  //
+                                            vec4(transformVectorByQuaternion(historyDirection, pushConstants.previousOrientation), 1.0))
+                                               .xyww;
+      }
+      vec4 historyColor;
+      if(!fetchStarlightHistory(historyPreviousClipSpacePosition, currentUV, screenSize, true, historyColor)){
+        // Compute fresh starlight for this pixel (alpha = 1.0 marks as valid)
+        historyColor = vec4(clamp(getStarlight(historyDirection) * skyBoxFactor, vec3(-65504.0), vec3(65504.0)), 1.0);
+      }
+      // What the pixel shows, at its jittered direction. Where the history has nothing for it, the value for
+      // the centre stands in, half a pixel off at most and only there, rather than computing the starlight a
+      // second time in exactly the frames, those of fast turns, which are the most expensive already.
+      if(!(jittered && fetchStarlightHistory(inPreviousClipSpacePosition, currentUV, screenSize, false, outFragColor))){
+        outFragColor = historyColor;
+      }
       // Store result to history image for next frame
 #if defined(SKYBOX_CACHED_REPROJECTION_RGB9E5)
       // Use max() to ensure we never encode to zero (our sentinel for unwritten pixels)
       const vec3 minRGB9E5 = vec3(6.1e-5); // Minimum non-zero RGB9E5 representable value
-      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(max(outFragColor.rgb, minRGB9E5))));
+      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), uvec4(encodeRGB9E5(max(historyColor.rgb, minRGB9E5))));
 #elif defined(SKYBOX_CACHED_REPROJECTION_RGBA16F)
-      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), outFragColor);
+      imageStore(uHistoryImage, ivec3(gl_FragCoord.xy, gl_ViewIndex), historyColor);
 #else
 #error "SKYBOX_CACHED_REPROJECTION requires either SKYBOX_CACHED_REPROJECTION_RGB9E5 or SKYBOX_CACHED_REPROJECTION_RGBA16F"
 #endif

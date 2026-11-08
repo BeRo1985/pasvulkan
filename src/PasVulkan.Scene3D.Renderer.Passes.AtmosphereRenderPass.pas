@@ -558,7 +558,9 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalUnjitteredViewIndex;
+ // With the jitter of a temporal antialiasing or upscaling, like the geometry and the depth it is laid over.
+ // An upscaler places every sample by that jitter, and what is drawn without it trembles by it.
+ fPushConstants.BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
  fPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
 
  if fInstance.Renderer.AnimatedAtmosphereNoise then begin

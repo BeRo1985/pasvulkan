@@ -116,6 +116,10 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               DepthDisocclusionFloor:TpvFloat; // in reciprocal world units, below which everything is equally far away
               JitterUV:TpvVector2;
 
+              Jitter:TpvVector4; // xy of this frame, zw of the previous one, as clip space offsets
+              CountAllViews:TpvUInt32; // the previous frame's views follow the current ones at this offset
+              FarDepth:TpvFloat; // the depth of nothing drawn: 0.0 for the reversed depth, 1.0 for the ordinary one
+
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -280,6 +284,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*6);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -310,6 +315,11 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(5,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(6,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
@@ -385,6 +395,15 @@ begin
                                                                                                 fInstance.TAAHistoryVelocityImages[PreviousInFlightFrameIndex].VulkanArrayImageView.Handle,
                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                  [],
+                                                                 [],
+                                                                 false
+                                                                );
+  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                                 0,
+                                                                 1,
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                 [],
+                                                                 [fInstance.AtmosphereMotionUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -568,6 +587,16 @@ begin
  PushConstants.SharpingFactor:=0.0; // No sharping for now
 
  PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
+
+ // For the motion of the background, the sky and the atmospheres, which the velocity buffer does not have,
+ // see background_velocity.glsl.
+ PushConstants.Jitter:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter;
+ PushConstants.CountAllViews:=fInstance.Views[aInFlightFrameIndex].Count;
+ if fInstance.ZFar<0.0 then begin
+  PushConstants.FarDepth:=0.0;
+ end else begin
+  PushConstants.FarDepth:=1.0;
+ end;
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 

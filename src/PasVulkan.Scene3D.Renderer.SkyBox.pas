@@ -87,7 +87,7 @@ type { TpvScene3DRendererSkyBox }
 
              LightDirection:TpvVector4;
 
-             ViewBaseIndex:TpvUInt32;
+             ViewBaseIndex:TpvUInt32; // low 16 bits: the views drawn with, high 16 bits: the same without the jitter, see skybox.glsl
              CountViews:TpvUInt32;
              SkyBoxBrightnessFactor:TpvFloat;
              WidthHeight:TpvUInt32;
@@ -150,7 +150,7 @@ type { TpvScene3DRendererSkyBox }
 
        procedure ClearHistoryImageAndPrepareLayouts(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
  
-       procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
+       procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aUnjitteredViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 
        property Cached:Boolean read fCached;
 
@@ -671,7 +671,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
+procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aUnjitteredViewBaseIndex,aCountViews,aCountAllViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer;const aOrientation:TpvMatrix4x4);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
     SunHalo:TpvFloat;
     SunDrawnRadius:TpvFloat;
@@ -694,7 +694,10 @@ begin
 
  PushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,0.0);
 
- PushConstants.ViewBaseIndex:=aViewBaseIndex;
+ // The sky box is drawn with the jitter of a temporal antialiasing or upscaling like everything else in the
+ // picture, but its cached reprojection keeps its history without it, see skybox.frag. Both indices share one
+ // word, since this block sits exactly on the 128 byte push-constant limit.
+ PushConstants.ViewBaseIndex:=(TpvUInt32(aViewBaseIndex) and $ffff) or (TpvUInt32(aUnjitteredViewBaseIndex) shl 16);
  PushConstants.CountViews:=aCountViews;
  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);

@@ -23,7 +23,7 @@ layout(location = 1) out vec4 outPreviousClipSpacePosition;
 void main() {
   int vertexID = int(gl_VertexIndex), vertexIndex = vertexID % 3, faceIndex = vertexID / 3, stripVertexID = faceIndex + (((faceIndex & 1) == 0) ? (2 - vertexIndex) : vertexIndex), reversed = int(stripVertexID > 6), index = (reversed == 1) ? (13 - stripVertexID) : stripVertexID;
   outPosition = (vec3(ivec3(int((index < 3) || (index == 4)), reversed ^ int((index > 0) && (index < 4)), reversed ^ int((index < 2) || (index > 5)))) * 2.0) - vec3(1.0);
-  View view = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)];
+  View view = uView.views[(pushConstants.viewBaseIndex & 0xffffu) + uint(gl_ViewIndex)];
   gl_Position = ((view.projectionMatrix *                                   //
                   mat4(vec4(view.viewMatrix[0].xyz, 0.0),                   //
                        vec4(view.viewMatrix[1].xyz, 0.0),                   //
@@ -32,7 +32,8 @@ void main() {
                  vec4(transformVectorByQuaternion(outPosition, pushConstants.currentOrientation), 1.0))
                     .xyww;
 #ifdef SKYBOX_CACHED_REPROJECTION
-  View previousView = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex) + pushConstants.countAllViews];
+  // Into the history, which is kept without the jitter, see skybox.frag.
+  View previousView = uView.views[(pushConstants.viewBaseIndex >> 16u) + uint(gl_ViewIndex) + pushConstants.countAllViews];
   outPreviousClipSpacePosition = ((previousView.projectionMatrix *                                   //
                                    mat4(vec4(previousView.viewMatrix[0].xyz, 0.0),                   //
                                         vec4(previousView.viewMatrix[1].xyz, 0.0),                   //

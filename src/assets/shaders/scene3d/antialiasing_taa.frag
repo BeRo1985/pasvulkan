@@ -62,6 +62,10 @@ layout(push_constant, std140) uniform PushConstants {
   float depthDisocclusionFloor;      // in reciprocal world units, below which everything is equally far away
   vec2 jitterUV;
 
+  vec4 jitter;        // xy of this frame, zw of the previous one, as clip space offsets
+  uint countAllViews; // the previous frame's views follow the current ones at this offset
+  float farDepth;     // the depth of nothing drawn: 0.0 for the reversed depth, 1.0 for the ordinary one
+
 } pushConstants;
 
 struct View {
@@ -74,6 +78,10 @@ struct View {
 layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
+
+#define BACKGROUND_VELOCITY_SET 0
+#define BACKGROUND_VELOCITY_BINDING 6
+#include "background_velocity.glsl"
 
 mat4 inverseProjectionMatrix = uView.views[pushConstants.baseViewIndex + uint(gl_ViewIndex)].inverseProjectionMatrix;
 
@@ -472,8 +480,19 @@ void main() {
 
     // Otherwise do our job.
 
-    // Get the current velocity
-    vec2 currentVelocity = textureLod(uCurrentVelocityTexture, velocityUVWZ.xyz, 0.0).xy;
+    // Get the current velocity. Where nothing was drawn anywhere around, which is the sky, the skybox or an
+    // atmosphere, the velocity buffer holds none, so it is the motion of the camera, and of an atmosphere
+    // seen from afar, instead. See background_velocity.glsl.
+    vec2 currentVelocity;
+    if(velocityUVWZ.w < 1e-7){
+      currentVelocity = GetBackgroundVelocity(uView.views[pushConstants.baseViewIndex + uint(gl_ViewIndex)],
+                                              uView.views[pushConstants.baseViewIndex + uint(gl_ViewIndex) + pushConstants.countAllViews],
+                                              fma(uvw.xy, vec2(2.0), vec2(-1.0)),
+                                              pushConstants.farDepth,
+                                              pushConstants.jitter);
+    }else{
+      currentVelocity = textureLod(uCurrentVelocityTexture, velocityUVWZ.xyz, 0.0).xy;
+    }
 
     // Offset the history UVW by the current velocity
     vec3 historyUVW = uvw - vec3(currentVelocity, 0.0);
