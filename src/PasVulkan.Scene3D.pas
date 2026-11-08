@@ -42376,34 +42376,47 @@ begin
   pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] Group: Usable='+BoolToString[Group.Usable]+' MeshletCount='+IntToStr(Group.fTotalMeshletCount)+' Instances='+IntToStr(Group.fInstances.Count));
 {$endif}
   if Group.Usable and (Group.fTotalMeshletCount>0) then begin
-   for GroupInstanceIndex:=0 to Group.fInstances.Count-1 do begin
-    GroupInstance:=Group.fInstances[GroupInstanceIndex];
+   // This runs in the render thread, while the update thread may create or free group instances and
+   // render instances at the same time, so both lists are only walked under their locks. Holding the
+   // instance list lock also keeps a group instance from being freed while it is visited here.
+   Group.fInstanceListLock.Acquire;
+   try
+    for GroupInstanceIndex:=0 to Group.fInstances.Count-1 do begin
+     GroupInstance:=Group.fInstances[GroupInstanceIndex];
 {$ifdef MeshShaderDebug}
-    pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] GroupInst: Active='+BoolToString[GroupInstance.fActives[aInFlightFrameIndex]]+' Headless='+BoolToString[GroupInstance.fHeadless]+' Virtual='+BoolToString[GroupInstance.fVirtual]+' UseRI='+BoolToString[GroupInstance.fUseRenderInstances]+' SphereBase='+IntToStr(GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
+     pvApplication.Log(LOG_VERBOSE,'TpvScene3D','[DBG-PAIRS] GroupInst: Active='+BoolToString[GroupInstance.fActives[aInFlightFrameIndex]]+' Headless='+BoolToString[GroupInstance.fHeadless]+' Virtual='+BoolToString[GroupInstance.fVirtual]+' UseRI='+BoolToString[GroupInstance.fUseRenderInstances]+' SphereBase='+IntToStr(GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset));
 {$endif}
-    if GroupInstance.fActives[aInFlightFrameIndex] and (not GroupInstance.fHeadless) and (not GroupInstance.fVirtual) then begin
-     SphereBase:=GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
-     MeshletCount:=Group.fTotalMeshletCount;
-     if GroupInstance.fUseRenderInstances then begin
-      for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
-       RenderInstance:=GroupInstance.fRenderInstances[RenderInstanceIndex];
-       if RenderInstance.fActive then begin
-        MatrixID:=RenderInstance.fMatrixID;
-        for MeshletIndex:=0 to MeshletCount-1 do begin
-         Pair.SphereIndex:=SphereBase+MeshletIndex;
-         Pair.MatrixID:=MatrixID;
-         fDebugMeshletSpherePairs.Add(Pair);
+     if GroupInstance.fActives[aInFlightFrameIndex] and (not GroupInstance.fHeadless) and (not GroupInstance.fVirtual) then begin
+      SphereBase:=GroupInstance.fBufferRanges.VulkanMeshletBoundingSphereBufferRange.Offset;
+      MeshletCount:=Group.fTotalMeshletCount;
+      if GroupInstance.fUseRenderInstances then begin
+       TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(GroupInstance.fRenderInstanceLock);
+       try
+        for RenderInstanceIndex:=0 to GroupInstance.fRenderInstances.Count-1 do begin
+         RenderInstance:=GroupInstance.fRenderInstances[RenderInstanceIndex];
+         if RenderInstance.fActive then begin
+          MatrixID:=RenderInstance.fMatrixID;
+          for MeshletIndex:=0 to MeshletCount-1 do begin
+           Pair.SphereIndex:=SphereBase+MeshletIndex;
+           Pair.MatrixID:=MatrixID;
+           fDebugMeshletSpherePairs.Add(Pair);
+          end;
+         end;
         end;
+       finally
+        TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(GroupInstance.fRenderInstanceLock);
        end;
-      end;
-     end else begin
-      for MeshletIndex:=0 to MeshletCount-1 do begin
-       Pair.SphereIndex:=SphereBase+MeshletIndex;
-       Pair.MatrixID:=0;
-       fDebugMeshletSpherePairs.Add(Pair);
+      end else begin
+       for MeshletIndex:=0 to MeshletCount-1 do begin
+        Pair.SphereIndex:=SphereBase+MeshletIndex;
+        Pair.MatrixID:=0;
+        fDebugMeshletSpherePairs.Add(Pair);
+       end;
       end;
      end;
     end;
+   finally
+    Group.fInstanceListLock.Release;
    end;
   end;
  end;
@@ -42413,10 +42426,30 @@ begin
 end;
 
 procedure TpvScene3D.UploadDebugMeshletSpherePairs(const aInFlightFrameIndex:TpvSizeInt);
-var RequiredSize:TpvSizeInt;
+var RequiredSize,RendererInstanceIndex:TpvSizeInt;
     Generation:TPasMPUInt64;
-    PreviousFrameFinished:boolean;
+    PreviousFrameFinished,Needed:boolean;
 begin
+
+ // The pairs feed only the meshlet bounding sphere debug view. Without this check, every render
+ // instance created or freed at runtime would trigger a full rebuild and upload in normal play, too.
+ // While the view is off, the list stays empty and the uploaded generation invalid, so switching it
+ // on rebuilds the pairs here before its first dispatch in the same frame.
+ Needed:=false;
+ if fMeshShaders then begin
+  for RendererInstanceIndex:=0 to fRendererInstanceList.Count-1 do begin
+   if TpvScene3DRendererInstance(fRendererInstanceList.RawItems[RendererInstanceIndex]).DebugDrawMeshletBoundingSpheres then begin
+    Needed:=true;
+    break;
+   end;
+  end;
+ end;
+ if not Needed then begin
+  fDebugMeshletSpherePairs.Count:=0;
+  fDebugMeshletSpherePairsUploadedGeneration:=High(TPasMPUInt64);
+  exit;
+ end;
+
  Generation:=fDebugMeshletSpherePairsGeneration;
  if fDebugMeshletSpherePairsUploadedGeneration<>Generation then begin
 
