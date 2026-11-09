@@ -1249,7 +1249,9 @@ int main(int argc, char **argv) {
       "  playback (default: open a window and play with audio):\n"
       "    --exposure=<f>                 HDR exposure override (default: keep the file's)\n"
       "    --output=scrgb|sdr             force scRGB FP16 (real HDR display) or SDR tonemap (default: sdr)\n"
-      "    --decoder=h264|wavelet|auto    pick the embedded stream when both exist (default auto: H.264 where HW-decodable)\n"
+      "    --decoder=h264|flexiblevideo|auto\n"
+      "                                   pick the embedded stream when both exist (default auto: H.264 where HW-decodable;\n"
+      "                                   flexiblevideo = the FlexibleVideo DCT/wavelet stream, 'wavelet' is accepted as an alias)\n"
       "  B-frame decode (auto-detected from the container):\n"
       "    --cpu-decode                   force the slow CPU B-decode oracle (GPU bidi decode is the default)\n"
       "    --gpu-decode                   force the GPU bidi decode (default; accepted for compatibility)\n"
@@ -1271,7 +1273,7 @@ int main(int argc, char **argv) {
   int dump_first_frame = 0;          // --dump: write the GPU-decoded frame 0 to /tmp/fvd_frame0.ppm (.f16 when scRGB)
   int dump_alpha = 0;                // --dump-alpha: write the CPU-decoded alpha lane of frame 0 to /tmp/fvd_alpha0.gray (implies --verify)
   int force_scrgb = 0;               // --force-scrgb: force scRGB FP16 output headless (HDR FP16 testing without an HDR swapchain)
-  int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else wavelet), 1 = force H.264, 2 = force wavelet
+  int decoder_choice = 0;            // --decoder: 0 = auto (H.264 if available, else FlexibleVideo), 1 = force H.264, 2 = force FlexibleVideo (DCT or wavelet)
   const char *decode_to_path = NULL; // --decode-to=<file.avi>: decode the whole stream to an OpenDML AVI (RGB32 + PCM16)
   int eval_mode = 0;                 // --eval: 1 = vs embedded H.264; --eval-with-reference: 2 = vs external file
   const char *eval_ref_path = NULL;  // --eval-with-reference=<file>: the external reference video
@@ -1299,8 +1301,8 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[a], "--force-scrgb") == 0) {
       force_scrgb = 1;   // force the scRGB FP16 decode path headless (+ a raw RGBA16F --dump)
     } else if (strncmp(argv[a], "--decoder=", 10) == 0) {
-      const char *value = argv[a] + 10;   // --decoder=h264|wavelet|auto
-      decoder_choice = strstr(value, "h264") ? 1 : (strstr(value, "wav") ? 2 : 0);
+      const char *value = argv[a] + 10;   // --decoder=h264|flexiblevideo|auto ("wavelet" = old spelling of flexiblevideo)
+      decoder_choice = strstr(value, "h264") ? 1 : ((strstr(value, "flex") || strstr(value, "wav")) ? 2 : 0);
     } else if (strncmp(argv[a], "--decode-to=", 12) == 0) {
       decode_to_path = argv[a] + 12;
     } else if (strcmp(argv[a], "--eval") == 0) {
@@ -1546,17 +1548,17 @@ int main(int argc, char **argv) {
   }
 
   // pick the video decode path. H.264 HW where the GPU + container both support it (or forced),
-  // otherwise the wavelet GPU-compute path. (--decoder auto|h264|wavelet)
+  // otherwise the FlexibleVideo path, which decodes DCT and wavelet streams alike. (--decoder auto|h264|flexiblevideo)
   int gpu_h264 = gpu_supports_h264_decode(instance, physical_device);
   int has_h264_stream = (header.h264_size > 0);
   int use_h264 = (decoder_choice == 2) ? 0 : (has_h264_stream && gpu_h264);
   fprintf(stderr, "decoder: %s  (container h264=%s, gpu h264-decode=%s, request=%s)\n",
-          use_h264 ? "H.264 (HW)" : "wavelet (GPU compute)",
+          use_h264 ? "H.264 (HW)" : (g_spatial_dct ? "DCT (FlexibleVideo)" : "wavelet (FlexibleVideo)"),
           has_h264_stream ? "yes" : "no", gpu_h264 ? "yes" : "no",
-          (decoder_choice == 1) ? "force-h264" : ((decoder_choice == 2) ? "force-wavelet" : "auto"));
+          (decoder_choice == 1) ? "force-h264" : ((decoder_choice == 2) ? "force-flexiblevideo" : "auto"));
 
   // when the H.264 path would be used, give the single shared device the video-decode queue +
-  // VK_KHR_video extensions too (additive — the wavelet path simply ignores them). The two paths are
+  // VK_KHR_video extensions too (additive — the FlexibleVideo path simply ignores them). The two paths are
   // separate after init, so one device with the union of queues/extensions is enough.
   int enable_video_queue = (decoder_choice != 2) && (has_h264_stream && gpu_h264);
   int video_queue_family = -1;
@@ -2467,7 +2469,7 @@ int main(int argc, char **argv) {
     return run_h264_player(&h264);
   }
 
-  // --decode-to (wavelet path): open the OpenDML AVI export. The decode loop below writes each frame.
+  // --decode-to (FlexibleVideo path): open the OpenDML AVI export. The decode loop below writes each frame.
   AviWriter *avi = NULL;
   if (decode_to_path) {
     uint64_t audio_frames = (audio_pcm && (audio_channels > 0)) ? ((uint64_t)total_audio_bytes / (uint32_t)(audio_channels * 2)) : 0;
@@ -4181,7 +4183,7 @@ int main(int argc, char **argv) {
       image_barrier(decode_image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     }
-    }   // end of the non-B (GPU wavelet decode + color) path; the B-stream upload above already left decode_image in TRANSFER_SRC
+    }   // end of the non-B (GPU DCT/wavelet decode + color) path; the B-stream upload above already left decode_image in TRANSFER_SRC
 
     if (verify || decode_to_path || eval_mode) {
       // Headless: copy the decoded image out; verify compares to the CPU ref, decode-to writes the AVI; no present.

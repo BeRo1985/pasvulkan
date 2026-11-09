@@ -1,14 +1,14 @@
 ﻿unit PasVulkan.Video.FlexibleVideo.Player;
 {$i PasVulkan.inc}
 
-// Poll-based playback facade over the Flexible Wavelet video decoders. The engine drives it with a clock (e.g. the
+// Poll-based playback facade over the FlexibleVideo decoders. The engine drives it with a clock (e.g. the
 // FWA audio clock for A/V sync): DecodeTime(t) advances the CPU side on the Update thread (parse + decompress + MV/mode
 // decode + host upload, one frame toward the time's target), Decode(cmd) records the GPU side into the caller's command
 // buffer on the Draw thread, then the decoded frame is available as OutputImage / blitted into a present target. The
 // facade owns the backend choice: a container carrying an H.264 stream decodes via the dedicated VK-H.264 hardware path
-// where the GPU supports it (Stage F3, PasVulkan.Video.H264.Decoder), otherwise via the self-contained wavelet GPU path
-// (the lossless / HDR / 3D-DWT / downscalable fallback). For now only the wavelet backend is wired; an H.264-only request
-// raises, an auto request with an H.264 stream logs and falls back to wavelet.
+// where the GPU supports it (PasVulkan.Video.H264.Decoder), otherwise via the self-contained FlexibleVideo path, which
+// decodes DCT and wavelet streams alike (the lossless / HDR / 3D-DWT / downscalable fallback). A forced H.264 request
+// raises when that path is unavailable; an automatic one falls back to the FlexibleVideo path without a message.
 
 interface
 
@@ -34,9 +34,9 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
       public
        type TDecoderChoice=
              (
-              Auto,         // H.264 where HW-decodable, else wavelet
-              ForceH264,    // require the H.264 hardware path (raises if unavailable)
-              ForceWavelet  // always the wavelet GPU-compute path
+              Auto,               // H.264 where HW-decodable, else the FlexibleVideo path
+              ForceH264,          // require the H.264 hardware path (raises if unavailable)
+              ForceFlexibleVideo  // always the FlexibleVideo path (DCT or wavelet, whatever the stream carries)
              );
             TAudioKind=
              (
@@ -49,7 +49,7 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
       private
        fStream:TStream;
        fDevice:TpvVulkanDevice;
-       fDecoder:TpvFlexibleVideoDecoder; // the wavelet backend (nil when the H.264 backend is active)
+       fDecoder:TpvFlexibleVideoDecoder; // the FlexibleVideo backend, DCT or wavelet (nil when the H.264 backend is active)
        fH264:TpvVideoH264Decoder; // the VK-H.264 HW-decode backend (Stage F3); nil unless fUsingH264
        // audio (A/V sync): one container audio sub-codec decoder feeds a TpvAudioSoundVideo whose PlaybackTime is the clock
        fAudio:TpvAudio;
@@ -189,11 +189,11 @@ begin
   fDuration:=0.0;
  end;
 
- // backend decision (mirrors the C fwvplay: use_h264 = (choice<>force-wavelet) && h264_size>0 && gpu_h264)
+ // backend decision (mirrors the C fvdplay: use_h264 = (choice<>force-flexiblevideo) && h264_size>0 && gpu_h264)
  fHasH264Stream:=fHeader.H264Size>0;
  fUsingH264:=false;
 {$ifdef VkVideo}
- if (aDecoderChoice<>TDecoderChoice.ForceWavelet) and fHasH264Stream and assigned(fDevice.VideoDecodeQueue) then begin
+ if (aDecoderChoice<>TDecoderChoice.ForceFlexibleVideo) and fHasH264Stream and assigned(fDevice.VideoDecodeQueue) then begin
   // copy the H.264 Annex-B sub-blob out of the container; TpvVideoH264Decoder copies it again internally, so a local
   // stream is enough (unlike the audio decoders, which read on demand and need their blob kept alive).
   TryCreateH264Backend; // sets fUsingH264 + fH264 + the H.264 width/height/frame-count on success
@@ -207,7 +207,7 @@ begin
  end;
 {$endif}
 
- // the wavelet backend is the default + the fallback; only built when the H.264 backend is not active
+ // the FlexibleVideo backend is the default + the fallback; only built when the H.264 backend is not active
  if not fUsingH264 then begin
   fStream.Seek(0,soBeginning);
   fDecoder:=TpvFlexibleVideoDecoder.Create(fStream,fDevice,aPreferSCRGBForHDR,1,aPipelineCache,aBlitUsage); // submit mode B: whole decode-ahead into ONE caller CB; shared pipeline cache warm-starts the build; aBlitUsage -> sRGB blit image for the SDR blit-present
@@ -237,7 +237,7 @@ begin
   try
    fH264:=TpvVideoH264Decoder.Create(BlobStream,fDevice); // parses + creates the VkVideoSession (raises if unsupported)
    fUsingH264:=true;
-   // the H.264 stream is full-resolution; the container header width/height may be the wavelet's down-scaled size
+   // the H.264 stream is full-resolution; the container header width/height may be the FlexibleVideo stream's down-scaled size
    fWidth:=fH264.Width;
    fHeight:=fH264.Height;
    fFrameCount:=fH264.FrameCount;
@@ -246,7 +246,7 @@ begin
    end;
   except
    on e:Exception do begin
-    // auto-fallback to wavelet: the GPU advertised a video-decode queue but the actual session/profile was rejected
+    // auto-fallback to the FlexibleVideo path: the GPU advertised a video-decode queue but the actual session/profile was rejected
     FreeAndNil(fH264);
     fUsingH264:=false;
    end;
@@ -552,7 +552,7 @@ begin
  end;
 {$endif}
 
- // backward seek (wavelet path): the decode chain is forward-only (intra / P / B references), so to land on an earlier
+ // backward seek (FlexibleVideo path): the decode chain is forward-only (intra / P / B references), so to land on an earlier
  // display frame we reset the decoder to the start of the stream and re-decode forward to the target — one frame per
  // tick, exactly like a forward catch-up. (The H.264 backend handles a backward target inside EnsureDisplayFrame above,
  // so this only applies here.) Audio re-anchoring is the caller's master-clock / SeekAudio concern, not this video poll.
@@ -680,7 +680,7 @@ begin
  // current rotating pool slot into a stable display image), so the present path is identical for both
  SourceLayout:=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
- // blit source: H.264 blits its (already sRGB) output directly; the wavelet decoder's base image is UNORM, so EnsureBlitImage
+ // blit source: H.264 blits its (already sRGB) output directly; the FlexibleVideo decoder's base image is UNORM, so EnsureBlitImage
  // raw-copies it into the sRGB blit image first (color-correct blit to the sRGB swapchain). Both end up in TRANSFER_SRC_OPTIMAL.
 {$ifdef VkVideo}
  if fUsingH264 then begin
@@ -787,7 +787,7 @@ var ImageCopy:TVkImageCopy;
 
 begin
 
- // Raw 1:1 byte copy of the decoded frame into a sampleable target (no scaling, no format conversion). The wavelet
+ // Raw 1:1 byte copy of the decoded frame into a sampleable target (no scaling, no format conversion). The FlexibleVideo
  // decoder's OutputImage is UNORM holding gamma bytes, the H.264 backend's is sRGB; either way vkCmdCopyImage moves the
  // raw bytes, and an sRGB-format target view samples them back to linear correctly. R8G8B8A8_UNORM and _SRGB share a
  // format-compatibility class, so the copy is valid. vkCmdBlitImage would instead reinterpret the (UNORM) source format
