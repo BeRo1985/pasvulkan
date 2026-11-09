@@ -1465,6 +1465,9 @@ begin
 
   if fThreadSafe then begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReadToWrite(fMultipleReaderSingleWriterLockState);
+   // The upgrade gives up the read lock for a moment, in which another writer may have grown and thereby
+   // reallocated the node array, so the node pointer from before is fetched again.
+   Node:=@fNodes[aNodeID];
   end;
 
   RemoveLeaf(aNodeID);
