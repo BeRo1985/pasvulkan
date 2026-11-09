@@ -587,7 +587,7 @@ begin
  fInsertionCount:=0;
  fProxyCount:=0;
  if fThreadSafe then begin
-  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
  end;
 end;
 
@@ -2236,6 +2236,9 @@ begin
 end;
 
 procedure TpvBVHDynamicAABBTree.Rebuild(const aFull:Boolean=false;const aForce:Boolean=false);
+// The upgrade from the read to the write lock consumes the read lock, so a rebuild ends with releasing the
+// write lock alone, while the case without a rebuild still has to release its read lock. The upgrade gives up
+// the lock for a moment, in which another thread may have rebuilt the tree already, hence the second test.
 begin
  if fThreadSafe then begin
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireRead(fMultipleReaderSingleWriterLockState);
@@ -2244,14 +2247,17 @@ begin
   if fThreadSafe then begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReadToWrite(fMultipleReaderSingleWriterLockState);
   end;
-  fRebuildDirty:=false;
-  if fProxyCount>0 then begin
-   RebuildTopDown(aFull,false);
- //Assert(Validate);
+  if fRebuildDirty or aForce then begin
+   fRebuildDirty:=false;
+   if fProxyCount>0 then begin
+    RebuildTopDown(aFull,false);
+  //Assert(Validate);
+   end;
   end;
   if fThreadSafe then begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fMultipleReaderSingleWriterLockState);
   end;
+ end else begin
   if fThreadSafe then begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseRead(fMultipleReaderSingleWriterLockState);
   end;
