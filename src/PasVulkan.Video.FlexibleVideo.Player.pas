@@ -152,6 +152,7 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        property IsHDR:boolean read GetIsHDR;
        property HasAlpha:boolean read GetHasAlpha; // the decoded OutputImage's A channel carries a real alpha plane
        property AlphaPremultiplied:boolean read GetAlphaPremultiplied; // the decoded RGB is premultiplied by alpha
+       property Decoder:TpvFlexibleVideoDecoder read fDecoder; // the FlexibleVideo backend, for its creation times and sizes; nil while the H.264 backend is active
      end;
 
 implementation

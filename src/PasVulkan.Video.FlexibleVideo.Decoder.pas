@@ -82,6 +82,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
+     PasVulkan.HighResolutionTimer,
      PasVulkan.Assets.Video.FlexibleVideo,
      PasVulkan.Video.FlexibleVideo;
 
@@ -94,6 +95,14 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // updates frame N while frame N-1 is recorded and frames N-2..N-4 may still execute (MaxInFlightFrames+1). The
        // host-input rings never hand out a slot that one of these frames still reads.
        const InputRingPendingFrames=4;
+       // How long the parts of the construction took, for telling what makes opening a video slow: a cold driver
+       // pipeline cache, or the host-input rings of a long B-frame period
+       type TCreationTimes=record
+             ContainerMilliseconds:TpvDouble;
+             PipelinesMilliseconds:TpvDouble;
+             BuffersMilliseconds:TpvDouble;
+             DescriptorSetsMilliseconds:TpvDouble;
+            end;
        type TBidiPlan=record // mode-B decode-ahead plan captured by PrepareFrameBidi, replayed by RecordFrameBidi
              RingSlot:TpvInt32;
              IsPredicted:TpvInt32;
@@ -213,6 +222,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // clobbering the input buffers frame N's still-running GPU decode reads (the washed-out / pale-fade race).
        fBufferRingSlot:TpvInt32;
        fBufferRingSize:TpvInt32;
+       fCreationTimes:TCreationTimes;
        fIPInputRing:boolean; // the intra/I-P path uses the ring (set when not B-frames and not 3D-DWT)
        fIPRingSlot:TpvInt32; // next ring slot the intra/I-P PrepareFrame will use (cycles 0..fBufferRingSize-1)
        fPreparedRingSlot:TpvInt32; // ring slot PrepareFrame chose; RecordFrame restores it (Update + Draw are separate calls)
@@ -595,6 +605,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        property IsHDR:boolean read fIsHDR;
        property HasAlpha:boolean read fHasAlpha; // color_flags bit2: the output image's A channel carries a decoded alpha plane
        property AlphaPremultiplied:boolean read fAlphaPremultiplied; // color_flags bit3: the RGB is premultiplied by alpha
+       property CreationTimes:TCreationTimes read fCreationTimes;
+       property InputRingSlots:TpvInt32 read fBufferRingSize; // slots of the host-input ring; 0 where there is none (3D-DWT)
       end;
 
 implementation
@@ -602,8 +614,15 @@ implementation
 { TpvFlexibleVideoDecoder }
 
 constructor TpvFlexibleVideoDecoder.Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aPreferSCRGBForHDR:boolean;const aBSubmitMode:TpvInt32;const aPipelineCache:TpvVulkanPipelineCache;const aBlitUsage:boolean);
+var Timer:TpvHighResolutionTimer;
+    StartTime,EndTime:TpvHighResolutionTime;
 begin
  inherited Create;
+
+ fCreationTimes.ContainerMilliseconds:=0.0;
+ fCreationTimes.PipelinesMilliseconds:=0.0;
+ fCreationTimes.BuffersMilliseconds:=0.0;
+ fCreationTimes.DescriptorSetsMilliseconds:=0.0;
 
  fPreparedIndex:=-1;
 
@@ -631,22 +650,43 @@ begin
                                                   fDevice.PhysicalDevice.Properties.limits.maxComputeSharedMemorySize]);
  end;
 
- ParseContainer;
+ Timer:=TpvHighResolutionTimer.Create;
+ try
 
- // Compute-pipeline cache: building the ~29 pipelines from SPIR-V costs ~2 s on a cold driver. The caller (the app)
- // passes its shared, disk-persisted cache (pvApplication.VulkanPipelineCache) so subsequent runs reuse the driver's
- // compiled binaries and the build drops to ~tens of ms. When none is supplied (e.g. the headless harness) own a fresh one.
- if assigned(aPipelineCache) then begin
-  fPipelineCache:=aPipelineCache;
-  fOwnsPipelineCache:=false;
- end else begin
-  fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
-  fOwnsPipelineCache:=true;
+  StartTime:=Timer.GetTime;
+  ParseContainer;
+  EndTime:=Timer.GetTime;
+  fCreationTimes.ContainerMilliseconds:=Timer.ToFloatSeconds(EndTime-StartTime)*1000.0;
+
+  // Compute-pipeline cache: building the ~29 pipelines from SPIR-V costs ~2 s on a cold driver. The caller (the app)
+  // passes its shared, disk-persisted cache (pvApplication.VulkanPipelineCache) so subsequent runs reuse the driver's
+  // compiled binaries and the build drops to ~tens of ms. When none is supplied (e.g. the headless harness) own a fresh one.
+  if assigned(aPipelineCache) then begin
+   fPipelineCache:=aPipelineCache;
+   fOwnsPipelineCache:=false;
+  end else begin
+   fPipelineCache:=TpvVulkanPipelineCache.Create(fDevice);
+   fOwnsPipelineCache:=true;
+  end;
+
+  StartTime:=Timer.GetTime;
+  BuildPipelines;
+  EndTime:=Timer.GetTime;
+  fCreationTimes.PipelinesMilliseconds:=Timer.ToFloatSeconds(EndTime-StartTime)*1000.0;
+
+  StartTime:=Timer.GetTime;
+  BuildBuffersAndImage;
+  EndTime:=Timer.GetTime;
+  fCreationTimes.BuffersMilliseconds:=Timer.ToFloatSeconds(EndTime-StartTime)*1000.0;
+
+  StartTime:=Timer.GetTime;
+  BuildDescriptorSets;
+  EndTime:=Timer.GetTime;
+  fCreationTimes.DescriptorSetsMilliseconds:=Timer.ToFloatSeconds(EndTime-StartTime)*1000.0;
+
+ finally
+  FreeAndNil(Timer);
  end;
-
- BuildPipelines;
- BuildBuffersAndImage;
- BuildDescriptorSets;
 
  // the B-frame mode-A decode-ahead and the 3D-DWT GOP decode self-submit on their own command buffer + fence
  if (fHasBFrames and (fSubmitMode=0)) or fMode3DDWT then begin
