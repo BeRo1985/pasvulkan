@@ -90,6 +90,10 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
      { TpvFlexibleVideoDecoder }
      TpvFlexibleVideoDecoder=class(TpvFlexibleVideo)
       public
+       // Earlier PrepareFrame calls whose GPU work may still be pending when the next PrepareFrame runs: a pipelined engine
+       // updates frame N while frame N-1 is recorded and frames N-2..N-4 may still execute (MaxInFlightFrames+1). The
+       // host-input rings never hand out a slot that one of these frames still reads.
+       const InputRingPendingFrames=4;
        type TBidiPlan=record // mode-B decode-ahead plan captured by PrepareFrameBidi, replayed by RecordFrameBidi
              RingSlot:TpvInt32;
              IsPredicted:TpvInt32;
@@ -153,7 +157,13 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fGDPBPOCToSlot:array of TpvInt32; // display POC -> DPB slot
        fGDPBCodingToSlot:array of TpvInt32; // coding index -> DPB slot
        fGDPBSlotCoding:array of TpvInt32; // DPB slot -> coding index occupying it (-1 = free)
+       fGReach:array of TpvInt32; // per coding frame: lowest coding index in its transitive reference closure
+       fGRandomAccessCoding:TpvInt32; // coding index the decode-ahead restarted at; frames reaching below it are skipped
+       fGMaximumStepSlots:TpvInt32; // most coding frames one call must decode to make its display frame ready (1 = the random access point itself)
        fGDecStepIndex:TpvInt32; // currently-bound dequant step quality (Stage E3 rebuilds per frame)
+       // random access points in ascending display order (display index + the coding index decoding restarts at)
+       fRandomAccessDisplay:array of TpvInt32;
+       fRandomAccessCoding:array of TpvInt32;
        // --- 3D-DWT / MCTF temporal mode (Stage E4) ---
        fMode3DDWT:boolean;
        fMCTF:boolean;
@@ -196,6 +206,7 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        f3DPfDone:boolean; // the prefetched GOP is fully decoded (spatial + temporal/MCTF)
        f3DPfPending:boolean; // a prefetch submit is in flight on fPrefetchFence (gates PrefetchWait so it never waits empty)
        f3DInitialized:boolean; // GOP 0 has been decoded up-front
+       f3DLastDisplayIndex:TpvInt32; // display index of the previous PrepareFrame3D (-1 = none); tells a seek from the next frame
        // Per-frame input ring: -1 = the shared buffers/sets (mode A self-submit, mode C caller step-loop, 3D-DWT),
        // >=0 = the active ring slot. Used by mode B (the whole decode-ahead into ONE caller command buffer) AND by the
        // pure intra/I-P path, which cycles one slot per displayed frame so a pipelined Update can stage frame N+1 without
@@ -237,6 +248,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        fBidiDisplayPOC:TpvInt32;
        fBidiRingCursor:TpvInt32; // mode B: free-running ring-slot cursor; does NOT reset per display frame, so consecutive
                                  // (pipelined, in-flight) frames take DISJOINT input slots instead of clobbering each other
+       fBidiSlotHistory:array[0..InputRingPendingFrames-1] of TpvInt32; // mode B: ring slots taken by each of the last pending calls
+       fBidiSlotHistoryCursor:TpvInt32; // next fBidiSlotHistory entry to overwrite
        fHFGain:TpvFlexibleVideo.TSynthesisGains;
        fLLGain:TpvFloat;
        fHasAlpha:boolean;     // color_flags bit2: an optional appended 8-bit alpha section per frame (intra, full-res)
@@ -438,6 +451,8 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        function MotionBlocksX(const aWidth:TpvInt32):TpvInt32;
        function MotionBlocksY(const aHeight:TpvInt32):TpvInt32;
        procedure ParseContainer;
+       procedure BuildRandomAccessPoints; // fill fRandomAccessDisplay/fRandomAccessCoding (+ fGReach for B-frame streams) from the frame index
+       function FindRandomAccessPoint(const aDisplayIndex:TpvInt32):TpvInt32; // index of the last random access point <= aDisplayIndex (-1 = none)
        function CreateDescriptorSetLayout(const aBufferCount:TpvInt32;const aHasImage:boolean):TpvVulkanDescriptorSetLayout;
        function CreatePipelineLayout(const aSetLayout:TpvVulkanDescriptorSetLayout;const aPushSize:TpvUInt32):TpvVulkanPipelineLayout;
        function CreateComputePipeline(const aData;const aDataSize:TVkSize;const aLayout:TpvVulkanPipelineLayout;const aBlockSizeSpec:boolean;const aMotionBlockSpec:boolean=false):TpvVulkanComputePipeline;
@@ -514,6 +529,9 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        function ActiveSetGAdd(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        function ActiveSetMCPlay(const aPlane:TpvInt32):TpvVulkanDescriptorSet;
        procedure BuildBidiRing; // allocate the per-frame input ring (mode B only)
+       procedure SkipUndecodableBidiFrames; // advance fGCursor past coding frames that reference something before fGRandomAccessCoding
+       function BidiLeadSlotsAvailable:TpvInt32; // mode B: ring slots the decode-ahead lead may still take this call (see the function)
+       procedure PushBidiSlotHistory(const aSlotCount:TpvInt32); // mode B: record the ring slots one call took
        procedure UploadBidiFrame(const aCodingIndex:TpvInt32); // CPU: read + parse + MV/mode decode + upload for a coding frame
        function PrepareBidiFrame(const aDisplayPOC:TpvInt32;out aIsPredicted,aRef1Slot,aWeight0,aWeight1:TpvInt32):boolean; // upload fGCursor + DPB slot mgmt + rebind; False = pool full but display ready
        procedure RecordBidiDecode(const aCommandBuffer:TpvVulkanCommandBuffer;const aIsPredicted,aRef1Slot,aWeight0,aWeight1:TpvInt32);
@@ -550,8 +568,16 @@ type EpvFlexibleVideoDecoder=class(EpvFlexibleVideo);
        // separated and stays inside RecordFrame (the GOP rebuild runs on the Draw thread when the displayed GOP changes).
        procedure PrepareFrame(const aDisplayIndex:TpvInt32);
        procedure RecordFrame(const aCommandBuffer:TpvVulkanCommandBuffer);
-       // Reset the decode-ahead / DPB bookkeeping so the next PrepareFrame replays from frame 0 (seek-to-start without
-       // recreating the decoder). Frame 0 is intra, so the reference chain rebuilds cleanly from there.
+       // Display index of the latest random access point <= aDisplayIndex (clamped to the stream; 0 if none): the last
+       // I-frame (I/P), the last I anchor from which coding-order decoding reaches every later display frame without
+       // earlier references (B-frame streams), or the last GOP start (3D-DWT/MCTF).
+       function KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
+       // Reposition the decoder at the random access point at or before aDisplayIndex and return its display index; the
+       // next PrepareFrame must ask for exactly that index, then step forward one display index per call. Only reference,
+       // DPB, GOP and coding-cursor state is reset: the host-input ring cursors keep running, so the slots that frames still
+       // in flight on the GPU read are never reused early. GPU resources are kept.
+       function ResetForReplayAt(const aDisplayIndex:TpvInt32):TpvInt32;
+       // Reposition at frame 0 (seek-to-start without recreating the decoder), via ResetForReplayAt.
        procedure ResetForReplay;
        // Mode C (submit mode 2): record ONE B-frame decode-ahead step (or the final display) into the caller's
        // command buffer; the caller submits + WAITS, then calls again, until this returns False (display recorded).
@@ -650,8 +676,9 @@ begin
 
  // Drain any in-flight 3D-DWT/MCTF GOP-prefetch or B-decode-ahead submit before freeing the fences, command buffers and
  // GPU resources they may still be reading (closing the player mid-prefetch otherwise frees a buffer under an active read).
+ // The thread-safe variant holds every queue lock meanwhile, so a destroy on a game thread cannot race a render-thread submit.
  if assigned(fDevice) then begin
-  fDevice.WaitIdle;
+  fDevice.ThreadSafeWaitIdle;
  end;
 
  FreeAndNil(fPrefetchFence);
@@ -1060,7 +1087,7 @@ begin
  fActiveBidiDstSlot:=0;
  fAlphaQP:=0;
  fAlphaLossless:=true;
- fAlphaRingSize:=4; // MaxInFlightFrames (3) + 1 -> frame N's alpha slot is not reused until N+4, by when N's decode is done
+ fAlphaRingSize:=InputRingPendingFrames+1; // one slot per frame: frame N's alpha slot is not reused before frame N+5, by when N's decode is done
  fAlphaRingCursor:=0;
  fAlphaCurrentSlot:=0;
  fTransferFunction:=fHeader.TransferFunction;
@@ -1101,9 +1128,14 @@ begin
  fHasBFrames:=(fPredictionMethod=1) and (fHeader.BFramePeriod>0);
  fHasPerBlockMode:=fHasBFrames and (fHeader.PerBlockMode<>0);
  fGCursor:=0;
+ fGRandomAccessCoding:=0;
  fGDecStepIndex:=-1;
  fBufferRingSlot:=-1; // default = the shared input buffers/sets (modes A + C)
  fBufferRingSize:=0;
+ for SlotIndex:=0 to InputRingPendingFrames-1 do begin
+  fBidiSlotHistory[SlotIndex]:=0;
+ end;
+ fBidiSlotHistoryCursor:=0;
  if fHasBFrames then begin
   fGDecodePeriod:=fHeader.BFramePeriod+1;
   fGDecodeLead:=2*fGDecodePeriod;
@@ -1138,12 +1170,24 @@ begin
   fGDPBSlots:=0;
  end;
 
+ // random access points (+ the reach per coding frame and fGMaximumStepSlots for B-frame streams)
+ BuildRandomAccessPoints;
+
+ // Without a decode-ahead lead (right after repositioning, while the frames in flight still hold their slots) a call
+ // decodes only what its display frame needs, at most fGMaximumStepSlots (1 for the random access point itself, then
+ // the anchor plus the B chain down to the next frame: 4 on the usual dyadic period 9, 2 on the shortest period). The
+ // pending calls plus the current one must fit the ring with nothing but such needs; only the shortest periods grow.
+ if fHasBFrames and (fBufferRingSize<((InputRingPendingFrames+1)*fGMaximumStepSlots)) then begin
+  fBufferRingSize:=(InputRingPendingFrames+1)*fGMaximumStepSlots;
+ end;
+
  // 3D-DWT temporal mode: prediction_method 2 = open-loop temporal DWT, 3 = motion-compensated (MCTF). A whole
  // GOP is decoded at once (spatial inverse per subband frame -> temporal inverse), then display frames are slot copies.
  fMode3DDWT:=(fPredictionMethod=2) or (fPredictionMethod=3);
  fMCTF:=fPredictionMethod=3;
  fCur3DGopStart:=-1;
  f3DInitialized:=false; // GOP 0 decoded on the first PrepareFrame3D
+ f3DLastDisplayIndex:=-1;
  f3DPfPending:=false;
  f3DCurBuf:=0;
  f3DCurGopCount:=0;
@@ -1175,7 +1219,7 @@ begin
  fIPRingSlot:=0;
  fPreparedRingSlot:=-1;
  if fIPInputRing then begin
-  fBufferRingSize:=4; // MaxInFlightFrames (3) + 1: frame N's slot is not reused until frame N+4, by when N's decode is done
+  fBufferRingSize:=InputRingPendingFrames+1; // one slot per frame: frame N's slot is not reused before frame N+5, by when N's decode is done
  end;
  // inter B alpha: the mode-B decode-ahead plans up to fBufferRingSize coding frames before the GPU replay, each staging
  // its alpha section into a distinct alpha ring slot — so the alpha ring must be at least as deep as the buffer ring.
@@ -1183,6 +1227,198 @@ begin
   fAlphaRingSize:=fBufferRingSize;
  end;
 
+end;
+
+procedure TpvFlexibleVideoDecoder.BuildRandomAccessPoints;
+var FrameCount,CodingIndex,Reach,Reference,Count,Position,MinimumReach,MaximumPOC,POC:TpvInt32;
+    Index,DisplayIndex,Cursor,StepCount,MaximumStep,RandomAccessCoding:TpvInt32;
+    Tree:array of TpvInt32;
+    DecodableFromHere:array of boolean;
+    CodingOfDisplay:array of TpvInt32;
+    SequentialCursor:array of TpvInt32;
+begin
+
+ fRandomAccessDisplay:=nil;
+ fRandomAccessCoding:=nil;
+ fGReach:=nil;
+ fGMaximumStepSlots:=1;
+ if fFrameCount<=0 then begin
+  exit;
+ end;
+ FrameCount:=TpvInt32(fFrameCount);
+ SetLength(fRandomAccessDisplay,FrameCount);
+ SetLength(fRandomAccessCoding,FrameCount);
+ Count:=0;
+
+ if fHasBFrames then begin
+
+  // Reach: the lowest coding index in a frame's transitive reference closure (references are always coded earlier).
+  // Decoding in coding order from coding index C reproduces exactly the frames whose reach is >= C.
+  SetLength(fGReach,FrameCount);
+  for CodingIndex:=0 to FrameCount-1 do begin
+   Reach:=CodingIndex;
+   Reference:=fFrameEntries[CodingIndex].Ref0;
+   if ((Reference>=0) and (Reference<CodingIndex)) and (fGReach[Reference]<Reach) then begin
+    Reach:=fGReach[Reference];
+   end;
+   Reference:=fFrameEntries[CodingIndex].Ref1;
+   if ((Reference>=0) and (Reference<CodingIndex)) and (fGReach[Reference]<Reach) then begin
+    Reach:=fGReach[Reference];
+   end;
+   fGReach[CodingIndex]:=Reach;
+  end;
+
+  // An intra frame at coding index C with display index K is a random access point when every frame coded from C on
+  // with a display index >= K reaches no further back than C (leading frames of an open GOP, display < K, may reach
+  // further back; they are skipped), and every frame coded before C displays before K. The first condition walks the
+  // frames backwards in coding order with a Fenwick tree holding the minimum reach per display suffix.
+  SetLength(Tree,FrameCount+1);
+  for Position:=0 to FrameCount do begin
+   Tree[Position]:=High(TpvInt32);
+  end;
+  SetLength(DecodableFromHere,FrameCount);
+  for CodingIndex:=FrameCount-1 downto 0 do begin
+   POC:=TpvInt32(fFrameEntries[CodingIndex].POC);
+   Position:=FrameCount-POC; // display index p -> tree position N-p, so "display >= K" is the prefix up to N-K
+   while Position<=FrameCount do begin
+    if fGReach[CodingIndex]<Tree[Position] then begin
+     Tree[Position]:=fGReach[CodingIndex];
+    end;
+    inc(Position,Position and (-Position));
+   end;
+   DecodableFromHere[CodingIndex]:=false;
+   if ((fFrameEntries[CodingIndex].FrameType=0) and (fFrameEntries[CodingIndex].Ref0<0)) and (fFrameEntries[CodingIndex].Ref1<0) then begin
+    MinimumReach:=High(TpvInt32);
+    Position:=FrameCount-POC;
+    while Position>0 do begin
+     if Tree[Position]<MinimumReach then begin
+      MinimumReach:=Tree[Position];
+     end;
+     dec(Position,Position and (-Position));
+    end;
+    DecodableFromHere[CodingIndex]:=MinimumReach>=CodingIndex;
+   end;
+  end;
+
+  // Coding index 0 always counts (as display 0): decoding the whole stream from its start is what playback does anyway.
+  MaximumPOC:=-1;
+  for CodingIndex:=0 to FrameCount-1 do begin
+   POC:=TpvInt32(fFrameEntries[CodingIndex].POC);
+   if CodingIndex=0 then begin
+    fRandomAccessDisplay[Count]:=0;
+    fRandomAccessCoding[Count]:=0;
+    inc(Count);
+   end else if DecodableFromHere[CodingIndex] and (POC>MaximumPOC) then begin
+    fRandomAccessDisplay[Count]:=POC;
+    fRandomAccessCoding[Count]:=CodingIndex;
+    inc(Count);
+   end;
+   if POC>MaximumPOC then begin
+    MaximumPOC:=POC;
+   end;
+  end;
+
+  // fGMaximumStepSlots: the most coding frames one call has to decode before its display frame is ready, when nothing
+  // was decoded ahead. Stepping display by display, the decode-ahead runs in coding order up to the frame of the next
+  // display index; a lead from earlier calls only shortens that. Walk the whole stream from its start, then each random
+  // access point (skipping its undecodable leading frames) until it meets the cursor of the walk from the start.
+  SetLength(CodingOfDisplay,FrameCount);
+  for DisplayIndex:=0 to FrameCount-1 do begin
+   CodingOfDisplay[DisplayIndex]:=-1;
+  end;
+  for CodingIndex:=0 to FrameCount-1 do begin
+   CodingOfDisplay[TpvInt32(fFrameEntries[CodingIndex].POC)]:=CodingIndex;
+  end;
+  SetLength(SequentialCursor,FrameCount);
+  MaximumStep:=1;
+  Cursor:=0;
+  for DisplayIndex:=0 to FrameCount-1 do begin
+   CodingIndex:=CodingOfDisplay[DisplayIndex];
+   if CodingIndex>=Cursor then begin
+    StepCount:=(CodingIndex-Cursor)+1;
+    if StepCount>MaximumStep then begin
+     MaximumStep:=StepCount;
+    end;
+    Cursor:=CodingIndex+1;
+   end;
+   SequentialCursor[DisplayIndex]:=Cursor;
+  end;
+  for Index:=1 to Count-1 do begin // entry 0 is coding index 0, i.e. the walk from the start
+   RandomAccessCoding:=fRandomAccessCoding[Index];
+   Cursor:=RandomAccessCoding+1;
+   for DisplayIndex:=fRandomAccessDisplay[Index]+1 to FrameCount-1 do begin
+    if Cursor>=SequentialCursor[DisplayIndex-1] then begin
+     break; // same cursor as the walk from the start from here on, which decodes a superset
+    end;
+    CodingIndex:=CodingOfDisplay[DisplayIndex];
+    if CodingIndex>=Cursor then begin
+     StepCount:=0;
+     for Position:=Cursor to CodingIndex do begin
+      if fGReach[Position]>=RandomAccessCoding then begin
+       inc(StepCount);
+      end;
+     end;
+     if StepCount>MaximumStep then begin
+      MaximumStep:=StepCount;
+     end;
+     Cursor:=CodingIndex+1;
+    end;
+   end;
+  end;
+  fGMaximumStepSlots:=MaximumStep;
+
+ end else begin
+
+  // I/P (coding order = display order; P-frames chain on the previous frame, I-frames seed it afresh) and 3D-DWT/MCTF
+  // (every GOP is self-contained and starts at a type-0 frame): every type-0 frame, plus frame 0.
+  for CodingIndex:=0 to FrameCount-1 do begin
+   if (CodingIndex=0) or (fFrameEntries[CodingIndex].FrameType=0) then begin
+    fRandomAccessDisplay[Count]:=CodingIndex;
+    fRandomAccessCoding[Count]:=CodingIndex;
+    inc(Count);
+   end;
+  end;
+
+ end;
+
+ SetLength(fRandomAccessDisplay,Count);
+ SetLength(fRandomAccessCoding,Count);
+
+end;
+
+function TpvFlexibleVideoDecoder.FindRandomAccessPoint(const aDisplayIndex:TpvInt32):TpvInt32;
+var LowIndex,HighIndex,MiddleIndex:TpvInt32;
+begin
+ result:=-1;
+ LowIndex:=0;
+ HighIndex:=length(fRandomAccessDisplay)-1;
+ while LowIndex<=HighIndex do begin
+  MiddleIndex:=(LowIndex+HighIndex) shr 1;
+  if fRandomAccessDisplay[MiddleIndex]<=aDisplayIndex then begin
+   result:=MiddleIndex;
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   HighIndex:=MiddleIndex-1;
+  end;
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
+var DisplayIndex,Index:TpvInt32;
+begin
+ DisplayIndex:=aDisplayIndex;
+ if DisplayIndex>=fFrameCount then begin
+  DisplayIndex:=TpvInt32(fFrameCount-1);
+ end;
+ if DisplayIndex<0 then begin
+  DisplayIndex:=0;
+ end;
+ Index:=FindRandomAccessPoint(DisplayIndex);
+ if Index>=0 then begin
+  result:=fRandomAccessDisplay[Index];
+ end else begin
+  result:=0;
+ end;
 end;
 
 function TpvFlexibleVideoDecoder.CreateDescriptorSetLayout(const aBufferCount:TpvInt32;const aHasImage:boolean):TpvVulkanDescriptorSetLayout;
@@ -2852,11 +3088,12 @@ begin
   fBreadcrumb.PushZone('RecordDecode');
  end;
 
- // The output image goes UNDEFINED -> GENERAL so the color shader can store into it.
+ // The output image goes UNDEFINED -> GENERAL so the color shader can store into it. The source stage is TRANSFER, so
+ // the transition also waits for copies/blits of the previous frame out of the output image submitted earlier.
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
  for Plane:=0 to fNumPlanes-1 do begin
   Crumb(aCommandBuffer,'ip:unpack');
@@ -3988,6 +4225,43 @@ begin
  end;
 end;
 
+procedure TpvFlexibleVideoDecoder.SkipUndecodableBidiFrames;
+begin
+ // After repositioning at a random access point, the leading frames of its open GOP (coded after it, displayed before
+ // it) reference frames that were never decoded: step over them without decoding or taking a ring slot.
+ while (fGCursor<fFrameCount) and (fGReach[fGCursor]<fGRandomAccessCoding) do begin
+  inc(fGCursor);
+ end;
+end;
+
+function TpvFlexibleVideoDecoder.BidiLeadSlotsAvailable:TpvInt32;
+var Index:TpvInt32;
+begin
+ // The free-running ring cursor hands out slots in order, so the slots the last InputRingPendingFrames calls took lie
+ // right behind it and the rest of the ring is free. A call always decodes what its display frame needs (at most
+ // fGMaximumStepSlots); only the optional lead top-up is limited, to the free part minus a reserve for the next
+ // InputRingPendingFrames calls' needs. So whenever a call topped up its lead, it and the calls before it in the window
+ // leave room for up to InputRingPendingFrames calls of pure need after it, and without any top-up in the window the
+ // InputRingPendingFrames+1 calls of pure need fit the ring by its size (see ParseContainer): a slot a pending frame
+ // still reads is never written.
+ result:=fBufferRingSize-(InputRingPendingFrames*fGMaximumStepSlots);
+ for Index:=0 to InputRingPendingFrames-1 do begin
+  dec(result,fBidiSlotHistory[Index]);
+ end;
+ if result<0 then begin
+  result:=0;
+ end;
+end;
+
+procedure TpvFlexibleVideoDecoder.PushBidiSlotHistory(const aSlotCount:TpvInt32);
+begin
+ fBidiSlotHistory[fBidiSlotHistoryCursor]:=aSlotCount;
+ inc(fBidiSlotHistoryCursor);
+ if fBidiSlotHistoryCursor>=InputRingPendingFrames then begin
+  fBidiSlotHistoryCursor:=0;
+ end;
+end;
+
 procedure TpvFlexibleVideoDecoder.UploadBidiFrame(const aCodingIndex:TpvInt32);
 var Plane,PlanePixels,StepSlot:TpvInt32;
     Entry:PFrameEntry;
@@ -4704,10 +4978,11 @@ begin
  // optional alpha: the inter B alpha was reconstructed into fDPBBuffer[DisplaySlot][3] during the decode-ahead
  // (RecordBidiDecode) — it is copied into coeff[3] alongside the color planes below, no re-decode at display.
 
+ // output image UNDEFINED -> GENERAL; the TRANSFER source stage waits for copies/blits of the previous frame out of it
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
  for Plane:=0 to fNumPlanes-1 do begin
   PlanePixels:=PlaneWidth(Plane)*PlaneHeight(Plane);
@@ -4784,13 +5059,20 @@ begin
 end;
 
 procedure TpvFlexibleVideoDecoder.DecodeFrameBidi(const aCommandBuffer:TpvVulkanCommandBuffer;const aDisplayPOC:TpvInt32);
-var IsPredicted,Ref1Slot,Weight0,Weight1,RingIndex:TpvInt32;
+var IsPredicted,Ref1Slot,Weight0,Weight1,RingIndex,AvailableSlots:TpvInt32;
 begin
 
- // decode-ahead: reconstruct coding-order frames into the DPB until this display POC is ready + the lead is full
+ // decode-ahead: reconstruct coding-order frames into the DPB until this display POC is ready + the lead is full. In
+ // mode B the lead is only topped up within the ring slots that no frame in flight holds (see BidiLeadSlotsAvailable).
  RingIndex:=0;
+ if fSubmitMode=1 then begin
+  AvailableSlots:=BidiLeadSlotsAvailable;
+ end else begin
+  AvailableSlots:=High(TpvInt32);
+ end;
+ SkipUndecodableBidiFrames;
  while fGCursor<fFrameCount do begin
-  if (fGDPBPOCToSlot[aDisplayPOC]>=0) and (fGCursor>=(aDisplayPOC+fGDecodeLead)) then begin
+  if (fGDPBPOCToSlot[aDisplayPOC]>=0) and ((fGCursor>=(aDisplayPOC+fGDecodeLead)) or (RingIndex>=AvailableSlots)) then begin
    break;
   end;
   if fSubmitMode=1 then begin // mode B: this coding frame uses the next per-frame ring slot
@@ -4817,8 +5099,12 @@ begin
     fBidiRingCursor:=0;
    end;
   end;
+  SkipUndecodableBidiFrames;
  end;
  fBufferRingSlot:=-1;
+ if fSubmitMode=1 then begin
+  PushBidiSlotHistory(RingIndex);
+ end;
 
  RecordBidiDisplay(aCommandBuffer,aDisplayPOC);
 
@@ -4830,6 +5116,7 @@ begin
  // mode C: record ONE decode-ahead coding frame into the caller's command buffer (the caller submits + WAITS,
  // then calls again, reusing the shared input buffers), or record the display when the frame is ready -> False.
  fBufferRingSlot:=-1;
+ SkipUndecodableBidiFrames;
  if (fGCursor<fFrameCount) and not ((fGDPBPOCToSlot[aDisplayPOC]>=0) and (fGCursor>=(aDisplayPOC+fGDecodeLead))) then begin
   if PrepareBidiFrame(aDisplayPOC,IsPredicted,Ref1Slot,Weight0,Weight1) then begin
    RecordBidiDecode(aCommandBuffer,IsPredicted,Ref1Slot,Weight0,Weight1);
@@ -5504,10 +5791,11 @@ var Plane,PlanePixels,PixelWorkgroups:TpvInt32;
     ExposureBits:TpvFloat;
 begin
 
+ // output image UNDEFINED -> GENERAL; the TRANSFER source stage waits for copies/blits of the previous frame out of it
  RecordImageBarrier(aCommandBuffer,
                     VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,
                     0,TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT));
 
  // copy this display frame's GOP slot into coeff, then (lossy open-loop only) round the float to int
  for Plane:=0 to fNumPlanes-1 do begin
@@ -5665,7 +5953,8 @@ procedure TpvFlexibleVideoDecoder.PrepareFrame3D(const aDisplayIndex:TpvInt32);
    f3DPfDone:=true; // no further GOP to prefetch (end of stream)
   end;
  end;
-var TargetGopStart,Slot:TpvInt32;
+var TargetGopStart,Slot,TargetBuf:TpvInt32;
+    Seeking:boolean;
 begin
 
  fBufferRingSlot:=-1; // 3D-DWT uses the shared input buffers
@@ -5676,24 +5965,37 @@ begin
   dec(TargetGopStart);
  end;
 
+ // A seek (anything but the frame after the previous one) leaves display copies of earlier frames possibly still
+ // unsubmitted or in flight, reading the GOP buffer that was presented until now; the prefetch submits of this call go
+ // to the queue right away, so they must not write that buffer.
+ Seeking:=false;
+
  if (not f3DInitialized) or ((TargetGopStart<>fCur3DGopStart) and (TargetGopStart<>f3DPfGopStart)) then begin
 
-  // start-up OR a seek to an unrelated GOP: decode it synchronously into buffer 0 (a one-off stall is fine here)
-  f3DCurBuf:=0;
+  // start-up OR a seek to an unrelated GOP: decode it synchronously (a one-off stall is fine here). On a seek it goes
+  // into the buffer that was NOT presented (dropping a half-done prefetch there), at start-up into buffer 0.
+  Seeking:=f3DInitialized;
+  if Seeking then begin
+   TargetBuf:=1-f3DCurBuf;
+  end else begin
+   TargetBuf:=0;
+  end;
+  f3DCurBuf:=TargetBuf;
   fCur3DGopStart:=TargetGopStart;
   f3DCurGopCount:=GopCountFrom(TargetGopStart);
   for Slot:=0 to f3DCurGopCount-1 do begin
-   SpatialStep(0,TargetGopStart,Slot,f3DCurGopCount);
+   SpatialStep(TargetBuf,TargetGopStart,Slot,f3DCurGopCount);
   end;
   PrefetchWait; // last spatial done
-  PrefetchFinishGop(0,f3DCurGopCount);
+  PrefetchFinishGop(TargetBuf,f3DCurGopCount);
   PrefetchWait; // temporal/MCTF done -> the GOP is fully decoded
   f3DInitialized:=true;
-  StartPrefetch(1,fCur3DGopStart+f3DCurGopCount);
+  StartPrefetch(1-TargetBuf,fCur3DGopStart+f3DCurGopCount);
 
  end else if (TargetGopStart=f3DPfGopStart) and (TargetGopStart<>fCur3DGopStart) then begin
 
   // advanced into the prefetched GOP: finish it if it lagged, then swap it in
+  Seeking:=aDisplayIndex<>(f3DLastDisplayIndex+1);
   while not f3DPfDone do begin
    SpatialStep(f3DPfBuf,f3DPfGopStart,f3DPfStep,f3DPfGopCount);
    inc(f3DPfStep);
@@ -5711,8 +6013,9 @@ begin
 
  end;
 
- // advance the prefetch one subband per displayed frame (overlaps the present)
- if not f3DPfDone then begin
+ // advance the prefetch one subband per displayed frame (overlaps the present). After a seek the prefetch target is the
+ // buffer presented until now, so it waits one call: by the next PrepareFrame the earlier display copies are submitted.
+ if (not f3DPfDone) and (not Seeking) then begin
   SpatialStep(f3DPfBuf,f3DPfGopStart,f3DPfStep,f3DPfGopCount);
   inc(f3DPfStep);
   if f3DPfStep>=f3DPfGopCount then begin
@@ -5721,6 +6024,7 @@ begin
    f3DPfDone:=true;
   end;
  end;
+ f3DLastDisplayIndex:=aDisplayIndex;
 
  // optional alpha is INTER (temporal) now: each subband's alpha was decoded into the alpha GOP buffer in the prefetch
  // (Upload3DFrame + RecordSpatial3D + the temporal/MCTF inverse), so RecordDisplay3D just copies this frame's alpha
@@ -5749,15 +6053,21 @@ begin
 end;
 
 procedure TpvFlexibleVideoDecoder.PrepareFrameBidi(const aDisplayPOC:TpvInt32);
-var IsPredicted,Ref1Slot,Weight0,Weight1,RingIndex:TpvInt32;
+var IsPredicted,Ref1Slot,Weight0,Weight1,RingIndex,AvailableSlots:TpvInt32;
 begin
 
  // CPU decode-ahead (mode B): upload + DPB-manage each coding-order frame into its own ring slot until this
  // display POC is ready + the lead is full, capturing a per-frame record plan for RecordFrameBidi to replay.
  fBidiPlanCount:=0;
  RingIndex:=0; // per-call coding-frame counter; only guards that ONE display frame's decode-ahead fits the ring
+ // Once the display frame is ready, the lead is only topped up within the ring slots that none of the frames still in
+ // flight holds (minus a reserve for the next calls' needs, see BidiLeadSlotsAvailable); the rest follows in later
+ // calls. This bounds the burst after repositioning (which starts with an empty lead) without ever overwriting input
+ // buffers an earlier frame's GPU decode may still read.
+ AvailableSlots:=BidiLeadSlotsAvailable;
+ SkipUndecodableBidiFrames;
  while fGCursor<fFrameCount do begin
-  if (fGDPBPOCToSlot[aDisplayPOC]>=0) and (fGCursor>=(aDisplayPOC+fGDecodeLead)) then begin
+  if (fGDPBPOCToSlot[aDisplayPOC]>=0) and ((fGCursor>=(aDisplayPOC+fGDecodeLead)) or (RingIndex>=AvailableSlots)) then begin
    break;
   end;
   if RingIndex>=fBufferRingSize then begin
@@ -5766,7 +6076,7 @@ begin
   // Use the FREE-RUNNING cursor (not RingIndex) as the slot: it does not reset per display frame, so this frame's
   // input slots stay disjoint from the previous, still-in-flight frame's slots (the engine pipelines display frames,
   // and UploadBidiFrame here would otherwise clobber buffers the prior frame's GPU decode is still reading -> the pale
-  // fade). The ring's +fGDecodePeriod margin over the lead-burst depth covers the in-flight window before a slot wraps.
+  // fade). AvailableSlots above keeps the slots of all frames still in flight out of reach before a slot wraps.
   fBufferRingSlot:=fBidiRingCursor;
   if not PrepareBidiFrame(aDisplayPOC,IsPredicted,Ref1Slot,Weight0,Weight1) then begin
    break;
@@ -5793,9 +6103,11 @@ begin
   if fBidiRingCursor>=fBufferRingSize then begin
    fBidiRingCursor:=0;
   end;
+  SkipUndecodableBidiFrames;
  end;
  fBufferRingSlot:=-1;
  fBidiDisplayPOC:=aDisplayPOC;
+ PushBidiSlotHistory(RingIndex);
 
 end;
 
@@ -5880,36 +6192,38 @@ begin
 
 end;
 
-procedure TpvFlexibleVideoDecoder.ResetForReplay;
-var Index:TpvInt32;
+function TpvFlexibleVideoDecoder.ResetForReplayAt(const aDisplayIndex:TpvInt32):TpvInt32;
+var Index,RandomAccessIndex,CodingIndex:TpvInt32;
 begin
 
- // Decode-ahead / DPB / 3D-GOP bookkeeping back to the start so the next PrepareFrame(0) replays cleanly from the
- // intra frame 0 (which needs no references). Reuses the same reset values as Create; the buffers are kept.
- fGCursor:=0;
- fGDecStepIndex:=-1;
- fBufferRingSlot:=-1;
- fIPRingSlot:=0;
- fPreparedRingSlot:=-1;
- fBidiRingCursor:=0;
- fAlphaRingCursor:=0; // free-running alpha host-buffer ring cursor
- fAlphaCurrentSlot:=0;
- fPreparedIndex:=-1;
- fBidiDisplayPOC:=-1;
- fCur3DGopStart:=-1;
- if fMode3DDWT then begin
-  // drain any in-flight prefetch, then force GOP 0 to be re-decoded up-front on the next PrepareFrame3D
-  PrefetchWait;
-  f3DInitialized:=false;
-  f3DCurBuf:=0;
-  f3DCurGopCount:=0;
-  f3DPfBuf:=1;
-  f3DPfGopStart:=-1;
-  f3DPfGopCount:=0;
-  f3DPfStep:=0;
-  f3DPfDone:=true;
+ // the random access point at or before the wanted display frame (frame 0 when the index knows none)
+ RandomAccessIndex:=FindRandomAccessPoint(aDisplayIndex);
+ if RandomAccessIndex>=0 then begin
+  result:=fRandomAccessDisplay[RandomAccessIndex];
+  CodingIndex:=fRandomAccessCoding[RandomAccessIndex];
+ end else begin
+  result:=0;
+  CodingIndex:=0;
  end;
+
+ // Staging state of the poll API: a frame prepared but never recorded is dropped (its ring slots just age out).
+ fPreparedIndex:=-1;
+ fPreparedRingSlot:=-1;
+ fBufferRingSlot:=-1;
+ fBidiPlanCount:=0;
+ fBidiDisplayPOC:=-1;
+ fGDecStepIndex:=-1;
+
+ // Deliberately kept: fIPRingSlot, fBidiRingCursor + fBidiSlotHistory and fAlphaRingCursor. Rewinding them would hand
+ // the next frames the very host-input slots (and descriptor sets) that frames still in flight on the GPU are reading.
+
  if fHasBFrames then begin
+  // B-frame streams: an empty DPB and the coding cursor on the random access point. The decode-ahead steps over the
+  // leading frames of its open GOP (SkipUndecodableBidiFrames) and rebuilds the lead from there. The DPB slots are
+  // GPU-only: reusing one right away is the same write-after-read as the steady-state reuse of an evicted slot, ordered
+  // behind the earlier frames' reads by their barriers in queue submission order.
+  fGCursor:=CodingIndex;
+  fGRandomAccessCoding:=CodingIndex;
   for Index:=0 to fFrameCount-1 do begin
    fGDPBPOCToSlot[Index]:=-1;
    fGDPBCodingToSlot[Index]:=-1;
@@ -5918,6 +6232,18 @@ begin
    fGDPBSlotCoding[Index]:=-1;
   end;
  end;
+
+ // I/P keeps no cross-frame CPU state: the intra frame at the random access point re-seeds the GPU reference (color and
+ // alpha planes) by itself. 3D-DWT/MCTF keeps its GOP state: PrepareFrame3D presents from the current GOP buffer, swaps
+ // in the prefetched one or decodes the target GOP synchronously, whichever the target needs.
+
+end;
+
+procedure TpvFlexibleVideoDecoder.ResetForReplay;
+begin
+
+ // seek-to-start through the same path as any other reposition (no ring cursor is rewound)
+ ResetForReplayAt(0);
 
 end;
 

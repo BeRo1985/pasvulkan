@@ -1245,6 +1245,7 @@ type PpvAudioInt32=^TpvInt32;
        MasterVolume:TpvInt32;
        SampleVolume:TpvInt32;
        MusicVolume:TpvInt32;
+       VideoVolume:TpvInt32; // the bus of the video audio streams, independent of the music, 4096 = 1.0
        RampingSamples:TpvInt32;
        RampingStepSamples:TpvInt32;
        MusicStateRampSamples:TpvInt32;
@@ -1298,9 +1299,11 @@ type PpvAudioInt32=^TpvInt32;
        destructor Destroy; override;
        function GetMixerMasterVolume:TpvFloat;
        function GetMixerMusicVolume:TpvFloat;
+       function GetMixerVideoVolume:TpvFloat;
        function GetMixerSampleVolume:TpvFloat;
        procedure SetMixerMasterVolume(NewVolume:TpvFloat);
        procedure SetMixerMusicVolume(NewVolume:TpvFloat);
+       procedure SetMixerVideoVolume(NewVolume:TpvFloat);
        procedure SetMixerSampleVolume(NewVolume:TpvFloat);
        procedure SetMixerAGC(Enabled:boolean);
        procedure Setup;
@@ -1316,6 +1319,7 @@ type PpvAudioInt32=^TpvInt32;
        property OutputLatencyFrames:TpvInt32 read fOutputLatencyFrames write fOutputLatencyFrames;
        property MixerMasterVolume:TpvFloat read GetMixerMasterVolume write SetMixerMasterVolume;
        property MixerMusicVolume:TpvFloat read GetMixerMusicVolume write SetMixerMusicVolume;
+       property MixerVideoVolume:TpvFloat read GetMixerVideoVolume write SetMixerVideoVolume;
        property MixerSampleVolume:TpvFloat read GetMixerSampleVolume write SetMixerSampleVolume;
        property OnFillBuffer:TpvAudioOnFillBuffer read fOnFillBuffer write fOnFillBuffer;
        property OnSecondFillBuffer:TpvAudioOnFillBuffer read fOnSecondFillBuffer write fOnSecondFillBuffer;
@@ -5001,7 +5005,7 @@ begin
  end else if Pan>=131072 then begin
   Pan:=131071;
  end;
- MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
+ MixVolume:=SARLongint(Volume*AudioEngine.VideoVolume,16);
  VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
  VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
  if VolLeft<0 then begin
@@ -5090,7 +5094,9 @@ procedure TpvAudioSoundVideo.Resume;
 var Pan,VolLeft,VolRight,MixVolume:TpvInt32;
 begin
  case State of
-  TpvAudioSoundMusicState.Paused:begin
+  // Also while the pause is still fading out: a resume right after a pause (a seek pauses, waits for the frame and
+  // resumes) would otherwise get lost, and the stream would end up paused for good
+  TpvAudioSoundMusicState.Paused,TpvAudioSoundMusicState.Pausing:begin
    if AudioEngine.MusicStateRampSamples>0 then begin
     Pan:=Panning+65536;
     if Pan<0 then begin
@@ -5098,7 +5104,7 @@ begin
     end else if Pan>=131072 then begin
      Pan:=131071;
     end;
-    MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
+    MixVolume:=SARLongint(Volume*AudioEngine.VideoVolume,16);
     VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
     VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
     if VolLeft<0 then begin
@@ -5113,13 +5119,16 @@ begin
     end;
     VolLeft:=VolLeft shl 12;
     VolRight:=VolRight shl 12;
-    VolumeLeftCurrent:=0;
-    VolumeRightCurrent:=0;
+    if State=TpvAudioSoundMusicState.Paused then begin
+     VolumeLeftCurrent:=0;
+     VolumeRightCurrent:=0;
+    end;
+    // From a fade-out still in progress the ramp goes back up from where it is, without a jump
     VolumeLeft:=VolLeft;
     VolumeRight:=VolRight;
     VolumeRampingRemain:=AudioEngine.MusicStateRampSamples;
-    VolumeLeftInc:=VolumeLeft div VolumeRampingRemain;
-    VolumeRightInc:=VolumeRight div VolumeRampingRemain;
+    VolumeLeftInc:=(VolumeLeft-VolumeLeftCurrent) div VolumeRampingRemain;
+    VolumeRightInc:=(VolumeRight-VolumeRightCurrent) div VolumeRampingRemain;
    end else begin
     VolumeRampingRemain:=0;
    end;
@@ -5158,6 +5167,11 @@ begin
  try
   fSeekBaseTime:=aBaseTime;
   fStarted:=false; // re-anchor the per-stream clock offset at the next mix
+  if State in [TpvAudioSoundMusicState.Paused,TpvAudioSoundMusicState.Pausing] then begin
+   // A seek while paused moves the frozen clock along, otherwise PlaybackTime would still report the old position,
+   // and Resume would re-anchor the clock to it while the source already plays from the new one
+   fPausedClock:=aBaseTime;
+  end;
   if State=TpvAudioSoundMusicState.Stopped then begin
    // GetNextInBuffer latches Stopped at end-of-stream and then never calls the read callback again; a seek (e.g. the
    // facade looping/restarting) must re-arm it. Done here under the same lock the mixer holds, so it is atomic against
@@ -8025,6 +8039,7 @@ begin
  MasterVolume:=4096;
  SampleVolume:=32768;
  MusicVolume:=4096;
+ VideoVolume:=4096;
  AGCActive:=true;
  AGC:=256;
  AGCCounter:=0;
@@ -8214,6 +8229,17 @@ begin
  end;
 end;
 
+function TpvAudio.GetMixerVideoVolume:TpvFloat;
+const OneOver4096=1.0/4096.0;
+begin
+ CriticalSection.Enter;
+ try
+  result:=Min(Max(VideoVolume*OneOver4096,0.0),1.0);
+ finally
+  CriticalSection.Leave;
+ end;
+end;
+
 function TpvAudio.GetMixerSampleVolume:TpvFloat;
 const OneOver32768=1.0/32768.0;
 begin
@@ -8240,6 +8266,16 @@ begin
  CriticalSection.Enter;
  try
   MusicVolume:=round(NewVolume*4096);
+ finally
+  CriticalSection.Leave;
+ end;
+end;
+
+procedure TpvAudio.SetMixerVideoVolume(NewVolume:TpvFloat);
+begin
+ CriticalSection.Enter;
+ try
+  VideoVolume:=round(NewVolume*4096);
  finally
   CriticalSection.Leave;
  end;
@@ -8598,9 +8634,10 @@ begin
   for i:=0 to Musics.Count-1 do begin
    Musics[i].MixTo(MusicMixingBuffer,MusicVolume);
   end;
-  // Mixing all video audio streams onto the same music bus
+  // Mixing all video audio streams into the same buffer, but with the volume of their own bus, so that the music can
+  // be turned down or muted while a video stays audible
   for i:=0 to Videos.Count-1 do begin
-   Videos[i].MixTo(MusicMixingBuffer,MusicVolume);
+   Videos[i].MixTo(MusicMixingBuffer,VideoVolume);
   end;
   for i:=0 to BufferChannelSamples-1 do begin
    inc(MixingBuffer[i],MusicMixingBuffer[i]);

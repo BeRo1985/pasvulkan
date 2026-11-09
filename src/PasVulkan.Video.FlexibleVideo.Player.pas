@@ -89,24 +89,41 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        function GetHasAudio:boolean;
        function GetAudioFinished:boolean; // True when there is no audio, or the audio decoder has reached EOF
        function GetPlaybackFinished:boolean; // True only when the LAST video frame has been decoded AND the audio has finished
+       function GetCatchingUp:boolean;
        function AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32; // TpvAudioSoundVideoReadCallback
       public
        constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice;const aDecoderChoice:TDecoderChoice=TDecoderChoice.Auto;const aPreferSCRGBForHDR:boolean=false;const aPipelineCache:TpvVulkanPipelineCache=nil;const aBlitUsage:boolean=false);
        destructor Destroy; override;
        // map a presentation time to a display-order frame index (clamped to the stream)
        function TimeToFrameIndex(const aTimeInSeconds:TpvDouble):TpvInt32;
+       // start time of a display frame (clamped to the stream), nudged by a thousandth of a frame into the frame so that
+       // TimeToFrameIndex(FrameIndexToTime(i))=i despite floating-point rounding
+       function FrameIndexToTime(const aDisplayIndex:TpvInt32):TpvDouble;
+       // display index of the latest random-access point <= aDisplayIndex (clamped to the stream; 0 if none): where a
+       // seek lands before it steps forward to the exact target
+       function KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
        // CPU advance (Update thread): stage the next frame toward the time's target; True if a frame is staged for Decode.
        // Idempotent across repeated calls before a Decode (a fixed-timestep loop may call Update several times per Draw).
+       // A target behind the last decoded frame, or one whose random-access point lies beyond the next frame, repositions
+       // the decoder at that random-access point first; from there it steps one frame per DecodeTime/Decode pair.
        function DecodeTime(const aTimeInSeconds:TpvDouble):boolean;
        // GPU record (Draw thread): record the staged frame's decode into the caller command buffer; True if it recorded one
        function Decode(const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
        // Restart playback from the beginning by SEEKING (reuses the player + its GPU resources; no free/recreate).
        procedure Restart;
+       // Audio side of a seek: SeekAudio, and the audio counts as not finished again (so PlaybackFinished drops back to
+       // False after seeking back from the end). The video side follows with the next DecodeTime.
+       procedure Seek(const aTimeInSeconds:TpvDouble);
        // blit the last decoded frame (OutputImage, left in TRANSFER_SRC_OPTIMAL) into a present target image
        procedure BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean=false);
        // raw 1:1 byte copy of the last decoded frame into a sampleable target (no scaling/format conversion); for targets
-       // that match the video size and are only sampled -> avoids the sRGB blit intermediate (no aBlitUsage needed)
-       procedure CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+       // that match the video size and are only sampled -> avoids the sRGB blit intermediate (no aBlitUsage needed).
+       // This form only suits a target whose previous use was waited on (TOP_OF_PIPE in, BOTTOM_OF_PIPE out).
+       procedure CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout); overload;
+       // Same copy with the target's surrounding uses spelled out, for a pipelined frame graph: aSrcStageMask/aSrcAccessMask
+       // = the target's previous use (e.g. FRAGMENT_SHADER/SHADER_READ of the frame before, write-after-read), and
+       // aDstStageMask/aDstAccessMask = its next use (e.g. FRAGMENT_SHADER/SHADER_READ, makes the copy visible to it).
+       procedure CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aSrcStageMask:TVkPipelineStageFlags;const aSrcAccessMask:TVkAccessFlags;const aDstStageMask:TVkPipelineStageFlags;const aDstAccessMask:TVkAccessFlags); overload;
        // audio: open the container's audio sub-codec into a TpvAudioSoundVideo on the given engine audio system (A/V sync)
        procedure OpenAudio(const aAudio:TpvAudio);
        procedure StartAudio; // begin audio playback (anchors the master clock)
@@ -118,6 +135,7 @@ type EpvFlexibleVideoPlayer=class(EpvFlexibleVideo);
        property HasAudio:boolean read GetHasAudio;
        property AudioFinished:boolean read GetAudioFinished; // no audio, or the audio reached EOF (the audible tail may lag a mixer buffer)
        property PlaybackFinished:boolean read GetPlaybackFinished; // BOTH the video (last frame decoded) AND the audio are done — a game polls this to dismiss the cutscene
+       property CatchingUp:boolean read GetCatchingUp; // the last decoded frame is not yet the one the latest DecodeTime targeted (e.g. an exact seek still stepping up from its random-access point); False after Decode on the H.264 backend
        property AudioChannels:TpvInt32 read fAudioChannels;
        property AudioSampleRate:TpvInt32 read fAudioSampleRate;
        property Width:TpvInt32 read fWidth;
@@ -273,6 +291,13 @@ begin
  // Finished only when the LAST video frame has been decoded AND the audio has finished — so a game holding a cutscene
  // on this player keeps it up until BOTH streams are done, instead of cutting off whichever finishes first.
  result:=((fFrameCount>0) and (fLastDecodedIndex>=(fFrameCount-1))) and GetAudioFinished;
+end;
+
+function TpvFlexibleVideoPlayer.GetCatchingUp:boolean;
+begin
+ // FlexibleVideo backend: DecodeTime stages one frame per call, so after a reposition (or a lagging clock) Decode
+ // records the frames from the random-access point up to the target one by one. H.264: Decode reaches the target at once.
+ result:=(fTargetIndex>=0) and (fLastDecodedIndex<>fTargetIndex);
 end;
 
 function TpvFlexibleVideoPlayer.AudioReadCallback(const aFloatBuffer:Pointer;const aFrameCount:TpvInt32):TpvInt32;
@@ -538,7 +563,36 @@ begin
  result:=TpvInt32(FrameNumber);
 end;
 
+function TpvFlexibleVideoPlayer.FrameIndexToTime(const aDisplayIndex:TpvInt32):TpvDouble;
+var DisplayIndex:TpvInt64;
+begin
+ DisplayIndex:=aDisplayIndex;
+ if DisplayIndex>=fFrameCount then begin
+  DisplayIndex:=fFrameCount-1;
+ end;
+ if DisplayIndex<=0 then begin
+  result:=0.0;
+  exit;
+ end;
+ // frame start = index * FpsDen / FpsNum; the thousandth of a frame keeps TimeToFrameIndex's truncation on this frame
+ result:=((DisplayIndex+0.001)*fFpsDen)/fFpsNum;
+end;
+
+function TpvFlexibleVideoPlayer.KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
+begin
+ if fFrameCount<=0 then begin
+  result:=0;
+ end else if fUsingH264 and assigned(fH264) then begin
+  result:=fH264.KeyframeAtOrBefore(aDisplayIndex);
+ end else if assigned(fDecoder) then begin
+  result:=fDecoder.KeyframeAtOrBefore(aDisplayIndex);
+ end else begin
+  result:=0;
+ end;
+end;
+
 function TpvFlexibleVideoPlayer.DecodeTime(const aTimeInSeconds:TpvDouble):boolean;
+var KeyframeIndex,NextIndex:TpvInt32;
 begin
  fTargetIndex:=TimeToFrameIndex(aTimeInSeconds);
 
@@ -546,21 +600,32 @@ begin
  if fUsingH264 then begin
   // H.264 path: CPU-only on the Update thread (just note the target). The actual HW decode is self-submitting and
   // runs entirely in Decode() on the Draw thread, so Update+Draw stay parallel-safe. EnsureDisplayFrame absorbs any
-  // forward jump (or a backward seek) in one Decode() call, so no per-frame staging is needed here.
+  // forward jump or backward seek in one Decode() call (restarting at the nearest IDR at or before the target when
+  // that is shorter), so no per-frame staging is needed here.
   result:=fTargetIndex<>fLastDecodedIndex;
   exit;
  end;
 {$endif}
 
- // backward seek (FlexibleVideo path): the decode chain is forward-only (intra / P / B references), so to land on an earlier
- // display frame we reset the decoder to the start of the stream and re-decode forward to the target — one frame per
- // tick, exactly like a forward catch-up. (The H.264 backend handles a backward target inside EnsureDisplayFrame above,
- // so this only applies here.) Audio re-anchoring is the caller's master-clock / SeekAudio concern, not this video poll.
- if fTargetIndex<fLastDecodedIndex then begin
-  if assigned(fDecoder) then begin
-   fDecoder.ResetForReplay;
-  end;
-  fLastDecodedIndex:=-1;
+ if not assigned(fDecoder) then begin
+  result:=false;
+  exit;
+ end;
+
+ // Reposition (FlexibleVideo path): the decode chain only runs forward (intra / P / B references, 3D-DWT GOPs). A target
+ // behind the last decoded frame, a target behind a staged but not yet recorded frame, or a target whose random-access
+ // point lies beyond the frame stepping would stage next (jumping there is shorter than catching up) restarts the
+ // decoder at the random-access point at or before the target. From there it steps one frame per tick, exactly like a
+ // forward catch-up; CatchingUp stays True until the target is reached. Audio re-anchoring is the caller's Seek /
+ // SeekAudio concern, not this video poll.
+ KeyframeIndex:=fDecoder.KeyframeAtOrBefore(fTargetIndex);
+ if fPreparedIndex>=0 then begin
+  NextIndex:=fPreparedIndex+1; // a staged frame is still recorded by the next Decode, stepping goes on after it
+ end else begin
+  NextIndex:=fLastDecodedIndex+1;
+ end;
+ if ((fTargetIndex<fLastDecodedIndex) or ((fPreparedIndex>=0) and (fTargetIndex<fPreparedIndex))) or (KeyframeIndex>NextIndex) then begin
+  fLastDecodedIndex:=fDecoder.ResetForReplayAt(KeyframeIndex)-1;
   fPreparedIndex:=-1;
  end;
 
@@ -619,8 +684,9 @@ end;
 procedure TpvFlexibleVideoPlayer.Restart;
 begin
  // Seek back to the start without recreating the decoder/GPU resources: reset the poll-API cursors + the decoder's
- // reference bookkeeping, then re-anchor the audio clock. The H.264 backend resets itself on the next Decode (its
- // EnsureDisplayFrame sees the target is behind the current display index and replays from the IDR).
+ // reference bookkeeping (the same reposition path a seek takes, which leaves the host-input ring cursors running), then
+ // re-anchor the audio clock. The H.264 backend resets itself on the next Decode (its EnsureDisplayFrame sees the
+ // target is behind the current display index and restarts at the first IDR).
  fLastDecodedIndex:=-1;
  fPreparedIndex:=-1;
  fTargetIndex:=-1;
@@ -629,6 +695,15 @@ begin
   fDecoder.ResetForReplay;
  end;
  SeekAudio(0.0); // seek the audio decoder back + flush + (atomically, under the audio lock) resume the stream from 0
+end;
+
+procedure TpvFlexibleVideoPlayer.Seek(const aTimeInSeconds:TpvDouble);
+begin
+ // A seek re-arms the audio source like Restart does (the queued seek clears it on the audio thread as well), so a
+ // seek back from the end makes PlaybackFinished False again. The video side needs nothing here: the next DecodeTime
+ // sees the new target and repositions the decoder itself.
+ fAudioFinished:=false;
+ SeekAudio(aTimeInSeconds);
 end;
 
 procedure TpvFlexibleVideoPlayer.BlitLastDecodedFrame(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aLetterbox:boolean);
@@ -763,6 +838,20 @@ begin
 end;
 
 procedure TpvFlexibleVideoPlayer.CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout);
+begin
+ CopyLastDecodedFrameTo(aCommandBuffer,
+                        aTargetImage,
+                        aTargetWidth,
+                        aTargetHeight,
+                        aTargetOldLayout,
+                        aTargetNewLayout,
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                        0,
+                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                        0);
+end;
+
+procedure TpvFlexibleVideoPlayer.CopyLastDecodedFrameTo(const aCommandBuffer:TpvVulkanCommandBuffer;const aTargetImage:TpvVulkanImage;const aTargetWidth,aTargetHeight:TpvInt32;const aTargetOldLayout,aTargetNewLayout:TVkImageLayout;const aSrcStageMask:TVkPipelineStageFlags;const aSrcAccessMask:TVkAccessFlags;const aDstStageMask:TVkPipelineStageFlags;const aDstAccessMask:TVkAccessFlags);
 var ImageCopy:TVkImageCopy;
     Barrier:TVkImageMemoryBarrier;
     SourceImage:TpvVulkanImage;
@@ -805,10 +894,10 @@ begin
   CopyHeight:=aTargetHeight;
  end;
 
- // bring the target to TRANSFER_DST
+ // bring the target to TRANSFER_DST, after its previous use (aSrcStageMask/aSrcAccessMask)
  TransitionTarget(aTargetOldLayout,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                  0,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
+                  aSrcAccessMask,TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                  aSrcStageMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT));
 
  FillChar(ImageCopy,SizeOf(ImageCopy),#0);
  ImageCopy.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
@@ -822,10 +911,11 @@ begin
                              aTargetImage.Handle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              1,@ImageCopy);
 
- // bring the target to its requested final layout (e.g. SHADER_READ_ONLY_OPTIMAL for sampling)
+ // bring the target to its requested final layout (e.g. SHADER_READ_ONLY_OPTIMAL for sampling), visible to its next
+ // use (aDstStageMask/aDstAccessMask)
  TransitionTarget(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,aTargetNewLayout,
-                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),0,
-                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+                  TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),aDstAccessMask,
+                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),aDstStageMask);
 
 end;
 

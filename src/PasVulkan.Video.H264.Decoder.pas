@@ -163,6 +163,7 @@ type EpvVideoH264=class(Exception);
        fDisplayOrder:array of TpvInt32; // display position -> coded (decode-order) frame index
        fFrameKey:array of TpvUInt64;    // per coded frame: (gop_index shl 24) or (poc biased positive)
        fFrameGOP:array of TpvInt32;     // per coded frame: GOP index (increments at every non-first IDR)
+       fKeyframes:array of TpvInt32;    // ascending coded indices decoding can restart at: 0 and every IDR (= their display indices)
 {$ifdef VkVideo}
        fStdSPS:TStdVideoH264SequenceParameterSet;
        fStdPPS:TStdVideoH264PictureParameterSet;
@@ -256,6 +257,10 @@ type EpvVideoH264=class(Exception);
       public
        constructor Create(const aStream:TStream;const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
+       // display index of the latest IDR at or before aDisplayIndex (clamped to the stream; 0 if none). An IDR opens a
+       // closed GOP whose frames all sort after every earlier coded frame, so its coded index is the display index of the
+       // first frame decoded from there.
+       function KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
 {$ifdef VkVideo}
        // GPU side, called on the Draw thread only: make sure the frame at the given DISPLAY position is decoded
        // (decoding however many decode-order frames it takes, with full DPB reference handling) and expose it as
@@ -780,29 +785,65 @@ begin
  fDisplayOrder:=nil;
  fFrameKey:=nil;
  fFrameGOP:=nil;
+ fKeyframes:=nil;
  fFrames:=nil;
  fBlob:=nil;
  inherited Destroy;
 end;
 
 procedure TpvVideoH264Decoder.PrepareDisplayOrder;
-var Index,GOPIndex:TpvInt32;
+var Index,GOPIndex,KeyframeCount:TpvInt32;
 begin
 
  // Per coded (decode-order) frame: assign a GOP index (increments at every non-first IDR) and a display key
  // (gop_index in the high bits, biased POC in the low bits) that totally orders frames across GOP boundaries.
  // The online reorder buffer in EnsureDisplayFrame bumps frames in ascending key order - exactly the C reference.
+ // Every IDR also becomes a restart point: no frame after it in decode order references anything before it, and its
+ // GOP index puts all of its GOP behind every earlier coded frame in display order, so exactly the coded frames before
+ // it display before the first frame decoded from it (its display index = its coded index).
  SetLength(fFrameGOP,fFrameCount);
  SetLength(fFrameKey,fFrameCount);
+ SetLength(fKeyframes,fFrameCount);
+ KeyframeCount:=0;
  GOPIndex:=0;
  for Index:=0 to fFrameCount-1 do begin
   if (fFrames[Index].IDR<>0) and (Index>0) then begin
    inc(GOPIndex);
   end;
+  if (Index=0) or (fFrames[Index].IDR<>0) then begin
+   fKeyframes[KeyframeCount]:=Index;
+   inc(KeyframeCount);
+  end;
   fFrameGOP[Index]:=GOPIndex;
   fFrameKey[Index]:=(TpvUInt64(TpvUInt32(GOPIndex)) shl 24) or TpvUInt64(TpvUInt32(fFrames[Index].POC+$800000));
  end;
+ SetLength(fKeyframes,KeyframeCount);
 
+end;
+
+function TpvVideoH264Decoder.KeyframeAtOrBefore(const aDisplayIndex:TpvInt32):TpvInt32;
+var DisplayIndex,LowIndex,HighIndex,MiddleIndex:TpvInt32;
+begin
+ result:=0;
+ DisplayIndex:=aDisplayIndex;
+ if DisplayIndex>(fFrameCount-1) then begin
+  DisplayIndex:=fFrameCount-1;
+ end;
+ if DisplayIndex<0 then begin
+  exit;
+ end;
+ // binary search for the last restart point <= DisplayIndex
+ LowIndex:=0;
+ HighIndex:=length(fKeyframes)-1;
+ while LowIndex<=HighIndex do begin
+  MiddleIndex:=(LowIndex+HighIndex) shr 1;
+  if fKeyframes[MiddleIndex]<=DisplayIndex then begin
+   result:=fKeyframes[MiddleIndex];
+   LowIndex:=MiddleIndex+1;
+  end else begin
+   HighIndex:=MiddleIndex-1;
+  end;
+ end;
 end;
 
 {$ifdef VkVideo}
@@ -2153,7 +2194,7 @@ begin
 end;
 
 function TpvVideoH264Decoder.EnsureDisplayFrame(const aDisplayIndex:TpvInt32):boolean;
-var Target,Lowest,Index,EmittedPool:TpvInt32;
+var Target,Lowest,Index,EmittedPool,KeyframeIndex:TpvInt32;
 begin
 
  result:=false;
@@ -2175,9 +2216,13 @@ begin
   exit;
  end;
 
- // Backward seek: replay from the very first IDR (cutscene seeking is rare; correctness first).
- if Target<fCurrentDisplayIndex then begin
-  ResetDecodeState(0);
+ // Reposition: a backward target, or a forward target whose nearest IDR lies beyond the next display frame (restarting
+ // there is shorter than decoding everything up to it), restarts the decode at that IDR. Its coded index is the display
+ // index of the first frame emitted from there, so the display counter continues correctly at KeyframeIndex-1.
+ KeyframeIndex:=KeyframeAtOrBefore(Target);
+ if (Target<fCurrentDisplayIndex) or (KeyframeIndex>(fCurrentDisplayIndex+1)) then begin
+  ResetDecodeState(KeyframeIndex);
+  fCurrentDisplayIndex:=KeyframeIndex-1;
  end;
 
  // Emit frames in key (display) order until the current output is the wanted display position. This is the C
