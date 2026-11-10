@@ -8,14 +8,16 @@
 
 /* clang-format off */
 
-// Sets and clears mask bits inside a shape: either the union of a list of circles, or a polygon given by its
-// points in a gnomonic projection plane. Everything that decides about a texel is integer arithmetic, so the
-// result is the same on every device (see planet_maskmap.glsl).
+// Adds a shape to mask layers or cuts it out of them: either the union of a list of circles, a polygon given by its
+// points in a gnomonic projection plane, or the whole map. Adding keeps the larger of the old and the new signed
+// distance, cutting out the smaller of the old distance and the negated new one, which keeps the edges of every
+// shape exact where it decides the edge. Everything that decides about a texel is integer arithmetic, so the result
+// is the same on every device (see planet_maskmap.glsl).
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-// Mask map (r32ui, read/write)
-layout(set = 0, binding = 0, r32ui) uniform uimage2D uImageMaskMap;
+// Mask map (rgba8ui, read/write), one biased signed distance per layer
+layout(set = 0, binding = 0, rgba8ui) uniform uimage2D uImageMaskMap;
 
 // Shape data: a circle is four ints (xyz = centre, w = radius as chord length, all 14 bit fixed point), a polygon
 // point is two ints (projection plane coordinates, 12 bit fixed point).
@@ -28,7 +30,7 @@ layout(push_constant) uniform PushConstants {
   ivec4 tangent; // polygon: xyz = first axis of the projection plane, 14 bit fixed point
   ivec4 bitangent; // polygon: xyz = second axis of the projection plane, 14 bit fixed point
   ivec4 bounds; // polygon: xy = minimum, zw = maximum of the points, 12 bit fixed point
-  uvec4 kindSetClearOffset; // x = kind (0 = union of circles, 1 = polygon, 2 = whole map), y = bits to set, z = bits to clear, w = first int in the shape data
+  uvec4 kindSetClearOffset; // x = kind (0 = union of circles, 1 = polygon, 2 = whole map), y = layers to add to, z = layers to cut out of, w = first int in the shape data
   uvec4 countUnused; // x = count of circles or of polygon points
 } pushConstants;
 
@@ -47,22 +49,43 @@ int divideTowardZero(const in int a, const in int b){
   return (a < 0) ? -q : q;
 }
 
-bool insidePolygon(const in ivec3 p, const in uint offset, const in uint count){
+// The length of v (projection plane, 12 bit fixed point), or just more than limit when it is longer than that in
+// either direction, which also keeps the squares small.
+int planeLength(const in ivec2 v, const in int limit){
+  if((abs(v.x) > limit) || (abs(v.y) > limit)){
+    return limit + 1;
+  }else{
+    return int(planetMaskMapISqrt(uint((v.x * v.x) + (v.y * v.y))));
+  }
+}
+
+// The signed distance of the direction p from the edge of the polygon, positive inside, as chord length with 14
+// fractional bits and limited to [-limit, limit]. The distance is measured in the projection plane, which near the
+// projection centre has the scale of the sphere; further away it only changes how fast the distance grows, not
+// where it is zero.
+int polygonDistance(const in ivec3 p, const in uint offset, const in uint count, const in int limit){
 
   int w = ((p.x * pushConstants.center.x) + (p.y * pushConstants.center.y) + (p.z * pushConstants.center.z)) >> 14;
   if((count < 3u) || (w < MINIMUM_PROJECTION_COSINE)){
-    return false;
+    return -limit;
   }
 
   // The 28 bit products shifted down to 26 bits and divided by the 14 bit cosine give 12 bit plane coordinates.
   int x = divideTowardZero(((p.x * pushConstants.tangent.x) + (p.y * pushConstants.tangent.y) + (p.z * pushConstants.tangent.z)) >> 2, w);
   int y = divideTowardZero(((p.x * pushConstants.bitangent.x) + (p.y * pushConstants.bitangent.y) + (p.z * pushConstants.bitangent.z)) >> 2, w);
-  if((x < pushConstants.bounds.x) || (y < pushConstants.bounds.y) || (x > pushConstants.bounds.z) || (y > pushConstants.bounds.w)){
-    return false;
+
+  // The limit in the plane, with 12 instead of 14 fractional bits, rounded up.
+  int planeLimit = (limit + 3) >> 2;
+  if((x < (pushConstants.bounds.x - planeLimit)) || (y < (pushConstants.bounds.y - planeLimit)) ||
+     (x > (pushConstants.bounds.z + planeLimit)) || (y > (pushConstants.bounds.w + planeLimit))){
+    return -limit;
   }
 
-  // Even-odd rule. All coordinates are within 2^14, so every difference is within 2^15 and every product within 2^30.
+  // Even-odd rule for the side, and the nearest edge for the distance. All coordinates are within 2^14, so every
+  // difference is within 2^15 and every product within 2^30; the distance to an edge is only worked out near it,
+  // where the offsets from its ends stay within the edge length plus the limit.
   bool inside = false;
+  int nearest = planeLimit + 1;
   uint previous = offset + ((count - 1u) << 1u);
   for(uint index = 0u; index < count; index++){
     uint current = offset + (index << 1u);
@@ -76,9 +99,33 @@ bool insidePolygon(const in ivec3 p, const in uint offset, const in uint count){
         inside = !inside;
       }
     }
+    if((x >= (min(a.x, b.x) - planeLimit)) && (x <= (max(a.x, b.x) + planeLimit)) &&
+       (y >= (min(a.y, b.y) - planeLimit)) && (y <= (max(a.y, b.y) + planeLimit))){
+      ivec2 e = b - a;
+      ivec2 v = ivec2(x, y) - a;
+      int edgeLength = int(planetMaskMapISqrt(uint(e.x * e.x) + uint(e.y * e.y)));
+      int edgeDistance;
+      if(edgeLength == 0){
+        edgeDistance = planeLength(v, planeLimit);
+      }else{
+        // The edge direction with 14 fractional bits, then the position along the edge and the distance across it.
+        ivec2 n = ivec2(divideTowardZero(e.x << 14, edgeLength), divideTowardZero(e.y << 14, edgeLength));
+        int along = ((v.x * n.x) + (v.y * n.y)) >> 14;
+        if(along < 0){
+          edgeDistance = planeLength(v, planeLimit);
+        }else if(along > edgeLength){
+          edgeDistance = planeLength(ivec2(x, y) - b, planeLimit);
+        }else{
+          edgeDistance = abs((v.x * n.y) - (v.y * n.x)) >> 14;
+        }
+      }
+      nearest = min(nearest, edgeDistance);
+    }
     previous = current;
   }
-  return inside;
+
+  int distance = min(nearest << 2, limit);
+  return inside ? distance : -distance;
 
 }
 
@@ -88,36 +135,56 @@ void main(){
 
   ivec2 texSize = imageSize(uImageMaskMap);
 
-  if(all(lessThan(texel, texSize))){
+  uint addLayers = pushConstants.kindSetClearOffset.y & 15u;
+  uint cutLayers = pushConstants.kindSetClearOffset.z & 15u;
 
-    ivec3 p = planetMaskMapTexelDirection(texel, texSize.x);
+  if(all(lessThan(texel, texSize)) && ((addLayers | cutLayers) != 0u)){
+
+    int size = texSize.x;
+    int limit = planetMaskMapDistanceLimit(size);
+
+    ivec3 p = planetMaskMapTexelDirection(texel, size);
 
     uint offset = pushConstants.kindSetClearOffset.w;
     uint count = pushConstants.countUnused.x;
 
-    bool inside = false;
-
+    // The signed chord distance from the edge of the shape, positive inside, within [-limit, limit].
+    int distance;
     if(pushConstants.kindSetClearOffset.x == 0u){
-      for(uint index = 0u; (index < count) && !inside; index++){
+      distance = -limit;
+      for(uint index = 0u; (index < count) && (distance < limit); index++){
         uint circleOffset = offset + (index << 2u);
-        inside = planetMaskMapInsideCircle(p,
-                                           ivec4(shapeData.data[circleOffset],
-                                                 shapeData.data[circleOffset + 1u],
-                                                 shapeData.data[circleOffset + 2u],
-                                                 shapeData.data[circleOffset + 3u]));
+        distance = max(distance,
+                       planetMaskMapCircleDistance(p,
+                                                   ivec4(shapeData.data[circleOffset],
+                                                         shapeData.data[circleOffset + 1u],
+                                                         shapeData.data[circleOffset + 2u],
+                                                         shapeData.data[circleOffset + 3u]),
+                                                   limit));
       }
     }else if(pushConstants.kindSetClearOffset.x == 1u){
-      inside = insidePolygon(p, offset, count);
+      distance = polygonDistance(p, offset, count, limit);
     }else{
-      // The whole map, which also defines the content of a freshly created image, since clearing all bits does
-      // not depend on what was there before.
-      inside = true;
+      // The whole map, which also defines the content of a freshly created image, since cutting a layer out
+      // everywhere does not depend on what was there before.
+      distance = limit;
     }
 
-    if(inside){
-      // Clearing wins over setting, so that one call can replace bits.
-      uint bits = imageLoad(uImageMaskMap, texel).x;
-      imageStore(uImageMaskMap, texel, uvec4((bits | pushConstants.kindSetClearOffset.y) & ~pushConstants.kindSetClearOffset.z));
+    // In distance units, where the saturated distances go one unit beyond the range of a layer, so that the whole
+    // map and the far inside of a shape fill a layer completely and cut it out completely.
+    int units = (distance >= limit) ? 128 : ((distance <= -limit) ? -128 : planetMaskMapChordToUnits(distance, size));
+
+    // Far outside the shape nothing changes, neither by adding nor by cutting out.
+    if(units > -128){
+      ivec4 oldDistances = ivec4(imageLoad(uImageMaskMap, texel)) - ivec4(128);
+      ivec4 newDistances = oldDistances;
+      // Cutting out wins over adding, so that one call can replace a layer.
+      newDistances = mix(newDistances, max(newDistances, ivec4(units)), notEqual(uvec4(addLayers) & uvec4(1u, 2u, 4u, 8u), uvec4(0u)));
+      newDistances = mix(newDistances, min(newDistances, ivec4(-units)), notEqual(uvec4(cutLayers) & uvec4(1u, 2u, 4u, 8u), uvec4(0u)));
+      newDistances = clamp(newDistances, ivec4(-128), ivec4(127));
+      if(any(notEqual(newDistances, oldDistances))){
+        imageStore(uImageMaskMap, texel, uvec4(newDistances + ivec4(128)));
+      }
     }
 
   }

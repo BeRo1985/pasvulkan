@@ -142,12 +142,20 @@ type TpvScene3DPlanets=class;
              MaskMapMaximumPolygonPoints=4096;
              // The number of mask map overlays the planet render pass can show at once.
              CountMaskMapOverlays=4;
+             // The number of mask map layers, each one byte of every texel, and the bits which name all of them in
+             // every parameter that takes mask bits (bit i = layer i).
+             CountMaskMapLayers=4;
+             MaskMapAllLayers=(1 shl CountMaskMapLayers)-1;
+             // Mask map texel values: the signed distance from the edge in 1/MaskMapDistanceUnits of a texel, biased
+             // by MaskMapDistanceBias, so 0 is far outside and the edge lies at the bias.
+             MaskMapDistanceUnits=32;
+             MaskMapDistanceBias=128;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
             // One mask map overlay as the planet render pass reads it from the planet data.
             TMaskMapOverlayData=packed record
-             Bits:TpvUInt32; // 0 = overlay off
+             Bits:TpvUInt32; // layers, 0 = overlay off
              Unused:TpvUInt32;
              Color:TpvHalfFloatVector4; // rgb = linear color, a = strength
             end;
@@ -326,7 +334,7 @@ type TpvScene3DPlanets=class;
              Value:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapModificationItem=^THeightMapModificationItem;
             THeightMapModificationItems=array[0..MaxInFlightFrames-1] of THeightMapModificationItem;
@@ -337,7 +345,7 @@ type TpvScene3DPlanets=class;
              TargetHeight:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapFlattenItem=^THeightMapFlattenItem;
             THeightMapFlattenItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenItem;
@@ -348,7 +356,7 @@ type TpvScene3DPlanets=class;
              TargetHeight:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapFlattenBeforeStateItem=^THeightMapFlattenBeforeStateItem;
             THeightMapFlattenBeforeStateItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenBeforeStateItem;
@@ -360,7 +368,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapModificationToTargetHeightItem=^THeightMapModificationToTargetHeightItem;
             THeightMapModificationToTargetHeightItems=array[0..MaxInFlightFrames-1] of THeightMapModificationToTargetHeightItem;
@@ -373,7 +381,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapBrushSmoothItem=^THeightMapBrushSmoothItem;
             THeightMapBrushSmoothItems=array[0..MaxInFlightFrames-1] of THeightMapBrushSmoothItem;
@@ -385,7 +393,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
-             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
+             MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
             end;
             PHeightMapBrushSmearItem=^THeightMapBrushSmearItem;
             THeightMapBrushSmearItems=array[0..MaxInFlightFrames-1] of THeightMapBrushSmearItem;
@@ -474,9 +482,9 @@ type TpvScene3DPlanets=class;
             end;
             PMaskMapPolygon=^TMaskMapPolygon;
             TMaskMapModificationItem=packed record
-             Kind:TpvUInt32; // 0 = union of circles, 1 = polygon
-             SetBits:TpvUInt32;
-             ClearBits:TpvUInt32;
+             Kind:TpvUInt32; // 0 = union of circles, 1 = polygon, 2 = whole map
+             SetBits:TpvUInt32; // layers to add the shape to
+             ClearBits:TpvUInt32; // layers to cut the shape out of
              DataOffset:TpvUInt32; // first TpvInt32 of the shape in the shape data of the in-flight frame
              Count:TpvUInt32; // count of circles or of polygon points
              Center:TMaskMapVector;
@@ -488,10 +496,12 @@ type TpvScene3DPlanets=class;
             PMaskMapModificationItem=^TMaskMapModificationItem;
             TMaskMapModificationItems=array of TMaskMapModificationItem;
             TMaskMapShapeData=array of TpvInt32;
+            // One word per texel, holding the biased signed distances of the four layers, layer i in byte i (the
+            // memory order of an rgba8 texel, so the lowest byte of the word on a little endian CPU).
             TMaskMapData=array of TpvUInt32;
-            // A mask map overlay of the planet render pass: tints the ground where any of the bits is set.
+            // A mask map overlay of the planet render pass: tints the ground where any of the layers covers it.
             TMaskMapOverlay=record
-             Bits:TpvUInt32; // 0 = overlay off
+             Bits:TpvUInt32; // layers, 0 = overlay off
              Color:TpvVector4; // rgb = linear color, a = strength
             end;
             PMaskMapOverlay=^TMaskMapOverlay;
@@ -583,7 +593,7 @@ type TpvScene3DPlanets=class;
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassAgeMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fGrassFlagsMapImage:TpvScene3DRendererImage2D; // R32_UINT
-              fMaskMapImage:TpvScene3DRendererImage2D; // R32_UINT, application defined mask bits, 1x1 while the mask map is off
+              fMaskMapImage:TpvScene3DRendererImage2D; // R8G8B8A8_UINT, four application defined layers as biased signed distances, 1x1 while the mask map is off
               fPrecipitationMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapBuffer:TpvVulkanBuffer; // R8_SNORM
@@ -1073,7 +1083,8 @@ type TpvScene3DPlanets=class;
                      ChunkSignatureAtmosphereMapData:TSignature=('A','M','D','T'); // Atmosphere Map Data
                      ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
                      ChunkSignatureWaterRippleData:TSignature=('W','R','P','L'); // Water Ripple Data (ping-pong image content, optional)
-                     ChunkSignatureMaskMapData:TSignature=('M','K','D','T'); // Mask Map Data (optional, only while the planet has a mask map)
+                     ChunkSignatureMaskMapData:TSignature=('M','K','D','F'); // Mask Map Data as distance fields (optional, only while the planet has a mask map)
+                     ChunkSignatureMaskMapBitsData:TSignature=('M','K','D','T'); // Mask Map Data in the older format with one bit per layer, only read
              private
               fPlanet:TpvScene3DPlanet;
               fHeightMapResolution:TpvUInt32;
@@ -4167,9 +4178,9 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       // The height map modifications leave the ground alone where the mask map has any of aMaskBits set, with a
-       // soft edge of one mask map texel, see the mask map methods below. Without any mask bits they work on the
-       // whole planet, as they always did.
+       // The height map modifications leave the ground alone where any of the mask map layers of aMaskBits covers
+       // it, with a soft edge of a quarter mask map texel, see the mask map methods below. Without any mask bits
+       // they work on the whole planet, as they always did.
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aMaskBits:TpvUInt32=0);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
        procedure CaptureHeightMapBeforeState(const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -4180,11 +4191,14 @@ type TpvScene3DPlanets=class;
        procedure CaptureSmearBuffer(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure ReleaseSmearBuffer;
        procedure EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
-       // Mask map: 32 bits per texel whose meaning is up to the application, in the octahedral layout of the height
-       // map at a resolution of its own (aMaskMapResolution of the constructor, 0 = no mask map). The height map
-       // modifications above respect the bits they are given. The mask is rasterized with integer arithmetic only,
-       // so every device produces exactly the same mask from the same shapes, which is what keeps several machines
-       // that apply the same modifications in the same order in step with each other.
+       // Mask map: CountMaskMapLayers layers whose meaning is up to the application, in the octahedral layout of the
+       // height map at a resolution of its own (aMaskMapResolution of the constructor, 0 = no mask map). Every
+       // parameter that takes mask bits names layers with them, bit i for layer i. A layer stores per texel the
+       // signed distance from the edge of its area instead of a yes or no, so the edge follows the drawn shapes to a
+       // fraction of a texel at any angle to the raster, and the height map modifications above, which respect the
+       // layers they are given, stop there with a soft edge of a quarter texel. The mask is rasterized with integer
+       // arithmetic only, so every device produces exactly the same mask from the same shapes, which is what keeps
+       // several machines that apply the same modifications in the same order in step with each other.
        //
        // A circle from a centre direction and a radius given as chord length on the unit sphere, the same measure
        // the brush radii of the height map modifications use. A negative radius covers the whole sphere.
@@ -4194,24 +4208,26 @@ type TpvScene3DPlanets=class;
        // has to lie within about 76 degrees of the normalized mean of its points, false for fewer than three points
        // or none that are usable. More than MaskMapMaximumPolygonPoints points are thinned out evenly.
        class function CreateMaskMapPolygon(const aPoints:array of TpvVector3D;out aPolygon:TMaskMapPolygon):Boolean; static;
-       // Queue the setting and clearing of bits inside the union of circles, inside a polygon, or on the whole map.
-       // Where both name the same bit, clearing wins. The queued modifications run in the order they were queued,
-       // and before the height map modifications of the same frame.
+       // Queue adding a shape to the layers of aSetBits and cutting it out of the layers of aClearBits: the union of
+       // circles, a polygon, or the whole map. Where both name the same layer, cutting out wins. The queued
+       // modifications run in the order they were queued, and before the height map modifications of the same frame.
        procedure EnqueueMaskMapCircles(const aInFlightFrameIndex:TpvSizeInt;const aCircles:array of TMaskMapCircle;const aSetBits,aClearBits:TpvUInt32);
        procedure EnqueueMaskMapPolygon(const aInFlightFrameIndex:TpvSizeInt;const aPolygon:TMaskMapPolygon;const aSetBits,aClearBits:TpvUInt32);
        procedure EnqueueMaskMapClear(const aInFlightFrameIndex:TpvSizeInt;const aBits:TpvUInt32);
-       // Reads from the CPU side copy, which follows the GPU mask map once the modifications of a frame have run.
+       // The layers covering the point, as bits. Reads from the CPU side copy, which follows the GPU mask map once
+       // the modifications of a frame have run, and interpolates the distances like the shaders do.
        function GetMaskMapBits(const aNormal:TpvVector3):TpvUInt32;
-       // The share in [0, 1] of the circle around aNormal (radius as chord length on the unit sphere) where any of
-       // aMaskBits is set, sampled on a grid of up to aSamplesPerAxis x aSamplesPerAxis points.
+       // The share in [0, 1] of the circle around aNormal (radius as chord length on the unit sphere) which any of
+       // the layers of aMaskBits covers, sampled on a grid of up to aSamplesPerAxis x aSamplesPerAxis points.
        function GetMaskMapCoverage(const aNormal:TpvVector3;const aRadius:TpvFloat;const aMaskBits:TpvUInt32;const aSamplesPerAxis:TpvSizeInt=9):TpvFloat;
-       // A copy of the whole CPU side mask map, MaskMapResolution x MaskMapResolution words, empty without mask map.
+       // A copy of the whole CPU side mask map, MaskMapResolution x MaskMapResolution words (see TMaskMapData),
+       // empty without mask map.
        procedure GetMaskMapData(out aData:TMaskMapData);
        // Replaces one rectangle of the mask map, read tightly packed with aWidth words per row, on the CPU side
        // copy and on the GPU. Belongs between two frames, like UploadHeightMapRegion.
        procedure UploadMaskMapRegion(const aX,aY,aWidth,aHeight:TpvInt32;const aData:pointer);
-       // Overlays of the planet render pass, which tint the ground wherever any of the bits of an overlay is set.
-       // aBits of 0 switches an overlay off.
+       // Overlays of the planet render pass, which tint the ground wherever any of the layers of an overlay covers
+       // it. aBits of 0 switches an overlay off.
        procedure SetMaskMapOverlay(const aIndex:TpvSizeInt;const aBits:TpvUInt32;const aColor:TpvVector4);
        function GetMaskMapOverlay(const aIndex:TpvSizeInt):TMaskMapOverlay;
        procedure MarkAllTilesDirty;
@@ -5607,11 +5623,12 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.ImageView');
 
-   // Without a mask map a single texel, so that the shaders which bind it always find a valid image.
+   // Without a mask map a single texel, so that the shaders which bind it always find a valid image. One layer per
+   // channel; rgba8ui is one of the storage image formats every device supports.
    fMaskMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                    Max(1,fPlanet.fMaskMapResolution),
                                                    Max(1,fPlanet.fMaskMapResolution),
-                                                   VK_FORMAT_R32_UINT,
+                                                   VK_FORMAT_R8G8B8A8_UINT,
                                                    true,
                                                    VK_SAMPLE_COUNT_1_BIT,
                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -13220,8 +13237,10 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     GrassFlagsMapDataP:PpvUInt32;
     MaskMapDataChunkHeader:TMaskMapDataChunkHeader;
     MaskMapSourceData:array of TpvUInt32;
-    MaskMapX,MaskMapY:TpvSizeInt;
+    MaskMapX,MaskMapY,MaskMapIndex,MaskMapLayer:TpvSizeInt;
     MaskMapDataP:PpvUInt32;
+    MaskMapWord,MaskMapResampledWord:TpvUInt32;
+    MaskMapDistanceScale:TpvDouble;
 begin
 
  fPlanet.fData.fWaterFirst:=true;
@@ -13262,7 +13281,7 @@ begin
   end;
  end;
 
- // Without a mask map chunk, from older saves, all mask bits are clear.
+ // Without a mask map chunk, from older saves, all mask layers are empty (zero is far outside).
  if fMaskMapResolution>0 then begin
   fMaskMapData.SetSize(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
   FillChar(fMaskMapData.Memory^,fMaskMapData.Size,#0);
@@ -13525,36 +13544,62 @@ begin
 
      end;
 
-    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapData then begin
+    end else if (Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapData) or
+                (Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapBitsData) then begin
 
      aStream.ReadBuffer(MaskMapDataChunkHeader,SizeOf(TMaskMapDataChunkHeader));
 
-     if fMaskMapResolution>0 then begin
+     if (fMaskMapResolution>0) and (MaskMapDataChunkHeader.Resolution>0) then begin
 
-      if MaskMapDataChunkHeader.Resolution=fMaskMapResolution then begin
+      MaskMapSourceData:=nil;
+      try
 
-       fMaskMapData.Seek(0,soBeginning);
-       fMaskMapData.CopyFrom(aStream,fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+       SetLength(MaskMapSourceData,MaskMapDataChunkHeader.Resolution*MaskMapDataChunkHeader.Resolution);
+       aStream.ReadBuffer(MaskMapSourceData[0],length(MaskMapSourceData)*SizeOf(TpvUInt32));
 
-      end else if MaskMapDataChunkHeader.Resolution>0 then begin
+       // The older format with one bit per layer instead of distances: a set bit becomes far inside, a clear one
+       // far outside. The edges then keep the steps of the raster, there is nothing to tell where they ran.
+       if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapBitsData then begin
+        for MaskMapIndex:=0 to length(MaskMapSourceData)-1 do begin
+         MaskMapWord:=0;
+         for MaskMapLayer:=0 to CountMaskMapLayers-1 do begin
+          if ((MaskMapSourceData[MaskMapIndex] shr MaskMapLayer) and 1)<>0 then begin
+           MaskMapWord:=MaskMapWord or (TpvUInt32($ff) shl (MaskMapLayer shl 3));
+          end;
+         end;
+         MaskMapSourceData[MaskMapIndex]:=MaskMapWord;
+        end;
+       end;
 
-       // Another resolution: nearest texel centre, which keeps bits as bits, and the octahedral layout scales evenly.
-       MaskMapSourceData:=nil;
-       try
-        SetLength(MaskMapSourceData,MaskMapDataChunkHeader.Resolution*MaskMapDataChunkHeader.Resolution);
-        aStream.ReadBuffer(MaskMapSourceData[0],length(MaskMapSourceData)*SizeOf(TpvUInt32));
+       if MaskMapDataChunkHeader.Resolution=fMaskMapResolution then begin
+
+        fMaskMapData.Seek(0,soBeginning);
+        fMaskMapData.WriteBuffer(MaskMapSourceData[0],length(MaskMapSourceData)*SizeOf(TpvUInt32));
+
+       end else begin
+
+        // Another resolution: the nearest texel centre, since the octahedral layout scales evenly, with the
+        // distances, which count in texels, scaled to the new texel size.
+        MaskMapDistanceScale:=fMaskMapResolution/MaskMapDataChunkHeader.Resolution;
         MaskMapDataP:=fMaskMapData.Memory;
         for MaskMapY:=0 to fMaskMapResolution-1 do begin
          for MaskMapX:=0 to fMaskMapResolution-1 do begin
-          MaskMapDataP^:=MaskMapSourceData[((((MaskMapY*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))*MaskMapDataChunkHeader.Resolution+
-                                           ((((MaskMapX*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))];
+          MaskMapWord:=MaskMapSourceData[((((MaskMapY*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))*MaskMapDataChunkHeader.Resolution+
+                                         ((((MaskMapX*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))];
+          MaskMapResampledWord:=0;
+          for MaskMapLayer:=0 to CountMaskMapLayers-1 do begin
+           MaskMapResampledWord:=MaskMapResampledWord or
+                                 (TpvUInt32(Min(Max(MaskMapDistanceBias+Round((TpvInt32((MaskMapWord shr (MaskMapLayer shl 3)) and $ff)-MaskMapDistanceBias)*MaskMapDistanceScale),0),255)) shl (MaskMapLayer shl 3));
+          end;
+          MaskMapDataP^:=MaskMapResampledWord;
           inc(MaskMapDataP);
          end;
         end;
-       finally
-        MaskMapSourceData:=nil;
+
        end;
 
+      finally
+       MaskMapSourceData:=nil;
       end;
 
      end;
@@ -41953,11 +41998,11 @@ end;
 procedure TpvScene3DPlanet.EnqueueMaskMapCircles(const aInFlightFrameIndex:TpvSizeInt;const aCircles:array of TMaskMapCircle;const aSetBits,aClearBits:TpvUInt32);
 var Item:TMaskMapModificationItem;
 begin
- if (length(aCircles)>0) and ((aSetBits or aClearBits)<>0) then begin
+ if (length(aCircles)>0) and (((aSetBits or aClearBits) and MaskMapAllLayers)<>0) then begin
   FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
   Item.Kind:=0;
-  Item.SetBits:=aSetBits;
-  Item.ClearBits:=aClearBits;
+  Item.SetBits:=aSetBits and MaskMapAllLayers;
+  Item.ClearBits:=aClearBits and MaskMapAllLayers;
   Item.Count:=length(aCircles);
   AddMaskMapModification(aInFlightFrameIndex,Item,PpvInt32(Pointer(@aCircles[0])),length(aCircles)*4);
  end;
@@ -41966,12 +42011,13 @@ end;
 procedure TpvScene3DPlanet.EnqueueMaskMapPolygon(const aInFlightFrameIndex:TpvSizeInt;const aPolygon:TMaskMapPolygon;const aSetBits,aClearBits:TpvUInt32);
 var Item:TMaskMapModificationItem;
     Index:TpvSizeInt;
+    Points:TMaskMapPoints;
 begin
- if (length(aPolygon.Points)>=3) and (length(aPolygon.Points)<=MaskMapMaximumPolygonPoints) and ((aSetBits or aClearBits)<>0) then begin
+ if (length(aPolygon.Points)>=3) and (length(aPolygon.Points)<=MaskMapMaximumPolygonPoints) and (((aSetBits or aClearBits) and MaskMapAllLayers)<>0) then begin
   FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
   Item.Kind:=1;
-  Item.SetBits:=aSetBits;
-  Item.ClearBits:=aClearBits;
+  Item.SetBits:=aSetBits and MaskMapAllLayers;
+  Item.ClearBits:=aClearBits and MaskMapAllLayers;
   Item.Count:=length(aPolygon.Points);
   Item.Center:=aPolygon.Center;
   Item.Tangent:=aPolygon.Tangent;
@@ -41980,18 +42026,20 @@ begin
   Item.BoundsMin.Y:=MaskMapPlaneLimit;
   Item.BoundsMax.X:=-MaskMapPlaneLimit;
   Item.BoundsMax.Y:=-MaskMapPlaneLimit;
-  // The points are clamped here as well, since the shader relies on the limit to keep its products in range.
+  // The points are clamped here, whatever their origin, since the shader relies on the limit to keep its products
+  // in range.
+  Points:=nil;
+  SetLength(Points,length(aPolygon.Points));
   for Index:=0 to length(aPolygon.Points)-1 do begin
-   Item.BoundsMin.X:=Min(Item.BoundsMin.X,Min(Max(aPolygon.Points[Index].X,-MaskMapPlaneLimit),MaskMapPlaneLimit));
-   Item.BoundsMin.Y:=Min(Item.BoundsMin.Y,Min(Max(aPolygon.Points[Index].Y,-MaskMapPlaneLimit),MaskMapPlaneLimit));
-   Item.BoundsMax.X:=Max(Item.BoundsMax.X,Min(Max(aPolygon.Points[Index].X,-MaskMapPlaneLimit),MaskMapPlaneLimit));
-   Item.BoundsMax.Y:=Max(Item.BoundsMax.Y,Min(Max(aPolygon.Points[Index].Y,-MaskMapPlaneLimit),MaskMapPlaneLimit));
+   Points[Index].X:=Min(Max(aPolygon.Points[Index].X,-MaskMapPlaneLimit),MaskMapPlaneLimit);
+   Points[Index].Y:=Min(Max(aPolygon.Points[Index].Y,-MaskMapPlaneLimit),MaskMapPlaneLimit);
+   Item.BoundsMin.X:=Min(Item.BoundsMin.X,Points[Index].X);
+   Item.BoundsMin.Y:=Min(Item.BoundsMin.Y,Points[Index].Y);
+   Item.BoundsMax.X:=Max(Item.BoundsMax.X,Points[Index].X);
+   Item.BoundsMax.Y:=Max(Item.BoundsMax.Y,Points[Index].Y);
   end;
   if (Item.BoundsMin.X<=Item.BoundsMax.X) and (Item.BoundsMin.Y<=Item.BoundsMax.Y) then begin
-   if (Item.BoundsMin.X>=-MaskMapPlaneLimit) and (Item.BoundsMax.X<=MaskMapPlaneLimit) and
-      (Item.BoundsMin.Y>=-MaskMapPlaneLimit) and (Item.BoundsMax.Y<=MaskMapPlaneLimit) then begin
-    AddMaskMapModification(aInFlightFrameIndex,Item,PpvInt32(Pointer(@aPolygon.Points[0])),length(aPolygon.Points)*2);
-   end;
+   AddMaskMapModification(aInFlightFrameIndex,Item,PpvInt32(Pointer(@Points[0])),length(Points)*2);
   end;
  end;
 end;
@@ -41999,10 +42047,10 @@ end;
 procedure TpvScene3DPlanet.EnqueueMaskMapClear(const aInFlightFrameIndex:TpvSizeInt;const aBits:TpvUInt32);
 var Item:TMaskMapModificationItem;
 begin
- if aBits<>0 then begin
+ if (aBits and MaskMapAllLayers)<>0 then begin
   FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
   Item.Kind:=2;
-  Item.ClearBits:=aBits;
+  Item.ClearBits:=aBits and MaskMapAllLayers;
   AddMaskMapModification(aInFlightFrameIndex,Item,nil,0);
  end;
 end;
@@ -42079,17 +42127,39 @@ end;
 
 function TpvScene3DPlanet.GetMaskMapBitsUnlocked(const aNormal:TpvVector3):TpvUInt32;
 var UV:TpvVector2;
-    x,y:TpvInt32;
+    TexelX,TexelY,FractionX,FractionY,Value00,Value10,Value01,Value11:TpvFloat;
+    BaseX,BaseY,WrappedX,WrappedY,Corner,Layer,Shift:TpvInt32;
+    Words:array[0..3] of TpvUInt32;
 begin
+ result:=0;
  if (fMaskMapResolution>0) and
     (length(fMaskMapData)=(fMaskMapResolution*fMaskMapResolution)) and
     (aNormal.Length>1e-12) then begin
+  // The four texels around the point and their bilinear weights, as planetMaskMapDistances in planet_maskmap.glsl
+  // does it, with the texel centres at (i+0.5)/size and the octahedral wrap at the borders.
   UV:=OctEqualAreaUnsignedEncode(aNormal.Normalize);
-  x:=Min(Max(TpvInt32(Trunc(UV.x*fMaskMapResolution)),0),fMaskMapResolution-1);
-  y:=Min(Max(TpvInt32(Trunc(UV.y*fMaskMapResolution)),0),fMaskMapResolution-1);
-  result:=fMaskMapData[(y*fMaskMapResolution)+x];
- end else begin
-  result:=0;
+  TexelX:=(UV.x*fMaskMapResolution)-0.5;
+  TexelY:=(UV.y*fMaskMapResolution)-0.5;
+  BaseX:=Floor(TexelX);
+  BaseY:=Floor(TexelY);
+  FractionX:=TexelX-BaseX;
+  FractionY:=TexelY-BaseY;
+  for Corner:=0 to 3 do begin
+   WrapOctahedralTexelCoordinatesEx(BaseX+(Corner and 1),BaseY+(Corner shr 1),fMaskMapResolution,fMaskMapResolution,WrappedX,WrappedY);
+   Words[Corner]:=fMaskMapData[(WrappedY*fMaskMapResolution)+WrappedX];
+  end;
+  // A layer covers the point where its interpolated signed distance is positive.
+  for Layer:=0 to CountMaskMapLayers-1 do begin
+   Shift:=Layer shl 3;
+   Value00:=(Words[0] shr Shift) and $ff;
+   Value10:=(Words[1] shr Shift) and $ff;
+   Value01:=(Words[2] shr Shift) and $ff;
+   Value11:=(Words[3] shr Shift) and $ff;
+   if ((((Value00*(1.0-FractionX))+(Value10*FractionX))*(1.0-FractionY))+
+       (((Value01*(1.0-FractionX))+(Value11*FractionX))*FractionY))>MaskMapDistanceBias then begin
+    result:=result or (TpvUInt32(1) shl Layer);
+   end;
+  end;
  end;
 end;
 

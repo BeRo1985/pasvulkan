@@ -785,17 +785,15 @@ void main(){
 
   }
 
-  // Mask map overlays: tint the ground where any of the bits of an overlay is set, with the same soft edge the
+  // Mask map overlays: tint the ground where any of the layers of an overlay covers it, with the same soft edge the
   // height map passes see.
   if(any(notEqual(uvec4(planetData.maskMapOverlays[0].x, planetData.maskMapOverlays[1].x, planetData.maskMapOverlays[2].x, planetData.maskMapOverlays[3].x), uvec4(0u)))){
-    uvec4 maskWords;
-    vec4 maskWeights;
-    planetMaskMapGather(uPlanetMaskMap, octPlanetUnsignedEncode(sphereNormal), maskWords, maskWeights);
+    const vec4 maskDistances = planetMaskMapDistances(uPlanetMaskMap, octPlanetUnsignedEncode(sphereNormal));
     for(int overlayIndex = 0; overlayIndex < 4; overlayIndex++){
       const uvec4 overlay = planetData.maskMapOverlays[overlayIndex];
       if(overlay.x != 0u){
         const vec4 overlayColor = vec4(unpackHalf2x16(overlay.z), unpackHalf2x16(overlay.w));
-        c.xyz = mix(c.xyz, overlayColor.xyz, overlayColor.w * planetMaskMapGatheredCoverage(maskWords, maskWeights, overlay.x));
+        c.xyz = mix(c.xyz, overlayColor.xyz, overlayColor.w * planetMaskMapLayerCoverage(maskDistances, overlay.x));
       }
     }
   }
