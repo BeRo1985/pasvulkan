@@ -1,0 +1,125 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+// Sets and clears mask bits inside a shape: either the union of a list of circles, or a polygon given by its
+// points in a gnomonic projection plane. Everything that decides about a texel is integer arithmetic, so the
+// result is the same on every device (see planet_maskmap.glsl).
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Mask map (r32ui, read/write)
+layout(set = 0, binding = 0, r32ui) uniform uimage2D uImageMaskMap;
+
+// Shape data: a circle is four ints (xyz = centre, w = radius as chord length, all 14 bit fixed point), a polygon
+// point is two ints (projection plane coordinates, 12 bit fixed point).
+layout(set = 0, binding = 1, std430) readonly buffer ShapeData {
+  int data[];
+} shapeData;
+
+layout(push_constant) uniform PushConstants {
+  ivec4 center; // polygon: xyz = centre of the projection, 14 bit fixed point
+  ivec4 tangent; // polygon: xyz = first axis of the projection plane, 14 bit fixed point
+  ivec4 bitangent; // polygon: xyz = second axis of the projection plane, 14 bit fixed point
+  ivec4 bounds; // polygon: xy = minimum, zw = maximum of the points, 12 bit fixed point
+  uvec4 kindSetClearOffset; // x = kind (0 = union of circles, 1 = polygon, 2 = whole map), y = bits to set, z = bits to clear, w = first int in the shape data
+  uvec4 countUnused; // x = count of circles or of polygon points
+} pushConstants;
+
+/* clang-format on */
+
+#include "octahedral.glsl"
+#include "planet_maskmap.glsl"
+
+// The polygon points are limited to four units in the projection plane, which is about 76 degrees away from the
+// projection centre. Directions further away than that, with a smaller cosine, lie outside of every polygon.
+#define MINIMUM_PROJECTION_COSINE 3964
+
+// a / b rounded toward zero, for b > 0.
+int divideTowardZero(const in int a, const in int b){
+  int q = int(uint(abs(a)) / uint(b));
+  return (a < 0) ? -q : q;
+}
+
+bool insidePolygon(const in ivec3 p, const in uint offset, const in uint count){
+
+  int w = ((p.x * pushConstants.center.x) + (p.y * pushConstants.center.y) + (p.z * pushConstants.center.z)) >> 14;
+  if((count < 3u) || (w < MINIMUM_PROJECTION_COSINE)){
+    return false;
+  }
+
+  // The 28 bit products shifted down to 26 bits and divided by the 14 bit cosine give 12 bit plane coordinates.
+  int x = divideTowardZero(((p.x * pushConstants.tangent.x) + (p.y * pushConstants.tangent.y) + (p.z * pushConstants.tangent.z)) >> 2, w);
+  int y = divideTowardZero(((p.x * pushConstants.bitangent.x) + (p.y * pushConstants.bitangent.y) + (p.z * pushConstants.bitangent.z)) >> 2, w);
+  if((x < pushConstants.bounds.x) || (y < pushConstants.bounds.y) || (x > pushConstants.bounds.z) || (y > pushConstants.bounds.w)){
+    return false;
+  }
+
+  // Even-odd rule. All coordinates are within 2^14, so every difference is within 2^15 and every product within 2^30.
+  bool inside = false;
+  uint previous = offset + ((count - 1u) << 1u);
+  for(uint index = 0u; index < count; index++){
+    uint current = offset + (index << 1u);
+    ivec2 a = ivec2(shapeData.data[current], shapeData.data[current + 1u]);
+    ivec2 b = ivec2(shapeData.data[previous], shapeData.data[previous + 1u]);
+    if((a.y > y) != (b.y > y)){
+      int dy = b.y - a.y;
+      int lhs = (x - a.x) * dy;
+      int rhs = (y - a.y) * (b.x - a.x);
+      if((dy > 0) ? (lhs < rhs) : (lhs > rhs)){
+        inside = !inside;
+      }
+    }
+    previous = current;
+  }
+  return inside;
+
+}
+
+void main(){
+
+  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+  ivec2 texSize = imageSize(uImageMaskMap);
+
+  if(all(lessThan(texel, texSize))){
+
+    ivec3 p = planetMaskMapTexelDirection(texel, texSize.x);
+
+    uint offset = pushConstants.kindSetClearOffset.w;
+    uint count = pushConstants.countUnused.x;
+
+    bool inside = false;
+
+    if(pushConstants.kindSetClearOffset.x == 0u){
+      for(uint index = 0u; (index < count) && !inside; index++){
+        uint circleOffset = offset + (index << 2u);
+        inside = planetMaskMapInsideCircle(p,
+                                           ivec4(shapeData.data[circleOffset],
+                                                 shapeData.data[circleOffset + 1u],
+                                                 shapeData.data[circleOffset + 2u],
+                                                 shapeData.data[circleOffset + 3u]));
+      }
+    }else if(pushConstants.kindSetClearOffset.x == 1u){
+      inside = insidePolygon(p, offset, count);
+    }else{
+      // The whole map, which also defines the content of a freshly created image, since clearing all bits does
+      // not depend on what was there before.
+      inside = true;
+    }
+
+    if(inside){
+      // Clearing wins over setting, so that one call can replace bits.
+      uint bits = imageLoad(uImageMaskMap, texel).x;
+      imageStore(uImageMaskMap, texel, uvec4((bits | pushConstants.kindSetClearOffset.y) & ~pushConstants.kindSetClearOffset.z));
+    }
+
+  }
+
+}

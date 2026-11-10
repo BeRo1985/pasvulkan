@@ -27,10 +27,13 @@ layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray[];
 
 layout(set = 0, binding = 3) uniform sampler2D uBeforeStateHeightMap;
 
+layout(set = 0, binding = 4) uniform usampler2D uMaskMap;
+
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = outer radius
   vec4 innerRadiusStrengthKernelRadiusSigma; // x = inner radius, y = strength [0,1], z = kernel radius (int as float), w = sigma (texels)
   uvec4 tileMapResolutionShiftBrushIndexBrushRotation; // x = dirty size, y = shift, z = brush index, w = brush rotation (float bits)
+  uint maskBits; // mask map bits which protect the ground from this modification, 0 = none
 } pushConstants;
 
 /* clang-format on */
@@ -38,9 +41,10 @@ layout(push_constant) uniform PushConstants {
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "planet_brushes.glsl"
+#include "planet_maskmap.glsl"
 
 void main(){
-  
+
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 
   ivec2 texSize = imageSize(uImageHeightMap);
@@ -59,6 +63,10 @@ void main(){
       pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.z,
       uintBitsToFloat(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.w)
     );
+
+    if(d > 0.0){
+      d *= 1.0 - planetMaskMapCoverage(uMaskMap, vec2(texel) / vec2(texSize), pushConstants.maskBits);
+    }
 
     if(d > 0.0){
 

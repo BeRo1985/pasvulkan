@@ -90,6 +90,9 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   uvec4 grassBladeParams; // xy = half4(windStrength, windSpeed, heightRandomMinimum, mowedHeightFactor), zw = half4(trampleStrength (0 = trample map off), trampledHeightFactor, trampleWindFactor, unused)
 
+  // Mask map overlays: each tints the ground where any of its mask bits is set, later ones over earlier ones.
+  uvec4 maskMapOverlays[4]; // x = mask bits (0 = overlay off), y = unused, zw = half4(red, green, blue, strength), color linear
+
   PlanetMaterial materials[16];
 
 }

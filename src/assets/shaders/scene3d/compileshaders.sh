@@ -823,6 +823,8 @@ compileshaderarguments=(
 
   "-V planet_grassflagsmap_flagsupdate.comp -o ${tempPath}/planet_grassflagsmap_flagsupdate_comp.spv"
 
+  "-V planet_maskmap_modification.comp -o ${tempPath}/planet_maskmap_modification_comp.spv"
+
   "-V planet_precipitationmap_initialization.comp -o ${tempPath}/planet_precipitationmap_initialization_comp.spv"
 
   "-V planet_precipitationmap_modification.comp -o ${tempPath}/planet_precipitationmap_modification_comp.spv"

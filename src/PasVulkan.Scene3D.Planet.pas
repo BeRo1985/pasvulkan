@@ -132,9 +132,26 @@ type TpvScene3DPlanets=class;
              // Four texels allow a bilinear lookup anywhere within one texel of the requested point, so the
              // answer still holds while the point moves on before the readback arrives.
              WaterProbeWindowSize=4;
+             // Mask map fixed point scales: directions on the unit sphere (and chord lengths) carry 14 fractional
+             // bits, polygon points in their projection plane 12 fractional bits, and the plane coordinates are
+             // limited to four units, which is about 76 degrees away from the projection centre.
+             MaskMapVectorScale=16384;
+             MaskMapPlaneScale=4096;
+             MaskMapPlaneLimit=16383;
+             // The most points one mask map polygon may have.
+             MaskMapMaximumPolygonPoints=4096;
+             // The number of mask map overlays the planet render pass can show at once.
+             CountMaskMapOverlays=4;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
+            // One mask map overlay as the planet render pass reads it from the planet data.
+            TMaskMapOverlayData=packed record
+             Bits:TpvUInt32; // 0 = overlay off
+             Unused:TpvUInt32;
+             Color:TpvHalfFloatVector4; // rgb = linear color, a = strength
+            end;
+            PMaskMapOverlayData=^TMaskMapOverlayData;
             { TBlendMapValue }
             TBlendMapValue=packed record
              public
@@ -239,6 +256,8 @@ type TpvScene3DPlanets=class;
              GrassBladeParams0:TpvHalfFloatVector4; // x = wind strength, y = wind speed, z = blade height random minimum, w = MOWED blade height factor
              GrassBladeParams1:TpvHalfFloatVector4; // x = trample strength (0 = trample map off), y = trampled blade height factor, z = trampled blade wind factor, w = unused
 
+             MaskMapOverlays:array[0..CountMaskMapOverlays-1] of TMaskMapOverlayData;
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
             end;
@@ -307,6 +326,7 @@ type TpvScene3DPlanets=class;
              Value:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapModificationItem=^THeightMapModificationItem;
             THeightMapModificationItems=array[0..MaxInFlightFrames-1] of THeightMapModificationItem;
@@ -317,6 +337,7 @@ type TpvScene3DPlanets=class;
              TargetHeight:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapFlattenItem=^THeightMapFlattenItem;
             THeightMapFlattenItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenItem;
@@ -327,6 +348,7 @@ type TpvScene3DPlanets=class;
              TargetHeight:TpvFloat;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapFlattenBeforeStateItem=^THeightMapFlattenBeforeStateItem;
             THeightMapFlattenBeforeStateItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenBeforeStateItem;
@@ -338,6 +360,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapModificationToTargetHeightItem=^THeightMapModificationToTargetHeightItem;
             THeightMapModificationToTargetHeightItems=array[0..MaxInFlightFrames-1] of THeightMapModificationToTargetHeightItem;
@@ -350,6 +373,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapBrushSmoothItem=^THeightMapBrushSmoothItem;
             THeightMapBrushSmoothItems=array[0..MaxInFlightFrames-1] of THeightMapBrushSmoothItem;
@@ -361,6 +385,7 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              Active:TpvUInt32; // non-zero when item is pending
+             MaskBits:TpvUInt32; // mask map bits which protect the ground from this modification, 0 = none
             end;
             PHeightMapBrushSmearItem=^THeightMapBrushSmearItem;
             THeightMapBrushSmearItems=array[0..MaxInFlightFrames-1] of THeightMapBrushSmearItem;
@@ -413,6 +438,63 @@ type TpvScene3DPlanets=class;
             PGrassFlagsMapModificationItem=^TGrassFlagsMapModificationItem;
             TGrassFlagsMapModificationItems=TpvDynamicQueue<TGrassFlagsMapModificationItem>;
             TGrassFlagsMapModificationPerInFlightFrameItems=array[0..MaxInFlightFrames-1] of TGrassFlagsMapModificationItems;
+            // A direction on the unit sphere as fixed point vector with MaskMapVectorScale as one.
+            TMaskMapVector=packed record
+             X:TpvInt32;
+             Y:TpvInt32;
+             Z:TpvInt32;
+            end;
+            PMaskMapVector=^TMaskMapVector;
+            // A circle on the unit sphere for the mask map: the centre and the radius as chord length, both fixed
+            // point with MaskMapVectorScale as one, see CreateMaskMapCircle. A negative radius covers the whole sphere.
+            TMaskMapCircle=packed record
+             X:TpvInt32;
+             Y:TpvInt32;
+             Z:TpvInt32;
+             Radius:TpvInt32;
+            end;
+            PMaskMapCircle=^TMaskMapCircle;
+            TMaskMapCircles=array of TMaskMapCircle;
+            // A point of a mask map polygon in its projection plane, fixed point with MaskMapPlaneScale as one.
+            TMaskMapPoint=packed record
+             X:TpvInt32;
+             Y:TpvInt32;
+            end;
+            PMaskMapPoint=^TMaskMapPoint;
+            TMaskMapPoints=array of TMaskMapPoint;
+            // A polygon on the unit sphere for the mask map, already projected gnomonically onto the plane which touches
+            // the sphere at Center and is spanned by Tangent and Bitangent, see CreateMaskMapPolygon. It is the integer
+            // values which decide about every texel, so whoever passes on such a polygon (for example over the network)
+            // passes on these values and not the original points, and the receiver then rasterizes the same mask.
+            TMaskMapPolygon=record
+             Center:TMaskMapVector;
+             Tangent:TMaskMapVector;
+             Bitangent:TMaskMapVector;
+             Points:TMaskMapPoints;
+            end;
+            PMaskMapPolygon=^TMaskMapPolygon;
+            TMaskMapModificationItem=packed record
+             Kind:TpvUInt32; // 0 = union of circles, 1 = polygon
+             SetBits:TpvUInt32;
+             ClearBits:TpvUInt32;
+             DataOffset:TpvUInt32; // first TpvInt32 of the shape in the shape data of the in-flight frame
+             Count:TpvUInt32; // count of circles or of polygon points
+             Center:TMaskMapVector;
+             Tangent:TMaskMapVector;
+             Bitangent:TMaskMapVector;
+             BoundsMin:TMaskMapPoint;
+             BoundsMax:TMaskMapPoint;
+            end;
+            PMaskMapModificationItem=^TMaskMapModificationItem;
+            TMaskMapModificationItems=array of TMaskMapModificationItem;
+            TMaskMapShapeData=array of TpvInt32;
+            TMaskMapData=array of TpvUInt32;
+            // A mask map overlay of the planet render pass: tints the ground where any of the bits is set.
+            TMaskMapOverlay=record
+             Bits:TpvUInt32; // 0 = overlay off
+             Color:TpvVector4; // rgb = linear color, a = strength
+            end;
+            PMaskMapOverlay=^TMaskMapOverlay;
             TPrecipitationMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
@@ -501,6 +583,7 @@ type TpvScene3DPlanets=class;
               fGrassMapImage:TpvScene3DRendererImage2D; // R32_FLOAT
               fGrassAgeMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT
               fGrassFlagsMapImage:TpvScene3DRendererImage2D; // R32_UINT
+              fMaskMapImage:TpvScene3DRendererImage2D; // R32_UINT, application defined mask bits, 1x1 while the mask map is off
               fPrecipitationMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapImage:TpvScene3DRendererImage2D; // R8_SNORM
               fPrecipitationMiniMapBuffer:TpvVulkanBuffer; // R8_SNORM
@@ -596,6 +679,7 @@ type TpvScene3DPlanets=class;
               fGrassMapGeneration:TpvUInt64;
               fGrassAgeMapGeneration:TpvUInt64;
               fGrassFlagsMapGeneration:TpvUInt64;
+              fMaskMapGeneration:TpvUInt64;
               fPrecipitationMapGeneration:TpvUInt64;
               fPrecipitationMiniMapGeneration:TpvUInt64;
               fPrecipitationMiniMapTransferGeneration:TpvUInt64;
@@ -691,7 +775,8 @@ type TpvScene3DPlanets=class;
                                    const aTransferGrass:Boolean;
                                    const aTransferGrassAgeMap:Boolean;
                                    const aTransferPrecipitation:Boolean;
-                                   const aTransferAtmosphere:Boolean);
+                                   const aTransferAtmosphere:Boolean;
+                                   const aTransferMaskMap:Boolean);
               procedure Assign(const aData:TData);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
@@ -709,6 +794,7 @@ type TpvScene3DPlanets=class;
               property GrassMapImage:TpvScene3DRendererImage2D read fGrassMapImage;
               property GrassAgeMapImage:TpvScene3DRendererImage2D read fGrassAgeMapImage;
               property GrassFlagsMapImage:TpvScene3DRendererImage2D read fGrassFlagsMapImage;
+              property MaskMapImage:TpvScene3DRendererImage2D read fMaskMapImage;
               property PrecipitationMapImage:TpvScene3DRendererImage2D read fPrecipitationMapImage;
               property PrecipitationMiniMapImage:TpvScene3DRendererImage2D read fPrecipitationMiniMapImage;
               property PrecipitationMiniMapBuffer:TpvVulkanBuffer read fPrecipitationMiniMapBuffer;
@@ -732,6 +818,7 @@ type TpvScene3DPlanets=class;
               property PrecipitationMiniMapGeneration:TpvUInt64 read fPrecipitationMiniMapGeneration;
               property AtmosphereMapGeneration:TpvUInt64 read fAtmosphereMapGeneration;
               property AtmosphereMiniMapGeneration:TpvUInt64 read fAtmosphereMiniMapGeneration;
+              property MaskMapGeneration:TpvUInt64 read fMaskMapGeneration;
               property HeightMiniMapGeneration:TpvUInt64 read fHeightMiniMapGeneration;
               property PrecipitationAtmosphereMapGeneration:TpvUInt64 read fPrecipitationAtmosphereMapGeneration;
              public
@@ -966,6 +1053,10 @@ type TpvScene3DPlanets=class;
                     Resolution:TpvUInt32;
                    end;
                    PWaterRippleDataChunkHeader=^TWaterRippleDataChunkHeader;
+                   TMaskMapDataChunkHeader=packed record
+                    Resolution:TpvUInt32;
+                   end;
+                   PMaskMapDataChunkHeader=^TMaskMapDataChunkHeader;
                const Signature:TSignature=('P','V','P','D'); // PasVulkan Planet Data
                      CompressedSignature:TSignature=('C','O','F','I'); // Compressed File
                      Version:TpvUInt32=1;
@@ -982,6 +1073,7 @@ type TpvScene3DPlanets=class;
                      ChunkSignatureAtmosphereMapData:TSignature=('A','M','D','T'); // Atmosphere Map Data
                      ChunkSignatureWaterHeightMapData:TSignature=('W','M','D','T'); // Water Height Map Data
                      ChunkSignatureWaterRippleData:TSignature=('W','R','P','L'); // Water Ripple Data (ping-pong image content, optional)
+                     ChunkSignatureMaskMapData:TSignature=('M','K','D','T'); // Mask Map Data (optional, only while the planet has a mask map)
              private
               fPlanet:TpvScene3DPlanet;
               fHeightMapResolution:TpvUInt32;
@@ -991,6 +1083,7 @@ type TpvScene3DPlanets=class;
               fAtmosphereMapResolution:TpvUInt32;
               fWaterMapResolution:TpvUInt32;
               fWaterRippleMapResolution:TpvUInt32;
+              fMaskMapResolution:TpvUInt32;
               fHeightMapData:TMemoryStream;
               fBlendMapData:TMemoryStream;
               fGrassMapData:TMemoryStream;
@@ -1002,6 +1095,7 @@ type TpvScene3DPlanets=class;
               fAtmosphereMapData:TMemoryStream;
               fWaterHeightMapData:TMemoryStream;
               fWaterRippleData:array[0..1] of TMemoryStream;
+              fMaskMapData:TMemoryStream;
               procedure BilinearResizeRippleImage(const aSrcData:Pointer;const aSrcRes:TpvUInt32;const aDstData:Pointer;const aDstRes:TpvUInt32);
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
@@ -1037,6 +1131,8 @@ type TpvScene3DPlanets=class;
               property AtmosphereMapData:TMemoryStream read fAtmosphereMapData;
               property WaterHeightMapData:TMemoryStream read fWaterHeightMapData;
               property WaterRippleMapResolution:TpvUInt32 read fWaterRippleMapResolution write fWaterRippleMapResolution;
+              property MaskMapResolution:TpvUInt32 read fMaskMapResolution write fMaskMapResolution;
+              property MaskMapData:TMemoryStream read fMaskMapData;
             end;
             { TBlendMapInitialization }
             TBlendMapInitialization=class
@@ -1437,6 +1533,59 @@ type TpvScene3DPlanets=class;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aItem:TGrassFlagsMapModificationItem);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TMaskMapModification }
+            // Sets and clears mask map bits inside shapes, and keeps the host visible copy of the mask map up to date,
+            // from which the CPU side copy of the planet is taken.
+            TMaskMapModification=class
+             public
+              type TPushConstants=packed record
+                    Center:array[0..3] of TpvInt32;
+                    Tangent:array[0..3] of TpvInt32;
+                    Bitangent:array[0..3] of TpvInt32;
+                    Bounds:array[0..3] of TpvInt32; // minimum x, minimum y, maximum x, maximum y
+                    Kind:TpvUInt32;
+                    SetBits:TpvUInt32;
+                    ClearBits:TpvUInt32;
+                    DataOffset:TpvUInt32;
+                    Count:TpvUInt32;
+                    Unused0:TpvUInt32;
+                    Unused1:TpvUInt32;
+                    Unused2:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+              fShapeBuffer:TpvVulkanBuffer;
+              fShapeBufferCapacity:TpvSizeInt; // in TpvInt32
+              fHostBuffer:TpvVulkanBuffer;
+              procedure WriteDescriptorSet;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              // Must not be called while a command buffer which uses the shape buffer is recorded or pending.
+              procedure UploadShapeData(const aData:TMaskMapShapeData;const aCount:TpvSizeInt);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aItem:TMaskMapModificationItem);
+              // Records the copy of the whole mask map into the host visible buffer.
+              procedure RecordReadback(const aCommandBuffer:TpvVulkanCommandBuffer);
+              // Records the copy of the host visible buffer into the whole mask map.
+              procedure RecordUpload(const aCommandBuffer:TpvVulkanCommandBuffer);
+              // Copy into or out of the host visible buffer, which is host visible by requirement, so this never
+              // needs a command buffer of its own.
+              procedure WriteHostBuffer(const aData;const aSize:TVkDeviceSize);
+              procedure ReadHostBuffer(out aData;const aSize:TVkDeviceSize);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+              property HostBuffer:TpvVulkanBuffer read fHostBuffer;
             end;
             { TGrassFlagsMapFlagsUpdate }
             TGrassFlagsMapFlagsUpdate=class
@@ -2210,6 +2359,7 @@ type TpvScene3DPlanets=class;
                     TileMapShift:TpvUInt32;
                     BrushIndex:TpvUInt32;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -2247,6 +2397,7 @@ type TpvScene3DPlanets=class;
                     TopRadius:TpvFloat;
                     TargetHeight:TpvFloat;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -2284,6 +2435,7 @@ type TpvScene3DPlanets=class;
                     TopRadius:TpvFloat;
                     TargetHeight:TpvFloat;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -2314,6 +2466,7 @@ type TpvScene3DPlanets=class;
                     TileMapShift:TpvUInt32;
                     BrushIndex:TpvUInt32;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -2344,6 +2497,7 @@ type TpvScene3DPlanets=class;
                     TileMapShift:TpvUInt32;
                     BrushIndex:TpvUInt32;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -2375,6 +2529,7 @@ type TpvScene3DPlanets=class;
                     TileMapShift:TpvUInt32;
                     BrushIndex:TpvUInt32;
                     BrushRotation:TpvFloat;
+                    MaskBits:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -3788,6 +3943,19 @@ type TpvScene3DPlanets=class;
        fGrassFlagsMapFlagsUpdate:TGrassFlagsMapFlagsUpdate;
        fGrassTrampleMapUpdate:TGrassTrampleMapUpdate;
        fGrassFlagsMapModificationPerInFlightFrameItems:TGrassFlagsMapModificationPerInFlightFrameItems;
+       fMaskMapResolution:TpvInt32; // 0 = no mask map
+       fMaskMapModification:TMaskMapModification;
+       fMaskMapLock:TPasMPCriticalSection; // guards the queued mask map modifications and their shape data
+       fMaskMapModificationItems:array[0..MaxInFlightFrames-1] of TMaskMapModificationItems;
+       fCountMaskMapModificationItems:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+       fMaskMapShapeData:array[0..MaxInFlightFrames-1] of TMaskMapShapeData;
+       fCountMaskMapShapeData:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+       fMaskMapProcessShapeData:TMaskMapShapeData;
+       fMaskMapProcessItems:TMaskMapModificationItems;
+       fMaskMapDataLock:TPasMPCriticalSection; // guards fMaskMapData and the host visible copy of the mask map
+       fMaskMapData:TMaskMapData; // CPU side copy of the mask map, refreshed after every change
+       fMaskMapDataGeneration:TpvUInt64;
+       fMaskMapOverlays:array[0..CountMaskMapOverlays-1] of TMaskMapOverlay;
        fPrecipitationMapInitialization:TPrecipitationMapInitialization;
        fPrecipitationMapModification:TPrecipitationMapModification;
        fPrecipitationMapSimulation:TPrecipitationMapSimulation;
@@ -3935,6 +4103,9 @@ type TpvScene3DPlanets=class;
                                      out aCountMeshLODLevels:TpvSizeInt;
                                      out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                      out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+       procedure AddMaskMapModification(const aInFlightFrameIndex:TpvSizeInt;const aItem:TMaskMapModificationItem;const aData:PpvInt32;const aCountData:TpvSizeInt);
+       procedure ProcessMaskMapModifications(const aInFlightFrameIndex:TpvSizeInt);
+       function GetMaskMapBitsUnlocked(const aNormal:TpvVector3):TpvUInt32;
       public
        constructor Create(const aScene3D:TObject;
                           const aBrushes:TpvScene3DPlanet.TBrushes;
@@ -3952,7 +4123,8 @@ type TpvScene3DPlanets=class;
                           const aHeightMiniMapResolutionShift:TpvSizeInt=4;
                           const aUseHeightMapSmoothing:Boolean=true;
                           const aWaterMetricCompensation:Boolean=false;
-                          const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode=TpvScene3DPlanetWaterSimulationPrecisionMode.Auto); reintroduce;
+                          const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode=TpvScene3DPlanetWaterSimulationPrecisionMode.Auto;
+                          const aMaskMapResolution:TpvInt32=0); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -3995,16 +4167,53 @@ type TpvScene3DPlanets=class;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPass:TpvScene3DRendererRenderPass;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
-       procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+       // The height map modifications leave the ground alone where the mask map has any of aMaskBits set, with a
+       // soft edge of one mask map texel, see the mask map methods below. Without any mask bits they work on the
+       // whole planet, as they always did.
+       procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aMaskBits:TpvUInt32=0);
+       procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
        procedure CaptureHeightMapBeforeState(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure ReleaseHeightMapBeforeState;
-       procedure EnqueueHeightMapFlattenBeforeState(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
-       procedure EnqueueHeightMapModificationToTargetHeight(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aTargetHeight,aStrength:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
-       procedure EnqueueHeightMapBrushSmooth(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aStrength,aKernelRadius,aSigma:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+       procedure EnqueueHeightMapFlattenBeforeState(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
+       procedure EnqueueHeightMapModificationToTargetHeight(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aTargetHeight,aStrength:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
+       procedure EnqueueHeightMapBrushSmooth(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aStrength,aKernelRadius,aSigma:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
        procedure CaptureSmearBuffer(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure ReleaseSmearBuffer;
-       procedure EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+       procedure EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
+       // Mask map: 32 bits per texel whose meaning is up to the application, in the octahedral layout of the height
+       // map at a resolution of its own (aMaskMapResolution of the constructor, 0 = no mask map). The height map
+       // modifications above respect the bits they are given. The mask is rasterized with integer arithmetic only,
+       // so every device produces exactly the same mask from the same shapes, which is what keeps several machines
+       // that apply the same modifications in the same order in step with each other.
+       //
+       // A circle from a centre direction and a radius given as chord length on the unit sphere, the same measure
+       // the brush radii of the height map modifications use. A negative radius covers the whole sphere.
+       class function QuantizeMaskMapVector(const aVector:TpvVector3D):TMaskMapVector; static;
+       class function CreateMaskMapCircle(const aCenter:TpvVector3D;const aRadius:TpvDouble):TMaskMapCircle; static;
+       // A polygon from its points on the sphere (any length, only their directions count), in order around it. It
+       // has to lie within about 76 degrees of the normalized mean of its points, false for fewer than three points
+       // or none that are usable. More than MaskMapMaximumPolygonPoints points are thinned out evenly.
+       class function CreateMaskMapPolygon(const aPoints:array of TpvVector3D;out aPolygon:TMaskMapPolygon):Boolean; static;
+       // Queue the setting and clearing of bits inside the union of circles, inside a polygon, or on the whole map.
+       // Where both name the same bit, clearing wins. The queued modifications run in the order they were queued,
+       // and before the height map modifications of the same frame.
+       procedure EnqueueMaskMapCircles(const aInFlightFrameIndex:TpvSizeInt;const aCircles:array of TMaskMapCircle;const aSetBits,aClearBits:TpvUInt32);
+       procedure EnqueueMaskMapPolygon(const aInFlightFrameIndex:TpvSizeInt;const aPolygon:TMaskMapPolygon;const aSetBits,aClearBits:TpvUInt32);
+       procedure EnqueueMaskMapClear(const aInFlightFrameIndex:TpvSizeInt;const aBits:TpvUInt32);
+       // Reads from the CPU side copy, which follows the GPU mask map once the modifications of a frame have run.
+       function GetMaskMapBits(const aNormal:TpvVector3):TpvUInt32;
+       // The share in [0, 1] of the circle around aNormal (radius as chord length on the unit sphere) where any of
+       // aMaskBits is set, sampled on a grid of up to aSamplesPerAxis x aSamplesPerAxis points.
+       function GetMaskMapCoverage(const aNormal:TpvVector3;const aRadius:TpvFloat;const aMaskBits:TpvUInt32;const aSamplesPerAxis:TpvSizeInt=9):TpvFloat;
+       // A copy of the whole CPU side mask map, MaskMapResolution x MaskMapResolution words, empty without mask map.
+       procedure GetMaskMapData(out aData:TMaskMapData);
+       // Replaces one rectangle of the mask map, read tightly packed with aWidth words per row, on the CPU side
+       // copy and on the GPU. Belongs between two frames, like UploadHeightMapRegion.
+       procedure UploadMaskMapRegion(const aX,aY,aWidth,aHeight:TpvInt32;const aData:pointer);
+       // Overlays of the planet render pass, which tint the ground wherever any of the bits of an overlay is set.
+       // aBits of 0 switches an overlay off.
+       procedure SetMaskMapOverlay(const aIndex:TpvSizeInt;const aBits:TpvUInt32;const aColor:TpvVector4);
+       function GetMaskMapOverlay(const aIndex:TpvSizeInt):TMaskMapOverlay;
        procedure MarkAllTilesDirty;
        // Writes one rectangle of height values straight into the height map and marks everything
        // derived from it as out of date. The whole-planet upload in TSerializedData does the same
@@ -4110,6 +4319,9 @@ type TpvScene3DPlanets=class;
        property AtmosphereMapResolution:TpvInt32 read fAtmosphereMapResolution;
        property AtmosphereMiniMapResolution:TpvInt32 read fAtmosphereMiniMapResolution;
        property WaterMapResolution:TpvInt32 read fWaterMapResolution;
+       property MaskMapResolution:TpvInt32 read fMaskMapResolution;
+       // Raised whenever the CPU side copy of the mask map has changed.
+       property MaskMapDataGeneration:TpvUInt64 read fMaskMapDataGeneration;
        property DecalGroupMask:TpvUInt32 read fDecalGroupMask write fDecalGroupMask;
        property WaterMapBorder:TpvInt32 read fWaterMapBorder;
        property WaterRipplesActive:Boolean read fWaterRipplesActive write fWaterRipplesActive;
@@ -5009,6 +5221,7 @@ begin
   fBlendMapGeneration:=0;
   fGrassMapGeneration:=0;
   fGrassAgeMapGeneration:=0;
+  fMaskMapGeneration:=0;
   fPrecipitationMapGeneration:=0;
   fPrecipitationMiniMapGeneration:=0;
   fAtmosphereMapGeneration:=0;
@@ -5020,6 +5233,7 @@ begin
   fBlendMapGeneration:=High(TpvUInt64);
   fGrassMapGeneration:=High(TpvUInt64);
   fGrassAgeMapGeneration:=High(TpvUInt64);
+  fMaskMapGeneration:=High(TpvUInt64);
   fPrecipitationMapGeneration:=High(TpvUInt64);
   fPrecipitationMiniMapGeneration:=High(TpvUInt64);
   fAtmosphereMapGeneration:=High(TpvUInt64);
@@ -5058,6 +5272,8 @@ begin
  fBlendMapImage:=nil;
 
  fGrassMapImage:=nil;
+
+ fMaskMapImage:=nil;
 
  fPrecipitationMapImage:=nil;
 
@@ -5391,6 +5607,21 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.Image');
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassFlagsMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fGrassFlagsMapImage.ImageView');
 
+   // Without a mask map a single texel, so that the shaders which bind it always find a valid image.
+   fMaskMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                   Max(1,fPlanet.fMaskMapResolution),
+                                                   Max(1,fPlanet.fMaskMapResolution),
+                                                   VK_FORMAT_R32_UINT,
+                                                   true,
+                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   ImageSharingMode,
+                                                   ImageQueueFamilyIndices,
+                                                   pvAllocationGroupIDScene3DPlanetStatic,
+                                                   'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fMaskMapImage');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fMaskMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fMaskMapImage.Image');
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fMaskMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fMaskMapImage.ImageView');
+
    fPrecipitationMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                             fPlanet.fPrecipitationMapResolution,
                                                             fPlanet.fPrecipitationMapResolution,
@@ -5569,6 +5800,7 @@ begin
    fGrassMapImage:=fPlanet.fData.fGrassMapImage;
    fGrassAgeMapImage:=fPlanet.fData.fGrassAgeMapImage;
    fGrassFlagsMapImage:=fPlanet.fData.fGrassFlagsMapImage;
+   fMaskMapImage:=fPlanet.fData.fMaskMapImage;
    fPrecipitationMapImage:=fPlanet.fData.fPrecipitationMapImage;
    fPrecipitationMiniMapImage:=fPlanet.fData.fPrecipitationMiniMapImage;
    fPrecipitationMiniMapBuffer:=fPlanet.fData.fPrecipitationMiniMapBuffer;
@@ -6577,6 +6809,8 @@ begin
 
   FreeAndNil(fGrassFlagsMapImage);
 
+  FreeAndNil(fMaskMapImage);
+
   FreeAndNil(fPrecipitationMapImage);
 
   FreeAndNil(fPrecipitationMiniMapImage);
@@ -6618,6 +6852,8 @@ begin
   fGrassAgeMapImage:=nil;
 
   fGrassFlagsMapImage:=nil;
+
+  fMaskMapImage:=nil;
 
   fPrecipitationMapImage:=nil;
 
@@ -6785,7 +7021,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.AcquireOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..6] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..7] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue then begin
@@ -6875,6 +7111,15 @@ begin
                                                          fAtmosphereMapImage.VulkanImage.Handle,
                                                          ImageSubresourceRange);
 
+    ImageMemoryBarriers[7]:=TVkImageMemoryBarrier.Create(0,
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                         fMaskMapImage.VulkanImage.Handle,
+                                                         ImageSubresourceRange);
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -6891,7 +7136,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     7,@ImageMemoryBarriers[0]);
+                                     8,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -6905,7 +7150,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.ReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..6] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..7] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnUniversalQueue] then begin
@@ -6995,6 +7240,15 @@ fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fAtmosphereMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
+   ImageMemoryBarriers[7]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fMaskMapImage.VulkanImage.Handle,
+                                                        ImageSubresourceRange);
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
@@ -7011,7 +7265,7 @@ fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                      0,
                                      0,nil,
                                      0,nil,
-                                     7,@ImageMemoryBarriers[0]);
+                                     8,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -7025,7 +7279,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..6] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..7] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnUniversalQueue then begin
@@ -7115,6 +7369,15 @@ begin
                                                         fAtmosphereMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
+   ImageMemoryBarriers[7]:=TVkImageMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fMaskMapImage.VulkanImage.Handle,
+                                                        ImageSubresourceRange);
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -7122,7 +7385,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     7,@ImageMemoryBarriers[0]);
+                                     8,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -7136,7 +7399,7 @@ end;
 
 procedure TpvScene3DPlanet.TData.ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
 var ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..6] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..7] of TVkImageMemoryBarrier;
 begin
 
  if fOwnershipHolderState in [TpvScene3DPlanet.TData.TOwnershipHolderState.Uninitialized,TpvScene3DPlanet.TData.TOwnershipHolderState.AcquiredOnComputeQueue] then begin
@@ -7226,6 +7489,15 @@ begin
                                                         fAtmosphereMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
+   ImageMemoryBarriers[7]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        0,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
+                                                        fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
+                                                        fMaskMapImage.VulkanImage.Handle,
+                                                        ImageSubresourceRange);
+
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -7233,7 +7505,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     7,@ImageMemoryBarriers[0]);
+                                     8,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -9643,10 +9915,11 @@ procedure TpvScene3DPlanet.TData.TransferTo(const aCommandBuffer:TpvVulkanComman
                                             const aTransferGrass:Boolean;
                                             const aTransferGrassAgeMap:Boolean;
                                             const aTransferPrecipitation:Boolean;
-                                            const aTransferAtmosphere:Boolean);
+                                            const aTransferAtmosphere:Boolean;
+                                            const aTransferMaskMap:Boolean);
 var MipMapIndex,CountImageMemoryBarriers,CountBufferMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
-    ImageMemoryBarriers:array[0..15] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..17] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     ImageCopies:array[0..39] of TVkImageCopy;
     ImageCopy:PVkImageCopy;
@@ -9859,6 +10132,30 @@ begin
 
    end;
 
+   if aTransferMaskMap then begin
+
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                fMaskMapImage.VulkanImage.Handle,
+                                                                                ImageSubresourceRange);
+    inc(CountImageMemoryBarriers);
+
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                aInFlightFrameData.fMaskMapImage.VulkanImage.Handle,
+                                                                                ImageSubresourceRange);
+    inc(CountImageMemoryBarriers);
+
+   end;
+
    CountBufferMemoryBarriers:=0;
 
    if (CountImageMemoryBarriers>0) or (CountBufferMemoryBarriers>0) then begin
@@ -9977,6 +10274,19 @@ begin
     aCommandBuffer.CmdCopyImage(fAtmosphereMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                 aInFlightFrameData.fAtmosphereMapImage.VulkanImage.Handle,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                1,@ImageCopies[0]);
+   end;
+
+   if aTransferMaskMap then begin
+    ImageCopy:=@ImageCopies[0];
+    ImageCopy^.srcSubresource.layerCount:=1;
+    ImageCopy^.dstSubresource.layerCount:=1;
+    ImageCopy^.extent.width:=Max(1,fPlanet.fMaskMapResolution);
+    ImageCopy^.extent.height:=Max(1,fPlanet.fMaskMapResolution);
+    aCommandBuffer.CmdCopyImage(fMaskMapImage.VulkanImage.Handle,
+                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                aInFlightFrameData.fMaskMapImage.VulkanImage.Handle,
                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 1,@ImageCopies[0]);
    end;
@@ -10173,6 +10483,30 @@ begin
                                                                                 VK_QUEUE_FAMILY_IGNORED,
                                                                                 VK_QUEUE_FAMILY_IGNORED,
                                                                                 aInFlightFrameData.fAtmosphereMapImage.VulkanImage.Handle,
+                                                                                ImageSubresourceRange);
+    inc(CountImageMemoryBarriers);
+
+   end;
+
+   if aTransferMaskMap then begin
+
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                fMaskMapImage.VulkanImage.Handle,
+                                                                                ImageSubresourceRange);
+    inc(CountImageMemoryBarriers);
+
+    ImageMemoryBarriers[CountImageMemoryBarriers]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                                aInFlightFrameData.fMaskMapImage.VulkanImage.Handle,
                                                                                 ImageSubresourceRange);
     inc(CountImageMemoryBarriers);
 
@@ -10487,6 +10821,8 @@ begin
 
  fWaterRippleMapResolution:=fPlanet.fWaterRippleMapResolution;
 
+ fMaskMapResolution:=fPlanet.fMaskMapResolution;
+
  fHeightMapData:=TMemoryStream.Create;
 
  fBlendMapData:=TMemoryStream.Create;
@@ -10510,10 +10846,13 @@ begin
  fWaterRippleData[0]:=TMemoryStream.Create;
  fWaterRippleData[1]:=TMemoryStream.Create;
 
+ fMaskMapData:=TMemoryStream.Create;
+
 end;
 
 destructor TpvScene3DPlanet.TSerializedData.Destroy;
 begin
+ FreeAndNil(fMaskMapData);
  FreeAndNil(fHeightMapData);
  FreeAndNil(fBlendMapData);
  FreeAndNil(fGrassMapData);
@@ -10556,6 +10895,24 @@ begin
 
  if fGrassFlagsMapData.Size<>(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32)) then begin
   fGrassFlagsMapData.SetSize(fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+ end;
+
+ // The mask map comes from the CPU side copy of the planet, which follows every change, so it needs no GPU work.
+ if fMaskMapResolution>0 then begin
+  fMaskMapData.SetSize(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+  fPlanet.fMaskMapDataLock.Acquire;
+  try
+   if (fPlanet.fMaskMapResolution=TpvInt32(fMaskMapResolution)) and
+      (length(fPlanet.fMaskMapData)=TpvSizeInt(fMaskMapResolution*fMaskMapResolution)) then begin
+    Move(fPlanet.fMaskMapData[0],fMaskMapData.Memory^,fMaskMapData.Size);
+   end else begin
+    FillChar(fMaskMapData.Memory^,fMaskMapData.Size,#0);
+   end;
+  finally
+   fPlanet.fMaskMapDataLock.Release;
+  end;
+ end else begin
+  fMaskMapData.SetSize(0);
  end;
 
  if fPrecipitationMapData.Size<>(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvInt8)) then begin
@@ -12022,6 +12379,42 @@ begin
 
   end;
 
+  // The mask map, through the host visible copy, which afterwards matches the GPU mask map as it always does.
+  // Without mask map data (an older save, or one from a planet without mask map) all bits end up clear.
+  if (fMaskMapResolution>0) and
+     (fPlanet.fMaskMapResolution=TpvInt32(fMaskMapResolution)) and
+     assigned(fPlanet.fMaskMapModification) and
+     assigned(fPlanet.fMaskMapModification.HostBuffer) and
+     (length(fPlanet.fMaskMapData)=TpvSizeInt(fMaskMapResolution*fMaskMapResolution)) then begin
+
+   fPlanet.fMaskMapDataLock.Acquire;
+   try
+
+    if fMaskMapData.Size=(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32)) then begin
+     Move(fMaskMapData.Memory^,fPlanet.fMaskMapData[0],fMaskMapData.Size);
+    end else begin
+     FillChar(fPlanet.fMaskMapData[0],length(fPlanet.fMaskMapData)*SizeOf(TpvUInt32),#0);
+    end;
+
+    fPlanet.fMaskMapModification.WriteHostBuffer(fPlanet.fMaskMapData[0],length(fPlanet.fMaskMapData)*SizeOf(TpvUInt32));
+
+    aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+    aCommandBuffer.BeginRecording;
+
+    fPlanet.fMaskMapModification.RecordUpload(aCommandBuffer);
+
+    aCommandBuffer.EndRecording;
+
+    aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+
+    inc(fPlanet.fMaskMapDataGeneration);
+
+   finally
+    fPlanet.fMaskMapDataLock.Release;
+   end;
+
+  end;
+
   if (fPrecipitationMapData.Size=(fPrecipitationMapResolution*fPrecipitationMapResolution*SizeOf(TpvInt8))) and
      (fPlanet.fPrecipitationMapResolution=fPrecipitationMapResolution) then begin
 
@@ -12825,6 +13218,10 @@ var Header:TpvScene3DPlanet.TSerializedData.THeader;
     UncompressedStream:TMemoryStream;
     GrassAgeMapDataP:PpvFloat;
     GrassFlagsMapDataP:PpvUInt32;
+    MaskMapDataChunkHeader:TMaskMapDataChunkHeader;
+    MaskMapSourceData:array of TpvUInt32;
+    MaskMapX,MaskMapY:TpvSizeInt;
+    MaskMapDataP:PpvUInt32;
 begin
 
  fPlanet.fData.fWaterFirst:=true;
@@ -12863,6 +13260,14 @@ begin
    GrassFlagsMapDataP^:=$01;
    inc(GrassFlagsMapDataP);
   end;
+ end;
+
+ // Without a mask map chunk, from older saves, all mask bits are clear.
+ if fMaskMapResolution>0 then begin
+  fMaskMapData.SetSize(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+  FillChar(fMaskMapData.Memory^,fMaskMapData.Size,#0);
+ end else begin
+  fMaskMapData.SetSize(0);
  end;
 
  aStream.ReadBuffer(Header.Signature,SizeOf(TpvScene3DPlanet.TSerializedData.TSignature));
@@ -13116,6 +13521,40 @@ begin
        fGrassFlagsMapData.WriteBuffer(OutData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
       finally
        FreeMem(OutData);
+      end;
+
+     end;
+
+    end else if Chunk.Signature=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapData then begin
+
+     aStream.ReadBuffer(MaskMapDataChunkHeader,SizeOf(TMaskMapDataChunkHeader));
+
+     if fMaskMapResolution>0 then begin
+
+      if MaskMapDataChunkHeader.Resolution=fMaskMapResolution then begin
+
+       fMaskMapData.Seek(0,soBeginning);
+       fMaskMapData.CopyFrom(aStream,fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+
+      end else if MaskMapDataChunkHeader.Resolution>0 then begin
+
+       // Another resolution: nearest texel centre, which keeps bits as bits, and the octahedral layout scales evenly.
+       MaskMapSourceData:=nil;
+       try
+        SetLength(MaskMapSourceData,MaskMapDataChunkHeader.Resolution*MaskMapDataChunkHeader.Resolution);
+        aStream.ReadBuffer(MaskMapSourceData[0],length(MaskMapSourceData)*SizeOf(TpvUInt32));
+        MaskMapDataP:=fMaskMapData.Memory;
+        for MaskMapY:=0 to fMaskMapResolution-1 do begin
+         for MaskMapX:=0 to fMaskMapResolution-1 do begin
+          MaskMapDataP^:=MaskMapSourceData[((((MaskMapY*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))*MaskMapDataChunkHeader.Resolution+
+                                           ((((MaskMapX*2)+1)*MaskMapDataChunkHeader.Resolution) div (fMaskMapResolution*2))];
+          inc(MaskMapDataP);
+         end;
+        end;
+       finally
+        MaskMapSourceData:=nil;
+       end;
+
       end;
 
      end;
@@ -13484,6 +13923,7 @@ var StartPosition:TpvInt64;
     AtmosphereMapDataChunkHeader:TAtmosphereMapDataChunkHeader;
     WaterHeightMapDataChunkHeader:TWaterHeightMapDataChunkHeader;
     WaterRippleDataChunkHeader:TWaterRippleDataChunkHeader;
+    MaskMapDataChunkHeader:TMaskMapDataChunkHeader;
     RippleImageIndex:TpvSizeInt;
     InData,OutData:pointer;
     OutStream:TStream;
@@ -13650,6 +14090,31 @@ begin
     try
      FillChar(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32),#0);
      OutStream.WriteBuffer(InData^,fGrassMapResolution*fGrassMapResolution*SizeOf(TpvUInt32));
+    finally
+     FreeMem(InData);
+    end;
+   end;
+
+  end;
+
+  // Only while the planet has a mask map; a reader without one skips the chunk like any unknown chunk.
+  if fMaskMapResolution>0 then begin
+
+   Chunk.Signature:=TpvScene3DPlanet.TSerializedData.ChunkSignatureMaskMapData;
+   Chunk.Size:=SizeOf(TMaskMapDataChunkHeader)+(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+   OutStream.WriteBuffer(Chunk,SizeOf(TChunk));
+
+   MaskMapDataChunkHeader.Resolution:=fMaskMapResolution;
+   OutStream.WriteBuffer(MaskMapDataChunkHeader,SizeOf(TMaskMapDataChunkHeader));
+
+   if fMaskMapData.Size=(fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32)) then begin
+    fMaskMapData.Seek(0,soBeginning);
+    OutStream.CopyFrom(fMaskMapData,fMaskMapData.Size);
+   end else begin
+    GetMem(InData,fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
+    try
+     FillChar(InData^,fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32),#0);
+     OutStream.WriteBuffer(InData^,fMaskMapResolution*fMaskMapResolution*SizeOf(TpvUInt32));
     finally
      FreeMem(InData);
     end;
@@ -17198,6 +17663,497 @@ begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
+end;
+
+{ TpvScene3DPlanet.TMaskMapModification }
+
+constructor TpvScene3DPlanet.TMaskMapModification.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ fShapeBuffer:=nil;
+
+ fShapeBufferCapacity:=0;
+
+ fHostBuffer:=nil;
+
+ FillChar(fPushConstants,SizeOf(TPushConstants),#0);
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_maskmap_modification_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TMaskMapModification.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TMaskMapModification.fPipelineLayout');
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fDescriptorPool.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TMaskMapModification.fDescriptorPool');
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+
+  // Creates the first shape buffer and writes the descriptor set, which needs a buffer from the start.
+  UploadShapeData(nil,0);
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  if fPlanet.fMaskMapResolution>0 then begin
+   fHostBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                       TVkDeviceSize(fPlanet.fMaskMapResolution)*TVkDeviceSize(fPlanet.fMaskMapResolution)*SizeOf(TpvUInt32),
+                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                       fPlanet.fGlobalBufferSharingMode,
+                                       fPlanet.fGlobalBufferQueueFamilyIndices,
+                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                                       0,
+                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       [TpvVulkanBufferFlag.PersistentMappedIfPossible,TpvVulkanBufferFlag.PreferDedicatedAllocation],
+                                       0,
+                                       pvAllocationGroupIDScene3DPlanetStatic,
+                                       'TpvScene3DPlanet.TMaskMapModification.fHostBuffer');
+   fVulkanDevice.DebugUtils.SetObjectName(fHostBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TMaskMapModification.fHostBuffer');
+  end;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TMaskMapModification.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ FreeAndNil(fShapeBuffer);
+
+ FreeAndNil(fHostBuffer);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.WriteDescriptorSet;
+begin
+ fDescriptorSet.WriteToDescriptorSet(0,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+                                     [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                    fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
+                                                                    VK_IMAGE_LAYOUT_GENERAL)],
+                                     [],
+                                     [],
+                                     false);
+ fDescriptorSet.WriteToDescriptorSet(1,
+                                     0,
+                                     1,
+                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                     [],
+                                     [fShapeBuffer.DescriptorBufferInfo],
+                                     [],
+                                     false);
+ fDescriptorSet.Flush;
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.UploadShapeData(const aData:TMaskMapShapeData;const aCount:TpvSizeInt);
+var NewCapacity:TpvSizeInt;
+    MappedPointer:Pointer;
+begin
+
+ if assigned(fVulkanDevice) then begin
+
+  // Grows by doubling and never shrinks. Replacing the buffer and rewriting the descriptor set is fine here,
+  // since every submission of the planet update command buffer is waited for on the host, so nothing which
+  // uses the old buffer can still be recorded or pending.
+  if (not assigned(fShapeBuffer)) or (fShapeBufferCapacity<aCount) then begin
+   NewCapacity:=Max(16384,fShapeBufferCapacity);
+   while NewCapacity<aCount do begin
+    NewCapacity:=NewCapacity shl 1;
+   end;
+   FreeAndNil(fShapeBuffer);
+   fShapeBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                        TVkDeviceSize(NewCapacity)*SizeOf(TpvInt32),
+                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                        fPlanet.fGlobalBufferSharingMode,
+                                        fPlanet.fGlobalBufferQueueFamilyIndices,
+                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        [TpvVulkanBufferFlag.PersistentMappedIfPossible],
+                                        0,
+                                        pvAllocationGroupIDScene3DPlanetStatic,
+                                        'TpvScene3DPlanet.TMaskMapModification.fShapeBuffer');
+   fVulkanDevice.DebugUtils.SetObjectName(fShapeBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TMaskMapModification.fShapeBuffer');
+   fShapeBufferCapacity:=NewCapacity;
+   WriteDescriptorSet;
+  end;
+
+  if aCount>0 then begin
+   MappedPointer:=fShapeBuffer.Memory.MapMemory;
+   if assigned(MappedPointer) then begin
+    try
+     Move(aData[0],MappedPointer^,aCount*SizeOf(TpvInt32));
+     fShapeBuffer.Flush(MappedPointer,0,TVkDeviceSize(aCount)*SizeOf(TpvInt32));
+    finally
+     fShapeBuffer.Memory.UnmapMemory;
+    end;
+   end;
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aItem:TMaskMapModificationItem);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+    Resolution:TpvInt32;
+begin
+
+ Resolution:=Max(1,fPlanet.fMaskMapResolution);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet MaskMapModification',[0.75,0.25,0.5,1.0]);
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ fPushConstants.Center[0]:=aItem.Center.X;
+ fPushConstants.Center[1]:=aItem.Center.Y;
+ fPushConstants.Center[2]:=aItem.Center.Z;
+ fPushConstants.Center[3]:=0;
+ fPushConstants.Tangent[0]:=aItem.Tangent.X;
+ fPushConstants.Tangent[1]:=aItem.Tangent.Y;
+ fPushConstants.Tangent[2]:=aItem.Tangent.Z;
+ fPushConstants.Tangent[3]:=0;
+ fPushConstants.Bitangent[0]:=aItem.Bitangent.X;
+ fPushConstants.Bitangent[1]:=aItem.Bitangent.Y;
+ fPushConstants.Bitangent[2]:=aItem.Bitangent.Z;
+ fPushConstants.Bitangent[3]:=0;
+ fPushConstants.Bounds[0]:=aItem.BoundsMin.X;
+ fPushConstants.Bounds[1]:=aItem.BoundsMin.Y;
+ fPushConstants.Bounds[2]:=aItem.BoundsMax.X;
+ fPushConstants.Bounds[3]:=aItem.BoundsMax.Y;
+ fPushConstants.Kind:=aItem.Kind;
+ fPushConstants.SetBits:=aItem.SetBits;
+ fPushConstants.ClearBits:=aItem.ClearBits;
+ fPushConstants.DataOffset:=aItem.DataOffset;
+ fPushConstants.Count:=aItem.Count;
+ fPushConstants.Unused0:=0;
+ fPushConstants.Unused1:=0;
+ fPushConstants.Unused2:=0;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.BeginBreadcrumb(aCommandBuffer.Handle,TpvVulkanBreadcrumbType.Dispatch,'MaskMapModification');
+ end;
+ aCommandBuffer.CmdDispatch((Resolution+15) shr 4,
+                            (Resolution+15) shr 4,
+                            1);
+ if assigned(fPlanet.fVulkanDevice.BreadcrumbBuffer) then begin
+  fPlanet.fVulkanDevice.BreadcrumbBuffer.EndBreadcrumb(aCommandBuffer.Handle);
+ end;
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                  0,
+                                                                                  1,
+                                                                                  0,
+                                                                                  1));
+
+ // Recorded into the update command buffer, which may run on a compute queue, so no graphics stage here; the
+ // graphics consumers are ordered by the queue submission.
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ inc(fPlanet.fData.fMaskMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.RecordReadback(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+begin
+
+ if assigned(fHostBuffer) then begin
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
+  BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                             fPlanet.fMaskMapResolution,
+                                             fPlanet.fMaskMapResolution,
+                                             TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                             TVkOffset3D.Create(0,0,0),
+                                             TVkExtent3D.Create(fPlanet.fMaskMapResolution,fPlanet.fMaskMapResolution,1));
+
+  aCommandBuffer.CmdCopyImageToBuffer(fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                      fHostBuffer.Handle,
+                                      1,
+                                      @BufferImageCopy);
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fHostBuffer.Handle,
+                                                     0,
+                                                     fHostBuffer.Size);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarrier,
+                                    1,@ImageMemoryBarrier);
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.RecordUpload(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferImageCopy:TVkBufferImageCopy;
+begin
+
+ if assigned(fHostBuffer) then begin
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
+                                                     TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     VK_QUEUE_FAMILY_IGNORED,
+                                                     fHostBuffer.Handle,
+                                                     0,
+                                                     fHostBuffer.Size);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarrier,
+                                    1,@ImageMemoryBarrier);
+
+  BufferImageCopy:=TVkBufferImageCopy.Create(0,
+                                             fPlanet.fMaskMapResolution,
+                                             fPlanet.fMaskMapResolution,
+                                             TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,0,1),
+                                             TVkOffset3D.Create(0,0,0),
+                                             TVkExtent3D.Create(fPlanet.fMaskMapResolution,fPlanet.fMaskMapResolution,1));
+
+  aCommandBuffer.CmdCopyBufferToImage(fHostBuffer.Handle,
+                                      fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      1,
+                                      @BufferImageCopy);
+
+  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   VK_QUEUE_FAMILY_IGNORED,
+                                                   fPlanet.fData.fMaskMapImage.VulkanImage.Handle,
+                                                   TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                   0,
+                                                                                   1,
+                                                                                   0,
+                                                                                   1));
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    1,@ImageMemoryBarrier);
+
+  inc(fPlanet.fData.fMaskMapGeneration);
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.WriteHostBuffer(const aData;const aSize:TVkDeviceSize);
+var MappedPointer:Pointer;
+begin
+ if assigned(fHostBuffer) and (aSize>0) and (aSize<=fHostBuffer.Size) then begin
+  MappedPointer:=fHostBuffer.Memory.MapMemory;
+  if assigned(MappedPointer) then begin
+   try
+    Move(aData,MappedPointer^,aSize);
+    fHostBuffer.Flush(MappedPointer,0,aSize);
+   finally
+    fHostBuffer.Memory.UnmapMemory;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.TMaskMapModification.ReadHostBuffer(out aData;const aSize:TVkDeviceSize);
+var MappedPointer:Pointer;
+begin
+ if assigned(fHostBuffer) and (aSize>0) and (aSize<=fHostBuffer.Size) then begin
+  MappedPointer:=fHostBuffer.Memory.MapMemory;
+  if assigned(MappedPointer) then begin
+   try
+    fHostBuffer.Invalidate(MappedPointer,0,aSize);
+    Move(MappedPointer^,aData,aSize);
+   finally
+    fHostBuffer.Memory.UnmapMemory;
+   end;
+  end;
+ end;
 end;
 
 { TpvScene3DPlanet.TGrassFlagsMapFlagsUpdate }
@@ -23708,6 +24664,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(3,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapModification.fDescriptorSetLayout');
 
@@ -23723,6 +24685,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapModification.fDescriptorPool');
 
@@ -23755,6 +24718,16 @@ begin
                                       [],
                                       [],
                                       false);    
+  fDescriptorSet.WriteToDescriptorSet(3,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
   fDescriptorSet.Flush;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.THeightMapModification.fDescriptorSet');
 
@@ -23900,6 +24873,7 @@ begin
  fPushConstants.PositionRadius:=aHeightMapModificationItem.PositionRadius;
  fPushConstants.BrushIndex:=aHeightMapModificationItem.BrushIndex;
  fPushConstants.BrushRotation:=aHeightMapModificationItem.BrushRotation*TwoPI;
+ fPushConstants.MaskBits:=aHeightMapModificationItem.MaskBits;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -23995,6 +24969,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);                                
+  fDescriptorSetLayout.AddBinding(3,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapFlatten.fDescriptorSetLayout');
 
@@ -24009,6 +24989,7 @@ begin
                                                   1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapFlatten.fDescriptorPool');
@@ -24044,6 +25025,16 @@ begin
                                       [],
                                       [],
                                       false);      
+  fDescriptorSet.WriteToDescriptorSet(3,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
   fDescriptorSet.Flush;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSet.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.THeightMapFlatten.fDescriptorSet');
 
@@ -24240,6 +25231,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(4,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapFlattenBeforeState.fDescriptorSetLayout');
 
@@ -24255,6 +25252,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),2);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapFlattenBeforeState.fDescriptorPool');
 
@@ -24295,6 +25293,16 @@ begin
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                       [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
                                                                      fPlanet.fData.fHeightMapBeforeStateImage.VulkanImageViews[0].Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(4,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
@@ -24494,6 +25502,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(4,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapModificationToTargetHeight.fDescriptorSetLayout');
 
@@ -24509,6 +25523,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),17);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapModificationToTargetHeight.fDescriptorPool');
 
@@ -24547,6 +25562,16 @@ begin
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                       [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
                                                                      fPlanet.fData.fHeightMapBeforeStateImage.VulkanImageViews[0].Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(4,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
@@ -24611,6 +25636,7 @@ begin
  fPushConstants.InnerRadiusTargetHeightStrengthUnused.w:=0.0;
  fPushConstants.BrushIndex:=aItem.BrushIndex;
  fPushConstants.BrushRotation:=aItem.BrushRotation*TwoPI;
+ fPushConstants.MaskBits:=aItem.MaskBits;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -24750,6 +25776,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(4,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapBrushSmooth.fDescriptorSetLayout');
 
@@ -24765,6 +25797,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),17);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapBrushSmooth.fDescriptorPool');
 
@@ -24803,6 +25836,16 @@ begin
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                       [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralComputeSampler.Handle,
                                                                      fPlanet.fData.fHeightMapBeforeStateImage.VulkanImageViews[0].Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(4,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
@@ -24867,6 +25910,7 @@ begin
  fPushConstants.InnerRadiusStrengthKernelRadiusSigma.w:=aItem.Sigma;
  fPushConstants.BrushIndex:=aItem.BrushIndex;
  fPushConstants.BrushRotation:=aItem.BrushRotation*TwoPI;
+ fPushConstants.MaskBits:=aItem.MaskBits;
 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -25007,6 +26051,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(4,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.THeightMapBrushSmear.fDescriptorSetLayout');
 
@@ -25022,6 +26072,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),2);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),16);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),1);
   fDescriptorPool.Initialize;
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.THeightMapBrushSmear.fDescriptorPool');
 
@@ -25061,6 +26112,16 @@ begin
                                       [TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                      fPlanet.fData.fHeightMapSmearBufferImage.VulkanImageViews[0].Handle,
                                                                      VK_IMAGE_LAYOUT_GENERAL)],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(4,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                      [TVkDescriptorImageInfo.Create(TpvScene3D(fPlanet.fScene3D).GeneralNearestSampler.Handle,
+                                                                     fPlanet.fData.fMaskMapImage.VulkanImageView.Handle,
+                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                       [],
                                       [],
                                       false);
@@ -25209,6 +26270,7 @@ begin
  fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
  fPushConstants.BrushIndex:=aItem.BrushIndex;
  fPushConstants.BrushRotation:=aItem.BrushRotation*TwoPI;
+ fPushConstants.MaskBits:=aItem.MaskBits;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -35739,7 +36801,8 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aHeightMiniMapResolutionShift:TpvSizeInt;
                                     const aUseHeightMapSmoothing:Boolean;
                                     const aWaterMetricCompensation:Boolean;
-                                    const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode);
+                                    const aWaterSimulationPrecisionMode:TpvScene3DPlanetWaterSimulationPrecisionMode;
+                                    const aMaskMapResolution:TpvInt32);
 var InFlightFrameIndex,Index,Resolution,x,y,CountUsedBrushes:TpvSizeInt;
     Pixel:TpvUInt32;
     BrushUsed:Boolean;
@@ -35829,6 +36892,42 @@ begin
  fAtmosphereMiniMapResolution:=Max(1,fAtmosphereMapResolution shr fAtmosphereMiniMapResolutionShift);
 
  fWaterMapResolution:=fHeightMapResolution; // needs to be matched with fHeightMapResolution for now
+
+ // A power of two and at most the height map resolution, so that the height map resolution is always a power of
+ // two multiple of it, which keeps the soft mask edge the height map passes see exactly the same on every device.
+ if aMaskMapResolution>0 then begin
+  fMaskMapResolution:=RoundUpToPowerOfTwo(Min(Max(aMaskMapResolution,16),fHeightMapResolution));
+ end else begin
+  fMaskMapResolution:=0;
+ end;
+
+ fMaskMapLock:=TPasMPCriticalSection.Create;
+
+ fMaskMapDataLock:=TPasMPCriticalSection.Create;
+
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fMaskMapModificationItems[InFlightFrameIndex]:=nil;
+  fCountMaskMapModificationItems[InFlightFrameIndex]:=0;
+  fMaskMapShapeData[InFlightFrameIndex]:=nil;
+  fCountMaskMapShapeData[InFlightFrameIndex]:=0;
+ end;
+
+ fMaskMapProcessShapeData:=nil;
+
+ fMaskMapProcessItems:=nil;
+
+ fMaskMapData:=nil;
+ if fMaskMapResolution>0 then begin
+  SetLength(fMaskMapData,fMaskMapResolution*fMaskMapResolution);
+  FillChar(fMaskMapData[0],length(fMaskMapData)*SizeOf(TpvUInt32),#0);
+ end;
+
+ fMaskMapDataGeneration:=0;
+
+ for Index:=0 to CountMaskMapOverlays-1 do begin
+  fMaskMapOverlays[Index].Bits:=0;
+  fMaskMapOverlays[Index].Color:=TpvVector4.InlineableCreate(1.0,0.0,0.0,0.5);
+ end;
 
  fDecalGroupMask:=$ffffffff;
 
@@ -36461,6 +37560,8 @@ begin
 
  fGrassFlagsMapFlagsUpdate:=TGrassFlagsMapFlagsUpdate.Create(self);
 
+ fMaskMapModification:=TMaskMapModification.Create(self);
+
  // Grass trampling defaults. At 1024 texels the trample map has about a quarter meter per texel on a planet
  // of 80 meters radius, which is fine for whole bodies and wheels, while staying at 8 MB per in-flight image.
  fGrassTrampleActive:=true;
@@ -36737,6 +37838,16 @@ begin
                                                                    [],
                                                                    [],
                                                                    false);
+    fPlanetDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                   [TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralNearestSampler.Handle,
+                                                                                                  fInFlightFrameDataList[InFlightFrameIndex].fMaskMapImage.VulkanImageView.Handle,
+                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                   [],
+                                                                   [],
+                                                                   false);
     fPlanetDescriptorSets[InFlightFrameIndex].Flush;
 
    finally
@@ -37002,6 +38113,23 @@ begin
  FreeAndNil(fGrassFlagsMapModification);
 
  FreeAndNil(fGrassFlagsMapInitialization);
+
+ FreeAndNil(fMaskMapModification);
+
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fMaskMapModificationItems[InFlightFrameIndex]:=nil;
+  fMaskMapShapeData[InFlightFrameIndex]:=nil;
+ end;
+
+ fMaskMapProcessShapeData:=nil;
+
+ fMaskMapProcessItems:=nil;
+
+ fMaskMapData:=nil;
+
+ FreeAndNil(fMaskMapDataLock);
+
+ FreeAndNil(fMaskMapLock);
 
  FreeAndNil(fBlendMapInitialization);
 
@@ -37790,6 +38918,14 @@ begin
                    [],
                    0);
 
+ // MaskMap (R32_UINT, nearest sampler, separate binding), for the mask map overlays
+ result.AddBinding(3,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                   1,
+                   ShaderStageFlags,
+                   [],
+                   0);
+
  result.Initialize;
 
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetDescriptorSetLayout');
@@ -37801,7 +38937,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(CountPlanetTextureDescriptors+1)*aCountInFlightFrames); // binding 0 + the separate grass flags map of binding 2
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),(CountPlanetTextureDescriptors+2)*aCountInFlightFrames); // binding 0 + the separate grass flags map of binding 2 + the separate mask map of binding 3
  result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
@@ -38406,6 +39542,7 @@ procedure TpvScene3DPlanet.Initialize(const aPasMPInstance:TPasMP;const aData:TS
 //var ui32:TVkUInt32;
 var HeightMapDataInitialization:TpvScene3DPlanet.THeightMapDataInitialization;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
+    MaskMapClearItem:TMaskMapModificationItem;
 begin
 
  if not fData.fInitialized then begin
@@ -38441,6 +39578,14 @@ begin
      fGrassAgeMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
      fGrassFlagsMapInitialization.Execute(fVulkanUpdateCommandBuffer);
+
+     // Defines the content of the fresh mask map image: all bits clear, which the CPU side copy already is.
+     if assigned(fMaskMapModification) then begin
+      FillChar(MaskMapClearItem,SizeOf(TMaskMapModificationItem),#0);
+      MaskMapClearItem.Kind:=2;
+      MaskMapClearItem.ClearBits:=TpvUInt32($ffffffff);
+      fMaskMapModification.Execute(fVulkanUpdateCommandBuffer,MaskMapClearItem);
+     end;
 
      fPrecipitationMapInitialization.Execute(fVulkanUpdateCommandBuffer);
 
@@ -38627,6 +39772,8 @@ begin
    fHeightMapFlatten.fPushConstants.BrushIndex:=aBrushIndex;
 
    fHeightMapFlatten.fPushConstants.BrushRotation:=aBrushRotation*TwoPI;
+
+   fHeightMapFlatten.fPushConstants.MaskBits:=0;
 
    fHeightMapFlatten.Execute(fVulkanUpdateCommandBuffer);
 
@@ -39090,6 +40237,10 @@ begin
  end;
 }
 
+ // The mask map before the height map, so that the height map modifications of a frame already see the mask
+ // modifications queued before them.
+ ProcessMaskMapModifications(aInFlightFrameIndex);
+
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     ((aInFlightFrameIndex>=0) and (abs(fHeightMapModificationItems[aInFlightFrameIndex].Value)>1e-7)) or
     ((aInFlightFrameIndex>=0) and (abs(fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight)>1e-7)) or
@@ -39123,6 +40274,7 @@ begin
       fHeightMapFlatten.fPushConstants.TargetHeight:=fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight;
       fHeightMapFlatten.fPushConstants.BrushIndex:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushIndex;
       fHeightMapFlatten.fPushConstants.BrushRotation:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushRotation*TwoPI;
+      fHeightMapFlatten.fPushConstants.MaskBits:=fHeightMapFlattenItems[aInFlightFrameIndex].MaskBits;
       fHeightMapFlatten.Execute(fVulkanUpdateCommandBuffer);
      finally
       fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight:=0.0;
@@ -39148,6 +40300,7 @@ begin
        fHeightMapFlattenBeforeState.fPushConstants.TargetHeight:=fHeightMapFlattenBeforeStateItems[aInFlightFrameIndex].TargetHeight;
        fHeightMapFlattenBeforeState.fPushConstants.BrushIndex:=fHeightMapFlattenBeforeStateItems[aInFlightFrameIndex].BrushIndex;
        fHeightMapFlattenBeforeState.fPushConstants.BrushRotation:=fHeightMapFlattenBeforeStateItems[aInFlightFrameIndex].BrushRotation*TwoPI;
+       fHeightMapFlattenBeforeState.fPushConstants.MaskBits:=fHeightMapFlattenBeforeStateItems[aInFlightFrameIndex].MaskBits;
        fHeightMapFlattenBeforeState.Execute(fVulkanUpdateCommandBuffer);
       finally
        fHeightMapFlattenBeforeStateItems[aInFlightFrameIndex].TargetHeight:=0.0;
@@ -39555,6 +40708,7 @@ begin
       (InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration) or
       (InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration) or
       (InFlightFrameData.fGrassFlagsMapGeneration<>fData.fGrassFlagsMapGeneration) or
+      (InFlightFrameData.fMaskMapGeneration<>fData.fMaskMapGeneration) or
       (InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration) or
       (InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration)) then begin
 
@@ -39594,7 +40748,8 @@ begin
                      InFlightFrameData.fGrassMapGeneration<>fData.fGrassMapGeneration,
                      InFlightFrameData.fGrassAgeMapGeneration<>fData.fGrassAgeMapGeneration,
                      InFlightFrameData.fPrecipitationMapGeneration<>fData.fPrecipitationMapGeneration,
-                     InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration
+                     InFlightFrameData.fAtmosphereMapGeneration<>fData.fAtmosphereMapGeneration,
+                     InFlightFrameData.fMaskMapGeneration<>fData.fMaskMapGeneration
                     );
 
     InFlightFrameData.ReleaseOnUpdateQueue(CommandBuffer);
@@ -39621,6 +40776,7 @@ begin
    InFlightFrameData.fGrassMapGeneration:=fData.fGrassMapGeneration;
    InFlightFrameData.fGrassAgeMapGeneration:=fData.fGrassAgeMapGeneration;
    InFlightFrameData.fGrassFlagsMapGeneration:=fData.fGrassFlagsMapGeneration;
+   InFlightFrameData.fMaskMapGeneration:=fData.fMaskMapGeneration;
    InFlightFrameData.fPrecipitationMapGeneration:=fData.fPrecipitationMapGeneration;
    InFlightFrameData.fAtmosphereMapGeneration:=fData.fAtmosphereMapGeneration;
 
@@ -39778,7 +40934,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-var MaterialIndex:TpvSizeInt;
+var MaterialIndex,OverlayIndex:TpvSizeInt;
     InFlightFrameData:TData;
     Material:TpvScene3DPlanet.PMaterial;
 begin
@@ -40013,6 +41169,19 @@ begin
    fPlanetData.GrassBladeParams1.w:=0.0;
    fPlanetData.MinMaxHeightFactor:=InFlightFrameData.fMinMaxHeightFactor;
 
+   for OverlayIndex:=0 to CountMaskMapOverlays-1 do begin
+    if fMaskMapResolution>0 then begin
+     fPlanetData.MaskMapOverlays[OverlayIndex].Bits:=fMaskMapOverlays[OverlayIndex].Bits;
+    end else begin
+     fPlanetData.MaskMapOverlays[OverlayIndex].Bits:=0;
+    end;
+    fPlanetData.MaskMapOverlays[OverlayIndex].Unused:=0;
+    fPlanetData.MaskMapOverlays[OverlayIndex].Color.x:=fMaskMapOverlays[OverlayIndex].Color.x;
+    fPlanetData.MaskMapOverlays[OverlayIndex].Color.y:=fMaskMapOverlays[OverlayIndex].Color.y;
+    fPlanetData.MaskMapOverlays[OverlayIndex].Color.z:=fMaskMapOverlays[OverlayIndex].Color.z;
+    fPlanetData.MaskMapOverlays[OverlayIndex].Color.w:=fMaskMapOverlays[OverlayIndex].Color.w;
+   end;
+
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];
     fPlanetData.Textures[MaterialIndex,0]:=Material^.AlbedoTexture;
@@ -40043,7 +41212,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar);
+procedure TpvScene3DPlanet.EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aMaskBits:TpvUInt32=0);
 var HeightMapModificationItem:PHeightMapModificationItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40053,10 +41222,15 @@ begin
   HeightMapModificationItem^.Value:=aValue;
   HeightMapModificationItem^.BrushIndex:=fData.fSelectedBrush;
   HeightMapModificationItem^.BrushRotation:=fData.fBrushRotation;
+  if fMaskMapResolution>0 then begin
+   HeightMapModificationItem^.MaskBits:=aMaskBits;
+  end else begin
+   HeightMapModificationItem^.MaskBits:=0;
+  end;
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+procedure TpvScene3DPlanet.EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
 var HeightMapFlattenItem:PHeightMapFlattenItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40067,6 +41241,11 @@ begin
   HeightMapFlattenItem^.TargetHeight:=aTargetHeight;
   HeightMapFlattenItem^.BrushIndex:=aBrushIndex;
   HeightMapFlattenItem^.BrushRotation:=aBrushRotation;
+  if fMaskMapResolution>0 then begin
+   HeightMapFlattenItem^.MaskBits:=aMaskBits;
+  end else begin
+   HeightMapFlattenItem^.MaskBits:=0;
+  end;
  end;
 end;
 
@@ -40169,7 +41348,7 @@ begin
  fData.fHeightMapBeforeStateValid:=false;
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapFlattenBeforeState(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+procedure TpvScene3DPlanet.EnqueueHeightMapFlattenBeforeState(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
 var Item:PHeightMapFlattenBeforeStateItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40180,10 +41359,15 @@ begin
   Item^.TargetHeight:=aTargetHeight;
   Item^.BrushIndex:=aBrushIndex;
   Item^.BrushRotation:=aBrushRotation;
+  if fMaskMapResolution>0 then begin
+   Item^.MaskBits:=aMaskBits;
+  end else begin
+   Item^.MaskBits:=0;
+  end;
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapModificationToTargetHeight(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aTargetHeight,aStrength:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+procedure TpvScene3DPlanet.EnqueueHeightMapModificationToTargetHeight(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aTargetHeight,aStrength:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
 var Item:PHeightMapModificationToTargetHeightItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40194,11 +41378,16 @@ begin
   Item^.Strength:=aStrength;
   Item^.BrushIndex:=aBrushIndex;
   Item^.BrushRotation:=aBrushRotation;
+  if fMaskMapResolution>0 then begin
+   Item^.MaskBits:=aMaskBits;
+  end else begin
+   Item^.MaskBits:=0;
+  end;
   Item^.Active:=1;
  end;
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapBrushSmooth(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aStrength,aKernelRadius,aSigma:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+procedure TpvScene3DPlanet.EnqueueHeightMapBrushSmooth(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aStrength,aKernelRadius,aSigma:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
 var Item:PHeightMapBrushSmoothItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40210,6 +41399,11 @@ begin
   Item^.Sigma:=Max(1e-4,aSigma);
   Item^.BrushIndex:=aBrushIndex;
   Item^.BrushRotation:=aBrushRotation;
+  if fMaskMapResolution>0 then begin
+   Item^.MaskBits:=aMaskBits;
+  end else begin
+   Item^.MaskBits:=0;
+  end;
   Item^.Active:=1;
  end;
 end;
@@ -40313,7 +41507,7 @@ begin
  fData.fHeightMapSmearBufferValid:=false;
 end;
 
-procedure TpvScene3DPlanet.EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat);
+procedure TpvScene3DPlanet.EnqueueHeightMapBrushSmear(const aInFlightFrameIndex:TpvSizeInt;const aPosition,aPreviousPosition:TpvVector3;const aRadius,aBorderRadius,aRate:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
 var Item:PHeightMapBrushSmearItem;
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -40324,6 +41518,11 @@ begin
   Item^.Rate:=Clamp(aRate,0.0,1.0);
   Item^.BrushIndex:=aBrushIndex;
   Item^.BrushRotation:=aBrushRotation;
+  if fMaskMapResolution>0 then begin
+   Item^.MaskBits:=aMaskBits;
+  end else begin
+   Item^.MaskBits:=0;
+  end;
   Item^.Active:=1;
  end;
 end;
@@ -40580,6 +41779,445 @@ begin
   Item.BrushIndex:=aBrushIndex;
   Item.BrushRotation:=aBrushRotation;
   fGrassFlagsMapModificationPerInFlightFrameItems[aInFlightFrameIndex].Enqueue(Item);
+ end;
+end;
+
+class function TpvScene3DPlanet.QuantizeMaskMapVector(const aVector:TpvVector3D):TMaskMapVector;
+var Length:TpvDouble;
+begin
+ Length:=aVector.Length;
+ if Length>1e-12 then begin
+  result.X:=TpvInt32(Round((aVector.x/Length)*MaskMapVectorScale));
+  result.Y:=TpvInt32(Round((aVector.y/Length)*MaskMapVectorScale));
+  result.Z:=TpvInt32(Round((aVector.z/Length)*MaskMapVectorScale));
+ end else begin
+  result.X:=0;
+  result.Y:=0;
+  result.Z:=MaskMapVectorScale;
+ end;
+end;
+
+class function TpvScene3DPlanet.CreateMaskMapCircle(const aCenter:TpvVector3D;const aRadius:TpvDouble):TMaskMapCircle;
+var Center:TMaskMapVector;
+begin
+ Center:=QuantizeMaskMapVector(aCenter);
+ result.X:=Center.X;
+ result.Y:=Center.Y;
+ result.Z:=Center.Z;
+ if aRadius<0.0 then begin
+  result.Radius:=-1;
+ end else begin
+  // A chord can be at most two units long, but the shader keeps every product below 2^31 only up to 32767.
+  result.Radius:=TpvInt32(Min(Round(aRadius*MaskMapVectorScale),32767));
+ end;
+end;
+
+class function TpvScene3DPlanet.CreateMaskMapPolygon(const aPoints:array of TpvVector3D;out aPolygon:TMaskMapPolygon):Boolean;
+const MinimumCosine=0.05;
+var Index,Count,CountPoints:TpvSizeInt;
+    Directions:array of TpvVector3D;
+    Center,Tangent,Bitangent,Direction:TpvVector3D;
+    Cosine,Limit,PlaneX,PlaneY:TpvDouble;
+    Point:TMaskMapPoint;
+begin
+
+ result:=false;
+
+ Limit:=MaskMapPlaneLimit;
+
+ aPolygon.Center.X:=0;
+ aPolygon.Center.Y:=0;
+ aPolygon.Center.Z:=MaskMapVectorScale;
+ aPolygon.Tangent.X:=MaskMapVectorScale;
+ aPolygon.Tangent.Y:=0;
+ aPolygon.Tangent.Z:=0;
+ aPolygon.Bitangent.X:=0;
+ aPolygon.Bitangent.Y:=MaskMapVectorScale;
+ aPolygon.Bitangent.Z:=0;
+ aPolygon.Points:=nil;
+
+ Directions:=nil;
+ try
+
+  // Only the directions count, and points at the centre of the sphere have none.
+  SetLength(Directions,length(aPoints));
+  Count:=0;
+  for Index:=0 to length(aPoints)-1 do begin
+   if aPoints[Index].Length>1e-12 then begin
+    Directions[Count]:=aPoints[Index].Normalize;
+    inc(Count);
+   end;
+  end;
+  if Count<3 then begin
+   exit;
+  end;
+
+  // Thinned out evenly, in place, which works since every read index is at least the write index.
+  if Count>MaskMapMaximumPolygonPoints then begin
+   for Index:=0 to MaskMapMaximumPolygonPoints-1 do begin
+    Directions[Index]:=Directions[(Index*Count) div MaskMapMaximumPolygonPoints];
+   end;
+   Count:=MaskMapMaximumPolygonPoints;
+  end;
+
+  Center:=TpvVector3D.Create(0.0,0.0,0.0);
+  for Index:=0 to Count-1 do begin
+   Center:=Center+Directions[Index];
+  end;
+  if Center.Length<1e-9 then begin
+   exit;
+  end;
+  Center:=Center.Normalize;
+
+  if abs(Center.x)<0.9 then begin
+   Tangent:=TpvVector3D.Create(1.0,0.0,0.0);
+  end else begin
+   Tangent:=TpvVector3D.Create(0.0,1.0,0.0);
+  end;
+  Tangent:=(Tangent-(Center*Tangent.Dot(Center))).Normalize;
+  Bitangent:=Center.Cross(Tangent).Normalize;
+
+  // The frame the GPU projects with is the quantized one, so the points are projected with exactly that one
+  // as well, and the polygon lands where it was drawn.
+  aPolygon.Center:=QuantizeMaskMapVector(Center);
+  aPolygon.Tangent:=QuantizeMaskMapVector(Tangent);
+  aPolygon.Bitangent:=QuantizeMaskMapVector(Bitangent);
+  Center:=TpvVector3D.Create(aPolygon.Center.X,aPolygon.Center.Y,aPolygon.Center.Z)*(1.0/MaskMapVectorScale);
+  Tangent:=TpvVector3D.Create(aPolygon.Tangent.X,aPolygon.Tangent.Y,aPolygon.Tangent.Z)*(1.0/MaskMapVectorScale);
+  Bitangent:=TpvVector3D.Create(aPolygon.Bitangent.X,aPolygon.Bitangent.Y,aPolygon.Bitangent.Z)*(1.0/MaskMapVectorScale);
+
+  SetLength(aPolygon.Points,Count);
+  CountPoints:=0;
+  for Index:=0 to Count-1 do begin
+   Direction:=Directions[Index];
+   // Points too far away from the centre are pulled onto the border of the usable plane.
+   Cosine:=Direction.Dot(Center);
+   if Cosine<MinimumCosine then begin
+    Cosine:=MinimumCosine;
+   end;
+   PlaneX:=Min(Max((Direction.Dot(Tangent)/Cosine)*MaskMapPlaneScale,-Limit),Limit);
+   PlaneY:=Min(Max((Direction.Dot(Bitangent)/Cosine)*MaskMapPlaneScale,-Limit),Limit);
+   Point.X:=TpvInt32(Round(PlaneX));
+   Point.Y:=TpvInt32(Round(PlaneY));
+   if (CountPoints=0) or
+      (Point.X<>aPolygon.Points[CountPoints-1].X) or
+      (Point.Y<>aPolygon.Points[CountPoints-1].Y) then begin
+    aPolygon.Points[CountPoints]:=Point;
+    inc(CountPoints);
+   end;
+  end;
+  if (CountPoints>1) and
+     (aPolygon.Points[CountPoints-1].X=aPolygon.Points[0].X) and
+     (aPolygon.Points[CountPoints-1].Y=aPolygon.Points[0].Y) then begin
+   dec(CountPoints);
+  end;
+  SetLength(aPolygon.Points,CountPoints);
+
+  result:=CountPoints>=3;
+
+ finally
+  Directions:=nil;
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.AddMaskMapModification(const aInFlightFrameIndex:TpvSizeInt;const aItem:TMaskMapModificationItem;const aData:PpvInt32;const aCountData:TpvSizeInt);
+var Item:TMaskMapModificationItem;
+    Count,Offset:TpvSizeInt;
+begin
+ if (aInFlightFrameIndex>=0) and (aInFlightFrameIndex<MaxInFlightFrames) and (fMaskMapResolution>0) then begin
+  Item:=aItem;
+  fMaskMapLock.Acquire;
+  try
+   Offset:=fCountMaskMapShapeData[aInFlightFrameIndex];
+   Item.DataOffset:=Offset;
+   if aCountData>0 then begin
+    if length(fMaskMapShapeData[aInFlightFrameIndex])<(Offset+aCountData) then begin
+     SetLength(fMaskMapShapeData[aInFlightFrameIndex],(Offset+aCountData)*2);
+    end;
+    Move(aData^,fMaskMapShapeData[aInFlightFrameIndex][Offset],aCountData*SizeOf(TpvInt32));
+    inc(fCountMaskMapShapeData[aInFlightFrameIndex],aCountData);
+   end;
+   Count:=fCountMaskMapModificationItems[aInFlightFrameIndex];
+   if length(fMaskMapModificationItems[aInFlightFrameIndex])<=Count then begin
+    SetLength(fMaskMapModificationItems[aInFlightFrameIndex],(Count+1)*2);
+   end;
+   fMaskMapModificationItems[aInFlightFrameIndex][Count]:=Item;
+   fCountMaskMapModificationItems[aInFlightFrameIndex]:=Count+1;
+  finally
+   fMaskMapLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueMaskMapCircles(const aInFlightFrameIndex:TpvSizeInt;const aCircles:array of TMaskMapCircle;const aSetBits,aClearBits:TpvUInt32);
+var Item:TMaskMapModificationItem;
+begin
+ if (length(aCircles)>0) and ((aSetBits or aClearBits)<>0) then begin
+  FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
+  Item.Kind:=0;
+  Item.SetBits:=aSetBits;
+  Item.ClearBits:=aClearBits;
+  Item.Count:=length(aCircles);
+  AddMaskMapModification(aInFlightFrameIndex,Item,PpvInt32(Pointer(@aCircles[0])),length(aCircles)*4);
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueMaskMapPolygon(const aInFlightFrameIndex:TpvSizeInt;const aPolygon:TMaskMapPolygon;const aSetBits,aClearBits:TpvUInt32);
+var Item:TMaskMapModificationItem;
+    Index:TpvSizeInt;
+begin
+ if (length(aPolygon.Points)>=3) and (length(aPolygon.Points)<=MaskMapMaximumPolygonPoints) and ((aSetBits or aClearBits)<>0) then begin
+  FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
+  Item.Kind:=1;
+  Item.SetBits:=aSetBits;
+  Item.ClearBits:=aClearBits;
+  Item.Count:=length(aPolygon.Points);
+  Item.Center:=aPolygon.Center;
+  Item.Tangent:=aPolygon.Tangent;
+  Item.Bitangent:=aPolygon.Bitangent;
+  Item.BoundsMin.X:=MaskMapPlaneLimit;
+  Item.BoundsMin.Y:=MaskMapPlaneLimit;
+  Item.BoundsMax.X:=-MaskMapPlaneLimit;
+  Item.BoundsMax.Y:=-MaskMapPlaneLimit;
+  // The points are clamped here as well, since the shader relies on the limit to keep its products in range.
+  for Index:=0 to length(aPolygon.Points)-1 do begin
+   Item.BoundsMin.X:=Min(Item.BoundsMin.X,Min(Max(aPolygon.Points[Index].X,-MaskMapPlaneLimit),MaskMapPlaneLimit));
+   Item.BoundsMin.Y:=Min(Item.BoundsMin.Y,Min(Max(aPolygon.Points[Index].Y,-MaskMapPlaneLimit),MaskMapPlaneLimit));
+   Item.BoundsMax.X:=Max(Item.BoundsMax.X,Min(Max(aPolygon.Points[Index].X,-MaskMapPlaneLimit),MaskMapPlaneLimit));
+   Item.BoundsMax.Y:=Max(Item.BoundsMax.Y,Min(Max(aPolygon.Points[Index].Y,-MaskMapPlaneLimit),MaskMapPlaneLimit));
+  end;
+  if (Item.BoundsMin.X<=Item.BoundsMax.X) and (Item.BoundsMin.Y<=Item.BoundsMax.Y) then begin
+   if (Item.BoundsMin.X>=-MaskMapPlaneLimit) and (Item.BoundsMax.X<=MaskMapPlaneLimit) and
+      (Item.BoundsMin.Y>=-MaskMapPlaneLimit) and (Item.BoundsMax.Y<=MaskMapPlaneLimit) then begin
+    AddMaskMapModification(aInFlightFrameIndex,Item,PpvInt32(Pointer(@aPolygon.Points[0])),length(aPolygon.Points)*2);
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueMaskMapClear(const aInFlightFrameIndex:TpvSizeInt;const aBits:TpvUInt32);
+var Item:TMaskMapModificationItem;
+begin
+ if aBits<>0 then begin
+  FillChar(Item,SizeOf(TMaskMapModificationItem),#0);
+  Item.Kind:=2;
+  Item.ClearBits:=aBits;
+  AddMaskMapModification(aInFlightFrameIndex,Item,nil,0);
+ end;
+end;
+
+procedure TpvScene3DPlanet.ProcessMaskMapModifications(const aInFlightFrameIndex:TpvSizeInt);
+var CountItems,CountData,Index:TpvSizeInt;
+begin
+
+ if (aInFlightFrameIndex>=0) and
+    (aInFlightFrameIndex<MaxInFlightFrames) and
+    (fMaskMapResolution>0) and
+    assigned(fVulkanDevice) and
+    assigned(fMaskMapModification) then begin
+
+  // Taken over under the lock, so that further modifications can be queued meanwhile.
+  fMaskMapLock.Acquire;
+  try
+   CountItems:=fCountMaskMapModificationItems[aInFlightFrameIndex];
+   CountData:=fCountMaskMapShapeData[aInFlightFrameIndex];
+   if CountItems>0 then begin
+    if length(fMaskMapProcessItems)<CountItems then begin
+     SetLength(fMaskMapProcessItems,CountItems*2);
+    end;
+    Move(fMaskMapModificationItems[aInFlightFrameIndex][0],fMaskMapProcessItems[0],CountItems*SizeOf(TMaskMapModificationItem));
+    if CountData>0 then begin
+     if length(fMaskMapProcessShapeData)<CountData then begin
+      SetLength(fMaskMapProcessShapeData,CountData*2);
+     end;
+     Move(fMaskMapShapeData[aInFlightFrameIndex][0],fMaskMapProcessShapeData[0],CountData*SizeOf(TpvInt32));
+    end;
+   end;
+   fCountMaskMapModificationItems[aInFlightFrameIndex]:=0;
+   fCountMaskMapShapeData[aInFlightFrameIndex]:=0;
+  finally
+   fMaskMapLock.Release;
+  end;
+
+  if CountItems>0 then begin
+
+   WaitOnceOnPreviousFrameForCheck;
+
+   fMaskMapDataLock.Acquire;
+   try
+
+    // Before BeginUpdate, since the shape buffer may be replaced, which must not happen while a command buffer
+    // that uses it is recorded.
+    fMaskMapModification.UploadShapeData(fMaskMapProcessShapeData,CountData);
+
+    BeginUpdate;
+    try
+     for Index:=0 to CountItems-1 do begin
+      fMaskMapModification.Execute(fVulkanUpdateCommandBuffer,fMaskMapProcessItems[Index]);
+     end;
+     fMaskMapModification.RecordReadback(fVulkanUpdateCommandBuffer);
+    finally
+     EndUpdate;
+    end;
+
+    // EndUpdate has waited for the GPU, so the host visible copy is complete.
+    if assigned(fMaskMapModification.HostBuffer) and (length(fMaskMapData)>0) then begin
+     fMaskMapModification.ReadHostBuffer(fMaskMapData[0],length(fMaskMapData)*SizeOf(TpvUInt32));
+     inc(fMaskMapDataGeneration);
+    end;
+
+   finally
+    fMaskMapDataLock.Release;
+   end;
+
+  end;
+
+ end;
+
+end;
+
+function TpvScene3DPlanet.GetMaskMapBitsUnlocked(const aNormal:TpvVector3):TpvUInt32;
+var UV:TpvVector2;
+    x,y:TpvInt32;
+begin
+ if (fMaskMapResolution>0) and
+    (length(fMaskMapData)=(fMaskMapResolution*fMaskMapResolution)) and
+    (aNormal.Length>1e-12) then begin
+  UV:=OctEqualAreaUnsignedEncode(aNormal.Normalize);
+  x:=Min(Max(TpvInt32(Trunc(UV.x*fMaskMapResolution)),0),fMaskMapResolution-1);
+  y:=Min(Max(TpvInt32(Trunc(UV.y*fMaskMapResolution)),0),fMaskMapResolution-1);
+  result:=fMaskMapData[(y*fMaskMapResolution)+x];
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvScene3DPlanet.GetMaskMapBits(const aNormal:TpvVector3):TpvUInt32;
+begin
+ if fMaskMapResolution>0 then begin
+  fMaskMapDataLock.Acquire;
+  try
+   result:=GetMaskMapBitsUnlocked(aNormal);
+  finally
+   fMaskMapDataLock.Release;
+  end;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvScene3DPlanet.GetMaskMapCoverage(const aNormal:TpvVector3;const aRadius:TpvFloat;const aMaskBits:TpvUInt32;const aSamplesPerAxis:TpvSizeInt):TpvFloat;
+var Normal,Tangent,Bitangent,Point:TpvVector3;
+    SamplesPerAxis,IndexX,IndexY,CountInside,CountMasked:TpvSizeInt;
+    u,v:TpvFloat;
+begin
+ result:=0.0;
+ if (fMaskMapResolution>0) and (aMaskBits<>0) and (aNormal.Length>1e-12) then begin
+  Normal:=aNormal.Normalize;
+  SamplesPerAxis:=Min(Max(aSamplesPerAxis,1),64);
+  CountInside:=0;
+  CountMasked:=0;
+  fMaskMapDataLock.Acquire;
+  try
+   if (SamplesPerAxis=1) or (aRadius<=0.0) then begin
+    CountInside:=1;
+    if (GetMaskMapBitsUnlocked(Normal) and aMaskBits)<>0 then begin
+     CountMasked:=1;
+    end;
+   end else begin
+    Tangent:=Normal.OneUnitSmoothOrthogonalVector;
+    Bitangent:=Normal.Cross(Tangent).Normalize;
+    for IndexY:=0 to SamplesPerAxis-1 do begin
+     v:=(((IndexY+0.5)/SamplesPerAxis)*2.0)-1.0;
+     for IndexX:=0 to SamplesPerAxis-1 do begin
+      u:=(((IndexX+0.5)/SamplesPerAxis)*2.0)-1.0;
+      if (sqr(u)+sqr(v))<=1.0 then begin
+       Point:=Normal+(Tangent*(u*aRadius))+(Bitangent*(v*aRadius));
+       inc(CountInside);
+       if (GetMaskMapBitsUnlocked(Point) and aMaskBits)<>0 then begin
+        inc(CountMasked);
+       end;
+      end;
+     end;
+    end;
+   end;
+  finally
+   fMaskMapDataLock.Release;
+  end;
+  if CountInside>0 then begin
+   result:=CountMasked/CountInside;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.GetMaskMapData(out aData:TMaskMapData);
+begin
+ aData:=nil;
+ if fMaskMapResolution>0 then begin
+  fMaskMapDataLock.Acquire;
+  try
+   aData:=Copy(fMaskMapData);
+  finally
+   fMaskMapDataLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.UploadMaskMapRegion(const aX,aY,aWidth,aHeight:TpvInt32;const aData:pointer);
+var Row:TpvInt32;
+    Source:PpvUInt32;
+begin
+ if (fMaskMapResolution>0) and
+    assigned(fVulkanDevice) and
+    assigned(aData) and
+    assigned(fMaskMapModification) and
+    assigned(fMaskMapModification.HostBuffer) and
+    (length(fMaskMapData)=(fMaskMapResolution*fMaskMapResolution)) and
+    (aWidth>0) and
+    (aHeight>0) and
+    (aX>=0) and
+    (aY>=0) and
+    ((aX+aWidth)<=fMaskMapResolution) and
+    ((aY+aHeight)<=fMaskMapResolution) then begin
+  fMaskMapDataLock.Acquire;
+  try
+   Source:=aData;
+   for Row:=0 to aHeight-1 do begin
+    Move(Source^,fMaskMapData[((aY+Row)*fMaskMapResolution)+aX],aWidth*SizeOf(TpvUInt32));
+    inc(Source,aWidth);
+   end;
+   // The whole map through the host visible copy, which keeps that copy equal to the GPU mask map, and a
+   // rectangle is rare enough that copying all of it does not matter.
+   fMaskMapModification.WriteHostBuffer(fMaskMapData[0],length(fMaskMapData)*SizeOf(TpvUInt32));
+   BeginUpdate;
+   try
+    fMaskMapModification.RecordUpload(fVulkanUpdateCommandBuffer);
+   finally
+    EndUpdate;
+   end;
+   inc(fMaskMapDataGeneration);
+  finally
+   fMaskMapDataLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.SetMaskMapOverlay(const aIndex:TpvSizeInt;const aBits:TpvUInt32;const aColor:TpvVector4);
+begin
+ if (aIndex>=0) and (aIndex<CountMaskMapOverlays) then begin
+  fMaskMapOverlays[aIndex].Bits:=aBits;
+  fMaskMapOverlays[aIndex].Color:=aColor;
+ end;
+end;
+
+function TpvScene3DPlanet.GetMaskMapOverlay(const aIndex:TpvSizeInt):TMaskMapOverlay;
+begin
+ if (aIndex>=0) and (aIndex<CountMaskMapOverlays) then begin
+  result:=fMaskMapOverlays[aIndex];
+ end else begin
+  result.Bits:=0;
+  result.Color:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
  end;
 end;
 

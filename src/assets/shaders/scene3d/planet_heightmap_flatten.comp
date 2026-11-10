@@ -18,23 +18,27 @@ layout(set = 0, binding = 1) buffer TileMapDirtyBuffer {
 
 layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray;
 
+layout(set = 0, binding = 3) uniform usampler2D uMaskMap;
+
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius;
   uvec4 tileMapResolutionShiftBrushIndex; // x = dirty size, y = shift, z = brush index
   float innerRadius;
   float outerRadius;
   float minHeight;
-  float maxHeight;    
+  float maxHeight;
   float bottomRadius;
   float topRadius;
   float targetHeight;
   float brushRotation;
+  uint maskBits; // mask map bits which protect the ground from this modification, 0 = none
 } pushConstants;
 
 /* clang-format on */
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
+#include "planet_maskmap.glsl"
 
 void main(){
   
@@ -83,9 +87,13 @@ void main(){
     }else{
 
       // No brush
-     
+
       d = 0.0;
 
+    }
+
+    if(d > 0.0){
+      d *= 1.0 - planetMaskMapCoverage(uMaskMap, vec2(xy) / vec2(texSize), pushConstants.maskBits);
     }
 
     if(d > 0.0){

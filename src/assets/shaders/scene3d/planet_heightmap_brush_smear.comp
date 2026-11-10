@@ -39,11 +39,14 @@ layout(set = 0, binding = 2) uniform sampler2DArray uBrushTextureArray[];
 // Smear buffer: persistent R32_SFLOAT image, stays in GENERAL layout across frames.
 layout(set = 0, binding = 3, r32f) uniform image2D uSmearBuffer;
 
+layout(set = 0, binding = 4) uniform usampler2D uMaskMap;
+
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius;                             // xyz = brush center (unit sphere), w = outer radius
   vec4 innerRadiusRateUnused;                      // x = inner radius, y = rate [0,1], z/w = unused
   vec4 previousPosition;                           // xyz = previous brush center (unit sphere), w = unused
   uvec4 tileMapResolutionShiftBrushIndexBrushRotation; // x = dirty size, y = shift, z = brush index, w = brush rotation (float bits)
+  uint maskBits;                                   // mask map bits which protect the ground from this modification, 0 = none
 } pushConstants;
 
 /* clang-format on */
@@ -51,6 +54,7 @@ layout(push_constant) uniform PushConstants {
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "planet_brushes.glsl"
+#include "planet_maskmap.glsl"
 
 // Bilinear sample from the smear buffer (image2D) at a 3D unit-sphere direction.
 // Converts sphere direction => octahedral UV => texel coords, then does manual
@@ -87,6 +91,11 @@ void main(){
       pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.z,
       uintBitsToFloat(pushConstants.tileMapResolutionShiftBrushIndexBrushRotation.w)
     );
+
+    // Masked ground neither gives nor takes: the smear buffer is left alone there as well.
+    if(d > 0.0){
+      d *= 1.0 - planetMaskMapCoverage(uMaskMap, vec2(texel) / vec2(texSize), pushConstants.maskBits);
+    }
 
     if(d > 0.0){
 

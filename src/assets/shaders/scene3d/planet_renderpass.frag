@@ -146,6 +146,9 @@ layout (set = 1, binding = 10, std430) readonly buffer FrustumClusterGridData {
 layout(set = 2, binding = 0) uniform sampler2D uPlanetTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 layout(set = 2, binding = 0) uniform sampler2DArray uPlanetArrayTextures[]; // 0 = height map, 1 = normal map, 2 = blend map, 3 = grass map, 4 = water map, 5 = brushes, 6 = rain map, 7 = atmosphere map
 
+// Mask map (R32_UINT, nearest), for the mask map overlays
+layout(set = 2, binding = 3) uniform usampler2D uPlanetMaskMap;
+
 #define globalRaytracingFlags pushConstants.flags
 
 #include "planet_textures.glsl"
@@ -175,6 +178,7 @@ const vec3 inModelScale = vec3(1.0);
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
+#include "planet_maskmap.glsl"
 #include "tangentspacebasis.glsl"
 
 #ifdef VOXELIZATION
@@ -779,6 +783,21 @@ void main(){
 
     }
 
+  }
+
+  // Mask map overlays: tint the ground where any of the bits of an overlay is set, with the same soft edge the
+  // height map passes see.
+  if(any(notEqual(uvec4(planetData.maskMapOverlays[0].x, planetData.maskMapOverlays[1].x, planetData.maskMapOverlays[2].x, planetData.maskMapOverlays[3].x), uvec4(0u)))){
+    uvec4 maskWords;
+    vec4 maskWeights;
+    planetMaskMapGather(uPlanetMaskMap, octPlanetUnsignedEncode(sphereNormal), maskWords, maskWeights);
+    for(int overlayIndex = 0; overlayIndex < 4; overlayIndex++){
+      const uvec4 overlay = planetData.maskMapOverlays[overlayIndex];
+      if(overlay.x != 0u){
+        const vec4 overlayColor = vec4(unpackHalf2x16(overlay.z), unpackHalf2x16(overlay.w));
+        c.xyz = mix(c.xyz, overlayColor.xyz, overlayColor.w * planetMaskMapGatheredCoverage(maskWords, maskWeights, overlay.x));
+      }
+    }
   }
 
 #ifdef WIREFRAME
