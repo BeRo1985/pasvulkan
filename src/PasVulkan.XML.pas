@@ -284,6 +284,10 @@ type EpvXML=class(Exception);
        AutomaticAloneTagDetection:boolean;
        FormatIndent:boolean;
        FormatIndentText:boolean;
+       // Character references below 256 and the named Latin-1 entities yield the byte itself instead of
+       // the UTF-8 of their code point, for files of writers which wrote every byte beyond ASCII as an
+       // entity of its own
+       LegacyByteEntities:boolean;
        constructor Create; override;
        destructor Destroy; override;
        procedure Assign(From:TpvXML);
@@ -1230,10 +1234,11 @@ begin
   FillChar(EntitiesCharLookUp,SizeOf(TEntitiesCharLookUpTable),#0);
   for EntityCounter:=low(EntityChars) to high(EntityChars) do begin
    EntityStringHashMap.Add(EntityChars[EntityCounter,1],EntityCounter);
-   with EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])] do begin
-    IsEntity:=true;
-    Entity:=EntityChars[EntityCounter,1];
-   end;
+  end;
+  // Written as entities are only the five of XML itself, everything else goes out as UTF-8
+  for EntityCounter:=low(EntityChars) to low(EntityChars)+4 do begin
+   EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])].IsEntity:=true;
+   EntitiesCharLookUp[ord(EntityChars[EntityCounter,2][1])].Entity:=EntityChars[EntityCounter,1];
   end;
  end;
 end;
@@ -1244,21 +1249,88 @@ begin
  EntityInitialized:=false;
 end;
 
-function ConvertToEntities(AString:TpvXMLString;IdentLevel:TpvInt32=0):TpvRawByteString;
+{$ifdef XMLUnicode}
+// How many bytes the UTF-8 sequence its lead byte begins has, 0 for a byte which begins none
+function UTF8SequenceCount(const aLead:TpvUInt8):TpvInt32;
+begin
+ case aLead of
+  $c2..$df:begin
+   result:=2;
+  end;
+  $e0..$ef:begin
+   result:=3;
+  end;
+  $f0..$f4:begin
+   result:=4;
+  end;
+  else begin
+   result:=0;
+  end;
+ end;
+end;
+
+// Whether a byte may follow in the sequence of aLead: the second byte of some lead bytes has a
+// narrower range, so that no sequence is overlong, a surrogate or beyond U+10FFFF
+function UTF8NextByteValid(const aLead,aByte:TpvUInt8;const aSecond:boolean):boolean;
+begin
+ if aSecond then begin
+  case aLead of
+   $e0:begin
+    result:=(aByte>=$a0) and (aByte<=$bf);
+   end;
+   $ed:begin
+    result:=(aByte>=$80) and (aByte<=$9f);
+   end;
+   $f0:begin
+    result:=(aByte>=$90) and (aByte<=$bf);
+   end;
+   $f4:begin
+    result:=(aByte>=$80) and (aByte<=$8f);
+   end;
+   else begin
+    result:=(aByte>=$80) and (aByte<=$bf);
+   end;
+  end;
+ end else begin
+  result:=(aByte>=$80) and (aByte<=$bf);
+ end;
+end;
+{$endif}
+
+// A code point which XML text can not carry as UTF-8, a surrogate or one beyond U+10FFFF, as the
+// replacement character
+function ValidCodePoint(const aCodePoint:TpvUInt32):TpvUInt32;
+begin
+ if ((aCodePoint>=$d800) and (aCodePoint<=$dfff)) or (aCodePoint>$10ffff) then begin
+  result:=$fffd;
+ end else begin
+  result:=aCodePoint;
+ end;
+end;
+
+function ConvertToEntities(const AString:TpvXMLString;const IdentLevel:TpvInt32=0;const InAttribute:boolean=false):TpvRawByteString;
 var Counter,IdentCounter:TpvInt32;
     c:TpvXMLChar;
+{$ifdef XMLUnicode}
+    CodePoint:TpvUInt32;
+{$endif}
 begin
  result:='';
- for Counter:=1 to length(AString) do begin
+ Counter:=1;
+ while Counter<=length(AString) do begin
   c:=AString[Counter];
-  if c=#13 then begin
+  if (c=#13) and not InAttribute then begin
    if ((Counter+1)<=length(AString)) and (AString[Counter+1]=#10) then begin
+    inc(Counter);
     continue;
    end;
    c:=#10;
   end;
   if EntitiesCharLookUp[ord(c)].IsEntity then begin
    result:=result+EntitiesCharLookUp[ord(c)].Entity;
+  end else if InAttribute and ((c=#9) or (c=#10) or (c=#13)) then begin
+   // A parser turns these into spaces inside an attribute, as references they stay what they are
+   result:=result+'&#'+TpvRawByteString(IntToStr(ord(c)))+';';
   end else if (c=#9) or (c=#10) or (c=#13) or ((c>=#32) and (c<=#127)) then begin
    result:=result+c;
    if c=#10 then begin
@@ -1266,17 +1338,26 @@ begin
      result:=result+' ';
     end;
    end;
+  end else if c<#32 then begin
+   result:=result+'&#'+TpvRawByteString(IntToStr(ord(c)))+';';
   end else begin
 {$ifdef XMLUnicode}
-   if c<#255 then begin
-    result:=result+'&#'+TpvRawByteString(IntToStr(ord(c)))+';';
-   end else begin
-    result:=result+'&#x'+TpvRawByteString(IntToHex(ord(c),4))+';';
+   // UTF-16 as UTF-8, a surrogate pair as one code point, a lone surrogate as the replacement
+   // character
+   CodePoint:=ord(c);
+   if (CodePoint>=$d800) and (CodePoint<=$dbff) and (Counter<length(AString)) and
+      (ord(AString[Counter+1])>=$dc00) and (ord(AString[Counter+1])<=$dfff) then begin
+    CodePoint:=$10000+(((CodePoint and $3ff) shl 10) or (TpvUInt32(ord(AString[Counter+1])) and $3ff));
+    inc(Counter);
    end;
+   result:=result+PUCUUTF32CharToUTF8(ValidCodePoint(CodePoint));
 {$else}
-   result:=result+'&#'+TpvRawByteString(IntToStr(TpvUInt8(c)))+';';
+   // The text is UTF-8, its bytes go out as they are; a byte which belongs to no sequence is kept as
+   // well, so that a value of raw bytes comes back as it was
+   result:=result+c;
 {$endif}
   end;
+  inc(Counter);
  end;
 end;
 
@@ -1288,6 +1369,7 @@ begin
  AutomaticAloneTagDetection:=true;
  FormatIndent:=true;
  FormatIndentText:=false;
+ LegacyByteEntities:=false;
 end;
 
 destructor TpvXML.Destroy;
@@ -1302,17 +1384,19 @@ begin
  AutomaticAloneTagDetection:=From.AutomaticAloneTagDetection;
  FormatIndent:=From.FormatIndent;
  FormatIndentText:=From.FormatIndentText;
+ LegacyByteEntities:=From.LegacyByteEntities;
 end;
 
 function TpvXML.Parse(Stream:TStream):boolean;
 const NameCanBeginWithCharSet:set of TpvRawByteChar=['A'..'Z','a'..'z','_'];
       NameCanContainCharSet:set of TpvRawByteChar=['A'..'Z','a'..'z','0'..'9','.',':','_','-'];
       BlankCharSet:set of TpvRawByteChar=[#0..#$20];//[#$9,#$A,#$D,#$20];
-type TEncoding=(ASCII,UTF8,UTF16);
+type TEncoding=(UTF8,UTF16,Latin1);
 var Errors:boolean;
     CurrentChar:TpvRawByteChar;
     StreamEOF:boolean;
     Encoding:TEncoding;
+    ByteOrderMark:array[0..2] of TpvUInt8;
 
  function IsEOF:boolean;
  begin
@@ -1475,12 +1559,134 @@ var Errors:boolean;
   end;
  end;
 
+ // A code point onto the text which holds aLength characters so far: as UTF-8, or as UTF-16 with
+ // XMLUnicode
+ procedure AddCodePoint(var aText:TpvXMLString;var aLength:TpvInt32;const aCodePoint:TpvUInt32);
+ var CodePoint:TpvUInt32;
+{$ifndef XMLUnicode}
+     Encoded:TpvRawByteString;
+{$endif}
+ begin
+  CodePoint:=ValidCodePoint(aCodePoint);
+{$ifdef XMLUnicode}
+  if (aLength+3)>length(aText) then begin
+   SetLength(aText,RoundUpToPowerOfTwo(aLength+3));
+  end;
+  if CodePoint<=$ffff then begin
+   inc(aLength);
+   aText[aLength]:=WideChar(TpvUInt16(CodePoint));
+  end else begin
+   dec(CodePoint,$10000);
+   inc(aLength);
+   aText[aLength]:=WideChar(TpvUInt16((CodePoint shr 10) or $d800));
+   inc(aLength);
+   aText[aLength]:=WideChar(TpvUInt16((CodePoint and $3ff) or $dc00));
+  end;
+{$else}
+  if CodePoint<$80 then begin
+   if (aLength+2)>length(aText) then begin
+    SetLength(aText,RoundUpToPowerOfTwo(aLength+2));
+   end;
+   inc(aLength);
+   aText[aLength]:=TpvRawByteChar(TpvUInt8(CodePoint));
+  end else begin
+   Encoded:=PUCUUTF32CharToUTF8(CodePoint);
+   if (aLength+length(Encoded)+1)>length(aText) then begin
+    SetLength(aText,RoundUpToPowerOfTwo(aLength+length(Encoded)+1));
+   end;
+   Move(Encoded[1],aText[aLength+1],length(Encoded));
+   inc(aLength,length(Encoded));
+  end;
+{$endif}
+ end;
+
+{$ifndef XMLUnicode}
+ // A byte as it is onto the text which holds aLength bytes so far
+ procedure AddByte(var aText:TpvXMLString;var aLength:TpvInt32;const aByte:TpvUInt8);
+ begin
+  if (aLength+2)>length(aText) then begin
+   SetLength(aText,RoundUpToPowerOfTwo(aLength+2));
+  end;
+  inc(aLength);
+  aText[aLength]:=TpvRawByteChar(aByte);
+ end;
+{$endif}
+
+ // The byte beyond ASCII at the current position onto the text. Where the document says it is in
+ // Latin-1, it is that character; else the bytes are UTF-8 and stay as they are, a byte which belongs
+ // to no sequence as well, so that a value of raw bytes comes back as it was. With XMLUnicode a valid
+ // sequence becomes its code point and every other byte the Latin-1 character it stands for
+ procedure AddNonASCII(var aText:TpvXMLString;var aLength:TpvInt32);
+{$ifdef XMLUnicode}
+ var Sequence:array[0..3] of TpvUInt8;
+     Count,Expected,Index:TpvInt32;
+     CodePoint:TpvUInt32;
+{$endif}
+ begin
+  if Encoding=TEncoding.Latin1 then begin
+   AddCodePoint(aText,aLength,TpvUInt8(CurrentChar));
+   NextChar;
+  end else begin
+{$ifdef XMLUnicode}
+   Sequence[0]:=TpvUInt8(CurrentChar);
+   Expected:=UTF8SequenceCount(Sequence[0]);
+   Count:=1;
+   NextChar;
+   while (Count<Expected) and not IsEOF and UTF8NextByteValid(Sequence[0],TpvUInt8(CurrentChar),Count=1) do begin
+    Sequence[Count]:=TpvUInt8(CurrentChar);
+    inc(Count);
+    NextChar;
+   end;
+   if (Expected>0) and (Count=Expected) then begin
+    case Count of
+     2:begin
+      CodePoint:=((TpvUInt32(Sequence[0]) and $1f) shl 6) or (TpvUInt32(Sequence[1]) and $3f);
+     end;
+     3:begin
+      CodePoint:=((TpvUInt32(Sequence[0]) and $0f) shl 12) or ((TpvUInt32(Sequence[1]) and $3f) shl 6) or
+                 (TpvUInt32(Sequence[2]) and $3f);
+     end;
+     else begin
+      CodePoint:=((TpvUInt32(Sequence[0]) and $07) shl 18) or ((TpvUInt32(Sequence[1]) and $3f) shl 12) or
+                 ((TpvUInt32(Sequence[2]) and $3f) shl 6) or (TpvUInt32(Sequence[3]) and $3f);
+     end;
+    end;
+    AddCodePoint(aText,aLength,CodePoint);
+   end else begin
+    for Index:=0 to Count-1 do begin
+     AddCodePoint(aText,aLength,Sequence[Index]);
+    end;
+   end;
+{$else}
+   AddByte(aText,aLength,TpvUInt8(CurrentChar));
+   NextChar;
+{$endif}
+  end;
+ end;
+
+ // What a character reference or a named entity stands for onto the text: the UTF-8 of its code
+ // point, or with LegacyByteEntities the byte itself below 256
+ procedure AddReference(var aText:TpvXMLString;var aLength:TpvInt32;const aValue:TpvInt32);
+ begin
+  if aValue<0 then begin
+   AddCodePoint(aText,aLength,$fffd);
+  end else if LegacyByteEntities and (aValue<=255) then begin
+{$ifdef XMLUnicode}
+   AddCodePoint(aText,aLength,aValue);
+{$else}
+   AddByte(aText,aLength,TpvUInt8(aValue));
+{$endif}
+  end else begin
+   AddCodePoint(aText,aLength,aValue);
+  end;
+ end;
+
  function GetEntity:TpvXMLString;
- var Value:TpvInt32;
+ var Value,Len:TpvInt32;
      Entity:TpvRawByteString;
-     c:TpvXMLChar;
  begin
   result:='';
+  Len:=0;
   if CurrentChar='&' then begin
    NextChar;
    if not IsEOF then begin
@@ -1497,12 +1703,7 @@ var Errors:boolean;
       end;
       if CurrentChar=';' then begin
        NextChar;
-{$ifdef XMLUnicode}
-       c:=WideChar(TpvUInt16(Value));
-{$else}
-       c:=TpvRawByteChar(TpvUInt8(Value));
-{$endif}
-       result:=c;
+       AddReference(result,Len,Value);
       end else begin
        Errors:=true;
       end;
@@ -1517,9 +1718,15 @@ var Errors:boolean;
       Entity:=Entity+CurrentChar;
       NextChar;
       if EntityStringHashMap.TryGet(Entity,Value) then begin
-       result:=EntityChars[Value,2];
+       // The table holds the bytes of Latin-1, where the euro sign is the one of Windows-1252
+       if (Entity='&euro;') and not LegacyByteEntities then begin
+        AddCodePoint(result,Len,$20ac);
+       end else begin
+        AddReference(result,Len,ord(EntityChars[Value,2][1]));
+       end;
       end else begin
-       result:=Entity;
+       result:=TpvXMLString(Entity);
+       Len:=length(result);
       end;
      end else begin
       Errors:=true;
@@ -1527,55 +1734,24 @@ var Errors:boolean;
     end;
    end;
   end;
+  SetLength(result,Len);
  end;
 
  function ParseTagParameterValue(TerminateChar:TpvRawByteChar):TpvXMLString;
- var i,wc,c:TpvInt32;
+ var i:TpvInt32;
  begin
   result:='';
   SkipBlank;
   i:=0;
   while (CurrentChar<>TerminateChar) and not IsEOFOrErrors do begin
-   if (Encoding=TEncoding.UTF8) and (ord(CurrentChar)>=$80) then begin
-    wc:=ord(CurrentChar) and $3f;
-    if (wc and $20)<>0 then begin
-     NextChar;
-     c:=ord(CurrentChar);
-     if (c and $c0)<>$80 then begin
-      break;
-     end;
-     wc:=(wc shl 6) or (c and $3f);
-    end;
-    NextChar;
-    c:=ord(CurrentChar);
-    if (c and $c0)<>$80 then begin
-     break;
-    end;
-    wc:=(wc shl 6) or (c and $3f);
-    NextChar;
-    inc(i);
-    if (i+1)>length(result) then begin
-     SetLength(result,RoundUpToPowerOfTwo(i+1));
-    end;
-{$ifdef XMLUnicode}
-    result[i]:=WideChar(wc);
-{$else}
-    result[i]:=TpvRawByteChar(wc);
-{$endif}
+   if ord(CurrentChar)>=$80 then begin
+    AddNonASCII(result,i);
    end else if CurrentChar='&' then begin
     SetLength(result,i);
     result:=result+GetEntity;
     i:=length(result);
    end else begin
-    inc(i);
-    if (i+1)>length(result) then begin
-     SetLength(result,RoundUpToPowerOfTwo(i+1));
-    end;
-{$ifdef XMLUnicode}
-    result[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
-{$else}
-    result[i]:=CurrentChar;
-{$endif}
+    AddCodePoint(result,i,TpvUInt8(CurrentChar));
     NextChar;
    end;
   end;
@@ -1629,10 +1805,7 @@ var Errors:boolean;
   procedure ParseText;
   var Text:TpvXMLString;
       XMLText:TpvXMLText;
-      i,wc,c:TpvInt32;
-{$ifndef XMLUnicode}
-      w:TpvRawByteString;
-{$endif}
+      i:TpvInt32;
   begin
    SkipBlank;
    if CurrentChar='<' then begin
@@ -1642,145 +1815,17 @@ var Errors:boolean;
    Text:='';
    SetLength(Text,16);
    while (CurrentChar<>'<') and not IsEOFOrErrors do begin
-    if (Encoding=TEncoding.UTF8) and (ord(CurrentChar)>=$80) then begin
-     wc:=ord(CurrentChar) and $3f;
-     if (wc and $20)<>0 then begin
-      NextChar;
-      c:=ord(CurrentChar);
-      if (c and $c0)<>$80 then begin
-       break;
-      end;
-      wc:=(wc shl 6) or (c and $3f);
-     end;
-     NextChar;
-     c:=ord(CurrentChar);
-     if (c and $c0)<>$80 then begin
-      break;
-     end;
-     wc:=(wc shl 6) or (c and $3f);
-     NextChar;
-{$ifdef XMLUnicode}
-     if wc<=$d7ff then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=WideChar(TpvUInt16(wc));
-     end else if wc<=$dfff then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=#$fffd;
-     end else if wc<=$fffd then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=WideChar(TpvUInt16(wc));
-     end else if wc<=$ffff then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=#$fffd;
-     end else if wc<=$10ffff then begin
-      dec(wc,$10000);
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=WideChar(TpvUInt16((wc shr 10) or $d800));
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=WideChar(TpvUInt16((wc and $3ff) or $dc00));
-     end else begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=#$fffd;
-     end;
-{$else}
-     if wc<$80 then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,RoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=TpvRawByteChar(TpvUInt8(wc));
-     end else begin
-      w:=PUCUUTF32CharToUTF8(wc);
-      if length(w)>0 then begin
-       inc(i);
-       if (i+length(w)+1)>length(Text) then begin
-        SetLength(Text,RoundUpToPowerOfTwo(i+length(w)+1));
-       end;
-       Move(w[1],Text[i],length(w));
-       inc(i,length(w)-1);
-      end;
-     end;
-{$endif}
+    if ord(CurrentChar)>=$80 then begin
+     AddNonASCII(Text,i);
     end else if CurrentChar='&' then begin
      SetLength(Text,i);
      Text:=Text+GetEntity;
      i:=length(Text);
     end else if CurrentChar in BlankCharSet then begin
-{$ifdef XMLUnicode}
-     inc(i);
-     if (i+1)>length(Text) then begin
-      SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-     end;
-     Text[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
-{$else}
-     wc:=ord(CurrentChar);
-     if wc<$80 then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,RoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=TpvRawByteChar(TpvUInt8(wc));
-     end else begin
-      w:=PUCUUTF32CharToUTF8(wc);
-      if length(w)>0 then begin
-       inc(i);
-       if (i+length(w)+1)>length(Text) then begin
-        SetLength(Text,RoundUpToPowerOfTwo(i+length(w)+1));
-       end;
-       Move(w[1],Text[i],length(w));
-       inc(i,length(w)-1);
-      end;
-     end;
-{$endif}
+     AddCodePoint(Text,i,TpvUInt8(CurrentChar));
      SkipBlank;
     end else begin
-{$ifdef XMLUnicode}
-     inc(i);
-     if (i+1)>length(Text) then begin
-      SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
-     end;
-     Text[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
-{$else}
-     wc:=ord(CurrentChar);
-     if wc<$80 then begin
-      inc(i);
-      if (i+1)>length(Text) then begin
-       SetLength(Text,RoundUpToPowerOfTwo(i+1));
-      end;
-      Text[i]:=TpvRawByteChar(TpvUInt8(wc));
-     end else begin
-      w:=PUCUUTF32CharToUTF8(wc);
-      if length(w)>0 then begin
-       inc(i);
-       if (i+length(w)+1)>length(Text) then begin
-        SetLength(Text,RoundUpToPowerOfTwo(i+length(w)+1));
-       end;
-       Move(w[1],Text[i],length(w));
-       inc(i,length(w)-1);
-      end;
-     end;
-{$endif}
+     AddCodePoint(Text,i,TpvUInt8(CurrentChar));
      NextChar;
     end;
    end;
@@ -1814,13 +1859,15 @@ var Errors:boolean;
     exit;
    end;
    if XMLProcessTag.Name='xml' then begin
-    EncodingName:=TpvRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','ascii'))));
-    if EncodingName='UTF-8' then begin
-     Encoding:=TEncoding.UTF8;
-    end else if EncodingName='UTF-16' then begin
+    // Without a name of its own a document is UTF-8, and ASCII is a part of it
+    EncodingName:=TpvRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','UTF-8'))));
+    if EncodingName='UTF-16' then begin
      Encoding:=TEncoding.UTF16;
+    end else if (EncodingName='ISO-8859-1') or (EncodingName='ISO8859-1') or (EncodingName='LATIN1') or
+                (EncodingName='LATIN-1') or (EncodingName='WINDOWS-1252') or (EncodingName='CP1252') then begin
+     Encoding:=TEncoding.Latin1;
     end else begin
-     Encoding:=TEncoding.ASCII;
+     Encoding:=TEncoding.UTF8;
     end;
    end;
   end;
@@ -1987,12 +2034,17 @@ var Errors:boolean;
   end;
  end;
 begin
- Encoding:=TEncoding.ASCII;
+ Encoding:=TEncoding.UTF8;
  Errors:=false;
  CurrentChar:=#0;
  Root.Clear;
  StreamEOF:=false;
  Stream.Seek(0,soFromBeginning);
+ // A byte order mark of UTF-8 in front is passed over
+ if (Stream.Read(ByteOrderMark,SizeOf(ByteOrderMark))<>SizeOf(ByteOrderMark)) or
+    (ByteOrderMark[0]<>$ef) or (ByteOrderMark[1]<>$bb) or (ByteOrderMark[2]<>$bf) then begin
+  Stream.Seek(0,soFromBeginning);
+ end;
  NextChar;
  Process(Root,true);
  if Errors then begin
@@ -2069,7 +2121,7 @@ var IdentLevel:TpvInt32;
      Line:=Line+'<?'+TpvXMLProcessTag(Item).Name;
      for Counter:=0 to length(TpvXMLProcessTag(Item).Parameter)-1 do begin
       if assigned(TpvXMLProcessTag(Item).Parameter[Counter]) then begin
-       Line:=Line+' '+TpvXMLProcessTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TpvXMLProcessTag(Item).Parameter[Counter].Value)+'"';
+       Line:=Line+' '+TpvXMLProcessTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TpvXMLProcessTag(Item).Parameter[Counter].Value,0,true)+'"';
       end;
      end;
      Line:=Line+'?>';
@@ -2108,7 +2160,7 @@ var IdentLevel:TpvInt32;
      Line:=Line+'<'+TpvXMLTag(Item).Name;
      for Counter:=0 to length(TpvXMLTag(Item).Parameter)-1 do begin
       if assigned(TpvXMLTag(Item).Parameter[Counter]) then begin
-       Line:=Line+' '+TpvXMLTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TpvXMLTag(Item).Parameter[Counter].Value)+'"';
+       Line:=Line+' '+TpvXMLTag(Item).Parameter[Counter].Name+'="'+ConvertToEntities(TpvXMLTag(Item).Parameter[Counter].Value,0,true)+'"';
       end;
      end;
      if TpvXMLTag(Item).IsAloneTag then begin
