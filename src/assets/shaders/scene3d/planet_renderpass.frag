@@ -713,6 +713,9 @@ void main(){
 
     const uint brushIndex = planetData.selectedColorBrushIndexBrushRotation.z;
 
+    // How much of the brush covers this point, for the brush overlay below.
+    float brushCoverage = 0.0;
+
     if(brushIndex == 0u){
 
       // Circle brush
@@ -730,7 +733,8 @@ void main(){
 #else
       float t = planetData.selectedInnerRadius;
 //    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), smoothstep(0.0, -t, d) * 0.5);
-      c.xyz = mix(c.xyz, selectedColor.xyz, selectedColor.w * smoothstep(0.0, -t, d));
+      brushCoverage = smoothstep(0.0, -t, d);
+      c.xyz = mix(c.xyz, selectedColor.xyz, selectedColor.w * brushCoverage);
 #endif
 
     }else if(brushIndex <= 255u){
@@ -779,9 +783,41 @@ void main(){
       }
 
 //    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), selectedColor.xyz, selectedColor.w), d);
+      brushCoverage = d;
       c.xyz = mix(c.xyz, selectedColor.xyz, selectedColor.w * d);
 
     }
+
+#if !defined(RSMALBEDO)
+    // The brush overlay: a texture in polar coordinates round the brush's middle, flowing outwards and glowing on top of
+    // the ground where the brush covers it, optionally fading out towards the rim and brighter in the middle.
+    const uint brushOverlayTextureID = planetData.brushOverlay.x;
+    if(brushOverlayTextureID != 0u){
+      const vec3 brushOverlayNormal = normalize(planetData.selected.xyz);
+      vec3 brushOverlayTangent = brushOverlayNormal.yzx - brushOverlayNormal.zxy;
+      brushOverlayTangent = normalize(brushOverlayTangent - (dot(brushOverlayTangent, brushOverlayNormal) * brushOverlayNormal));
+      const vec3 brushOverlayBitangent = normalize(cross(brushOverlayNormal, brushOverlayTangent));
+      const vec3 brushOverlayOffset = sphereNormal - brushOverlayNormal;
+      const vec2 brushOverlayPosition = vec2(dot(brushOverlayOffset, brushOverlayTangent), dot(brushOverlayOffset, brushOverlayBitangent)) / max(planetData.selected.w, 1e-6);
+      const float brushOverlayRadius = length(brushOverlayPosition);
+      const int brushOverlayTextureIndex = ((int(brushOverlayTextureID - 1u) & 0x3fff) << 1) | 1;
+      // The level of detail from how fast the distance from the middle changes on the screen (the angle wraps).
+      const float brushOverlayLOD = max(0.0, log2(max(fwidth(brushOverlayRadius) * float(textureSize(u2DTextures[nonuniformEXT(brushOverlayTextureIndex)], 0).y), 1e-6)));
+      if((brushOverlayRadius < 1.0) && (brushCoverage > 0.0) && (dot(sphereNormal, brushOverlayNormal) > 0.0)){
+        // x = angular repeats, y = radial fade exponent, z = core boost, w = core radius
+        const vec4 brushOverlayShape = uintBitsToFloat(planetData.brushOverlayShape);
+        const vec2 brushOverlayUV = vec2(atan(brushOverlayPosition.y, brushOverlayPosition.x) * (brushOverlayShape.x * 0.15915494309), brushOverlayRadius - uintBitsToFloat(planetData.brushOverlay.y));
+        const vec4 brushOverlayTexel = textureLod(u2DTextures[nonuniformEXT(brushOverlayTextureIndex)], brushOverlayUV, brushOverlayLOD);
+        // A tint (RGBA8) for a texture whose pattern lies in its alpha, white in color: drawn in the tint with its
+        // alpha. None (0): the texture's color as it is.
+        const uint brushOverlayTint = planetData.brushOverlay.w;
+        const vec3 brushOverlayColor = (brushOverlayTint != 0u) ? (brushOverlayTexel.xyz * (brushOverlayTexel.w * unpackUnorm4x8(brushOverlayTint).xyz)) : brushOverlayTexel.xyz;
+        // Radius below 1 here, so the base of pow stays positive, and an exponent of 0 gives 1, no fade.
+        const float brushOverlayFade = pow(1.0 - brushOverlayRadius, brushOverlayShape.y) * (1.0 + (brushOverlayShape.z * (1.0 - smoothstep(0.0, max(brushOverlayShape.w, 1e-6), brushOverlayRadius))));
+        c.xyz += brushOverlayColor * (uintBitsToFloat(planetData.brushOverlay.z) * brushOverlayFade * brushCoverage);
+      }
+    }
+#endif
 
   }
 

@@ -283,6 +283,16 @@ type TpvScene3DPlanets=class;
 
              MaskMapOverlays:array[0..CountMaskMapOverlays-1] of TMaskMapOverlayData;
 
+             // The brush overlay (see TData.BrushOverlayTextureID), fills uvec4 brushOverlay and uvec4 brushOverlayShape
+             BrushOverlayTextureID:TpvUInt32; // texture ID plus one, 0 = off
+             BrushOverlayFlow:TpvFloat; // how far the texture has flowed outwards, in texture lengths
+             BrushOverlayIntensity:TpvFloat;
+             BrushOverlayTint:TpvUInt32; // RGBA8, 0 = none
+             BrushOverlayAngularRepeats:TpvFloat;
+             BrushOverlayRadialFadeExponent:TpvFloat; // 0 = no fade
+             BrushOverlayCoreBoost:TpvFloat; // 0 = none
+             BrushOverlayCoreRadius:TpvFloat;
+
              Textures:array[0..15,0..3] of TpvUInt32;
 
              // Kept at the end, so that only the used part of the arcs has to be uploaded each frame
@@ -750,6 +760,14 @@ type TpvScene3DPlanets=class;
               fBrushInnerRadius:TpvScalar;
               fSurfaceArcs:TSurfaceArcDataArray;
               fCountSurfaceArcs:TpvSizeInt;
+              fBrushOverlayTextureID:TpvUInt32;
+              fBrushOverlayFlow:TpvFloat;
+              fBrushOverlayIntensity:TpvFloat;
+              fBrushOverlayTint:TpvUInt32;
+              fBrushOverlayAngularRepeats:TpvFloat;
+              fBrushOverlayRadialFadeExponent:TpvFloat;
+              fBrushOverlayCoreBoost:TpvFloat;
+              fBrushOverlayCoreRadius:TpvFloat;
               fWireframeActive:Boolean;
               fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
@@ -825,6 +843,9 @@ type TpvScene3DPlanets=class;
                                    const aTransferAtmosphere:Boolean;
                                    const aTransferMaskMap:Boolean);
               procedure Assign(const aData:TData);
+              // Gives the brush overlay the shape of a flame flowing out from the brush's middle: three repeats
+              // round it, fading out towards the rim and brighter in the middle.
+              procedure SetBrushOverlayFlameShape;
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
@@ -924,6 +945,23 @@ type TpvScene3DPlanets=class;
               property SelectedBrush:TpvUInt32 read fSelectedBrush write fSelectedBrush;
               property BrushRotation:TpvScalar read fBrushRotation write fBrushRotation;
               property BrushInnerRadius:TpvScalar read fBrushInnerRadius write fBrushInnerRadius;
+              // A texture laid over the brush in polar coordinates round its middle, flowing outwards and glowing
+              // on top of the ground where the brush covers it: the texture's ID plus one (0 = none), how far it
+              // has flowed (texture lengths, wraps at 1) and how brightly it glows.
+              property BrushOverlayTextureID:TpvUInt32 read fBrushOverlayTextureID write fBrushOverlayTextureID;
+              property BrushOverlayFlow:TpvFloat read fBrushOverlayFlow write fBrushOverlayFlow;
+              property BrushOverlayIntensity:TpvFloat read fBrushOverlayIntensity write fBrushOverlayIntensity;
+              // 0: the texture's color as it is. Else a tint (RGBA8, a unused) the texture is drawn
+              // in, with its alpha: for a texture whose pattern lies in its alpha (white in color).
+              property BrushOverlayTint:TpvUInt32 read fBrushOverlayTint write fBrushOverlayTint;
+              // The brush overlay's shape: how often the texture repeats round the middle (whole numbers avoid a
+              // seam), how it fades out towards the rim (exponent on one minus the distance from the middle, 0 =
+              // no fade), how much brighter it gets towards the middle (0 = not at all) and up to which part of
+              // the radius. Neutral by default, see SetBrushOverlayFlameShape.
+              property BrushOverlayAngularRepeats:TpvFloat read fBrushOverlayAngularRepeats write fBrushOverlayAngularRepeats;
+              property BrushOverlayRadialFadeExponent:TpvFloat read fBrushOverlayRadialFadeExponent write fBrushOverlayRadialFadeExponent;
+              property BrushOverlayCoreBoost:TpvFloat read fBrushOverlayCoreBoost write fBrushOverlayCoreBoost;
+              property BrushOverlayCoreRadius:TpvFloat read fBrushOverlayCoreRadius write fBrushOverlayCoreRadius;
               property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
               property DisplacementMappingActive:Boolean read fDisplacementMappingActive write fDisplacementMappingActive;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
@@ -6836,6 +6874,22 @@ begin
 
  fCountSurfaceArcs:=0;
 
+ fBrushOverlayTextureID:=0;
+
+ fBrushOverlayFlow:=0.0;
+
+ fBrushOverlayIntensity:=1.0;
+
+ fBrushOverlayTint:=0;
+
+ fBrushOverlayAngularRepeats:=1.0;
+
+ fBrushOverlayRadialFadeExponent:=0.0;
+
+ fBrushOverlayCoreBoost:=0.0;
+
+ fBrushOverlayCoreRadius:=0.25;
+
  fWireframeActive:=false;
 
  fDisplacementMappingActive:=false;
@@ -10619,6 +10673,14 @@ begin
   end;
   Move(aData.fSurfaceArcs[0],fSurfaceArcs[0],fCountSurfaceArcs*SizeOf(TSurfaceArcData));
  end;
+ fBrushOverlayTextureID:=aData.fBrushOverlayTextureID;
+ fBrushOverlayFlow:=aData.fBrushOverlayFlow;
+ fBrushOverlayIntensity:=aData.fBrushOverlayIntensity;
+ fBrushOverlayTint:=aData.fBrushOverlayTint;
+ fBrushOverlayAngularRepeats:=aData.fBrushOverlayAngularRepeats;
+ fBrushOverlayRadialFadeExponent:=aData.fBrushOverlayRadialFadeExponent;
+ fBrushOverlayCoreBoost:=aData.fBrushOverlayCoreBoost;
+ fBrushOverlayCoreRadius:=aData.fBrushOverlayCoreRadius;
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
@@ -10626,6 +10688,14 @@ begin
  fVisualMeshVertexBufferRenderIndex:=aData.fVisualMeshVertexBufferRenderIndex;
  fMinMaxHeightFactor:=aData.fMinMaxHeightFactor;
  fHeightFactorExponent:=aData.fHeightFactorExponent;
+end;
+
+procedure TpvScene3DPlanet.TData.SetBrushOverlayFlameShape;
+begin
+ fBrushOverlayAngularRepeats:=3.0;
+ fBrushOverlayRadialFadeExponent:=1.3;
+ fBrushOverlayCoreBoost:=1.5;
+ fBrushOverlayCoreRadius:=0.25;
 end;
 
 { TpvScene3DPlanet.TWaterRainSettings }
@@ -41281,6 +41351,16 @@ begin
     fPlanetData.MaskMapOverlays[OverlayIndex].Color.z:=fMaskMapOverlays[OverlayIndex].Color.z;
     fPlanetData.MaskMapOverlays[OverlayIndex].Color.w:=fMaskMapOverlays[OverlayIndex].Color.w;
    end;
+
+   // The brush overlay, see TData.BrushOverlayTextureID
+   fPlanetData.BrushOverlayTextureID:=InFlightFrameData.fBrushOverlayTextureID;
+   fPlanetData.BrushOverlayFlow:=InFlightFrameData.fBrushOverlayFlow;
+   fPlanetData.BrushOverlayIntensity:=InFlightFrameData.fBrushOverlayIntensity;
+   fPlanetData.BrushOverlayTint:=InFlightFrameData.fBrushOverlayTint;
+   fPlanetData.BrushOverlayAngularRepeats:=InFlightFrameData.fBrushOverlayAngularRepeats;
+   fPlanetData.BrushOverlayRadialFadeExponent:=InFlightFrameData.fBrushOverlayRadialFadeExponent;
+   fPlanetData.BrushOverlayCoreBoost:=InFlightFrameData.fBrushOverlayCoreBoost;
+   fPlanetData.BrushOverlayCoreRadius:=InFlightFrameData.fBrushOverlayCoreRadius;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
     Material:=@fMaterials[MaterialIndex];

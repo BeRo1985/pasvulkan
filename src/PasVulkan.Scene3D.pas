@@ -46966,6 +46966,13 @@ begin
   end else begin
    // Candidate is a non-virtual instance in this case, and aInstance a virtual-instance
    if Candidate.Active then begin
+    if assigned(Candidate.fOnNodeMatrixPre) or
+       assigned(Candidate.fOnNodeMatrixPost) or
+       assigned(Candidate.fOnNodeWeights) then begin
+     // Its pose is changed by the node callbacks of the one virtual instance it stands for, so it is
+     // not shared with others
+     continue;
+    end;
     if Candidate.fMaxRenderInstanceCount>0 then begin
      if assigned(aInstance) and aInstance.fUseRenderInstances then begin
       CountRenderInstances:=aInstance.fCountActiveVirtualRenderInstances;
@@ -47013,6 +47020,13 @@ begin
 
    // Invert similarity: prefer LESS similar instances (dissimilar get high scores)
    Score:=(Similarity*-10.0)-(DistanceToCamera*0.001);
+
+   // Virtual instances with node callbacks need a non-virtual instance of their own, so they go first
+   if assigned(Candidate.fOnNodeMatrixPre) or
+      assigned(Candidate.fOnNodeMatrixPost) or
+      assigned(Candidate.fOnNodeWeights) then begin
+    Score:=Score+100.0;
+   end;
 
    // Add temporal bonus or penalty if this was assigned last frame
    // Candidate is a virtual instance in this case, and aInstance a non-virtual instance
@@ -47102,6 +47116,10 @@ begin
   for Index:=0 to fNonVirtualInstances.Count-1 do begin
    NonVirtualInstance:=fNonVirtualInstances[Index];
    NonVirtualInstance.fAssignedVirtualInstance:=nil;
+   // The node callbacks are those of the virtual instance it stands for, taken over anew below
+   NonVirtualInstance.fOnNodeMatrixPre:=nil;
+   NonVirtualInstance.fOnNodeMatrixPost:=nil;
+   NonVirtualInstance.fOnNodeWeights:=nil;
    fAvailableNonVirtualInstances.Add(NonVirtualInstance);
    if NonVirtualInstance.fActive then begin
     NonVirtualInstance.fActive:=false;
@@ -47233,6 +47251,14 @@ begin
     NonVirtualInstance.fRaytracingMask:=VirtualInstance.fRaytracingMask;
     NonVirtualInstance.fAnimationUpdateInterval:=VirtualInstance.fAnimationUpdateInterval;
     NonVirtualInstance.fActive:=true;
+
+    // Take over the node callbacks: the pose that gets drawn is evaluated on the non-virtual instance,
+    // so callbacks set on the virtual instance alone (foot IK and the like) never reached the screen.
+    // Such a non-virtual instance is then not shared with other virtual instances, see
+    // DefaultAssignmentHeuristic.
+    NonVirtualInstance.fOnNodeMatrixPre:=VirtualInstance.fOnNodeMatrixPre;
+    NonVirtualInstance.fOnNodeMatrixPost:=VirtualInstance.fOnNodeMatrixPost;
+    NonVirtualInstance.fOnNodeWeights:=VirtualInstance.fOnNodeWeights;
 
     // Copy animation states
     if VirtualInstance.fUseAnimationStates and (length(VirtualInstance.fAnimationStates)>0) then begin

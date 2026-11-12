@@ -96,6 +96,11 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
   // Mask map overlays: each tints the ground where any of its mask bits is set, later ones over earlier ones.
   uvec4 maskMapOverlays[4]; // x = mask bits (0 = overlay off), y = unused, zw = half4(red, green, blue, strength), color linear
 
+  // Brush overlay: a texture in polar coordinates round the brush's middle, flowing outwards and glowing on top of the ground
+  // where the brush covers it (planet_renderpass.frag).
+  uvec4 brushOverlay; // x = texture ID plus one (0 = off), y = flow in texture lengths (float bits), z = intensity (float bits), w = tint (RGBA8, 0 = none: the texture's color as it is, else color * alpha * tint)
+  uvec4 brushOverlayShape; // all float bits: x = angular repeats, y = radial fade exponent (0 = no fade), z = core boost (0 = none), w = core radius
+
   PlanetMaterial materials[16];
 
   // Great circle arcs drawn on the ground (TpvScene3DPlanet.SetSurfaceArcs), three uvec4 per arc:
