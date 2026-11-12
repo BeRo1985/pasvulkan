@@ -1,6 +1,9 @@
 #ifndef PLANET_DATA_GLSL
 #define PLANET_DATA_GLSL
 
+// Kept in step with TpvScene3DPlanet.MaxSurfaceArcs
+#define PLANET_MAX_SURFACE_ARCS 512
+
 #if 0
 struct PlanetMaterial {
   uint albedo;
@@ -94,6 +97,14 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
   uvec4 maskMapOverlays[4]; // x = mask bits (0 = overlay off), y = unused, zw = half4(red, green, blue, strength), color linear
 
   PlanetMaterial materials[16];
+
+  // Great circle arcs drawn on the ground (TpvScene3DPlanet.SetSurfaceArcs), three uvec4 per arc:
+  //  [0] xyz = normal of the great circle, w = half width as angle in radians (float bits)
+  //  [1] xyz = start plane, the arc begins where dot(start plane, direction) gets positive, w = half2(red, green)
+  //  [2] xyz = end plane, the arc ends where dot(end plane, direction) gets negative, w = half2(blue, alpha)
+  // Kept at the end, the CPU uploads only the first surfaceArcCount.x arcs.
+  uvec4 surfaceArcCount; // x = count of arcs, yzw = unused
+  uvec4 surfaceArcs[PLANET_MAX_SURFACE_ARCS * 3];
 
 }
 #if defined(USE_PLANET_BUFFER_REFERENCE)

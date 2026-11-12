@@ -798,6 +798,30 @@ void main(){
     }
   }
 
+  // Application defined great circle arcs on the ground, later ones over earlier ones. The distance to an arc is the
+  // angle to its great circle, its span is cut by the planes through the planet centre at its two ends. The pixel
+  // footprint comes from the derivatives outside the loop, so it stays valid in the non-uniform branches below, and
+  // keeps distant lines at least about one pixel wide.
+  {
+    const uint countSurfaceArcs = min(planetData.surfaceArcCount.x, uint(PLANET_MAX_SURFACE_ARCS));
+    if(countSurfaceArcs > 0u){
+      const float arcPixelFootprint = max(length(fwidth(sphereNormal)), 1e-7);
+      for(uint arcIndex = 0u; arcIndex < countSurfaceArcs; arcIndex++){
+        const uvec4 arcNormalWidth = planetData.surfaceArcs[(arcIndex * 3u) + 0u];
+        const float arcDistance = abs(dot(uintBitsToFloat(arcNormalWidth.xyz), sphereNormal));
+        const float arcHalfWidth = max(uintBitsToFloat(arcNormalWidth.w), arcPixelFootprint * 0.75);
+        if(arcDistance < (arcHalfWidth + arcPixelFootprint)){
+          const uvec4 arcStart = planetData.surfaceArcs[(arcIndex * 3u) + 1u];
+          const uvec4 arcEnd = planetData.surfaceArcs[(arcIndex * 3u) + 2u];
+          if((dot(uintBitsToFloat(arcStart.xyz), sphereNormal) >= 0.0) && (dot(uintBitsToFloat(arcEnd.xyz), sphereNormal) >= 0.0)){
+            const vec4 arcColor = vec4(unpackHalf2x16(arcStart.w), unpackHalf2x16(arcEnd.w));
+            c.xyz = mix(c.xyz, arcColor.xyz, arcColor.w * (1.0 - smoothstep(arcHalfWidth - (arcPixelFootprint * 0.5), arcHalfWidth + (arcPixelFootprint * 0.5), arcDistance)));
+          }
+        }
+      }
+    }
+  }
+
 #ifdef WIREFRAME
   if((planetData.flagsResolutions.x & (1u << 0u)) != 0){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());

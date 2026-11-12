@@ -142,6 +142,8 @@ type TpvScene3DPlanets=class;
              MaskMapMaximumPolygonPoints=4096;
              // The number of mask map overlays the planet render pass can show at once.
              CountMaskMapOverlays=4;
+             // The most great circle arcs the planet render pass draws on the ground at once (see SetSurfaceArcs).
+             MaxSurfaceArcs=512;
              // The number of mask map layers, each one byte of every texel, and the bits which name all of them in
              // every parameter that takes mask bits (bit i = layer i).
              CountMaskMapLayers=4;
@@ -160,6 +162,21 @@ type TpvScene3DPlanets=class;
              Color:TpvHalfFloatVector4; // rgb = linear color, a = strength
             end;
             PMaskMapOverlayData=^TMaskMapOverlayData;
+            // One great circle arc as the planet render pass reads it from the planet data: the arc lies on the
+            // great circle with the normal Normal, and a point belongs to its span where it lies on the positive side
+            // of both StartPlane and EndPlane, the planes through the planet centre at the two ends of the arc.
+            TSurfaceArcData=packed record
+             Normal:TpvVector3;
+             HalfWidth:TpvFloat; // angle in radians
+             StartPlane:TpvVector3;
+             ColorRed:TpvHalfFloat;
+             ColorGreen:TpvHalfFloat;
+             EndPlane:TpvVector3;
+             ColorBlue:TpvHalfFloat;
+             ColorAlpha:TpvHalfFloat;
+            end;
+            PSurfaceArcData=^TSurfaceArcData;
+            TSurfaceArcDataArray=array of TSurfaceArcData;
             { TBlendMapValue }
             TBlendMapValue=packed record
              public
@@ -267,6 +284,14 @@ type TpvScene3DPlanets=class;
              MaskMapOverlays:array[0..CountMaskMapOverlays-1] of TMaskMapOverlayData;
 
              Textures:array[0..15,0..3] of TpvUInt32;
+
+             // Kept at the end, so that only the used part of the arcs has to be uploaded each frame
+             CountSurfaceArcs:TpvUInt32;
+             SurfaceArcsUnused0:TpvUInt32;
+             SurfaceArcsUnused1:TpvUInt32;
+             SurfaceArcsUnused2:TpvUInt32;
+
+             SurfaceArcs:array[0..MaxSurfaceArcs-1] of TSurfaceArcData;
 
             end;
             PPlanetData=^TPlanetData;
@@ -505,6 +530,16 @@ type TpvScene3DPlanets=class;
              Color:TpvVector4; // rgb = linear color, a = strength
             end;
             PMaskMapOverlay=^TMaskMapOverlay;
+            // A great circle arc on the ground for SetSurfaceArcs: the shorter arc between two directions from the
+            // planet centre in planet space, HalfWidth as angle in radians, Color linear rgb with the opacity in w.
+            TSurfaceArc=record
+             StartDirection:TpvVector3;
+             EndDirection:TpvVector3;
+             HalfWidth:TpvFloat;
+             Color:TpvVector4;
+            end;
+            PSurfaceArc=^TSurfaceArc;
+            TSurfaceArcs=array of TSurfaceArc;
             TPrecipitationMapModificationItem=packed record
              PositionRadius:TpvVector4;
              InnerRadius:TpvFloat;
@@ -713,6 +748,8 @@ type TpvScene3DPlanets=class;
               fSelectedBrush:TpvUInt32;
               fBrushRotation:TpvScalar;
               fBrushInnerRadius:TpvScalar;
+              fSurfaceArcs:TSurfaceArcDataArray;
+              fCountSurfaceArcs:TpvSizeInt;
               fWireframeActive:Boolean;
               fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
@@ -4230,6 +4267,13 @@ type TpvScene3DPlanets=class;
        // it. aBits of 0 switches an overlay off.
        procedure SetMaskMapOverlay(const aIndex:TpvSizeInt;const aBits:TpvUInt32;const aColor:TpvVector4);
        function GetMaskMapOverlay(const aIndex:TpvSizeInt):TMaskMapOverlay;
+       // Great circle arcs which the planet render pass draws on the ground, unlit and over everything else of the
+       // ground, later arcs over earlier ones, with a width of at least about one pixel. Meant for overlays such as
+       // region borders. At most MaxSurfaceArcs are taken, the rest is dropped, and arcs whose ends coincide or
+       // are opposite are skipped. Set from the update thread, like the selected region; an empty list costs
+       // nothing in the shader.
+       procedure SetSurfaceArcs(const aArcs:array of TSurfaceArc;const aCount:TpvSizeInt=-1);
+       procedure ClearSurfaceArcs;
        procedure MarkAllTilesDirty;
        // Writes one rectangle of height values straight into the height map and marks everything
        // derived from it as out of date. The whole-planet upload in TSerializedData does the same
@@ -6787,6 +6831,10 @@ begin
  fBrushRotation:=0.0;
 
  fBrushInnerRadius:=0.001;
+
+ fSurfaceArcs:=nil;
+
+ fCountSurfaceArcs:=0;
 
  fWireframeActive:=false;
 
@@ -10564,6 +10612,13 @@ begin
  fSelectedBrush:=aData.fSelectedBrush;
  fBrushRotation:=aData.fBrushRotation;
  fBrushInnerRadius:=aData.fBrushInnerRadius;
+ fCountSurfaceArcs:=aData.fCountSurfaceArcs;
+ if fCountSurfaceArcs>0 then begin
+  if length(fSurfaceArcs)<fCountSurfaceArcs then begin
+   SetLength(fSurfaceArcs,MaxSurfaceArcs);
+  end;
+  Move(aData.fSurfaceArcs[0],fSurfaceArcs[0],fCountSurfaceArcs*SizeOf(TSurfaceArcData));
+ end;
  fWireframeActive:=aData.fWireframeActive;
  fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
@@ -40979,7 +41034,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-var MaterialIndex,OverlayIndex:TpvSizeInt;
+var MaterialIndex,OverlayIndex,UploadSize:TpvSizeInt;
     InFlightFrameData:TData;
     Material:TpvScene3DPlanet.PMaterial;
 begin
@@ -41235,13 +41290,24 @@ begin
     fPlanetData.Textures[MaterialIndex,3]:=TpvUInt32(pointer(@Material^.Scale)^);
    end;
 
+   fPlanetData.CountSurfaceArcs:=Min(Max(InFlightFrameData.fCountSurfaceArcs,0),MaxSurfaceArcs);
+   fPlanetData.SurfaceArcsUnused0:=0;
+   fPlanetData.SurfaceArcsUnused1:=0;
+   fPlanetData.SurfaceArcsUnused2:=0;
+   if fPlanetData.CountSurfaceArcs>0 then begin
+    Move(InFlightFrameData.fSurfaceArcs[0],fPlanetData.SurfaceArcs[0],fPlanetData.CountSurfaceArcs*SizeOf(TSurfaceArcData));
+   end;
+
+   // The shader reads only the first CountSurfaceArcs arcs, so the rest of the array stays where it is
+   UploadSize:=TpvPtrUInt(pointer(@TpvScene3DPlanet.PPlanetData(nil)^.SurfaceArcs[0]))+(fPlanetData.CountSurfaceArcs*SizeOf(TSurfaceArcData));
+
    fVulkanDevice.MemoryStaging.Upload(fVulkanUniversalQueue,
                                       fVulkanUniversalCommandBuffer,
                                       fVulkanUniversalFence,
                                       fPlanetData,
                                       fPlanetDataVulkanBuffers[aInFlightFrameIndex],
                                       0,
-                                      SizeOf(TpvScene3DPlanet.TPlanetData));
+                                      UploadSize);
 
    fVulkanDevice.MemoryStaging.Upload(fVulkanUniversalQueue,
                                       fVulkanUniversalCommandBuffer,
@@ -42289,6 +42355,49 @@ begin
   result.Bits:=0;
   result.Color:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
  end;
+end;
+
+procedure TpvScene3DPlanet.SetSurfaceArcs(const aArcs:array of TSurfaceArc;const aCount:TpvSizeInt);
+var Index,Count,CountArcs:TpvSizeInt;
+    StartDirection,EndDirection,Normal:TpvVector3;
+    ArcData:PSurfaceArcData;
+begin
+ if aCount<0 then begin
+  CountArcs:=length(aArcs);
+ end else begin
+  CountArcs:=Min(aCount,length(aArcs));
+ end;
+ if length(fData.fSurfaceArcs)<MaxSurfaceArcs then begin
+  SetLength(fData.fSurfaceArcs,MaxSurfaceArcs);
+ end;
+ Count:=0;
+ for Index:=0 to CountArcs-1 do begin
+  if Count>=MaxSurfaceArcs then begin
+   break;
+  end;
+  StartDirection:=aArcs[Index].StartDirection.Normalize;
+  EndDirection:=aArcs[Index].EndDirection.Normalize;
+  Normal:=StartDirection.Cross(EndDirection);
+  if Normal.Length>1e-7 then begin
+   Normal:=Normal.Normalize;
+   ArcData:=@fData.fSurfaceArcs[Count];
+   inc(Count);
+   ArcData^.Normal:=Normal;
+   ArcData^.HalfWidth:=Max(aArcs[Index].HalfWidth,0.0);
+   ArcData^.StartPlane:=Normal.Cross(StartDirection);
+   ArcData^.EndPlane:=EndDirection.Cross(Normal);
+   ArcData^.ColorRed:=aArcs[Index].Color.x;
+   ArcData^.ColorGreen:=aArcs[Index].Color.y;
+   ArcData^.ColorBlue:=aArcs[Index].Color.z;
+   ArcData^.ColorAlpha:=aArcs[Index].Color.w;
+  end;
+ end;
+ fData.fCountSurfaceArcs:=Count;
+end;
+
+procedure TpvScene3DPlanet.ClearSurfaceArcs;
+begin
+ fData.fCountSurfaceArcs:=0;
 end;
 
 procedure TpvScene3DPlanet.ProcessGrassFlagsMapFlagsUpdate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
