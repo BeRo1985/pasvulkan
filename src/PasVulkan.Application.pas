@@ -26143,6 +26143,47 @@ begin
 
 end;
 
+{$if defined(Windows) and (defined(Debug) or not defined(Release)) and defined(PasVulkanNoConsole)}
+// The text files of the runtime library stay closed in a GUI program, and every WriteLn left somewhere
+// would then fail with an I/O error. They write to the console taken over, or else into nothing.
+procedure InitializeNoConsoleStdIO;
+{$ifdef fpc}
+var StdIOHandle:Windows.THandle;
+{$endif}
+begin
+{$ifdef fpc}
+ // Free Pascal keeps them per thread and sets them up anew in every new thread from the handles below,
+ // which a GUI program leaves closed, and where StdOut and StdErr collect into a message box. With
+ // handles of their own and IsConsole set, every thread opens all of them on these handles instead.
+ if pvIsStdOutConsole then begin
+  StdIOHandle:=pvStdOut;
+ end else begin
+  StdIOHandle:=CreateFileW('NUL',GENERIC_WRITE,FILE_SHARE_READ or FILE_SHARE_WRITE,nil,OPEN_EXISTING,0,0);
+ end;
+ if (StdIOHandle<>0) and (StdIOHandle<>Invalid_Handle_Value) then begin
+  System.StdOutputHandle:=StdIOHandle;
+  System.StdErrorHandle:=StdIOHandle;
+  IsConsole:=true;
+  SysInitStdIO;
+ end;
+{$else}
+ if pvIsStdOutConsole then begin
+  AssignFile(Output,'CONOUT$');
+  AssignFile(ErrOutput,'CONOUT$');
+ end else begin
+  AssignFile(Output,'NUL');
+  AssignFile(ErrOutput,'NUL');
+ end;
+ try
+  Rewrite(Output);
+  Rewrite(ErrOutput);
+ except
+  // Left closed then, as they would be without all this
+ end;
+{$endif}
+end;
+{$ifend}
+
 initialization
 
  // Before anything which could log, so that the times in the log file count from here
@@ -26189,21 +26230,7 @@ initialization
  end;
 
 {$if defined(PasVulkanNoConsole)}
- // The text files of the runtime library stay closed in a GUI program, and every WriteLn left somewhere
- // would then fail with an I/O error. They write to the console taken over, or else into nothing.
- if pvIsStdOutConsole then begin
-  AssignFile(Output,'CONOUT$');
-  AssignFile(ErrOutput,'CONOUT$');
- end else begin
-  AssignFile(Output,'NUL');
-  AssignFile(ErrOutput,'NUL');
- end;
- try
-  Rewrite(Output);
-  Rewrite(ErrOutput);
- except
-  // Left closed then, as they would be without all this
- end;
+ InitializeNoConsoleStdIO;
 {$ifend}
 
 {$ifend}
