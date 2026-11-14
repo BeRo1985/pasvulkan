@@ -32,6 +32,10 @@ layout(push_constant) uniform PushConstants {
   float targetHeight;
   float brushRotation;
   uint maskBits; // mask map bits which protect the ground from this modification, 0 = none
+  uint reserved1;
+  uint reserved2;
+  uint reserved3;
+  vec4 plane; // xyz = plane normal, w = its distance from the planet center; w = 0 = flatten to targetHeight instead
 } pushConstants;
 
 /* clang-format on */
@@ -96,6 +100,18 @@ void main(){
       d *= 1.0 - planetMaskMapCoverage(uMaskMap, vec2(xy) / vec2(texSize), pushConstants.maskBits);
     }
 
+    // The height to flatten to: on the sphere of targetHeight around the brush center, or on one plane
+    // in space that does not bend with the planet. Where the plane runs nearly along the radial
+    // direction it would be far away, so it fades out there.
+    float targetRadius;
+    if(pushConstants.plane.w > 0.0){
+      float cosine = dot(p, pushConstants.plane.xyz);
+      d *= smoothstep(0.5, 0.6, cosine);
+      targetRadius = pushConstants.plane.w / max(cosine, 0.5);
+    }else{
+      targetRadius = pushConstants.targetHeight + ((1.0 - dot(p, n)) * pushConstants.bottomRadius);
+    }
+
     if(d > 0.0){
 
       {
@@ -111,7 +127,7 @@ void main(){
           clamp(
             mix(
               imageLoad(uImageHeightMap, texel).x, 
-              (pushConstants.targetHeight - (dot(p, n) * pushConstants.bottomRadius)) / (pushConstants.topRadius - pushConstants.bottomRadius), 
+              (targetRadius - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius), 
               d
             ), 
             pushConstants.minHeight, 

@@ -122,6 +122,7 @@ type { TpvScene3DGizmo }
               ScaleZ,
               ScaleXYZ
              );
+            TActions=set of TAction;
             TMouseAction=
              (
               None,
@@ -129,6 +130,15 @@ type { TpvScene3DGizmo }
               Down,
               Move,
               Up
+             );
+            // How the handles look and where they are grabbed. Classic is the original look. Orbit has
+            // planets at the axis ends, plane handles away from the origin, full rotation rings with
+            // compass ticks and a moon handle each, and scales uniformly through one ring around the
+            // pivot that can be grabbed anywhere.
+            TStyle=
+             (
+              Classic,
+              Orbit
              );
       public
        type TColors=record
@@ -157,6 +167,13 @@ type { TpvScene3DGizmo }
                                               QuadMax,QuadMax,
                                               QuadMax,QuadMin);
              ScreenRotateHitTolerance=8.0; // Screen space pixels to either side of the view aligned rotation circle that still count as a hit on it
+             OrbitQuadMin=0.28; // Plane handles of the orbit style, in gizmo units along the two plane axes
+             OrbitQuadMax=0.48;
+             OrbitAxisStart=0.18; // Where the orbit style axis lines begin and end
+             OrbitAxisEnd=0.86;
+             OrbitZoomRadius=0.62; // Radius of the orbit style scale ring, in gizmo units
+             OrbitRingSegments=72;
+             OrbitMoonOffsets:array[0..2] of TpvScalar=(0.75,0.0,-0.75); // Moons beside the point nearest to the camera, so that they do not cover each other
              HalfCircleSegmentCount=64;
       private
        fScene3D:TObject;
@@ -216,7 +233,20 @@ type { TpvScene3DGizmo }
        fSnapScale:TpvScalar;
        fSnapRotate:TpvScalar;
        fUniformScale:boolean;
+       fLineWidthScale:TpvScalar;
+       fHitToleranceScale:TpvScalar;
+       fStyle:TStyle;
+       fDisabledActions:TActions;
+       fDrawGuides:boolean;
+       fOrbitScaleRadiusOrigin:TpvScalar;
        fColors:TColors;
+       function OrbitCameraToModel:TpvVector3;
+       function OrbitMoonAngle(const aAxisIndex:TpvSizeInt):TpvScalar;
+       function OrbitRingMouseAngle(const aAxisIndex:TpvSizeInt):TpvScalar;
+       function OrbitMoonScreenPosition(const aAxisIndex:TpvSizeInt):TpvVector2;
+       function GetOrbitRotateAction:TAction;
+       function GetOrbitMoveAction:TAction;
+       function GetOrbitScaleAction:TAction;
       public
        constructor Create(const aScene3D,aRendererInstance:TObject); reintroduce;
        destructor Destroy; override;
@@ -270,6 +300,18 @@ type { TpvScene3DGizmo }
        property SnapScale:TpvScalar read fSnapScale write fSnapScale;
        property SnapRotate:TpvScalar read fSnapRotate write fSnapRotate;
        property UniformScale:boolean read fUniformScale write fUniformScale;
+       // Scales the screen space line widths, arrow heads and knobs of the handles
+       property LineWidthScale:TpvScalar read fLineWidthScale write fLineWidthScale;
+       // Scales the screen space distance within which the mouse still grabs a handle
+       property HitToleranceScale:TpvScalar read fHitToleranceScale write fHitToleranceScale;
+       property Style:TStyle read fStyle write fStyle;
+       // Handles that do nothing for what is selected: drawn grayed out and never grabbed (orbit style)
+       property DisabledActions:TActions read fDisabledActions write fDisabledActions;
+       // Whether the orbit style draws its straight guide lines while moving; off where the caller
+       // draws its own, for example along the ground
+       property DrawGuides:boolean read fDrawGuides write fDrawGuides;
+       // The rotation of the current drag in radians, relative to where it was grabbed
+       property RotationAngle:TpvScalar read fRotationAngle;
      end;
 
 implementation
@@ -321,6 +363,12 @@ begin
  fSnapScale:=0.0;
  fSnapRotate:=0.0;
  fUniformScale:=false;
+ fLineWidthScale:=1.0;
+ fHitToleranceScale:=1.0;
+ fStyle:=TStyle.Classic;
+ fDisabledActions:=[];
+ fDrawGuides:=true;
+ fOrbitScaleRadiusOrigin:=1.0;
  fColors:=TColors.CreateDefault;
  fScene3D:=aScene3D;
 end;
@@ -566,6 +614,157 @@ begin
  end;
 end;
 
+function TpvScene3DGizmo.OrbitCameraToModel:TpvVector3;
+begin
+ if fViewMode=TViewMode.Orthographic then begin
+  result:=-fInverseViewMatrix.Forwards.xyz;
+ end else begin
+  result:=(fModelMatrix.Translation.xyz-fInverseViewMatrix.Translation.xyz).Normalize;
+ end;
+ result:=fInverseModelMatrix.MulBasis(result);
+end;
+
+function TpvScene3DGizmo.OrbitMoonAngle(const aAxisIndex:TpvSizeInt):TpvScalar;
+var TowardsCamera:TpvVector3;
+    a,b:TpvScalar;
+begin
+ TowardsCamera:=-OrbitCameraToModel;
+ a:=TowardsCamera.Dot(DirectionUnary[(aAxisIndex+1) mod 3]);
+ b:=TowardsCamera.Dot(DirectionUnary[(aAxisIndex+2) mod 3]);
+ if (sqr(a)+sqr(b))>1e-8 then begin
+  result:=ArcTan2(b,a)+OrbitMoonOffsets[aAxisIndex];
+ end else begin
+  result:=OrbitMoonOffsets[aAxisIndex];
+ end;
+end;
+
+function TpvScene3DGizmo.OrbitRingMouseAngle(const aAxisIndex:TpvSizeInt):TpvScalar;
+var Normal,LocalPos:TpvVector3;
+begin
+ case aAxisIndex of
+  0:begin
+   Normal:=fModelMatrix.Right.xyz;
+  end;
+  1:begin
+   Normal:=fModelMatrix.Up.xyz;
+  end;
+  else begin
+   Normal:=fModelMatrix.Forwards.xyz;
+  end;
+ end;
+ LocalPos:=fInverseModelMatrix.MulBasis((fRayOrigin+(fRayDirection*IntersectRayPlane(fRayOrigin,fRayDirection,TpvPlane.Create(Normal,-Normal.Dot(fModelMatrix.Translation.xyz)))))-fModelMatrix.Translation.xyz);
+ result:=ArcTan2(LocalPos.Dot(DirectionUnary[(aAxisIndex+2) mod 3]),LocalPos.Dot(DirectionUnary[(aAxisIndex+1) mod 3]));
+end;
+
+function TpvScene3DGizmo.OrbitMoonScreenPosition(const aAxisIndex:TpvSizeInt):TpvVector2;
+var Angle:TpvScalar;
+begin
+ Angle:=OrbitMoonAngle(aAxisIndex);
+ result:=WorldToPositionEx(((DirectionUnary[(aAxisIndex+1) mod 3]*cos(Angle))+(DirectionUnary[(aAxisIndex+2) mod 3]*sin(Angle)))*fScreenFactor,fModelViewProjectionMatrix);
+end;
+
+function TpvScene3DGizmo.GetOrbitRotateAction:TAction;
+const RingActions:array[0..2] of TAction=(TAction.RotateX,TAction.RotateY,TAction.RotateZ);
+var Index:TpvSizeInt;
+    Dist:TpvScalar;
+    PlaneNormals:array[0..2] of TpvVector3;
+    LocalPos,IdealPosOnCircle:TpvVector3;
+begin
+ // The moons first, they are the big targets
+ for Index:=0 to 2 do begin
+  if (not (RingActions[Index] in fDisabledActions)) and
+     (fMousePosition.DistanceTo(OrbitMoonScreenPosition(Index))<(12.0*fHitToleranceScale)) then begin
+   result:=RingActions[Index];
+   exit;
+  end;
+ end;
+ // Then the front halves of the rings
+ PlaneNormals[0]:=fModelMatrix.Right.xyz;
+ PlaneNormals[1]:=fModelMatrix.Up.xyz;
+ PlaneNormals[2]:=fModelMatrix.Forwards.xyz;
+ for Index:=0 to 2 do begin
+  LocalPos:=(fRayOrigin+(fRayDirection*IntersectRayPlane(fRayOrigin,fRayDirection,TpvPlane.Create(PlaneNormals[Index],-PlaneNormals[Index].Dot(fModelMatrix.Translation.xyz)))))-fModelMatrix.Translation.xyz;
+  IdealPosOnCircle:=LocalPos.Normalize;
+  if (not (RingActions[Index] in fDisabledActions)) and (IdealPosOnCircle.Dot(fRayDirection)<=Epsilon) then begin
+   IdealPosOnCircle:=fInverseModelMatrix.MulBasis(IdealPosOnCircle);
+   if fMousePosition.DistanceTo(WorldToPositionEx(IdealPosOnCircle*fScreenFactor,fModelViewProjectionMatrix))<(8.0*fHitToleranceScale) then begin
+    result:=RingActions[Index];
+    exit;
+   end;
+  end;
+ end;
+ // Last the faint view aligned circle
+ Dist:=fMousePosition.DistanceTo(fScreenSquareCenter);
+ if (not (TAction.RotateScreen in fDisabledActions)) and (abs(Dist-fRadiusSquareCenter)<=(ScreenRotateHitTolerance*fHitToleranceScale)) then begin
+  result:=TAction.RotateScreen;
+ end else begin
+  result:=TAction.None;
+ end;
+end;
+
+function TpvScene3DGizmo.GetOrbitMoveAction:TAction;
+const AxisActions:array[0..2] of TAction=(TAction.MoveX,TAction.MoveY,TAction.MoveZ);
+      PlaneActions:array[0..2] of TAction=(TAction.MoveYZ,TAction.MoveZX,TAction.MoveXY);
+var Index:TpvSizeInt;
+    BelowAxisLimit,BelowPlaneLimit:boolean;
+    DirAxis,DirPlaneX,DirPlaneY,PosOnPlane,QuadHitProportionVector:TpvVector3;
+    QuadHitProportion:TpvVector2;
+begin
+ if (not (TAction.MoveScreen in fDisabledActions)) and (fMousePosition.DistanceTo(fScreenSquareCenter)<(8.0*fHitToleranceScale)) then begin
+  result:=TAction.MoveScreen;
+  exit;
+ end;
+ // The planets at the axis ends
+ for Index:=0 to 2 do begin
+  ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+  if BelowAxisLimit and (not (AxisActions[Index] in fDisabledActions)) and
+     (fMousePosition.DistanceTo(WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix))<(12.0*fHitToleranceScale)) then begin
+   result:=AxisActions[Index];
+   exit;
+  end;
+ end;
+ // The plane handles
+ for Index:=0 to 2 do begin
+  ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+  if BelowPlaneLimit and not (PlaneActions[Index] in fDisabledActions) then begin
+   DirAxis:=fModelMatrix.MulBasis(DirAxis);
+   DirPlaneX:=fModelMatrix.MulBasis(DirPlaneX);
+   DirPlaneY:=fModelMatrix.MulBasis(DirPlaneY);
+   PosOnPlane:=fRayOrigin+(fRayDirection*IntersectRayPlane(fRayOrigin,fRayDirection,TpvPlane.Create(DirAxis,-DirAxis.Dot(fModelMatrix.Translation.xyz))));
+   QuadHitProportionVector:=(PosOnPlane-fModelMatrix.Translation.xyz)/fScreenFactor;
+   QuadHitProportion:=TpvVector2.Create(DirPlaneX.Dot(QuadHitProportionVector),DirPlaneY.Dot(QuadHitProportionVector));
+   if (QuadHitProportion.x>=OrbitQuadMin) and (QuadHitProportion.x<=OrbitQuadMax) and
+      (QuadHitProportion.y>=OrbitQuadMin) and (QuadHitProportion.y<=OrbitQuadMax) then begin
+    result:=PlaneActions[Index];
+    exit;
+   end;
+  end;
+ end;
+ // The axis lines
+ for Index:=0 to 2 do begin
+  ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+  if BelowAxisLimit and (not (AxisActions[Index] in fDisabledActions)) and
+     (PointOnSegment(fMousePosition,
+                     WorldToPositionEx(DirAxis*OrbitAxisStart*fScreenFactor,fModelViewProjectionMatrix),
+                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<(12.0*fHitToleranceScale)) then begin
+   result:=AxisActions[Index];
+   exit;
+  end;
+ end;
+ result:=TAction.None;
+end;
+
+function TpvScene3DGizmo.GetOrbitScaleAction:TAction;
+begin
+ // One ring, grabbed anywhere; the scale is uniform
+ if (not (TAction.ScaleXYZ in fDisabledActions)) and
+    (abs(fMousePosition.DistanceTo(fScreenSquareCenter)-(fRadiusSquareCenter*OrbitZoomRadius))<(12.0*fHitToleranceScale)) then begin
+  result:=TAction.ScaleXYZ;
+ end else begin
+  result:=TAction.None;
+ end;
+end;
+
 function TpvScene3DGizmo.GetRotateAction:TAction;
 var Index:TpvSizeInt;
     DeltaScreen,IdealPosOnCircleScreen:TpvVector2;
@@ -575,9 +774,14 @@ var Index:TpvSizeInt;
     IdealPosOnCircle,LocalPos:TpvVector3;
 begin
 
+ if fStyle=TStyle.Orbit then begin
+  result:=GetOrbitRotateAction;
+  exit;
+ end;
+
  DeltaScreen:=fMousePosition-fScreenSquareCenter;
  Dist:=DeltaScreen.Length;
- if (Dist>=(fRadiusSquareCenter-ScreenRotateHitTolerance)) and (Dist<=(fRadiusSquareCenter+ScreenRotateHitTolerance)) then begin
+ if (Dist>=(fRadiusSquareCenter-(ScreenRotateHitTolerance*fHitToleranceScale))) and (Dist<=(fRadiusSquareCenter+(ScreenRotateHitTolerance*fHitToleranceScale))) then begin
   result:=TAction.RotateScreen;
  end else begin
   result:=TAction.None;
@@ -598,7 +802,7 @@ begin
   if Dist<=Epsilon then begin
    IdealPosOnCircle:=fInverseModelMatrix.MulBasis(IdealPosOnCircle);
    IdealPosOnCircleScreen:=WorldToPositionEx(IdealPosOnCircle*fScreenFactor,fModelViewProjectionMatrix);
-   if fMousePosition.DistanceTo(IdealPosOnCircleScreen)<8.0 then begin
+   if fMousePosition.DistanceTo(IdealPosOnCircleScreen)<(8.0*fHitToleranceScale) then begin
     case Index of
      0:begin
       result:=TAction.RotateX;
@@ -623,6 +827,10 @@ var Index:TpvSizeInt;
     PosOnPlane,QuadHitProportionVector:TpvVector3;
     QuadHitProportion:TpvVector2;
 begin
+ if fStyle=TStyle.Orbit then begin
+  result:=GetOrbitMoveAction;
+  exit;
+ end;
  if (fMousePosition.x>=fScreenSquareMin.x) and
     (fMousePosition.x<=fScreenSquareMax.x) and
     (fMousePosition.y>=fScreenSquareMin.y) and
@@ -641,7 +849,7 @@ begin
   if BelowAxisLimit and
      (PointOnSegment(fMousePosition,
                      WorldToPositionEx(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
-                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
+                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<(12.0*fHitToleranceScale)) then begin
    case Index of
     0:begin
      result:=TAction.MoveX;
@@ -685,6 +893,10 @@ var Index:TpvSizeInt;
     PosOnPlane,QuadHitProportionVector:TpvVector3;
     QuadHitProportion:TpvVector2;
 begin
+ if fStyle=TStyle.Orbit then begin
+  result:=GetOrbitScaleAction;
+  exit;
+ end;
  if (fMousePosition.x>=fScreenSquareMin.x) and
     (fMousePosition.x<=fScreenSquareMax.x) and
     (fMousePosition.y>=fScreenSquareMin.y) and
@@ -706,7 +918,7 @@ begin
   if BelowAxisLimit and
      (PointOnSegment(fMousePosition,
                      WorldToPositionEx(DirAxis*0.1*fScreenFactor,fModelViewProjectionMatrix),
-                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<12.0) then begin
+                     WorldToPositionEx(DirAxis*fScreenFactor,fModelViewProjectionMatrix)).DistanceTo(fMousePosition)<(12.0*fHitToleranceScale)) then begin
    case Index of
     0:begin
      result:=TAction.ScaleX;
@@ -867,7 +1079,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                  fModelMatrix.MulHomogen(aAxis*0.05*(Index*2)*fScreenFactor),
                                                                  fModelMatrix.MulHomogen(aAxis*0.05*((Index*2)+1)*fScreenFactor),
                                                                  fColors.Black,
-                                                                 6.0,
+                                                                 6.0*fLineWidthScale,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
    end;
@@ -899,7 +1111,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                   CirclePos3D[Index],
                                                                   CirclePos3D[(Index+1) mod HalfCircleSegmentCount],
                                                                   Colors[3-AxisIndex],
-                                                                  2.0,
+                                                                  2.0*fLineWidthScale,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
     end;
@@ -920,7 +1132,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                       CirclePos3D[Index],
                                                                       CirclePos3D[Index+1],
                                                                       Colors[0],
-                                                                      3.0,
+                                                                      3.0*fLineWidthScale,
                                                                       TpvVector2.Null,
                                                                       TpvVector2.Null);
     end;
@@ -946,7 +1158,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                  CirclePos3D[0],
                                                                  CirclePos3D[1],
                                                                  fColors.Rotation,
-                                                                 2.0,
+                                                                 2.0*fLineWidthScale,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
     for Index:=0 to HalfCircleSegmentCount-2 do begin
@@ -954,7 +1166,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                   CirclePos3D[Index+1],
                                                                   CirclePos3D[((Index+1) mod HalfCircleSegmentCount)+1],
                                                                   fColors.Rotation,
-                                                                  2.0,
+                                                                  2.0*fLineWidthScale,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
     end;
@@ -962,7 +1174,7 @@ var Colors:array[0..7] of TpvVector4;
                                                                  CirclePos3D[HalfCircleSegmentCount],
                                                                  CirclePos3D[0],
                                                                  fColors.Rotation,
-                                                                 2.0,
+                                                                 2.0*fLineWidthScale,
                                                                  TpvVector2.Null,
                                                                  TpvVector2.Null);
    end;
@@ -993,10 +1205,10 @@ var Colors:array[0..7] of TpvVector4;
                                                                   fModelMatrix.MulHomogen(DirAxis*0.1*fScreenFactor),
                                                                   fModelMatrix.MulHomogen(DirAxis*fScreenFactor),
                                                                   Colors[Index+1],
-                                                                  3.0,
+                                                                  3.0*fLineWidthScale,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
-     Dir:=(Origin-WorldDirSSpace).Normalize*6.0;
+     Dir:=(Origin-WorldDirSSpace).Normalize*(6.0*fLineWidthScale);
      OrtogonalDir:=TpvVector2.InlineableCreate(-Dir.y,Dir.x);
      a:=WorldDirSSpace+Dir;
      v:=fModelMatrix.MulHomogen(DirAxis*fScreenFactor);
@@ -1042,13 +1254,13 @@ var Colors:array[0..7] of TpvVector4;
    end;
   end;
   if aInFlightFrameIndex>=0 then begin
-   DrawFilledCircle(fModelMatrix.MulHomogen(TpvVector3.Null),6.0,Colors[0],32);
+   DrawFilledCircle(fModelMatrix.MulHomogen(TpvVector3.Null),6.0*fLineWidthScale,Colors[0],32);
    if fUsing then begin
     SourcePosOnScreen:=WorldToPosition(fMatrixOrigin,fViewProjectionMatrix);
     DestinationPosOnScreen:=WorldToPosition(fModelMatrix.Translation.xyz,fViewProjectionMatrix);
-    Difference:=(DestinationPosOnScreen-SourcePosOnScreen).Normalize*5.0;
-    DrawCircle(fMatrixOrigin,6.0,fColors.Translation,32,1.0);
-    DrawCircle(fModelMatrix.Translation.xyz,6.0,fColors.Translation,32,1.0);
+    Difference:=(DestinationPosOnScreen-SourcePosOnScreen).Normalize*(5.0*fLineWidthScale);
+    DrawCircle(fMatrixOrigin,6.0*fLineWidthScale,fColors.Translation,32,1.0*fLineWidthScale);
+    DrawCircle(fModelMatrix.Translation.xyz,6.0*fLineWidthScale,fColors.Translation,32,1.0*fLineWidthScale);
     TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                  fMatrixOrigin,
                                                                  fModelMatrix.Translation.xyz,
@@ -1058,6 +1270,250 @@ var Colors:array[0..7] of TpvVector4;
                                                                  -Difference/fViewPort.zw);
    end;
   end;
+ end;
+ function WithAlpha(const aColor:TpvVector4;const aAlpha:TpvScalar):TpvVector4;
+ begin
+  result:=TpvVector4.InlineableCreate(aColor.x,aColor.y,aColor.z,aAlpha);
+ end;
+ procedure OrbitLine(const aFrom,aTo:TpvVector3;const aColor:TpvVector4;const aWidth:TpvScalar);
+ begin
+  TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,aFrom,aTo,aColor,aWidth*fLineWidthScale,TpvVector2.Null,TpvVector2.Null);
+ end;
+ procedure OrbitDashedLine(const aFrom,aTo:TpvVector3;const aColor:TpvVector4;const aWidth:TpvScalar;const aCount:TpvSizeInt);
+ var Index:TpvSizeInt;
+ begin
+  for Index:=0 to aCount-1 do begin
+   if (Index and 1)=0 then begin
+    OrbitLine(aFrom+((aTo-aFrom)*(Index/aCount)),aFrom+((aTo-aFrom)*((Index+1)/aCount)),aColor,aWidth);
+   end;
+  end;
+ end;
+ procedure OrbitPlanet(const aCenter:TpvVector3;const aRadius:TpvScalar;const aColor:TpvVector4;const aActive:boolean);
+ begin
+  if aActive then begin
+   DrawFilledCircle(aCenter,(aRadius+9.0)*fLineWidthScale,WithAlpha(fColors.Selection,0.22),32);
+  end;
+  DrawFilledCircle(aCenter,aRadius*fLineWidthScale,aColor,32);
+  DrawCircle(aCenter,(aRadius+5.0)*fLineWidthScale,WithAlpha(aColor,0.6*aColor.w),32,1.4*fLineWidthScale);
+ end;
+ function OrbitColor(const aActive,aDimmed:boolean;const aDisabled:boolean=false):TpvVector4;
+ begin
+  if aDisabled then begin
+   result:=fColors.Gray;
+  end else if aActive then begin
+   result:=WithAlpha(fColors.Selection,1.0);
+  end else if aDimmed then begin
+   result:=WithAlpha(fColors.Directions[0],0.2);
+  end else begin
+   result:=fColors.Directions[0];
+  end;
+ end;
+ procedure DrawOrbitTranslation;
+ const AxisActions:array[0..2] of TAction=(TAction.MoveX,TAction.MoveY,TAction.MoveZ);
+       PlaneActions:array[0..2] of TAction=(TAction.MoveYZ,TAction.MoveZX,TAction.MoveXY);
+       Outline:array[0..3,0..1] of TpvScalar=((OrbitQuadMin,OrbitQuadMin),(OrbitQuadMax,OrbitQuadMin),
+                                              (OrbitQuadMax,OrbitQuadMax),(OrbitQuadMin,OrbitQuadMax));
+ var Index,PointIndex:TpvSizeInt;
+     BelowAxisLimit,BelowPlaneLimit,Active,Dimmed:boolean;
+     DirAxis,DirPlaneX,DirPlaneY,Guide:TpvVector3;
+     Points:array[0..3] of TpvVector3;
+     Color:TpvVector4;
+ begin
+  if aInFlightFrameIndex<0 then begin
+   for Index:=0 to 2 do begin
+    ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+   end;
+   exit;
+  end;
+  // Plane handles below the axes
+  for Index:=0 to 2 do begin
+   ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+   if BelowPlaneLimit then begin
+    Active:=fAction=PlaneActions[Index];
+    Dimmed:=fUsing and not Active;
+    Color:=OrbitColor(Active,Dimmed,PlaneActions[Index] in fDisabledActions);
+    for PointIndex:=0 to 3 do begin
+     Points[PointIndex]:=fModelMatrix.MulHomogen(((DirPlaneX*Outline[PointIndex,0])+(DirPlaneY*Outline[PointIndex,1]))*fScreenFactor);
+    end;
+    // One quad, not a fan of triangles: each primitive is antialiased along all of its edges, so
+    // pieces put side by side would show their shared edges as fine seams.
+    TpvScene3DRendererInstance(fRendererInstance).AddSolidQuad3D(aInFlightFrameIndex,
+                                                                 Points[0],Points[1],Points[2],Points[3],
+                                                                 WithAlpha(Color,Color.w*IfThen(Active,0.42,0.26)),
+                                                                 TpvVector2.Null,TpvVector2.Null,TpvVector2.Null,TpvVector2.Null);
+    for PointIndex:=0 to 3 do begin
+     if Active then begin
+      OrbitLine(Points[PointIndex],Points[(PointIndex+1) and 3],WithAlpha(Color,0.22),9.0);
+     end;
+     OrbitLine(Points[PointIndex],Points[(PointIndex+1) and 3],Color,IfThen(Active,2.4,1.6));
+    end;
+    if fUsing and Active and fDrawGuides then begin
+     Guide:=fModelMatrix.MulBasis(DirPlaneX)*(fScreenFactor*24.0);
+     OrbitDashedLine(fModelMatrix.Translation.xyz-Guide,fModelMatrix.Translation.xyz+Guide,WithAlpha(fColors.Selection,0.7),1.0,96);
+     Guide:=fModelMatrix.MulBasis(DirPlaneY)*(fScreenFactor*24.0);
+     OrbitDashedLine(fModelMatrix.Translation.xyz-Guide,fModelMatrix.Translation.xyz+Guide,WithAlpha(fColors.Selection,0.7),1.0,96);
+    end;
+   end;
+  end;
+  // Axis lines with a planet at their end
+  for Index:=0 to 2 do begin
+   ComputeTripodAxisAndVisibility(Index,DirAxis,DirPlaneX,DirPlaneY,BelowAxisLimit,BelowPlaneLimit);
+   if BelowAxisLimit then begin
+    Active:=fAction=AxisActions[Index];
+    Dimmed:=fUsing and not Active;
+    Color:=OrbitColor(Active,Dimmed,AxisActions[Index] in fDisabledActions);
+    if Active then begin
+     OrbitLine(fModelMatrix.MulHomogen(DirAxis*(OrbitAxisStart*fScreenFactor)),fModelMatrix.MulHomogen(DirAxis*(OrbitAxisEnd*fScreenFactor)),WithAlpha(Color,0.22),11.0);
+    end;
+    OrbitLine(fModelMatrix.MulHomogen(DirAxis*(OrbitAxisStart*fScreenFactor)),fModelMatrix.MulHomogen(DirAxis*(OrbitAxisEnd*fScreenFactor)),Color,IfThen(Active,3.4,2.4));
+    OrbitPlanet(fModelMatrix.MulHomogen(DirAxis*fScreenFactor),7.0,Color,Active);
+    if fUsing and Active and fDrawGuides then begin
+     Guide:=fModelMatrix.MulBasis(DirAxis)*(fScreenFactor*24.0);
+     OrbitDashedLine(fModelMatrix.Translation.xyz-Guide,fModelMatrix.Translation.xyz+Guide,WithAlpha(fColors.Selection,0.8),1.0,96);
+    end;
+   end;
+  end;
+  // The pivot, which also moves in the view plane
+  Active:=fAction=TAction.MoveScreen;
+  Color:=OrbitColor(Active,fUsing and not Active,TAction.MoveScreen in fDisabledActions);
+  DrawFilledCircle(fModelMatrix.Translation.xyz,4.0*fLineWidthScale,Color,32);
+  DrawCircle(fModelMatrix.Translation.xyz,9.0*fLineWidthScale,WithAlpha(Color,0.6*Color.w),32,1.3*fLineWidthScale);
+ end;
+ procedure DrawOrbitRotation;
+ const RingActions:array[0..2] of TAction=(TAction.RotateX,TAction.RotateY,TAction.RotateZ);
+ var AxisIndex,Index:TpvSizeInt;
+     CameraToModel,U,V,Direction,NextDirection,Normal:TpvVector3;
+     Active,Dimmed,Front:boolean;
+     Color:TpvVector4;
+     Angle,NextAngle,MoonAngle,Tick:TpvScalar;
+     WedgePoints:array[0..HalfCircleSegmentCount] of TpvVector3;
+ begin
+  if aInFlightFrameIndex<0 then begin
+   exit;
+  end;
+  CameraToModel:=OrbitCameraToModel;
+  for AxisIndex:=0 to 2 do begin
+   Active:=fAction=RingActions[AxisIndex];
+   Dimmed:=fUsing and not Active;
+   Color:=OrbitColor(Active,Dimmed,RingActions[AxisIndex] in fDisabledActions);
+   U:=DirectionUnary[(AxisIndex+1) mod 3];
+   V:=DirectionUnary[(AxisIndex+2) mod 3];
+   for Index:=0 to OrbitRingSegments-1 do begin
+    Angle:=(Index/OrbitRingSegments)*TwoPI;
+    NextAngle:=((Index+1)/OrbitRingSegments)*TwoPI;
+    Direction:=(U*cos(Angle))+(V*sin(Angle));
+    NextDirection:=(U*cos(NextAngle))+(V*sin(NextAngle));
+    Front:=((Direction+NextDirection).Dot(CameraToModel))<0.0;
+    if Front then begin
+     if Active then begin
+      OrbitLine(fModelMatrix.MulHomogen(Direction*fScreenFactor),fModelMatrix.MulHomogen(NextDirection*fScreenFactor),WithAlpha(Color,0.22),12.0);
+     end;
+     OrbitLine(fModelMatrix.MulHomogen(Direction*fScreenFactor),fModelMatrix.MulHomogen(NextDirection*fScreenFactor),Color,IfThen(Active,3.5,2.4));
+     // Compass ticks every 10 degrees, longer every 90
+     if (Index and 1)=0 then begin
+      if (Index mod 18)=0 then begin
+       Tick:=0.86;
+      end else begin
+       Tick:=0.93;
+      end;
+      OrbitLine(fModelMatrix.MulHomogen(Direction*fScreenFactor),fModelMatrix.MulHomogen(Direction*(fScreenFactor*Tick)),Color,IfThen((Index mod 18)=0,1.8,1.1));
+     end;
+    end else begin
+     OrbitLine(fModelMatrix.MulHomogen(Direction*fScreenFactor),fModelMatrix.MulHomogen(NextDirection*fScreenFactor),WithAlpha(Color,0.45*Color.w),1.4);
+    end;
+   end;
+   // While turning, the moon goes with the mouse and a wedge shows the angle turned
+   if fUsing and Active then begin
+    MoonAngle:=OrbitRingMouseAngle(AxisIndex);
+    Normal:=fTranslationPlane.Normal;
+    WedgePoints[0]:=fModelMatrix.Translation.xyz;
+    for Index:=1 to HalfCircleSegmentCount do begin
+     WedgePoints[Index]:=fModelMatrix.Translation.xyz+((TpvMatrix3x3.CreateRotate(fRotationAngle*((Index-1)/(HalfCircleSegmentCount-1)),Normal)*fRotationVectorSource)*fScreenFactor);
+    end;
+    for Index:=1 to HalfCircleSegmentCount-1 do begin
+     TpvScene3DRendererInstance(fRendererInstance).AddSolidTriangle3D(aInFlightFrameIndex,
+                                                                      WedgePoints[0],WedgePoints[Index],WedgePoints[Index+1],
+                                                                      fColors.RotationHalfAlpha,
+                                                                      TpvVector2.Null,TpvVector2.Null,TpvVector2.Null);
+    end;
+   end else begin
+    MoonAngle:=OrbitMoonAngle(AxisIndex);
+   end;
+   OrbitPlanet(fModelMatrix.MulHomogen(((U*cos(MoonAngle))+(V*sin(MoonAngle)))*fScreenFactor),IfThen(Active,9.0,7.0),Color,Active);
+  end;
+  // The view aligned circle, kept faint: it turns about the view axis
+  Active:=fAction=TAction.RotateScreen;
+  Color:=OrbitColor(Active,fUsing and not Active,TAction.RotateScreen in fDisabledActions);
+  for Index:=0 to OrbitRingSegments-1 do begin
+   Angle:=(Index/OrbitRingSegments)*TwoPI;
+   NextAngle:=((Index+1)/OrbitRingSegments)*TwoPI;
+   OrbitLine(fModelMatrix.Translation.xyz+(((fInverseViewMatrix.Right.xyz*cos(Angle))+(fInverseViewMatrix.Up.xyz*sin(Angle)))*fScreenFactor),
+             fModelMatrix.Translation.xyz+(((fInverseViewMatrix.Right.xyz*cos(NextAngle))+(fInverseViewMatrix.Up.xyz*sin(NextAngle)))*fScreenFactor),
+             WithAlpha(Color,IfThen(Active,1.0,0.35)*Color.w),IfThen(Active,3.0,1.5));
+  end;
+  DrawFilledCircle(fModelMatrix.Translation.xyz,4.0*fLineWidthScale,fColors.Directions[0],32);
+ end;
+ procedure DrawOrbitScale;
+ var Index:TpvSizeInt;
+     Active:boolean;
+     Color:TpvVector4;
+     Angle,NextAngle,Radius,Tick,Factor:TpvScalar;
+     Center,ViewRight,ViewUp,Direction,NextDirection,HandleDirection:TpvVector3;
+     MouseOffset:TpvVector2;
+ begin
+  if aInFlightFrameIndex<0 then begin
+   exit;
+  end;
+  Active:=fAction=TAction.ScaleXYZ;
+  Color:=OrbitColor(Active,false,TAction.ScaleXYZ in fDisabledActions);
+  Center:=fModelMatrix.Translation.xyz;
+  ViewRight:=fInverseViewMatrix.Right.xyz;
+  ViewUp:=fInverseViewMatrix.Up.xyz;
+  if fUsing then begin
+   Factor:=fScale.x;
+  end else begin
+   Factor:=1.0;
+  end;
+  Radius:=fScreenFactor*OrbitZoomRadius*Factor;
+  if fUsing then begin
+   // The size it had when it was grabbed
+   for Index:=0 to OrbitRingSegments-1 do begin
+    if (Index and 1)=0 then begin
+     Angle:=(Index/OrbitRingSegments)*TwoPI;
+     NextAngle:=((Index+1)/OrbitRingSegments)*TwoPI;
+     OrbitLine(Center+(((ViewRight*cos(Angle))+(ViewUp*sin(Angle)))*(fScreenFactor*OrbitZoomRadius)),
+               Center+(((ViewRight*cos(NextAngle))+(ViewUp*sin(NextAngle)))*(fScreenFactor*OrbitZoomRadius)),
+               WithAlpha(fColors.Directions[0],0.4),1.4);
+    end;
+   end;
+  end;
+  for Index:=0 to OrbitRingSegments-1 do begin
+   Angle:=(Index/OrbitRingSegments)*TwoPI;
+   NextAngle:=((Index+1)/OrbitRingSegments)*TwoPI;
+   Direction:=(ViewRight*cos(Angle))+(ViewUp*sin(Angle));
+   NextDirection:=(ViewRight*cos(NextAngle))+(ViewUp*sin(NextAngle));
+   if Active then begin
+    OrbitLine(Center+(Direction*Radius),Center+(NextDirection*Radius),WithAlpha(Color,0.22),12.0);
+   end;
+   OrbitLine(Center+(Direction*Radius),Center+(NextDirection*Radius),Color,IfThen(Active,3.2,2.2));
+   if (Index and 1)=0 then begin
+    if (Index mod 18)=0 then begin
+     Tick:=0.88;
+    end else begin
+     Tick:=0.94;
+    end;
+    OrbitLine(Center+(Direction*Radius),Center+(Direction*(Radius*Tick)),Color,IfThen((Index mod 18)=0,1.8,1.1));
+   end;
+  end;
+  // The handle sits where the ring is grabbed, or would be
+  MouseOffset:=fMousePosition-fScreenSquareCenter;
+  if Active and (MouseOffset.Length>1e-3) then begin
+   HandleDirection:=((ViewRight*MouseOffset.x)-(ViewUp*MouseOffset.y)).Normalize;
+  end else begin
+   HandleDirection:=ViewRight;
+  end;
+  OrbitPlanet(Center+(HandleDirection*Radius),IfThen(Active,10.0,8.0),Color,Active);
+  DrawFilledCircle(Center,4.0*fLineWidthScale,fColors.Directions[0],32);
  end;
  procedure DrawScaleGizmo;
  var Index:TpvSizeInt;
@@ -1087,19 +1543,19 @@ var Colors:array[0..7] of TpvVector4;
                                                                    fModelMatrix.MulHomogen(DirAxis*0.1*fScreenFactor),
                                                                    fModelMatrix.MulHomogen(DirAxis*fScreenFactor),
                                                                    fColors.Gray,
-                                                                   3.0,
+                                                                   3.0*fLineWidthScale,
                                                                    TpvVector2.Null,
                                                                    TpvVector2.Null);
-      DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*fScreenFactor),6.0,fColors.Gray,32);
+      DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*fScreenFactor),6.0*fLineWidthScale,fColors.Gray,32);
      end;
      TpvScene3DRendererInstance(fRendererInstance).AddSolidLine3D(aInFlightFrameIndex,
                                                                   fModelMatrix.MulHomogen(DirAxis*0.1*fScreenFactor),
                                                                   fModelMatrix.MulHomogen(DirAxis*Scale[Index]*fScreenFactor),
                                                                   Colors[Index+1],
-                                                                  3.0,
+                                                                  3.0*fLineWidthScale,
                                                                   TpvVector2.Null,
                                                                   TpvVector2.Null);
-     DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*Scale[Index]*fScreenFactor),6.0,Colors[Index+1],32);
+     DrawFilledCircle(fModelMatrix.MulHomogen(DirAxis*Scale[Index]*fScreenFactor),6.0*fLineWidthScale,Colors[Index+1],32);
      if fAxisFactors[Index]<0.0 then begin
       DrawHatchedAxis(DirAxis*Scale[Index]);
      end;
@@ -1107,7 +1563,7 @@ var Colors:array[0..7] of TpvVector4;
    end;
   end;
   if aInFlightFrameIndex>=0 then begin
-   DrawFilledCircle(fModelMatrix.MulHomogen(TpvVector3.Null),6.0,Colors[0],32);
+   DrawFilledCircle(fModelMatrix.MulHomogen(TpvVector3.Null),6.0*fLineWidthScale,Colors[0],32);
   end;
  end;
 var v:TpvVector4;
@@ -1130,13 +1586,25 @@ begin
    ComputeColors;
    case fOperation of
     TOperation.Rotate:begin
-     DrawRotationGizmo;
+     if fStyle=TStyle.Orbit then begin
+      DrawOrbitRotation;
+     end else begin
+      DrawRotationGizmo;
+     end;
     end;
     TOperation.Translate:begin
-     DrawTranslationGizmo;
+     if fStyle=TStyle.Orbit then begin
+      DrawOrbitTranslation;
+     end else begin
+      DrawTranslationGizmo;
+     end;
     end;
     TOperation.Scale:begin
-     DrawScaleGizmo;
+     if fStyle=TStyle.Orbit then begin
+      DrawOrbitScale;
+     end else begin
+      DrawScaleGizmo;
+     end;
     end;
     TOperation.Bounds:begin
     end;
@@ -1342,6 +1810,7 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
                                                  fModelSourceMatrix.Up.xyz.Length,
                                                  fModelSourceMatrix.Forwards.xyz.Length);
   fSaveMousePosition:=fMousePosition;
+  fOrbitScaleRadiusOrigin:=Max(fMousePosition.DistanceTo(fScreenSquareCenter),8.0);
  end;
  procedure ProcessScale;
  var Ratio:TpvScalar;
@@ -1390,8 +1859,13 @@ function TpvScene3DGizmo.MouseAction(const aMatrix:TpvMatrix4x4;
     end;
    end;
    else {TAction.ScaleXYZ:}begin
-    // Negate both mouse deltas so dragging up/left enlarges and down/right shrinks.
-    fScale:=TpvVector3.AllAxis*Max(1.0+(((fSaveMousePosition.x-fMousePosition.x)+(fSaveMousePosition.y-fMousePosition.y))*1e-2),1e-3);
+    if fStyle=TStyle.Orbit then begin
+     // The ring grows with the distance of the mouse to the pivot, in whatever direction
+     fScale:=TpvVector3.AllAxis*Min(Max(fMousePosition.DistanceTo(fScreenSquareCenter)/fOrbitScaleRadiusOrigin,0.05),20.0);
+    end else begin
+     // Negate both mouse deltas so dragging up/left enlarges and down/right shrinks.
+     fScale:=TpvVector3.AllAxis*Max(1.0+(((fSaveMousePosition.x-fMousePosition.x)+(fSaveMousePosition.y-fMousePosition.y))*1e-2),1e-3);
+    end;
    end;
   end;
   fScale.x:=Max(fScale.x,1e-3);
@@ -1608,6 +2082,13 @@ begin
   fColors.Gray:=JSONToColorRGBA(JSONColorsObject.Properties['gray'],fColors.Gray,ColorSpace);
   LoadAxisColors(JSONColorsObject.Properties['planes'],fColors.Planes);
   LoadAxisColors(JSONColorsObject.Properties['directions'],fColors.Directions);
+  fLineWidthScale:=Max(0.25,TPasJSON.GetNumber(JSONGizmoObject.Properties['linewidthscale'],fLineWidthScale));
+  if LowerCase(TPasJSON.GetString(JSONGizmoObject.Properties['style'],''))='orbit' then begin
+   fStyle:=TStyle.Orbit;
+  end else if LowerCase(TPasJSON.GetString(JSONGizmoObject.Properties['style'],''))='classic' then begin
+   fStyle:=TStyle.Classic;
+  end;
+  fHitToleranceScale:=Max(0.25,TPasJSON.GetNumber(JSONGizmoObject.Properties['hittolerancescale'],fHitToleranceScale));
  end;
 end;
 

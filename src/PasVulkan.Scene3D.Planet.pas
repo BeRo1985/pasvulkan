@@ -381,6 +381,10 @@ type TpvScene3DPlanets=class;
              BrushIndex:TpvUInt32;
              BrushRotation:TpvFloat;
              MaskBits:TpvUInt32; // mask map layers which protect the ground from this modification, 0 = none
+             // Flatten onto one plane in space instead of the sphere of TargetHeight: its normal and its
+             // distance from the planet center, 0 = no plane
+             PlaneNormal:TpvVector3;
+             PlaneDistance:TpvFloat;
             end;
             PHeightMapFlattenItem=^THeightMapFlattenItem;
             THeightMapFlattenItems=array[0..MaxInFlightFrames-1] of THeightMapFlattenItem;
@@ -2484,6 +2488,10 @@ type TpvScene3DPlanets=class;
                     TargetHeight:TpvFloat;
                     BrushRotation:TpvFloat;
                     MaskBits:TpvUInt32;
+                    Reserved1:TpvUInt32;
+                    Reserved2:TpvUInt32;
+                    Reserved3:TpvUInt32;
+                    Plane:TpvVector4; // xyz = plane normal, w = distance from the planet center, 0 = no plane
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -4258,6 +4266,9 @@ type TpvScene3DPlanets=class;
        // they work on the whole planet, as they always did.
        procedure EnqueueHeightMapModification(const aInFlightFrameIndex:TpvSizeInt;const aPosition:TpvVector3;const aRadius,aBorderRadius,aValue:TpvScalar;const aMaskBits:TpvUInt32=0);
        procedure EnqueueHeightMapFlatten(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
+       // Flattens the brush area onto one plane in space, which does not bend with the planet: aPlaneNormal
+       // (unit length) and aPlaneDistance, the distance of the plane from the planet center.
+       procedure EnqueueHeightMapFlattenPlane(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius:TpvFloat;const aPlaneNormal:TpvVector3;const aPlaneDistance:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
        procedure CaptureHeightMapBeforeState(const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure ReleaseHeightMapBeforeState;
        procedure EnqueueHeightMapFlattenBeforeState(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
@@ -40445,6 +40456,8 @@ begin
       fHeightMapFlatten.fPushConstants.BrushIndex:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushIndex;
       fHeightMapFlatten.fPushConstants.BrushRotation:=fHeightMapFlattenItems[aInFlightFrameIndex].BrushRotation*TwoPI;
       fHeightMapFlatten.fPushConstants.MaskBits:=fHeightMapFlattenItems[aInFlightFrameIndex].MaskBits;
+      fHeightMapFlatten.fPushConstants.Plane:=TpvVector4.InlineableCreate(fHeightMapFlattenItems[aInFlightFrameIndex].PlaneNormal,
+                                                                          fHeightMapFlattenItems[aInFlightFrameIndex].PlaneDistance);
       fHeightMapFlatten.Execute(fVulkanUpdateCommandBuffer);
      finally
       fHeightMapFlattenItems[aInFlightFrameIndex].TargetHeight:=0.0;
@@ -41437,6 +41450,18 @@ begin
   end else begin
    HeightMapFlattenItem^.MaskBits:=0;
   end;
+  HeightMapFlattenItem^.PlaneNormal:=TpvVector3.InlineableCreate(0.0,0.0,0.0);
+  HeightMapFlattenItem^.PlaneDistance:=0.0;
+ end;
+end;
+
+procedure TpvScene3DPlanet.EnqueueHeightMapFlattenPlane(const aInFlightFrameIndex:TpvSizeInt;const aVector:TpvVector3;const aInnerRadius,aOuterRadius:TpvFloat;const aPlaneNormal:TpvVector3;const aPlaneDistance:TpvFloat;const aBrushIndex:TpvUInt32;const aBrushRotation:TpvFloat;const aMaskBits:TpvUInt32=0);
+begin
+ if (aInFlightFrameIndex>=0) and (aPlaneDistance>0.0) then begin
+  // The target height only says that there is something to do this frame, the plane decides
+  EnqueueHeightMapFlatten(aInFlightFrameIndex,aVector,aInnerRadius,aOuterRadius,aPlaneDistance,aBrushIndex,aBrushRotation,aMaskBits);
+  fHeightMapFlattenItems[aInFlightFrameIndex].PlaneNormal:=aPlaneNormal.Normalize;
+  fHeightMapFlattenItems[aInFlightFrameIndex].PlaneDistance:=aPlaneDistance;
  end;
 end;
 
