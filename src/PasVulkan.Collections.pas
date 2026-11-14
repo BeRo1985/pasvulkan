@@ -1804,7 +1804,9 @@ procedure TpvDynamicQueue<T>.EnqueueAtFront(const aItem:T);
 var Index:TpvSizeInt;
 begin
  if Size<=Count then begin
-  GrowResize(Count+1);
+  // By half again rather than by one, since growing copies the whole queue, which made a long run of
+  // enqueues without dequeues quadratic
+  GrowResize(Count+(Count shr 1)+16);
  end;
  dec(Head);
  if Head<0 then begin
@@ -1819,7 +1821,8 @@ procedure TpvDynamicQueue<T>.Enqueue(const aItem:T);
 var Index:TpvSizeInt;
 begin
  if Size<=Count then begin
-  GrowResize(Count+1);
+  // See EnqueueAtFront
+  GrowResize(Count+(Count shr 1)+16);
  end;
  Index:=Tail;
  inc(Tail);
