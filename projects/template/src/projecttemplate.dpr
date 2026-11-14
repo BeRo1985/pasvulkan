@@ -16,7 +16,8 @@
  {$endif}
 {$endif}
 {$if defined(win32) or defined(win64)}
- {$if defined(Debug) or not defined(Release)}
+ // PasVulkanNoConsole: a GUI program without a console window of its own, even in a debug build
+ {$if (defined(Debug) or not defined(Release)) and not defined(PasVulkanNoConsole)}
   {$apptype console}
  {$else}
   {$apptype gui}
@@ -155,7 +156,7 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 {$R *.res}
 
 begin
-{$if defined(Windows) and (defined(Debug) or not defined(Release))}
+{$if defined(Windows) and (defined(Debug) or not defined(Release)) and not defined(PasVulkanNoConsole)}
  // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo
  if (GetStdHandle(STD_OUTPUT_HANDLE)=0) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
   AllocConsole;
@@ -166,7 +167,7 @@ begin
 {$else}
  TApplication.Main;
 {$ifend}
-{$if defined(Windows) and (defined(Debug) or not defined(Release))}
+{$if defined(Windows) and (defined(Debug) or not defined(Release)) and not defined(PasVulkanNoConsole)}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
   writeln('Press return to exit . . . ');
   readln;

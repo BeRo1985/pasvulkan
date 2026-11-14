@@ -26162,6 +26162,15 @@ initialization
 
  pvStdOut:=GetStdHandle(Std_Output_Handle);
 
+{$if defined(PasVulkanNoConsole)}
+ // Built as a GUI program, so that it comes without a console window of its own: never a new console,
+ // only the one of the command line it was started from, if there is one
+ if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
+  if (pvOutputLogLevel>LOG_NONE) and AttachConsole(ATTACH_PARENT_PROCESS) then begin
+   pvStdOut:=GetStdHandle(Std_Output_Handle);
+  end;
+ end;
+{$else}
   // Check if a console is existing
  if (pvStdOut=0) or (pvStdOut=Invalid_Handle_Value) then begin
   // If no console is existing and the log level is not none, create a new console
@@ -26169,6 +26178,7 @@ initialization
    AllocConsole;
   end;
  end;
+{$ifend}
 
  // If a console is existing, set the console output codepage to UTF-8 (65001) and check if it is UTF-8 afterwards for further use with a bit slower UTF-16 fallback
  if (pvStdOut<>0) and (pvStdOut<>Invalid_Handle_Value) then begin
@@ -26177,6 +26187,24 @@ initialization
   // A console only where the handle has a console mode; a file or a pipe has none
   pvIsStdOutConsole:=GetConsoleMode(pvStdOut,pvStdOutConsoleMode);
  end;
+
+{$if defined(PasVulkanNoConsole)}
+ // The text files of the runtime library stay closed in a GUI program, and every WriteLn left somewhere
+ // would then fail with an I/O error. They write to the console taken over, or else into nothing.
+ if pvIsStdOutConsole then begin
+  AssignFile(Output,'CONOUT$');
+  AssignFile(ErrOutput,'CONOUT$');
+ end else begin
+  AssignFile(Output,'NUL');
+  AssignFile(ErrOutput,'NUL');
+ end;
+ try
+  Rewrite(Output);
+  Rewrite(ErrOutput);
+ except
+  // Left closed then, as they would be without all this
+ end;
+{$ifend}
 
 {$ifend}
 
