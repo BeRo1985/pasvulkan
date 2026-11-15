@@ -10141,6 +10141,7 @@ let mat = engine.scene3d.createMaterial({
 |`+glowSpeed+` |number |Glow scroll speed.
 |`+glowMin+` |number |Glow intensity minimum.
 |`+glowMax+` |number |Glow intensity maximum.
+|`+crtEffect+` |bool |Optional CRT like effect on top: a travelling interference band in which the scan lines wobble, per-pixel grain and a slow rolling bar (default `+false+`).
 |===
 
 * *Return Value:* A `+Scene3DMaterial+` ghost.

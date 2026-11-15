@@ -711,6 +711,10 @@ begin
  if POCAGetValueType(OutValue)=pvtNUMBER then begin
   aHologram.GlowMax:=POCAGetNumberValue(aContext,OutValue);
  end;
+ OutValue:=POCAHashGetString(aContext,aHash,'crtEffect');
+ if POCAGetValueType(OutValue)=pvtNUMBER then begin
+  aHologram.CRTEffect:=POCAGetNumberValue(aContext,OutValue)<>0;
+ end;
  OutValue:=POCAHashGetString(aContext,aHash,'direction');
  if POCAGetValueType(OutValue)=pvtARRAY then begin
   aHologram.Direction.x:=POCAGetNumberValue(aContext,POCAArrayGet(OutValue,0));

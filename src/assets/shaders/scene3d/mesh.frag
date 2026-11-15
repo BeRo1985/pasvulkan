@@ -410,6 +410,17 @@ float hologramNoise(float x){
   return smoothstep(0.0, 0.25, hologramNoiseFunction(x, 4096u));
 }
 
+// Hash of three integers to [0, 1), for the grain and the interference of the optional CRT effect of the hologram
+float hologramHash(uvec3 v){
+  v = (v * 1664525u) + 1013904223u;
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  v ^= v >> 16u;
+  v.x += v.y * v.z;
+  return float(v.x >> 8u) * (1.0 / 16777216.0);
+}
+
 #include "instancedataeffect.glsl"
 
 #ifdef WETNESS
@@ -638,10 +649,19 @@ void main() {
       // keeps receiving them. Cleared for surfaces that should stay clean, such as a vehicle driving over
       // painted road markings.
       if((flags & (1u << 24u)) != 0u){
+        // The decal groups of the material, narrowed by those of the instance when it names any, so that
+        // instances of one model can take different decals
+        uint decalReceiverGroupMask = material.decalGroupMaskReserved.x;
+        if(currentInstanceDataIndex > 0u){
+          uint instanceDecalGroupMask = instanceDataItems[currentInstanceDataIndex].emissiveScaleDecalGroupMaskUnused.y;
+          if(instanceDecalGroupMask != 0u){
+            decalReceiverGroupMask &= instanceDecalGroupMask;
+          }
+        }
         applyDecals(
           baseColor,
           decalEmissive,
-          material.decalGroupMaskReserved.x,
+          decalReceiverGroupMask,
           metallic,
           perceptualRoughness,
           occlusion,
@@ -963,7 +983,7 @@ void main() {
 #else
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
       if((currentInstanceDataIndex > 0u) && ((instanceDataItems[currentInstanceDataIndex].SelectedDissolveDitheredTransparencyFlags.w & (1u << 1u)) != 0u)){
-        emissiveOutput *= instanceDataItems[currentInstanceDataIndex].emissiveScaleUnused.x;
+        emissiveOutput *= uintBitsToFloat(instanceDataItems[currentInstanceDataIndex].emissiveScaleDecalGroupMaskUnused.x);
       }
       // A decal's emissive rides on top, outside the instance emissive scale: it belongs to what was
       // painted onto the surface, not to the instance that happens to carry it.
@@ -1065,7 +1085,11 @@ void main() {
       float vertexDirection;
       vec3 hologramDirection = vec3(decodedFloats0.xy, decodedFloats0.z);
       float hologramDirectionLength = dot(hologramDirection, hologramDirection);
-      if(hologramDirectionLength >= 4.0){
+      if((hologramDirectionLength >= 4.0) && (abs(hologramDirection.x) >= 1.5)){
+        // Direction with |x| >= 1.5 (e.g. [2, 0, 0]): along the radius from the world origin, the center of a
+        // planet, so the lines lie level with its ground everywhere and keep still at every view angle
+        vertexDirection = fma(length(inWorldSpacePosition.xyz), 0.5, 0.5);
+      }else if(hologramDirectionLength >= 4.0){
         if(hologramDirection.z >= -(1e-6)){
           // When the hologram direction is equal or larger than 2.0 unit length, it is assumed that it is a screen space based hologram (as a distinguishing criterion)
           // Not using gl_FragCoord.y here, because it is only a rounded integer value but not the correct floating point value, therefore using the view projection
@@ -1109,8 +1133,26 @@ void main() {
       // Get the hologram time
       const float hologramTime = float(uint(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.x & 4095u)) + uintBitsToFloat(pushConstants.timeSecondsTimeFractionalSecondWidthHeight.y);
 
+      // Optional CRT effect on top (CRTEffect of the hologram, material flag bit 21, off by default): interference
+      // band, grain and rolling bar. Without it everything below stays as it was.
+      const bool hologramCRTEffect = (flags & (1u << 21u)) != 0u;
+      float hologramGlitch = 0.0;
+      float scanDirection = vertexDirection;
+      if(hologramCRTEffect){
+        // CRT like interference: a narrow band that travels from the bottom to the top, about 3 s per pass, in
+        // which the scan lines wobble aside and it is a little brighter. Not every pass has one (about two in
+        // three), and it fades in and out at the ends, so nothing pops. Bands repeat every half unit of the
+        // direction coordinate (one world unit with the world space and the radius based directions).
+        const float hologramGlitchCycle = hologramTime * 0.35;
+        const float hologramGlitchPosition = fract(hologramGlitchCycle);
+        const float hologramGlitchOn = step(0.35, hologramHash(uvec3(uint(hologramGlitchCycle), 7u, 13u))) *
+                                       smoothstep(0.0, 0.1, hologramGlitchPosition) * (1.0 - smoothstep(0.9, 1.0, hologramGlitchPosition));
+        hologramGlitch = hologramGlitchOn * (1.0 - smoothstep(0.0, 0.04, abs(fract(vertexDirection * 2.0) - hologramGlitchPosition)));
+        scanDirection += hologramGlitch * sin(hologramTime * 23.0) * 0.01;
+      }
+
       // Calculate the scan line part of the hologram effect
-      const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((vertexDirection * 6.283185307179586 * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
+      const float scanLine = (hologramScanMin < hologramScanMax) ? mix(hologramScanMin, hologramScanMax, clamp(fma(sin((scanDirection * 6.283185307179586 * hologramScanTiling) + (hologramTime * hologramScanSpeed)), 0.75, 0.5), 0.0, 1.0)) : hologramScanMin;
 
       // Calculate the screen-retrace-like glow part of the hologram effect
       const float glow = (hologramGlowMin < hologramGlowMax) ? mix(hologramGlowMin, hologramGlowMax, fract((vertexDirection * hologramGlowTiling) - (hologramTime * hologramGlowSpeed))) : hologramGlowMin;
@@ -1126,6 +1168,15 @@ void main() {
 
       // Calculate the hologram color by combining the scan line, glow, flicker, and rim parts and multiplying it with the actual color
       color *= vec4(vec3(hologramMainColorFactor.xyz * (1.0 + (glow * 0.35))) + (rim * hologramRimColorFactor.xyz), (scanLine + (rim * hologramRimColorFactor.w) + glow) * flicker * hologramMainColorFactor.w);
+
+      if(hologramCRTEffect){
+        // Grain: a fine flicker of every pixel, new 24 times a second
+        const float hologramGrain = hologramHash(uvec3(uvec2(gl_FragCoord.xy), uint(hologramTime * 24.0)));
+        // A slow wide rolling bar, like the picture of an old screen, barely there
+        const float hologramRoll = 0.94 + (0.06 * sin((vertexDirection * 3.141592653589793) - (hologramTime * 1.5)));
+        // Grain, rolling bar and interference on top
+        color *= vec4(vec3(hologramRoll * (1.0 + (hologramGlitch * 0.4))), mix(0.75, 1.0, hologramGrain) * (1.0 + (hologramGlitch * 0.25)));
+      }
 
       // Back-face culling for hologram effect
 /*    if(dot(workNormal, viewDirection) < 0.0){

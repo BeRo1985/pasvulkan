@@ -850,7 +850,8 @@ type EpvScene3D=class(Exception);
              MaterialColorKeys:array[0..3] of TpvUInt32; // 4x packed RGBA8 per-material color tinting (0=white/no effect)
 
              EmissiveScale:TpvFloat; // per-instance emissive multiplier (JS Items.draws emissiveMul); only applied when the emissive-scale flag bit is set, so default instances are unchanged
-             Unused1:array[0..2] of TpvUInt32;
+             DecalGroupMask:TpvUInt32; // per-instance decal groups: when not 0, ANDed with the material's decal group mask (mesh.frag)
+             Unused1:array[0..1] of TpvUInt32;
 
             end;
             PGPUInstanceData=^TGPUInstanceData;
@@ -1020,6 +1021,8 @@ type EpvScene3D=class(Exception);
               procedure SetColorKeyA(const aValue:TpvVector4);
               function GetMaterialColorKey(const aIndex:TpvInt32):TpvVector4;
               procedure SetMaterialColorKey(const aIndex:TpvInt32;const aValue:TpvVector4);
+              function GetDecalGroupMask:TpvUInt32;
+              procedure SetDecalGroupMask(const aValue:TpvUInt32);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -1057,6 +1060,9 @@ type EpvScene3D=class(Exception);
               property ColorKeyB:TpvVector4 read GetColorKeyB write SetColorKeyB;
               property ColorKeyA:TpvVector4 read GetColorKeyA write SetColorKeyA;
               property MaterialColorKeys[const aIndex:TpvInt32]:TpvVector4 read GetMaterialColorKey write SetMaterialColorKey;
+              // Narrows the decal groups of this instance's materials (0 = no limit): lets two instances of
+              // the same model take different decals, e.g. a decal meant for one carpet only
+              property DecalGroupMask:TpvUInt32 read GetDecalGroupMask write SetDecalGroupMask;
             end;
             TInstanceDataList=TpvObjectGenericList<TInstanceData>;
             { TBaseObject }
@@ -1431,6 +1437,7 @@ type EpvScene3D=class(Exception);
                     GlowSpeed:TpvFloat;
                     GlowMin:TpvFloat;
                     GlowMax:TpvFloat;
+                    CRTEffect:boolean; // optional CRT like interference band, grain and rolling bar on top, off by default (material flag bit 21)
                    end;
                    TShaderData=packed record
                     case boolean of
@@ -1526,6 +1533,10 @@ type EpvScene3D=class(Exception);
                      // decal's own mask share a bit. All ones by default, so every decal reaches every
                      // material and the flag above stays the coarse on/off; this is for telling classes of
                      // decal apart afterwards, without a flag per case.
+                     // Materials from glTF take the groups their name says (_decalgroupN, _decalgroupN-M, see
+                     // AssignFromGLTF), the others TpvScene3D.GLTFMaterialDecalGroupMask, all ones by default.
+                     // An application that sets that to the groups 0..15, for example, makes decals of the
+                     // groups 16..31 land only on materials that name them.
                      DecalGroupMask:TpvUInt32;
                      ForceRayOpaque:boolean;
                      NoWetness:boolean;
@@ -1678,6 +1689,7 @@ type EpvScene3D=class(Exception);
                       GlowSpeed:1.0;
                       GlowMin:0.0;
                       GlowMax:1.0;
+                      CRTEffect:false;
                      );
                      AnimatedTextureMask:0;
                     );
@@ -2668,6 +2680,9 @@ type EpvScene3D=class(Exception);
                      fAnimationBeginTime:TpvDouble;
                      fAnimationEndTime:TpvDouble;
                      fAnimationDuration:TpvDouble;
+                     // Created by a POCA script of the model (Group.createAnimation), so that a hot reload of the
+                     // scripts may replace its channels, see TpvScene3D.TGroup.RequestPOCAScriptsReload
+                     fCreatedByScript:Boolean;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
@@ -3848,6 +3863,9 @@ type EpvScene3D=class(Exception);
                      procedure ReleaseData;
                      procedure ReleaseDataForReallocation;
                      procedure ReallocateData;
+                     // Sizes everything of the instance that depends on the animations of the group and their channels,
+                     // keeping what already exists, at the creation and after a hot reload of the POCA scripts of the group
+                     procedure ResizeAnimationData;
                      function GetAnimation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      function GetAnimationState(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.PAnimationState;
                      procedure SetActive(const aActive:boolean);
@@ -4119,6 +4137,24 @@ type EpvScene3D=class(Exception);
                    TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
                    TNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
+                   // Where a POCA script part of the model comes from: inline code of a node ("pocacode"), or an
+                   // asset or a file on the disk ("pocafile")
+                   TPOCAScriptKind=
+                    (
+                     Code,
+                     Asset,
+                     File_
+                    );
+                   { TPOCAScript }
+                   // A POCA script part of the model. Location is the asset name for Asset, the full path for File_
+                   // and a label of the node for Code, whose inline code is in Code (empty for the other kinds).
+                   TPOCAScript=record
+                    Kind:TpvScene3D.TGroup.TPOCAScriptKind;
+                    Location:TpvUTF8String;
+                    Code:TpvUTF8String;
+                   end;
+                   PPOCAScript=^TPOCAScript;
+                   TPOCAScripts=TpvDynamicArrayList<TpvScene3D.TGroup.TPOCAScript>;
              private
               fReady:boolean;
               fCulling:boolean;
@@ -4202,6 +4238,14 @@ type EpvScene3D=class(Exception);
               fNewImages:TpvScene3D.TImages;
               fNewSamplers:TpvScene3D.TSamplers;
               fNewTextures:TpvScene3D.TTextures;
+              // The POCA script parts of the model in load order
+              fPOCAScripts:TpvScene3D.TGroup.TPOCAScripts;
+              // Set by RequestPOCAScriptsReload, taken by TpvScene3D.Update
+              fPOCAScriptsReloadRequested:TPasMPBool32;
+              // True while a hot reload runs the scripts, Group.createAnimation then collects the new animations in
+              // fPOCAReloadAnimations instead of adding them to the group
+              fPOCAReloading:Boolean;
+              fPOCAReloadAnimations:TpvScene3D.TGroup.TAnimations;
 {$ifdef UpdateProfilingTimes}
               // Per group sums over the non-skipped instance updates, fetched and reset by FetchAndResetProfileTicks
               fProfileUpdateTicks:TPasMPInt64;
@@ -4212,7 +4256,8 @@ type EpvScene3D=class(Exception);
               procedure CollectMeshlets;
               procedure PostProcessSkins;
               procedure PostProcessNodes;
-              procedure PostProcessAnimations;
+              // With aReload for a hot reload of the POCA scripts, which must not change the material lists
+              procedure PostProcessAnimations(const aReload:Boolean=false);
               procedure MarkAnimatedElements;
               procedure CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
               procedure CalculateBoundingBox;
@@ -4229,6 +4274,18 @@ type EpvScene3D=class(Exception);
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
               function GetNodeByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
               function AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
+              function GetCountPOCAScripts:TpvSizeInt;
+              function GetPOCAScript(const aIndex:TpvSizeInt):TpvScene3D.TGroup.TPOCAScript;
+              // Compiles and calls the code parts (Code and Location of the entries) one after the other in one POCA
+              // context with the global "Group" bound to this group, Location as the source name. Stops at the first
+              // error, which it logs, result false then.
+              function ExecutePOCACodeParts(const aCodeParts:TpvScene3D.TGroup.TPOCAScripts;const aLogWhere:TpvUTF8String):Boolean;
+              // Runs the POCA script parts of the model in load order, see ExecutePOCACodeParts. A part whose code
+              // can't be read is skipped at loading, but is a failure at a hot reload (aReload).
+              function ExecutePOCAScripts(const aReload:Boolean):Boolean;
+              // Processes a requested hot reload of the POCA scripts, see RequestPOCAScriptsReload. Called by
+              // TpvScene3D.Update while it holds fGroupListLock, before the instance updates.
+              procedure ProcessPOCAScriptsReload;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aParallelLoadable:TpvResource.TParallelLoadable=TpvResource.TParallelLoadable.None); override;
               destructor Destroy; override;
@@ -4256,6 +4313,33 @@ type EpvScene3D=class(Exception);
               procedure CleanUp;
               procedure MarkLODVariants;
               procedure Finish;
+             public
+              // Compiles and runs POCA code of the model with the global "Group" bound to this group, the same
+              // way as the "pocafile" scripts at loading (also for running them again, e.g. a hot reload)
+              // Animations that the code creates are added to the group directly, which existing instances aren't
+              // sized for, so for a hot reload of the scripts of the model use RequestPOCAScriptsReload instead.
+              procedure ExecutePOCACode(const aCode:TpvUTF8String);
+              // Requests a hot reload of the POCA scripts of the model ("pocacode" and "pocafile" in the extras of its
+              // nodes, see POCAScripts). Callable from any thread at any time, it only sets a flag, and a group without
+              // scripts ignores it. The reload happens in the next TpvScene3D.Update before the instance updates, once
+              // the group is usable, so a request made while it still loads waits for that. It reads the script files
+              // again and runs all parts in load order in one POCA context, where Group.isReloading() returns 1. Only
+              // when all of them ran without an error, the animations they create take over the script animations of
+              // the same name (index and object stay), new ones are appended and script animations that aren't created
+              // anymore stay as empty ones without any effect. Animations from glTF are never touched. After an error
+              // the animations stay unchanged, only what the parts before the error did otherwise (material settings,
+              // for example) remains. The result is logged in either case. Material animations of a reload only work
+              // on materials that were already animated at loading, others need a reload of the model (also logged).
+              // The reload resizes the per animation arrays of the instances of this group within TpvScene3D.Update,
+              // so what uses them outside of it (StoreAnimationStates, InterpolateAnimationStates, TInstance.Animations[]
+              // and TInstance.AnimationStates[] on the game thread) and the creation of instances of this group must
+              // not run at the same time as TpvScene3D.Update, and pointers from TInstance.AnimationStates[] have to be
+              // fetched again after a reload that appended animations.
+              procedure RequestPOCAScriptsReload;
+             public
+              // The POCA script parts of the model in load order, also kept in the PVMF cache
+              property CountPOCAScripts:TpvSizeInt read GetCountPOCAScripts;
+              property POCAScripts[const aIndex:TpvSizeInt]:TpvScene3D.TGroup.TPOCAScript read GetPOCAScript;
              public
               function GetLightID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
               function GetMaterialID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
@@ -4579,7 +4663,7 @@ type EpvScene3D=class(Exception);
                (TFaceCullingMode.None,TFaceCullingMode.None)
               );
              PVMFSignature:TPVMFSignature=('P','V','M','F');
-             PVMFVersion=TpVUInt32($00000011);
+             PVMFVersion=TpVUInt32($00000012); // 0x12: materials from glTF get their decal group mask from the name (_decalgroupN, _decalgroupN-M), else from TpvScene3D.GLTFMaterialDecalGroupMask; hologram CRTEffect; POCA script parts of the group, created by script flag of animations
              ProceduralTextureImageHookDefault:TProceduralTextureImageHook=(Hook:nil;AllocateTexture:true);
              EmptyGPUInstanceData:TGPUInstanceData=
               (
@@ -4603,7 +4687,8 @@ type EpvScene3D=class(Exception);
 
                MaterialColorKeys:($ffffffff,$ffffffff,$ffffffff,$ffffffff); // default white = no tinting
                EmissiveScale:0.0;
-               Unused1:(0,0,0);
+               DecalGroupMask:0;
+               Unused1:(0,0);
 
               );
       private
@@ -4888,6 +4973,7 @@ type EpvScene3D=class(Exception);
        fDecalNeedsCompaction:TPasMPBool32;
        fDecalDebugFlags:TpvScene3D.TDecalDebugFlags;
        fDecalTimeSteps:Boolean;
+       fGLTFMaterialDecalGroupMask:TpvUInt32;
        fBoundingBox:TpvAABB;
        fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
        fCountInFlightFrames:TpvSizeInt;
@@ -5490,6 +5576,10 @@ type EpvScene3D=class(Exception);
        property EnableWater:Boolean read fEnableWater write fEnableWater;
        property DecalTimeSteps:Boolean read fDecalTimeSteps write fDecalTimeSteps;
        property DecalDebugFlags:TpvScene3D.TDecalDebugFlags read fDecalDebugFlags write fDecalDebugFlags;
+       // The decal groups of materials from glTF without one in their name (_decalgroupN, _decalgroupN-M), all
+       // ones by default. Set it before loading models: it ends up in their materials at loading and so also in
+       // their PVMF caches.
+       property GLTFMaterialDecalGroupMask:TpvUInt32 read fGLTFMaterialDecalGroupMask write fGLTFMaterialDecalGroupMask;
        property Decals:TDecals read fDecals;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
        property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
@@ -6355,6 +6445,7 @@ type { TPOCAScene3DGroup }
        function getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function setMaterialHologram(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function isReloading(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroup }
@@ -6477,13 +6568,24 @@ function TPOCAScene3DGroup.createAnimation(const aContext:PPOCAContext;const aTh
 var Animation:TpvScene3D.TGroup.TAnimation;
     POCAScene3DGroupAnimation:TPOCAScene3DGroupAnimation;
 begin
- Animation:=TpvScene3D.TGroup.TAnimation.Create(fGroup,fGroup.fAnimations.Count);
+ // A hot reload collects the new animations and applies them all at once, after all scripts ran without an
+ // error, see TpvScene3D.TGroup.ProcessPOCAScriptsReload
+ if fGroup.fPOCAReloading then begin
+  Animation:=TpvScene3D.TGroup.TAnimation.Create(fGroup,-1);
+ end else begin
+  Animation:=TpvScene3D.TGroup.TAnimation.Create(fGroup,fGroup.fAnimations.Count);
+ end;
  try
   if aCountArguments>0 then begin
    Animation.fName:=POCAGetStringValue(aContext,aArguments^[0]);
   end;
+  Animation.fCreatedByScript:=true;
  finally
-  fGroup.AddAnimation(Animation);
+  if fGroup.fPOCAReloading then begin
+   fGroup.fPOCAReloadAnimations.Add(Animation);
+  end else begin
+   fGroup.AddAnimation(Animation);
+  end;
  end;
  POCAScene3DGroupAnimation:=TPOCAScene3DGroupAnimation.Create(aContext^.Instance,aContext,nil,nil,false);
  POCAScene3DGroupAnimation.fAnimation:=Animation;
@@ -6517,6 +6619,16 @@ begin
   end;
  end;
  result:=POCAValueNull;
+end;
+
+function TPOCAScene3DGroup.isReloading(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ // Returns 1 while the scripts run for a hot reload, see TpvScene3D.TGroup.RequestPOCAScriptsReload, else 0
+ if fGroup.fPOCAReloading then begin
+  result.Num:=1;
+ end else begin
+  result.Num:=0;
+ end;
 end;
 
 { TpvScene3D.TScalarSum }
@@ -7203,6 +7315,19 @@ begin
    GPUInstanceData^.MaterialColorKeys[aIndex]:=Packed_;
    inc(fSceneInstance.fGPUInstanceDataGeneration);
   end;
+ end;
+end;
+
+function TpvScene3D.TInstanceData.GetDecalGroupMask:TpvUInt32;
+begin
+ result:=GPUInstanceData^.DecalGroupMask;
+end;
+
+procedure TpvScene3D.TInstanceData.SetDecalGroupMask(const aValue:TpvUInt32);
+begin
+ if GPUInstanceData^.DecalGroupMask<>aValue then begin
+  GPUInstanceData^.DecalGroupMask:=aValue;
+  inc(fSceneInstance.fGPUInstanceDataGeneration);
  end;
 end;
 
@@ -10912,6 +11037,8 @@ begin
 
    fData.Hologram.GlowMax:=StreamIO.ReadFloat;
 
+   fData.Hologram.CRTEffect:=StreamIO.ReadBoolean;
+
   end;
 
   fData.AnimatedTextureMask:=StreamIO.ReadUInt64;
@@ -11316,6 +11443,8 @@ begin
 
    StreamIO.WriteFloat(fData.Hologram.GlowMax);
 
+   StreamIO.WriteBoolean(fData.Hologram.CRTEffect);
+
   end;
 
   StreamIO.WriteUInt64(fData.AnimatedTextureMask);
@@ -11340,6 +11469,22 @@ var Index:TpvSizeInt;
     JSONObject:TPasJSONItemObject;
     LowerCaseName:TpvUTF8String;
     IsOpaque:Boolean;
+    DecalGroupPosition,DecalGroupFirst,DecalGroupLast,DecalGroupIndex:TpvSizeInt;
+ // Reads a decal group number (0..31) of the material name at aPosition and moves aPosition past its digits
+ function ParseDecalGroupNumber(var aPosition:TpvSizeInt;out aValue:TpvSizeInt):Boolean;
+ var Digits:TpvSizeInt;
+ begin
+  aValue:=0;
+  Digits:=0;
+  while (aPosition<=length(LowerCaseName)) and (LowerCaseName[aPosition] in ['0'..'9']) do begin
+   if aValue<32 then begin
+    aValue:=(aValue*10)+(ord(LowerCaseName[aPosition])-ord('0'));
+   end;
+   inc(aPosition);
+   inc(Digits);
+  end;
+  result:=(Digits>0) and (aValue<32);
+ end;
 begin
 
  fName:=aSourceMaterial.Name;
@@ -11369,6 +11514,29 @@ begin
    fData.MaterialColorKeyIndex:=3;
   end else if pos('_colorkey3',LowerCaseName)<>0 then begin
    fData.MaterialColorKeyIndex:=4;
+  end;
+  // Decal groups (see TData.DecalGroupMask): a material from glTF takes the groups of the scene's
+  // GLTFMaterialDecalGroupMask (all ones by default). "_decalgroupN" (N in 0..31) makes it take group N only,
+  // "_decalgroupN-M" the groups N to M, e.g. one per instance (see TInstanceData.DecalGroupMask). With that mask
+  // set to the groups 0..15, for example, decals of the groups 16..31 land on such materials and on no other one
+  // from glTF (decals of all groups, the default of a decal, still land everywhere).
+  fData.DecalGroupMask:=fSceneInstance.fGLTFMaterialDecalGroupMask;
+  DecalGroupPosition:=pos('_decalgroup',LowerCaseName);
+  if DecalGroupPosition>0 then begin
+   inc(DecalGroupPosition,length('_decalgroup'));
+   if ParseDecalGroupNumber(DecalGroupPosition,DecalGroupFirst) then begin
+    DecalGroupLast:=DecalGroupFirst;
+    if (DecalGroupPosition<=length(LowerCaseName)) and (LowerCaseName[DecalGroupPosition]='-') then begin
+     inc(DecalGroupPosition);
+     if (not ParseDecalGroupNumber(DecalGroupPosition,DecalGroupLast)) or (DecalGroupLast<DecalGroupFirst) then begin
+      DecalGroupLast:=DecalGroupFirst;
+     end;
+    end;
+    fData.DecalGroupMask:=0;
+    for DecalGroupIndex:=DecalGroupFirst to DecalGroupLast do begin
+     fData.DecalGroupMask:=fData.DecalGroupMask or (TpvUInt32(1) shl DecalGroupIndex);
+    end;
+   end;
   end;
   // GLTF extras override (has priority over naming convention)
   if assigned(aSourceMaterial.Extras) and (aSourceMaterial.Extras is TPasJSONItemObject) then begin
@@ -11949,6 +12117,7 @@ begin
   fData.Hologram.GlowSpeed:=10.0;
   fData.Hologram.GlowMin:=1.0;
   fData.Hologram.GlowMax:=1.0;
+  fData.Hologram.CRTEffect:=false;
   fData.Hologram.Active:=TPasJSON.GetBoolean(JSONObject.Properties['active'],fData.Hologram.Active);
   JSONItem:=JSONObject.Properties['direction'];
   if assigned(JSONItem) and (JSONItem is TPasJSONItemArray) and (TPasJSONItemArray(JSONItem).Count=3) then begin
@@ -11983,6 +12152,7 @@ begin
   fData.Hologram.GlowSpeed:=TPasJSON.GetNumber(JSONObject.Properties['glowSpeed'],fData.Hologram.GlowSpeed);
   fData.Hologram.GlowMin:=TPasJSON.GetNumber(JSONObject.Properties['glowMin'],fData.Hologram.GlowMin);
   fData.Hologram.GlowMax:=TPasJSON.GetNumber(JSONObject.Properties['glowMax'],fData.Hologram.GlowMax);
+  fData.Hologram.CRTEffect:=TPasJSON.GetBoolean(JSONObject.Properties['crtEffect'],fData.Hologram.CRTEffect);
  end;
 end;
 
@@ -12281,6 +12451,9 @@ begin
   PpvHalfFloat(pointer(@fShaderData.HologramGlowSpeed))^:=fData.Hologram.GlowSpeed;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowMin))^:=fData.Hologram.GlowMin;
   PpvHalfFloat(pointer(@fShaderData.HologramGlowMax))^:=fData.Hologram.GlowMax;
+  if fData.Hologram.CRTEffect then begin
+   fShaderData.Flags:=fShaderData.Flags or (TpvUInt32(1) shl 21);
+  end;
  end;
 
  if fData.DiffuseTransmission.Active then begin
@@ -15522,6 +15695,7 @@ begin
  fAnimationBeginTime:=0.0;
  fAnimationEndTime:=0.0;
  fAnimationDuration:=0.0;
+ fCreatedByScript:=false;
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
@@ -15610,6 +15784,8 @@ begin
 
   fAnimationEndTime:=StreamIO.ReadDouble;
 
+  fCreatedByScript:=StreamIO.ReadBoolean;
+
   // Older POCA-generated caches can contain keyframes but uninitialized animation bounds.
   Finish;
 
@@ -15646,6 +15822,8 @@ begin
   StreamIO.WriteDouble(fAnimationBeginTime);
 
   StreamIO.WriteDouble(fAnimationEndTime);
+
+  StreamIO.WriteBoolean(fCreatedByScript);
 
  finally
   FreeAndNil(StreamIO);
@@ -20034,6 +20212,14 @@ begin
  fNewTextures:=TpvScene3D.TTextures.Create;
  fNewTextures.OwnsObjects:=false;
 
+ fPOCAScripts:=TpvScene3D.TGroup.TPOCAScripts.Create;
+
+ fPOCAScriptsReloadRequested:=false;
+
+ fPOCAReloading:=false;
+
+ fPOCAReloadAnimations:=nil;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
@@ -20184,6 +20370,10 @@ begin
  FreeAndNil(fSceneNameIndexHashMapLowerCase);
 
  FreeAndNil(fCameraNodeIndices);
+
+ FreeAndNil(fPOCAReloadAnimations);
+
+ FreeAndNil(fPOCAScripts);
 
  FreeAndNil(fLock);
 
@@ -20690,7 +20880,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.PostProcessAnimations;
+procedure TpvScene3D.TGroup.PostProcessAnimations(const aReload:Boolean);
 type TMaterialHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
      TMaterialArrayList=TpvDynamicArrayList<TpvSizeInt>;
      TTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
@@ -20714,8 +20904,10 @@ var Index,ChannelIndex,TargetIndex,CountDefaultChannels,
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
     TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
     OK:boolean;
+    MaterialChannelsNeedModelReload:boolean;
 begin
  fCountInstanceAnimationChannels:=0;
+ MaterialChannelsNeedModelReload:=false;
  MaterialHashMap:=TMaterialHashMap.Create(-1);
  try
   MaterialArrayList:=TMaterialArrayList.Create;
@@ -20791,7 +20983,18 @@ begin
           if (Channel.fTargetIndex>=0) and (Channel.fTargetIndex<fMaterials.Count) then begin
            MaterialIndex:=Channel.fTargetIndex;
            Material:=fMaterials[MaterialIndex];
-           MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+           if aReload then begin
+            // At a hot reload of the POCA scripts the material lists must stay as they are, as the instances made
+            // their own copies of the animated materials already at their creation. So only a material that was
+            // already prepared for that at loading can be animated here, the others need a reload of the model.
+            MaterialIDMapArrayIndex:=-1;
+            OK:=fMaterialsToDuplicate.Contains(Material);
+            if not OK then begin
+             MaterialChannelsNeedModelReload:=true;
+            end;
+           end else begin
+            MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+           end;
            if MaterialIDMapArrayIndex>=0 then begin
             MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
             if MaterialIDMapArray.Count>0 then begin
@@ -20826,7 +21029,7 @@ begin
              OK:=true;
             end;
            end;
-           if assigned(Material) and (Channel.fTargetSubIndex>=0) then begin
+           if assigned(Material) and (Channel.fTargetSubIndex>=0) and (OK or (not aReload)) then begin
             case Channel.fTarget of
              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
              TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
@@ -20904,7 +21107,9 @@ begin
            inc(CountDefaultChannels);
           end;
          end;
-         if CountDefaultChannels>0 then begin
+         // Script animations that a hot reload left without channels only keep their index and must not act at
+         // all, so no default channels for them
+         if (CountDefaultChannels>0) and (not (aReload and Animation.fCreatedByScript and (Animation.fChannels.Count=0))) then begin
           Animation.fDefaultChannels.Clear;
           for TargetIndex:=0 to TargetArrayList.Count-1 do begin
            if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
@@ -20950,6 +21155,9 @@ begin
   end;
  finally
   FreeAndNil(MaterialHashMap);
+ end;
+ if MaterialChannelsNeedModelReload then begin
+  pvApplication.Log(LOG_INFO,'TpvScene3D.TGroup.PostProcessAnimations','Warning: "'+FileName+'": animation channels of reloaded POCA scripts that target materials which weren''t animated at loading stay inactive until the model is loaded again');
  end;
 end;
 
@@ -21818,6 +22026,315 @@ begin
  end;
 end;
 
+function TpvScene3D.TGroup.GetCountPOCAScripts:TpvSizeInt;
+begin
+ result:=fPOCAScripts.Count;
+end;
+
+function TpvScene3D.TGroup.GetPOCAScript(const aIndex:TpvSizeInt):TpvScene3D.TGroup.TPOCAScript;
+begin
+ result:=fPOCAScripts.Items[aIndex];
+end;
+
+function TpvScene3D.TGroup.ExecutePOCACodeParts(const aCodeParts:TpvScene3D.TGroup.TPOCAScripts;const aLogWhere:TpvUTF8String):Boolean;
+var Index:TpvSizeInt;
+    POCAInstance:PPOCAInstance;
+    POCAContext:PPOCAContext;
+    POCACode:TPOCAValue;
+    Code,Location:TpvUTF8String;
+    CodePart:TpvScene3D.TGroup.PPOCAScript;
+    POCAScene3DGroup:TPOCAScene3DGroup;
+begin
+ result:=true;
+ if aCodeParts.Count>0 then begin
+  Location:='';
+  POCAInstance:=POCAInstanceCreate;
+  try
+   POCAContext:=POCAContextCreate(POCAInstance);
+   try
+    InitializeForPOCAContext(POCAContext);
+    try
+     try
+
+      POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
+      POCAScene3DGroup.fGroup:=self;
+      POCAHashSet(POCAContext,
+                  POCAInstance.Globals.Namespace,
+                  POCANewUniqueString(POCAContext,'Group'),
+                  POCANewNativeObject(POCAContext,POCAScene3DGroup));
+
+      // One part after the other in the same context, an exception ends it at the first error
+      for Index:=0 to aCodeParts.Count-1 do begin
+       CodePart:=@aCodeParts.ItemArray[Index];
+       Location:=CodePart^.Location;
+       Code:=PUCUUTF8Trim(PUCUUTF8Correct(CodePart^.Code));
+       if length(Code)>0 then begin
+        POCACode:=POCACompile(POCAInstance,POCAContext,Code,Location);
+        POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
+       end;
+      end;
+
+     except
+      on e:EPOCASyntaxError do begin
+       pvApplication.Log(LOG_ERROR,aLogWhere,'['+e.ClassName+'] '+Location+': '+e.Message);
+       result:=false;
+      end;
+      on e:EPOCARuntimeError do begin
+       pvApplication.Log(LOG_ERROR,aLogWhere,'['+e.ClassName+'] '+Location+': '+e.Message);
+       result:=false;
+      end;
+      on e:EPOCAScriptError do begin
+       pvApplication.Log(LOG_ERROR,aLogWhere,'['+e.ClassName+'] '+Location+': '+e.Message);
+       result:=false;
+      end;
+      on e:Exception do begin
+       pvApplication.Log(LOG_ERROR,aLogWhere,'['+e.ClassName+'] '+Location+': '+e.Message);
+       raise;
+      end;
+     end;
+    finally
+     FinalizeForPOCAContext(POCAContext);
+    end;
+   finally
+    POCAContextDestroy(POCAContext);
+   end;
+  finally
+   POCAInstanceDestroy(POCAInstance);
+  end;
+ end;
+end;
+
+function TpvScene3D.TGroup.ExecutePOCAScripts(const aReload:Boolean):Boolean;
+var Index:TpvSizeInt;
+    POCAScript:TpvScene3D.TGroup.PPOCAScript;
+    CodeParts:TpvScene3D.TGroup.TPOCAScripts;
+    CodePart:TpvScene3D.TGroup.TPOCAScript;
+    Code:TpvUTF8String;
+    Stream:TStream;
+    Readable:Boolean;
+begin
+ result:=true;
+ if fPOCAScripts.Count>0 then begin
+  CodeParts:=TpvScene3D.TGroup.TPOCAScripts.Create;
+  try
+
+   // Fetch the code of every part, from the node itself, from the assets or from the disk
+   for Index:=0 to fPOCAScripts.Count-1 do begin
+    POCAScript:=@fPOCAScripts.ItemArray[Index];
+    Code:='';
+    Readable:=false;
+    case POCAScript^.Kind of
+     TpvScene3D.TGroup.TPOCAScriptKind.Code:begin
+      Code:=POCAScript^.Code;
+      Readable:=true;
+     end;
+     TpvScene3D.TGroup.TPOCAScriptKind.Asset,
+     TpvScene3D.TGroup.TPOCAScriptKind.File_:begin
+      if not aReload then begin
+       // At loading the document has already read the code, see AssignFromGLTF. It is not kept afterwards, as a hot
+       // reload reads it again by the location.
+       Code:=POCAScript^.Code;
+       POCAScript^.Code:='';
+       Readable:=true;
+      end else begin
+       try
+        Stream:=nil;
+        try
+         if POCAScript^.Kind=TpvScene3D.TGroup.TPOCAScriptKind.Asset then begin
+          if pvApplication.Assets.ExistAsset(POCAScript^.Location) then begin
+           Stream:=pvApplication.Assets.GetAssetStream(POCAScript^.Location);
+          end;
+         end else begin
+          if FileExists(String(POCAScript^.Location)) then begin
+           // Shared for writing too, as an editor may still have the file open
+           Stream:=TFileStream.Create(String(POCAScript^.Location),fmOpenRead or fmShareDenyNone);
+          end;
+         end;
+         if assigned(Stream) then begin
+          if Stream.Size>0 then begin
+           SetLength(Code,Stream.Size);
+           Stream.ReadBuffer(Code[1],Stream.Size);
+          end;
+          Readable:=true;
+         end;
+        finally
+         FreeAndNil(Stream);
+        end;
+       except
+        on e:Exception do begin
+         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.ExecutePOCAScripts','['+e.ClassName+'] '+POCAScript^.Location+': '+e.Message);
+         Code:='';
+         Readable:=false;
+        end;
+       end;
+      end;
+     end;
+     else begin
+     end;
+    end;
+
+    // Wrapped into a function of its own, as at loading
+    if Readable then begin
+     if length(Code)>0 then begin
+      CodePart.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.Code;
+      CodePart.Location:=POCAScript^.Location;
+      CodePart.Code:='(function(){'+#13#10+Code+#13#10+'})();'+#13#10;
+      CodeParts.Add(CodePart);
+     end;
+    end else begin
+     pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.ExecutePOCAScripts','Can''t read the POCA script "'+POCAScript^.Location+'" of "'+FileName+'"');
+     if aReload then begin
+      result:=false;
+      break;
+     end;
+    end;
+
+   end;
+
+   // Run them all in one POCA context in load order
+   if result and (CodeParts.Count>0) then begin
+    result:=ExecutePOCACodeParts(CodeParts,'TpvScene3D.TGroup.ExecutePOCAScripts');
+   end;
+
+  finally
+   FreeAndNil(CodeParts);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.ExecutePOCACode(const aCode:TpvUTF8String);
+var CodeParts:TpvScene3D.TGroup.TPOCAScripts;
+    CodePart:TpvScene3D.TGroup.TPOCAScript;
+begin
+ if length(aCode)>0 then begin
+  CodeParts:=TpvScene3D.TGroup.TPOCAScripts.Create;
+  try
+   CodePart.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.Code;
+   CodePart.Location:='<CODE>';
+   CodePart.Code:=aCode;
+   CodeParts.Add(CodePart);
+   ExecutePOCACodeParts(CodeParts,'TpvScene3D.TGroup.ExecutePOCACode');
+  finally
+   FreeAndNil(CodeParts);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.RequestPOCAScriptsReload;
+begin
+ TPasMPInterlocked.Write(fPOCAScriptsReloadRequested,TPasMPBool32(true));
+end;
+
+procedure TpvScene3D.TGroup.ProcessPOCAScriptsReload;
+type TClaimedAnimations=array of Boolean;
+var Index,OtherIndex,FoundIndex,CountOldAnimations,CountReplaced,CountAppended,CountCleared:TpvSizeInt;
+    Animation,NewAnimation:TpvScene3D.TGroup.TAnimation;
+    Channels:TpvScene3D.TGroup.TAnimation.TChannels;
+    DefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels;
+    ClaimedAnimations:TClaimedAnimations;
+    Instance:TpvScene3D.TGroup.TInstance;
+begin
+
+ if fPOCAScripts.Count>0 then begin
+
+  fPOCAReloadAnimations:=TpvScene3D.TGroup.TAnimations.Create(true);
+  try
+
+   // Run the scripts, meanwhile Group.createAnimation collects the new animations in fPOCAReloadAnimations
+   fPOCAReloading:=true;
+   if ExecutePOCAScripts(true) then begin
+
+    // Apply the new animations in creation order: each one takes over the first not yet claimed script animation of
+    // the group with exactly the same name, so that its index and object stay, else it gets appended
+    CountOldAnimations:=fAnimations.Count;
+    CountReplaced:=0;
+    CountAppended:=0;
+    CountCleared:=0;
+    ClaimedAnimations:=nil;
+    SetLength(ClaimedAnimations,CountOldAnimations);
+    for Index:=0 to CountOldAnimations-1 do begin
+     ClaimedAnimations[Index]:=false;
+    end;
+    for Index:=0 to fPOCAReloadAnimations.Count-1 do begin
+     NewAnimation:=fPOCAReloadAnimations[Index];
+     FoundIndex:=-1;
+     for OtherIndex:=0 to CountOldAnimations-1 do begin
+      Animation:=fAnimations[OtherIndex];
+      if (not ClaimedAnimations[OtherIndex]) and Animation.fCreatedByScript and (Animation.fName=NewAnimation.fName) then begin
+       FoundIndex:=OtherIndex;
+       break;
+      end;
+     end;
+     if FoundIndex>=0 then begin
+      // Swap the channel lists, so the new animation object frees the old ones together with itself at the end
+      ClaimedAnimations[FoundIndex]:=true;
+      Animation:=fAnimations[FoundIndex];
+      Channels:=Animation.fChannels;
+      Animation.fChannels:=NewAnimation.fChannels;
+      NewAnimation.fChannels:=Channels;
+      DefaultChannels:=Animation.fDefaultChannels;
+      Animation.fDefaultChannels:=NewAnimation.fDefaultChannels;
+      NewAnimation.fDefaultChannels:=DefaultChannels;
+      Animation.fAnimationBeginTime:=NewAnimation.fAnimationBeginTime;
+      Animation.fAnimationEndTime:=NewAnimation.fAnimationEndTime;
+      Animation.fAnimationDuration:=NewAnimation.fAnimationDuration;
+      inc(CountReplaced);
+     end else begin
+      // The group owns it from now on
+      fPOCAReloadAnimations.Items[Index]:=nil;
+      AddAnimation(NewAnimation);
+      inc(CountAppended);
+     end;
+    end;
+
+    // Script animations that the scripts don't create anymore stay as empty ones, as the indices must stay
+    for Index:=0 to CountOldAnimations-1 do begin
+     Animation:=fAnimations[Index];
+     if Animation.fCreatedByScript and (not ClaimedAnimations[Index]) then begin
+      Animation.fChannels.Clear;
+      Animation.fDefaultChannels.Clear;
+      Animation.fAnimationBeginTime:=0.0;
+      Animation.fAnimationEndTime:=0.0;
+      Animation.fAnimationDuration:=0.0;
+      inc(CountCleared);
+     end;
+    end;
+
+    // Prepare the channels again like at loading, but without changing the material lists
+    for Index:=0 to fAnimations.Count-1 do begin
+     fAnimations[Index].fDefaultChannels.Clear;
+    end;
+    PostProcessAnimations(true);
+
+    // Bring the instances to the new animation layout
+    fInstanceListLock.Acquire;
+    try
+     for Index:=0 to fInstances.Count-1 do begin
+      Instance:=fInstances[Index];
+      Instance.ResizeAnimationData;
+      Instance.SetDirty;
+     end;
+    finally
+     fInstanceListLock.Release;
+    end;
+
+    pvApplication.Log(LOG_INFO,'TpvScene3D.TGroup.ProcessPOCAScriptsReload','Reloaded the POCA scripts of "'+FileName+'": '+IntToStr(CountReplaced)+' animations replaced, '+IntToStr(CountAppended)+' appended, '+IntToStr(CountCleared)+' cleared');
+
+   end else begin
+
+    pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.ProcessPOCAScriptsReload','Reloading the POCA scripts of "'+FileName+'" failed, its animations stay unchanged');
+
+   end;
+
+  finally
+   fPOCAReloading:=false;
+   FreeAndNil(fPOCAReloadAnimations);
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.MarkLODVariants;
 var Index,ChildrenIndex,NodeIndex:TpvSizeInt;
     Node:TpvScene3D.TGroup.TNode;
@@ -22612,6 +23129,7 @@ var StreamIO:TpvStreamIO;
     PostProcessAnimationsStartTime,PostProcessAnimationsEndTime:TpvHighResolutionTime;
     TimeDuration:TpvDouble;
     TimeDurationString:TpvUTF8String;
+    POCAScript:TpvScene3D.TGroup.TPOCAScript;
 begin
 
  StartTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -23025,6 +23543,16 @@ begin
         fTotalMeshletVertexCount:=StreamIO.ReadInt64;
         fTotalMeshletPrimitiveCount:=StreamIO.ReadInt64;
 
+        // Read POCA script parts, for a hot reload, as the scripts don't run when loading from here
+        fPOCAScripts.Clear;
+        Count:=StreamIO.ReadInt64;
+        for Index:=0 to Count-1 do begin
+         POCAScript.Kind:=TpvScene3D.TGroup.TPOCAScriptKind(TpvUInt32(StreamIO.ReadUInt32));
+         POCAScript.Location:=StreamIO.ReadUTF8String;
+         POCAScript.Code:=StreamIO.ReadUTF8String;
+         fPOCAScripts.Add(POCAScript);
+        end;
+
        finally
         CollectedMaterials.Free;
        end;
@@ -23194,6 +23722,7 @@ var StreamIO:TpvStreamIO;
     CollectedImages,CollectedSamplers,CollectedTextures,CollectedMaterials:TpvObjectList;
     Mesh:TpvScene3D.TGroup.TMesh;
     MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    POCAScript:TpvScene3D.TGroup.PPOCAScript;
 begin
 
  StreamIO:=TpvStreamIO.Create(aStream);
@@ -23450,6 +23979,16 @@ begin
       StreamIO.WriteInt64(fTotalMeshletVertexCount);
       StreamIO.WriteInt64(fTotalMeshletPrimitiveCount);
 
+      // Write POCA script parts
+      Count:=fPOCAScripts.Count;
+      StreamIO.WriteInt64(Count);
+      for Index:=0 to Count-1 do begin
+       POCAScript:=@fPOCAScripts.ItemArray[Index];
+       StreamIO.WriteUInt32(TpvUInt32(POCAScript^.Kind));
+       StreamIO.WriteUTF8String(POCAScript^.Location);
+       StreamIO.WriteUTF8String(POCAScript^.Code);
+      end;
+
       // Write final header
       PMVFHeader.Size:=aStream.Position-HeaderPosition;
       aStream.Seek(HeaderPosition,soBeginning);
@@ -23479,7 +24018,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
-var POCACodeString:TpvUTF8String;
+//var POCACodeString:TpvUTF8String;
  procedure ProcessLights;
  var Index:TpvSizeInt;
      Light:TpvScene3D.TGroup.TLight;
@@ -23586,56 +24125,8 @@ var POCACodeString:TpvUTF8String;
   end;
  end;
  procedure ExecuteCode;
- var POCAInstance:PPOCAInstance;
-     POCAContext:PPOCAContext;
-     POCACode:TPOCAValue;
-     Code:TpvUTF8String;
-     POCAScene3DGroup:TPOCAScene3DGroup;
  begin
-  if length(POCACodeString)>0 then begin
-   Code:=PUCUUTF8Trim(PUCUUTF8Correct(POCACodeString));
-   if length(Code)>0 then begin
-    POCAInstance:=POCAInstanceCreate;
-    try
-     POCAContext:=POCAContextCreate(POCAInstance);
-     try
-      InitializeForPOCAContext(POCAContext);
-      try
-       try
-        POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
-        POCAScene3DGroup.fGroup:=self;
-        POCAHashSet(POCAContext,
-                    POCAInstance.Globals.Namespace,
-                    POCANewUniqueString(POCAContext,'Group'),
-                    POCANewNativeObject(POCAContext,POCAScene3DGroup));
-        POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
-        POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
-       except
-        on e:EPOCASyntaxError do begin
-         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-        end;
-        on e:EPOCARuntimeError do begin
-         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-        end;
-        on e:EPOCAScriptError do begin
-         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-        end;
-        on e:Exception do begin
-         pvApplication.Log(LOG_ERROR,'TpvScene3D.TGroup.AssignFromGLTF','['+e.ClassName+']: '+e.Message);
-         raise;
-        end;
-       end;
-      finally
-       FinalizeForPOCAContext(POCAContext);
-      end;
-     finally
-      POCAContextDestroy(POCAContext);
-     end;
-    finally
-     POCAInstanceDestroy(POCAInstance);
-    end;
-   end;
-  end;
+  ExecutePOCAScripts(false);
  end;
  procedure ProcessCameras;
  var Index:TpvSizeInt;
@@ -23691,6 +24182,7 @@ var POCACodeString:TpvUTF8String;
      POCAFileHashMap:TPOCAFileHashMap;
      NodeChildNodeIndices:TNodeChildNodeIndices;
      ChildNodeIndices:PChildNodeIndices;
+     POCAScript:TpvScene3D.TGroup.TPOCAScript;
  begin
 
   NodeChildNodeIndices.Initialize;
@@ -23698,6 +24190,9 @@ var POCACodeString:TpvUTF8String;
 
    POCAFileHashMap:=TPOCAFileHashMap.Create(false);
    try
+
+    // The POCA script parts in load order, run by ExecuteCode and again by a hot reload
+    fPOCAScripts.Clear;
 
     fNodes.Clear;
     for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
@@ -23719,8 +24214,12 @@ var POCACodeString:TpvUTF8String;
        begin
         TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocacode'],'');
         if length(TemporaryString)>0 then begin
-         TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
-         POCACodeString:=POCACodeString+TemporaryString;
+//       TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
+//       POCACodeString:=POCACodeString+TemporaryString;
+         POCAScript.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.Code;
+         POCAScript.Location:='<pocacode of node '+TpvUTF8String(IntToStr(Index))+' "'+SourceNode.Name+'">';
+         POCAScript.Code:=TemporaryString;
+         fPOCAScripts.Add(POCAScript);
         end else begin
          TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocafile'],'');
          if length(TemporaryString)>0 then begin
@@ -23733,16 +24232,38 @@ var POCACodeString:TpvUTF8String;
            end;
            if not assigned(TemporaryStream) then begin
             TemporaryStream:=aSourceDocument.GetURI(TemporaryString);
+            // Found by the document: in the assets relative to the model when that is an asset (see AssetGetURI),
+            // else on the disk relative to it (like TPasGLTF.TDocument.DefaultGetURI)
+            if assigned(TemporaryStream) then begin
+             if IsAsset then begin
+              POCAScript.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.Asset;
+              POCAScript.Location:=PasVulkan.Utils.ExpandRelativePath(TemporaryString,AssetBasePath);
+             end else begin
+              POCAScript.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.File_;
+              POCAScript.Location:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(aSourceDocument.RootPath))+String(TPasGLTF.ResolveURIToPath(TemporaryString))));
+             end;
+            end;
+           end else begin
+            // Found as asset by its plain name
+            POCAScript.Kind:=TpvScene3D.TGroup.TPOCAScriptKind.Asset;
+            POCAScript.Location:=TemporaryString;
            end;
            if assigned(TemporaryStream) then begin
             try
-             TemporaryString:='';
+             // The code as the document found it, run by ExecuteCode; a hot reload reads it again by the location
+             POCAScript.Code:='';
+             if TemporaryStream.Size>0 then begin
+              SetLength(POCAScript.Code,TemporaryStream.Size);
+              TemporaryStream.ReadBuffer(POCAScript.Code[1],TemporaryStream.Size);
+             end;
+             fPOCAScripts.Add(POCAScript);
+(*           TemporaryString:='';
              if TemporaryStream.Size>0 then begin
               SetLength(TemporaryString,TemporaryStream.Size);
               TemporaryStream.ReadBuffer(TemporaryString[1],TemporaryStream.Size);
               TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
               POCACodeString:=POCACodeString+TemporaryString;
-             end;
+             end;*)
             finally
              FreeAndNil(TemporaryStream);
             end;
@@ -23807,7 +24328,7 @@ begin
 
  StartTime:=pvApplication.HighResolutionTimer.GetTime;
 
- POCACodeString:='';
+//POCACodeString:='';
 
  try
 
@@ -27807,7 +28328,7 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex,CountLightNodes,InFli
     InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
     Node:TpvScene3D.TGroup.TNode;
     //MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    Animation:TpvScene3D.TGroup.TAnimation;
+    //Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
@@ -28024,10 +28545,10 @@ begin
      Material:=fSceneInstance.fMaterialIDHashMap[fMaterialMap[Index+1]];
      if assigned(Material) then begin
       InstanceMaterial:=TpvScene3D.TGroup.TInstance.TMaterial.Create(self,Material);
-      try
+{     try
        SetLength(InstanceMaterial.fOverwrites,fGroup.fAnimations.Count+1);
       finally
-      end;
+      end;}
      end;
     end;
    finally
@@ -28050,7 +28571,7 @@ begin
   for Index:=0 to fGroup.fLights.Count-1 do begin
    Light:=TpvScene3D.TGroup.TInstance.TLight.Create(self,fGroup.fLights[Index]);
    try
-    SetLength(Light.fOverwrites,fGroup.fAnimations.Count+1);
+//  SetLength(Light.fOverwrites,fGroup.fAnimations.Count+1);
    finally
     fLights.Add(Light);
    end;
@@ -28063,7 +28584,7 @@ begin
   for Index:=0 to fGroup.fCameras.Count-1 do begin
    Camera:=TpvScene3D.TGroup.TInstance.TCamera.Create(self,fGroup.fCameras[Index]);
    try
-    SetLength(Camera.fOverwrites,fGroup.fAnimations.Count+1);
+//  SetLength(Camera.fOverwrites,fGroup.fAnimations.Count+1);
    finally
     fCameras.Add(Camera);
    end;
@@ -28090,10 +28611,10 @@ begin
    SetLength(InstanceNode.fWorkWeights,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwriteWeightsSum,Node.fWeights.Count);
    SetLength(InstanceNode.fOverwriteWeightsAdditiveSum,Node.fWeights.Count);
-   SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
+{  SetLength(InstanceNode.fOverwrites,fGroup.fAnimations.Count+1);
    for OtherIndex:=0 to fGroup.fAnimations.Count do begin
     SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,Node.fWeights.Count);
-   end;
+   end;}
    for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
     InstanceNode.fCacheVerticesGenerations[OtherIndex]:=0;
     InstanceNode.fCacheMatrixGenerations[OtherIndex]:=0;
@@ -28149,7 +28670,7 @@ begin
   fSceneInstance.fMeshObjectIDLock.Release;
  end;
 
- SetLength(fAnimations,fGroup.fAnimations.Count+1);
+{SetLength(fAnimations,fGroup.fAnimations.Count+1);
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
   if Index>0 then begin
@@ -28162,7 +28683,7 @@ begin
   end;
  end;
 
- fAnimations[0].Factor:=1.0;
+ fAnimations[0].Factor:=1.0;}
 
  fLastAnimationStates:=nil;
  fAnimationStates:=nil;
@@ -28170,7 +28691,7 @@ begin
 
  fUseAnimationStates:=false;
 
- SetLength(fLastAnimationStates,length(fAnimations));
+{SetLength(fLastAnimationStates,length(fAnimations));
  SetLength(fAnimationStates,length(fAnimations));
  SetLength(fPointerAnimationStates,length(fAnimations));
 
@@ -28179,7 +28700,13 @@ begin
 
  for Index:=0 to length(fAnimations)-1 do begin
   fPointerAnimationStates[Index]:=@fAnimationStates[Index];
- end;
+ end;}
+
+ // The overwrites of the materials, lights, cameras and nodes, the animations and the animation states, all sized
+ // by the animations of the group, the same way as after a hot reload of its POCA scripts
+ ResizeAnimationData;
+
+ fAnimations[0].Factor:=1.0;
 
  for Index:=0 to MaxInFlightFrames-1 do begin
   fNodeMatricesArray[Index]:=nil;
@@ -28440,6 +28967,103 @@ begin
  FreeAndNil(fLock);
 
  inherited Destroy;
+
+end;
+
+procedure TpvScene3D.TGroup.TInstance.ResizeAnimationData;
+var Index,OtherIndex,CountAnimations,CountChannelOverwrites,CountWeights,OldCount:TpvSizeInt;
+    Animation:TpvScene3D.TGroup.TAnimation;
+    InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
+    InstanceNode:TpvScene3D.TGroup.TInstance.TNode;
+    InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
+    Light:TpvScene3D.TGroup.TInstance.TLight;
+    Camera:TpvScene3D.TGroup.TInstance.TCamera;
+begin
+
+ // One slot per animation of the group and one for the base (no animation) at index 0. The animations of a group
+ // are only ever added, never removed, so the arrays per animation only grow and keep what they have.
+ CountAnimations:=fGroup.fAnimations.Count+1;
+
+ // The overwrites of the materials, lights, cameras and nodes, one per animation and one for the base
+ for Index:=0 to fMaterials.Count-1 do begin
+  InstanceMaterial:=fMaterials[Index];
+  if assigned(InstanceMaterial) and (length(InstanceMaterial.fOverwrites)<CountAnimations) then begin
+   SetLength(InstanceMaterial.fOverwrites,CountAnimations);
+  end;
+ end;
+
+ for Index:=0 to fLights.Count-1 do begin
+  Light:=fLights[Index];
+  if length(Light.fOverwrites)<CountAnimations then begin
+   SetLength(Light.fOverwrites,CountAnimations);
+  end;
+ end;
+
+ for Index:=0 to fCameras.Count-1 do begin
+  Camera:=fCameras[Index];
+  if length(Camera.fOverwrites)<CountAnimations then begin
+   SetLength(Camera.fOverwrites,CountAnimations);
+  end;
+ end;
+
+ // Each node overwrite also has an array for the morph target weights of its node
+ for Index:=0 to fNodes.Count-1 do begin
+  InstanceNode:=fNodes.RawItems[Index];
+  OldCount:=length(InstanceNode.fOverwrites);
+  if OldCount<CountAnimations then begin
+   SetLength(InstanceNode.fOverwrites,CountAnimations);
+   CountWeights:=fGroup.fNodes[Index].fWeights.Count;
+   for OtherIndex:=OldCount to CountAnimations-1 do begin
+    SetLength(InstanceNode.fOverwrites[OtherIndex].Weights,CountWeights);
+   end;
+  end;
+ end;
+
+ // The animation objects, existing ones keep their time, factor and so on, new ones start like at the creation
+ OldCount:=length(fAnimations);
+ if OldCount<CountAnimations then begin
+  SetLength(fAnimations,CountAnimations);
+  for Index:=OldCount to CountAnimations-1 do begin
+   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
+  end;
+ end;
+
+ // Their arrays per channel, sized anew and reset when the channel counts of the animation changed
+ for Index:=1 to CountAnimations-1 do begin
+  Animation:=fGroup.fAnimations[Index-1];
+  InstanceAnimation:=fAnimations[Index];
+  if length(InstanceAnimation.fLastIndices)<>Animation.fChannels.Count then begin
+   SetLength(InstanceAnimation.fLastIndices,Animation.fChannels.Count);
+   for OtherIndex:=0 to length(InstanceAnimation.fLastIndices)-1 do begin
+    InstanceAnimation.fLastIndices[OtherIndex]:=0;
+   end;
+  end;
+  CountChannelOverwrites:=Animation.fChannels.Count+Animation.fDefaultChannels.Count+2;
+  if length(InstanceAnimation.fChannelOverwrites)<>CountChannelOverwrites then begin
+   SetLength(InstanceAnimation.fChannelOverwrites,CountChannelOverwrites);
+  end;
+ end;
+
+ // The animation states (see UseAnimationStates), new ones zeroed like at the creation
+ OldCount:=length(fLastAnimationStates);
+ if OldCount<CountAnimations then begin
+  SetLength(fLastAnimationStates,CountAnimations);
+  FillChar(fLastAnimationStates[OldCount],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*(CountAnimations-OldCount),#0);
+ end;
+
+ OldCount:=length(fAnimationStates);
+ if OldCount<CountAnimations then begin
+  SetLength(fAnimationStates,CountAnimations);
+  FillChar(fAnimationStates[OldCount],SizeOf(TpvScene3D.TGroup.TInstance.TAnimationState)*(CountAnimations-OldCount),#0);
+ end;
+
+ // All pointers to the animation states again, as their array may have moved
+ if length(fPointerAnimationStates)<>length(fAnimationStates) then begin
+  SetLength(fPointerAnimationStates,length(fAnimationStates));
+ end;
+ for Index:=0 to length(fPointerAnimationStates)-1 do begin
+  fPointerAnimationStates[Index]:=@fAnimationStates[Index];
+ end;
 
 end;
 
@@ -36801,6 +37425,8 @@ begin
   fDecalDebugFlags:=[];
   fDecalTimeSteps:=false;
 
+  fGLTFMaterialDecalGroupMask:=$ffffffff;
+
   if assigned(fVulkanDevice) and fRaytracingActive then begin
 
    fVulkanFrameGraphStagingQueue:=fVulkanDevice.UniversalQueue;
@@ -41505,6 +42131,21 @@ begin
 
  fGroupListLock.Acquire;
  try
+
+  // Hot reloads of the POCA scripts of models, see TGroup.RequestPOCAScriptsReload. Before anything else here, as a
+  // reload resizes the arrays per animation of the instances. A group that still loads keeps its request.
+  for Group in fGroups do begin
+   if assigned(Group) and Group.Usable and TPasMPInterlocked.Read(Group.fPOCAScriptsReloadRequested) then begin
+    TPasMPInterlocked.Write(Group.fPOCAScriptsReloadRequested,TPasMPBool32(false));
+    try
+     Group.ProcessPOCAScriptsReload;
+    except
+     on e:Exception do begin
+      pvApplication.Log(LOG_ERROR,'TpvScene3D.Update','Reloading the POCA scripts of "'+Group.FileName+'" failed: ['+e.ClassName+'] '+e.Message);
+     end;
+    end;
+   end;
+  end;
 
   TpvApplicationUpdateThread.UpdateThreadTag:=$220000;
 

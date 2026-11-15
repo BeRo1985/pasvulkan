@@ -25,6 +25,11 @@
 //   ...
 // ]
 //
+// Each part (inline code or file) is compiled on its own, but all of them run one after the other in the same POCA context, in the order of
+// the nodes. Group.isReloading() returns true while the scripts run again for a hot reload of the model (see
+// TpvScene3D.TGroup.RequestPOCAScriptsReload): the animations they create then replace those of the same name from the earlier run, and
+// changed material settings take effect at once.
+//
 
 // At PasVulkan Scene3D each GLTF is an so-named group, which can be instansiated in turn as group instances. Thus, the group instances are
 // then the actual scene graph nodes in the overall 3D scene world, which can be transformed, animated, etc. Therefore the naming "Group"
