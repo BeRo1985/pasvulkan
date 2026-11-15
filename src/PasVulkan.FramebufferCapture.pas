@@ -651,7 +651,7 @@ begin
  
   try
 
-   inc(p,fSubresourceLayout.offset);
+   p:=PpvUInt32(TpvPtrUInt(p)+TpvPtrUInt(fSubresourceLayout.offset));
 
    fNeedColorSwizzle:=(not fBlitSupported) and (fImageFormat in [VK_FORMAT_B8G8R8A8_SRGB,VK_FORMAT_B8G8R8A8_UNORM,VK_FORMAT_B8G8R8A8_SNORM]);
 
@@ -661,8 +661,8 @@ begin
    end else begin
     for y:=0 to fHeight-1 do begin
      Move(p^,pp^,SizeOf(TpvUInt32)*fWidth);
-     inc(p,fSubresourceLayout.rowPitch);
-     inc(pp,SizeOf(TpvUInt32)*fWidth);
+     p:=PpvUInt32(TpvPtrUInt(p)+TpvPtrUInt(fSubresourceLayout.rowPitch));
+     inc(pp,fWidth);
     end;
    end;
 

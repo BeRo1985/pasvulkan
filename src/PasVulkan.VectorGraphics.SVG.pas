@@ -4055,6 +4055,11 @@ var Index:TpvSizeInt;
 
     ApplyTransformValue(aItem,aText);
 
+   end else if (AttributeName='d') and (aObject is TpvVectorGraphicsShape) then begin
+
+    aItem^.Action:=TpvVectorGraphicsTimeLineAction.Morph;
+    aItem^.MorphPath:=TpvVectorPath.CreateFromSVGPath(TpvRawByteString(aText));
+
    end else if AttributeName='opacity' then begin
 
     aItem^.HasAlpha:=true;

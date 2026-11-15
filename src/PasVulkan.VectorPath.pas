@@ -7777,7 +7777,10 @@ begin
  fSegments:=TpvVectorPathSegments.Create;
  fSegments.OwnsObjects:=true;
 
- fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
+ // Slug bands use segment bounds directly and never query the tree.
+ if fAccelerationStructure<>TpvVectorPathAccelerationStructure.SlugBands then begin
+  fSegmentDynamicAABBTree:=TpvVectorPathBVHDynamicAABBTree.Create;
+ end;
  try
   for Contour in fVectorPathShape.fContours do begin
    if Contour.fSegments.Count=0 then begin
@@ -7787,7 +7790,9 @@ begin
     NewSegment:=Segment.Clone;
     try
      NewSegment.fIndex:=fSegments.Count;
-     fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
+     if assigned(fSegmentDynamicAABBTree) then begin
+      fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
+     end;
     finally
      fSegments.Add(NewSegment);
     end;
@@ -7804,14 +7809,18 @@ begin
     NewSegment:=TpvVectorPathSegmentLine.Create(ContourEnd,ContourStart);
     try
      NewSegment.fIndex:=fSegments.Count;
-     fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
+     if assigned(fSegmentDynamicAABBTree) then begin
+      fSegmentDynamicAABBTree.CreateProxy(NewSegment.GetBoundingBox,TpvPtrInt(TpvPointer(NewSegment)));
+     end;
     finally
      fSegments.Add(NewSegment);
     end;
    end;
   end;
  finally
-  fSegmentDynamicAABBTree.Rebuild;
+  if assigned(fSegmentDynamicAABBTree) then begin
+   fSegmentDynamicAABBTree.Rebuild;
+  end;
  end;
 
  fGridCells:=TGridCells.Create;
@@ -8026,27 +8035,54 @@ var Curves:TpvVectorPathSegments;
     GridCell:TGridCell;
     IsLevel,IsUpright:boolean;
  // Sorts the segments a band holds by their greatest coordinate along the axis the ray runs,
- // greatest first, which is the order the shader walks them in.
+ // greatest first, which is the order the shader walks them in. Stable merge sorting keeps the
+ // original order of equal bounds and avoids quadratic work when animated strokes are rebuilt.
  procedure SortBand(const aGridCell:TGridCell;const aHorizontal:boolean);
- var IndexA,IndexB:TpvSizeInt;
-     Temp:TpvVectorPathSegment;
+ var Count,RunLength,RangeStart,Middle,RangeEnd,LeftIndex,RightIndex,OutputIndex:TpvSizeInt;
+     Sorted:array of TpvVectorPathSegment;
      Left,Right:TpvDouble;
  begin
-  for IndexA:=0 to aGridCell.fSegments.Count-2 do begin
-   for IndexB:=0 to (aGridCell.fSegments.Count-2)-IndexA do begin
-    if aHorizontal then begin
-     Left:=Maxima[aGridCell.fSegments[IndexB].fIndex].x;
-     Right:=Maxima[aGridCell.fSegments[IndexB+1].fIndex].x;
-    end else begin
-     Left:=Maxima[aGridCell.fSegments[IndexB].fIndex].y;
-     Right:=Maxima[aGridCell.fSegments[IndexB+1].fIndex].y;
+  Count:=aGridCell.fSegments.Count;
+  if Count<2 then begin
+   exit;
+  end;
+  SetLength(Sorted,Count);
+  RunLength:=1;
+  while RunLength<Count do begin
+   RangeStart:=0;
+   while RangeStart<Count do begin
+    Middle:=Min(RangeStart+RunLength,Count);
+    RangeEnd:=Min(Middle+RunLength,Count);
+    LeftIndex:=RangeStart;
+    RightIndex:=Middle;
+    for OutputIndex:=RangeStart to RangeEnd-1 do begin
+     if LeftIndex>=Middle then begin
+      Sorted[OutputIndex]:=aGridCell.fSegments[RightIndex];
+      inc(RightIndex);
+     end else if RightIndex>=RangeEnd then begin
+      Sorted[OutputIndex]:=aGridCell.fSegments[LeftIndex];
+      inc(LeftIndex);
+     end else begin
+      if aHorizontal then begin
+       Left:=Maxima[aGridCell.fSegments[LeftIndex].fIndex].x;
+       Right:=Maxima[aGridCell.fSegments[RightIndex].fIndex].x;
+      end else begin
+       Left:=Maxima[aGridCell.fSegments[LeftIndex].fIndex].y;
+       Right:=Maxima[aGridCell.fSegments[RightIndex].fIndex].y;
+      end;
+      if Left>=Right then begin
+       Sorted[OutputIndex]:=aGridCell.fSegments[LeftIndex];
+       inc(LeftIndex);
+      end else begin
+       Sorted[OutputIndex]:=aGridCell.fSegments[RightIndex];
+       inc(RightIndex);
+      end;
+     end;
     end;
-    if Left<Right then begin
-     Temp:=aGridCell.fSegments[IndexB];
-     aGridCell.fSegments[IndexB]:=aGridCell.fSegments[IndexB+1];
-     aGridCell.fSegments[IndexB+1]:=Temp;
-    end;
+    RangeStart:=RangeEnd;
    end;
+   Move(Sorted[0],aGridCell.fSegments.PointerToItems^,Count*SizeOf(TpvVectorPathSegment));
+   RunLength:=RunLength*2;
   end;
  end;
 begin

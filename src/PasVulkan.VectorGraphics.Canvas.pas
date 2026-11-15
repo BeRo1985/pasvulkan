@@ -1136,7 +1136,7 @@ begin
                                                          aGraphicsFence,
                                                          true,
                                                          VK_FORMAT_R8G8B8A8_SRGB,
-                                                         VK_FORMAT_R8G8B8A8_SRGB,
+                                                         VK_FORMAT_R8G8B8A8_UNORM,
                                                          aWidth,
                                                          aHeight,
                                                          [TpvVulkanTextureUsageFlag.ColorAttachment,
@@ -1194,6 +1194,12 @@ begin
   // it is not the count of processing buffers the constructor takes.
   fCompositingCanvas.CountBuffers:=fCompositingRingLength;
   fCompositingCanvas.VulkanRenderPass:=fCompositingRenderPass;
+  fCompositingCanvas.Width:=aWidth;
+  fCompositingCanvas.Height:=aHeight;
+  fCompositingCanvas.Viewport.x:=0;
+  fCompositingCanvas.Viewport.y:=0;
+  fCompositingCanvas.Viewport.width:=aWidth;
+  fCompositingCanvas.Viewport.height:=aHeight;
   fCompositingCanvas.Resize(aWidth,aHeight);
   // The attachment stores plain numbers, so the shader encodes to sRGB itself and the hardware
   // then blends on those encoded values, which is the whole point of this route.
@@ -1223,6 +1229,7 @@ var Width,Height:TpvInt32;
     CornerIndex:TpvSizeInt;
     MinX,MinY,MaxX,MaxY:TpvFloat;
     DestinationRect:TpvRect;
+    Scissor:TVkRect2D;
     OldTexturePremultipliedAlpha:boolean;
     Entry:PCompositingRingEntry;
 begin
@@ -1260,6 +1267,8 @@ begin
   fCompositingCanvas.ViewMatrix:=aCanvas.ViewMatrix;
   fCompositingCanvas.ProjectionMatrix:=aCanvas.ProjectionMatrix;
   fCompositingCanvas.ModelMatrix:=aCanvas.ModelMatrix;
+  fCompositingCanvas.SetScissor(aCanvas.State.Scissor);
+  fCompositingCanvas.SetClipRect(aCanvas.GetClipRect);
   fCompositingCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
   fCompositingCanvas.VectorPathCoverageMode:=aCanvas.VectorPathCoverageMode;
   fCompositingCanvas.VectorPathCoverageSampleCount:=aCanvas.VectorPathCoverageSampleCount;
@@ -1319,7 +1328,7 @@ begin
  MaxX:=-Infinity;
  MaxY:=-Infinity;
  for CornerIndex:=0 to 3 do begin
-  Corners[CornerIndex]:=aCanvas.ModelMatrix*Corners[CornerIndex];
+  Corners[CornerIndex]:=aCanvas.ViewMatrix*(aCanvas.ModelMatrix*Corners[CornerIndex]);
   MinX:=Min(MinX,Corners[CornerIndex].x);
   MinY:=Min(MinY,Corners[CornerIndex].y);
   MaxX:=Max(MaxX,Corners[CornerIndex].x);
@@ -1331,6 +1340,11 @@ begin
  MinY:=Max(Floor(MinY),0.0);
  MaxX:=Min(Ceil(MaxX),Width);
  MaxY:=Min(Ceil(MaxY),Height);
+ Scissor:=aCanvas.State.Scissor;
+ MinX:=Max(MinX,Scissor.offset.x);
+ MinY:=Max(MinY,Scissor.offset.y);
+ MaxX:=Min(MaxX,Scissor.offset.x+Scissor.extent.width);
+ MaxY:=Min(MaxY,Scissor.offset.y+Scissor.extent.height);
  if (MaxX<=MinX) or (MaxY<=MinY) then begin
   exit;
  end;
@@ -1347,6 +1361,7 @@ begin
   try
    aCanvas.SetScissor(trunc(MinX),trunc(MinY),trunc(MaxX-MinX),trunc(MaxY-MinY));
    aCanvas.ModelMatrix:=TpvMatrix4x4.Identity;
+   aCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
    aCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
    aCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
    aCanvas.TexturePremultipliedAlpha:=true;
