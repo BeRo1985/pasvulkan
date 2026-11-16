@@ -136,7 +136,7 @@ void main(){
 #endif
 #ifdef VELOCITY
   outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
-  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * (planetData.reprojectionMatrix * vec4(position, 1.0));
 #endif
 
 #if defined(RAYTRACING)

@@ -220,6 +220,10 @@ shared mat4 viewProjectionMatrix;
 shared mat4 inverseModelViewMatrix;
 shared mat3 normalModelMatrix;
 shared vec3 cameraPosition;
+#if defined(VELOCITY) && !defined(MESH_SHADER_EMULATION)
+// The previous view projection, which first takes a point from this frame's render space into the previous frame's
+shared mat4 previousViewProjectionMatrix;
+#endif
 
 shared float grassDensity;
 shared float grassAge;
@@ -278,7 +282,11 @@ void main() {
     modelMatrix = planetData.modelMatrix;
     
     viewProjectionMatrix = projectionMatrix * viewMatrix;
-    
+
+#if defined(VELOCITY) && !defined(MESH_SHADER_EMULATION)
+    previousViewProjectionMatrix = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * planetData.reprojectionMatrix;
+#endif
+
     inverseModelViewMatrix = inverse(viewMatrix * modelMatrix);
     
     normalModelMatrix = adjugate(modelMatrix);
@@ -898,7 +906,7 @@ void main() {
       outBlock[vertexID].cameraRelativePosition = worldSpacePosition - cameraPosition;
     #ifdef VELOCITY
       outBlock[vertexID].currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
-      outBlock[vertexID].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
+      outBlock[vertexID].previousClipSpace = previousViewProjectionMatrix * vec4(previousPosition, 1.0);
     #endif
       outBlock[vertexID].meshletID = ((pushConstants.flags & 1u) != 0u) ? ((((invocationVariantIndex * countBlades) + bladeID) + (invocationIndex * 53956u)) | 0x80000000u) : 0u;
 

@@ -188,7 +188,7 @@ void main() {
 
 #ifdef VELOCITY
     outBlock[threadIdx].currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
-    outBlock[threadIdx].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+    outBlock[threadIdx].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * (planetData.reprojectionMatrix * vec4(position, 1.0));
 #endif
 
     gl_MeshVerticesEXT[threadIdx].gl_Position = viewProjectionMatrix * vec4(position, 1.0);

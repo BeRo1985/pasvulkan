@@ -201,6 +201,12 @@ type TpvScene3DPlanets=class;
 
              TriplanarNormalMatrix:TpvMatrix4x4;
 
+             // Takes a point of the planet from this frame's render space to where the same point was in the
+             // previous frame's render space, for the motion vectors. The previous frame's views are still in
+             // that frame's render space, so after a floating origin step the current position projected with
+             // them would be off by the whole step, see TpvScene3DPlanet.UploadFrame.
+             ReprojectionMatrix:TpvMatrix4x4;
+
              BottomRadius:TpvFloat;
              TopRadius:TpvFloat;
              HeightMapScale:TpvFloat;
@@ -4090,6 +4096,8 @@ type TpvScene3DPlanets=class;
        fInFlightFrameSharingMode:TVkSharingMode;
        fInFlightFrameQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fPlanetData:TPlanetData;
+       fLastRenderModelMatrix:TpvMatrix4x4D;
+       fLastRenderModelMatrixValid:Boolean;
        fPointerToPlanetData:PPlanetData;
        fPlanetDataVulkanBuffers:TPlanetDataVulkanBuffers;
        fMaterials:TMaterials;
@@ -37891,6 +37899,9 @@ begin
 
  fPointerToPlanetData:=@fPlanetData;
 
+ fLastRenderModelMatrix:=TpvMatrix4x4.Identity;
+ fLastRenderModelMatrixValid:=false;
+
  fPointerToMaterials:=@fMaterials;
 
  if assigned(fVulkanDevice) then begin
@@ -41052,9 +41063,12 @@ begin
 
     if assigned(RendererInstance) then begin
 
-     if aMainViewPort then begin
+     if aMainViewPort and assigned(fInFlightFrameDataList[aInFlightFrameIndex]) then begin
 
-      m:=((TpvScene3D(fScene3D).TransformOrigin(fPlanetData.ModelMatrix,aInFlightFrameIndex,false))*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).Inverse;
+      // From this frame's own model matrix, not from fPlanetData. That one is filled on upload by the render side
+      // and already in render space, so the origin transform here was applied to it a second time, and it still
+      // held the matrix of an earlier frame, with that frame's origin.
+      m:=((TpvScene3D(fScene3D).TransformOrigin(fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix,aInFlightFrameIndex,false))*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).Inverse;
 
       RelativeCameraPosition:=m.RawVectors[3].xyz;
 
@@ -41120,6 +41134,7 @@ procedure TpvScene3DPlanet.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
 var MaterialIndex,OverlayIndex,UploadSize:TpvSizeInt;
     InFlightFrameData:TData;
     Material:TpvScene3DPlanet.PMaterial;
+    RenderModelMatrix:TpvMatrix4x4D;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -41128,7 +41143,22 @@ begin
 
   if assigned(InFlightFrameData) then begin
 
-   fPlanetData.ModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(InFlightFrameData.fModelMatrix,aInFlightFrameIndex,false);
+   RenderModelMatrix:=TpvScene3D(fScene3D).TransformOrigin(InFlightFrameData.fModelMatrix,aInFlightFrameIndex,false);
+
+   // Against where the planet was in the previous frame, in that frame's render space, which is the space the
+   // views of the previous frame are in. This runs once per drawn frame in the order of the frames, as does the
+   // renderer instance when it takes over the views of the frame before, so both refer to the same frame. In
+   // double precision, as the planet can lie far from the origin, while a pure origin step has to come out as
+   // exactly that translation.
+   if fLastRenderModelMatrixValid then begin
+    fPlanetData.ReprojectionMatrix:=RenderModelMatrix.Inverse*fLastRenderModelMatrix;
+   end else begin
+    fPlanetData.ReprojectionMatrix:=TpvMatrix4x4.Identity;
+   end;
+   fLastRenderModelMatrix:=RenderModelMatrix;
+   fLastRenderModelMatrixValid:=true;
+
+   fPlanetData.ModelMatrix:=RenderModelMatrix;
    fPlanetData.TriplanarMatrix:=InFlightFrameData.fModelMatrix;
    fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(fPlanetData.ModelMatrix.Adjugate);
    fPlanetData.TriplanarNormalMatrix:=TpvMatrix4x4.Create(fPlanetData.TriplanarMatrix.Adjugate);

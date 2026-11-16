@@ -38,6 +38,10 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData
 
   mat4 triplanarNormalMatrix;
 
+  // Takes a point of the planet from this frame's render space to where it was in the previous frame's render space,
+  // which is the space of the previous views, for the motion vectors (a pure translation after a floating origin step)
+  mat4 reprojectionMatrix;
+
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
   uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z = WaterMapResolution, w = decal group mask

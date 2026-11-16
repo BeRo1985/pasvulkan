@@ -155,7 +155,7 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
 #ifdef VELOCITY
   outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
-  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(previousPosition, 1.0);
+  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * (planetData.reprojectionMatrix * vec4(previousPosition, 1.0));
 #endif
   outBlock.meshletID = 0u; // No meshlet ID in the vertex shader path, since meshlets are not used here, but we still keep this field in the output for consistency with the mesh shader path, where meshlet ID is available and can be used for debugging or other purposes.
 
