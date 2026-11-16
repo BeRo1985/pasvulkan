@@ -5243,6 +5243,7 @@ type EpvScene3D=class(Exception);
        fUpdatedOriginTransform:TPasMPBool32;
        fLastOriginTransform:TOriginTransform;
        fRaytracingOriginTransform:TOriginTransform;
+       fRaytracingOriginTransformChanged:TPasMPBool32;
        fOriginTransform:TOriginTransform;
        fInverseOriginTransform:TOriginTransform;
        fOriginTransforms:TOriginTransforms;
@@ -7795,8 +7796,12 @@ begin
  //   < 20 m  -> every frame, 20-60 m -> every 4th, 60-200 m -> every 16th,
  //   > 200 m -> every 64th. Salt distributes the update phase per node to avoid
  //   thundering-herd update bursts.
+ // Never in the frame in which the origin transform has changed: then every transform
+ // jumps by the whole origin step at once, and a throttled node would stay that far
+ // off in the ray traced shadows and reflections for up to 63 frames.
  if fInitialized and
     (not aForce) and
+    (not fSceneInstance.fRaytracingOriginTransformChanged) and
     fInstance.fRaytracingBLASDistanceThrottlingEnabled and
     fSceneInstance.fRaytracingUpdateCameraPositionValid and
     fInstanceNode.fBoundingBoxFilled[aInFlightFrameIndex] and
@@ -36750,6 +36755,8 @@ begin
 
   fRaytracingOriginTransform:=TpvMatrix4x4.Identity;
 
+  fRaytracingOriginTransformChanged:=false;
+
   fOriginTransform:=TpvMatrix4x4.Identity;
   fInverseOriginTransform:=TpvMatrix4x4.Identity;
 
@@ -42335,7 +42342,11 @@ begin
    for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
     Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
     if Planet.Ready then begin
-     Sphere:=TpvSphere.Create(Planet.Data.ModelMatrix.MulHomogen(TpvVector3.Origin),Planet.TopRadius);
+     // In render space like the group instance bounds above, which are taken from the origin
+     // transformed model matrices. Planet.Data.ModelMatrix is plain world space, so with any
+     // origin other than the identity the sphere sat at the wrong place, and it jumped through
+     // the bounds with every origin step - and with it the shadow cascades fitted to them.
+     Sphere:=TpvSphere.Create(TransformOrigin(Planet.Data.ModelMatrix,aInFlightFrameIndex,false).MulHomogen(TpvVector3.Origin),Planet.TopRadius);
      if First then begin
       First:=false;
       fBoundingBox:=Sphere.ToAABB;
@@ -46072,6 +46083,9 @@ begin
   fRaytracingOriginTransform:=fOriginTransforms[fRaytracing.InFlightFrameIndex];
   fRaytracing.MarkTopLevelAccelerationStructureAsDirty;
  end;
+
+ // Read by the group instance nodes below, which must not skip their transforms in this frame
+ fRaytracingOriginTransformChanged:=UpdatedOriginTransform;
 
  //////////////////////////////////////////////////////////////////////////////
  // Update structures of all planets                                         //

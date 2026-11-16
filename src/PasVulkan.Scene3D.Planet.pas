@@ -29603,7 +29603,7 @@ begin
                           0);
    end else begin
     Matrix:=TpvScene3D(fPlanet.fScene3D).TransformOrigin(fPlanet.fData.ModelMatrix,aInFlightFrameIndex,false);
-    if fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.CompareTransform(Matrix) then begin
+    if not fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.CompareTransform(Matrix) then begin
      fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].AccelerationStructureInstance.Transform:=Matrix;
      fBLAS.BottomLevelAccelerationStructureInstanceList.RawItems[0].NewGeneration;
     end;
