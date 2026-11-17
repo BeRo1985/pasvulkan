@@ -6881,7 +6881,7 @@ begin
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Builtin);
  AddKeywords(['degtorad','erroraccess','errorconversion','errordivisionbyzero','errordivisionoverflow',
               'errorfunctionvalue','errorhost','errorindex','errormemory','errorstackoverflow','errorstop',
-              'errorunreachable','halfpi','pi','pi2','radtodeg','twopi'],
+              'errorunreachable','halfpi','inf','infinity','nan','pi','pi2','radtodeg','twopi'],
              [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Builtin);
  AddRule('[\x09\x20'+WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnit+']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
