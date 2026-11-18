@@ -1665,6 +1665,21 @@ type TpvTextEditor=class
                    PBufferItem=^TBufferItem;
                    TBufferItems=array of TBufferItem;
                    TBufferLineIndices=array of TpvSizeInt;
+                   // The code points from StartCodePointIndex to before StopCodePointIndex
+                   TSelectionRange=record
+                    StartCodePointIndex:TpvSizeInt;
+                    StopCodePointIndex:TpvSizeInt;
+                   end;
+                   PSelectionRange=^TSelectionRange;
+                   TSelectionRanges=array of TSelectionRange;
+                   // A block of the highlighting, from its opening word or bracket to behind its closing
+                   // one; Bracket where a round or a square bracket opens it
+                   TSelectionBlock=record
+                    Range:TSelectionRange;
+                    Bracket:boolean;
+                   end;
+                   PSelectionBlock=^TSelectionBlock;
+                   TSelectionBlocks=array of TSelectionBlock;
              private
               fParent:TpvTextEditor;
               fPrevious:TView;
@@ -1685,6 +1700,11 @@ type TpvTextEditor=class
               fBuffer:TBufferItems;
               fBufferLineIndices:TBufferLineIndices;
               fMarkState:TMarkState;
+              // The selections ExpandSelection grew from, the last on top, for ShrinkSelection, and the
+              // one it marked last: a selection other than that one forgets them
+              fExpandedSelections:TSelectionRanges;
+              fCountExpandedSelections:TpvSizeInt;
+              fExpandedSelection:TSelectionRange;
               procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
               procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
               procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
@@ -1699,6 +1719,7 @@ type TpvTextEditor=class
               procedure SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
               function GetMaximumVisibleColumnWidth:TpvSizeInt;
               function GetCountLines:TpvSizeInt;
+              function GetSelectionBlocks:TSelectionBlocks;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
               destructor Destroy; override;
@@ -1716,6 +1737,31 @@ type TpvTextEditor=class
               procedure SetMarkEnd;
               function HasMarkedRange:boolean;
               function GetMarkedRangeText:TpvUTF8String;
+              // The word at aCodePointIndex: an identifier, a keyword, a number or an operator of the
+              // highlighting whole, elsewhere (in a comment, a string, without highlighting) the run of
+              // letters and digits, of spaces or of other characters; at the end of a line the one
+              // before it. False where there is none
+              function GetWordRange(const aCodePointIndex:TpvSizeInt;out aRange:TSelectionRange):boolean;
+              // The line of the text at aCodePointIndex with its line end
+              function GetLineRange(const aCodePointIndex:TpvSizeInt;out aRange:TSelectionRange):boolean;
+              // The ranges a selection grows through at aCodePointIndex: the word (empty where there is
+              // none), the line, the blocks of the highlighting around the line from the innermost
+              // outwards, each in whole lines - the outermost one with the lines right above it up to
+              // an empty one, its head and the comment on it -, outside of a block the lines around it
+              // up to an empty one, at last the whole text. Without aBrackets in this order, each larger
+              // than the one before it from the line on; with aBrackets also the round and the square
+              // brackets around aCodePointIndex, the brackets with them, and all of them by size
+              function GetSelectionRanges(const aCodePointIndex:TpvSizeInt;const aBrackets:boolean):TSelectionRanges;
+              // What aClickCount presses at aCodePointIndex mark: 2 the word, 3 the line, 4 and on the
+              // ranges after it in GetSelectionRanges up to the whole text. False where it is empty
+              function GetClickRange(const aCodePointIndex,aClickCount:TpvSizeInt;out aRange:TSelectionRange):boolean;
+              // Marks aRange with the caret at its end (at its start with aCaretAtStart), and scrolls to
+              // the caret with aReveal; an empty range only places the caret
+              procedure SelectRange(const aRange:TSelectionRange;const aCaretAtStart:boolean=false;const aReveal:boolean=false);
+              // The selection grown to the smallest range of GetSelectionRanges with the brackets which
+              // holds it and is larger, and back by the steps it grew; false where there is none
+              function ExpandSelection:boolean;
+              function ShrinkSelection:boolean;
               function DeleteMarkedRange:boolean;
               function CutMarkedRangeText:TpvUTF8String;
               procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean;const aStealIt:boolean=false);
@@ -8792,6 +8838,10 @@ begin
  fBufferLineIndices:=nil;
  fMarkState.StartCodePointIndex:=-1;
  fMarkState.EndCodePointIndex:=-1;
+ fExpandedSelections:=nil;
+ fCountExpandedSelections:=0;
+ fExpandedSelection.StartCodePointIndex:=-1;
+ fExpandedSelection.StopCodePointIndex:=-1;
 end;
 
 destructor TpvTextEditor.TView.Destroy;
@@ -8799,6 +8849,7 @@ begin
  FreeAndNil(fVisualLineCacheMap);
  fBuffer:=nil;
  fBufferLineIndices:=nil;
+ fExpandedSelections:=nil;
  inherited Destroy;
 end;
 
@@ -9347,6 +9398,494 @@ begin
   result:=fParent.fRope.Extract(StartCodePointIndex,EndCodePointIndex-StartCodePointIndex);
  end else begin
   result:='';
+ end;
+end;
+
+function TpvTextEditor.TView.GetWordRange(const aCodePointIndex:TpvSizeInt;out aRange:TSelectionRange):boolean;
+ // 0 a letter, a digit or an underscore (and whatever lies beyond ASCII), 1 a space or a tab, 2 a line end,
+ // 3 anything else
+ function ClassOf(const aCodePoint:TpvUInt32):TpvSizeInt;
+ begin
+  if ((aCodePoint>=ord('0')) and (aCodePoint<=ord('9'))) or
+     ((aCodePoint>=ord('A')) and (aCodePoint<=ord('Z'))) or
+     ((aCodePoint>=ord('a')) and (aCodePoint<=ord('z'))) or
+     (aCodePoint=ord('_')) or
+     (aCodePoint>=$80) then begin
+   result:=0;
+  end else if (aCodePoint=9) or (aCodePoint=32) then begin
+   result:=1;
+  end else if (aCodePoint=10) or (aCodePoint=13) then begin
+   result:=2;
+  end else begin
+   result:=3;
+  end;
+ end;
+var CountCodePoints,CodePointIndex,LineStartCodePointIndex,LineStopCodePointIndex,TokenStartCodePointIndex,
+    TokenStopCodePointIndex,StateIndex,CodePointClass:TpvSizeInt;
+    LineRange:TSelectionRange;
+    WholeToken:boolean;
+begin
+ result:=false;
+ aRange.StartCodePointIndex:=aCodePointIndex;
+ aRange.StopCodePointIndex:=aCodePointIndex;
+ CountCodePoints:=fParent.fRope.CountCodePoints;
+ CodePointIndex:=Min(Max(aCodePointIndex,0),CountCodePoints);
+
+ // On a line end or behind the text the code point before it, where that stands on the same line
+ if (CodePointIndex>=CountCodePoints) or (ClassOf(fParent.fRope.GetCodePoint(CodePointIndex))=2) then begin
+  if (CodePointIndex>0) and (ClassOf(fParent.fRope.GetCodePoint(CodePointIndex-1))<>2) then begin
+   dec(CodePointIndex);
+  end else begin
+   exit;
+  end;
+ end;
+
+ // Within its line, without the line end
+ GetLineRange(CodePointIndex,LineRange);
+ LineStartCodePointIndex:=LineRange.StartCodePointIndex;
+ LineStopCodePointIndex:=LineRange.StopCodePointIndex;
+ while (LineStopCodePointIndex>LineStartCodePointIndex) and
+       (ClassOf(fParent.fRope.GetCodePoint(LineStopCodePointIndex-1))=2) do begin
+  dec(LineStopCodePointIndex);
+ end;
+
+ // The token of the highlighting around it: an identifier, a keyword, a type, a built-in name, a
+ // number or an operator whole, in anything else only the run of its class
+ TokenStartCodePointIndex:=LineStartCodePointIndex;
+ TokenStopCodePointIndex:=LineStopCodePointIndex;
+ WholeToken:=false;
+ if assigned(fParent.fSyntaxHighlighting) then begin
+  fParent.fSyntaxHighlighting.Update(LineStopCodePointIndex+1);
+  StateIndex:=fParent.fSyntaxHighlighting.GetStateIndexFromCodePointIndex(CodePointIndex);
+  if (StateIndex>=0) and (StateIndex<fParent.fSyntaxHighlighting.fCountStates) then begin
+   TokenStartCodePointIndex:=Max(fParent.fSyntaxHighlighting.fStates[StateIndex].fCodePointIndex,LineStartCodePointIndex);
+   if (StateIndex+1)<fParent.fSyntaxHighlighting.fCountStates then begin
+    TokenStopCodePointIndex:=Min(fParent.fSyntaxHighlighting.fStates[StateIndex+1].fCodePointIndex,LineStopCodePointIndex);
+   end;
+   case fParent.fSyntaxHighlighting.fStates[StateIndex].fAttribute and TSyntaxHighlighting.TAttributes.Mask of
+    TSyntaxHighlighting.TAttributes.Keyword,
+    TSyntaxHighlighting.TAttributes.Type_,
+    TSyntaxHighlighting.TAttributes.Builtin,
+    TSyntaxHighlighting.TAttributes.Identifier,
+    TSyntaxHighlighting.TAttributes.Number,
+    TSyntaxHighlighting.TAttributes.Operator:begin
+     WholeToken:=TokenStartCodePointIndex<TokenStopCodePointIndex;
+    end;
+   end;
+  end;
+ end;
+ if WholeToken then begin
+  aRange.StartCodePointIndex:=TokenStartCodePointIndex;
+  aRange.StopCodePointIndex:=TokenStopCodePointIndex;
+ end else begin
+  CodePointClass:=ClassOf(fParent.fRope.GetCodePoint(CodePointIndex));
+  aRange.StartCodePointIndex:=CodePointIndex;
+  while (aRange.StartCodePointIndex>TokenStartCodePointIndex) and
+        (ClassOf(fParent.fRope.GetCodePoint(aRange.StartCodePointIndex-1))=CodePointClass) do begin
+   dec(aRange.StartCodePointIndex);
+  end;
+  aRange.StopCodePointIndex:=CodePointIndex+1;
+  while (aRange.StopCodePointIndex<TokenStopCodePointIndex) and
+        (ClassOf(fParent.fRope.GetCodePoint(aRange.StopCodePointIndex))=CodePointClass) do begin
+   inc(aRange.StopCodePointIndex);
+  end;
+ end;
+ result:=aRange.StartCodePointIndex<aRange.StopCodePointIndex;
+end;
+
+function TpvTextEditor.TView.GetLineRange(const aCodePointIndex:TpvSizeInt;out aRange:TSelectionRange):boolean;
+var LineIndex:TpvSizeInt;
+begin
+ LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(Min(Max(aCodePointIndex,0),fParent.fRope.CountCodePoints));
+ if LineIndex>=0 then begin
+  aRange.StartCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
+  aRange.StopCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
+ end else begin
+  aRange.StartCodePointIndex:=aCodePointIndex;
+  aRange.StopCodePointIndex:=aCodePointIndex;
+ end;
+ result:=aRange.StartCodePointIndex<aRange.StopCodePointIndex;
+end;
+
+function TpvTextEditor.TView.GetSelectionBlocks:TSelectionBlocks;
+var CountBlocks,CountOpenStates,StateIndex,CountCodePoints:TpvSizeInt;
+    OpenStates:TpvSizeIntDynamicArray;
+    SyntaxHighlighting:TSyntaxHighlighting;
+    Aulan:boolean;
+ // Where the token of the state at aStateIndex ends
+ function TokenStop(const aStateIndex:TpvSizeInt):TpvSizeInt;
+ begin
+  if (aStateIndex+1)<SyntaxHighlighting.fCountStates then begin
+   result:=SyntaxHighlighting.fStates[aStateIndex+1].fCodePointIndex;
+  end else begin
+   result:=CountCodePoints;
+  end;
+ end;
+ // Whether the token of the state at aStateIndex is aWord, regardless of the case
+ function TokenIs(const aStateIndex:TpvSizeInt;const aWord:TpvUTF8String):boolean;
+ var StartCodePointIndex:TpvSizeInt;
+ begin
+  StartCodePointIndex:=SyntaxHighlighting.fStates[aStateIndex].fCodePointIndex;
+  result:=((TokenStop(aStateIndex)-StartCodePointIndex)=length(aWord)) and
+          SameText(String(fParent.fRope.Extract(StartCodePointIndex,length(aWord))),String(aWord));
+ end;
+ procedure PushState(const aStateIndex:TpvSizeInt);
+ begin
+  if length(OpenStates)<=CountOpenStates then begin
+   SetLength(OpenStates,(CountOpenStates*2)+16);
+  end;
+  OpenStates[CountOpenStates]:=aStateIndex;
+  inc(CountOpenStates);
+ end;
+ procedure AddBlock(const aOpenStateIndex,aStopCodePointIndex:TpvSizeInt);
+ var Block:PSelectionBlock;
+     CodePoint:TpvUInt32;
+ begin
+  if length(result)<=CountBlocks then begin
+   SetLength(result,(CountBlocks*2)+16);
+  end;
+  Block:=@result[CountBlocks];
+  inc(CountBlocks);
+  Block^.Range.StartCodePointIndex:=SyntaxHighlighting.fStates[aOpenStateIndex].fCodePointIndex;
+  Block^.Range.StopCodePointIndex:=aStopCodePointIndex;
+  CodePoint:=fParent.fRope.GetCodePoint(Block^.Range.StartCodePointIndex);
+  Block^.Bracket:=(CodePoint=ord('(')) or (CodePoint=ord('['));
+ end;
+begin
+ result:=nil;
+ CountBlocks:=0;
+ SyntaxHighlighting:=fParent.fSyntaxHighlighting;
+ if assigned(SyntaxHighlighting) then begin
+
+  // Over the whole text: an opening word or bracket to the closing one at its level
+  CountCodePoints:=fParent.fRope.CountCodePoints;
+  SyntaxHighlighting.Update(CountCodePoints+1);
+  Aulan:=SyntaxHighlighting is TAulanSyntaxHighlighting;
+  OpenStates:=nil;
+  CountOpenStates:=0;
+  for StateIndex:=0 to SyntaxHighlighting.fCountStates-1 do begin
+   case SyntaxHighlighting.fStates[StateIndex].fLevel and $c0000000 of
+    $40000000:begin
+     PushState(StateIndex);
+    end;
+    $80000000:begin
+     if CountOpenStates>0 then begin
+      dec(CountOpenStates);
+      AddBlock(OpenStates[CountOpenStates],TokenStop(StateIndex));
+     end;
+    end;
+    else begin
+     // The else of a case of Aulan has an end of its own, which the highlighting does not count
+     if Aulan and
+        (CountOpenStates>0) and
+        ((SyntaxHighlighting.fStates[StateIndex].fAttribute and TSyntaxHighlighting.TAttributes.Mask)=TSyntaxHighlighting.TAttributes.Keyword) and
+        TokenIs(StateIndex,'else') and
+        TokenIs(OpenStates[CountOpenStates-1],'case') then begin
+      PushState(StateIndex);
+     end;
+    end;
+   end;
+  end;
+
+  // A block never closed reaches to the end of the text
+  while CountOpenStates>0 do begin
+   dec(CountOpenStates);
+   AddBlock(OpenStates[CountOpenStates],CountCodePoints);
+  end;
+
+ end;
+ SetLength(result,CountBlocks);
+end;
+
+function TpvTextEditor.TView.GetSelectionRanges(const aCodePointIndex:TpvSizeInt;const aBrackets:boolean):TSelectionRanges;
+var Count,Index,OtherIndex,FirstSorted,CountKept,CountCodePoints,CodePointIndex,LineIndex,LastLineIndex,
+    FirstLineIndex,StopLineIndex,BlockIndex,OuterBlockIndex:TpvSizeInt;
+    Blocks:TSelectionBlocks;
+    Range,LineRange,Temporary:TSelectionRange;
+ procedure Add(const aRange:TSelectionRange);
+ begin
+  if length(result)<=Count then begin
+   SetLength(result,(Count*2)+16);
+  end;
+  result[Count]:=aRange;
+  inc(Count);
+ end;
+ // The line at aLineIndex with its line end
+ function RangeOfLine(const aLineIndex:TpvSizeInt):TSelectionRange;
+ begin
+  result.StartCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(aLineIndex);
+  result.StopCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(aLineIndex);
+ end;
+ // The lines of a range, the line end of the last one with them
+ function RangeOfLines(const aRange:TSelectionRange):TSelectionRange;
+ begin
+  result.StartCodePointIndex:=RangeOfLine(fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(aRange.StartCodePointIndex)).StartCodePointIndex;
+  result.StopCodePointIndex:=RangeOfLine(fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(Max(aRange.StartCodePointIndex,aRange.StopCodePointIndex-1))).StopCodePointIndex;
+ end;
+ // Whether the line at aLineIndex holds nothing but spaces, tabs and its line end
+ function LineIsEmpty(const aLineIndex:TpvSizeInt):boolean;
+ var CodePointIndex:TpvSizeInt;
+     CodePoint:TpvUInt32;
+     Line:TSelectionRange;
+ begin
+  result:=true;
+  Line:=RangeOfLine(aLineIndex);
+  for CodePointIndex:=Line.StartCodePointIndex to Line.StopCodePointIndex-1 do begin
+   CodePoint:=fParent.fRope.GetCodePoint(CodePointIndex);
+   if (CodePoint<>9) and (CodePoint<>10) and (CodePoint<>13) and (CodePoint<>32) then begin
+    result:=false;
+    break;
+   end;
+  end;
+ end;
+ // The block (not of brackets) reaching farthest down of those the line at aLineIndex has code points
+ // of, -1 where it has none
+ function BlockOfLine(const aLineIndex:TpvSizeInt):TpvSizeInt;
+ var BlockIndex:TpvSizeInt;
+     Line:TSelectionRange;
+ begin
+  result:=-1;
+  Line:=RangeOfLine(aLineIndex);
+  for BlockIndex:=0 to length(Blocks)-1 do begin
+   if (not Blocks[BlockIndex].Bracket) and
+      (Blocks[BlockIndex].Range.StartCodePointIndex<Line.StopCodePointIndex) and
+      (Blocks[BlockIndex].Range.StopCodePointIndex>Line.StartCodePointIndex) and
+      ((result<0) or (Blocks[BlockIndex].Range.StopCodePointIndex>Blocks[result].Range.StopCodePointIndex)) then begin
+    result:=BlockIndex;
+   end;
+  end;
+ end;
+begin
+ result:=nil;
+ Count:=0;
+ CountCodePoints:=fParent.fRope.CountCodePoints;
+ CodePointIndex:=Min(Max(aCodePointIndex,0),CountCodePoints);
+
+ // The word, empty where there is none, and the line
+ if not GetWordRange(CodePointIndex,Range) then begin
+  Range.StartCodePointIndex:=CodePointIndex;
+  Range.StopCodePointIndex:=CodePointIndex;
+ end;
+ Add(Range);
+ GetLineRange(CodePointIndex,LineRange);
+ Add(LineRange);
+ LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(CodePointIndex);
+ LastLineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(CountCodePoints);
+
+ // The blocks whose lines hold the line, in whole lines; the outermost one with the lines right above
+ // it which are neither empty nor in another block - its head, its declarations, its comment
+ Blocks:=GetSelectionBlocks;
+ OuterBlockIndex:=-1;
+ for BlockIndex:=0 to length(Blocks)-1 do begin
+  if not Blocks[BlockIndex].Bracket then begin
+   Range:=RangeOfLines(Blocks[BlockIndex].Range);
+   if (Range.StartCodePointIndex<=LineRange.StartCodePointIndex) and
+      (Range.StopCodePointIndex>=LineRange.StopCodePointIndex) and
+      (Range.StartCodePointIndex<Range.StopCodePointIndex) then begin
+    if (OuterBlockIndex<0) or
+       (Blocks[BlockIndex].Range.StartCodePointIndex<Blocks[OuterBlockIndex].Range.StartCodePointIndex) or
+       ((Blocks[BlockIndex].Range.StartCodePointIndex=Blocks[OuterBlockIndex].Range.StartCodePointIndex) and
+        (Blocks[BlockIndex].Range.StopCodePointIndex>Blocks[OuterBlockIndex].Range.StopCodePointIndex)) then begin
+     if OuterBlockIndex>=0 then begin
+      Add(RangeOfLines(Blocks[OuterBlockIndex].Range));
+     end;
+     OuterBlockIndex:=BlockIndex;
+    end else begin
+     Add(Range);
+    end;
+   end;
+  end;
+ end;
+ if OuterBlockIndex>=0 then begin
+  Range:=RangeOfLines(Blocks[OuterBlockIndex].Range);
+  FirstLineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(Range.StartCodePointIndex);
+  while (FirstLineIndex>0) and
+        (not LineIsEmpty(FirstLineIndex-1)) and
+        (BlockOfLine(FirstLineIndex-1)<0) do begin
+   dec(FirstLineIndex);
+  end;
+  Range.StartCodePointIndex:=RangeOfLine(FirstLineIndex).StartCodePointIndex;
+  Add(Range);
+ end else if (LineIndex>=0) and not LineIsEmpty(LineIndex) then begin
+
+  // Outside of every block the lines around it up to an empty one; a block that begins below them
+  // with them, as a head with the body after it
+  FirstLineIndex:=LineIndex;
+  while (FirstLineIndex>0) and
+        (not LineIsEmpty(FirstLineIndex-1)) and
+        (BlockOfLine(FirstLineIndex-1)<0) do begin
+   dec(FirstLineIndex);
+  end;
+  StopLineIndex:=LineIndex+1;
+  while (StopLineIndex<=LastLineIndex) and not LineIsEmpty(StopLineIndex) do begin
+   BlockIndex:=BlockOfLine(StopLineIndex);
+   if BlockIndex>=0 then begin
+    StopLineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(Max(Blocks[BlockIndex].Range.StartCodePointIndex,Blocks[BlockIndex].Range.StopCodePointIndex-1))+1;
+    break;
+   end;
+   inc(StopLineIndex);
+  end;
+  Range.StartCodePointIndex:=RangeOfLine(FirstLineIndex).StartCodePointIndex;
+  Range.StopCodePointIndex:=RangeOfLine(StopLineIndex-1).StopCodePointIndex;
+  Add(Range);
+
+ end;
+
+ // The round and the square brackets around it, with the brackets
+ if aBrackets then begin
+  for BlockIndex:=0 to length(Blocks)-1 do begin
+   if Blocks[BlockIndex].Bracket and
+      (Blocks[BlockIndex].Range.StartCodePointIndex<=CodePointIndex) and
+      (CodePointIndex<Blocks[BlockIndex].Range.StopCodePointIndex) then begin
+    Add(Blocks[BlockIndex].Range);
+   end;
+  end;
+ end;
+
+ // The whole text
+ Range.StartCodePointIndex:=0;
+ Range.StopCodePointIndex:=CountCodePoints;
+ Add(Range);
+
+ // By size: from the line on (with the brackets all of them), each one kept only where it is larger
+ // than the one kept before it (with the brackets: other than it and not empty)
+ if aBrackets then begin
+  FirstSorted:=0;
+ end else begin
+  FirstSorted:=2;
+ end;
+ for Index:=FirstSorted+1 to Count-1 do begin
+  Temporary:=result[Index];
+  OtherIndex:=Index-1;
+  while (OtherIndex>=FirstSorted) and
+        ((result[OtherIndex].StopCodePointIndex-result[OtherIndex].StartCodePointIndex)>(Temporary.StopCodePointIndex-Temporary.StartCodePointIndex)) do begin
+   result[OtherIndex+1]:=result[OtherIndex];
+   dec(OtherIndex);
+  end;
+  result[OtherIndex+1]:=Temporary;
+ end;
+ CountKept:=FirstSorted;
+ for Index:=FirstSorted to Count-1 do begin
+  Range:=result[Index];
+  if aBrackets then begin
+   if (Range.StartCodePointIndex<Range.StopCodePointIndex) and
+      ((CountKept=0) or
+       (result[CountKept-1].StartCodePointIndex<>Range.StartCodePointIndex) or
+       (result[CountKept-1].StopCodePointIndex<>Range.StopCodePointIndex)) then begin
+    result[CountKept]:=Range;
+    inc(CountKept);
+   end;
+  end else if (Range.StopCodePointIndex-Range.StartCodePointIndex)>(result[CountKept-1].StopCodePointIndex-result[CountKept-1].StartCodePointIndex) then begin
+   result[CountKept]:=Range;
+   inc(CountKept);
+  end;
+ end;
+ SetLength(result,CountKept);
+end;
+
+function TpvTextEditor.TView.GetClickRange(const aCodePointIndex,aClickCount:TpvSizeInt;out aRange:TSelectionRange):boolean;
+var Ranges:TSelectionRanges;
+begin
+ Ranges:=GetSelectionRanges(aCodePointIndex,false);
+ aRange:=Ranges[Min(Max(aClickCount-2,0),length(Ranges)-1)];
+ result:=aRange.StartCodePointIndex<aRange.StopCodePointIndex;
+end;
+
+procedure TpvTextEditor.TView.SelectRange(const aRange:TSelectionRange;const aCaretAtStart:boolean;const aReveal:boolean);
+var StartCodePointIndex,StopCodePointIndex:TpvSizeInt;
+begin
+ StartCodePointIndex:=Min(Max(aRange.StartCodePointIndex,0),fParent.fRope.CountCodePoints);
+ StopCodePointIndex:=Min(Max(aRange.StopCodePointIndex,StartCodePointIndex),fParent.fRope.CountCodePoints);
+ if StartCodePointIndex<StopCodePointIndex then begin
+  if aCaretAtStart then begin
+   fMarkState.StartCodePointIndex:=StopCodePointIndex;
+   fMarkState.EndCodePointIndex:=StartCodePointIndex;
+   fCodePointIndex:=StartCodePointIndex;
+  end else begin
+   fMarkState.StartCodePointIndex:=StartCodePointIndex;
+   fMarkState.EndCodePointIndex:=StopCodePointIndex;
+   fCodePointIndex:=StopCodePointIndex;
+  end;
+ end else begin
+  fMarkState.StartCodePointIndex:=-1;
+  fMarkState.EndCodePointIndex:=-1;
+  fCodePointIndex:=StartCodePointIndex;
+ end;
+ if aReveal then begin
+  EnsureCursorIsVisible(true);
+ end else begin
+  UpdateCursor;
+ end;
+end;
+
+function TpvTextEditor.TView.ExpandSelection:boolean;
+var Index:TpvSizeInt;
+    Current,Best:TSelectionRange;
+    Ranges:TSelectionRanges;
+begin
+
+ // The selection now, the caret where there is none
+ if HasMarkedRange then begin
+  Current.StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+  Current.StopCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+ end else begin
+  Current.StartCodePointIndex:=fCodePointIndex;
+  Current.StopCodePointIndex:=fCodePointIndex;
+ end;
+
+ // Another selection than the one it grew to last forgets the steps before it
+ if (fCountExpandedSelections>0) and
+    ((Current.StartCodePointIndex<>fExpandedSelection.StartCodePointIndex) or
+     (Current.StopCodePointIndex<>fExpandedSelection.StopCodePointIndex)) then begin
+  fCountExpandedSelections:=0;
+ end;
+
+ // The smallest range around it that is larger
+ result:=false;
+ Best:=Current;
+ Ranges:=GetSelectionRanges(Current.StartCodePointIndex,true);
+ for Index:=0 to length(Ranges)-1 do begin
+  if (Ranges[Index].StartCodePointIndex<=Current.StartCodePointIndex) and
+     (Ranges[Index].StopCodePointIndex>=Current.StopCodePointIndex) and
+     ((Ranges[Index].StopCodePointIndex-Ranges[Index].StartCodePointIndex)>(Current.StopCodePointIndex-Current.StartCodePointIndex)) and
+     ((not result) or
+      ((Ranges[Index].StopCodePointIndex-Ranges[Index].StartCodePointIndex)<(Best.StopCodePointIndex-Best.StartCodePointIndex))) then begin
+   Best:=Ranges[Index];
+   result:=true;
+  end;
+ end;
+
+ if result then begin
+  if length(fExpandedSelections)<=fCountExpandedSelections then begin
+   SetLength(fExpandedSelections,(fCountExpandedSelections*2)+16);
+  end;
+  fExpandedSelections[fCountExpandedSelections]:=Current;
+  inc(fCountExpandedSelections);
+  SelectRange(Best,false,true);
+  fExpandedSelection:=Best;
+ end;
+
+end;
+
+function TpvTextEditor.TView.ShrinkSelection:boolean;
+var Current:TSelectionRange;
+begin
+ if HasMarkedRange then begin
+  Current.StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+  Current.StopCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+ end else begin
+  Current.StartCodePointIndex:=fCodePointIndex;
+  Current.StopCodePointIndex:=fCodePointIndex;
+ end;
+ result:=(fCountExpandedSelections>0) and
+         (Current.StartCodePointIndex=fExpandedSelection.StartCodePointIndex) and
+         (Current.StopCodePointIndex=fExpandedSelection.StopCodePointIndex);
+ if result then begin
+  dec(fCountExpandedSelections);
+  fExpandedSelection:=fExpandedSelections[fCountExpandedSelections];
+  SelectRange(fExpandedSelection,false,true);
+ end else begin
+  fCountExpandedSelections:=0;
  end;
 end;
 

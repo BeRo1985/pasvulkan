@@ -2903,6 +2903,13 @@ type TpvGUIObject=class;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
        fOnLeftSideBarLineColor:TpvGUIMultiLineTextEditOnLineColor;
        fOnLineColor:TpvGUIMultiLineTextEditOnLineColor;
+       // The presses of the left button in a row at about the same place, the last one at fClickTime (in
+       // milliseconds) and fClickPosition, and what the last of them marked, which a drag after them grows
+       // by its unit
+       fClickCount:TpvSizeInt;
+       fClickTime:TpvInt64;
+       fClickPosition:TpvVector2;
+       fClickRange:TpvTextEditor.TView.TSelectionRange;
        procedure SetViewDirty;
        procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
@@ -22796,6 +22803,13 @@ begin
  end;
 end;
 
+// Presses of the left button in a field of several lines count as presses in a row where each one is
+// within the time of a double click and this many pixels of the one before it. With the arrows right
+// and left these keys grow and shrink its selection by a step - the word, the brackets, the line, the
+// blocks: Shift+Alt, on macOS Control+Shift+Command
+const pvGUIMultiLineTextEditClickTolerance=4.0;
+      pvGUIMultiLineTextEditExpandSelectionKeyModifiers:TpvApplicationInputKeyModifiers={$ifdef darwin}[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.META]{$else}[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.ALT]{$endif};
+
 constructor TpvGUIMultiLineTextEdit.Create(const aParent:TpvGUIObject);
 var MenuItem:TpvGUIMenuItem;
 begin
@@ -22970,6 +22984,12 @@ begin
  fOnLeftSideBarLineColor:=nil;
 
  fOnLineColor:=nil;
+
+ fClickCount:=0;
+ fClickTime:=0;
+ fClickPosition:=TpvVector2.Null;
+ fClickRange.StartCodePointIndex:=0;
+ fClickRange.StopCodePointIndex:=0;
 
 end;
 
@@ -23468,9 +23488,8 @@ function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;con
 begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
  if result and assigned(fView) then begin
-  fView.SetMarkStart;
-  fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
-                                                                          trunc(floor((aPosition.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+  // The press itself, which comes right after, places the caret and begins the marking: it knows
+  // Shift and the presses before it
   fDirty:=true;
   fTime:=0.0;
   if assigned(fPopupMenu) then begin
@@ -23565,7 +23584,10 @@ begin
        end;
       end;
       KEYCODE_LEFT:begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.META])=pvGUIMultiLineTextEditExpandSelectionKeyModifiers then begin
+        // The selection back by the step it grew
+        fView.ShrinkSelection;
+       end else if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         if not fView.HasMarkedRange then begin
          fView.SetMarkStart;
         end;
@@ -23582,7 +23604,10 @@ begin
        result:=true;
       end;
       KEYCODE_RIGHT:begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.META])=pvGUIMultiLineTextEditExpandSelectionKeyModifiers then begin
+        // The selection grown by a step: the word, the brackets, the line, the blocks, the text
+        fView.ExpandSelection;
+       end else if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         if not fView.HasMarkedRange then begin
          fView.SetMarkStart;
         end;
@@ -23860,7 +23885,9 @@ begin
 end;
 
 function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
-var Index:TpvInt32;
+var CodePointIndex:TpvSizeInt;
+    Time:TpvInt64;
+    Range:TpvTextEditor.TView.TSelectionRange;
 begin
  if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
   result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -23871,9 +23898,47 @@ begin
      TpvApplicationInputPointerEventType.Down:begin
       case aPointerEvent.Button of
        TpvApplicationInputPointerButton.Left:begin
-        fView.SetMarkStart;
-        fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
-                                                                                trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+        CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                          trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+
+        // Presses in a row, each within the time of a double click of the one before it and at about
+        // its place, count up; one with Shift starts anew
+        if assigned(pvApplication) then begin
+         Time:=pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime);
+        end else begin
+         Time:=0;
+        end;
+        if (not (TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers)) and
+           assigned(pvApplication) and
+           (fClickCount>0) and
+           ((Time-fClickTime)<=round(fInstance.fDoubleClickTime*1000.0)) and
+           (abs(aPointerEvent.Position.x-fClickPosition.x)<=pvGUIMultiLineTextEditClickTolerance) and
+           (abs(aPointerEvent.Position.y-fClickPosition.y)<=pvGUIMultiLineTextEditClickTolerance) then begin
+         inc(fClickCount);
+        end else begin
+         fClickCount:=1;
+        end;
+        fClickTime:=Time;
+        fClickPosition:=aPointerEvent.Position;
+
+        if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+         // With Shift the marking from where it begins, or from the caret, to the press
+         if not fView.HasMarkedRange then begin
+          fView.SetMarkStart;
+         end;
+         fView.CodePointIndex:=CodePointIndex;
+         fView.SetMarkEnd;
+        end else if fClickCount>=2 then begin
+         // The second press marks the word, the third the line, the ones after it the blocks outwards
+         if not fView.GetClickRange(CodePointIndex,fClickCount,fClickRange) then begin
+          fClickRange.StartCodePointIndex:=CodePointIndex;
+          fClickRange.StopCodePointIndex:=CodePointIndex;
+         end;
+         fView.SelectRange(fClickRange);
+        end else begin
+         fView.CodePointIndex:=CodePointIndex;
+         fView.SetMarkStart;
+        end;
         fDirty:=true;
         fTime:=0.0;
         RequestFocus;
@@ -23909,9 +23974,27 @@ begin
      TpvApplicationInputPointerEventType.Motion,
      TpvApplicationInputPointerEventType.Drag:begin
       if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
-       fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
-                                                                               trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
-       fView.SetMarkEnd;
+       CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                         trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
+       if fClickCount>=2 then begin
+        // After presses in a row the marking grows by their unit: what they would mark at the pointer
+        // together with what they marked, the caret on the side of the pointer
+        if not fView.GetClickRange(CodePointIndex,fClickCount,Range) then begin
+         Range.StartCodePointIndex:=CodePointIndex;
+         Range.StopCodePointIndex:=CodePointIndex;
+        end;
+        if Range.StartCodePointIndex<fClickRange.StartCodePointIndex then begin
+         Range.StopCodePointIndex:=Max(Range.StopCodePointIndex,fClickRange.StopCodePointIndex);
+         fView.SelectRange(Range,true,true);
+        end else begin
+         Range.StartCodePointIndex:=fClickRange.StartCodePointIndex;
+         Range.StopCodePointIndex:=Max(Range.StopCodePointIndex,fClickRange.StopCodePointIndex);
+         fView.SelectRange(Range,false,true);
+        end;
+       end else begin
+        fView.CodePointIndex:=CodePointIndex;
+        fView.SetMarkEnd;
+       end;
        fDirty:=true;
        fTime:=0.0;
       end;
