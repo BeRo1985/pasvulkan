@@ -4364,6 +4364,7 @@ type EpvScene3D=class(Exception);
              public
               function CreateLight(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TLight;
               function CreateMesh(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TMesh;
+              function AddJointBlock(const aBlock:TpvScene3D.TJointBlock):TpvSizeInt;
               function CreateSkin(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TSkin;
               function CreateAnimation(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TAnimation;
               function CreateCamera(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TCamera;
@@ -22931,6 +22932,11 @@ begin
  finally
   AddMesh(result);
  end;
+end;
+
+function TpvScene3D.TGroup.AddJointBlock(const aBlock:TpvScene3D.TJointBlock):TpvSizeInt;
+begin
+ result:=fJointBlocks.Add(aBlock);
 end;
 
 function TpvScene3D.TGroup.CreateSkin(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TSkin;
