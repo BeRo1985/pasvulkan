@@ -5929,6 +5929,7 @@ type TEventBeforeAfter=(Event,Before,After);
   // Calculate resource lifetimes (from minimum physical pass step index to maximum
   // physical pass step index) for calculating aliasing and reusing of resources at a later point
   for Resource in fResources do begin
+   Resource.fUsed:=false;
    Resource.fMinimumTopologicalSortPassIndex:=High(TpvSizeInt);
    Resource.fMaximumTopologicalSortPassIndex:=Low(TpvSizeInt);
    Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
@@ -5943,13 +5944,12 @@ type TEventBeforeAfter=(Event,Before,After);
       // In this cases, this one resource must life from the begin to the end of the whole
       // directed acyclic graph for the simplicity of safety, because it can be still optimized
       // in a better way later
-      if not Resource.fUsed then begin
-       Resource.fUsed:=true;
-       Resource.fMinimumTopologicalSortPassIndex:=0;
-       Resource.fMaximumTopologicalSortPassIndex:=fTopologicalSortedPasses.Count-1;
-       Resource.fMinimumPhysicalPassStepIndex:=0;
-       Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
-      end;
+      Resource.fUsed:=true;
+      Resource.fMinimumTopologicalSortPassIndex:=0;
+      Resource.fMaximumTopologicalSortPassIndex:=fTopologicalSortedPasses.Count-1;
+      Resource.fMinimumPhysicalPassStepIndex:=0;
+      Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
+      break;
      end else begin
       if Resource.fUsed then begin
        Resource.fMinimumTopologicalSortPassIndex:=Min(Resource.fMinimumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
@@ -6025,11 +6025,71 @@ type TEventBeforeAfter=(Event,Before,After);
                  (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface))) and
            (not aResource.fTransient);
   end;
+  function IsDiscardedColorTarget(const aResource:TResource):boolean;
+  var ImageType:TImageResourceType;
+      Transition:TResourceTransition;
+  begin
+   result:=false;
+   if not (aResource.fUsed and (aResource.fResourceType is TImageResourceType)) then begin
+    exit;
+   end;
+   ImageType:=TImageResourceType(aResource.fResourceType);
+   if (ImageType.fImageType<>TImageType.Color) or (ImageType.fCountMipMapLevels<>1) or
+      (ImageType.fImageSize.Size.z<>1.0) or (ImageType.fImageSize.Size.w>1.0) or
+      (ImageType.fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED) or (ImageType.fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED) then begin
+    exit;
+   end;
+   for Transition in aResource.fResourceTransitions do begin
+    if assigned(Transition.fPass.fPhysicalPass) then begin
+     if (Transition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,TResourceTransition.TFlag.NextFrameOutput])<>[] then begin
+      result:=false;
+      exit;
+     end;
+     if Transition.fPass.fTopologicalSortIndex=aResource.fMinimumTopologicalSortPassIndex then begin
+      if (Transition.fKind<>TResourceTransition.TKind.ImageOutput) or
+         not (TResourceTransition.TFlag.Attachment in Transition.fFlags) or
+         not (Transition.fLoadOp.Kind in [TLoadOp.TKind.Clear,TLoadOp.TKind.DontCare]) then begin
+       result:=false;
+       exit;
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+  function CanInsertColorTarget(const aGroup:TResourceAliasGroup;const aResource:TResource):boolean;
+  var Member:TResource;
+      GroupType,CandidateType:TImageResourceType;
+  begin
+   result:=false;
+   if not ((aGroup.fResourceType is TImageResourceType) and IsDiscardedColorTarget(aResource)) then begin
+    exit;
+   end;
+   GroupType:=TImageResourceType(aGroup.fResourceType);
+   CandidateType:=TImageResourceType(aResource.fResourceType);
+   // These resources share one VkImage and its views. Match the allocation and view
+   // descriptions exactly, including size factors that will be applied after a resize.
+   if (GroupType.fFormat<>CandidateType.fFormat) or (GroupType.fAdditionalFormat<>CandidateType.fAdditionalFormat) or
+      (GroupType.fSamples<>CandidateType.fSamples) or (GroupType.fImageUsage<>CandidateType.fImageUsage) or
+      not CompareMem(@GroupType.fImageSize,@CandidateType.fImageSize,SizeOf(TImageSize)) or
+      not CompareMem(@GroupType.fComponents,@CandidateType.fComponents,SizeOf(TVkComponentMapping)) then begin
+    exit;
+   end;
+   for Member in aGroup.fResources do begin
+    if not IsDiscardedColorTarget(Member) or
+       ((Member.fMinimumPhysicalPassStepIndex<=aResource.fMaximumPhysicalPassStepIndex) and
+        (aResource.fMinimumPhysicalPassStepIndex<=Member.fMaximumPhysicalPassStepIndex)) then begin
+     exit;
+    end;
+   end;
+   result:=true;
+  end;
  var Index,
      OtherIndex:TpvSizeInt;
      Resource,
      OtherResource:TResource;
-     ResourceTransition:TResourceTransition;
+     PhysicalPass:TPhysicalPass;
+     SingleQueue,ExtendedGroup,CanReuse:boolean;
      ResourceAliasGroup:TResourceAliasGroup;
  begin
   // Construct resource alias groups, depending on the non-intersecting resource lifetime span
@@ -6038,6 +6098,14 @@ type TEventBeforeAfter=(Event,Before,After);
    Resource.fResourceAliasGroup:=nil;
   end;
   fResourceAliasGroups.Clear;
+  // On independent queues a physical pass index alone cannot establish execution order.
+  SingleQueue:=true;
+  for PhysicalPass in fPhysicalPasses do begin
+   if PhysicalPass.fQueue<>fPhysicalPasses.Items[0].fQueue then begin
+    SingleQueue:=false;
+    break;
+   end;
+  end;
   for Index:=0 to fResources.Count-1 do begin
    Resource:=fResources.Items[Index];
    if not assigned(Resource.fResourceAliasGroup) then begin
@@ -6047,6 +6115,7 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceAliasGroup.fResourceInstanceType:=Resource.fResourceInstanceType;
      ResourceAliasGroup.fExternalData:=Resource.fExternalData;
      ResourceAliasGroup.fTransient:=Resource.fTransient;
+     ResourceAliasGroup.fUsedFlags:=Resource.fUsedFlags;
      ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Resource.fMinimumPhysicalPassStepIndex;
      ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Resource.fMaximumPhysicalPassStepIndex;
      ResourceAliasGroup.fResources.Add(Resource);
@@ -6054,18 +6123,28 @@ type TEventBeforeAfter=(Event,Before,After);
      Resource.fResourceAliasGroup:=ResourceAliasGroup;
     end;
     if CanResourceReused(Resource) then begin
+     ExtendedGroup:=false;
      for OtherIndex:=Index+1 to fResources.Count-1 do begin
       OtherResource:=fResources.Items[OtherIndex];
       if (not assigned(OtherResource.fResourceAliasGroup)) and
-         (Resource.fResourceType=OtherResource.fResourceType) and
          (Resource.fResourceInstanceType=OtherResource.fResourceInstanceType) and
          (Resource.fExternalData=OtherResource.fExternalData) and
-         CanResourceReused(OtherResource) then begin
-       if (not ((ResourceAliasGroup.fMinimumPhysicalPassStepIndex<=OtherResource.fMaximumPhysicalPassStepIndex) and
-               (OtherResource.fMinimumPhysicalPassStepIndex<=ResourceAliasGroup.fMaximumPhysicalPassStepIndex))) and
-          //Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
-          (((Resource.fUsedFlags or OtherResource.fUsedFlags) and TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination)<>TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination) and
-          not Resource.fResourceTransitions.HasPhysicalPassesIntersectionWith(OtherResource.fResourceTransitions) then begin
+         CanResourceReused(OtherResource) and
+         (((ResourceAliasGroup.fUsedFlags or OtherResource.fUsedFlags) and TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination)<>TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination) then begin
+       CanReuse:=(not ExtendedGroup) and
+                 (Resource.fResourceType=OtherResource.fResourceType) and
+                 ((ResourceAliasGroup.fMaximumPhysicalPassStepIndex<OtherResource.fMinimumPhysicalPassStepIndex) or
+                  (OtherResource.fMaximumPhysicalPassStepIndex<ResourceAliasGroup.fMinimumPhysicalPassStepIndex)) and
+                 not Resource.fResourceTransitions.HasPhysicalPassesIntersectionWith(OtherResource.fResourceTransitions);
+       if (not CanReuse) and SingleQueue then begin
+        CanReuse:=CanInsertColorTarget(ResourceAliasGroup,OtherResource);
+        if CanReuse then begin
+         // Keep checking every member once the group contains a new pairing.
+         ExtendedGroup:=true;
+        end;
+       end;
+       if CanReuse then begin
+        ResourceAliasGroup.fUsedFlags:=ResourceAliasGroup.fUsedFlags or OtherResource.fUsedFlags;
         ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Min(ResourceAliasGroup.fMinimumPhysicalPassStepIndex,OtherResource.fMinimumPhysicalPassStepIndex);
         ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Max(ResourceAliasGroup.fMaximumPhysicalPassStepIndex,OtherResource.fMaximumPhysicalPassStepIndex);
         ResourceAliasGroup.fResources.Add(OtherResource);
