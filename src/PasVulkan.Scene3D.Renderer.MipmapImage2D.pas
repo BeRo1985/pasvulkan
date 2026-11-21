@@ -85,7 +85,7 @@ type { TpvScene3DRendererMipmapImage2D }
 
        VulkanImageViews:array of TpvVulkanImageView;
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='');
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil;const aAllocationGroupID:TpvUInt64=0;const aName:TpvUTF8String='';const aMipmapped:Boolean=true);
 
        destructor Destroy; override;
 
@@ -109,7 +109,7 @@ implementation
 
 { TpvScene3DRendererMipmapImage2D }
 
-constructor TpvScene3DRendererMipmapImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String);
+constructor TpvScene3DRendererMipmapImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices;const aAllocationGroupID:TpvUInt64;const aName:TpvUTF8String;const aMipmapped:Boolean);
 var MipMapLevelIndex:TpvSizeInt;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -130,7 +130,11 @@ begin
 
  fHeight:=aHeight;
 
- fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight))+1);
+ if aMipmapped then begin
+  fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight))+1);
+ end else begin
+  fMipMapLevels:=1;
+ end;
 
  fFormat:=aFormat;
 

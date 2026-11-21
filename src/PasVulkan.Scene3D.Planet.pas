@@ -5607,7 +5607,7 @@ begin
                                                                        ImageSharingMode,
                                                                        ImageQueueFamilyIndices,
                                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapBeforeStateImage');
+                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapBeforeStateImage',false);
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapBeforeStateImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapBeforeStateImage.Image');
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapBeforeStateImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapBeforeStateImage.ImageView');
     fHeightMapBeforeStateValid:=false;
@@ -5623,7 +5623,7 @@ begin
                                                                        ImageSharingMode,
                                                                        ImageQueueFamilyIndices,
                                                                        pvAllocationGroupIDScene3DPlanetStatic,
-                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmearBufferImage');
+                                                                       'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmearBufferImage',false);
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmearBufferImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmearBufferImage.Image');
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapSmearBufferImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapSmearBufferImage.ImageView');
     fHeightMapSmearBufferValid:=false;
