@@ -872,7 +872,15 @@ begin
                                                                                     0.0);
 
   fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.x:=InFlightFrameState^.FinalViewIndex;
-  fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.y:=TpvUInt32(aFrameIndex);
+  // With spatial AA, moving the march samples across shadow-map texels every frame
+  // makes narrow shafts blink. The shader still stratifies neighbouring pixels.
+  if fRaytracing or
+     (fInstance.Renderer.ActiveTemporalUpscaler<>TpvScene3DRendererTemporalUpscaler.None) or
+     (fInstance.Renderer.AntialiasingMode in [TpvScene3DRendererAntialiasingMode.SMAAT2x,TpvScene3DRendererAntialiasingMode.TAA]) then begin
+   fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.y:=TpvUInt32(aFrameIndex);
+  end else begin
+   fPushConstants.ViewBaseIndexFrameIndexFlagsStepCounts.y:=0;
+  end;
 
   // The model bit is gone with the switch it stood for: both media are computed and added now, each with
   // its own share, so there is nothing left to select between.

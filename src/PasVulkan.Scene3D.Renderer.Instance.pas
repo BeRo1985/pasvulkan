@@ -579,13 +579,13 @@ type { TpvScene3DRendererInstance }
               fRoundedOrigin:TpvVector2;
               fRoundOffset:TpvVector2;
               fViewMatrix:TpvMatrix4x4;
-              fProjectionMatrix:TpvMatrix4x4;
+              fProjectionMatrix:TpvMatrix4x4D;
               fLightViewMatrix:TpvMatrix4x4;
               fTemporaryMatrix:TpvMatrix4x4;
               fLightProjectionMatrix:TpvMatrix4x4;
               fLightViewProjectionMatrix:TpvMatrix4x4;
               fInverseLightViewProjectionMatrix:TpvMatrix4x4;
-              fInverseViewProjectionMatrices:array[0..7] of TpvMatrix4x4;
+              fInverseViewProjectionMatrices:array[0..7] of TpvMatrix4x4D;
               fWorldSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
               fTemporaryFrustumCorners:array[0..7,0..7] of TpvVector3;
               fFrustumAABB:TpvAABB;
@@ -2647,10 +2647,12 @@ begin
  for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
   fProjectionMatrix:=fInstance.fViews[aInFlightFrameIndex].Items[ViewIndex].ProjectionMatrix;
   if DoNeedRefitNearFarPlanes then begin
-   fProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
-   fProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
+   fProjectionMatrix.RawComponents[2,2]:=RealZFar/(RealZNear-RealZFar);
+   fProjectionMatrix.RawComponents[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
   end;
-  fInverseViewProjectionMatrices[ViewIndex]:=(fInstance.fViews[aInFlightFrameIndex].Items[ViewIndex].ViewMatrix*fProjectionMatrix).Inverse;
+  // At the far corners w is tiny. Keep translation, projection and the perspective divide in
+  // double precision so camera motion cannot shift the cascade footprint by metres.
+  fInverseViewProjectionMatrices[ViewIndex]:=(TpvMatrix4x4D.Create(fInstance.fViews[aInFlightFrameIndex].Items[ViewIndex].ViewMatrix)*fProjectionMatrix).Inverse;
  end;
 
  fLightForwardVector:=-Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
@@ -2687,7 +2689,7 @@ begin
 
  for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
   for Index:=0 to 7 do begin
-   fWorldSpaceFrustumCorners[ViewIndex,Index]:=fInverseViewProjectionMatrices[ViewIndex].MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
+   fWorldSpaceFrustumCorners[ViewIndex,Index]:=fInverseViewProjectionMatrices[ViewIndex].MulHomogen(FrustumCorners[Index]);
   end;
  end;
 
