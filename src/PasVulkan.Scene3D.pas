@@ -9004,13 +9004,27 @@ begin
  WriteLine('- Image "'+fName+'"');
  WriteLine('');
 
- SizeVRAM:=fTexture.RawSize;
- SizeRAM:=0;
- WriteLine('        Size: '+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM');
- inc(aTotalSizeVRAM,SizeVRAM);
- inc(aTotalSizeRAM,SizeRAM);
+ // The scene holds its image list lock here. A procedural loader holding the
+ // image lock can call back into the scene, so do not wait for it.
+ if fLock.TryAcquire then begin
+  try
+   if assigned(fTexture) then begin
+    SizeVRAM:=fTexture.RawSize;
+   end else begin
+    SizeVRAM:=0;
+   end;
+  finally
+   fLock.Release;
+  end;
+  SizeRAM:=0;
+  WriteLine('        Size: '+ToSize(SizeVRAM)+' on vRAM, '+ToSize(SizeRAM)+' on RAM');
+  inc(aTotalSizeVRAM,SizeVRAM);
+  inc(aTotalSizeRAM,SizeRAM);
 
- WriteLine('  Total size: '+ToSize(aTotalSizeVRAM-LastSizeVRAM)+' on vRAM, '+ToSize(aTotalSizeRAM-LastSizeRAM)+' on RAM');
+  WriteLine('  Total size: '+ToSize(aTotalSizeVRAM-LastSizeVRAM)+' on vRAM, '+ToSize(aTotalSizeRAM-LastSizeRAM)+' on RAM');
+ end else begin
+  WriteLine('        Size: unavailable (image busy, excluded from totals)');
+ end;
  WriteLine('');
 
  WriteLine('===============================================================');
