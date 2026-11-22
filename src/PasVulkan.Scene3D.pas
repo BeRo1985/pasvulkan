@@ -39892,8 +39892,8 @@ begin
                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                        [],
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                        0,
                                                                        0,
                                                                        0,
@@ -39915,8 +39915,8 @@ begin
                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                           [],
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                           0,
                                                                           0,
                                                                           0,
@@ -44623,8 +44623,8 @@ begin
                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                  [],
-                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                  0,
                                                                                  0,
                                                                                  0,
@@ -44678,7 +44678,8 @@ begin
      fDrawInfoBufferResized[aInFlightFrameIndex]:=true;
 
      // Cache mapped pointer for direct-mapped writes
-     if fDrawInfoMapping and (fBufferStreamingMode=TBufferStreamingMode.Direct) then begin
+     if fDrawInfoMapping and (fBufferStreamingMode=TBufferStreamingMode.Direct) and
+        ((fGlobalVulkanDrawInfoBuffers[aInFlightFrameIndex].MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0) then begin
       fDrawInfoMappedBasePointers[aInFlightFrameIndex]:=fGlobalVulkanDrawInfoBuffers[aInFlightFrameIndex].Memory.MapMemory(0,TVkDeviceSize(VK_WHOLE_SIZE));
       fDrawInfoMappedBufferCounts[aInFlightFrameIndex]:=Size div SizeOf(TGPUDrawInfo);
      end else begin
@@ -44850,8 +44851,8 @@ begin
                                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                     [],
-                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                                     0,
                                                                                     0,
                                                                                     0,
@@ -44896,7 +44897,8 @@ begin
 
      fMatrixPairBufferResized[aInFlightFrameIndex]:=true;
      // Cache mapped pointer for direct-mapped writes
-     if fMatrixPairMapping and (fBufferStreamingMode=TBufferStreamingMode.Direct) then begin
+     if fMatrixPairMapping and (fBufferStreamingMode=TBufferStreamingMode.Direct) and
+        ((fGlobalVulkanMatrixPairBuffers[aInFlightFrameIndex].MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0) then begin
       fMatrixPairMappedBasePointers[aInFlightFrameIndex]:=fGlobalVulkanMatrixPairBuffers[aInFlightFrameIndex].Memory.MapMemory(0,TVkDeviceSize(VK_WHOLE_SIZE));
       fMatrixPairMappedBufferCounts[aInFlightFrameIndex]:=Size div SizeOf(TGPUMatrixPair);
      end else begin
@@ -44999,8 +45001,8 @@ begin
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                     [],
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                     0,
                                                     0,
                                                     0,
