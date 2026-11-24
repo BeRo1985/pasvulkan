@@ -15656,11 +15656,20 @@ begin
   if NewOffset<fMappedOffset then begin
    NewOffset:=fMappedOffset;
   end;
-  if NewEndOffset<NewOffset then begin
+ {if NewEndOffset<NewOffset then begin
    NewEndOffset:=NewOffset;
+  end;}
+  // The size gets a variable of its own before the record is written: FPC 3.3.1 at -O3 and -O4 on x86-64 turned the clamp
+  // "if NewEndOffset<NewOffset then NewEndOffset:=NewOffset" into a conditional move into a register which the store
+  // into the record then reused for the address of the record, so the size became that address
+  if NewEndOffset>NewOffset then begin
+   Size:=NewEndOffset-NewOffset;
+  end else begin
+   Size:=0;
   end;
   aMappedMemoryRange.offset:=NewOffset;
-  aMappedMemoryRange.size:=NewEndOffset-NewOffset;
+  //aMappedMemoryRange.size:=NewEndOffset-NewOffset;
+  aMappedMemoryRange.size:=Size;
  end;
 end;
 
