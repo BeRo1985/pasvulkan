@@ -188,7 +188,11 @@ var ScreenMain:TScreenMain=nil;
 
 implementation
 
-uses UnitApplication;
+uses {$ifndef fpc}
+     DateUtils,
+     IOUtils,
+     {$endif}
+     UnitApplication;
 
 var StartTimeUTC:TDateTime=0.0;
 

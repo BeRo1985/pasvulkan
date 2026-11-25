@@ -942,8 +942,8 @@ begin
                                                       0,
                                                       VK_IMAGE_LAYOUT_UNDEFINED,
                                                       VK_IMAGE_LAYOUT_UNDEFINED,
-                                                      TVkQueue(VK_QUEUE_FAMILY_IGNORED),
-                                                      TVkQueue(VK_QUEUE_FAMILY_IGNORED),
+                                                      VK_QUEUE_FAMILY_IGNORED,
+                                                      VK_QUEUE_FAMILY_IGNORED,
                                                       fVulkanImage.Handle,
                                                       ImageSubresourceRange);
 

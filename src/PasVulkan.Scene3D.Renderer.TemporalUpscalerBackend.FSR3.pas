@@ -266,7 +266,7 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
        fConstantBuffers:array[0..MaxInFlightFrames-1] of TConstantBuffers;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1,0..CountParities-1,TPass] of TpvVulkanDescriptorSet;
-       fInputs:array[0..MaxInFlightFrames-1] of TInputs;
+       fInputs:array[0..MaxInFlightFrames-1] of TpvScene3DRendererTemporalUpscalerBackend.TInputs;
        fConstants:TConstants;
        fFirstExecution:boolean;
        fResourceFrameIndex:TpvUInt32;
@@ -319,8 +319,8 @@ type { TpvScene3DRendererTemporalUpscalerBackendFSR3 }
        // AMD's formula, log2(render/display)-1: -1.0 at native resolution, -1.58 at 1.5 times, -2.0 at
        // twice and -2.58 at three times the render size.
        class function GetTextureLODBias(const aRenderWidth,aOutputWidth:TpvInt32):TpvFloat; override;
-       procedure SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TInputs); override;
-       function Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription):boolean; override;
+       procedure SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TpvScene3DRendererTemporalUpscalerBackend.TInputs); override;
+       function Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererTemporalUpscalerBackend.TDispatchDescription):boolean; override;
      end;
 
 implementation
@@ -1252,7 +1252,7 @@ begin
  end;
 end;
 
-procedure TpvScene3DRendererTemporalUpscalerBackendFSR3.SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TInputs);
+procedure TpvScene3DRendererTemporalUpscalerBackendFSR3.SetInputs(const aInFlightFrameIndex:TpvSizeInt;const aInputs:TpvScene3DRendererTemporalUpscalerBackend.TInputs);
 begin
  fInputs[aInFlightFrameIndex]:=aInputs;
  WriteDescriptorSets(aInFlightFrameIndex);
@@ -1363,7 +1363,7 @@ begin
                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT));
 end;
 
-function TpvScene3DRendererTemporalUpscalerBackendFSR3.Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TDispatchDescription):boolean;
+function TpvScene3DRendererTemporalUpscalerBackendFSR3.Dispatch(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererTemporalUpscalerBackend.TDispatchDescription):boolean;
 const ThreadGroupWorkRegionDim=8;
       ThreadGroupWorkRegionDimRCAS=16;
 var InternalImage:TInternalImage;

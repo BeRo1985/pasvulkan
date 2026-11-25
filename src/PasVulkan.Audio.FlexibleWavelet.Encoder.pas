@@ -111,10 +111,10 @@ type EpvFlexibleWaveletAudioEncoder=class(EpvFlexibleWaveletAudio);
              function ByteLength:TpvSizeUInt;
              procedure Append(const aSource:TBitWriter);
             end;
-            TPairArray=array[0..MaxChannelPairs-1,0..1] of TpvInt32;
+            TPairArray=array[0..TpvFlexibleWaveletAudio.MaxChannelPairs-1,0..1] of TpvInt32;
       private
        fStream:TStream;
-       fSynthesisGainSquared:array[0..MaxSynthesisDepth] of TpvDouble;
+       fSynthesisGainSquared:array[0..TpvFlexibleWaveletAudio.MaxSynthesisDepth] of TpvDouble;
        fSynthesisGainReady:boolean;
        procedure WriteU8(const aValue:TpvUInt8);
        procedure WriteU16(const aValue:TpvUInt16);
@@ -129,9 +129,9 @@ type EpvFlexibleWaveletAudioEncoder=class(EpvFlexibleWaveletAudio);
        function PacketLeafCost(const aSegment:PpvFloatArray;const aLength,aDepth:TpvInt32;const aStep:TpvFloat):TpvDouble;
        function PacketDecompose(const aSegment:PpvFloatArray;const aLength,aDepth,aMaxDepth:TpvInt32;const aStep:TpvFloat;const aScratch:PpvFloatArray;var aTree:TBitWriter):TpvDouble;
        procedure JointStereoZeroSideHighs(const aCoefficients:PpvFloatArray;const aLength:TpvInt32);
-       procedure EncodeBlockCoeffs(const aCoefficients:PpvInt32Array;const aLength:TpvInt32;var aCoder:TRangeCoder);
+       procedure EncodeBlockCoeffs(const aCoefficients:PpvInt32Array;const aLength:TpvInt32;var aCoder:TpvFlexibleWaveletAudio.TRangeCoder);
       public
-       procedure Encode(const aChannelBuffer:TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
+       procedure Encode(const aChannelBuffer:TpvFlexibleWaveletAudio.TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
       end;
 
 implementation
@@ -438,7 +438,7 @@ begin
  end;
 end;
 
-procedure TpvFlexibleWaveletAudioEncoder.EncodeBlockCoeffs(const aCoefficients:PpvInt32Array;const aLength:TpvInt32;var aCoder:TRangeCoder);
+procedure TpvFlexibleWaveletAudioEncoder.EncodeBlockCoeffs(const aCoefficients:PpvInt32Array;const aLength:TpvInt32;var aCoder:TpvFlexibleWaveletAudio.TRangeCoder);
 var ClassContexts:array[0..BandContexts-1] of TClassContext;
     Starts:TBandStarts;
     BandCount,Band,BandContext,Index,Klass:TpvInt32;
@@ -477,7 +477,7 @@ begin
 
 end;
 
-procedure TpvFlexibleWaveletAudioEncoder.Encode(const aChannelBuffer:TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
+procedure TpvFlexibleWaveletAudioEncoder.Encode(const aChannelBuffer:TpvFlexibleWaveletAudio.TAudioBuffers;const aSampleRate:TpvInt32;const aParams:TParams;const aStream:TStream);
 var Channels,Channel,Quality,PairIndex,Mode,PairCount,BlockLength,Index,MaxDepth,Overlap,BlockStride:TpvInt32;
     LMSReset,TimeBlock,SegmentLength:TpvInt32;
     Frames,Start,Frame,Segment,BlobStart,IndexFieldPos,IndexAt:TpvInt64;
