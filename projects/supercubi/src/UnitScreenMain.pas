@@ -20,7 +20,7 @@ unit UnitScreenMain;
 
 {$ifdef fpc}
  {$optimization level1}
-{$ifend}
+{$endif}
 
 {$undef WithConsole}
 

@@ -539,7 +539,7 @@ end;
 function TpvVectorGraphicsImagePaint.GetColorAt(const aX,aY:TpvInt32):TpvVectorGraphicsColor;
 const OneOver256=1.0/256.0;
 var Position:TpvVectorPathVector;
-    FixedX,FixedY,FullWidth,FullHeight,PixelX,PixelY,FractionX,FractionY,Shift:TpvInt32;
+    FixedX,FixedY,FullWidth,FullHeight,PixelX,PixelY,FractionX,FractionY:TpvInt32;
     Samples:array[0..3] of TpvVectorGraphicsColor;
     RowColors:array[0..1] of TpvVectorGraphicsColor;
  function SampleAt(const aPixelX,aPixelY:TpvInt32):TpvVectorGraphicsColor; {$if defined(fpc) and defined(CANINLINE)}inline;{$ifend}
@@ -551,7 +551,7 @@ var Position:TpvVectorPathVector;
   end;
  end;
  function LerpColors(const aLeft,aRight:TpvVectorGraphicsColor;const aFactor:TpvInt32):TpvVectorGraphicsColor; {$ifdef CANINLINE}inline;{$endif}
- var Channel,LeftValue,RightValue:TpvInt32;
+ var Channel,Shift,LeftValue,RightValue:TpvInt32;
  begin
   result:=0;
   for Channel:=0 to 3 do begin

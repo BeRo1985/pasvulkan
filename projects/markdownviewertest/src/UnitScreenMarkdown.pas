@@ -20,7 +20,7 @@ unit UnitScreenMarkdown;
 
 {$ifdef fpc}
  {$optimization level1}
-{$ifend}
+{$endif}
 
 interface
 
