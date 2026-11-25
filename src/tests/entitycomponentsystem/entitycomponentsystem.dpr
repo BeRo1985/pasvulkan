@@ -13,11 +13,11 @@ uses
   PasVulkan.Types in '..\..\PasVulkan.Types.pas',
   PasVulkan.Framework in '..\..\PasVulkan.Framework.pas',
   PasVulkan.EntityComponentSystem in '..\..\PasVulkan.EntityComponentSystem.pas',
-  PasVulkan.Components.Name in '..\..\PasVulkan.Components.Name.pas',
-  PasVulkan.Components.Parent in '..\..\PasVulkan.Components.Parent.pas',
-  PasVulkan.Components.Renderer in '..\..\PasVulkan.Components.Renderer.pas',
-  PasVulkan.Components.SortKey in '..\..\PasVulkan.Components.SortKey.pas',
-  PasVulkan.Components.Transform in '..\..\PasVulkan.Components.Transform.pas';
+  PasVulkan.Components.RecordBased.Name in '..\..\PasVulkan.Components.RecordBased.Name.pas',
+  PasVulkan.Components.RecordBased.Parent in '..\..\PasVulkan.Components.RecordBased.Parent.pas',
+  PasVulkan.Components.RecordBased.Renderer in '..\..\PasVulkan.Components.RecordBased.Renderer.pas',
+  PasVulkan.Components.RecordBased.SortKey in '..\..\PasVulkan.Components.RecordBased.SortKey.pas',
+  PasVulkan.Components.RecordBased.Transform in '..\..\PasVulkan.Components.RecordBased.Transform.pas';
 
 var World:TpvEntityComponentSystem.TWorld;
 begin

@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Components.Renderer;
+unit PasVulkan.Components.RecordBased.Renderer;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}

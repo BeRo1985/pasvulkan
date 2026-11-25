@@ -5458,6 +5458,10 @@ begin
     end;
     for i:=0 to CountValueItems-1 do begin
      ValueItem:=@ValueItems[i];
+     // Delphi enum ordinals are signed even when the flag's 32-bit pattern is unsigned.
+     if ValueItem^.ValueStr='$80000000' then begin
+      ValueItem^.ValueStr:='{$ifdef fpc}$80000000{$else}TVkInt32($80000000){$endif}';
+     end;
      ENumValues.Add(ValueItem^.Name+ENumValues.NameValueSeparator+ValueItem^.ValueStr);
      if length(ValueItem^.Comment)>0 then begin
       if (i+1)<CountValueItems then begin

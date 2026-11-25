@@ -8571,7 +8571,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkAccessFlagBits2=^TVkAccessFlagBits2;
      TVkAccessFlagBits2=
       (
-       VK_ACCESS_2_RESERVED_63_BIT_EXT=$80000000,
+       VK_ACCESS_2_RESERVED_63_BIT_EXT={$ifdef fpc}$80000000{$else}TVkInt32($80000000){$endif},
        VK_ACCESS_2_NONE=0,
        VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT=$00000001,
        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT=$00000001,
@@ -9237,7 +9237,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkFormatFeatureFlagBits2=^TVkFormatFeatureFlagBits2;
      TVkFormatFeatureFlagBits2=
       (
-       VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT=$80000000,
+       VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT={$ifdef fpc}$80000000{$else}TVkInt32($80000000){$endif},
        VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT=$00000001,
        VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT=$00000001,
        VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT=$00000002,
