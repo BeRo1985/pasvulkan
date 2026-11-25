@@ -110,7 +110,7 @@ type { TpvScene3DRendererFrameGenerationBackendBlend }
                           const aInvertedDepth:boolean;
                           const aName:TpvUTF8String); override;
        destructor Destroy; override;
-       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean; override;
+       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription):boolean; override;
      end;
 
 implementation
@@ -216,7 +216,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3DRendererFrameGenerationBackendBlend.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean;
+function TpvScene3DRendererFrameGenerationBackendBlend.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription):boolean;
 var DescriptorSet:TpvVulkanDescriptorSet;
     PushConstants:TPushConstants;
 begin

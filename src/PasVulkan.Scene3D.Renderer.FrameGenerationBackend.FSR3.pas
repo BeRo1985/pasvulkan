@@ -368,13 +368,13 @@ type { TpvScene3DRendererFrameGenerationBackendFSR3 }
                                   const aDispatchZ:TpvUInt32=1);
        procedure DispatchOpticalFlow(const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aInFlightFrameIndex:TpvSizeInt;
-                                     const aDescription:TGenerateDescription;
+                                     const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription;
                                      const aReset:boolean;
                                      const aMinLuminance:TpvFloat;
                                      const aMaxLuminance:TpvFloat);
        procedure DispatchFrameInterpolation(const aCommandBuffer:TpvVulkanCommandBuffer;
                                             const aInFlightFrameIndex:TpvSizeInt;
-                                            const aDescription:TGenerateDescription;
+                                            const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription;
                                             const aReset:boolean;
                                             const aMinLuminance:TpvFloat;
                                             const aMaxLuminance:TpvFloat);
@@ -397,7 +397,7 @@ type { TpvScene3DRendererFrameGenerationBackendFSR3 }
                           const aInvertedDepth:boolean;
                           const aName:TpvUTF8String); override;
        destructor Destroy; override;
-       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean; override;
+       function Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription):boolean; override;
      end;
 
 implementation
@@ -1422,7 +1422,7 @@ end;
 // is still in the other half of the input pyramid.
 procedure TpvScene3DRendererFrameGenerationBackendFSR3.DispatchOpticalFlow(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                            const aInFlightFrameIndex:TpvSizeInt;
-                                                                           const aDescription:TGenerateDescription;
+                                                                           const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription;
                                                                            const aReset:boolean;
                                                                            const aMinLuminance:TpvFloat;
                                                                            const aMaxLuminance:TpvFloat);
@@ -1596,7 +1596,7 @@ end;
 // ffxFrameInterpolationPrepare and ffxFrameInterpolationDispatch of ffx_frameinterpolation.cpp.
 procedure TpvScene3DRendererFrameGenerationBackendFSR3.DispatchFrameInterpolation(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                   const aInFlightFrameIndex:TpvSizeInt;
-                                                                                  const aDescription:TGenerateDescription;
+                                                                                  const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription;
                                                                                   const aReset:boolean;
                                                                                   const aMinLuminance:TpvFloat;
                                                                                   const aMaxLuminance:TpvFloat);
@@ -1782,7 +1782,7 @@ begin
 
 end;
 
-function TpvScene3DRendererFrameGenerationBackendFSR3.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TGenerateDescription):boolean;
+function TpvScene3DRendererFrameGenerationBackendFSR3.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aDescription:TpvScene3DRendererFrameGenerationBackend.TGenerateDescription):boolean;
 var Index,Half,Level:TpvSizeInt;
     InternalImage:TInternalImage;
     ImageMemoryBarriers:array of TVkImageMemoryBarrier;
