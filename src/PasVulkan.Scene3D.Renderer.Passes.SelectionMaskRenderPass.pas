@@ -322,7 +322,7 @@ var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
     MaxCommands:TpvUInt32;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
-    vkCmdDrawMeshTasksIndirectCountEXT:TvkCmdDrawMeshTasksIndirectCountEXT;
+    DrawCommandBuffer,DrawCountBuffer:TVkBuffer;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -336,6 +336,9 @@ begin
  if fInstance.Scene3D.CountSelectedInstances<=0 then begin
   exit;
  end;
+
+ DrawCommandBuffer:=fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].Handle;
+ DrawCountBuffer:=fInstance.SelectionListDrawIndexedIndirectCommandCountBuffers[aInFlightFrameIndex].Handle;
 
  // Base push (size/time/frame), but use the UN-JITTERED final view matrices so the mask (and thus the outline) is stable and
  // not shimmering with the TAA jitter that is baked into the regular FinalView projection matrices.
@@ -374,22 +377,14 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,SizeOf(TpvScene3D.TMeshStagePushConstants),@PushConstants);
 
-  // Mesh-shader path: the selection list now holds TGPUDrawMeshTasksIndirectCommand (groupCount xyz @ offset 0); draw via
-  // vkCmdDrawMeshTasksIndirectCountEXT (not wrapped on TpvVulkanCommandBuffer -> resolve the device command, like Scene3D.Draw).
   if assigned(fInstance.Renderer.VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectCountEXT) then begin
-   vkCmdDrawMeshTasksIndirectCountEXT:=fInstance.Renderer.VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectCountEXT;
-  end else begin
-   vkCmdDrawMeshTasksIndirectCountEXT:=nil;
-  end;
-
-  if assigned(vkCmdDrawMeshTasksIndirectCountEXT) then begin
-   vkCmdDrawMeshTasksIndirectCountEXT(aCommandBuffer.Handle,
-                                      fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].Handle,
-                                      0,
-                                      fInstance.SelectionListDrawIndexedIndirectCommandCountBuffers[aInFlightFrameIndex].Handle,
-                                      0,
-                                      MaxCommands,
-                                      SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand)); // stride 32
+   fInstance.Renderer.VulkanDevice.Commands.CmdDrawMeshTasksIndirectCountEXT(aCommandBuffer.Handle,
+                                                                             DrawCommandBuffer,
+                                                                             0,
+                                                                             DrawCountBuffer,
+                                                                             0,
+                                                                             MaxCommands,
+                                                                             SizeOf(TpvScene3D.TGPUDrawMeshTasksIndirectCommand));
   end;
 
  end else begin
@@ -412,9 +407,9 @@ begin
 
   if assigned(vkCmdDrawIndexedIndirectCount) then begin
    vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                 fInstance.SelectionListDrawIndexedIndirectCommandBuffers[aInFlightFrameIndex].Handle,
+                                 DrawCommandBuffer,
                                  0,
-                                 fInstance.SelectionListDrawIndexedIndirectCommandCountBuffers[aInFlightFrameIndex].Handle,
+                                 DrawCountBuffer,
                                  0,
                                  MaxCommands,
                                  SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand)); // stride 32
