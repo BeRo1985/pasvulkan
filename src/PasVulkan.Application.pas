@@ -15324,6 +15324,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanSwapChain;
+const UnusedAbsoluteTimeSuffix:array[Boolean] of TpvUTF8String=('',' (unused, relative only)');
 type TTimeDomains=array[0..15] of TVkTimeDomainKHR;
      TTimeDomainIDs=array[0..15] of TpvUInt64;
 var Index:TpvInt32;
@@ -15425,7 +15426,7 @@ begin
     if SwapchainTimingProperties.refreshDuration>0 then begin
      fFramePacingPresentTimingRefreshDuration:=SwapchainTimingProperties.refreshDuration;
      fFramePacingPresentTimingAvailable:=true;
-     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+BoolToStr(fPresentTimingRelativeOnly and fVulkanSwapChain.PresentAtAbsoluteTimeSupported,' (unused, relative only)','')+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true)+', present stages $'+LowerCase(IntToHex(fVulkanSwapChain.PresentStageQueries,2)));
+     Log(LOG_INFO,'TpvApplication.CreateVulkanSwapChain','VK_EXT_present_timing: refreshDuration='+IntToStr(fFramePacingPresentTimingRefreshDuration)+'ns, absolute target times '+BoolToStr(fVulkanSwapChain.PresentAtAbsoluteTimeSupported,true)+UnusedAbsoluteTimeSuffix[fPresentTimingRelativeOnly and fVulkanSwapChain.PresentAtAbsoluteTimeSupported]+', relative target times '+BoolToStr(fVulkanSwapChain.PresentAtRelativeTimeSupported,true)+', present stages $'+LowerCase(IntToHex(fVulkanSwapChain.PresentStageQueries,2)));
     end;
    end;
   except
@@ -18541,6 +18542,7 @@ var VulkanPresentTimingDecisionLogged:boolean=false; // one-shot diagnostic: pri
 {$endif}
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
+const PresentReportSuffix:array[Boolean] of TpvUTF8String=(' (no reports of past presents)','');
 var PresentIdKHR:TVkPresentIdKHR;
     PresentId2KHR:TVkPresentId2KHR;
     PresentTimingsInfoEXT:TVkPresentTimingsInfoEXT;
@@ -18752,7 +18754,7 @@ begin
     if fVulkanSwapChain.CreatedPresentMode=VK_PRESENT_MODE_FIFO_LATEST_READY_KHR then begin
      Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away under VSync and not be shown, so none are made for now, the frames taking '+FloatToStrF(fGeneratedFrameWorkInterval*1e3,ffFixed,8,3)+' ms on the CPU and '+FloatToStrF(fGeneratedFrameGPUInterval*1e3,ffFixed,8,3)+' ms on the GPU, refresh cycle '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms');
     end else begin
-     Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away and not be shown, the presentation showing only the newest present of a refresh cycle, so none are made for now, the frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms, present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+', '+FloatToStrF(fPresentShownOnRefreshGrid*100.0,ffFixed,8,0)+' % of the presents on the grid of the refresh cycles'+BoolToStr((fPresentTimingReportStage<>0) and (fPresentTimingReportQueueState>=0),'',' (no reports of past presents)')+', refresh cycle '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms');
+     Log(LOG_INFO,'TpvApplication.PresentVulkanBackBuffer','Generated frames would go out right away and not be shown, the presentation showing only the newest present of a refresh cycle, so none are made for now, the frames coming every '+FloatToStrF(fGeneratedFramePresentInterval*1e3,ffFixed,8,3)+' ms, present mode '+IntToStr(TpvInt64(fVulkanSwapChain.CreatedPresentMode))+', '+FloatToStrF(fPresentShownOnRefreshGrid*100.0,ffFixed,8,0)+' % of the presents on the grid of the refresh cycles'+PresentReportSuffix[(fPresentTimingReportStage<>0) and (fPresentTimingReportQueueState>=0)]+', refresh cycle '+FloatToStrF(RefreshSeconds*1e3,ffFixed,8,3)+' ms');
     end;
    end;
    if fGeneratedFramesRightAway then begin
