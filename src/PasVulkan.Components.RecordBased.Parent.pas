@@ -66,7 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.EntityComponentSystem.RecordBased;
+     PasVulkan.EntityComponentSystem;
 
 type PpvComponentParent=^TpvComponentParent;
      TpvComponentParent=record

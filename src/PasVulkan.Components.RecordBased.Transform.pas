@@ -67,7 +67,7 @@ uses SysUtils,
      Math,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.EntityComponentSystem.RecordBased;
+     PasVulkan.EntityComponentSystem;
 
 type PpvComponentTransform=^TpvComponentTransform;
      TpvComponentTransform=record
