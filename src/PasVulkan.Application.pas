@@ -23475,6 +23475,7 @@ end;
 {$ifend}
 
 procedure TpvApplication.Run;
+const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
 var Index:TpvInt32;
     ExceptionString:String;
     OpenedLogFileName:TpvUTF8String;

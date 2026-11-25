@@ -4831,6 +4831,8 @@ uses PasVulkan.Utils,
      PasVulkan.HighResolutionTimer,
      PasVulkan.NVIDIA.AfterMath;
 
+const LineEnding={$if defined(Windows)}#13#10{$else}#10{$ifend};
+
 {$ifdef PasVulkanQueueDiag}
 var QueueDiagTimer:TpvHighResolutionTimer=nil;
 
