@@ -255,7 +255,9 @@ Creating a new project:
 
 Run `projectmanager -h` for the full option and target list. `build` accepts explicit targets such as `fpc-x86_64-linux`, `fpc-x86_64-windows`, `fpc-aarch64-android` or `delphi-x86_64-windows`.
 
-To build the template itself with Delphi on Windows, run `projectmanager build template delphi-x86_32-windows` or `projectmanager build template delphi-x86_64-windows` from a RAD Studio command prompt. The manager builds `projects/template/src/projecttemplate.dproj` and places the executable in `projects/template/bin`. Each project created from this template receives its own UUID.
+To build the template itself with Delphi on Windows, run `projectmanager build template delphi-x86_32-windows` or `projectmanager build template delphi-x86_64-windows` from an ordinary Command Prompt (in PowerShell use `.\projectmanager.exe`). The manager builds `projects/template/src/projecttemplate.dproj` and places the executable in `projects/template/bin`. Each project created from this template receives its own UUID.
+
+On Windows, both `compileprojectmanager.bat` and Delphi project builds use the RAD Studio installation selected by `BDS` or by `rsvars.bat` on `PATH`. From an ordinary shell they discover installed Delphi versions in the registry and standard installation directories and select the newest. If both compilers are installed, the bootstrap script prefers Delphi and falls back to Free Pascal when Delphi is unavailable.
 
 ### Building directly with Lazarus / lazbuild / Delphi
 

@@ -482,8 +482,8 @@ var ProjectPath,ProjectSourcePath,ProjectSourceName:UnicodeString;
    end;
   end;
 
-  if not ExecuteCommand(ProjectSourcePath,'cmd',['/d','/c','call','rsvars.bat','&&','msbuild',ProjectSourceName+'.dproj',
-                                                 '/t:Rebuild','/p:Config='+Config+';Platform='+Platform]) then begin
+  if not ExecuteCommand(ProjectSourcePath,'cmd',['/d','/c','..\..\..\src\tools\projectmanager\make.bat',
+                                                 ProjectSourceName+'.dproj',Config,Platform]) then begin
    WriteLn('Errors!');
    exit;
   end;

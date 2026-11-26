@@ -1,3 +1,3 @@
-@echo off 
-call rsvars.bat
-msbuild projectmanager.dproj /t:Rebuild /p:Config=Release
+@echo off
+call "%~dp0make.bat" "%~dp0projectmanager.dproj" Release
+exit /b %errorlevel%

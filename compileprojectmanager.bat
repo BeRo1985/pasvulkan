@@ -1,4 +1,7 @@
 @echo off
-cd src\tools\projectmanager
+setlocal
+pushd "%~dp0src\tools\projectmanager" || exit /b 1
 call make.bat
-cd ..\..\..
+set "result=%errorlevel%"
+popd
+exit /b %result%
