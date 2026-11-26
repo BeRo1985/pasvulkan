@@ -255,6 +255,8 @@ Creating a new project:
 
 Run `projectmanager -h` for the full option and target list. `build` accepts explicit targets such as `fpc-x86_64-linux`, `fpc-x86_64-windows`, `fpc-aarch64-android` or `delphi-x86_64-windows`.
 
+To build the template itself with Delphi on Windows, run `projectmanager build template delphi-x86_32-windows` or `projectmanager build template delphi-x86_64-windows` from a RAD Studio command prompt. The manager builds `projects/template/src/projecttemplate.dproj` and places the executable in `projects/template/bin`. Each project created from this template receives its own UUID.
+
 ### Building directly with Lazarus / lazbuild / Delphi
 
 Every project also carries a plain `.lpi` (Lazarus) and `.dpr`/`.dproj` (Delphi) in its `src/` directory and can be built without the project manager:

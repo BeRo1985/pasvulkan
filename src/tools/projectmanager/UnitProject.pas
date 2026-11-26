@@ -10,7 +10,8 @@ unit UnitProject;
 
 interface
 
-uses {$if defined(fpc) and defined(Unix)}BaseUnix,{$ifend}
+uses {$ifdef Windows}Windows,{$endif}
+     {$if defined(fpc) and defined(Unix)}BaseUnix,{$ifend}
      SysUtils,Classes,
      UnitVersion,UnitGlobals,UnitExternalProcess;
 
@@ -180,6 +181,28 @@ begin
  end;
 end;
 
+function IsTemplateDirectory(const aProjectPath:UnicodeString):boolean;
+begin
+ result:=SameFileName(ExpandFileName(aProjectPath),ExpandFileName(PasVulkanProjectTemplatePath));
+end;
+
+function IsTemplateBuildProduct(const aFileName:UnicodeString):boolean;
+const BinPath='bin'+DirectorySeparator;
+      SourcePath='src'+DirectorySeparator;
+var Extension:String;
+begin
+ // Preserve the shipped output directory skeleton and runtime DLLs when cloning a built template.
+ if (Pos(SourcePath+'DelphiOutput'+DirectorySeparator,aFileName)=1) or
+    (Pos(SourcePath+'FPCOutput'+DirectorySeparator,aFileName)=1) then begin
+  result:=(aFileName[length(aFileName)]<>DirectorySeparator) and (ExtractFileName(aFileName)<>'dummy.txt');
+ end else begin
+  Extension:=LowerCase(ExtractFileExt(aFileName));
+  result:=(Pos(BinPath+'template_',aFileName)=1) or
+          ((Pos(BinPath+'projecttemplate.',aFileName)=1) and
+           ((Extension='.exe') or (Extension='.rsm') or (Extension='.tds') or (Extension='.map')));
+ end;
+end;
+
 function CreateProject:boolean;
 var Index:Int32;
     ProjectTemplateFileList,StringList:TStringList;
@@ -239,10 +262,12 @@ begin
   try
    for Index:=0 to ProjectTemplateFileList.Count-1 do begin
     FileName:=UnicodeString(ProjectTemplateFileList.Strings[Index]);
+    if IsTemplateBuildProduct(FileName) then begin
+     continue;
+    end;
     SourceFileName:=PasVulkanProjectTemplatePath+FileName;
-    DestinationFileName:=ProjectPath+FileName;
-    if length(DestinationFileName)>0 then begin
-     DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+    DestinationFileName:=ProjectPath+UnicodeString(StringReplace(String(FileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+    if length(FileName)>0 then begin
      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
       WriteLn('Creating "',DestinationFileName,'" ...');
@@ -316,6 +341,12 @@ begin
   exit;
  end;
 
+ // The template already contains the canonical source files. Only generated projects have a UUID.
+ if IsTemplateDirectory(ProjectPath) then begin
+  result:=true;
+  exit;
+ end;
+
  ProjectMetaDataPath:=IncludeTrailingPathDelimiter(ProjectPath+'metadata');
  WriteLn('Checking "',ProjectMetaDataPath,'" ...');
  if not DirectoryExists(ProjectMetaDataPath) then begin
@@ -345,9 +376,8 @@ begin
    for Index:=0 to ProjectTemplateFileList.Count-1 do begin
     FileName:=UnicodeString(ProjectTemplateFileList.Strings[Index]);
     SourceFileName:=PasVulkanProjectTemplatePath+FileName;
-    DestinationFileName:=ProjectPath+FileName;
-    if length(DestinationFileName)>0 then begin
-     DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+    DestinationFileName:=ProjectPath+UnicodeString(StringReplace(String(FileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+    if length(FileName)>0 then begin
      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
 {     if not DirectoryExists(DestinationFileName) then begin
@@ -428,55 +458,51 @@ end;
 function BuildProject:boolean;
 type TTargetCPU=(ARM_32,ARM_64,x86_32,x86_64);
      TTargetOS=(Android,Linux,Windows);
-var ProjectPath,ProjectSourcePath:UnicodeString;
+var ProjectPath,ProjectSourcePath,ProjectSourceName:UnicodeString;
  function BuildWithDelphi:boolean;
- var DelphiBatchFileName:UnicodeString;
-     Config,Platform:String;
-     DelphiBatchFile:TStringList;
+ var Config,Platform,TargetSuffix:String;
+     CompiledFileName,TargetFileName:UnicodeString;
  begin
 
   result:=false;
 
-  DelphiBatchFileName:=ProjectSourcePath+'makedelphi.bat';
-
-  DelphiBatchFile:=TStringList.Create;
-  try
-   DelphiBatchFile.Add('@echo off');
-   DelphiBatchFile.Add('call rsvars.bat');
-   if (CurrentTarget='delphi-amd64-windows') or (CurrentTarget='delphi-x86_64-windows') then begin
-    Platform:='Win64';
-   end else begin
-    Platform:='Win32';
-   end;
-   case BuildMode of
-    TBuildMode.Debug:begin
-     Config:='Debug';
-    end;
-    else {TBuildMode.Release:}begin
-     Config:='Release';
-    end;
-   end;
-   DelphiBatchFile.Add('msbuild '+String(CurrentProjectName)+'.dproj /t:Rebuild /p:Config='+Config+';Platform='+Platform);
-   DelphiBatchFile.SaveToFile(String(DelphiBatchFileName));
-  finally
-   FreeAndNil(DelphiBatchFile);
-  end;
-
-  if ExecuteCommand(ProjectSourcePath,'cmd',['/c',DelphiBatchFileName]) then begin
-   WriteLn('Successful!');
-   if (CurrentTarget='delphi-amd64-windows') or (CurrentTarget='delphi-x86_64-windows') then begin
-    DeleteFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
-    RenameFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'.exe',
-               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
-   end else begin
-    DeleteFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe');
-    RenameFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'.exe',
-               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe');
-   end;
-   result:=true;
+  if (CurrentTarget='delphi-amd64-windows') or (CurrentTarget='delphi-x86_64-windows') then begin
+   Platform:='Win64';
+   TargetSuffix:='_x86_64-windows.exe';
   end else begin
-   WriteLn('Errors!');
+   Platform:='Win32';
+   TargetSuffix:='_x86_32-windows.exe';
   end;
+  case BuildMode of
+   TBuildMode.Debug:begin
+    Config:='Debug';
+   end;
+   else begin
+    Config:='Release';
+   end;
+  end;
+
+  if not ExecuteCommand(ProjectSourcePath,'cmd',['/d','/c','call','rsvars.bat','&&','msbuild',ProjectSourceName+'.dproj',
+                                                 '/t:Rebuild','/p:Config='+Config+';Platform='+Platform]) then begin
+   WriteLn('Errors!');
+   exit;
+  end;
+  CompiledFileName:=ProjectPath+'bin'+DirectorySeparator+ProjectSourceName+'.exe';
+  TargetFileName:=ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+TargetSuffix;
+  if not FileExists(CompiledFileName) then begin
+   WriteLn(ErrOutput,'Fatal: Compiler output "',CompiledFileName,'" not found!');
+   exit;
+  end;
+  if not {$ifdef Windows}
+          Windows.MoveFileExW(PWideChar(CompiledFileName),PWideChar(TargetFileName),MOVEFILE_REPLACE_EXISTING)
+         {$else}
+          RenameFile(CompiledFileName,TargetFileName)
+         {$endif} then begin
+   WriteLn(ErrOutput,'Fatal: Could not move "',CompiledFileName,'" to "',TargetFileName,'".');
+   exit;
+  end;
+  WriteLn('Successful!');
+  result:=true;
 
  end;
  function BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS):boolean;
@@ -831,7 +857,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      end;
     end;
    end;
-   Parameters.Add(String(CurrentProjectName)+'.dpr');
+   Parameters.Add(String(ProjectSourceName)+'.dpr');
    if (length(FPCExecutable)>0) and (length(FoundFPCExecutable)>0) then begin
     if ExecuteCommand(ProjectSourcePath,FoundFPCExecutable,Parameters) then begin
      WriteLn('Successful!');
@@ -1020,8 +1046,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
  end;
  procedure MkDirEx(const aPath:String);
  begin
-  if not DirectoryExists(aPath) then begin
-   MkDir(aPath);
+  if not ForceDirectories(aPath) then begin
+   raise EInOutError.Create('Could not create directory "'+aPath+'".');
   end;
  end;
 begin
@@ -1049,6 +1075,12 @@ begin
  end;
 
  ProjectSourcePath:=IncludeTrailingPathDelimiter(ProjectPath+'src');
+ if IsTemplateDirectory(ProjectPath) then begin
+  ProjectSourceName:='projecttemplate';
+ end else begin
+  ProjectSourceName:=CurrentProjectName;
+ end;
+ MkDirEx(ProjectPath+'bin');
 
  if (CurrentTarget='delphi-i386-windows') or
     (CurrentTarget='delphi-x86_32-windows') or
@@ -1067,14 +1099,14 @@ begin
  end else if (CurrentTarget='fpc-i386-windows') or
              (CurrentTarget='fpc-x86_32-windows') then begin
 
-  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-windows');
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-win32');
 
   result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
 
  end else if (CurrentTarget='fpc-amd64-windows') or
              (CurrentTarget='fpc-x86_64-windows') then begin
 
-  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-windows');
+  MkDirEx(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-win64');
 
   result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
 
